@@ -99,6 +99,40 @@ export const paymentsApi = {
     )
     return transformPayment(response)
   },
+
+  /**
+   * Create new payment
+   * BACKEND: POST /api/v1/payments
+   */
+  createPayment: async (data: Record<string, unknown>): Promise<PaymentResponse> => {
+    const response = await fetchClient.post<Record<string, unknown>>(
+      PAYMENTS_BASE,
+      data
+    )
+    return transformPayment(response)
+  },
+
+  /**
+   * Update payment
+   * BACKEND: PUT /api/v1/payments/{id}
+   */
+  updatePayment: async (id: string, data: Record<string, unknown>): Promise<PaymentResponse> => {
+    const response = await fetchClient.put<Record<string, unknown>>(
+      `${PAYMENTS_BASE}/${id}`,
+      data
+    )
+    return transformPayment(response)
+  },
+
+  /**
+   * Get payment plan with installments
+   * BACKEND: GET /api/v1/payments/plans/{id}
+   */
+  getPaymentPlan: async (planId: string): Promise<Record<string, unknown>> => {
+    return fetchClient.get<Record<string, unknown>>(
+      `${PAYMENTS_BASE}/plans/${planId}`
+    )
+  },
 }
 
 export default paymentsApi

@@ -126,7 +126,19 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize EventBus (non-blocking): {e}")
 
-        # Initialize Redis connection (optional - graceful fallback if unavailable)
+        # Initialize Cache System (Upstash Redis with in-memory fallback)
+        try:
+            from app.core.cache import initialize_cache, get_cache_health
+            await initialize_cache()
+            cache_health = await get_cache_health()
+            if cache_health["redis_enabled"] and cache_health["redis_status"] == "connected":
+                logger.info("✅ Cache system initialized (Upstash Redis)")
+            else:
+                logger.info("ℹ️ Cache system initialized (in-memory fallback)")
+        except Exception as cache_error:
+            logger.warning(f"⚠️ Cache initialization failed (continuing without cache): {cache_error}")
+
+        # Initialize legacy Redis connection (for backwards compatibility)
         if settings.redis_url and settings.redis_url != "redis://localhost:6379":
             try:
                 redis_client = redis.from_url(
@@ -136,12 +148,12 @@ async def lifespan(app: FastAPI):
                     socket_timeout=5
                 )
                 await redis_client.ping()
-                logger.info("✅ Redis connection initialized (caching enabled)")
+                logger.info("✅ Legacy Redis client connected")
             except Exception as redis_error:
-                logger.warning(f"⚠️ Redis unavailable (continuing without cache): {redis_error}")
+                logger.warning(f"⚠️ Legacy Redis unavailable: {redis_error}")
                 redis_client = None
         else:
-            logger.info("ℹ️ Redis not configured (caching disabled - direct DB queries)")
+            logger.info("ℹ️ Legacy Redis client not configured")
 
     except Exception as e:
         logger.error(f"❌ Failed to initialize connections: {e}")
@@ -155,11 +167,16 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     try:
+        # Shutdown cache system
+        from app.core.cache import shutdown_cache
+        await shutdown_cache()
+        logger.info("🔄 Cache system shutdown")
+
         await db_manager.disconnect()
         logger.info("🔄 Database pool closed")
         if redis_client:
             await redis_client.close()
-            logger.info("🔄 Redis connection closed")
+            logger.info("🔄 Legacy Redis connection closed")
     except Exception as e:
         logger.error(f"❌ Error during shutdown: {e}")
 
@@ -372,14 +389,22 @@ async def health_check():
         health_status["checks"]["database"] = f"error: {str(e)}"
         health_status["status"] = "degraded"
 
-    # Test Redis connection
+    # Test Cache System (Upstash Redis)
     try:
-        if redis_client:
-            await redis_client.ping()
-            health_status["checks"]["redis"] = "ok"
+        from app.core.cache import get_cache_health
+        cache_health = await get_cache_health()
+        health_status["checks"]["cache"] = cache_health
+        if cache_health["redis_enabled"]:
+            if cache_health["redis_status"] == "connected":
+                health_status["checks"]["redis"] = "ok (Upstash)"
+            else:
+                health_status["checks"]["redis"] = cache_health["redis_status"]
+                health_status["status"] = "degraded"
+        else:
+            health_status["checks"]["redis"] = "disabled (in-memory fallback)"
     except Exception as e:
+        health_status["checks"]["cache"] = f"error: {str(e)}"
         health_status["checks"]["redis"] = f"error: {str(e)}"
-        health_status["status"] = "degraded"
 
     return health_status
 

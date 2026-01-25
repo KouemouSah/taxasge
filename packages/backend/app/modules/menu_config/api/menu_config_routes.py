@@ -32,6 +32,11 @@ from app.modules.menu_config.repositories.menu_template_repository import (
 from app.modules.menu_config.repositories.workflow_mapping_repository import (
     WorkflowMappingRepository,
 )
+from app.core.cache import (
+    invalidate_workflow_mappings_cache,
+    invalidate_agent_menu_cache,
+    get_menu_cache,
+)
 from app.modules.menu_config.models.menu_config import (
     AgentMenuConfigResponse,
     MenuTemplateCreate,
@@ -109,6 +114,28 @@ async def get_my_menu_config(
 # =============================================================================
 # MENU TEMPLATES CRUD ENDPOINTS (Admin only)
 # =============================================================================
+
+@router.get(
+    "/templates/entity-codes",
+    response_model=list[str],
+    summary="Get distinct entity codes",
+    description="Get all distinct entity codes used in menu templates. Requires admin.menu.read permission."
+)
+async def get_template_entity_codes(
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Get distinct entity codes from menu templates"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "admin.menu.read", raise_exception=True
+    )
+
+    repo = MenuTemplateRepository(db)
+    return await repo.get_distinct_entity_codes()
+
 
 @router.get(
     "/templates",
@@ -364,6 +391,10 @@ async def create_workflow_mapping(
         )
 
     created = await repo.create(mapping)
+
+    # Invalidate cache
+    await invalidate_workflow_mappings_cache()
+
     return WorkflowMenuMappingResponse(**created)
 
 
@@ -427,6 +458,9 @@ async def update_workflow_mapping(
             detail=f"Mapping with id '{mapping_id}' not found"
         )
 
+    # Invalidate cache
+    await invalidate_workflow_mappings_cache()
+
     return WorkflowMenuMappingResponse(**updated)
 
 
@@ -457,3 +491,6 @@ async def delete_workflow_mapping(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Mapping with id '{mapping_id}' not found"
         )
+
+    # Invalidate cache
+    await invalidate_workflow_mappings_cache()

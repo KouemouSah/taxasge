@@ -1,7 +1,9 @@
 """
 Permission Service - Business logic for permission checking and management
+
+Includes Redis cache integration for frequently accessed permission data.
 """
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Set
 from fastapi import HTTPException, status, Depends
 from loguru import logger
 
@@ -15,6 +17,12 @@ from app.modules.permissions.models.permission import (
     PermissionResponse,
 )
 from app.repositories.user_repository import UserRepository
+from app.core.cache import (
+    get_permissions_cache,
+    CacheKeys,
+    invalidate_user_permissions_cache,
+    invalidate_all_permissions_cache,
+)
 
 
 class PermissionService:
@@ -39,6 +47,36 @@ class PermissionService:
         self.user_permission_repo = user_permission_repo
         self.user_repo = UserRepository()
 
+    async def get_cached_user_permissions(self, user_id: str) -> Set[str]:
+        """
+        Get user's permission names with caching.
+
+        Uses Redis cache (10 min TTL) to avoid repeated database queries.
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            Set of permission names
+        """
+        cache = get_permissions_cache()
+        cache_key = CacheKeys.user_permissions(user_id)
+
+        # Try cache first
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            logger.debug(f"Permission cache HIT for user {user_id}")
+            return set(cached)
+
+        # Cache miss - fetch from database
+        logger.debug(f"Permission cache MISS for user {user_id}")
+        permission_names = await self.user_permission_repo.get_all_permission_names(user_id)
+
+        # Store in cache
+        await cache.set(cache_key, permission_names, ttl=600)  # 10 minutes
+
+        return set(permission_names)
+
     async def has_permission(
         self,
         user_id: str,
@@ -53,6 +91,8 @@ class PermissionService:
            automatically grant permissions for their entity scope
         3. User-specific permission overrides (highest priority)
         4. Role-based permissions (if no override)
+
+        Uses Redis cache for permission lookups (10 min TTL).
 
         Args:
             user_id: User UUID
@@ -82,8 +122,13 @@ class PermissionService:
         except Exception as e:
             logger.warning(f"Could not check admin/supervisor status for user {user_id}: {e}")
 
-        # For non-admins and non-supervisors, check normal permissions
-        return await self.user_permission_repo.has_permission(user_id, permission_name)
+        # For non-admins and non-supervisors, check cached permissions
+        try:
+            user_permissions = await self.get_cached_user_permissions(user_id)
+            return permission_name in user_permissions
+        except Exception as e:
+            logger.warning(f"Cache lookup failed, falling back to direct query: {e}")
+            return await self.user_permission_repo.has_permission(user_id, permission_name)
 
     async def _check_is_supervisor(self, user_id: str, permission_name: str) -> bool:
         """
@@ -318,7 +363,12 @@ class PermissionService:
                 detail=f"Permission '{permission.name}' already exists"
             )
 
-        return await self.permission_repo.create(permission)
+        result = await self.permission_repo.create(permission)
+
+        # Invalidate all permissions cache (new permission might affect role assignments)
+        await invalidate_all_permissions_cache()
+
+        return result
 
     async def bulk_create_permissions(
         self,
@@ -361,6 +411,9 @@ class PermissionService:
                 detail=f"Permission with id '{permission_id}' not found"
             )
 
+        # Invalidate all permissions cache (permission change affects all users with this permission)
+        await invalidate_all_permissions_cache()
+
         return updated
 
     async def delete_permission(self, permission_id: str) -> bool:
@@ -383,6 +436,9 @@ class PermissionService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Permission with id '{permission_id}' not found"
             )
+
+        # Invalidate all permissions cache
+        await invalidate_all_permissions_cache()
 
         return True
 

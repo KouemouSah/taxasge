@@ -139,6 +139,43 @@ export const declarationsApi = {
     );
     return transformDeclaration(response);
   },
+
+  /**
+   * Create new declaration
+   * BACKEND: POST /api/v1/declarations
+   * ROUTE: create_declaration() in declaration_routes.py
+   */
+  createDeclaration: async (data: Record<string, unknown>): Promise<DeclarationResponse> => {
+    const response = await fetchClient.post<Record<string, unknown>>(
+      DECLARATIONS_BASE,
+      data
+    );
+    return transformDeclaration(response);
+  },
+
+  /**
+   * Update declaration
+   * BACKEND: PUT /api/v1/declarations/{id}
+   * ROUTE: update_declaration() in declaration_routes.py
+   */
+  updateDeclaration: async (id: string, data: Record<string, unknown>): Promise<DeclarationResponse> => {
+    const response = await fetchClient.put<Record<string, unknown>>(
+      `${DECLARATIONS_BASE}/${id}`,
+      data
+    );
+    return transformDeclaration(response);
+  },
+
+  /**
+   * Get declaration workflow status
+   * BACKEND: GET /api/v1/declarations/{id}/workflow
+   * ROUTE: get_declaration_workflow_status() in declaration_routes.py
+   */
+  getDeclarationWorkflow: async (id: string): Promise<Record<string, unknown>> => {
+    return fetchClient.get<Record<string, unknown>>(
+      `${DECLARATIONS_BASE}/${id}/workflow`
+    );
+  },
 };
 
 // =============================================================================

@@ -1,4 +1,7 @@
-"""Fiscal Service Routes - 850 tax services catalog API"""
+"""Fiscal Service Routes - 850 tax services catalog API
+
+Includes Redis cache for frequently accessed data (ministries, sectors, categories).
+"""
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query, UploadFile, File
 from fastapi.security import HTTPBearer
@@ -8,6 +11,8 @@ from pydantic import BaseModel
 import time
 from io import BytesIO
 from PIL import Image
+
+from app.core.cache import get_services_cache, CacheKeys, invalidate_services_cache
 
 from app.modules.fiscal_services.models import (
     MinistryCreate,
@@ -76,8 +81,22 @@ async def list_ministries(
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language code for translations"),
     db=Depends(get_database),
 ):
-    """List all ministries (Ministères) with i18n support"""
+    """List all ministries (Ministères) with i18n support. Cached for 1 hour."""
+    cache = get_services_cache()
+    cache_key = CacheKeys.custom("ministries", language)
+
+    # Try cache first
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        logger.debug(f"Cache HIT for ministries:{language}")
+        return [MinistryResponse(**m) for m in cached]
+
+    # Cache miss - fetch from database
     ministries = await repository.list_ministries(db, language=language)
+
+    # Store in cache (1 hour TTL)
+    await cache.set(cache_key, ministries, ttl=3600)
+
     return [MinistryResponse(**m) for m in ministries]
 
 
@@ -87,8 +106,22 @@ async def list_sectors(
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language code for translations"),
     db=Depends(get_database),
 ):
-    """List sectors (Secteurs), optionally filtered by ministry, with i18n support"""
+    """List sectors (Secteurs), optionally filtered by ministry, with i18n support. Cached for 1 hour."""
+    cache = get_services_cache()
+    cache_key = CacheKeys.custom("sectors", language, str(ministry_id or "all"))
+
+    # Try cache first
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        logger.debug(f"Cache HIT for sectors:{language}:{ministry_id}")
+        return [SectorResponse(**s) for s in cached]
+
+    # Cache miss - fetch from database
     sectors = await repository.list_sectors(db, ministry_id=ministry_id, language=language)
+
+    # Store in cache (1 hour TTL)
+    await cache.set(cache_key, sectors, ttl=3600)
+
     return [SectorResponse(**s) for s in sectors]
 
 
@@ -98,8 +131,22 @@ async def list_categories(
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language code for translations"),
     db=Depends(get_database),
 ):
-    """List categories (Catégories), optionally filtered by sector, with i18n support"""
+    """List categories (Catégories), optionally filtered by sector, with i18n support. Cached for 1 hour."""
+    cache = get_services_cache()
+    cache_key = CacheKeys.custom("categories", language, str(sector_id or "all"))
+
+    # Try cache first
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        logger.debug(f"Cache HIT for categories:{language}:{sector_id}")
+        return [CategoryResponse(**c) for c in cached]
+
+    # Cache miss - fetch from database
     categories = await repository.list_categories(db, sector_id=sector_id, language=language)
+
+    # Store in cache (1 hour TTL)
+    await cache.set(cache_key, categories, ttl=3600)
+
     return [CategoryResponse(**c) for c in categories]
 
 
@@ -145,7 +192,8 @@ async def get_service_details(
     db=Depends(get_database),
 ):
     """
-    Get complete service details with documents, procedures, and related info
+    Get complete service details with documents, procedures, and related info.
+    Cached for 1 hour.
 
     This endpoint provides:
     - Full service information with translations

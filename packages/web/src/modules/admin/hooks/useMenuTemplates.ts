@@ -131,6 +131,26 @@ export function useDeleteMenuTemplate() {
 }
 
 // =============================================================================
+// NAVIGATION HOOK
+// =============================================================================
+
+/**
+ * Hook to fetch all menu template IDs for navigation
+ * Returns a list of all IDs in order for prev/next navigation
+ */
+export function useMenuTemplateIds() {
+  return useQuery<string[], Error>({
+    queryKey: [...menuTemplateKeys.all, 'ids'] as const,
+    queryFn: async () => {
+      // Fetch all items (with a high page_size) to get all IDs
+      const response = await menuConfigApi.listTemplates({ page: 1, page_size: 1000 });
+      return response.items.map((t) => t.id);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// =============================================================================
 // COMBINED HOOK
 // =============================================================================
 

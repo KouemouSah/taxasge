@@ -12,7 +12,7 @@ Requires database columns (migration 063):
 
 Author: Claude Code Expert
 Date: 2026-01-19
-Updated: 2026-01-25 - Added migration dependency note
+Updated: 2026-01-25 - Added caching for performance optimization (Phase 4)
 """
 from typing import List, Optional, Dict, Any
 from uuid import UUID
@@ -29,6 +29,11 @@ from app.modules.menu_config.models.menu_config import (
     WidgetConfigBase,
 )
 from app.modules.permissions.repositories.user_permission_repository import UserPermissionRepository
+from app.core.cache import (
+    get_menu_cache,
+    get_workflow_mappings_cache,
+    CacheKeys,
+)
 
 
 class MenuConfigService:
@@ -56,27 +61,41 @@ class MenuConfigService:
         self,
         agent_profile_id: UUID,
         user_id: UUID,
-        db_connection
+        db_connection,
+        use_cache: bool = True
     ) -> AgentMenuConfigResponse:
         """
         Get complete menu configuration for an agent.
 
         Process:
-        1. Fetch agent profile with entity and role info
-        2. Determine if workflow-based or module-based
-        3. Generate or fetch menu config accordingly
-        4. Merge with any agent-specific overrides
-        5. Fetch dashboard config
-        6. Include permissions for frontend filtering
+        1. Check cache first (if enabled)
+        2. Fetch agent profile with entity and role info
+        3. Determine if workflow-based or module-based
+        4. Generate or fetch menu config accordingly
+        5. Merge with any agent-specific overrides
+        6. Fetch dashboard config
+        7. Include permissions for frontend filtering
+        8. Cache the result
 
         Args:
             agent_profile_id: Agent profile UUID
             user_id: User UUID (for permissions)
             db_connection: Database connection
+            use_cache: Whether to use cache (default: True)
 
         Returns:
             AgentMenuConfigResponse with all configuration
         """
+        cache = get_menu_cache()
+        cache_key = CacheKeys.agent_menu_config(str(agent_profile_id))
+
+        # Check cache first
+        if use_cache:
+            cached = await cache.get(cache_key)
+            if cached:
+                logger.debug(f"Cache hit for agent menu config: {agent_profile_id}")
+                return cached
+
         # 1. Fetch agent profile with joins
         agent_data = await self._fetch_agent_with_details(agent_profile_id, db_connection)
 
@@ -136,7 +155,7 @@ class MenuConfigService:
         perm_repo = UserPermissionRepository(db_connection)
         permissions = await perm_repo.get_all_permission_names(str(user_id))
 
-        return AgentMenuConfigResponse(
+        result = AgentMenuConfigResponse(
             agent_profile_id=agent_profile_id,
             entity_code=entity_code,
             entity_type=entity_type,
@@ -146,6 +165,13 @@ class MenuConfigService:
             dashboard_config=dashboard_config,
             permissions=permissions
         )
+
+        # 7. Cache the result (5 min TTL)
+        if use_cache:
+            await cache.set(cache_key, result, ttl=300)
+            logger.debug(f"Cached menu config for agent: {agent_profile_id}")
+
+        return result
 
     async def _fetch_agent_with_details(
         self,
@@ -284,14 +310,30 @@ class MenuConfigService:
         return parts[0] if parts else workflow_code
 
     async def _fetch_workflow_mappings(self, db_connection) -> List[Dict]:
-        """Fetch all active workflow menu mappings"""
+        """Fetch all active workflow menu mappings (cached for 30 min)"""
+        cache = get_workflow_mappings_cache()
+        cache_key = CacheKeys.workflow_mappings()
+
+        # Check cache first
+        cached = await cache.get(cache_key)
+        if cached:
+            logger.debug("Cache hit for workflow mappings")
+            return cached
+
+        # Fetch from database
         query = """
             SELECT * FROM workflow_menu_mapping
             WHERE is_active = true
             ORDER BY display_order
         """
         results = await db_connection.fetch(query)
-        return [dict(r) for r in results]
+        mappings = [dict(r) for r in results]
+
+        # Cache for 30 minutes (workflow mappings rarely change)
+        await cache.set(cache_key, mappings, ttl=1800)
+        logger.debug(f"Cached {len(mappings)} workflow mappings")
+
+        return mappings
 
     def _find_mapping_for_category(
         self,

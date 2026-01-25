@@ -299,6 +299,21 @@ class MenuTemplateRepository:
 
         return "DELETE 1" in result
 
+    async def get_distinct_entity_codes(self) -> List[str]:
+        """
+        Get all distinct entity codes from menu_templates
+
+        Returns:
+            List of distinct entity codes (excluding NULL)
+        """
+        results = await self.db.fetch("""
+            SELECT DISTINCT entity_code
+            FROM menu_templates
+            WHERE entity_code IS NOT NULL
+            ORDER BY entity_code
+        """)
+        return [row['entity_code'] for row in results]
+
     async def get_by_entity(
         self,
         entity_code: str,
