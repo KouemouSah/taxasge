@@ -278,7 +278,7 @@ class MenuConfigService:
         menus.append(MenuItemBase(
             id="dashboard",
             titleKey="agent.nav.dashboard",
-            href=f"/dashboard/agent/{entity_code.lower() if entity_code else 'default'}",
+            href=f"/dashboard/agent/{entity_code.lower().replace('_', '-') if entity_code else 'default'}",
             icon="LayoutDashboard"
         ))
 
@@ -358,7 +358,8 @@ class MenuConfigService:
         entity_code: str
     ) -> MenuItemBase:
         """Create menu item from mapping rule"""
-        entity_path = entity_code.lower() if entity_code else 'default'
+        # Convert underscores to hyphens for URL paths (e.g., CNEDOGE_PASAPORTE -> cnedoge-pasaporte)
+        entity_path = entity_code.lower().replace('_', '-') if entity_code else 'default'
         base_path = f"/dashboard/agent/{entity_path}/{mapping['menu_group_id']}"
         permission_prefix = mapping.get('permission_prefix', 'service_requests')
 
@@ -417,7 +418,8 @@ class MenuConfigService:
     ) -> MenuItemBase:
         """Create default menu for unmapped workflow category"""
         menu_id = category.lower()
-        entity_path = entity_code.lower() if entity_code else 'default'
+        # Convert underscores to hyphens for URL paths
+        entity_path = entity_code.lower().replace('_', '-') if entity_code else 'default'
         base_path = f"/dashboard/agent/{entity_path}/{menu_id}"
         icon = self.WORKFLOW_ICONS.get(category, 'FileText')
 
