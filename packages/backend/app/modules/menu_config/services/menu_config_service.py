@@ -72,10 +72,11 @@ class MenuConfigService:
         2. Fetch agent profile with entity and role info
         3. Determine if workflow-based or module-based
         4. Generate or fetch menu config accordingly
-        5. Merge with any agent-specific overrides
-        6. Fetch dashboard config
-        7. Include permissions for frontend filtering
-        8. Cache the result
+        5. Add common agent menus (stats, etc.)
+        6. Merge with any agent-specific overrides
+        7. Fetch dashboard config
+        8. Include permissions for frontend filtering
+        9. Cache the result
 
         Args:
             agent_profile_id: Agent profile UUID
@@ -136,11 +137,14 @@ class MenuConfigService:
             )
             logger.debug(f"Generated workflow menus for entity: {entity_code}")
 
-        # 4. Apply agent overrides if any
+        # 4. Add common agent menus (stats, etc.) - applies to all entities
+        menu_config = self._add_common_agent_menus(menu_config)
+
+        # 5. Apply agent overrides if any
         if agent_menu_overrides:
             menu_config = self._apply_menu_overrides(menu_config, agent_menu_overrides)
 
-        # 5. Get dashboard config
+        # 6. Get dashboard config
         if is_module_based and role_dashboard_config:
             dashboard_config = self._parse_dashboard_config(role_dashboard_config)
         else:
@@ -151,7 +155,7 @@ class MenuConfigService:
                 dashboard_config, agent_dashboard_overrides
             )
 
-        # 6. Get user permissions
+        # 7. Get user permissions
         perm_repo = UserPermissionRepository(db_connection)
         permissions = await perm_repo.get_all_permission_names(str(user_id))
 
@@ -166,7 +170,7 @@ class MenuConfigService:
             permissions=permissions
         )
 
-        # 7. Cache the result (5 min TTL)
+        # 8. Cache the result (5 min TTL)
         if use_cache:
             await cache.set(cache_key, result, ttl=300)
             logger.debug(f"Cached menu config for agent: {agent_profile_id}")
@@ -555,6 +559,45 @@ class MenuConfigService:
             version="1.0",
             layout="grid",
             widgets=widgets
+        )
+
+    def _add_common_agent_menus(
+        self,
+        menu_config: MenuConfigResponse
+    ) -> MenuConfigResponse:
+        """
+        Add common menu items that apply to all agents regardless of entity type.
+
+        Currently adds:
+        - My Stats: Personal performance statistics page
+
+        These are added at the end of the menu list.
+        """
+        # Check if stats menu already exists (to avoid duplicates)
+        existing_ids = {menu.id for menu in menu_config.menus}
+        if 'my-stats' in existing_ids:
+            return menu_config
+
+        # Add My Stats menu
+        stats_menu = MenuItemBase(
+            id="my-stats",
+            titleKey="agent.stats.title",
+            href="/dashboard/agent/stats",
+            icon="BarChart3",
+            permission="agent.view_performance"
+        )
+
+        # Insert stats menu after dashboard (position 1) if dashboard exists
+        updated_menus = list(menu_config.menus)
+        if updated_menus and updated_menus[0].id == "dashboard":
+            updated_menus.insert(1, stats_menu)
+        else:
+            updated_menus.append(stats_menu)
+
+        return MenuConfigResponse(
+            version=menu_config.version,
+            source=menu_config.source,
+            menus=updated_menus
         )
 
     def _apply_menu_overrides(
