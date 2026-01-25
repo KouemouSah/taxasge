@@ -5,7 +5,7 @@ RESTful endpoints for agents to process service requests.
 Includes queue management, approval/rejection, and appointment scheduling.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
-from typing import List, Optional
+from typing import List, Optional, Dict
 from uuid import UUID
 from datetime import date, time, datetime
 import asyncpg
@@ -893,6 +893,20 @@ class DocumentRejectionRequest(BaseModel):
     reason: str = Field(..., min_length=5, description="Rejection reason")
 
 
+class VerificationChecklistUpdate(BaseModel):
+    """Request body for updating agent verification checklist"""
+    checklist: Dict[str, bool] = Field(
+        ...,
+        description="Checklist items with their completion status"
+    )
+    verification_status: Optional[str] = Field(
+        None,
+        pattern="^(pending|in_progress|verified|partial_verification|verification_failed)$",
+        description="Optional verification status update"
+    )
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
 @router.post(
     "/documents/{document_id}/validate",
     summary="Validate a document",
@@ -1398,4 +1412,172 @@ async def get_entity_service_requests(
         page=page,
         page_size=page_size,
         total_pages=total_pages
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WORKFLOW SCHEMA & AGENT VERIFICATION
+# ═══════════════════════════════════════════════════════════════
+
+class WorkflowSchemaResponse(BaseModel):
+    """Workflow display schema for agent view"""
+    code: str
+    name: str
+    formDisplaySchema: Optional[dict] = None
+    agentChecklist: Optional[List[dict]] = None
+
+
+@router.get(
+    "/workflows/{workflow_code}/schema",
+    response_model=WorkflowSchemaResponse,
+    summary="Get workflow display schema",
+    description="""
+    Get the workflow configuration including:
+    - formDisplaySchema: Layout for displaying submitted form data (2-column layout)
+    - agentChecklist: List of verification items for the agent
+
+    This is used by the agent dashboard to render the request detail view.
+    """
+)
+async def get_workflow_schema(
+    workflow_code: str = Path(..., description="Workflow code (e.g., PASAPORTE_NUEVO)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.view"))
+):
+    """Get workflow display schema and agent checklist."""
+    row = await db.fetchrow("""
+        SELECT code, name_es, config
+        FROM workflows
+        WHERE code = $1 AND is_active = TRUE
+    """, workflow_code)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Workflow {workflow_code} not found"
+        )
+
+    config = row['config'] or {}
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    return WorkflowSchemaResponse(
+        code=row['code'],
+        name=row['name_es'],
+        formDisplaySchema=config.get('formDisplaySchema'),
+        agentChecklist=config.get('agentChecklist')
+    )
+
+
+class VerificationResponse(BaseModel):
+    """Response for verification update"""
+    message: str
+    request_id: str
+    verification_status: str
+    checklist_completed: int
+    checklist_total: int
+
+
+@router.patch(
+    "/{request_id}/verification",
+    response_model=VerificationResponse,
+    summary="Update agent verification checklist",
+    description="""
+    Update the agent's verification checklist for a service request.
+
+    The checklist is stored in service_requests.verification_details as JSON.
+    Optionally update the verification_status (pending, in_progress, verified, etc.)
+
+    **Checklist format:**
+    ```json
+    {
+      "checklist": {
+        "identity_verified": true,
+        "documents_complete": true,
+        "photo_valid": false
+      },
+      "verification_status": "in_progress",
+      "notes": "Waiting for photo validation"
+    }
+    ```
+    """
+)
+async def update_verification_checklist(
+    request_id: UUID = Path(..., description="Service request ID"),
+    body: VerificationChecklistUpdate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.review"))
+):
+    """Update verification checklist for a service request."""
+    # Verify request exists and agent has access
+    request = await db.fetchrow("""
+        SELECT id, status, verification_details, verification_status
+        FROM service_requests
+        WHERE id = $1
+    """, request_id)
+
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service request not found"
+        )
+
+    # Prepare verification_details
+    current_details = request['verification_details'] or {}
+    if isinstance(current_details, str):
+        current_details = json.loads(current_details)
+
+    # Update with new checklist
+    verification_details = {
+        **current_details,
+        "checklist": body.checklist,
+        "last_updated_by": str(current_user.id),
+        "last_updated_at": datetime.utcnow().isoformat()
+    }
+
+    if body.notes:
+        verification_details["notes"] = body.notes
+
+    # Determine verification_status
+    new_status = body.verification_status or request['verification_status'] or 'in_progress'
+
+    # Count completed items
+    checklist_completed = sum(1 for v in body.checklist.values() if v is True)
+    checklist_total = len(body.checklist)
+
+    # Auto-set status based on checklist completion
+    if not body.verification_status:
+        if checklist_completed == checklist_total and checklist_total > 0:
+            new_status = 'verified'
+        elif checklist_completed > 0:
+            new_status = 'in_progress'
+
+    # Update database
+    await db.execute("""
+        UPDATE service_requests
+        SET verification_details = $2::jsonb,
+            verification_status = $3,
+            updated_at = NOW()
+        WHERE id = $1
+    """, request_id, json.dumps(verification_details), new_status)
+
+    # Log to history
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, performed_by, details)
+        VALUES ($1, 'verification_updated', $2, $3::jsonb)
+    """, request_id, current_user.id, json.dumps({
+        "verification_status": new_status,
+        "checklist_completed": checklist_completed,
+        "checklist_total": checklist_total
+    }))
+
+    return VerificationResponse(
+        message="Verification updated successfully",
+        request_id=str(request_id),
+        verification_status=new_status,
+        checklist_completed=checklist_completed,
+        checklist_total=checklist_total
     )

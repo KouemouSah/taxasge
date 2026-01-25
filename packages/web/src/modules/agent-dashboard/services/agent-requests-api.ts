@@ -61,6 +61,56 @@ export interface ServiceRequestFilters {
   pageSize?: number;
 }
 
+// Workflow schema types for agent detail view
+export interface WorkflowSchemaField {
+  key: string;
+  label: string;
+  type: 'text' | 'date' | 'datetime' | 'email' | 'status';
+  source?: 'request' | 'appointment' | 'form_data';
+  default?: string;
+}
+
+export interface WorkflowSchemaSection {
+  id: string;
+  title: string;
+  column: 'left' | 'right';
+  fields: WorkflowSchemaField[];
+}
+
+export interface FormDisplaySchema {
+  title: string;
+  photoField?: string;
+  layout: 'two-column' | 'single-column';
+  sections: WorkflowSchemaSection[];
+}
+
+export interface AgentChecklistItem {
+  id: string;
+  label: string;
+  required: boolean;
+}
+
+export interface WorkflowSchemaResponse {
+  code: string;
+  name: string;
+  formDisplaySchema: FormDisplaySchema | null;
+  agentChecklist: AgentChecklistItem[] | null;
+}
+
+export interface VerificationChecklistUpdate {
+  checklist: Record<string, boolean>;
+  verificationStatus?: 'pending' | 'in_progress' | 'verified' | 'partial_verification' | 'verification_failed';
+  notes?: string;
+}
+
+export interface VerificationResponse {
+  message: string;
+  requestId: string;
+  verificationStatus: string;
+  checklistCompleted: number;
+  checklistTotal: number;
+}
+
 // Backend response (snake_case)
 interface BackendServiceRequestListItem {
   id: string;
@@ -239,6 +289,178 @@ class AgentRequestsApiClient {
       }),
     });
   }
+
+  /**
+   * Get workflow display schema for agent view
+   * Returns form layout schema and agent checklist items
+   */
+  async getWorkflowSchema(workflowCode: string): Promise<WorkflowSchemaResponse> {
+    interface BackendResponse {
+      code: string;
+      name: string;
+      formDisplaySchema: FormDisplaySchema | null;
+      agentChecklist: AgentChecklistItem[] | null;
+    }
+
+    const response = await this.request<BackendResponse>(`/workflows/${workflowCode}/schema`);
+
+    return {
+      code: response.code,
+      name: response.name,
+      formDisplaySchema: response.formDisplaySchema,
+      agentChecklist: response.agentChecklist,
+    };
+  }
+
+  /**
+   * Update verification checklist for a service request
+   * Saves checklist state to service_requests.verification_details
+   */
+  async updateVerification(
+    requestId: string,
+    data: VerificationChecklistUpdate
+  ): Promise<VerificationResponse> {
+    interface BackendResponse {
+      message: string;
+      request_id: string;
+      verification_status: string;
+      checklist_completed: number;
+      checklist_total: number;
+    }
+
+    const response = await this.request<BackendResponse>(`/${requestId}/verification`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        checklist: data.checklist,
+        verification_status: data.verificationStatus,
+        notes: data.notes,
+      }),
+    });
+
+    return {
+      message: response.message,
+      requestId: response.request_id,
+      verificationStatus: response.verification_status,
+      checklistCompleted: response.checklist_completed,
+      checklistTotal: response.checklist_total,
+    };
+  }
+
+  /**
+   * Get service request detail for agent view (includes full form_data)
+   */
+  async getRequestDetail(requestId: string): Promise<ServiceRequestDetail> {
+    interface BackendResponse {
+      id: string;
+      reference: string;
+      workflow_code: string;
+      solicitud_type: string;
+      status: string;
+      priority: string;
+      form_data: Record<string, unknown>;
+      extracted_data?: Record<string, unknown>;
+      verification_status?: string;
+      verification_details?: {
+        checklist?: Record<string, boolean>;
+        notes?: string;
+        last_updated_by?: string;
+        last_updated_at?: string;
+      };
+      user_id: string;
+      user_name?: string;
+      user_email?: string;
+      user_phone?: string;
+      created_at: string;
+      submitted_at?: string;
+      cita_date?: string;
+      cita_time?: string;
+      cita_location?: string;
+      provided_documents?: Array<{
+        id: string;
+        document_code: string;
+        document_name: string;
+        file_path: string;
+        file_name: string;
+        mime_type: string;
+        validation_status?: string;
+      }>;
+    }
+
+    const response = await this.request<BackendResponse>(`/${requestId}`);
+
+    return {
+      id: response.id,
+      reference: response.reference,
+      workflowCode: response.workflow_code,
+      solicitudType: response.solicitud_type,
+      status: response.status,
+      priority: response.priority as Priority,
+      formData: response.form_data,
+      extractedData: response.extracted_data,
+      verificationStatus: response.verification_status,
+      verificationDetails: response.verification_details ? {
+        checklist: response.verification_details.checklist,
+        notes: response.verification_details.notes,
+        lastUpdatedBy: response.verification_details.last_updated_by,
+        lastUpdatedAt: response.verification_details.last_updated_at,
+      } : undefined,
+      userId: response.user_id,
+      userName: response.user_name,
+      userEmail: response.user_email,
+      userPhone: response.user_phone,
+      createdAt: response.created_at,
+      submittedAt: response.submitted_at,
+      citaDate: response.cita_date,
+      citaTime: response.cita_time,
+      citaLocation: response.cita_location,
+      providedDocuments: response.provided_documents?.map(doc => ({
+        id: doc.id,
+        documentCode: doc.document_code,
+        documentName: doc.document_name,
+        filePath: doc.file_path,
+        fileName: doc.file_name,
+        mimeType: doc.mime_type,
+        validationStatus: doc.validation_status,
+      })),
+    };
+  }
+}
+
+// Service request detail type
+export interface ServiceRequestDetail {
+  id: string;
+  reference: string;
+  workflowCode: string;
+  solicitudType: string;
+  status: string;
+  priority: Priority;
+  formData: Record<string, unknown>;
+  extractedData?: Record<string, unknown>;
+  verificationStatus?: string;
+  verificationDetails?: {
+    checklist?: Record<string, boolean>;
+    notes?: string;
+    lastUpdatedBy?: string;
+    lastUpdatedAt?: string;
+  };
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  userPhone?: string;
+  createdAt: string;
+  submittedAt?: string;
+  citaDate?: string;
+  citaTime?: string;
+  citaLocation?: string;
+  providedDocuments?: Array<{
+    id: string;
+    documentCode: string;
+    documentName: string;
+    filePath: string;
+    fileName: string;
+    mimeType: string;
+    validationStatus?: string;
+  }>;
 }
 
 // Export singleton instance

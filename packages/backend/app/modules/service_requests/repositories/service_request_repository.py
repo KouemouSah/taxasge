@@ -299,13 +299,73 @@ class ServiceRequestRepository:
 
         return [self._row_to_dict(row) for row in rows]
 
+    async def update_verification_details(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        verification_details: Dict,
+        verification_status: Optional[str] = None,
+        performed_by: Optional[UUID] = None
+    ) -> Dict:
+        """
+        Update verification_details (agent checklist) for a service request.
+        Optionally update verification_status.
+        """
+        if verification_status:
+            await db.execute(
+                """UPDATE service_requests
+                   SET verification_details = $2::jsonb,
+                       verification_status = $3,
+                       updated_at = NOW()
+                   WHERE id = $1""",
+                request_id, json.dumps(verification_details), verification_status
+            )
+        else:
+            await db.execute(
+                """UPDATE service_requests
+                   SET verification_details = $2::jsonb,
+                       updated_at = NOW()
+                   WHERE id = $1""",
+                request_id, json.dumps(verification_details)
+            )
+
+        # Create history entry if performed_by is provided
+        if performed_by:
+            await db.execute(
+                """INSERT INTO service_request_history
+                   (service_request_id, action, performed_by, details)
+                   VALUES ($1, 'verification_updated', $2, $3)""",
+                request_id, performed_by,
+                json.dumps({"verification_details": verification_details})
+            )
+
+        return await self.find_by_id(db, request_id)
+
+    async def get_workflow_config(
+        self,
+        db: asyncpg.Connection,
+        workflow_code: str
+    ) -> Optional[Dict]:
+        """Get workflow configuration (form schema, checklist, etc.)"""
+        row = await db.fetchrow(
+            """SELECT code, name, config FROM workflows WHERE code = $1""",
+            workflow_code
+        )
+        if not row:
+            return None
+        return {
+            "code": row["code"],
+            "name": row["name"],
+            "config": row["config"] if isinstance(row["config"], dict) else json.loads(row["config"]) if row["config"] else {}
+        }
+
     def _row_to_dict(self, row: asyncpg.Record) -> Dict:
         """Convert asyncpg Record to dict with proper JSON parsing"""
         if not row:
             return {}
         result = dict(row)
         # Parse JSONB fields
-        for field in ["form_data", "extracted_data", "validations"]:
+        for field in ["form_data", "extracted_data", "validations", "verification_details"]:
             if field in result and isinstance(result[field], str):
                 result[field] = json.loads(result[field])
         return result
