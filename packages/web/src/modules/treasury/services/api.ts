@@ -489,7 +489,7 @@ export const treasuryApi = {
     };
 
     if (params.paymentId) queryParams.payment_id = params.paymentId;
-    if (params.agentId) queryParams.agent_id = params.agentId;
+    if (params.agentProfileId) queryParams.agent_profile_id = params.agentProfileId;
     if (params.action) queryParams.action = params.action;
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;

@@ -441,7 +441,7 @@ export interface AuditEntry {
   fromStatus?: PaymentWorkflowStatus;
   toStatus?: PaymentWorkflowStatus;
   comment?: string;
-  agentId?: number;
+  agentProfileId?: string;  // UUID from agent_profiles table
   agentName?: string;
   agentEmail?: string;
   actionDurationSeconds?: number;
@@ -458,7 +458,7 @@ export interface AuditListResponse {
 
 export interface AuditParams {
   paymentId?: string;
-  agentId?: number;
+  agentProfileId?: string;  // UUID from agent_profiles table
   action?: AgentActionType;
   dateFrom?: string;
   dateTo?: string;
@@ -782,7 +782,7 @@ export interface KPIResponse {
 }
 
 export interface AgentStats {
-  agentId: number;
+  agentProfileId: string;  // UUID from agent_profiles table
   agentName: string;
   agentEmail?: string;
   validationsCount: number;

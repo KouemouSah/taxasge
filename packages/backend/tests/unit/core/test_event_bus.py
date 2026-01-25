@@ -25,7 +25,10 @@ class TestEventType:
     def test_event_type_values(self):
         """Test that event types have correct string values."""
         assert EventType.PAYMENT_COMPLETED.value == "payment.completed"
-        assert EventType.PAYMENT_CASH_PENDING.value == "payment.cash.pending"
+        # PAYMENT_CASH_PENDING is now an alias for PAYMENT_MANUAL_PENDING (both Cash + Check)
+        assert EventType.PAYMENT_MANUAL_PENDING.value == "payment.manual.pending"
+        # Verify alias points to same value
+        assert EventType.PAYMENT_CASH_PENDING.value == EventType.PAYMENT_MANUAL_PENDING.value
         assert EventType.REQUEST_SUBMITTED.value == "request.submitted"
         assert EventType.APPOINTMENT_BOOKED.value == "appointment.booked"
 

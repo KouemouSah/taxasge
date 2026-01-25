@@ -3592,7 +3592,7 @@ class AuditEntryResponse(BaseModel):
     from_status: Optional[str] = None
     to_status: Optional[str] = None
     comment: Optional[str] = None
-    agent_id: Optional[int] = None
+    agent_profile_id: Optional[str] = None  # UUID from agent_profiles table
     agent_name: Optional[str] = None
     agent_email: Optional[str] = None
     action_duration_seconds: Optional[int] = None
@@ -3630,18 +3630,18 @@ class PaymentAuditDetailResponse(BaseModel):
     Get audit trail of all Treasury actions (lock, validate, reject, etc.)
 
     **Filters:**
-    - payment_id: Filter by specific payment
-    - agent_id: Filter by agent who performed action
+    - payment_id: Filter by specific payment UUID
+    - agent_profile_id: Filter by agent_profile UUID who performed action
     - action: Filter by action type (lock_for_review, approve, reject, etc.)
     - date_from / date_to: Filter by date range
 
     **Permissions:**
-    - Requires 'treasury.audit.view' permission
+    - Requires 'treasury_audit.view' permission
     """
 )
 async def get_treasury_audit(
     payment_id: Optional[str] = Query(None, description="Filter by payment ID"),
-    agent_id: Optional[int] = Query(None, description="Filter by agent ID"),
+    agent_profile_id: Optional[str] = Query(None, description="Filter by agent_profile UUID"),
     action: Optional[str] = Query(None, description="Filter by action type"),
     date_from: Optional[date] = Query(None, description="Start date"),
     date_to: Optional[date] = Query(None, description="End date"),
@@ -3662,9 +3662,9 @@ async def get_treasury_audit(
         params.append(payment_id)
         param_idx += 1
 
-    if agent_id:
-        where_clauses.append(f"pva.agent_id = ${param_idx}")
-        params.append(agent_id)
+    if agent_profile_id:
+        where_clauses.append(f"pva.agent_profile_id = ${param_idx}::uuid")
+        params.append(agent_profile_id)
         param_idx += 1
 
     if action:
@@ -3696,7 +3696,7 @@ async def get_treasury_audit(
             pva.from_status::text AS from_status,
             pva.to_status::text AS to_status,
             pva.comment,
-            pva.agent_id,
+            pva.agent_profile_id,
             u.full_name AS agent_name,
             u.email AS agent_email,
             pva.action_duration_seconds,
@@ -3705,7 +3705,7 @@ async def get_treasury_audit(
         FROM payment_validation_audit pva
         JOIN service_payments sp ON sp.id = pva.payment_id
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
-        LEFT JOIN agent_profiles ap ON ap.id = pva.agent_id
+        LEFT JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
         LEFT JOIN users u ON u.id = pva.agent_user_id
         WHERE {where_sql}
         ORDER BY pva.created_at DESC
@@ -3735,7 +3735,7 @@ async def get_treasury_audit(
             from_status=row["from_status"],
             to_status=row["to_status"],
             comment=row["comment"],
-            agent_id=row["agent_id"],
+            agent_profile_id=str(row["agent_profile_id"]) if row["agent_profile_id"] else None,
             agent_name=row["agent_name"],
             agent_email=row["agent_email"],
             action_duration_seconds=row["action_duration_seconds"],
@@ -3801,14 +3801,14 @@ async def get_payment_audit_history(
             pva.from_status::text AS from_status,
             pva.to_status::text AS to_status,
             pva.comment,
-            pva.agent_id,
+            pva.agent_profile_id,
             u.full_name AS agent_name,
             u.email AS agent_email,
             pva.action_duration_seconds,
             pva.ip_address::text AS ip_address,
             pva.created_at
         FROM payment_validation_audit pva
-        LEFT JOIN agent_profiles ap ON ap.id = pva.agent_id
+        LEFT JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
         LEFT JOIN users u ON u.id = pva.agent_user_id
         WHERE pva.payment_id = $1::uuid
         ORDER BY pva.created_at ASC
@@ -3840,7 +3840,7 @@ async def get_payment_audit_history(
             from_status=row["from_status"],
             to_status=row["to_status"],
             comment=row["comment"],
-            agent_id=row["agent_id"],
+            agent_profile_id=str(row["agent_profile_id"]) if row["agent_profile_id"] else None,
             agent_name=row["agent_name"],
             agent_email=row["agent_email"],
             action_duration_seconds=row["action_duration_seconds"],
@@ -4134,7 +4134,7 @@ class KPIResponse(BaseModel):
 
 
 class AgentStats(BaseModel):
-    agent_id: int
+    agent_profile_id: str  # UUID from agent_profiles table
     agent_name: str
     agent_email: Optional[str] = None
     validations_count: int
@@ -4411,10 +4411,11 @@ async def get_agent_performance(
         end_date = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
     # Get agent performance from audit log
+    # Note: agent_profile_id (UUID) is the current standard, agent_id (int) is deprecated
     agent_stats = await db.fetch("""
         WITH agent_actions AS (
             SELECT
-                pva.agent_id,
+                pva.agent_profile_id,
                 pva.agent_user_id,
                 u.full_name AS agent_name,
                 u.email AS agent_email,
@@ -4429,7 +4430,7 @@ async def get_agent_performance(
         ),
         agent_summary AS (
             SELECT
-                agent_id,
+                agent_profile_id,
                 agent_user_id,
                 agent_name,
                 agent_email,
@@ -4439,10 +4440,10 @@ async def get_agent_performance(
                 COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL)::float /
                     NULLIF(COUNT(*), 0) * 100 AS sla_rate
             FROM agent_actions
-            GROUP BY agent_id, agent_user_id, agent_name, agent_email
+            GROUP BY agent_profile_id, agent_user_id, agent_name, agent_email
         )
         SELECT
-            as2.agent_id,
+            as2.agent_profile_id,
             as2.agent_user_id,
             as2.agent_name,
             as2.agent_email,
@@ -4452,13 +4453,13 @@ async def get_agent_performance(
             as2.sla_rate,
             COALESCE(aw.current_load, 0) AS current_workload
         FROM agent_summary as2
-        LEFT JOIN agent_workloads aw ON aw.agent_id = as2.agent_id
+        LEFT JOIN agent_workloads aw ON aw.agent_profile_id = as2.agent_profile_id
         ORDER BY (as2.validations + as2.rejections) DESC
     """, start_date, end_date)
 
     agents = [
         AgentStats(
-            agent_id=row["agent_id"] or row["agent_user_id"] or 0,
+            agent_profile_id=str(row["agent_profile_id"]) if row["agent_profile_id"] else str(row["agent_user_id"]) if row["agent_user_id"] else "unknown",
             agent_name=row["agent_name"] or "Unknown",
             agent_email=row["agent_email"],
             validations_count=row["validations"] or 0,

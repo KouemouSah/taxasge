@@ -306,7 +306,7 @@ export default function TreasuryAgentPerformancePage() {
                     {agentData.agents.map((agent) => {
                       const workloadStatus = getWorkloadStatus(agent.currentWorkload);
                       return (
-                        <TableRow key={agent.agentId}>
+                        <TableRow key={agent.agentProfileId}>
                           <TableCell>
                             <div>
                               <p className="font-medium">{agent.agentName}</p>
