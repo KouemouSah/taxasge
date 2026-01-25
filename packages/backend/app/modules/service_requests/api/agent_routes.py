@@ -1277,7 +1277,8 @@ async def get_entity_service_requests(
     statuses = ActionStatusMapping.get_statuses(action)
 
     # Build query
-    conditions = ["sr.status = ANY($1::text[])"]
+    # Cast status to text for comparison since it's an enum type
+    conditions = ["sr.status::text = ANY($1::text[])"]
     params = [statuses]
     param_idx = 2
 
