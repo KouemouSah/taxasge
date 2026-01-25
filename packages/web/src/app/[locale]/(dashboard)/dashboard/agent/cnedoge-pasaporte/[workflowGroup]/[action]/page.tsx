@@ -169,8 +169,11 @@ export default function WorkflowActionPage() {
       .join(' ');
   }, [workflowGroup]);
 
-  // Handle row click
+  // Handle row click - save all request IDs for navigation
   const handleRowClick = (requestId: string) => {
+    // Store all request IDs in sessionStorage for prev/next navigation
+    const requestIds = requests.map(r => r.id);
+    sessionStorage.setItem('agent-request-ids', JSON.stringify(requestIds));
     router.push(`/${locale}/dashboard/agent/cnedoge-pasaporte/request/${requestId}`);
   };
 

@@ -12,7 +12,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -29,33 +29,19 @@ import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 // Icons
 import {
   ArrowLeft,
   Loader2,
   FileText,
-  User,
   CheckCircle2,
   XCircle,
   AlertTriangle,
   Eye,
-  Download,
   Calendar,
   Clock,
   MapPin,
@@ -65,11 +51,14 @@ import {
   ThumbsUp,
   ThumbsDown,
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 // API
 import {
   agentRequestsApi,
+  getDocumentDownloadUrl,
   type ServiceRequestDetail,
   type WorkflowSchemaResponse,
   type FormDisplaySchema,
@@ -164,14 +153,51 @@ export default function AgentRequestDetailPage() {
   const [checklist, setChecklist] = useState<Record<string, boolean>>({});
   const [checklistNotes, setChecklistNotes] = useState('');
   const [hasChecklistChanges, setHasChecklistChanges] = useState(false);
-  const [showApproveDialog, setShowApproveDialog] = useState(false);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showRejectInput, setShowRejectInput] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<{
     url: string;
     name: string;
     mimeType: string;
   } | null>(null);
+
+  // Navigation state - get from URL search params or sessionStorage
+  const [requestIds, setRequestIds] = useState<string[]>([]);
+  const searchParams = useSearchParams();
+
+  // Load request IDs from sessionStorage on mount
+  useEffect(() => {
+    const storedIds = sessionStorage.getItem('agent-request-ids');
+    if (storedIds) {
+      try {
+        setRequestIds(JSON.parse(storedIds));
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }, []);
+
+  // Navigation helpers
+  const currentIndex = requestIds.indexOf(requestId);
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < requestIds.length - 1;
+
+  const navigateTo = useCallback((targetId: string) => {
+    const basePath = `/dashboard/agent/cnedoge-pasaporte/request/${targetId}`;
+    router.push(basePath);
+  }, [router]);
+
+  const goToPrev = useCallback(() => {
+    if (hasPrev) {
+      navigateTo(requestIds[currentIndex - 1]);
+    }
+  }, [hasPrev, requestIds, currentIndex, navigateTo]);
+
+  const goToNext = useCallback(() => {
+    if (hasNext) {
+      navigateTo(requestIds[currentIndex + 1]);
+    }
+  }, [hasNext, requestIds, currentIndex, navigateTo]);
 
   // Fetch request detail
   const {
@@ -252,7 +278,7 @@ export default function AgentRequestDetailPage() {
     });
   }, [checklist, checklistNotes, updateVerificationMutation]);
 
-  // Handle approve
+  // Handle approve - direct action without dialog
   const handleApprove = useCallback(() => {
     // Check if all required items are checked
     if (workflowSchema?.agentChecklist) {
@@ -265,22 +291,17 @@ export default function AgentRequestDetailPage() {
         return;
       }
     }
-    setShowApproveDialog(true);
-  }, [workflowSchema, checklist, t]);
-
-  // Handle reject
-  const handleReject = useCallback(() => {
-    setShowRejectDialog(true);
-  }, []);
-
-  // Confirm approve
-  const confirmApprove = useCallback(() => {
+    // Direct approve action
     decisionMutation.mutate({
       decision: 'approve',
       comments: checklistNotes,
     });
-    setShowApproveDialog(false);
-  }, [decisionMutation, checklistNotes]);
+  }, [workflowSchema, checklist, t, decisionMutation, checklistNotes]);
+
+  // Handle reject - show inline input
+  const handleReject = useCallback(() => {
+    setShowRejectInput(true);
+  }, []);
 
   // Confirm reject
   const confirmReject = useCallback(() => {
@@ -292,7 +313,6 @@ export default function AgentRequestDetailPage() {
       rejectionReason: rejectReason,
       comments: checklistNotes,
     });
-    setShowRejectDialog(false);
   }, [decisionMutation, rejectReason, checklistNotes]);
 
   // Loading state
@@ -337,7 +357,7 @@ export default function AgentRequestDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Navigation */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
@@ -349,6 +369,33 @@ export default function AgentRequestDetailPage() {
           </p>
         </div>
         <Badge variant={getStatusBadgeVariant(request.status)}>{request.status}</Badge>
+
+        {/* Navigation Prev/Next */}
+        {requestIds.length > 0 && (
+          <div className="flex items-center gap-1 ml-4 border-l pl-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToPrev}
+              disabled={!hasPrev}
+              title={t('detail.previousRequest') || 'Solicitud anterior'}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground px-2">
+              {currentIndex + 1} / {requestIds.length}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToNext}
+              disabled={!hasNext}
+              title={t('detail.nextRequest') || 'Solicitud siguiente'}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -380,14 +427,9 @@ export default function AgentRequestDetailPage() {
         {/* Tab DOCUMENTOS */}
         <TabsContent value="documentos" className="mt-6">
           <DocumentosTab
+            requestId={requestId}
             documents={request.providedDocuments || []}
-            onPreview={(doc) =>
-              setPreviewDocument({
-                url: doc.filePath,
-                name: doc.fileName,
-                mimeType: doc.mimeType,
-              })
-            }
+            onPreview={setPreviewDocument}
           />
         </TabsContent>
 
@@ -399,11 +441,20 @@ export default function AgentRequestDetailPage() {
             notes={checklistNotes}
             hasChanges={hasChecklistChanges}
             isSaving={updateVerificationMutation.isPending}
+            isDeciding={decisionMutation.isPending}
             onChecklistChange={handleChecklistChange}
             onNotesChange={setChecklistNotes}
             onSave={handleSaveChecklist}
             onApprove={handleApprove}
             onReject={handleReject}
+            onConfirmReject={confirmReject}
+            showRejectInput={showRejectInput}
+            rejectReason={rejectReason}
+            onRejectReasonChange={setRejectReason}
+            onCancelReject={() => {
+              setShowRejectInput(false);
+              setRejectReason('');
+            }}
             canMakeDecision={request.status === 'SUBMITTED' || request.status === 'UNDER_REVIEW'}
           />
         </TabsContent>
@@ -440,66 +491,6 @@ export default function AgentRequestDetailPage() {
         </Dialog>
       )}
 
-      {/* Approve Dialog */}
-      <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t('detail.approveTitle') || 'Aprobar Solicitud'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('detail.approveDescription') ||
-                '¿Está seguro que desea aprobar esta solicitud? Esta acción no se puede deshacer.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel') || 'Cancelar'}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmApprove} disabled={decisionMutation.isPending}>
-              {decisionMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('detail.approve') || 'Aprobar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reject Dialog */}
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('detail.rejectTitle') || 'Rechazar Solicitud'}</DialogTitle>
-            <DialogDescription>
-              {t('detail.rejectDescription') ||
-                'Por favor indique el motivo del rechazo. Este será comunicado al solicitante.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="reject-reason">
-              {t('detail.rejectReason') || 'Motivo del rechazo'}
-            </Label>
-            <Textarea
-              id="reject-reason"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder={t('detail.rejectReasonPlaceholder') || 'Indique el motivo...'}
-              className="mt-2"
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              {t('common.cancel') || 'Cancelar'}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmReject}
-              disabled={!rejectReason.trim() || decisionMutation.isPending}
-            >
-              {decisionMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('detail.reject') || 'Rechazar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -696,9 +687,11 @@ function SectionCard({
  * Tab DOCUMENTOS - List of uploaded documents with preview
  */
 function DocumentosTab({
+  requestId,
   documents,
   onPreview,
 }: {
+  requestId: string;
   documents: Array<{
     id: string;
     documentCode: string;
@@ -708,9 +701,27 @@ function DocumentosTab({
     mimeType: string;
     validationStatus?: string;
   }>;
-  onPreview: (doc: { filePath: string; fileName: string; mimeType: string }) => void;
+  onPreview: (doc: { url: string; name: string; mimeType: string } | null) => void;
 }) {
   const t = useTranslations('agentDashboard');
+  const [loadingDoc, setLoadingDoc] = useState<string | null>(null);
+
+  const handlePreview = useCallback(async (doc: typeof documents[0]) => {
+    setLoadingDoc(doc.id);
+    try {
+      const url = await getDocumentDownloadUrl(requestId, doc.documentCode);
+      onPreview({
+        url,
+        name: doc.fileName,
+        mimeType: doc.mimeType,
+      });
+    } catch (error) {
+      console.error('Failed to get document URL:', error);
+      alert(t('detail.documentUrlError') || 'Error al cargar el documento');
+    } finally {
+      setLoadingDoc(null);
+    }
+  }, [requestId, onPreview, t]);
 
   if (documents.length === 0) {
     return (
@@ -771,9 +782,14 @@ function DocumentosTab({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onPreview(doc)}
+                  onClick={() => handlePreview(doc)}
+                  disabled={loadingDoc === doc.id}
                 >
-                  <Eye className="h-4 w-4" />
+                  {loadingDoc === doc.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -793,11 +809,17 @@ function TraitementTab({
   notes,
   hasChanges,
   isSaving,
+  isDeciding,
   onChecklistChange,
   onNotesChange,
   onSave,
   onApprove,
   onReject,
+  onConfirmReject,
+  showRejectInput,
+  rejectReason,
+  onRejectReasonChange,
+  onCancelReject,
   canMakeDecision,
 }: {
   checklistItems: AgentChecklistItem[];
@@ -805,11 +827,17 @@ function TraitementTab({
   notes: string;
   hasChanges: boolean;
   isSaving: boolean;
+  isDeciding: boolean;
   onChecklistChange: (itemId: string, checked: boolean) => void;
   onNotesChange: (notes: string) => void;
   onSave: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onConfirmReject: () => void;
+  showRejectInput: boolean;
+  rejectReason: string;
+  onRejectReasonChange: (reason: string) => void;
+  onCancelReject: () => void;
   canMakeDecision: boolean;
 }) {
   const t = useTranslations('agentDashboard');
@@ -914,30 +942,72 @@ function TraitementTab({
             <CardTitle>{t('detail.actions') || 'Acciones'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
-              <Button
-                onClick={onApprove}
-                disabled={!allRequiredChecked}
-                className="flex-1"
-              >
-                <ThumbsUp className="mr-2 h-4 w-4" />
-                {t('detail.approve') || 'Aprobar'}
-              </Button>
-              <Button
-                onClick={onReject}
-                variant="destructive"
-                className="flex-1"
-              >
-                <ThumbsDown className="mr-2 h-4 w-4" />
-                {t('detail.reject') || 'Rechazar'}
-              </Button>
-            </div>
-            {!allRequiredChecked && (
-              <p className="text-sm text-yellow-600 mt-2 flex items-center gap-1">
-                <AlertTriangle className="h-4 w-4" />
-                {t('detail.completeRequiredItems') ||
-                  'Complete todos los items requeridos antes de aprobar'}
-              </p>
+            {/* Reject Input - shown when reject is clicked */}
+            {showRejectInput ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="reject-reason">
+                    {t('detail.rejectReason') || 'Motivo del rechazo'}
+                  </Label>
+                  <Textarea
+                    id="reject-reason"
+                    value={rejectReason}
+                    onChange={(e) => onRejectReasonChange(e.target.value)}
+                    placeholder={t('detail.rejectReasonPlaceholder') || 'Indique el motivo...'}
+                    className="mt-2"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={onCancelReject}
+                    className="flex-1"
+                    disabled={isDeciding}
+                  >
+                    {t('common.cancel') || 'Cancelar'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={onConfirmReject}
+                    className="flex-1"
+                    disabled={!rejectReason.trim() || isDeciding}
+                  >
+                    {isDeciding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('detail.confirmReject') || 'Confirmar Rechazo'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-4">
+                  <Button
+                    onClick={onApprove}
+                    disabled={!allRequiredChecked || isDeciding}
+                    className="flex-1"
+                  >
+                    {isDeciding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <ThumbsUp className="mr-2 h-4 w-4" />
+                    {t('detail.approve') || 'Aprobar'}
+                  </Button>
+                  <Button
+                    onClick={onReject}
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={isDeciding}
+                  >
+                    <ThumbsDown className="mr-2 h-4 w-4" />
+                    {t('detail.reject') || 'Rechazar'}
+                  </Button>
+                </div>
+                {!allRequiredChecked && (
+                  <p className="text-sm text-yellow-600 mt-2 flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4" />
+                    {t('detail.completeRequiredItems') ||
+                      'Complete todos los items requeridos antes de aprobar'}
+                  </p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

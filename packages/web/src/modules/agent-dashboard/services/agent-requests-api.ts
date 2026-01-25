@@ -465,3 +465,36 @@ export interface ServiceRequestDetail {
 
 // Export singleton instance
 export const agentRequestsApi = new AgentRequestsApiClient();
+
+// ============================================================================
+// DOCUMENT URL HELPER
+// ============================================================================
+
+/**
+ * Get signed download URL for a document
+ * Uses the service-requests endpoint (not agent endpoint)
+ */
+export async function getDocumentDownloadUrl(
+  requestId: string,
+  documentCode: string
+): Promise<string> {
+  const token = typeof window !== 'undefined'
+    ? getAuthData()?.access_token
+    : null;
+
+  const url = `${API_BASE_URL}${API_VERSION}/service-requests/${requestId}/documents/${documentCode}/url`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get document URL: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.download_url;
+}
