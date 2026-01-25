@@ -9,7 +9,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useParams, notFound } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   FileText,
   Construction,
+  AlertCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
@@ -43,20 +44,6 @@ const ACTION_ICONS: Record<ActionType, React.ReactNode> = {
   history: <History className="h-5 w-5" />,
 };
 
-const ACTION_TITLE_KEYS: Record<ActionType, string> = {
-  pending: 'nav.pending',
-  validation: 'nav.validation',
-  appointments: 'nav.appointments',
-  history: 'nav.history',
-};
-
-const ACTION_DESCRIPTION_KEYS: Record<ActionType, string> = {
-  pending: 'pages.pending.description',
-  validation: 'pages.validation.description',
-  appointments: 'pages.appointments.description',
-  history: 'pages.history.description',
-};
-
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -67,28 +54,23 @@ export default function WorkflowActionPage() {
   const t = useTranslations('agent');
   const tCommon = useTranslations('common');
 
-  const workflowGroup = params.workflowGroup as string;
-  const action = params.action as string;
+  const workflowGroup = (params?.workflowGroup as string) || '';
+  const action = (params?.action as string) || '';
 
   const { isLoading } = useAgentDashboard();
 
   // Validate action
   const isValidAction = VALID_ACTIONS.includes(action as ActionType);
+  const currentAction = isValidAction ? (action as ActionType) : 'pending';
 
   // Memoize the formatted workflow group name
   const formattedWorkflowGroup = useMemo(() => {
+    if (!workflowGroup) return '';
     return workflowGroup
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   }, [workflowGroup]);
-
-  // Return 404 for invalid actions
-  if (!isValidAction) {
-    notFound();
-  }
-
-  const currentAction = action as ActionType;
 
   // Loading state
   if (isLoading) {
@@ -99,7 +81,7 @@ export default function WorkflowActionPage() {
           <Skeleton className="h-4 w-96" />
         </div>
         <div className="grid gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
+          {[1, 2, 3].map((i) => (
             <Card key={i}>
               <CardContent className="pt-6">
                 <Skeleton className="h-24 w-full" />
@@ -107,6 +89,27 @@ export default function WorkflowActionPage() {
             </Card>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // Invalid action - show error instead of notFound()
+  if (!isValidAction) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Acción no válida</AlertTitle>
+          <AlertDescription>
+            La acción &quot;{action}&quot; no es válida. Acciones permitidas: pending, validation, appointments, history.
+          </AlertDescription>
+        </Alert>
+        <Link href={`/${locale}/dashboard/agent/cnedoge-residencia`}>
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Volver al panel
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -128,10 +131,10 @@ export default function WorkflowActionPage() {
             {ACTION_ICONS[currentAction]}
             <div>
               <h1 className="text-2xl font-bold tracking-tight">
-                {formattedWorkflowGroup} - {t(ACTION_TITLE_KEYS[currentAction])}
+                {formattedWorkflowGroup} - {t(`nav.${currentAction}`)}
               </h1>
               <p className="text-muted-foreground">
-                {t(ACTION_DESCRIPTION_KEYS[currentAction], { workflow: formattedWorkflowGroup })}
+                {t(`pages.${currentAction}.description`, { workflow: formattedWorkflowGroup })}
               </p>
             </div>
           </div>
@@ -143,7 +146,7 @@ export default function WorkflowActionPage() {
         <Construction className="h-4 w-4" />
         <AlertTitle>{t('pages.underConstruction.title')}</AlertTitle>
         <AlertDescription>
-          {t('pages.underConstruction.description', { feature: `${formattedWorkflowGroup} ${t(ACTION_TITLE_KEYS[currentAction])}` })}
+          {t('pages.underConstruction.description', { feature: `${formattedWorkflowGroup} ${t(`nav.${currentAction}`)}` })}
         </AlertDescription>
       </Alert>
 
@@ -155,10 +158,7 @@ export default function WorkflowActionPage() {
             {t(`pages.${currentAction}.title`, { workflow: formattedWorkflowGroup })}
           </CardTitle>
           <CardDescription>
-            {currentAction === 'pending' && t('pages.pending.placeholder')}
-            {currentAction === 'validation' && t('pages.validation.placeholder')}
-            {currentAction === 'appointments' && t('pages.appointments.placeholder')}
-            {currentAction === 'history' && t('pages.history.placeholder')}
+            {t(`pages.${currentAction}.placeholder`)}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -185,7 +185,7 @@ export default function WorkflowActionPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
                   {ACTION_ICONS[actionItem]}
-                  <span className="font-medium">{t(ACTION_TITLE_KEYS[actionItem])}</span>
+                  <span className="font-medium">{t(`nav.${actionItem}`)}</span>
                 </div>
               </CardContent>
             </Card>
