@@ -5184,6 +5184,34 @@
       "escalate": "Escalate",
       "escalations": "Escalations",
       "createEscalation": "New Escalation"
+    },
+    "pages": {
+      "underConstruction": {
+        "title": "Under Construction",
+        "description": "The {feature} feature is currently under development."
+      },
+      "pending": {
+        "title": "{workflow} - Pending",
+        "description": "Pending requests for {workflow}",
+        "placeholder": "Pending requests will appear here when available."
+      },
+      "validation": {
+        "title": "{workflow} - Validation",
+        "description": "Requests awaiting validation for {workflow}",
+        "placeholder": "Requests to validate will appear here when available."
+      },
+      "appointments": {
+        "title": "{workflow} - Appointments",
+        "description": "Scheduled appointments for {workflow}",
+        "placeholder": "Scheduled appointments will appear here when available."
+      },
+      "history": {
+        "title": "{workflow} - History",
+        "description": "Request history for {workflow}",
+        "placeholder": "Request history will appear here when available."
+      },
+      "noData": "No data available",
+      "checkBackLater": "Data will appear here when there is activity."
     }
   },
   "supervisor": {

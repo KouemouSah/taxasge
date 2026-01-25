@@ -5293,6 +5293,34 @@
       "escalate": "Escalar",
       "escalations": "Escalaciones",
       "createEscalation": "Nueva Escalación"
+    },
+    "pages": {
+      "underConstruction": {
+        "title": "En Construcción",
+        "description": "La funcionalidad {feature} está actualmente en desarrollo."
+      },
+      "pending": {
+        "title": "{workflow} - Pendientes",
+        "description": "Solicitudes pendientes de {workflow}",
+        "placeholder": "Las solicitudes pendientes aparecerán aquí cuando estén disponibles."
+      },
+      "validation": {
+        "title": "{workflow} - Validación",
+        "description": "Solicitudes en validación de {workflow}",
+        "placeholder": "Las solicitudes para validar aparecerán aquí cuando estén disponibles."
+      },
+      "appointments": {
+        "title": "{workflow} - Citas",
+        "description": "Citas programadas de {workflow}",
+        "placeholder": "Las citas programadas aparecerán aquí cuando estén disponibles."
+      },
+      "history": {
+        "title": "{workflow} - Historial",
+        "description": "Historial de solicitudes de {workflow}",
+        "placeholder": "El historial de solicitudes aparecerá aquí cuando esté disponible."
+      },
+      "noData": "No hay datos disponibles",
+      "checkBackLater": "Los datos aparecerán aquí cuando haya actividad."
     }
   },
   "supervisor": {

@@ -5386,6 +5386,34 @@
       "escalate": "Escalader",
       "escalations": "Escalades",
       "createEscalation": "Nouvelle Escalade"
+    },
+    "pages": {
+      "underConstruction": {
+        "title": "En Construction",
+        "description": "La fonctionnalité {feature} est actuellement en développement."
+      },
+      "pending": {
+        "title": "{workflow} - En Attente",
+        "description": "Demandes en attente de {workflow}",
+        "placeholder": "Les demandes en attente apparaîtront ici quand elles seront disponibles."
+      },
+      "validation": {
+        "title": "{workflow} - Validation",
+        "description": "Demandes en validation de {workflow}",
+        "placeholder": "Les demandes à valider apparaîtront ici quand elles seront disponibles."
+      },
+      "appointments": {
+        "title": "{workflow} - Rendez-vous",
+        "description": "Rendez-vous programmés de {workflow}",
+        "placeholder": "Les rendez-vous programmés apparaîtront ici quand ils seront disponibles."
+      },
+      "history": {
+        "title": "{workflow} - Historique",
+        "description": "Historique des demandes de {workflow}",
+        "placeholder": "L'historique des demandes apparaîtra ici quand il sera disponible."
+      },
+      "noData": "Aucune donnée disponible",
+      "checkBackLater": "Les données apparaîtront ici quand il y aura de l'activité."
     }
   },
   "supervisor": {
