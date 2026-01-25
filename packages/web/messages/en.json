@@ -792,7 +792,11 @@
       "appointments": "Appointments",
       "slots": "Appointment Slots",
       "blocked": "Blocked Dates",
-      "delays": "Delay Rules"
+      "delays": "Delay Rules",
+      "menuConfiguration": "Menu Configuration",
+      "menuTemplates": "Menu Templates",
+      "workflowMappings": "Workflow Mappings",
+      "roleMenuConfig": "Role Menu Config"
     },
     "menuConfig": {
       "title": "Menu Configuration",
@@ -804,6 +808,10 @@
       "workflowMappings": {
         "title": "Workflow to Menu Mappings",
         "subtitle": "Configure how workflows are grouped in navigation menus",
+        "createTitle": "Create New Mapping",
+        "createDescription": "Configure how a workflow pattern translates to navigation menu",
+        "editTitle": "Edit Mapping",
+        "editDescription": "Modify the configuration of mapping {pattern}",
         "createMapping": "Create Mapping",
         "editMapping": "Edit Mapping",
         "deleteMapping": "Delete Mapping",
@@ -862,15 +870,43 @@
         "delete": "Delete",
         "save": "Save",
         "cancel": "Cancel",
-        "preview": "Preview"
+        "preview": "Preview",
+        "backToList": "Back to list"
       },
       "errors": {
+        "loadError": "Load error",
+        "mappingNotFound": "Mapping not found",
+        "templateNotFound": "Template not found",
         "loadingMappings": "Error loading mappings",
         "loadingTemplates": "Error loading templates",
         "savingMapping": "Error saving mapping",
         "savingTemplate": "Error saving template",
         "deletingMapping": "Error deleting mapping",
         "deletingTemplate": "Error deleting template"
+      },
+      "messages": {
+        "mappingCreated": "Mapping created successfully",
+        "mappingUpdated": "Mapping updated successfully",
+        "mappingDeleted": "Mapping deleted successfully",
+        "mappingCreateError": "Error creating mapping",
+        "mappingUpdateError": "Error updating mapping",
+        "mappingDeleteError": "Error deleting mapping"
+      },
+      "roleConfig": {
+        "title": "Role Menu Configuration",
+        "description": "Manage menu, dashboard and UI configuration for role {roleName}",
+        "menuConfig": {
+          "title": "Menu Configuration",
+          "description": "Define the navigation menu structure for this role"
+        },
+        "dashboardConfig": {
+          "title": "Dashboard Configuration",
+          "description": "Define the dashboard widgets and layout for this role"
+        },
+        "uiConfig": {
+          "title": "UI Configuration",
+          "description": "Define interface preferences and themes for this role"
+        }
       }
     },
     "noResults": "No results found",

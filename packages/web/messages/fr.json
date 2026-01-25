@@ -756,6 +756,10 @@
       "workflowMappings": {
         "title": "Mappages Workflow vers Menu",
         "subtitle": "Configurer comment les workflows sont groupés dans les menus de navigation",
+        "createTitle": "Créer Nouveau Mappage",
+        "createDescription": "Configurer comment un modèle de workflow est traduit en menu de navigation",
+        "editTitle": "Modifier Mappage",
+        "editDescription": "Modifier la configuration du mappage {pattern}",
         "createMapping": "Créer Mappage",
         "editMapping": "Modifier Mappage",
         "deleteMapping": "Supprimer Mappage",
@@ -814,15 +818,43 @@
         "delete": "Supprimer",
         "save": "Enregistrer",
         "cancel": "Annuler",
-        "preview": "Aperçu"
+        "preview": "Aperçu",
+        "backToList": "Retour à la liste"
       },
       "errors": {
+        "loadError": "Erreur de chargement",
+        "mappingNotFound": "Mappage non trouvé",
+        "templateNotFound": "Modèle non trouvé",
         "loadingMappings": "Erreur lors du chargement des mappages",
         "loadingTemplates": "Erreur lors du chargement des modèles",
         "savingMapping": "Erreur lors de l'enregistrement du mappage",
         "savingTemplate": "Erreur lors de l'enregistrement du modèle",
         "deletingMapping": "Erreur lors de la suppression du mappage",
         "deletingTemplate": "Erreur lors de la suppression du modèle"
+      },
+      "messages": {
+        "mappingCreated": "Mappage créé avec succès",
+        "mappingUpdated": "Mappage mis à jour avec succès",
+        "mappingDeleted": "Mappage supprimé avec succès",
+        "mappingCreateError": "Erreur lors de la création du mappage",
+        "mappingUpdateError": "Erreur lors de la mise à jour du mappage",
+        "mappingDeleteError": "Erreur lors de la suppression du mappage"
+      },
+      "roleConfig": {
+        "title": "Configuration du Menu du Rôle",
+        "description": "Gérer la configuration du menu, tableau de bord et interface pour le rôle {roleName}",
+        "menuConfig": {
+          "title": "Configuration du Menu",
+          "description": "Définir la structure du menu de navigation pour ce rôle"
+        },
+        "dashboardConfig": {
+          "title": "Configuration du Tableau de Bord",
+          "description": "Définir les widgets et la mise en page du tableau de bord pour ce rôle"
+        },
+        "uiConfig": {
+          "title": "Configuration de l'Interface",
+          "description": "Définir les préférences d'interface et les thèmes pour ce rôle"
+        }
       }
     },
     "entities": {
@@ -1072,7 +1104,11 @@
       "entityLocations": "Emplacements des Entités",
       "slots": "Créneaux de RDV",
       "blocked": "Dates Bloquées",
-      "delays": "Règles de Délai"
+      "delays": "Règles de Délai",
+      "menuConfiguration": "Configuration des Menus",
+      "menuTemplates": "Modèles de Menu",
+      "workflowMappings": "Mappages Workflow",
+      "roleMenuConfig": "Menus par Rôle"
     },
     "noResults": "Aucun résultat trouvé",
     "pageSubtitle": "Vue d'ensemble du système et des activités",

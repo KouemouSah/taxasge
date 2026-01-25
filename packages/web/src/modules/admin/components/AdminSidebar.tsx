@@ -51,6 +51,9 @@ import {
   Radio,
   Workflow,
   Cog,
+  LayoutList,
+  FileStack,
+  Link2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -281,6 +284,29 @@ export default function AdminSidebar() {
               title: t('nav.settings'),
               href: `/${locale}/dashboard/admin/settings`,
               icon: Settings,
+            },
+          ],
+        },
+        // Menu Configuration sub-category
+        {
+          id: 'menuConfig',
+          title: t('nav.menuConfiguration'),
+          icon: LayoutList,
+          items: [
+            {
+              title: t('nav.menuTemplates'),
+              href: `/${locale}/dashboard/admin/menu-templates`,
+              icon: FileStack,
+            },
+            {
+              title: t('nav.workflowMappings'),
+              href: `/${locale}/dashboard/admin/workflow-mappings`,
+              icon: Link2,
+            },
+            {
+              title: t('nav.roleMenuConfig'),
+              href: `/${locale}/dashboard/admin/menu-config`,
+              icon: Key,
             },
           ],
         },

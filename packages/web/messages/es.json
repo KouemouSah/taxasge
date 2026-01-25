@@ -756,6 +756,10 @@
       "workflowMappings": {
         "title": "Mapeos de Workflow a Menú",
         "subtitle": "Configurar cómo los workflows se agrupan en menús de navegación",
+        "createTitle": "Crear Nuevo Mapeo",
+        "createDescription": "Configurar cómo un patrón de workflow se traduce en menú de navegación",
+        "editTitle": "Editar Mapeo",
+        "editDescription": "Modificar la configuración del mapeo {pattern}",
         "createMapping": "Crear Mapeo",
         "editMapping": "Editar Mapeo",
         "deleteMapping": "Eliminar Mapeo",
@@ -814,15 +818,43 @@
         "delete": "Eliminar",
         "save": "Guardar",
         "cancel": "Cancelar",
-        "preview": "Vista Previa"
+        "preview": "Vista Previa",
+        "backToList": "Volver a la lista"
       },
       "errors": {
+        "loadError": "Error al cargar",
+        "mappingNotFound": "Mapeo no encontrado",
+        "templateNotFound": "Plantilla no encontrada",
         "loadingMappings": "Error al cargar mapeos",
         "loadingTemplates": "Error al cargar plantillas",
         "savingMapping": "Error al guardar mapeo",
         "savingTemplate": "Error al guardar plantilla",
         "deletingMapping": "Error al eliminar mapeo",
         "deletingTemplate": "Error al eliminar plantilla"
+      },
+      "messages": {
+        "mappingCreated": "Mapeo creado exitosamente",
+        "mappingUpdated": "Mapeo actualizado exitosamente",
+        "mappingDeleted": "Mapeo eliminado exitosamente",
+        "mappingCreateError": "Error al crear mapeo",
+        "mappingUpdateError": "Error al actualizar mapeo",
+        "mappingDeleteError": "Error al eliminar mapeo"
+      },
+      "roleConfig": {
+        "title": "Configuración de Menú del Rol",
+        "description": "Gestionar configuración de menú, dashboard y UI para el rol {roleName}",
+        "menuConfig": {
+          "title": "Configuración de Menú",
+          "description": "Define la estructura del menú de navegación para este rol"
+        },
+        "dashboardConfig": {
+          "title": "Configuración del Dashboard",
+          "description": "Define los widgets y el diseño del dashboard para este rol"
+        },
+        "uiConfig": {
+          "title": "Configuración de UI",
+          "description": "Define preferencias de interfaz y temas para este rol"
+        }
       }
     },
     "entities": {
@@ -1072,7 +1104,11 @@
       "entityLocations": "Ubicaciones de Entidades",
       "slots": "Horarios de Cita",
       "blocked": "Fechas Bloqueadas",
-      "delays": "Reglas de Espera"
+      "delays": "Reglas de Espera",
+      "menuConfiguration": "Configuración de Menús",
+      "menuTemplates": "Plantillas de Menú",
+      "workflowMappings": "Mapeos de Workflow",
+      "roleMenuConfig": "Menús por Rol"
     },
     "noResults": "No se encontraron resultados",
     "pageSubtitle": "Vista general del sistema y actividades",
