@@ -308,6 +308,7 @@ ROLE_PERMISSIONS = {
     "agent": [
         "agent.view",
         "agent.view_workload",
+        "agent.view_performance",  # Personal stats on /dashboard/agent/stats
         "agent.set_availability",
         "assignment.view",
         "assignment.list",
