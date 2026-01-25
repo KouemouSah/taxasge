@@ -215,7 +215,11 @@ export function GenericAgentSidebar({
               pathname === sub.href || pathname?.startsWith(sub.href + '/')
           );
           if (hasActiveChild) {
-            setExpandedGroups((prev) => new Set(prev).add(item.id));
+            // Only update state if the group isn't already expanded (prevents infinite re-renders)
+            setExpandedGroups((prev) => {
+              if (prev.has(item.id)) return prev; // Already expanded, return same reference
+              return new Set(prev).add(item.id);
+            });
             break;
           }
         }
@@ -233,7 +237,11 @@ export function GenericAgentSidebar({
             pathname === sub.href || pathname?.startsWith(sub.href + '/')
         );
         if (hasActiveChild) {
-          setExpandedGroups((prev) => new Set(prev).add(item.id));
+          // Only update state if the group isn't already expanded (prevents infinite re-renders)
+          setExpandedGroups((prev) => {
+            if (prev.has(item.id)) return prev; // Already expanded, return same reference
+            return new Set(prev).add(item.id);
+          });
           break;
         }
       }
