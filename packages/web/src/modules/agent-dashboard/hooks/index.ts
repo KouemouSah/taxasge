@@ -20,3 +20,6 @@ export { useMenuConfig, useDynamicMenuItems } from './useMenuConfig';
 
 export { useAgentPersonalStats, AGENT_PERSONAL_STATS_QUERY_KEY } from './useAgentPersonalStats';
 export type { AgentPersonalStats, UseAgentPersonalStatsReturn } from './useAgentPersonalStats';
+
+export { useEntityServiceRequests } from './useEntityServiceRequests';
+export type { UseEntityServiceRequestsOptions, ActionType, ServiceRequestListItem, ServiceRequestFilters } from './useEntityServiceRequests';

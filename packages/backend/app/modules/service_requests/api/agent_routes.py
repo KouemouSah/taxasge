@@ -9,6 +9,10 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import date, time, datetime
 import asyncpg
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field
 
@@ -1151,3 +1155,247 @@ async def mark_appointment_no_show(
         logger.error(f"Failed to publish APPOINTMENT_NO_SHOW event: {e}")
 
     return {"message": "Citizen marked as no-show", "request_id": request_id}
+
+
+# ═══════════════════════════════════════════════════════════════
+# ENTITY SERVICE REQUESTS (Dashboard Views)
+# ═══════════════════════════════════════════════════════════════
+
+class ServiceRequestListItem(BaseModel):
+    """Service request item for agent list view"""
+    id: str
+    reference: str
+    workflow_code: str
+    solicitud_type: str
+    motivo: Optional[str] = None
+    status: str
+    priority: str
+    citizen_name: str
+    citizen_email: Optional[str] = None
+    submitted_at: Optional[str] = None
+    created_at: str
+    assigned_to: Optional[str] = None
+    sla_deadline: Optional[str] = None
+    sla_status: str = "on_track"
+
+
+class ServiceRequestListResponse(BaseModel):
+    """Paginated service request list response"""
+    items: List[ServiceRequestListItem]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class ActionStatusMapping:
+    """Map dashboard actions to database statuses"""
+    PENDING = ["SUBMITTED", "UNDER_REVIEW"]
+    VALIDATION = ["DOSSIER_VALIDE", "PENDING_NOTA_INGRESO", "NOTA_UPLOADED"]
+    APPOINTMENTS = ["CITA_SCHEDULED", "IN_PROGRESS"]
+    HISTORY = ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"]
+
+    @classmethod
+    def get_statuses(cls, action: str) -> List[str]:
+        mapping = {
+            "pending": cls.PENDING,
+            "validation": cls.VALIDATION,
+            "appointments": cls.APPOINTMENTS,
+            "history": cls.HISTORY,
+        }
+        return mapping.get(action.lower(), cls.PENDING)
+
+
+@router.get(
+    "/entity/{entity_code}/requests",
+    response_model=ServiceRequestListResponse,
+    summary="Get service requests for entity",
+    description="""
+    Get paginated list of service requests for a specific entity.
+
+    **Filters:**
+    - `action`: Dashboard action (pending, validation, appointments, history) - filters by status groups
+    - `workflow_code`: Filter by specific workflow code
+    - `solicitud_type`: Filter by solicitud type (expedicion, renovacion)
+    - `motivo`: Filter by motivo for renovacion (vencimiento, perdida, robo, deterioro)
+    - `search`: Search in reference number or citizen name
+    - `priority`: Filter by priority (LOW, NORMAL, HIGH, URGENT)
+
+    **Pagination:**
+    - Default page size is 20
+    - Returns total count for pagination UI
+    """
+)
+async def get_entity_service_requests(
+    entity_code: str = Path(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    action: str = Query("pending", description="Dashboard action: pending, validation, appointments, history"),
+    workflow_code: Optional[str] = Query(None, description="Filter by specific workflow code"),
+    solicitud_type: Optional[str] = Query(None, description="Filter by type: expedicion, renovacion"),
+    motivo: Optional[str] = Query(None, description="Filter by motivo: vencimiento, perdida, robo, deterioro"),
+    search: Optional[str] = Query(None, description="Search reference or citizen name"),
+    priority: Optional[str] = Query(None, description="Filter by priority"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.view"))
+):
+    """Get service requests for an entity with filters for dashboard views."""
+    # Get entity's workflow codes
+    entity = await db.fetchrow("""
+        SELECT id, code, workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity {entity_code} not found"
+        )
+
+    # Parse workflow_codes from JSONB
+    entity_workflows = entity['workflow_codes']
+    if isinstance(entity_workflows, str):
+        entity_workflows = json.loads(entity_workflows)
+    if not entity_workflows:
+        entity_workflows = []
+
+    # Get statuses for the action
+    statuses = ActionStatusMapping.get_statuses(action)
+
+    # Build query
+    conditions = ["sr.status = ANY($1::text[])"]
+    params = [statuses]
+    param_idx = 2
+
+    # Filter by entity's workflow codes (unless specific workflow requested)
+    if workflow_code:
+        conditions.append(f"sr.workflow_code = ${param_idx}")
+        params.append(workflow_code)
+        param_idx += 1
+    elif entity_workflows:
+        conditions.append(f"sr.workflow_code = ANY(${param_idx}::text[])")
+        params.append(entity_workflows)
+        param_idx += 1
+
+    # Filter by solicitud_type
+    if solicitud_type:
+        conditions.append(f"sr.solicitud_type = ${param_idx}")
+        params.append(solicitud_type.lower())
+        param_idx += 1
+
+    # Filter by motivo (stored in form_data)
+    if motivo:
+        conditions.append(f"sr.form_data->>'motivo' ILIKE ${param_idx}")
+        params.append(motivo.upper())
+        param_idx += 1
+
+    # Search filter
+    if search:
+        conditions.append(f"""(
+            sr.reference ILIKE ${param_idx}
+            OR u.first_name ILIKE ${param_idx}
+            OR u.last_name ILIKE ${param_idx}
+            OR u.email ILIKE ${param_idx}
+        )""")
+        params.append(f"%{search}%")
+        param_idx += 1
+
+    # Priority filter
+    if priority:
+        conditions.append(f"sr.priority = ${param_idx}")
+        params.append(priority.upper())
+        param_idx += 1
+
+    where_clause = " AND ".join(conditions)
+
+    # Count total
+    count_query = f"""
+        SELECT COUNT(*)
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE {where_clause}
+    """
+    total = await db.fetchval(count_query, *params)
+
+    # Calculate pagination
+    offset = (page - 1) * page_size
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+    # Get paginated results
+    params.append(page_size)
+    params.append(offset)
+
+    query = f"""
+        SELECT
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            sr.solicitud_type,
+            sr.form_data->>'motivo' as motivo,
+            sr.status,
+            sr.priority,
+            sr.created_at,
+            sr.submitted_at,
+            sr.assigned_to,
+            sr.sla_deadline,
+            u.first_name,
+            u.last_name,
+            u.email
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE {where_clause}
+        ORDER BY
+            CASE sr.priority
+                WHEN 'URGENT' THEN 1
+                WHEN 'HIGH' THEN 2
+                WHEN 'NORMAL' THEN 3
+                WHEN 'LOW' THEN 4
+                ELSE 5
+            END,
+            sr.submitted_at DESC NULLS LAST,
+            sr.created_at DESC
+        LIMIT ${param_idx} OFFSET ${param_idx + 1}
+    """
+
+    rows = await db.fetch(query, *params)
+
+    # Transform to response
+    items = []
+    now = datetime.utcnow()
+    for row in rows:
+        sla_status = "on_track"
+        if row['sla_deadline']:
+            deadline = row['sla_deadline']
+            if hasattr(deadline, 'replace'):
+                deadline = deadline.replace(tzinfo=None)
+            if deadline < now:
+                sla_status = "violated"
+            elif (deadline - now).total_seconds() < 6 * 3600:
+                sla_status = "at_risk"
+
+        citizen_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
+
+        items.append(ServiceRequestListItem(
+            id=str(row['id']),
+            reference=row['reference'] or '',
+            workflow_code=row['workflow_code'],
+            solicitud_type=row['solicitud_type'] or '',
+            motivo=row['motivo'],
+            status=row['status'],
+            priority=row['priority'] or 'NORMAL',
+            citizen_name=citizen_name,
+            citizen_email=row['email'],
+            submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
+            created_at=row['created_at'].isoformat(),
+            assigned_to=str(row['assigned_to']) if row['assigned_to'] else None,
+            sla_deadline=row['sla_deadline'].isoformat() if row['sla_deadline'] else None,
+            sla_status=sla_status
+        ))
+
+    return ServiceRequestListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages
+    )
