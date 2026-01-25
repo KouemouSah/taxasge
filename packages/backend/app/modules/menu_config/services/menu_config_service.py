@@ -371,7 +371,7 @@ class MenuConfigService:
                 titleKey="agent.nav.pending",
                 href=f"{base_path}/pending",
                 icon="Clock",
-                permission=f"{permission_prefix}.read",
+                permission=f"{permission_prefix}.view_queue",
                 badge=MenuBadgeConfig(type="count", source="pending_count")
             ))
 
@@ -381,7 +381,7 @@ class MenuConfigService:
                 titleKey="agent.nav.validation",
                 href=f"{base_path}/validation",
                 icon="CheckCircle",
-                permission=f"{permission_prefix}.validate"
+                permission=f"{permission_prefix}.process"
             ))
 
         if mapping.get('include_appointments', False):
@@ -390,7 +390,7 @@ class MenuConfigService:
                 titleKey="agent.nav.appointments",
                 href=f"{base_path}/appointments",
                 icon="Calendar",
-                permission="appointments.manage"
+                permission=f"{permission_prefix}.view_appointments"
             ))
 
         if mapping.get('include_history', True):
@@ -399,14 +399,14 @@ class MenuConfigService:
                 titleKey="agent.nav.history",
                 href=f"{base_path}/history",
                 icon="History",
-                permission=f"{permission_prefix}.read"
+                permission=f"{permission_prefix}.view"
             ))
 
         return MenuItemBase(
             id=mapping['menu_group_id'],
             titleKey=mapping['menu_title_key'],
             icon=mapping['menu_icon'],
-            permission=f"{permission_prefix}.read",
+            permission=f"{permission_prefix}.view",
             items=items
         )
 
@@ -427,28 +427,28 @@ class MenuConfigService:
             id=menu_id,
             titleKey=f"agent.nav.{menu_id}",
             icon=icon,
-            permission="service_requests.read",
+            permission="service_request.view",
             items=[
                 SubMenuItemWithBadge(
                     id="pending",
                     titleKey="agent.nav.pending",
                     href=f"{base_path}/pending",
                     icon="Clock",
-                    permission="service_requests.read"
+                    permission="service_request.view_queue"
                 ),
                 SubMenuItemWithBadge(
                     id="validation",
                     titleKey="agent.nav.validation",
                     href=f"{base_path}/validation",
                     icon="CheckCircle",
-                    permission="service_requests.validate"
+                    permission="service_request.process"
                 ),
                 SubMenuItemWithBadge(
                     id="history",
                     titleKey="agent.nav.history",
                     href=f"{base_path}/history",
                     icon="History",
-                    permission="service_requests.read"
+                    permission="service_request.view"
                 )
             ]
         )
