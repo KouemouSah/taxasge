@@ -38,6 +38,7 @@ export {
   useEscalations,
   usePendingPayments,
   useAnomalySummary,
+  useCalendarWeek,
 } from './useWidgetData';
 export type {
   UrgentRequestItem,
@@ -60,4 +61,7 @@ export type {
   PendingPaymentsWidgetData,
   AnomalySummaryItem,
   AnomalySummaryWidgetData,
+  WeekAppointmentItem,
+  DayAppointments,
+  CalendarWeekWidgetData,
 } from './useWidgetData';

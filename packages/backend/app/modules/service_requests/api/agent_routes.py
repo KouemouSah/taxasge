@@ -2660,3 +2660,157 @@ async def get_anomaly_summary_widget(
         total_critical=total_critical,
         total_amount_affected=total_amount if total_amount > 0 else None
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: CALENDAR WEEK (Weekly appointments view)
+# ═══════════════════════════════════════════════════════════════
+
+class WeekAppointmentItem(BaseModel):
+    """Appointment item for weekly calendar"""
+    id: str
+    reference: str
+    workflow_code: str
+    solicitud_type: str
+    citizen_name: str
+    cita_date: str
+    cita_time: Optional[str] = None
+    cita_location: Optional[str] = None
+    status: str
+    appointment_status: Optional[str] = None
+
+
+class DayAppointments(BaseModel):
+    """Appointments for a single day"""
+    date: str  # ISO date string
+    day_name: str  # lunes, martes, etc.
+    day_number: int  # 1-31
+    is_today: bool = False
+    is_past: bool = False
+    appointments: List[WeekAppointmentItem] = []
+    count: int = 0
+
+
+class CalendarWeekWidgetResponse(BaseModel):
+    """Response for weekly calendar widget"""
+    week_start: str
+    week_end: str
+    days: List[DayAppointments]
+    total_week: int = 0
+    today_count: int = 0
+
+
+@router.get(
+    "/dashboard/widgets/calendar-week",
+    response_model=CalendarWeekWidgetResponse,
+    summary="Get weekly appointments for calendar widget"
+)
+async def get_calendar_week_widget(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    week_offset: int = Query(0, description="Week offset from current (0=this week, 1=next, -1=previous)"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get appointments for the week displayed in a calendar format.
+    Returns appointments grouped by day for a 7-day view.
+    """
+    from datetime import timedelta
+    import locale
+
+    # Spanish day names
+    day_names_es = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+
+    async with db.acquire() as conn:
+        # Get entity's workflow codes
+        entity = await conn.fetchrow("""
+            SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+        """, entity_code)
+
+        if not entity:
+            raise HTTPException(status_code=404, detail="Entity not found")
+
+        workflow_codes = entity['workflow_codes'] or []
+
+        # Calculate week boundaries
+        today = date.today()
+        # Start of current week (Monday)
+        week_start = today - timedelta(days=today.weekday())
+        # Apply offset
+        week_start = week_start + timedelta(weeks=week_offset)
+        week_end = week_start + timedelta(days=6)
+
+        # Query appointments for the week
+        rows = await conn.fetch("""
+            SELECT
+                sr.id::text,
+                sr.reference,
+                sr.workflow_code,
+                sr.solicitud_type,
+                COALESCE(u.full_name, u.email, 'N/A') as citizen_name,
+                sr.cita_date,
+                sr.cita_time,
+                sr.cita_location,
+                sr.status,
+                sr.appointment_status
+            FROM service_requests sr
+            JOIN users u ON u.id = sr.user_id
+            WHERE sr.workflow_code = ANY($1)
+              AND sr.cita_date BETWEEN $2 AND $3
+              AND sr.status NOT IN ('cancelled', 'rejected', 'expired')
+            ORDER BY sr.cita_date, sr.cita_time ASC NULLS LAST
+        """, workflow_codes, week_start, week_end)
+
+        # Group by date
+        appointments_by_date: Dict[date, List[WeekAppointmentItem]] = {}
+        for row in rows:
+            cita_date = row['cita_date']
+            if cita_date not in appointments_by_date:
+                appointments_by_date[cita_date] = []
+
+            appointments_by_date[cita_date].append(WeekAppointmentItem(
+                id=row['id'],
+                reference=row['reference'],
+                workflow_code=row['workflow_code'],
+                solicitud_type=row['solicitud_type'],
+                citizen_name=row['citizen_name'],
+                cita_date=row['cita_date'].isoformat(),
+                cita_time=row['cita_time'].strftime('%H:%M') if row['cita_time'] else None,
+                cita_location=row['cita_location'],
+                status=row['status'],
+                appointment_status=row['appointment_status']
+            ))
+
+        # Build 7-day structure
+        days = []
+        total_week = 0
+        today_count = 0
+
+        for i in range(7):
+            day_date = week_start + timedelta(days=i)
+            day_appointments = appointments_by_date.get(day_date, [])
+            count = len(day_appointments)
+            total_week += count
+
+            is_today = day_date == today
+            if is_today:
+                today_count = count
+
+            days.append(DayAppointments(
+                date=day_date.isoformat(),
+                day_name=day_names_es[day_date.weekday()],
+                day_number=day_date.day,
+                is_today=is_today,
+                is_past=day_date < today,
+                appointments=day_appointments,
+                count=count
+            ))
+
+        return CalendarWeekWidgetResponse(
+            week_start=week_start.isoformat(),
+            week_end=week_end.isoformat(),
+            days=days,
+            total_week=total_week,
+            today_count=today_count
+        )

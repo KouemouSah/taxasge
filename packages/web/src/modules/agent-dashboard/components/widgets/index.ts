@@ -15,6 +15,7 @@ export { TeamWorkloadWidget } from './TeamWorkloadWidget';
 export { EscalationsWidget } from './EscalationsWidget';
 export { PendingPaymentsWidget } from './PendingPaymentsWidget';
 export { AnomalySummaryWidget } from './AnomalySummaryWidget';
+export { CalendarWeekWidget } from './CalendarWeekWidget';
 
 // Widget registry
 export {

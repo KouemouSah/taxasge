@@ -477,3 +477,59 @@ export function useAnomalySummary(options?: { enabled?: boolean }) {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 }
+
+// =============================================================================
+// CALENDAR WEEK WIDGET (weekly appointments view)
+// =============================================================================
+
+export interface WeekAppointmentItem {
+  id: string;
+  reference: string;
+  workflow_code: string;
+  solicitud_type: string;
+  citizen_name: string;
+  cita_date: string;
+  cita_time: string | null;
+  cita_location: string | null;
+  status: string;
+  appointment_status: string | null;
+}
+
+export interface DayAppointments {
+  date: string;
+  day_name: string;
+  day_number: number;
+  is_today: boolean;
+  is_past: boolean;
+  appointments: WeekAppointmentItem[];
+  count: number;
+}
+
+export interface CalendarWeekWidgetData {
+  week_start: string;
+  week_end: string;
+  days: DayAppointments[];
+  total_week: number;
+  today_count: number;
+}
+
+export function useCalendarWeek(
+  entityCode: EntityCode,
+  options?: { weekOffset?: number; enabled?: boolean }
+) {
+  const { weekOffset = 0, enabled = true } = options || {};
+
+  return useQuery<CalendarWeekWidgetData>({
+    queryKey: [...widgetQueryKeys.all, 'calendar-week', entityCode, weekOffset],
+    queryFn: async () => {
+      const response = await apiClient.get<CalendarWeekWidgetData>(
+        '/agent/service-requests/dashboard/widgets/calendar-week',
+        { params: { entity_code: entityCode, week_offset: weekOffset } }
+      );
+      return response.data;
+    },
+    enabled,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+  });
+}

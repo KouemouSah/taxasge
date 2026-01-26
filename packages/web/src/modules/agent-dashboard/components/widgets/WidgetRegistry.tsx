@@ -22,6 +22,7 @@ import { TeamWorkloadWidget } from './TeamWorkloadWidget';
 import { EscalationsWidget } from './EscalationsWidget';
 import { PendingPaymentsWidget } from './PendingPaymentsWidget';
 import { AnomalySummaryWidget } from './AnomalySummaryWidget';
+import { CalendarWeekWidget } from './CalendarWeekWidget';
 
 // =============================================================================
 // TYPES
@@ -85,6 +86,11 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
   ),
   anomaly_summary: ({ className }) => (
     <AnomalySummaryWidget className={className} />
+  ),
+
+  // Calendar widgets
+  calendar_week: ({ entityCode, className }) => (
+    <CalendarWeekWidget entityCode={entityCode} className={className} />
   ),
 };
 
