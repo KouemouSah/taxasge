@@ -183,6 +183,13 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         subject_key="notifications.appointment.no_show.subject",
         sms_template_code="APPOINTMENT_NO_SHOW"
     ),
+    EventType.APPOINTMENT_RESCHEDULED: NotificationConfig(
+        template_code="appointment_rescheduled",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
+        priority="high",
+        subject_key="notifications.appointment.rescheduled.subject",
+        sms_template_code="APPOINTMENT_RESCHEDULED"
+    ),
 
     # Declaration Events
     EventType.DECLARATION_SUBMITTED: NotificationConfig(
@@ -555,6 +562,12 @@ class NotificationEventHandler:
             "appointment_date": appointment_date,
             "appointment_time": appointment_time,
             "location": payload.get("location"),
+
+            # Appointment reschedule info (for APPOINTMENT_RESCHEDULED)
+            "old_date": payload.get("old_date"),
+            "old_time": payload.get("old_time"),
+            "new_date": payload.get("new_date"),
+            "new_time": payload.get("new_time"),
 
             # Appointment info - legacy style (for APPOINTMENT_REMINDER template)
             # Note: Only set these if we have appointment data (not payment date)
