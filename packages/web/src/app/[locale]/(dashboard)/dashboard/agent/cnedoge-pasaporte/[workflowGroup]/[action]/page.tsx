@@ -64,6 +64,9 @@ import {
 // Hooks
 import { useEntityServiceRequests, type ActionType } from '@/modules/agent-dashboard/hooks';
 
+// Split View for pending action
+import { PendingPage } from '@/modules/agent-dashboard/components/pending/PendingPage';
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -214,6 +217,11 @@ export default function WorkflowActionPage() {
     }
     return solicitudType || '-';
   };
+
+  // Use split view for pending action (optimized for bulk processing)
+  if (currentAction === 'pending') {
+    return <PendingPage entityCode={ENTITY_CODE} />;
+  }
 
   // Invalid action - show error
   if (!isValidAction) {

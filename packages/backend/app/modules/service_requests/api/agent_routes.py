@@ -1525,6 +1525,9 @@ def _extract_preview_data(form_data: dict) -> RequestPreviewExtractedData:
     is_minor = form_data.get('is_minor', False)
     solicitud_type = form_data.get('solicitud_type', '').upper()
 
+    # Get nested DIP data if available (natural_de is inside dip object)
+    dip_data = form_data.get('dip', {}) if isinstance(form_data.get('dip'), dict) else {}
+
     data = RequestPreviewExtractedData(
         # Common fields
         apellidos=form_data.get('apellidos'),
@@ -1532,7 +1535,7 @@ def _extract_preview_data(form_data: dict) -> RequestPreviewExtractedData:
         fecha_nacimiento=form_data.get('fecha_nacimiento'),
         sexo=form_data.get('sexo'),
         lugar_nacimiento=form_data.get('lugar_nacimiento'),
-        natural_de=form_data.get('natural_de'),
+        natural_de=dip_data.get('natural_de'),  # Nested in dip object
         numero_dip=form_data.get('numero_dip'),
         domicilio=form_data.get('domicilio'),
         nacionalidad=form_data.get('nacionalidad'),
