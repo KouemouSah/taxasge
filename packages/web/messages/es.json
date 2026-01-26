@@ -5219,7 +5219,16 @@
       "filters": {
         "priority": "Prioridad",
         "type": "Tipo",
-        "all": "Todos"
+        "all": "Todos",
+        "allTypes": "Todos los tipos",
+        "expedicion": "Expedición",
+        "renovacion": "Renovación",
+        "motivo": "Motivo",
+        "allMotivos": "Todos los motivos",
+        "vencimiento": "Vencimiento",
+        "perdida": "Pérdida",
+        "robo": "Robo",
+        "deterioro": "Deterioro"
       },
       "list": {
         "empty": "No hay dossiers pendientes",

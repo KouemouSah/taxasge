@@ -5110,7 +5110,16 @@
       "filters": {
         "priority": "Priority",
         "type": "Type",
-        "all": "All"
+        "all": "All",
+        "allTypes": "All types",
+        "expedicion": "New application",
+        "renovacion": "Renewal",
+        "motivo": "Reason",
+        "allMotivos": "All reasons",
+        "vencimiento": "Expiration",
+        "perdida": "Loss",
+        "robo": "Theft",
+        "deterioro": "Damage"
       },
       "list": {
         "empty": "No pending requests",

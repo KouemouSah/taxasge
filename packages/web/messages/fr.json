@@ -5312,7 +5312,16 @@
       "filters": {
         "priority": "Priorité",
         "type": "Type",
-        "all": "Tous"
+        "all": "Tous",
+        "allTypes": "Tous les types",
+        "expedicion": "Première demande",
+        "renovacion": "Renouvellement",
+        "motivo": "Motif",
+        "allMotivos": "Tous les motifs",
+        "vencimiento": "Expiration",
+        "perdida": "Perte",
+        "robo": "Vol",
+        "deterioro": "Détérioration"
       },
       "list": {
         "empty": "Aucun dossier en attente",

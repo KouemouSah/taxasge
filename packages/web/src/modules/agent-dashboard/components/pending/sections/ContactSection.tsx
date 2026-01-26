@@ -11,7 +11,7 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Phone, Copy } from 'lucide-react';
+import { Mail, Phone, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 // =============================================================================
@@ -28,7 +28,7 @@ interface ContactSectionProps {
 // COMPONENT
 // =============================================================================
 
-export function ContactSection({ name, email, phone }: ContactSectionProps) {
+export function ContactSection({ name: _name, email, phone }: ContactSectionProps) {
   const t = useTranslations('agent.pending.preview');
 
   const copyToClipboard = (text: string, label: string) => {
@@ -40,17 +40,11 @@ export function ContactSection({ name, email, phone }: ContactSectionProps) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <User className="h-5 w-5 text-primary" />
+          <Phone className="h-5 w-5 text-primary" />
           {t('contact')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {/* Name */}
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">{name}</span>
-        </div>
-
         {/* Email */}
         {email && (
           <div className="flex items-center gap-2 group">

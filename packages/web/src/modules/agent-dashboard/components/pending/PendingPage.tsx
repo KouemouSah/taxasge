@@ -53,6 +53,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [priority, setPriority] = useState<Priority | undefined>(undefined);
+  const [solicitudType, setSolicitudType] = useState<'expedicion' | 'renovacion' | undefined>(undefined);
+  const [motivo, setMotivo] = useState<'vencimiento' | 'perdida' | 'robo' | 'deterioro' | undefined>(undefined);
   const [page, setPage] = useState(1);
 
   // Debounce search
@@ -75,6 +77,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     action,
     search: debouncedSearch || undefined,
     priority,
+    solicitudType,
+    motivo,
     page,
     pageSize: 20,
   });
@@ -207,8 +211,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex-1 max-w-sm">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="flex-1 min-w-[200px] max-w-sm">
           <Input
             placeholder={t('search')}
             value={search}
@@ -217,8 +221,48 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
           />
         </div>
         <Select
+          value={solicitudType || 'all'}
+          onValueChange={(v) => {
+            setSolicitudType(v === 'all' ? undefined : v as 'expedicion' | 'renovacion');
+            if (v !== 'renovacion') setMotivo(undefined);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[150px] h-9">
+            <SelectValue placeholder={t('filters.type')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('filters.allTypes')}</SelectItem>
+            <SelectItem value="expedicion">{t('filters.expedicion')}</SelectItem>
+            <SelectItem value="renovacion">{t('filters.renovacion')}</SelectItem>
+          </SelectContent>
+        </Select>
+        {solicitudType === 'renovacion' && (
+          <Select
+            value={motivo || 'all'}
+            onValueChange={(v) => {
+              setMotivo(v === 'all' ? undefined : v as 'vencimiento' | 'perdida' | 'robo' | 'deterioro');
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[150px] h-9">
+              <SelectValue placeholder={t('filters.motivo')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('filters.allMotivos')}</SelectItem>
+              <SelectItem value="vencimiento">{t('filters.vencimiento')}</SelectItem>
+              <SelectItem value="perdida">{t('filters.perdida')}</SelectItem>
+              <SelectItem value="robo">{t('filters.robo')}</SelectItem>
+              <SelectItem value="deterioro">{t('filters.deterioro')}</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        <Select
           value={priority || 'all'}
-          onValueChange={(v) => setPriority(v === 'all' ? undefined : v as Priority)}
+          onValueChange={(v) => {
+            setPriority(v === 'all' ? undefined : v as Priority);
+            setPage(1);
+          }}
         >
           <SelectTrigger className="w-[140px] h-9">
             <Filter className="h-4 w-4 mr-2" />
