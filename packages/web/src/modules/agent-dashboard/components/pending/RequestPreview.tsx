@@ -49,6 +49,9 @@ interface RequestPreviewProps {
   onNavigate: (direction: 'prev' | 'next') => void;
   canNavigatePrev: boolean;
   canNavigateNext: boolean;
+  // External control of reject dialog (for keyboard shortcuts)
+  showRejectDialog?: boolean;
+  onRejectDialogChange?: (open: boolean) => void;
 }
 
 // =============================================================================
@@ -63,14 +66,20 @@ export function RequestPreview({
   onNavigate,
   canNavigatePrev,
   canNavigateNext,
+  showRejectDialog: externalShowRejectDialog,
+  onRejectDialogChange,
 }: RequestPreviewProps) {
   const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
 
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [internalShowRejectDialog, setInternalShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Use external control if provided, otherwise use internal state
+  const showRejectDialog = externalShowRejectDialog ?? internalShowRejectDialog;
+  const setShowRejectDialog = onRejectDialogChange ?? setInternalShowRejectDialog;
 
   const entityPath = entityCode.toLowerCase().replace('_', '-');
   const detailUrl = `/${locale}/dashboard/agent/${entityPath}/request/${data.id}`;
@@ -200,6 +209,7 @@ export function RequestPreview({
               <Check className="h-4 w-4 mr-2" />
             )}
             {isApproving ? t('approving') : t('approve')}
+            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-green-700/50 rounded">A</kbd>
           </Button>
           <Button
             variant="destructive"
@@ -209,8 +219,12 @@ export function RequestPreview({
           >
             <X className="h-4 w-4 mr-2" />
             {t('reject')}
+            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-red-700/50 rounded">R</kbd>
           </Button>
         </div>
+        <p className="text-[10px] text-muted-foreground text-center mt-2">
+          {t('keyboardHint')}
+        </p>
       </div>
 
       {/* Reject Dialog */}

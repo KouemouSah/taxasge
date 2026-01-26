@@ -5265,7 +5265,8 @@
         "approveSuccess": "Solicitud aprobada correctamente",
         "approveError": "Error al aprobar la solicitud",
         "rejectSuccess": "Solicitud rechazada correctamente",
-        "rejectError": "Error al rechazar la solicitud"
+        "rejectError": "Error al rechazar la solicitud",
+        "keyboardHint": "Atajos: ↑↓ navegar • A aprobar • R rechazar"
       },
       "extractedFields": {
         "title": "Datos Extraídos",

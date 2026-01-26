@@ -5156,7 +5156,8 @@
         "approveSuccess": "Request approved successfully",
         "approveError": "Error approving request",
         "rejectSuccess": "Request rejected successfully",
-        "rejectError": "Error rejecting request"
+        "rejectError": "Error rejecting request",
+        "keyboardHint": "Shortcuts: ↑↓ navigate • A approve • R reject"
       },
       "extractedFields": {
         "title": "Extracted Data",

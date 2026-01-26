@@ -5358,7 +5358,8 @@
         "approveSuccess": "Demande approuvée avec succès",
         "approveError": "Erreur lors de l'approbation",
         "rejectSuccess": "Demande rejetée avec succès",
-        "rejectError": "Erreur lors du rejet"
+        "rejectError": "Erreur lors du rejet",
+        "keyboardHint": "Raccourcis : ↑↓ naviguer • A approuver • R rejeter"
       },
       "extractedFields": {
         "title": "Données Extraites",

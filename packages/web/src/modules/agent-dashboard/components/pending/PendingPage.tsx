@@ -56,6 +56,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   const [solicitudType, setSolicitudType] = useState<'expedicion' | 'renovacion' | undefined>(undefined);
   const [motivo, setMotivo] = useState<'vencimiento' | 'perdida' | 'robo' | 'deterioro' | undefined>(undefined);
   const [page, setPage] = useState(1);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -163,13 +165,16 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     }
   }, [selectedId, selectedIndex, requests, queryClient]);
 
-  // Keyboard navigation
+  // Keyboard navigation and shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in input
+      // Ignore if typing in input or dialog is open
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
+
+      // Ignore if processing an action
+      if (isProcessing) return;
 
       switch (e.key) {
         case 'ArrowUp':
@@ -180,12 +185,35 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
           e.preventDefault();
           handleNavigate('next');
           break;
+        case 'a':
+        case 'A':
+          // Quick approve with 'A' key
+          if (selectedId && preview && !showRejectDialog) {
+            e.preventDefault();
+            setIsProcessing(true);
+            handleApprove().finally(() => setIsProcessing(false));
+          }
+          break;
+        case 'r':
+        case 'R':
+          // Open reject dialog with 'R' key
+          if (selectedId && preview && !showRejectDialog) {
+            e.preventDefault();
+            setShowRejectDialog(true);
+          }
+          break;
+        case 'Escape':
+          // Close reject dialog with Escape
+          if (showRejectDialog) {
+            setShowRejectDialog(false);
+          }
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNavigate]);
+  }, [handleNavigate, handleApprove, selectedId, preview, showRejectDialog, isProcessing]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)]">
@@ -312,6 +340,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
               onNavigate={handleNavigate}
               canNavigatePrev={selectedIndex > 0}
               canNavigateNext={selectedIndex < requests.length - 1}
+              showRejectDialog={showRejectDialog}
+              onRejectDialogChange={setShowRejectDialog}
             />
           ) : (
             <div className="flex items-center justify-center h-full">
