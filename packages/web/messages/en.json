@@ -5157,7 +5157,21 @@
         "approveError": "Error approving request",
         "rejectSuccess": "Request rejected successfully",
         "rejectError": "Error rejecting request",
-        "keyboardHint": "Shortcuts: ↑↓ navigate • A approve • R reject"
+        "keyboardHint": "Shortcuts: ↑↓ navigate • A approve • R reject",
+        "selectReason": "Rejection reason",
+        "selectReasonPlaceholder": "Select a reason...",
+        "customReasonRequired": "Specify the reason",
+        "customReasonPlaceholder": "Describe the rejection reason...",
+        "additionalDetails": "Additional details (optional)",
+        "additionalDetailsPlaceholder": "Add additional details if needed...",
+        "rejectReasons": {
+          "dipExpired": "DIP expired",
+          "docIllegible": "Illegible documents",
+          "photoNonCompliant": "Non-compliant photo",
+          "fraudSuspected": "Suspected fraud",
+          "docFalse": "Falsified document",
+          "other": "Other reason"
+        }
       },
       "extractedFields": {
         "title": "Extracted Data",

@@ -13,6 +13,14 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -36,6 +44,19 @@ import { ContactSection } from './sections/ContactSection';
 import { AppointmentSection } from './sections/AppointmentSection';
 import type { ServiceRequestPreview } from '../../services/agent-requests-api';
 import type { EntityCode } from '../../types';
+
+// =============================================================================
+// PREDEFINED REJECTION REASONS
+// =============================================================================
+
+const REJECTION_REASONS = [
+  { code: 'DIP_EXPIRE', labelKey: 'dipExpired' },
+  { code: 'DOC_ILLEGIBLE', labelKey: 'docIllegible' },
+  { code: 'PHOTO_NON_CONFORME', labelKey: 'photoNonCompliant' },
+  { code: 'FRAUDE_SUSPECTEE', labelKey: 'fraudSuspected' },
+  { code: 'DOC_FAUX', labelKey: 'docFalse' },
+  { code: 'AUTRE', labelKey: 'other' },
+] as const;
 
 // =============================================================================
 // PROPS
@@ -75,7 +96,8 @@ export function RequestPreview({
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [internalShowRejectDialog, setInternalShowRejectDialog] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  const [selectedReasonCode, setSelectedReasonCode] = useState<string>('');
+  const [customReason, setCustomReason] = useState('');
 
   // Use external control if provided, otherwise use internal state
   const showRejectDialog = externalShowRejectDialog ?? internalShowRejectDialog;
@@ -100,16 +122,30 @@ export function RequestPreview({
 
   // Handle reject
   const handleReject = async () => {
-    if (!rejectReason.trim()) {
+    if (!selectedReasonCode) {
       toast.error(t('rejectReasonRequired'));
       return;
     }
+    // For "AUTRE", require custom reason
+    if (selectedReasonCode === 'AUTRE' && !customReason.trim()) {
+      toast.error(t('customReasonRequired'));
+      return;
+    }
+
+    // Build final reason: predefined label + custom text if applicable
+    const selectedReason = REJECTION_REASONS.find(r => r.code === selectedReasonCode);
+    const predefinedLabel = selectedReason ? t(`rejectReasons.${selectedReason.labelKey}`) : '';
+    const finalReason = selectedReasonCode === 'AUTRE'
+      ? customReason.trim()
+      : `${predefinedLabel}${customReason.trim() ? ` - ${customReason.trim()}` : ''}`;
+
     setIsRejecting(true);
     try {
-      await onReject(rejectReason);
+      await onReject(finalReason);
       toast.success(t('rejectSuccess'));
       setShowRejectDialog(false);
-      setRejectReason('');
+      setSelectedReasonCode('');
+      setCustomReason('');
     } catch (error) {
       console.error('Reject error:', error);
       toast.error(t('rejectError'));
@@ -228,7 +264,13 @@ export function RequestPreview({
       </div>
 
       {/* Reject Dialog */}
-      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+      <Dialog open={showRejectDialog} onOpenChange={(open) => {
+        setShowRejectDialog(open);
+        if (!open) {
+          setSelectedReasonCode('');
+          setCustomReason('');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('rejectTitle')}</DialogTitle>
@@ -236,12 +278,44 @@ export function RequestPreview({
               {t('rejectDescription', { reference: data.reference })}
             </DialogDescription>
           </DialogHeader>
-          <Textarea
-            placeholder={t('rejectReasonPlaceholder')}
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-            rows={4}
-          />
+          <div className="space-y-4">
+            {/* Predefined reasons select */}
+            <div className="space-y-2">
+              <Label>{t('selectReason')}</Label>
+              <Select
+                value={selectedReasonCode}
+                onValueChange={setSelectedReasonCode}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('selectReasonPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {REJECTION_REASONS.map((reason) => (
+                    <SelectItem key={reason.code} value={reason.code}>
+                      {t(`rejectReasons.${reason.labelKey}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom reason textarea - always visible for additional details */}
+            <div className="space-y-2">
+              <Label>
+                {selectedReasonCode === 'AUTRE'
+                  ? t('customReasonRequired')
+                  : t('additionalDetails')}
+              </Label>
+              <Textarea
+                placeholder={selectedReasonCode === 'AUTRE'
+                  ? t('customReasonPlaceholder')
+                  : t('additionalDetailsPlaceholder')}
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -253,7 +327,7 @@ export function RequestPreview({
             <Button
               variant="destructive"
               onClick={handleReject}
-              disabled={isRejecting || !rejectReason.trim()}
+              disabled={isRejecting || !selectedReasonCode || (selectedReasonCode === 'AUTRE' && !customReason.trim())}
             >
               {isRejecting ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

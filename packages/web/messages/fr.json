@@ -5359,7 +5359,21 @@
         "approveError": "Erreur lors de l'approbation",
         "rejectSuccess": "Demande rejetée avec succès",
         "rejectError": "Erreur lors du rejet",
-        "keyboardHint": "Raccourcis : ↑↓ naviguer • A approuver • R rejeter"
+        "keyboardHint": "Raccourcis : ↑↓ naviguer • A approuver • R rejeter",
+        "selectReason": "Motif du rejet",
+        "selectReasonPlaceholder": "Sélectionnez un motif...",
+        "customReasonRequired": "Précisez le motif",
+        "customReasonPlaceholder": "Décrivez le motif du rejet...",
+        "additionalDetails": "Détails supplémentaires (optionnel)",
+        "additionalDetailsPlaceholder": "Ajoutez des détails supplémentaires si nécessaire...",
+        "rejectReasons": {
+          "dipExpired": "DIP expiré",
+          "docIllegible": "Documents illisibles",
+          "photoNonCompliant": "Photo non conforme",
+          "fraudSuspected": "Fraude suspectée",
+          "docFalse": "Document falsifié",
+          "other": "Autre motif"
+        }
       },
       "extractedFields": {
         "title": "Données Extraites",

@@ -5266,7 +5266,21 @@
         "approveError": "Error al aprobar la solicitud",
         "rejectSuccess": "Solicitud rechazada correctamente",
         "rejectError": "Error al rechazar la solicitud",
-        "keyboardHint": "Atajos: ↑↓ navegar • A aprobar • R rechazar"
+        "keyboardHint": "Atajos: ↑↓ navegar • A aprobar • R rechazar",
+        "selectReason": "Motivo del rechazo",
+        "selectReasonPlaceholder": "Seleccione un motivo...",
+        "customReasonRequired": "Especifique el motivo",
+        "customReasonPlaceholder": "Describa el motivo del rechazo...",
+        "additionalDetails": "Detalles adicionales (opcional)",
+        "additionalDetailsPlaceholder": "Agregue detalles adicionales si es necesario...",
+        "rejectReasons": {
+          "dipExpired": "DIP expirado",
+          "docIllegible": "Documentos ilegibles",
+          "photoNonCompliant": "Foto no conforme",
+          "fraudSuspected": "Sospecha de fraude",
+          "docFalse": "Documento falso",
+          "other": "Otro motivo"
+        }
       },
       "extractedFields": {
         "title": "Datos Extraídos",
