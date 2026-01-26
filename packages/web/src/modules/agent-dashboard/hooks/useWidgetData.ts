@@ -533,3 +533,67 @@ export function useCalendarWeek(
     refetchInterval: 2 * 60 * 1000,
   });
 }
+
+// =============================================================================
+// CALENDAR SLOTS WIDGET (available slots summary)
+// Shows slot availability per day for quick dashboard view
+// =============================================================================
+
+export interface DaySlotSummary {
+  date: string;
+  day_name: string;
+  day_number: number;
+  is_today: boolean;
+  is_past: boolean;
+  is_blocked: boolean;
+  total_slots: number;
+  booked_slots: number;
+  available_slots: number;
+  fill_percentage: number;
+  status: 'available' | 'limited' | 'full' | 'closed';
+}
+
+export interface LocationInfo {
+  id: string;
+  name: string;
+  city: string;
+}
+
+export interface CalendarSlotsWidgetData {
+  week_start: string;
+  week_end: string;
+  entity_code: string;
+  location: LocationInfo | null;
+  locations_available: LocationInfo[];
+  days: DaySlotSummary[];
+  total_available: number;
+  total_booked: number;
+  total_capacity: number;
+}
+
+export function useCalendarSlots(
+  entityCode: EntityCode,
+  options?: { weekOffset?: number; locationId?: string; enabled?: boolean }
+) {
+  const { weekOffset = 0, locationId, enabled = true } = options || {};
+
+  return useQuery<CalendarSlotsWidgetData>({
+    queryKey: [...widgetQueryKeys.all, 'calendar-slots', entityCode, weekOffset, locationId],
+    queryFn: async () => {
+      const response = await apiClient.get<CalendarSlotsWidgetData>(
+        '/agent/service-requests/dashboard/widgets/calendar-slots',
+        {
+          params: {
+            entity_code: entityCode,
+            week_offset: weekOffset,
+            location_id: locationId,
+          },
+        }
+      );
+      return response.data;
+    },
+    enabled,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+  });
+}

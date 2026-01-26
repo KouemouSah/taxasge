@@ -23,6 +23,7 @@ import { EscalationsWidget } from './EscalationsWidget';
 import { PendingPaymentsWidget } from './PendingPaymentsWidget';
 import { AnomalySummaryWidget } from './AnomalySummaryWidget';
 import { CalendarWeekWidget } from './CalendarWeekWidget';
+import { CalendarSlotsWidget } from './CalendarSlotsWidget';
 
 // =============================================================================
 // TYPES
@@ -91,6 +92,9 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
   // Calendar widgets
   calendar_week: ({ entityCode, className }) => (
     <CalendarWeekWidget entityCode={entityCode} className={className} />
+  ),
+  calendar_slots: ({ entityCode, className }) => (
+    <CalendarSlotsWidget entityCode={entityCode} className={className} />
   ),
 };
 

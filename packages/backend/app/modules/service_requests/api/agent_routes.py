@@ -2814,3 +2814,252 @@ async def get_calendar_week_widget(
             total_week=total_week,
             today_count=today_count
         )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: CALENDAR SLOTS (Available slots summary)
+# Shows slot availability per day for quick dashboard view
+# ═══════════════════════════════════════════════════════════════
+
+class DaySlotSummary(BaseModel):
+    """Summary of slot availability for a single day"""
+    date: str
+    day_name: str
+    day_number: int
+    is_today: bool = False
+    is_past: bool = False
+    is_blocked: bool = False
+    total_slots: int = 0
+    booked_slots: int = 0
+    available_slots: int = 0
+    fill_percentage: float = 0.0
+    status: str = "available"  # available, limited, full, closed
+
+
+class LocationInfo(BaseModel):
+    """Location info for the widget"""
+    id: str
+    name: str
+    city: str
+
+
+class CalendarSlotsWidgetResponse(BaseModel):
+    """Response for calendar slots widget"""
+    week_start: str
+    week_end: str
+    entity_code: str
+    location: Optional[LocationInfo] = None
+    locations_available: List[LocationInfo] = []
+    days: List[DaySlotSummary]
+    total_available: int = 0
+    total_booked: int = 0
+    total_capacity: int = 0
+
+
+@router.get(
+    "/dashboard/widgets/calendar-slots",
+    response_model=CalendarSlotsWidgetResponse,
+    summary="Get slot availability summary for dashboard widget"
+)
+async def get_calendar_slots_widget(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    week_offset: int = Query(0, description="Week offset (0=current, 1=next, -1=prev)"),
+    location_id: Optional[UUID] = Query(None, description="Filter by location"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get slot availability summary for dashboard widget.
+    Shows available vs booked slots per day for the week.
+
+    Capacity rules:
+    - Priority 1: appointment_slot_configs.max_appointments_per_slot (configured)
+    - Priority 2: Default = 2 if not configured
+    """
+    from datetime import timedelta
+
+    DEFAULT_MAX_PER_SLOT = 2
+    day_names_es = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+
+    async with db.acquire() as conn:
+        # Get entity locations
+        locations_rows = await conn.fetch("""
+            SELECT id::text, location_name, city
+            FROM entity_locations
+            WHERE entity_code = $1 AND is_active = true
+            ORDER BY is_main_office DESC, location_name
+        """, entity_code)
+
+        locations_available = [
+            LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
+            for row in locations_rows
+        ]
+
+        # Determine which location to use
+        selected_location = None
+        entity_location_id = None
+        if location_id:
+            for loc in locations_available:
+                if loc.id == str(location_id):
+                    selected_location = loc
+                    entity_location_id = location_id
+                    break
+        elif locations_available:
+            selected_location = locations_available[0]
+            entity_location_id = UUID(selected_location.id)
+
+        # Calculate week boundaries
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())  # Monday
+        week_start = week_start + timedelta(weeks=week_offset)
+        week_end = week_start + timedelta(days=6)
+
+        # Get slot configs for all days of week
+        slot_configs = {}
+        config_rows = await conn.fetch("""
+            SELECT
+                day_of_week,
+                start_time,
+                end_time,
+                slot_duration_minutes,
+                max_appointments_per_slot
+            FROM appointment_slot_configs
+            WHERE entity_code = $1
+              AND is_active = true
+              AND (entity_location_id IS NULL OR entity_location_id = $2)
+            ORDER BY day_of_week
+        """, entity_code, entity_location_id)
+
+        for row in config_rows:
+            slot_configs[row['day_of_week']] = {
+                'start_time': row['start_time'],
+                'end_time': row['end_time'],
+                'duration': row['slot_duration_minutes'] or 30,
+                'max_per_slot': row['max_appointments_per_slot'] or DEFAULT_MAX_PER_SLOT
+            }
+
+        # Get blocked dates
+        blocked_dates = set()
+        blocked_rows = await conn.fetch("""
+            SELECT blocked_date
+            FROM appointment_blocked_dates
+            WHERE (entity_code = $1 OR entity_code = 'ALL')
+              AND blocked_date BETWEEN $2 AND $3
+        """, entity_code, week_start, week_end)
+        for row in blocked_rows:
+            blocked_dates.add(row['blocked_date'])
+
+        # Get booked appointments count per day
+        bookings_query = """
+            SELECT
+                ar.appointment_date,
+                COUNT(*) as booked_count
+            FROM appointment_reservations ar
+            LEFT JOIN entity_locations el ON ar.entity_location_id = el.id
+            WHERE el.entity_code = $1
+              AND ar.appointment_date BETWEEN $2 AND $3
+              AND ar.status NOT IN ('cancelled', 'expired')
+        """
+        params = [entity_code, week_start, week_end]
+
+        if entity_location_id:
+            bookings_query += " AND ar.entity_location_id = $4"
+            params.append(entity_location_id)
+
+        bookings_query += " GROUP BY ar.appointment_date"
+
+        bookings_rows = await conn.fetch(bookings_query, *params)
+        bookings_by_date = {row['appointment_date']: row['booked_count'] for row in bookings_rows}
+
+        # Build 7-day structure
+        days = []
+        total_available = 0
+        total_booked = 0
+        total_capacity = 0
+
+        for i in range(7):
+            day_date = week_start + timedelta(days=i)
+            day_of_week = day_date.weekday()  # 0=Monday
+            is_today = day_date == today
+            is_past = day_date < today
+            is_blocked = day_date in blocked_dates
+            is_weekend = day_of_week >= 5  # Saturday/Sunday
+
+            # Get config for this day (day_of_week in DB is 0-6 for Mon-Sun)
+            config = slot_configs.get(day_of_week)
+
+            if is_blocked or is_weekend or not config:
+                # No slots available
+                days.append(DaySlotSummary(
+                    date=day_date.isoformat(),
+                    day_name=day_names_es[day_of_week],
+                    day_number=day_date.day,
+                    is_today=is_today,
+                    is_past=is_past,
+                    is_blocked=is_blocked,
+                    total_slots=0,
+                    booked_slots=0,
+                    available_slots=0,
+                    fill_percentage=0,
+                    status="closed"
+                ))
+                continue
+
+            # Calculate total slots for the day
+            start = config['start_time']
+            end = config['end_time']
+            duration = config['duration']
+            max_per_slot = config['max_per_slot']
+
+            # Count time slots in the day
+            start_minutes = start.hour * 60 + start.minute
+            end_minutes = end.hour * 60 + end.minute
+            num_slots = (end_minutes - start_minutes) // duration
+
+            total_day_capacity = num_slots * max_per_slot
+            booked = bookings_by_date.get(day_date, 0)
+            available = max(0, total_day_capacity - booked)
+
+            fill_pct = (booked / total_day_capacity * 100) if total_day_capacity > 0 else 0
+
+            # Determine status
+            if is_past:
+                status = "closed"
+            elif available == 0:
+                status = "full"
+            elif fill_pct >= 80:
+                status = "limited"
+            else:
+                status = "available"
+
+            days.append(DaySlotSummary(
+                date=day_date.isoformat(),
+                day_name=day_names_es[day_of_week],
+                day_number=day_date.day,
+                is_today=is_today,
+                is_past=is_past,
+                is_blocked=False,
+                total_slots=total_day_capacity,
+                booked_slots=booked,
+                available_slots=available,
+                fill_percentage=round(fill_pct, 1),
+                status=status
+            ))
+
+            if not is_past:
+                total_available += available
+                total_booked += booked
+                total_capacity += total_day_capacity
+
+        return CalendarSlotsWidgetResponse(
+            week_start=week_start.isoformat(),
+            week_end=week_end.isoformat(),
+            entity_code=entity_code,
+            location=selected_location,
+            locations_available=locations_available,
+            days=days,
+            total_available=total_available,
+            total_booked=total_booked,
+            total_capacity=total_capacity
+        )
