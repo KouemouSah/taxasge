@@ -5121,7 +5121,10 @@
   "agent": {
     "dashboard": {
       "title": "Panel del Agente",
-      "welcome": "Bienvenido al panel de {name}"
+      "welcome": "Bienvenido al panel de {name}",
+      "widgets": "Vista General",
+      "noWidgets": "No hay widgets configurados para este panel",
+      "moreItems": "+{count} más"
     },
     "profile": {
       "title": "Información del Agente",

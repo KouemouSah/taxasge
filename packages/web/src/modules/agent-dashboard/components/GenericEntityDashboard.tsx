@@ -26,11 +26,14 @@ import {
   BarChart3,
   ClipboardList,
 } from 'lucide-react';
-import { useAgentDashboard, useEntityAccess } from '../hooks';
+import { useAgentDashboard, useEntityAccess, useMenuConfig } from '../hooks';
 import { useEntityStats } from '../hooks/useEntityStats';
 import { AccessDenied } from './AccessDenied';
+import { DynamicDashboard } from './DynamicDashboard';
+import { renderWidget, DEFAULT_ENTITY_WIDGETS } from './widgets';
 import type { EntityCode, MenuItem } from '../types';
 import { isMenuGroup } from '../types';
+import type { WidgetConfig, DashboardConfig } from '../types/menu-config';
 
 // =============================================================================
 // PROPS
@@ -77,7 +80,17 @@ export function GenericEntityDashboard({
 
   const { isLoading: statsLoading, stats } = useEntityStats(entityCode);
 
-  const isLoading = accessLoading || dashboardLoading;
+  // Get dashboard_config for widgets from dynamic menu config
+  const { dashboardConfig, isLoading: menuConfigLoading } = useMenuConfig();
+
+  const isLoading = accessLoading || dashboardLoading || menuConfigLoading;
+
+  // Determine which widget config to use: from API or default
+  const widgetConfig: DashboardConfig = dashboardConfig || {
+    version: '1.0',
+    layout: 'grid',
+    widgets: DEFAULT_ENTITY_WIDGETS,
+  };
 
   // Loading state
   if (isLoading) {
@@ -257,6 +270,17 @@ export function GenericEntityDashboard({
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Dynamic Widgets Section */}
+      {widgetConfig.widgets.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">{t('dashboard.widgets')}</h2>
+          <DynamicDashboard
+            config={widgetConfig}
+            renderWidget={(widget) => renderWidget(widget.id, entityCode, widget)}
+          />
         </div>
       )}
 

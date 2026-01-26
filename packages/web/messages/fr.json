@@ -5215,7 +5215,10 @@
   "agent": {
     "dashboard": {
       "title": "Tableau de Bord Agent",
-      "welcome": "Bienvenue sur le tableau de bord de {name}"
+      "welcome": "Bienvenue sur le tableau de bord de {name}",
+      "widgets": "Aperçu Général",
+      "noWidgets": "Aucun widget configuré pour ce tableau de bord",
+      "moreItems": "+{count} de plus"
     },
     "profile": {
       "title": "Informations de l'Agent",

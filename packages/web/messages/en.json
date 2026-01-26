@@ -5013,7 +5013,10 @@
   "agent": {
     "dashboard": {
       "title": "Agent Dashboard",
-      "welcome": "Welcome to {name} dashboard"
+      "welcome": "Welcome to {name} dashboard",
+      "widgets": "Overview",
+      "noWidgets": "No widgets configured for this dashboard",
+      "moreItems": "+{count} more"
     },
     "profile": {
       "title": "Agent Information",
