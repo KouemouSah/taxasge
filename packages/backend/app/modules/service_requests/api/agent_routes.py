@@ -2269,11 +2269,11 @@ class TeamWorkloadWidgetResponse(BaseModel):
     response_model=TeamWorkloadWidgetResponse,
     summary="Get team workload for supervisors"
 )
-@permission_required("agent.view_team")
 async def get_team_workload_widget(
     entity_code: str = Query(..., description="Entity code to filter"),
     current_user: dict = Depends(get_current_user),
-    db=Depends(get_database)
+    db=Depends(get_database),
+    _=Depends(permission_required("agent.view_team"))
 ):
     """
     Get team workload from v_agents_workload_dashboard.
@@ -2369,12 +2369,12 @@ class EscalationsWidgetResponse(BaseModel):
     response_model=EscalationsWidgetResponse,
     summary="Get pending escalations for supervisors"
 )
-@permission_required("agent.view_escalations")
 async def get_escalations_widget(
     entity_code: Optional[str] = Query(None, description="Entity code to filter"),
     limit: int = Query(10, ge=1, le=50),
     current_user: dict = Depends(get_current_user),
-    db=Depends(get_database)
+    db=Depends(get_database),
+    _=Depends(permission_required("agent.view_escalations"))
 ):
     """
     Get pending escalations from v_pending_escalations.
@@ -2490,12 +2490,12 @@ class PendingPaymentsWidgetResponse(BaseModel):
     response_model=PendingPaymentsWidgetResponse,
     summary="Get pending payment validations for treasury"
 )
-@permission_required("treasury.view_pending")
 async def get_pending_payments_widget(
     workflow_code: Optional[str] = Query(None, description="Filter by workflow code"),
     limit: int = Query(10, ge=1, le=50),
     current_user: dict = Depends(get_current_user),
-    db=Depends(get_database)
+    db=Depends(get_database),
+    _=Depends(permission_required("treasury.view_pending"))
 ):
     """
     Get pending payment validations from v_pending_payment_validations.
@@ -2601,10 +2601,10 @@ class AnomalySummaryWidgetResponse(BaseModel):
     response_model=AnomalySummaryWidgetResponse,
     summary="Get payment anomaly summary"
 )
-@permission_required("treasury.view_anomalies")
 async def get_anomaly_summary_widget(
     current_user: dict = Depends(get_current_user),
-    db=Depends(get_database)
+    db=Depends(get_database),
+    _=Depends(permission_required("treasury.view_anomalies"))
 ):
     """
     Get anomaly summary from v_anomaly_summary.
