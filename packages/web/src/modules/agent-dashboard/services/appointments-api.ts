@@ -85,7 +85,6 @@ export interface AgentBookingRequest {
   entityLocationId: string;
   appointmentDate: string;
   appointmentTime: string;
-  notes?: string;
 }
 
 export interface AgentBookingResponse {
@@ -381,7 +380,6 @@ class AgentAppointmentsApiClient {
         entity_location_id: booking.entityLocationId,
         appointment_date: booking.appointmentDate,
         appointment_time: booking.appointmentTime,
-        notes: booking.notes,
       }),
     });
 

@@ -3481,7 +3481,6 @@ class AgentBookingRequest(BaseModel):
     entity_location_id: UUID = Field(..., description="Location ID")
     appointment_date: date = Field(..., description="Appointment date")
     appointment_time: time = Field(..., description="Appointment time")
-    notes: Optional[str] = Field(None, max_length=500, description="Optional notes")
 
 
 class AgentBookingResponse(BaseModel):
@@ -3947,8 +3946,6 @@ async def book_for_citizen(
         )
 
     # Create reservation
-    # Note: 'notes' field from booking is ignored - no column exists in table
-    # TODO: Add migration to create 'notes' and 'created_by' columns if needed
     reservation_id = await conn.fetchval("""
         INSERT INTO appointment_reservations (
             service_request_id,

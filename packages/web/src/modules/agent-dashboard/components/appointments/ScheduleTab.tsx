@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -80,7 +79,6 @@ export function ScheduleTab({
     dayName: string;
   } | null>(null);
   const [requestId, setRequestId] = useState('');
-  const [notes, setNotes] = useState('');
 
   const { data, isLoading, isError, refetch } = useSlotsDetailed(entityCode, {
     weekOffset,
@@ -114,7 +112,6 @@ export function ScheduleTab({
         entityLocationId: locationId,
         appointmentDate: selectedSlot.date,
         appointmentTime: selectedSlot.time,
-        notes: notes.trim() || undefined,
       });
 
       if (result.success) {
@@ -124,7 +121,6 @@ export function ScheduleTab({
         });
         setSelectedSlot(null);
         setRequestId('');
-        setNotes('');
         refetch();
       } else {
         toast({
@@ -351,18 +347,6 @@ export function ScheduleTab({
                         className="pl-9"
                       />
                     </div>
-                  </div>
-
-                  {/* Notes */}
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes (optionnel)</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Notes pour ce rendez-vous..."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                    />
                   </div>
 
                   {/* Book Button */}
