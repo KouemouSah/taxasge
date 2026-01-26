@@ -31,9 +31,9 @@ VALUES (
     'Cita reprogramada',
     'Rendez-vous reprogrammé',
     'Appointment rescheduled',
-    'Su cita ha sido reprogramada - TaxasGE',
-    'Votre rendez-vous a été reprogrammé - TaxasGE',
-    'Your appointment has been rescheduled - TaxasGE',
+    'Su cita ha sido reprogramada - Facil',
+    'Votre rendez-vous a été reprogrammé - Facil',
+    'Your appointment has been rescheduled - Facil',
     'Notificación enviada cuando una cita es reprogramada por un agente',
     '<!DOCTYPE html>
 <html lang="es">
@@ -97,7 +97,7 @@ VALUES (
         </div>
 
         <div class="footer">
-            <p>Este es un correo automático de TaxasGE - Facil.</p>
+            <p>Este es un correo automático de Facil - Facil.</p>
             <p>© 2026 Ministerio de Hacienda, Guinea Ecuatorial</p>
         </div>
     </div>
@@ -125,9 +125,9 @@ VALUES (
     'Cita reprogramada',
     'Rendez-vous reprogrammé',
     'Appointment rescheduled',
-    'TaxasGE: Su cita ha sido reprogramada. Nueva fecha: {{new_date}} a las {{new_time}} en {{location}}.',
-    'TaxasGE: Votre RDV a été reprogrammé. Nouvelle date: {{new_date}} à {{new_time}} à {{location}}.',
-    'TaxasGE: Your appointment has been rescheduled. New date: {{new_date}} at {{new_time}} at {{location}}.',
+    'Facil: Su cita ha sido reprogramada. Nueva fecha: {{new_date}} a las {{new_time}} en {{location}}.',
+    'Facil: Votre RDV a été reprogrammé. Nouvelle date: {{new_date}} à {{new_time}} à {{location}}.',
+    'Facil: Your appointment has been rescheduled. New date: {{new_date}} at {{new_time}} at {{location}}.',
     '["new_date", "new_time", "location"]'::jsonb,
     'reminders',
     1,
