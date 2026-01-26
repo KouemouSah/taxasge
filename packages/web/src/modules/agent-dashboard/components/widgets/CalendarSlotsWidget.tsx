@@ -90,7 +90,7 @@ export function CalendarSlotsWidget({
   // Loading state
   if (isLoading) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
@@ -111,7 +111,7 @@ export function CalendarSlotsWidget({
   // Error state
   if (isError) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
@@ -149,7 +149,7 @@ export function CalendarSlotsWidget({
   const entityPath = entityCode.toLowerCase().replace('_', '-');
 
   return (
-    <Card className={className}>
+    <Card className={`h-full ${className || ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base flex items-center gap-2">

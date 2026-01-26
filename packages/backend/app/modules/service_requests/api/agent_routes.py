@@ -1941,19 +1941,38 @@ async def get_workflow_distribution_widget(
     if not workflow_codes:
         return WorkflowDistributionWidgetResponse(items=[], total=0)
 
-    # Query distribution (no limit - get all)
+    # Query distribution INCLUDING all workflow codes (even with 0 count)
+    # Use UNION to ensure all workflows appear
     query = """
+        WITH workflow_list AS (
+            -- Get all workflows for the entity with their names
+            SELECT
+                w.code as workflow_code,
+                w.name_es as workflow_name,
+                w.solicitud_type
+            FROM workflows w
+            WHERE w.code = ANY($1)
+        ),
+        request_counts AS (
+            -- Count active requests per workflow/type
+            SELECT
+                sr.workflow_code,
+                sr.solicitud_type,
+                COUNT(*) as count
+            FROM service_requests sr
+            WHERE sr.workflow_code = ANY($1)
+              AND sr.status::text NOT IN ('DRAFT', 'CANCELLED', 'EXPIRED')
+            GROUP BY sr.workflow_code, sr.solicitud_type
+        )
         SELECT
-            sr.workflow_code,
-            sr.solicitud_type,
-            w.name_es as workflow_name,
-            COUNT(*) as count
-        FROM service_requests sr
-        LEFT JOIN workflows w ON w.code = sr.workflow_code
-        WHERE sr.workflow_code = ANY($1)
-          AND sr.status::text NOT IN ('DRAFT', 'CANCELLED', 'EXPIRED')
-        GROUP BY sr.workflow_code, sr.solicitud_type, w.name_es
-        ORDER BY count DESC
+            wl.workflow_code,
+            COALESCE(rc.solicitud_type, wl.solicitud_type, 'expedicion') as solicitud_type,
+            wl.workflow_name,
+            COALESCE(rc.count, 0) as count
+        FROM workflow_list wl
+        LEFT JOIN request_counts rc
+            ON wl.workflow_code = rc.workflow_code
+        ORDER BY count DESC, wl.workflow_code
     """
 
     rows = await db.fetch(query, workflow_codes)
@@ -1961,25 +1980,50 @@ async def get_workflow_distribution_widget(
     # Calculate total and percentages
     total = sum(row['count'] for row in rows)
 
-    # Build human-readable labels
-    type_labels = {
-        'expedicion': 'Nuevo',
-        'renovacion': 'Renovación',
-    }
+    # Build human-readable labels based on workflow code patterns
+    def get_label(workflow_code: str, solicitud_type: str) -> str:
+        # Extract type from workflow code (e.g., PASAPORTE_RENOVACION -> Renovación)
+        code_lower = workflow_code.lower()
+
+        if 'renovacion' in code_lower or 'renewal' in code_lower:
+            return 'Renovación'
+        elif 'perdida' in code_lower or 'loss' in code_lower:
+            return 'Pérdida'
+        elif 'robo' in code_lower or 'theft' in code_lower:
+            return 'Robo'
+        elif 'deterioro' in code_lower or 'damage' in code_lower:
+            return 'Deterioro'
+        elif 'duplicado' in code_lower or 'duplicate' in code_lower:
+            return 'Duplicado'
+        elif 'nuevo' in code_lower or 'new' in code_lower or 'primera' in code_lower:
+            return 'Nuevo'
+        elif 'canje' in code_lower or 'exchange' in code_lower:
+            return 'Canje'
+        elif 'extension' in code_lower:
+            return 'Extensión'
+        elif 'transferencia' in code_lower:
+            return 'Transferencia'
+        elif 'cambio' in code_lower:
+            return 'Cambio'
+        elif solicitud_type == 'renovacion':
+            return 'Renovación'
+        elif solicitud_type == 'expedicion':
+            return 'Nuevo'
+        else:
+            # Fallback: use last part of workflow code
+            parts = workflow_code.split('_')
+            return parts[-1].title() if len(parts) > 1 else workflow_code
 
     items = []
     for row in rows:
-        solicitud_type = row['solicitud_type'] or 'otro'
-        type_label = type_labels.get(solicitud_type, solicitud_type.title())
+        workflow_code = row['workflow_code']
+        solicitud_type = row['solicitud_type'] or 'expedicion'
 
-        # Combine workflow name with type
-        workflow_name = row['workflow_name'] or row['workflow_code']
-        label = f"{type_label}"
-
+        label = get_label(workflow_code, solicitud_type)
         percentage = (row['count'] / total * 100) if total > 0 else 0
 
         items.append(WorkflowDistributionItem(
-            workflow_code=row['workflow_code'],
+            workflow_code=workflow_code,
             solicitud_type=solicitud_type,
             label=label,
             count=row['count'],

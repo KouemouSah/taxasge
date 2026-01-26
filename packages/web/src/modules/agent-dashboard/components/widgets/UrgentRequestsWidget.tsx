@@ -68,7 +68,7 @@ export function UrgentRequestsWidget({
   // Loading state
   if (isLoading) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -89,7 +89,7 @@ export function UrgentRequestsWidget({
   // Error state
   if (isError) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -115,7 +115,7 @@ export function UrgentRequestsWidget({
   const totalCount = total_urgent + total_high + total_assigned;
 
   return (
-    <Card className={className}>
+    <Card className={`h-full ${className || ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">

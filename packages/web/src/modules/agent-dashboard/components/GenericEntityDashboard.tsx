@@ -25,6 +25,7 @@ import {
   Users,
   BarChart3,
   ClipboardList,
+  History,
 } from 'lucide-react';
 import { useAgentDashboard, useEntityAccess, useMenuConfig } from '../hooks';
 import { useEntityStats } from '../hooks/useEntityStats';
@@ -167,6 +168,35 @@ export function GenericEntityDashboard({
     .flatMap((group) => group.items.slice(0, 2))
     .slice(0, 6);
 
+  // Default actions based on entity workflows (fallback when permissions filter everything)
+  const defaultActions = entityConfig ? [
+    {
+      id: 'default-pending',
+      titleKey: 'agent.nav.pending',
+      href: `${entityConfig.basePath}/pending`,
+      icon: Clock,
+    },
+    {
+      id: 'default-validation',
+      titleKey: 'agent.nav.validation',
+      href: `${entityConfig.basePath}/validation`,
+      icon: CheckCircle,
+    },
+    {
+      id: 'default-history',
+      titleKey: 'agent.nav.history',
+      href: `${entityConfig.basePath}/history`,
+      icon: History,
+    },
+  ] : [];
+
+  // Use groupActions if available, otherwise quickActions, otherwise defaultActions
+  const displayActions = groupActions.length > 0
+    ? groupActions
+    : quickActions.length > 0
+      ? quickActions
+      : defaultActions;
+
   return (
     <div className={`space-y-6 ${className || ''}`}>
       {/* Header */}
@@ -179,6 +209,32 @@ export function GenericEntityDashboard({
           {t('dashboard.welcome', { name: context.entityName || context.ministryName || entityCode })}
         </p>
       </div>
+
+      {/* Quick Actions - Positioned BEFORE Vista General for immediate access */}
+      {displayActions.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">{t('quickActions.title')}</h2>
+          <div className="grid gap-4 grid-cols-3">
+            {displayActions.map((action) => {
+              const ActionIcon = action.icon;
+              return (
+                <Card key={action.id} className="hover:shadow-md transition-shadow h-full">
+                  <CardContent className="pt-4 pb-4 flex flex-col items-center justify-center text-center h-full">
+                    <ActionIcon className="h-8 w-8 text-primary mb-2" />
+                    <span className="text-sm font-medium">{getTitle(action.titleKey)}</span>
+                    <Link href={`/${locale}${action.href}`} className="mt-2">
+                      <Button variant="outline" size="sm" className="w-full">
+                        {tCommon('view')}
+                        <ArrowRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards - Custom or Default */}
       {statsComponent || (
@@ -284,56 +340,6 @@ export function GenericEntityDashboard({
         </div>
       )}
 
-      {/* Quick Actions from Menu Groups */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">{t('quickActions.title')}</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {groupActions.map((action) => {
-            const ActionIcon = action.icon;
-            return (
-              <Card key={action.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <ActionIcon className="h-5 w-5 text-primary" />
-                    {getTitle(action.titleKey)}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Link href={`/${locale}${action.href}`}>
-                    <Button variant="outline" className="w-full">
-                      {tCommon('view')}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {/* If no group actions, show direct actions */}
-          {groupActions.length === 0 && quickActions.map((action) => {
-            const ActionIcon = action.icon;
-            return (
-              <Card key={action.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <ActionIcon className="h-5 w-5 text-primary" />
-                    {getTitle(action.titleKey)}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Link href={`/${locale}${action.href}`}>
-                    <Button variant="outline" className="w-full">
-                      {tCommon('view')}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Agent Info */}
       {context.isSupervisor && (

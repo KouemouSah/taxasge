@@ -52,7 +52,7 @@ export function WorkflowDistributionWidget({
   // Loading state
   if (isLoading) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -79,7 +79,7 @@ export function WorkflowDistributionWidget({
   // Error state
   if (isError) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-blue-600" />
@@ -98,7 +98,7 @@ export function WorkflowDistributionWidget({
   const { items, total } = data || { items: [], total: 0 };
 
   return (
-    <Card className={className}>
+    <Card className={`h-full ${className || ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">

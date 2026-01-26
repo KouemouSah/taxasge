@@ -118,12 +118,11 @@ UPDATE roles SET
         "version": "1.0",
         "layout": "grid",
         "widgets": [
-            {"id": "alerts", "visible": true, "position": 1, "size": "small"},
-            {"id": "calendar_slots", "visible": true, "position": 2, "size": "full"},
-            {"id": "urgent_requests", "visible": true, "position": 3, "size": "small"},
-            {"id": "workflow_distribution", "visible": true, "position": 4, "size": "medium"},
-            {"id": "today_appointments", "visible": true, "position": 5, "size": "medium"},
-            {"id": "personal_stats", "visible": true, "position": 6, "size": "small"}
+            {"id": "alerts", "visible": true, "position": 1, "size": "medium"},
+            {"id": "urgent_requests", "visible": true, "position": 2, "size": "medium"},
+            {"id": "calendar_slots", "visible": true, "position": 3, "size": "full"},
+            {"id": "today_appointments", "visible": true, "position": 4, "size": "medium"},
+            {"id": "workflow_distribution", "visible": true, "position": 5, "size": "medium"}
         ]
     }'::jsonb
 WHERE code = 'agent_cnedoge_pasaporte';
@@ -166,12 +165,11 @@ UPDATE roles SET
         "version": "1.0",
         "layout": "grid",
         "widgets": [
-            {"id": "alerts", "visible": true, "position": 1, "size": "small"},
-            {"id": "calendar_slots", "visible": true, "position": 2, "size": "full"},
-            {"id": "urgent_requests", "visible": true, "position": 3, "size": "small"},
-            {"id": "workflow_distribution", "visible": true, "position": 4, "size": "medium"},
-            {"id": "today_appointments", "visible": true, "position": 5, "size": "medium"},
-            {"id": "personal_stats", "visible": true, "position": 6, "size": "small"}
+            {"id": "alerts", "visible": true, "position": 1, "size": "medium"},
+            {"id": "urgent_requests", "visible": true, "position": 2, "size": "medium"},
+            {"id": "calendar_slots", "visible": true, "position": 3, "size": "full"},
+            {"id": "today_appointments", "visible": true, "position": 4, "size": "medium"},
+            {"id": "workflow_distribution", "visible": true, "position": 5, "size": "medium"}
         ]
     }'::jsonb
 WHERE code = 'agent_cnedoge_residencia';
@@ -214,12 +212,11 @@ UPDATE roles SET
         "version": "1.0",
         "layout": "grid",
         "widgets": [
-            {"id": "alerts", "visible": true, "position": 1, "size": "small"},
-            {"id": "calendar_slots", "visible": true, "position": 2, "size": "full"},
-            {"id": "urgent_requests", "visible": true, "position": 3, "size": "small"},
-            {"id": "workflow_distribution", "visible": true, "position": 4, "size": "medium"},
-            {"id": "today_appointments", "visible": true, "position": 5, "size": "medium"},
-            {"id": "personal_stats", "visible": true, "position": 6, "size": "small"}
+            {"id": "alerts", "visible": true, "position": 1, "size": "medium"},
+            {"id": "urgent_requests", "visible": true, "position": 2, "size": "medium"},
+            {"id": "calendar_slots", "visible": true, "position": 3, "size": "full"},
+            {"id": "today_appointments", "visible": true, "position": 4, "size": "medium"},
+            {"id": "workflow_distribution", "visible": true, "position": 5, "size": "medium"}
         ]
     }'::jsonb
 WHERE code = 'agent_dgt';
@@ -262,12 +259,11 @@ UPDATE roles SET
         "version": "1.0",
         "layout": "grid",
         "widgets": [
-            {"id": "alerts", "visible": true, "position": 1, "size": "small"},
-            {"id": "calendar_slots", "visible": true, "position": 2, "size": "full"},
-            {"id": "urgent_requests", "visible": true, "position": 3, "size": "small"},
-            {"id": "workflow_distribution", "visible": true, "position": 4, "size": "medium"},
-            {"id": "today_appointments", "visible": true, "position": 5, "size": "medium"},
-            {"id": "personal_stats", "visible": true, "position": 6, "size": "small"}
+            {"id": "alerts", "visible": true, "position": 1, "size": "medium"},
+            {"id": "urgent_requests", "visible": true, "position": 2, "size": "medium"},
+            {"id": "calendar_slots", "visible": true, "position": 3, "size": "full"},
+            {"id": "today_appointments", "visible": true, "position": 4, "size": "medium"},
+            {"id": "workflow_distribution", "visible": true, "position": 5, "size": "medium"}
         ]
     }'::jsonb
 WHERE code = 'agent_extranjeria';
@@ -315,12 +311,11 @@ UPDATE roles SET
         "version": "1.0",
         "layout": "grid",
         "widgets": [
-            {"id": "alerts", "visible": true, "position": 1, "size": "small"},
-            {"id": "calendar_slots", "visible": true, "position": 2, "size": "full"},
-            {"id": "urgent_requests", "visible": true, "position": 3, "size": "small"},
-            {"id": "workflow_distribution", "visible": true, "position": 4, "size": "medium"},
-            {"id": "today_appointments", "visible": true, "position": 5, "size": "medium"},
-            {"id": "personal_stats", "visible": true, "position": 6, "size": "small"}
+            {"id": "alerts", "visible": true, "position": 1, "size": "medium"},
+            {"id": "urgent_requests", "visible": true, "position": 2, "size": "medium"},
+            {"id": "calendar_slots", "visible": true, "position": 3, "size": "full"},
+            {"id": "today_appointments", "visible": true, "position": 4, "size": "medium"},
+            {"id": "workflow_distribution", "visible": true, "position": 5, "size": "medium"}
         ]
     }'::jsonb
 WHERE code = 'agent_onrc';
@@ -363,12 +358,11 @@ UPDATE roles SET
         "version": "1.0",
         "layout": "grid",
         "widgets": [
-            {"id": "alerts", "visible": true, "position": 1, "size": "small"},
-            {"id": "calendar_slots", "visible": true, "position": 2, "size": "full"},
-            {"id": "urgent_requests", "visible": true, "position": 3, "size": "small"},
-            {"id": "workflow_distribution", "visible": true, "position": 4, "size": "medium"},
-            {"id": "today_appointments", "visible": true, "position": 5, "size": "medium"},
-            {"id": "personal_stats", "visible": true, "position": 6, "size": "small"}
+            {"id": "alerts", "visible": true, "position": 1, "size": "medium"},
+            {"id": "urgent_requests", "visible": true, "position": 2, "size": "medium"},
+            {"id": "calendar_slots", "visible": true, "position": 3, "size": "full"},
+            {"id": "today_appointments", "visible": true, "position": 4, "size": "medium"},
+            {"id": "workflow_distribution", "visible": true, "position": 5, "size": "medium"}
         ]
     }'::jsonb
 WHERE code = 'agent_ofive';
@@ -411,12 +405,11 @@ UPDATE roles SET
         "version": "1.0",
         "layout": "grid",
         "widgets": [
-            {"id": "alerts", "visible": true, "position": 1, "size": "small"},
-            {"id": "calendar_slots", "visible": true, "position": 2, "size": "full"},
-            {"id": "urgent_requests", "visible": true, "position": 3, "size": "small"},
-            {"id": "workflow_distribution", "visible": true, "position": 4, "size": "medium"},
-            {"id": "today_appointments", "visible": true, "position": 5, "size": "medium"},
-            {"id": "personal_stats", "visible": true, "position": 6, "size": "small"}
+            {"id": "alerts", "visible": true, "position": 1, "size": "medium"},
+            {"id": "urgent_requests", "visible": true, "position": 2, "size": "medium"},
+            {"id": "calendar_slots", "visible": true, "position": 3, "size": "full"},
+            {"id": "today_appointments", "visible": true, "position": 4, "size": "medium"},
+            {"id": "workflow_distribution", "visible": true, "position": 5, "size": "medium"}
         ]
     }'::jsonb
 WHERE code = 'agent_policia';

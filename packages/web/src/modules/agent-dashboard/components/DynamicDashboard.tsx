@@ -146,7 +146,7 @@ export function DynamicDashboard({
           const customWidget = renderWidget(widget, data);
           if (customWidget) {
             return (
-              <div key={widget.id} className={SIZE_CLASSES[widget.size]}>
+              <div key={widget.id} className={cn(SIZE_CLASSES[widget.size], 'h-full')}>
                 {customWidget}
               </div>
             );

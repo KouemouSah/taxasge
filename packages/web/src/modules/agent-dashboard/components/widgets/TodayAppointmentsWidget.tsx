@@ -50,7 +50,7 @@ export function TodayAppointmentsWidget({
   // Loading state
   if (isLoading) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-green-600" />
@@ -71,7 +71,7 @@ export function TodayAppointmentsWidget({
   // Error state
   if (isError) {
     return (
-      <Card className={className}>
+      <Card className={`h-full ${className || ""}`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-green-600" />
@@ -95,7 +95,7 @@ export function TodayAppointmentsWidget({
   };
 
   return (
-    <Card className={className}>
+    <Card className={`h-full ${className || ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
