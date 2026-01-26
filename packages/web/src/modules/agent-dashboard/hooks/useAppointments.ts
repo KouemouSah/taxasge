@@ -104,7 +104,7 @@ export function useBookForCitizen() {
 
   return useMutation<AgentBookingResponse, Error, AgentBookingRequest>({
     mutationFn: (booking) => agentAppointmentsApi.bookForCitizen(booking),
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       if (data.success) {
         // Invalidate relevant queries
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
