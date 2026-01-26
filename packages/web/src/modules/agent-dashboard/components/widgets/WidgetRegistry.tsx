@@ -17,6 +17,11 @@ import { UrgentRequestsWidget } from './UrgentRequestsWidget';
 import { TodayAppointmentsWidget } from './TodayAppointmentsWidget';
 import { WorkflowDistributionWidget } from './WorkflowDistributionWidget';
 import { AlertsWidget } from './AlertsWidget';
+import { PersonalStatsWidget } from './PersonalStatsWidget';
+import { TeamWorkloadWidget } from './TeamWorkloadWidget';
+import { EscalationsWidget } from './EscalationsWidget';
+import { PendingPaymentsWidget } from './PendingPaymentsWidget';
+import { AnomalySummaryWidget } from './AnomalySummaryWidget';
 
 // =============================================================================
 // TYPES
@@ -57,6 +62,29 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
   ),
   system_alerts: ({ entityCode, className }) => (
     <AlertsWidget entityCode={entityCode} className={className} />
+  ),
+
+  // Personal Performance widgets
+  personal_stats: ({ className }) => (
+    <PersonalStatsWidget className={className} />
+  ),
+
+  // Team Management widgets (for supervisors)
+  team_workload: ({ entityCode, className }) => (
+    <TeamWorkloadWidget entityCode={entityCode} className={className} />
+  ),
+
+  // Escalation widgets (for supervisors)
+  escalations: ({ entityCode, className }) => (
+    <EscalationsWidget entityCode={entityCode} className={className} />
+  ),
+
+  // Treasury widgets
+  pending_payments: ({ className }) => (
+    <PendingPaymentsWidget className={className} />
+  ),
+  anomaly_summary: ({ className }) => (
+    <AnomalySummaryWidget className={className} />
   ),
 };
 

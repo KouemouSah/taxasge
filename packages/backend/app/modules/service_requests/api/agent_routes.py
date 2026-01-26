@@ -2148,3 +2148,515 @@ async def get_alerts_widget(
         total_warnings=total_warnings,
         total_errors=total_errors
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: PERSONAL STATS (Uses v_agent_performance_summary)
+# ═══════════════════════════════════════════════════════════════
+
+class PersonalStatsItem(BaseModel):
+    """Personal statistics for an agent"""
+    agent_profile_id: Optional[str] = None
+    current_month_processed: int = 0
+    current_month_approved: int = 0
+    current_month_rejected: int = 0
+    current_month_escalated: int = 0
+    avg_processing_minutes: Optional[float] = None
+    sla_respected_count: int = 0
+    sla_missed_count: int = 0
+    sla_respect_percentage: Optional[float] = None
+    approval_rate: Optional[float] = None
+    rejection_rate: Optional[float] = None
+    escalation_rate: Optional[float] = None
+    last_action_at: Optional[str] = None
+
+
+class PersonalStatsWidgetResponse(BaseModel):
+    """Response for personal stats widget"""
+    stats: PersonalStatsItem
+    period_label: str = "Este mes"
+
+
+@router.get(
+    "/dashboard/widgets/personal-stats",
+    response_model=PersonalStatsWidgetResponse,
+    summary="Get personal performance stats for current agent"
+)
+async def get_personal_stats_widget(
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database)
+):
+    """
+    Get personal performance statistics from v_agent_performance_summary.
+    Uses the view to get pre-calculated metrics.
+    """
+    user_id = UUID(current_user["sub"])
+
+    async with db.acquire() as conn:
+        # Query the view directly
+        row = await conn.fetchrow("""
+            SELECT
+                agent_profile_id::text,
+                COALESCE(current_month_processed, 0) as current_month_processed,
+                COALESCE(current_month_approved, 0) as current_month_approved,
+                COALESCE(current_month_rejected, 0) as current_month_rejected,
+                COALESCE(current_month_escalated, 0) as current_month_escalated,
+                avg_processing_minutes,
+                COALESCE(sla_respected_count, 0) as sla_respected_count,
+                COALESCE(sla_missed_count, 0) as sla_missed_count,
+                sla_respect_percentage,
+                approval_rate,
+                rejection_rate,
+                escalation_rate,
+                last_action_at
+            FROM v_agent_performance_summary
+            WHERE user_id = $1
+        """, user_id)
+
+    if row:
+        stats = PersonalStatsItem(
+            agent_profile_id=row['agent_profile_id'],
+            current_month_processed=row['current_month_processed'],
+            current_month_approved=row['current_month_approved'],
+            current_month_rejected=row['current_month_rejected'],
+            current_month_escalated=row['current_month_escalated'],
+            avg_processing_minutes=float(row['avg_processing_minutes']) if row['avg_processing_minutes'] else None,
+            sla_respected_count=row['sla_respected_count'],
+            sla_missed_count=row['sla_missed_count'],
+            sla_respect_percentage=float(row['sla_respect_percentage']) if row['sla_respect_percentage'] else None,
+            approval_rate=float(row['approval_rate']) if row['approval_rate'] else None,
+            rejection_rate=float(row['rejection_rate']) if row['rejection_rate'] else None,
+            escalation_rate=float(row['escalation_rate']) if row['escalation_rate'] else None,
+            last_action_at=row['last_action_at'].isoformat() if row['last_action_at'] else None
+        )
+    else:
+        stats = PersonalStatsItem()
+
+    return PersonalStatsWidgetResponse(stats=stats, period_label="Este mes")
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: TEAM WORKLOAD (Uses v_agents_workload_dashboard)
+# For supervisors only
+# ═══════════════════════════════════════════════════════════════
+
+class TeamMemberWorkload(BaseModel):
+    """Workload info for a team member"""
+    agent_profile_id: str
+    full_name: str
+    email: Optional[str] = None
+    current_assignments: int = 0
+    max_concurrent_assignments: int = 10
+    capacity_percentage: Optional[float] = None
+    load_level: str = "normal"  # low/normal/high/critical
+    workload_status: str = "available"
+    availability: str = "available"
+    current_month_processed: int = 0
+    sla_respect_percentage: Optional[float] = None
+
+
+class TeamWorkloadWidgetResponse(BaseModel):
+    """Response for team workload widget"""
+    members: List[TeamMemberWorkload]
+    total_agents: int = 0
+    available_agents: int = 0
+    overloaded_agents: int = 0
+    avg_capacity: Optional[float] = None
+
+
+@router.get(
+    "/dashboard/widgets/team-workload",
+    response_model=TeamWorkloadWidgetResponse,
+    summary="Get team workload for supervisors"
+)
+@permission_required("agent.view_team")
+async def get_team_workload_widget(
+    entity_code: str = Query(..., description="Entity code to filter"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database)
+):
+    """
+    Get team workload from v_agents_workload_dashboard.
+    Only for supervisors - shows all agents in their entity.
+    """
+    async with db.acquire() as conn:
+        # Query the view for the entity
+        rows = await conn.fetch("""
+            SELECT
+                agent_profile_id::text,
+                full_name,
+                email,
+                COALESCE(current_assignments, 0) as current_assignments,
+                COALESCE(max_concurrent_assignments, 10) as max_concurrent_assignments,
+                capacity_percentage,
+                COALESCE(load_level, 'normal') as load_level,
+                COALESCE(workload_status, 'available') as workload_status,
+                COALESCE(availability, 'available') as availability,
+                COALESCE(current_month_processed, 0) as current_month_processed,
+                sla_respect_percentage
+            FROM v_agents_workload_dashboard
+            WHERE entity_code = $1
+              AND is_active = true
+            ORDER BY capacity_percentage DESC NULLS LAST
+        """, entity_code)
+
+    members = []
+    total_capacity = 0
+    capacity_count = 0
+
+    for row in rows:
+        member = TeamMemberWorkload(
+            agent_profile_id=row['agent_profile_id'],
+            full_name=row['full_name'] or 'N/A',
+            email=row['email'],
+            current_assignments=row['current_assignments'],
+            max_concurrent_assignments=row['max_concurrent_assignments'],
+            capacity_percentage=float(row['capacity_percentage']) if row['capacity_percentage'] else None,
+            load_level=row['load_level'],
+            workload_status=row['workload_status'],
+            availability=row['availability'],
+            current_month_processed=row['current_month_processed'],
+            sla_respect_percentage=float(row['sla_respect_percentage']) if row['sla_respect_percentage'] else None
+        )
+        members.append(member)
+
+        if row['capacity_percentage'] is not None:
+            total_capacity += float(row['capacity_percentage'])
+            capacity_count += 1
+
+    available_count = sum(1 for m in members if m.availability == 'available')
+    overloaded_count = sum(1 for m in members if m.load_level in ('high', 'critical'))
+    avg_cap = total_capacity / capacity_count if capacity_count > 0 else None
+
+    return TeamWorkloadWidgetResponse(
+        members=members,
+        total_agents=len(members),
+        available_agents=available_count,
+        overloaded_agents=overloaded_count,
+        avg_capacity=avg_cap
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: ESCALATIONS (Uses v_pending_escalations)
+# For supervisors only
+# ═══════════════════════════════════════════════════════════════
+
+class EscalationItem(BaseModel):
+    """Escalation item"""
+    payment_id: str
+    payment_reference: str
+    service_request_reference: Optional[str] = None
+    total_amount: Optional[float] = None
+    escalation_level: str  # low/medium/high/critical
+    escalation_reason: Optional[str] = None
+    escalated_at: str
+    hours_since_escalation: Optional[float] = None
+    original_agent_name: Optional[str] = None
+    escalated_to_name: Optional[str] = None
+
+
+class EscalationsWidgetResponse(BaseModel):
+    """Response for escalations widget"""
+    items: List[EscalationItem]
+    total_escalations: int = 0
+    critical_count: int = 0
+    high_count: int = 0
+
+
+@router.get(
+    "/dashboard/widgets/escalations",
+    response_model=EscalationsWidgetResponse,
+    summary="Get pending escalations for supervisors"
+)
+@permission_required("agent.view_escalations")
+async def get_escalations_widget(
+    entity_code: Optional[str] = Query(None, description="Entity code to filter"),
+    limit: int = Query(10, ge=1, le=50),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database)
+):
+    """
+    Get pending escalations from v_pending_escalations.
+    Only for supervisors.
+    """
+    async with db.acquire() as conn:
+        # Build query based on entity filter
+        if entity_code:
+            # Get entity's ministry_id
+            entity = await conn.fetchrow(
+                "SELECT ministry_id FROM entities WHERE code = $1",
+                entity_code
+            )
+            ministry_id = entity['ministry_id'] if entity else None
+
+            rows = await conn.fetch("""
+                SELECT
+                    payment_id::text,
+                    payment_reference,
+                    service_request_reference,
+                    total_amount,
+                    escalation_level::text,
+                    escalation_reason,
+                    escalated_at,
+                    hours_since_escalation,
+                    original_agent_name,
+                    escalated_to_name
+                FROM v_pending_escalations
+                WHERE ($1::int IS NULL OR ministry_id = $1)
+                ORDER BY priority_order ASC, escalated_at ASC
+                LIMIT $2
+            """, ministry_id, limit)
+        else:
+            rows = await conn.fetch("""
+                SELECT
+                    payment_id::text,
+                    payment_reference,
+                    service_request_reference,
+                    total_amount,
+                    escalation_level::text,
+                    escalation_reason,
+                    escalated_at,
+                    hours_since_escalation,
+                    original_agent_name,
+                    escalated_to_name
+                FROM v_pending_escalations
+                ORDER BY priority_order ASC, escalated_at ASC
+                LIMIT $1
+            """, limit)
+
+    items = []
+    critical_count = 0
+    high_count = 0
+
+    for row in rows:
+        level = row['escalation_level'] or 'medium'
+        if level == 'critical':
+            critical_count += 1
+        elif level == 'high':
+            high_count += 1
+
+        items.append(EscalationItem(
+            payment_id=row['payment_id'],
+            payment_reference=row['payment_reference'] or 'N/A',
+            service_request_reference=row['service_request_reference'],
+            total_amount=float(row['total_amount']) if row['total_amount'] else None,
+            escalation_level=level,
+            escalation_reason=row['escalation_reason'],
+            escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else '',
+            hours_since_escalation=float(row['hours_since_escalation']) if row['hours_since_escalation'] else None,
+            original_agent_name=row['original_agent_name'],
+            escalated_to_name=row['escalated_to_name']
+        ))
+
+    return EscalationsWidgetResponse(
+        items=items,
+        total_escalations=len(items),
+        critical_count=critical_count,
+        high_count=high_count
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: PENDING PAYMENTS (Uses v_pending_payment_validations)
+# For treasury agents
+# ═══════════════════════════════════════════════════════════════
+
+class PendingPaymentItem(BaseModel):
+    """Pending payment item"""
+    payment_id: str
+    payment_reference: str
+    request_reference: Optional[str] = None
+    workflow_code: Optional[str] = None
+    user_name: Optional[str] = None
+    payment_method: Optional[str] = None
+    total_amount: Optional[float] = None
+    currency: str = "XAF"
+    hours_waiting: Optional[float] = None
+    assigned_to_name: Optional[str] = None
+    created_at: str
+
+
+class PendingPaymentsWidgetResponse(BaseModel):
+    """Response for pending payments widget"""
+    items: List[PendingPaymentItem]
+    total_pending: int = 0
+    total_amount: Optional[float] = None
+    avg_waiting_hours: Optional[float] = None
+
+
+@router.get(
+    "/dashboard/widgets/pending-payments",
+    response_model=PendingPaymentsWidgetResponse,
+    summary="Get pending payment validations for treasury"
+)
+@permission_required("treasury.view_pending")
+async def get_pending_payments_widget(
+    workflow_code: Optional[str] = Query(None, description="Filter by workflow code"),
+    limit: int = Query(10, ge=1, le=50),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database)
+):
+    """
+    Get pending payment validations from v_pending_payment_validations.
+    For treasury agents.
+    """
+    async with db.acquire() as conn:
+        if workflow_code:
+            rows = await conn.fetch("""
+                SELECT
+                    payment_id::text,
+                    payment_reference,
+                    request_reference,
+                    workflow_code,
+                    user_name,
+                    payment_method::text,
+                    total_amount,
+                    currency,
+                    hours_waiting,
+                    assigned_to_name,
+                    created_at
+                FROM v_pending_payment_validations
+                WHERE workflow_code = $1
+                ORDER BY hours_waiting DESC NULLS LAST
+                LIMIT $2
+            """, workflow_code, limit)
+        else:
+            rows = await conn.fetch("""
+                SELECT
+                    payment_id::text,
+                    payment_reference,
+                    request_reference,
+                    workflow_code,
+                    user_name,
+                    payment_method::text,
+                    total_amount,
+                    currency,
+                    hours_waiting,
+                    assigned_to_name,
+                    created_at
+                FROM v_pending_payment_validations
+                ORDER BY hours_waiting DESC NULLS LAST
+                LIMIT $1
+            """, limit)
+
+    items = []
+    total_amt = 0
+    total_hours = 0
+    hours_count = 0
+
+    for row in rows:
+        if row['total_amount']:
+            total_amt += float(row['total_amount'])
+        if row['hours_waiting']:
+            total_hours += float(row['hours_waiting'])
+            hours_count += 1
+
+        items.append(PendingPaymentItem(
+            payment_id=row['payment_id'],
+            payment_reference=row['payment_reference'] or 'N/A',
+            request_reference=row['request_reference'],
+            workflow_code=row['workflow_code'],
+            user_name=row['user_name'],
+            payment_method=row['payment_method'],
+            total_amount=float(row['total_amount']) if row['total_amount'] else None,
+            currency=row['currency'] or 'XAF',
+            hours_waiting=float(row['hours_waiting']) if row['hours_waiting'] else None,
+            assigned_to_name=row['assigned_to_name'],
+            created_at=row['created_at'].isoformat() if row['created_at'] else ''
+        ))
+
+    return PendingPaymentsWidgetResponse(
+        items=items,
+        total_pending=len(items),
+        total_amount=total_amt if total_amt > 0 else None,
+        avg_waiting_hours=total_hours / hours_count if hours_count > 0 else None
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: ANOMALY SUMMARY (Uses v_anomaly_summary)
+# For treasury/supervisors
+# ═══════════════════════════════════════════════════════════════
+
+class AnomalySummaryItem(BaseModel):
+    """Anomaly summary by type"""
+    anomaly_type: str
+    severity: str
+    status: str
+    count: int
+    total_affected: Optional[float] = None
+
+
+class AnomalySummaryWidgetResponse(BaseModel):
+    """Response for anomaly summary widget"""
+    items: List[AnomalySummaryItem]
+    total_open: int = 0
+    total_critical: int = 0
+    total_amount_affected: Optional[float] = None
+
+
+@router.get(
+    "/dashboard/widgets/anomaly-summary",
+    response_model=AnomalySummaryWidgetResponse,
+    summary="Get payment anomaly summary"
+)
+@permission_required("treasury.view_anomalies")
+async def get_anomaly_summary_widget(
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database)
+):
+    """
+    Get anomaly summary from v_anomaly_summary.
+    For treasury agents and supervisors.
+    """
+    async with db.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                anomaly_type::text,
+                severity::text,
+                status::text,
+                count,
+                total_affected
+            FROM v_anomaly_summary
+            WHERE status::text IN ('open', 'investigating')
+            ORDER BY
+                CASE severity::text
+                    WHEN 'critical' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3
+                    WHEN 'low' THEN 4
+                    ELSE 5
+                END,
+                count DESC
+        """)
+
+    items = []
+    total_open = 0
+    total_critical = 0
+    total_amount = 0
+
+    for row in rows:
+        count = int(row['count'])
+        total_open += count
+
+        if row['severity'] == 'critical':
+            total_critical += count
+
+        if row['total_affected']:
+            total_amount += float(row['total_affected'])
+
+        items.append(AnomalySummaryItem(
+            anomaly_type=row['anomaly_type'],
+            severity=row['severity'],
+            status=row['status'],
+            count=count,
+            total_affected=float(row['total_affected']) if row['total_affected'] else None
+        ))
+
+    return AnomalySummaryWidgetResponse(
+        items=items,
+        total_open=total_open,
+        total_critical=total_critical,
+        total_amount_affected=total_amount if total_amount > 0 else None
+    )

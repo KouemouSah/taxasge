@@ -256,3 +256,224 @@ export function useAllWidgetData(
       alertsQuery.isError,
   };
 }
+
+// =============================================================================
+// PERSONAL STATS WIDGET (uses v_agent_performance_summary)
+// =============================================================================
+
+export interface PersonalStatsItem {
+  agent_profile_id: string | null;
+  current_month_processed: number;
+  current_month_approved: number;
+  current_month_rejected: number;
+  current_month_escalated: number;
+  avg_processing_minutes: number | null;
+  sla_respected_count: number;
+  sla_missed_count: number;
+  sla_respect_percentage: number | null;
+  approval_rate: number | null;
+  rejection_rate: number | null;
+  escalation_rate: number | null;
+  last_action_at: string | null;
+}
+
+export interface PersonalStatsWidgetData {
+  stats: PersonalStatsItem;
+  period_label: string;
+}
+
+export function usePersonalStats(options?: { enabled?: boolean }) {
+  const { enabled = true } = options || {};
+
+  return useQuery<PersonalStatsWidgetData>({
+    queryKey: [...widgetQueryKeys.all, 'personal-stats'],
+    queryFn: async () => {
+      const response = await apiClient.get<PersonalStatsWidgetData>(
+        '/agent/service-requests/dashboard/widgets/personal-stats'
+      );
+      return response.data;
+    },
+    enabled,
+    staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// =============================================================================
+// TEAM WORKLOAD WIDGET (uses v_agents_workload_dashboard)
+// For supervisors only
+// =============================================================================
+
+export interface TeamMemberWorkload {
+  agent_profile_id: string;
+  full_name: string;
+  email: string | null;
+  current_assignments: number;
+  max_concurrent_assignments: number;
+  capacity_percentage: number | null;
+  load_level: 'low' | 'normal' | 'high' | 'critical';
+  workload_status: string;
+  availability: string;
+  current_month_processed: number;
+  sla_respect_percentage: number | null;
+}
+
+export interface TeamWorkloadWidgetData {
+  members: TeamMemberWorkload[];
+  total_agents: number;
+  available_agents: number;
+  overloaded_agents: number;
+  avg_capacity: number | null;
+}
+
+export function useTeamWorkload(
+  entityCode: EntityCode,
+  options?: { enabled?: boolean }
+) {
+  const { enabled = true } = options || {};
+
+  return useQuery<TeamWorkloadWidgetData>({
+    queryKey: [...widgetQueryKeys.all, 'team-workload', entityCode],
+    queryFn: async () => {
+      const response = await apiClient.get<TeamWorkloadWidgetData>(
+        '/agent/service-requests/dashboard/widgets/team-workload',
+        { params: { entity_code: entityCode } }
+      );
+      return response.data;
+    },
+    enabled: enabled && !!entityCode,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
+// =============================================================================
+// ESCALATIONS WIDGET (uses v_pending_escalations)
+// For supervisors only
+// =============================================================================
+
+export interface EscalationItem {
+  payment_id: string;
+  payment_reference: string;
+  service_request_reference: string | null;
+  total_amount: number | null;
+  escalation_level: 'low' | 'medium' | 'high' | 'critical';
+  escalation_reason: string | null;
+  escalated_at: string;
+  hours_since_escalation: number | null;
+  original_agent_name: string | null;
+  escalated_to_name: string | null;
+}
+
+export interface EscalationsWidgetData {
+  items: EscalationItem[];
+  total_escalations: number;
+  critical_count: number;
+  high_count: number;
+}
+
+export function useEscalations(
+  entityCode: EntityCode,
+  options?: { limit?: number; enabled?: boolean }
+) {
+  const { limit = 10, enabled = true } = options || {};
+
+  return useQuery<EscalationsWidgetData>({
+    queryKey: [...widgetQueryKeys.all, 'escalations', entityCode],
+    queryFn: async () => {
+      const response = await apiClient.get<EscalationsWidgetData>(
+        '/agent/service-requests/dashboard/widgets/escalations',
+        { params: { entity_code: entityCode, limit } }
+      );
+      return response.data;
+    },
+    enabled: enabled && !!entityCode,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
+// =============================================================================
+// PENDING PAYMENTS WIDGET (uses v_pending_payment_validations)
+// For treasury agents
+// =============================================================================
+
+export interface PendingPaymentItem {
+  payment_id: string;
+  payment_reference: string;
+  request_reference: string | null;
+  workflow_code: string | null;
+  user_name: string | null;
+  payment_method: string | null;
+  total_amount: number | null;
+  currency: string;
+  hours_waiting: number | null;
+  assigned_to_name: string | null;
+  created_at: string;
+}
+
+export interface PendingPaymentsWidgetData {
+  items: PendingPaymentItem[];
+  total_pending: number;
+  total_amount: number | null;
+  avg_waiting_hours: number | null;
+}
+
+export function usePendingPayments(options?: {
+  workflowCode?: string;
+  limit?: number;
+  enabled?: boolean;
+}) {
+  const { workflowCode, limit = 10, enabled = true } = options || {};
+
+  return useQuery<PendingPaymentsWidgetData>({
+    queryKey: [...widgetQueryKeys.all, 'pending-payments', workflowCode],
+    queryFn: async () => {
+      const response = await apiClient.get<PendingPaymentsWidgetData>(
+        '/agent/service-requests/dashboard/widgets/pending-payments',
+        { params: { workflow_code: workflowCode, limit } }
+      );
+      return response.data;
+    },
+    enabled,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
+// =============================================================================
+// ANOMALY SUMMARY WIDGET (uses v_anomaly_summary)
+// For treasury/supervisors
+// =============================================================================
+
+export interface AnomalySummaryItem {
+  anomaly_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: string;
+  count: number;
+  total_affected: number | null;
+}
+
+export interface AnomalySummaryWidgetData {
+  items: AnomalySummaryItem[];
+  total_open: number;
+  total_critical: number;
+  total_amount_affected: number | null;
+}
+
+export function useAnomalySummary(options?: { enabled?: boolean }) {
+  const { enabled = true } = options || {};
+
+  return useQuery<AnomalySummaryWidgetData>({
+    queryKey: [...widgetQueryKeys.all, 'anomaly-summary'],
+    queryFn: async () => {
+      const response = await apiClient.get<AnomalySummaryWidgetData>(
+        '/agent/service-requests/dashboard/widgets/anomaly-summary'
+      );
+      return response.data;
+    },
+    enabled,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+  });
+}

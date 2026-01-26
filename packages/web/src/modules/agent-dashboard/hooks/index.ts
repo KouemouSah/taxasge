@@ -32,6 +32,12 @@ export {
   useSystemAlerts,
   useAllWidgetData,
   widgetQueryKeys,
+  // New widget hooks
+  usePersonalStats,
+  useTeamWorkload,
+  useEscalations,
+  usePendingPayments,
+  useAnomalySummary,
 } from './useWidgetData';
 export type {
   UrgentRequestItem,
@@ -43,4 +49,15 @@ export type {
   AlertItem,
   AlertsWidgetData,
   AllWidgetData,
+  // New widget types
+  PersonalStatsItem,
+  PersonalStatsWidgetData,
+  TeamMemberWorkload,
+  TeamWorkloadWidgetData,
+  EscalationItem,
+  EscalationsWidgetData,
+  PendingPaymentItem,
+  PendingPaymentsWidgetData,
+  AnomalySummaryItem,
+  AnomalySummaryWidgetData,
 } from './useWidgetData';

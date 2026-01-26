@@ -10,6 +10,11 @@ export { UrgentRequestsWidget } from './UrgentRequestsWidget';
 export { TodayAppointmentsWidget } from './TodayAppointmentsWidget';
 export { WorkflowDistributionWidget } from './WorkflowDistributionWidget';
 export { AlertsWidget } from './AlertsWidget';
+export { PersonalStatsWidget } from './PersonalStatsWidget';
+export { TeamWorkloadWidget } from './TeamWorkloadWidget';
+export { EscalationsWidget } from './EscalationsWidget';
+export { PendingPaymentsWidget } from './PendingPaymentsWidget';
+export { AnomalySummaryWidget } from './AnomalySummaryWidget';
 
 // Widget registry
 export {
