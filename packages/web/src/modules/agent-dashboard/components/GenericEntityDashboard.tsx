@@ -33,7 +33,7 @@ import { DynamicDashboard } from './DynamicDashboard';
 import { renderWidget, DEFAULT_ENTITY_WIDGETS } from './widgets';
 import type { EntityCode, MenuItem } from '../types';
 import { isMenuGroup } from '../types';
-import type { WidgetConfig, DashboardConfig } from '../types/menu-config';
+import type { DashboardConfig } from '../types/menu-config';
 
 // =============================================================================
 // PROPS
