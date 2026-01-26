@@ -111,6 +111,87 @@ export interface VerificationResponse {
   checklistTotal: number;
 }
 
+// =============================================================================
+// PREVIEW TYPES FOR SPLIT VIEW
+// =============================================================================
+
+export interface RequestPreviewExtractedData {
+  apellidos?: string | null;
+  nombres?: string | null;
+  fechaNacimiento?: string | null;
+  sexo?: string | null;
+  lugarNacimiento?: string | null;
+  naturalDe?: string | null;
+  numeroDip?: string | null;
+  domicilio?: string | null;
+  nacionalidad?: string | null;
+  estadoCivil?: string | null;
+  profesion?: string | null;
+  // Renovation
+  numeroPasaporteAntiguo?: string | null;
+  fechaExpedicionAntiguo?: string | null;
+  fechaExpiracionAntiguo?: string | null;
+  // Minor
+  certNombre?: string | null;
+  certPrimerApellido?: string | null;
+  certSegundoApellido?: string | null;
+  certFechaNacimiento?: string | null;
+  certLugarNacimiento?: string | null;
+  // Representatives
+  rep1Nombre?: string | null;
+  rep1DocumentoNumero?: string | null;
+  nombrePadre?: string | null;
+  nombreMadre?: string | null;
+}
+
+export interface RequestPreviewDocument {
+  id: string;
+  code: string;
+  name: string;
+  fileUrl?: string | null;
+  validationStatus: string;
+}
+
+export interface RequestPreviewAppointment {
+  date: string;
+  time: string;
+  locationName: string;
+  locationAddress?: string | null;
+}
+
+export interface ServiceRequestPreview {
+  id: string;
+  reference: string;
+  workflowCode: string;
+  workflowLabel: string;
+  solicitudType: string;
+  motivo?: string | null;
+  isMinor: boolean;
+  status: string;
+  priority: Priority;
+  // SLA
+  slaDeadline?: string | null;
+  slaRemainingHours?: number | null;
+  slaStatus: 'on_track' | 'warning' | 'breached';
+  // Extracted data
+  extractedData: RequestPreviewExtractedData;
+  // Documents
+  documents: RequestPreviewDocument[];
+  documentsCount: number;
+  // Contact
+  contactName: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  // Appointment
+  appointment?: RequestPreviewAppointment | null;
+  // Metadata
+  createdAt: string;
+  submittedAt?: string | null;
+  // Navigation
+  listIndex?: number | null;
+  listTotal?: number | null;
+}
+
 // Backend response (snake_case)
 interface BackendServiceRequestListItem {
   id: string;
@@ -137,6 +218,74 @@ interface BackendServiceRequestListResponse {
   total_pages: number;
 }
 
+// Backend preview types (snake_case)
+interface BackendRequestPreviewExtractedData {
+  apellidos?: string | null;
+  nombres?: string | null;
+  fecha_nacimiento?: string | null;
+  sexo?: string | null;
+  lugar_nacimiento?: string | null;
+  natural_de?: string | null;
+  numero_dip?: string | null;
+  domicilio?: string | null;
+  nacionalidad?: string | null;
+  estado_civil?: string | null;
+  profesion?: string | null;
+  numero_pasaporte_antiguo?: string | null;
+  fecha_expedicion_antiguo?: string | null;
+  fecha_expiracion_antiguo?: string | null;
+  cert_nombre?: string | null;
+  cert_primer_apellido?: string | null;
+  cert_segundo_apellido?: string | null;
+  cert_fecha_nacimiento?: string | null;
+  cert_lugar_nacimiento?: string | null;
+  rep1_nombre?: string | null;
+  rep1_documento_numero?: string | null;
+  nombre_padre?: string | null;
+  nombre_madre?: string | null;
+}
+
+interface BackendRequestPreviewDocument {
+  id: string;
+  code: string;
+  name: string;
+  file_url?: string | null;
+  validation_status: string;
+}
+
+interface BackendRequestPreviewAppointment {
+  date: string;
+  time: string;
+  location_name: string;
+  location_address?: string | null;
+}
+
+interface BackendServiceRequestPreview {
+  id: string;
+  reference: string;
+  workflow_code: string;
+  workflow_label: string;
+  solicitud_type: string;
+  motivo?: string | null;
+  is_minor: boolean;
+  status: string;
+  priority: string;
+  sla_deadline?: string | null;
+  sla_remaining_hours?: number | null;
+  sla_status: string;
+  extracted_data: BackendRequestPreviewExtractedData;
+  documents: BackendRequestPreviewDocument[];
+  documents_count: number;
+  contact_name: string;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  appointment?: BackendRequestPreviewAppointment | null;
+  created_at: string;
+  submitted_at?: string | null;
+  list_index?: number | null;
+  list_total?: number | null;
+}
+
 // =============================================================================
 // TRANSFORM FUNCTIONS
 // =============================================================================
@@ -157,6 +306,69 @@ function transformServiceRequestItem(item: BackendServiceRequestListItem): Servi
     assignedTo: item.assigned_to,
     slaDeadline: item.sla_deadline,
     slaStatus: (item.sla_status || 'on_track') as SlaStatus,
+  };
+}
+
+function transformServiceRequestPreview(data: BackendServiceRequestPreview): ServiceRequestPreview {
+  return {
+    id: data.id,
+    reference: data.reference,
+    workflowCode: data.workflow_code,
+    workflowLabel: data.workflow_label,
+    solicitudType: data.solicitud_type,
+    motivo: data.motivo,
+    isMinor: data.is_minor,
+    status: data.status,
+    priority: (data.priority || 'NORMAL') as Priority,
+    slaDeadline: data.sla_deadline,
+    slaRemainingHours: data.sla_remaining_hours,
+    slaStatus: (data.sla_status || 'on_track') as 'on_track' | 'warning' | 'breached',
+    extractedData: {
+      apellidos: data.extracted_data?.apellidos,
+      nombres: data.extracted_data?.nombres,
+      fechaNacimiento: data.extracted_data?.fecha_nacimiento,
+      sexo: data.extracted_data?.sexo,
+      lugarNacimiento: data.extracted_data?.lugar_nacimiento,
+      naturalDe: data.extracted_data?.natural_de,
+      numeroDip: data.extracted_data?.numero_dip,
+      domicilio: data.extracted_data?.domicilio,
+      nacionalidad: data.extracted_data?.nacionalidad,
+      estadoCivil: data.extracted_data?.estado_civil,
+      profesion: data.extracted_data?.profesion,
+      numeroPasaporteAntiguo: data.extracted_data?.numero_pasaporte_antiguo,
+      fechaExpedicionAntiguo: data.extracted_data?.fecha_expedicion_antiguo,
+      fechaExpiracionAntiguo: data.extracted_data?.fecha_expiracion_antiguo,
+      certNombre: data.extracted_data?.cert_nombre,
+      certPrimerApellido: data.extracted_data?.cert_primer_apellido,
+      certSegundoApellido: data.extracted_data?.cert_segundo_apellido,
+      certFechaNacimiento: data.extracted_data?.cert_fecha_nacimiento,
+      certLugarNacimiento: data.extracted_data?.cert_lugar_nacimiento,
+      rep1Nombre: data.extracted_data?.rep1_nombre,
+      rep1DocumentoNumero: data.extracted_data?.rep1_documento_numero,
+      nombrePadre: data.extracted_data?.nombre_padre,
+      nombreMadre: data.extracted_data?.nombre_madre,
+    },
+    documents: data.documents.map(doc => ({
+      id: doc.id,
+      code: doc.code,
+      name: doc.name,
+      fileUrl: doc.file_url,
+      validationStatus: doc.validation_status,
+    })),
+    documentsCount: data.documents_count,
+    contactName: data.contact_name,
+    contactEmail: data.contact_email,
+    contactPhone: data.contact_phone,
+    appointment: data.appointment ? {
+      date: data.appointment.date,
+      time: data.appointment.time,
+      locationName: data.appointment.location_name,
+      locationAddress: data.appointment.location_address,
+    } : null,
+    createdAt: data.created_at,
+    submittedAt: data.submitted_at,
+    listIndex: data.list_index,
+    listTotal: data.list_total,
   };
 }
 
@@ -241,6 +453,25 @@ class AgentRequestsApiClient {
       pageSize: response.page_size,
       totalPages: response.total_pages,
     };
+  }
+
+  /**
+   * Get service request preview for split view
+   */
+  async getPreview(
+    entityCode: string,
+    requestId: string,
+    options?: { listIndex?: number; listTotal?: number }
+  ): Promise<ServiceRequestPreview> {
+    const params = new URLSearchParams();
+    if (options?.listIndex !== undefined) params.append('list_index', options.listIndex.toString());
+    if (options?.listTotal !== undefined) params.append('list_total', options.listTotal.toString());
+
+    const queryString = params.toString();
+    const endpoint = `/entity/${entityCode}/requests/${requestId}/preview${queryString ? `?${queryString}` : ''}`;
+
+    const response = await this.request<BackendServiceRequestPreview>(endpoint);
+    return transformServiceRequestPreview(response);
   }
 
   /**

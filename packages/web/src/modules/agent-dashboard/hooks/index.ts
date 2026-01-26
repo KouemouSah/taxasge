@@ -24,6 +24,9 @@ export type { AgentPersonalStats, UseAgentPersonalStatsReturn } from './useAgent
 export { useEntityServiceRequests } from './useEntityServiceRequests';
 export type { UseEntityServiceRequestsOptions, ActionType, ServiceRequestListItem, ServiceRequestFilters } from './useEntityServiceRequests';
 
+export { useRequestPreview } from './useRequestPreview';
+export type { ServiceRequestPreview } from './useRequestPreview';
+
 // Widget data hooks
 export {
   useUrgentRequests,

@@ -1202,6 +1202,93 @@ class ServiceRequestListResponse(BaseModel):
     total_pages: int
 
 
+# ═══════════════════════════════════════════════════════════════
+# PREVIEW MODELS FOR SPLIT VIEW
+# ═══════════════════════════════════════════════════════════════
+
+class RequestPreviewExtractedData(BaseModel):
+    """Extracted data for preview - dynamically populated from form_data"""
+    # Common fields (adults)
+    apellidos: Optional[str] = None
+    nombres: Optional[str] = None
+    fecha_nacimiento: Optional[str] = None
+    sexo: Optional[str] = None
+    lugar_nacimiento: Optional[str] = None
+    natural_de: Optional[str] = None
+    numero_dip: Optional[str] = None
+    domicilio: Optional[str] = None
+    nacionalidad: Optional[str] = None
+    estado_civil: Optional[str] = None
+    profesion: Optional[str] = None
+    # Renovation fields
+    numero_pasaporte_antiguo: Optional[str] = None
+    fecha_expedicion_antiguo: Optional[str] = None
+    fecha_expiracion_antiguo: Optional[str] = None
+    # Minor fields (from certificado_nacimiento)
+    cert_nombre: Optional[str] = None
+    cert_primer_apellido: Optional[str] = None
+    cert_segundo_apellido: Optional[str] = None
+    cert_fecha_nacimiento: Optional[str] = None
+    cert_lugar_nacimiento: Optional[str] = None
+    # Parent representative (for minors)
+    rep1_nombre: Optional[str] = None
+    rep1_documento_numero: Optional[str] = None
+    nombre_padre: Optional[str] = None
+    nombre_madre: Optional[str] = None
+
+
+class RequestPreviewDocument(BaseModel):
+    """Document info for preview (thumbnail)"""
+    id: str
+    code: str
+    name: str
+    file_url: Optional[str] = None
+    validation_status: str = "pending"
+
+
+class RequestPreviewAppointment(BaseModel):
+    """Appointment info for preview"""
+    date: str
+    time: str
+    location_name: str
+    location_address: Optional[str] = None
+
+
+class ServiceRequestPreview(BaseModel):
+    """Complete preview for split view"""
+    # Request data
+    id: str
+    reference: str
+    workflow_code: str
+    workflow_label: str
+    solicitud_type: str
+    motivo: Optional[str] = None
+    is_minor: bool = False
+    status: str
+    priority: str
+    # SLA
+    sla_deadline: Optional[str] = None
+    sla_remaining_hours: Optional[float] = None
+    sla_status: str = "on_track"  # on_track, warning, breached
+    # Extracted data
+    extracted_data: RequestPreviewExtractedData
+    # Documents (max 4 for preview)
+    documents: List[RequestPreviewDocument] = []
+    documents_count: int = 0
+    # Contact
+    contact_name: str
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    # Appointment
+    appointment: Optional[RequestPreviewAppointment] = None
+    # Metadata
+    created_at: str
+    submitted_at: Optional[str] = None
+    # Navigation
+    list_index: Optional[int] = None
+    list_total: Optional[int] = None
+
+
 class ActionStatusMapping:
     """Map dashboard actions to database statuses"""
     PENDING = ["SUBMITTED", "UNDER_REVIEW"]
@@ -1423,6 +1510,215 @@ async def get_entity_service_requests(
         page=page,
         page_size=page_size,
         total_pages=total_pages
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# REQUEST PREVIEW FOR SPLIT VIEW
+# ═══════════════════════════════════════════════════════════════
+
+def _extract_preview_data(form_data: dict) -> RequestPreviewExtractedData:
+    """Extract preview data from form_data based on request type."""
+    if not form_data:
+        return RequestPreviewExtractedData()
+
+    is_minor = form_data.get('is_minor', False)
+    solicitud_type = form_data.get('solicitud_type', '').upper()
+
+    data = RequestPreviewExtractedData(
+        # Common fields
+        apellidos=form_data.get('apellidos'),
+        nombres=form_data.get('nombres'),
+        fecha_nacimiento=form_data.get('fecha_nacimiento'),
+        sexo=form_data.get('sexo'),
+        lugar_nacimiento=form_data.get('lugar_nacimiento'),
+        natural_de=form_data.get('natural_de'),
+        numero_dip=form_data.get('numero_dip'),
+        domicilio=form_data.get('domicilio'),
+        nacionalidad=form_data.get('nacionalidad'),
+        estado_civil=form_data.get('estado_civil'),
+        profesion=form_data.get('profesion'),
+        # Parents
+        nombre_padre=form_data.get('nombre_padre'),
+        nombre_madre=form_data.get('nombre_madre'),
+    )
+
+    # Renovation fields
+    if solicitud_type == 'RENOVACION':
+        data.numero_pasaporte_antiguo = form_data.get('numero_pasaporte_antiguo')
+        data.fecha_expedicion_antiguo = form_data.get('fecha_expedicion_antiguo')
+        data.fecha_expiracion_antiguo = form_data.get('fecha_expiracion_antiguo')
+
+    # Minor fields
+    if is_minor:
+        data.cert_nombre = form_data.get('cert_nombre')
+        data.cert_primer_apellido = form_data.get('cert_primer_apellido')
+        data.cert_segundo_apellido = form_data.get('cert_segundo_apellido')
+        data.cert_fecha_nacimiento = form_data.get('cert_fecha_nacimiento')
+        data.cert_lugar_nacimiento = form_data.get('cert_lugar_nacimiento')
+        data.rep1_nombre = form_data.get('rep1_nombre')
+        data.rep1_documento_numero = form_data.get('rep1_documento_numero')
+
+    return data
+
+
+@router.get(
+    "/entity/{entity_code}/requests/{request_id}/preview",
+    response_model=ServiceRequestPreview,
+    summary="Get request preview for split view",
+    description="""
+    Get lightweight preview of a service request for the split view.
+    Returns essential data for quick review without loading full detail page.
+
+    Includes:
+    - Request metadata (reference, status, priority, SLA)
+    - Extracted data from form_data (dynamically based on type)
+    - Documents (max 4 thumbnails)
+    - Contact info (email, phone)
+    - Appointment info if scheduled
+    """
+)
+async def get_request_preview(
+    entity_code: str = Path(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    request_id: UUID = Path(..., description="Service request ID"),
+    list_index: Optional[int] = Query(None, description="Current index in list for navigation"),
+    list_total: Optional[int] = Query(None, description="Total items in list for navigation"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.view"))
+):
+    """Get service request preview for split view."""
+    # Main query with all necessary joins
+    query = """
+        SELECT
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            w.name_es as workflow_label,
+            sr.solicitud_type,
+            sr.form_data,
+            sr.status,
+            sr.priority,
+            sr.created_at,
+            sr.submitted_at,
+            w.sla_hours,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.phone_number,
+            ar.appointment_date,
+            ar.appointment_time,
+            el.location_name,
+            el.location_address
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        LEFT JOIN workflows w ON w.code = sr.workflow_code
+        LEFT JOIN appointment_reservations ar ON ar.service_request_id = sr.id
+            AND ar.status NOT IN ('cancelled', 'expired')
+        LEFT JOIN entity_locations el ON el.id = ar.entity_location_id
+        WHERE sr.id = $1
+    """
+
+    row = await db.fetchrow(query, request_id)
+
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request {request_id} not found"
+        )
+
+    # Parse form_data
+    form_data = row['form_data'] or {}
+    if isinstance(form_data, str):
+        form_data = json.loads(form_data)
+
+    # Calculate SLA
+    sla_deadline = None
+    sla_remaining_hours = None
+    sla_status = "on_track"
+
+    if row['submitted_at'] and row['sla_hours']:
+        from datetime import timedelta
+        sla_deadline = row['submitted_at'] + timedelta(hours=row['sla_hours'])
+        now = datetime.utcnow()
+        deadline_naive = sla_deadline.replace(tzinfo=None) if sla_deadline.tzinfo else sla_deadline
+
+        remaining = (deadline_naive - now).total_seconds() / 3600
+        sla_remaining_hours = round(remaining, 1)
+
+        if remaining < 0:
+            sla_status = "breached"
+        elif remaining < 6:
+            sla_status = "warning"
+
+    # Get documents (max 4 for preview)
+    docs_query = """
+        SELECT id, document_type, file_name, file_url, validation_status
+        FROM uploaded_files
+        WHERE related_to_type = 'service_request'
+          AND related_to_id = $1
+        ORDER BY uploaded_at DESC
+        LIMIT 4
+    """
+    doc_rows = await db.fetch(docs_query, request_id)
+
+    documents = [
+        RequestPreviewDocument(
+            id=str(d['id']),
+            code=d['document_type'] or 'unknown',
+            name=d['file_name'] or 'Document',
+            file_url=d['file_url'],
+            validation_status=d['validation_status'] or 'pending'
+        )
+        for d in doc_rows
+    ]
+
+    # Get total document count
+    docs_count = await db.fetchval("""
+        SELECT COUNT(*) FROM uploaded_files
+        WHERE related_to_type = 'service_request' AND related_to_id = $1
+    """, request_id)
+
+    # Build appointment info
+    appointment = None
+    if row['appointment_date'] and row['appointment_time']:
+        appointment = RequestPreviewAppointment(
+            date=row['appointment_date'].isoformat(),
+            time=row['appointment_time'].strftime('%H:%M'),
+            location_name=row['location_name'] or 'Location TBD',
+            location_address=row['location_address']
+        )
+
+    # Build contact name
+    contact_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
+
+    # Extract preview data from form_data
+    extracted_data = _extract_preview_data(form_data)
+
+    return ServiceRequestPreview(
+        id=str(row['id']),
+        reference=row['reference'],
+        workflow_code=row['workflow_code'],
+        workflow_label=row['workflow_label'] or row['workflow_code'],
+        solicitud_type=row['solicitud_type'] or '',
+        motivo=form_data.get('motivo'),
+        is_minor=form_data.get('is_minor', False) or False,
+        status=row['status'],
+        priority=row['priority'] or 'NORMAL',
+        sla_deadline=sla_deadline.isoformat() if sla_deadline else None,
+        sla_remaining_hours=sla_remaining_hours,
+        sla_status=sla_status,
+        extracted_data=extracted_data,
+        documents=documents,
+        documents_count=docs_count or 0,
+        contact_name=contact_name,
+        contact_email=row['email'],
+        contact_phone=row['phone_number'],
+        appointment=appointment,
+        created_at=row['created_at'].isoformat(),
+        submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
+        list_index=list_index,
+        list_total=list_total
     )
 
 
