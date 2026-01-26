@@ -1,6 +1,6 @@
 /**
  * Appointments Page
- * Main page with 3 tabs: Aujourd'hui, Planifier, Calendrier
+ * Main page with 3 tabs: Today, Schedule, Calendar
  *
  * @module agent-dashboard/components/appointments
  * @date 2026-01-26
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar, CalendarPlus, CalendarDays, MapPin } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { TodayTab } from './TodayTab';
 import { ScheduleTab } from './ScheduleTab';
 import { CalendarTab } from './CalendarTab';
@@ -37,6 +38,7 @@ interface AppointmentsPageProps {
 // =============================================================================
 
 export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
+  const t = useTranslations('agent.pages.appointments');
   const [activeTab, setActiveTab] = useState<string>('today');
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
 
@@ -62,10 +64,10 @@ export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Gestion des Rendez-vous
+            {t('pageTitle')}
           </h1>
           <p className="text-muted-foreground">
-            Gérez les rendez-vous pour {entityCode.replace('_', ' ')}
+            {t('pageSubtitle', { entity: entityCode.replace('_', ' ') })}
           </p>
         </div>
 
@@ -77,7 +79,7 @@ export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
           >
             <SelectTrigger className="w-[220px]">
               <MapPin className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Sélectionner localisation" />
+              <SelectValue placeholder={t('selectLocation')} />
             </SelectTrigger>
             <SelectContent>
               {locations.map((loc) => (
@@ -95,18 +97,18 @@ export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
         <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
           <TabsTrigger value="today" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Aujourd&apos;hui</span>
-            <span className="sm:hidden">Aujourd&apos;hui</span>
+            <span className="hidden sm:inline">{t('tabs.today')}</span>
+            <span className="sm:hidden">{t('tabs.today')}</span>
           </TabsTrigger>
           <TabsTrigger value="schedule" className="flex items-center gap-2">
             <CalendarPlus className="h-4 w-4" />
-            <span className="hidden sm:inline">Planifier</span>
-            <span className="sm:hidden">Planifier</span>
+            <span className="hidden sm:inline">{t('tabs.schedule')}</span>
+            <span className="sm:hidden">{t('tabs.schedule')}</span>
           </TabsTrigger>
           <TabsTrigger value="calendar" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
-            <span className="hidden sm:inline">Calendrier</span>
-            <span className="sm:hidden">Calendrier</span>
+            <span className="hidden sm:inline">{t('tabs.calendar')}</span>
+            <span className="sm:hidden">{t('tabs.calendar')}</span>
           </TabsTrigger>
         </TabsList>
 

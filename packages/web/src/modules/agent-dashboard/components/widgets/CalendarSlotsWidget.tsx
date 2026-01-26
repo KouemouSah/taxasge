@@ -11,7 +11,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -79,6 +79,7 @@ export function CalendarSlotsWidget({
   className,
 }: CalendarSlotsWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('agent.widgets.calendar');
   const [weekOffset, setWeekOffset] = useState(0);
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
 
@@ -94,7 +95,7 @@ export function CalendarSlotsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
-            Horarios Disponibles
+            {t('title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -115,12 +116,12 @@ export function CalendarSlotsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
-            Horarios Disponibles
+            {t('title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar horarios
+            {t('loadError')}
           </p>
         </CardContent>
       </Card>
@@ -143,7 +144,9 @@ export function CalendarSlotsWidget({
     const start = new Date(week_start);
     const end = new Date(week_end);
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-    return `${start.toLocaleDateString('es-ES', options)} - ${end.toLocaleDateString('es-ES', options)}`;
+    const localeMap: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-US' };
+    const dateLocale = localeMap[locale] || 'es-ES';
+    return `${start.toLocaleDateString(dateLocale, options)} - ${end.toLocaleDateString(dateLocale, options)}`;
   };
 
   const entityPath = entityCode.toLowerCase().replace('_', '-');
@@ -154,10 +157,10 @@ export function CalendarSlotsWidget({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
-            Horarios Disponibles
+            {t('title')}
             {total_available > 0 && (
               <Badge className="bg-emerald-100 text-emerald-800 ml-2">
-                {total_available} dispo
+                {total_available} {t('available')}
               </Badge>
             )}
           </CardTitle>
@@ -170,7 +173,7 @@ export function CalendarSlotsWidget({
             >
               <SelectTrigger className="w-[180px] h-8 text-xs">
                 <MapPin className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Localisation" />
+                <SelectValue placeholder={t('location')} />
               </SelectTrigger>
               <SelectContent>
                 {locations_available.map((loc) => (
@@ -212,7 +215,7 @@ export function CalendarSlotsWidget({
                 className="text-xs h-7 ml-1"
                 onClick={() => setWeekOffset(0)}
               >
-                Hoy
+                {t('today')}
               </Button>
             )}
           </div>
@@ -220,7 +223,7 @@ export function CalendarSlotsWidget({
           {/* Capacity indicator */}
           {total_capacity > 0 && (
             <span className="text-xs text-muted-foreground">
-              {total_available}/{total_capacity} créneaux
+              {total_available}/{total_capacity} {t('slots')}
             </span>
           )}
         </div>
@@ -237,7 +240,7 @@ export function CalendarSlotsWidget({
         {/* Link to full page */}
         <Link href={`/${locale}/dashboard/agent/${entityPath}/appointments`}>
           <Button variant="ghost" size="sm" className="w-full">
-            Planifier un rendez-vous
+            {t('scheduleAppointment')}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </Link>

@@ -5292,6 +5292,17 @@
       "contactAdmin": "Veuillez contacter l'administrateur du système.",
       "loadingFailed": "Erreur lors du chargement du tableau de bord. Veuillez rafraîchir la page."
     },
+    "widgets": {
+      "calendar": {
+        "title": "Horaires Disponibles",
+        "available": "dispo",
+        "location": "Emplacement",
+        "today": "Aujourd'hui",
+        "slots": "créneaux",
+        "loadError": "Erreur lors du chargement des horaires",
+        "scheduleAppointment": "Planifier un rendez-vous"
+      }
+    },
     "accessDenied": {
       "title": "Accès Refusé",
       "description": "Vous n'avez pas la permission d'accéder à ce tableau de bord.",
@@ -5408,7 +5419,36 @@
       "appointments": {
         "title": "{workflow} - Rendez-vous",
         "description": "Rendez-vous programmés de {workflow}",
-        "placeholder": "Les rendez-vous programmés apparaîtront ici quand ils seront disponibles."
+        "placeholder": "Les rendez-vous programmés apparaîtront ici quand ils seront disponibles.",
+        "pageTitle": "Gestion des Rendez-vous",
+        "pageSubtitle": "Gérez les rendez-vous pour {entity}",
+        "tabs": {
+          "today": "Aujourd'hui",
+          "schedule": "Planifier",
+          "calendar": "Calendrier"
+        },
+        "selectLocation": "Sélectionner l'emplacement",
+        "todayTab": {
+          "title": "Rendez-vous du jour",
+          "noAppointments": "Aucun rendez-vous aujourd'hui",
+          "loadingError": "Erreur lors du chargement des rendez-vous",
+          "completed": "Terminés",
+          "pending": "En attente",
+          "cancelled": "Annulés"
+        },
+        "scheduleTab": {
+          "title": "Planifier un rendez-vous",
+          "selectSlot": "Sélectionnez un créneau",
+          "available": "Disponible",
+          "full": "Complet"
+        },
+        "calendarTab": {
+          "title": "Vue calendrier",
+          "previousWeek": "Semaine précédente",
+          "nextWeek": "Semaine suivante",
+          "currentWeek": "Cette semaine"
+        },
+        "scheduleAppointment": "Planifier un rendez-vous"
       },
       "history": {
         "title": "{workflow} - Historique",

@@ -5199,6 +5199,17 @@
       "contactAdmin": "Por favor contacte al administrador del sistema.",
       "loadingFailed": "Error al cargar el panel. Por favor refresque la página."
     },
+    "widgets": {
+      "calendar": {
+        "title": "Horarios Disponibles",
+        "available": "dispo",
+        "location": "Ubicación",
+        "today": "Hoy",
+        "slots": "horarios",
+        "loadError": "Error al cargar horarios",
+        "scheduleAppointment": "Programar una cita"
+      }
+    },
     "accessDenied": {
       "title": "Acceso Denegado",
       "description": "No tiene permiso para acceder a este panel de entidad.",
@@ -5316,7 +5327,36 @@
       "appointments": {
         "title": "{workflow} - Citas",
         "description": "Citas programadas de {workflow}",
-        "placeholder": "Las citas programadas aparecerán aquí cuando estén disponibles."
+        "placeholder": "Las citas programadas aparecerán aquí cuando estén disponibles.",
+        "pageTitle": "Gestión de Citas",
+        "pageSubtitle": "Gestione las citas para {entity}",
+        "tabs": {
+          "today": "Hoy",
+          "schedule": "Programar",
+          "calendar": "Calendario"
+        },
+        "selectLocation": "Seleccionar ubicación",
+        "todayTab": {
+          "title": "Citas de Hoy",
+          "noAppointments": "No hay citas para hoy",
+          "loadingError": "Error al cargar las citas",
+          "completed": "Completadas",
+          "pending": "Pendientes",
+          "cancelled": "Canceladas"
+        },
+        "scheduleTab": {
+          "title": "Programar Cita",
+          "selectSlot": "Seleccione un horario",
+          "available": "Disponible",
+          "full": "Completo"
+        },
+        "calendarTab": {
+          "title": "Vista de Calendario",
+          "previousWeek": "Semana anterior",
+          "nextWeek": "Semana siguiente",
+          "currentWeek": "Esta semana"
+        },
+        "scheduleAppointment": "Programar una cita"
       },
       "history": {
         "title": "{workflow} - Historial",

@@ -5090,6 +5090,17 @@
       "contactAdmin": "Please contact the system administrator.",
       "loadingFailed": "Failed to load dashboard. Please refresh the page."
     },
+    "widgets": {
+      "calendar": {
+        "title": "Available Slots",
+        "available": "avail",
+        "location": "Location",
+        "today": "Today",
+        "slots": "slots",
+        "loadError": "Error loading slots",
+        "scheduleAppointment": "Schedule an appointment"
+      }
+    },
     "accessDenied": {
       "title": "Access Denied",
       "description": "You do not have permission to access this entity dashboard.",
@@ -5206,7 +5217,36 @@
       "appointments": {
         "title": "{workflow} - Appointments",
         "description": "Scheduled appointments for {workflow}",
-        "placeholder": "Scheduled appointments will appear here when available."
+        "placeholder": "Scheduled appointments will appear here when available.",
+        "pageTitle": "Appointment Management",
+        "pageSubtitle": "Manage appointments for {entity}",
+        "tabs": {
+          "today": "Today",
+          "schedule": "Schedule",
+          "calendar": "Calendar"
+        },
+        "selectLocation": "Select location",
+        "todayTab": {
+          "title": "Today's Appointments",
+          "noAppointments": "No appointments today",
+          "loadingError": "Error loading appointments",
+          "completed": "Completed",
+          "pending": "Pending",
+          "cancelled": "Cancelled"
+        },
+        "scheduleTab": {
+          "title": "Schedule Appointment",
+          "selectSlot": "Select a time slot",
+          "available": "Available",
+          "full": "Full"
+        },
+        "calendarTab": {
+          "title": "Calendar View",
+          "previousWeek": "Previous week",
+          "nextWeek": "Next week",
+          "currentWeek": "This week"
+        },
+        "scheduleAppointment": "Schedule an appointment"
       },
       "history": {
         "title": "{workflow} - History",
