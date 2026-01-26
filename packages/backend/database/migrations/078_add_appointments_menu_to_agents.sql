@@ -461,16 +461,6 @@ UPDATE roles SET
                     {"id": "manual", "titleKey": "supervisor.nav.manualAssignment", "href": "/dashboard/admin/assignments/new/manual", "icon": "UserPlus", "permission": "assignment.reassign"},
                     {"id": "rules", "titleKey": "supervisor.nav.rules", "href": "/dashboard/supervisor/assignments/rules", "icon": "ListChecks", "permission": "rules.view"}
                 ]
-            },
-            {
-                "id": "reports",
-                "titleKey": "supervisor.nav.reports",
-                "icon": "BarChart3",
-                "items": [
-                    {"id": "team-stats", "titleKey": "supervisor.nav.teamStats", "href": "/dashboard/supervisor/reports/stats", "icon": "TrendingUp", "permission": "reports.view"},
-                    {"id": "performance", "titleKey": "supervisor.nav.performanceReports", "href": "/dashboard/supervisor/reports/performance", "icon": "Activity", "permission": "reports.view_performance"},
-                    {"id": "export", "titleKey": "supervisor.nav.exportReports", "href": "/dashboard/supervisor/reports/export", "icon": "FileSpreadsheet", "permission": "reports.export_excel"}
-                ]
             }
         ]
     }'::jsonb,
