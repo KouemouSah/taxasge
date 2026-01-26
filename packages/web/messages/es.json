@@ -5304,6 +5304,26 @@
         "fechaExpiracion": "Fecha Expiración",
         "representante": "Representante Legal",
         "docRepresentante": "Doc. Representante"
+      },
+      "appointment": {
+        "noAppointment": "Sin cita programada",
+        "noAppointmentDesc": "El ciudadano no ha reservado una cita. Puede programar una para él.",
+        "schedule": "Programar cita",
+        "loadingSlots": "Cargando horarios...",
+        "location": "Ubicación",
+        "selectLocation": "Seleccione una ubicación...",
+        "date": "Fecha",
+        "selectDate": "Seleccione una fecha...",
+        "available": "disponibles",
+        "time": "Hora",
+        "selectTime": "Seleccione una hora...",
+        "cancel": "Cancelar",
+        "book": "Reservar",
+        "booking": "Reservando...",
+        "loadError": "Error al cargar horarios disponibles",
+        "selectAll": "Seleccione ubicación, fecha y hora",
+        "bookSuccess": "Cita programada correctamente",
+        "bookError": "Error al programar la cita"
       }
     },
     "accessDenied": {

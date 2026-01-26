@@ -5397,6 +5397,26 @@
         "fechaExpiracion": "Date d'Expiration",
         "representante": "Représentant Légal",
         "docRepresentante": "Doc. Représentant"
+      },
+      "appointment": {
+        "noAppointment": "Aucun rendez-vous programmé",
+        "noAppointmentDesc": "Le citoyen n'a pas réservé de rendez-vous. Vous pouvez en programmer un pour lui.",
+        "schedule": "Programmer un RDV",
+        "loadingSlots": "Chargement des créneaux...",
+        "location": "Lieu",
+        "selectLocation": "Sélectionnez un lieu...",
+        "date": "Date",
+        "selectDate": "Sélectionnez une date...",
+        "available": "disponibles",
+        "time": "Heure",
+        "selectTime": "Sélectionnez une heure...",
+        "cancel": "Annuler",
+        "book": "Réserver",
+        "booking": "Réservation...",
+        "loadError": "Erreur lors du chargement des créneaux disponibles",
+        "selectAll": "Sélectionnez lieu, date et heure",
+        "bookSuccess": "Rendez-vous programmé avec succès",
+        "bookError": "Erreur lors de la programmation du RDV"
       }
     },
     "accessDenied": {

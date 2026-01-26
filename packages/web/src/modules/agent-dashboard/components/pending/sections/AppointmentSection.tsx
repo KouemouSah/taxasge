@@ -1,5 +1,6 @@
 /**
- * AppointmentSection - Appointment information display
+ * AppointmentSection - Appointment display and scheduling
+ * Shows existing appointment or allows agent to schedule one
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
@@ -7,28 +8,57 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Calendar, Clock, MapPin, AlertCircle, Loader2, CalendarPlus } from 'lucide-react';
+import { toast } from 'sonner';
+import { agentAppointmentsApi } from '../../../services/appointments-api';
 import type { RequestPreviewAppointment } from '../../../services/agent-requests-api';
+import type { SlotsCalendarResponse, SlotTimeDetail } from '../../../services/appointments-api';
 
 // =============================================================================
 // PROPS
 // =============================================================================
 
 interface AppointmentSectionProps {
-  appointment: RequestPreviewAppointment;
+  appointment?: RequestPreviewAppointment | null;
+  requestId: string;
+  entityCode: string;
+  onAppointmentCreated?: () => void;
 }
 
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
-export function AppointmentSection({ appointment }: AppointmentSectionProps) {
-  const t = useTranslations('agent.pending.preview');
+export function AppointmentSection({
+  appointment,
+  requestId,
+  entityCode,
+  onAppointmentCreated,
+}: AppointmentSectionProps) {
+  const t = useTranslations('agent.pending');
 
-  // Format date
+  // State for scheduling
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [slotsData, setSlotsData] = useState<SlotsCalendarResponse | null>(null);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // Format date for display
   const formatDate = (dateStr: string): string => {
     try {
       const date = new Date(dateStr);
@@ -43,41 +73,286 @@ export function AppointmentSection({ appointment }: AppointmentSectionProps) {
     }
   };
 
+  // Load slots when scheduling mode is activated or location changes
+  useEffect(() => {
+    if (isScheduling) {
+      loadSlots();
+    }
+  }, [isScheduling, selectedLocationId, weekOffset]);
+
+  const loadSlots = async () => {
+    setIsLoading(true);
+    try {
+      const data = await agentAppointmentsApi.getSlotsDetailed(
+        entityCode,
+        weekOffset,
+        selectedLocationId || undefined
+      );
+      setSlotsData(data);
+
+      // Auto-select first location if not selected
+      if (!selectedLocationId && data.locationsAvailable.length > 0) {
+        setSelectedLocationId(data.locationsAvailable[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading slots:', error);
+      toast.error(t('appointment.loadError'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get available times for selected date
+  const getAvailableTimes = (): SlotTimeDetail[] => {
+    if (!slotsData || !selectedDate) return [];
+    const day = slotsData.days.find(d => d.date === selectedDate);
+    return day?.slots.filter(s => s.isAvailable) || [];
+  };
+
+  // Handle booking
+  const handleBook = async () => {
+    if (!selectedLocationId || !selectedDate || !selectedTime) {
+      toast.error(t('appointment.selectAll'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await agentAppointmentsApi.bookForCitizen({
+        requestId,
+        entityLocationId: selectedLocationId,
+        appointmentDate: selectedDate,
+        appointmentTime: selectedTime,
+      });
+
+      if (result.success) {
+        toast.success(t('appointment.bookSuccess'));
+        setIsScheduling(false);
+        onAppointmentCreated?.();
+      } else {
+        toast.error(result.error || t('appointment.bookError'));
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      toast.error(t('appointment.bookError'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Reset form
+  const handleCancel = () => {
+    setIsScheduling(false);
+    setSelectedDate('');
+    setSelectedTime('');
+    setWeekOffset(0);
+  };
+
+  // If appointment exists, show info
+  if (appointment) {
+    return (
+      <Card className="border-green-200 bg-green-50/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2 text-green-700">
+            <Calendar className="h-5 w-5" />
+            {t('preview.appointment')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium capitalize">
+              {formatDate(appointment.date)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium">{appointment.time}</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">{appointment.locationName}</p>
+              {appointment.locationAddress && (
+                <p className="text-xs text-muted-foreground">
+                  {appointment.locationAddress}
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // No appointment - show scheduling form or prompt
   return (
-    <Card className="border-green-200 bg-green-50/50">
+    <Card className="border-orange-200 bg-orange-50/50">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2 text-green-700">
-          <Calendar className="h-5 w-5" />
-          {t('appointment')}
+        <CardTitle className="text-base flex items-center gap-2 text-orange-700">
+          <AlertCircle className="h-5 w-5" />
+          {t('appointment.noAppointment')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {/* Date */}
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-green-600" />
-          <span className="text-sm font-medium capitalize">
-            {formatDate(appointment.date)}
-          </span>
-        </div>
+      <CardContent>
+        {!isScheduling ? (
+          // Prompt to schedule
+          <div className="text-center py-2">
+            <p className="text-sm text-muted-foreground mb-3">
+              {t('appointment.noAppointmentDesc')}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsScheduling(true)}
+              className="border-orange-300 text-orange-700 hover:bg-orange-100"
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              {t('appointment.schedule')}
+            </Button>
+          </div>
+        ) : (
+          // Scheduling form
+          <div className="space-y-3">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+                <span className="ml-2 text-sm text-muted-foreground">
+                  {t('appointment.loadingSlots')}
+                </span>
+              </div>
+            ) : (
+              <>
+                {/* Location Select */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {t('appointment.location')}
+                  </label>
+                  <Select
+                    value={selectedLocationId}
+                    onValueChange={(v) => {
+                      setSelectedLocationId(v);
+                      setSelectedDate('');
+                      setSelectedTime('');
+                    }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={t('appointment.selectLocation')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {slotsData?.locationsAvailable.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.name} ({loc.city})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        {/* Time */}
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-green-600" />
-          <span className="text-sm font-medium">{appointment.time}</span>
-        </div>
+                {/* Date Select */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {t('appointment.date')}
+                    </label>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setWeekOffset(w => Math.max(0, w - 1))}
+                        disabled={weekOffset === 0}
+                      >
+                        ←
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setWeekOffset(w => w + 1)}
+                      >
+                        →
+                      </Button>
+                    </div>
+                  </div>
+                  <Select
+                    value={selectedDate}
+                    onValueChange={(v) => {
+                      setSelectedDate(v);
+                      setSelectedTime('');
+                    }}
+                    disabled={!selectedLocationId}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={t('appointment.selectDate')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {slotsData?.days
+                        .filter(d => !d.isPast && !d.isBlocked && d.totalAvailable > 0)
+                        .map((day) => (
+                          <SelectItem key={day.date} value={day.date}>
+                            {day.dayName} {day.dayNumber} ({day.totalAvailable} {t('appointment.available')})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        {/* Location */}
-        <div className="flex items-start gap-2">
-          <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium">{appointment.locationName}</p>
-            {appointment.locationAddress && (
-              <p className="text-xs text-muted-foreground">
-                {appointment.locationAddress}
-              </p>
+                {/* Time Select */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {t('appointment.time')}
+                  </label>
+                  <Select
+                    value={selectedTime}
+                    onValueChange={setSelectedTime}
+                    disabled={!selectedDate}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={t('appointment.selectTime')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableTimes().map((slot) => (
+                        <SelectItem key={slot.time} value={slot.time}>
+                          {slot.time} ({slot.available} {t('appointment.available')})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={isSubmitting}
+                    className="flex-1"
+                  >
+                    {t('appointment.cancel')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleBook}
+                    disabled={isSubmitting || !selectedLocationId || !selectedDate || !selectedTime}
+                    className="flex-1 bg-orange-600 hover:bg-orange-700"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CalendarPlus className="h-4 w-4 mr-2" />
+                    )}
+                    {isSubmitting ? t('appointment.booking') : t('appointment.book')}
+                  </Button>
+                </div>
+              </>
             )}
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

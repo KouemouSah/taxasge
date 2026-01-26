@@ -165,6 +165,11 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     }
   }, [selectedId, selectedIndex, requests, queryClient]);
 
+  // Handle appointment created - refresh preview
+  const handleAppointmentCreated = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
+  }, [queryClient]);
+
   // Keyboard navigation and shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -342,6 +347,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
               canNavigateNext={selectedIndex < requests.length - 1}
               showRejectDialog={showRejectDialog}
               onRejectDialogChange={setShowRejectDialog}
+              onAppointmentCreated={handleAppointmentCreated}
             />
           ) : (
             <div className="flex items-center justify-center h-full">

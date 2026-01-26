@@ -73,6 +73,8 @@ interface RequestPreviewProps {
   // External control of reject dialog (for keyboard shortcuts)
   showRejectDialog?: boolean;
   onRejectDialogChange?: (open: boolean) => void;
+  // Callback when appointment is created
+  onAppointmentCreated?: () => void;
 }
 
 // =============================================================================
@@ -89,6 +91,7 @@ export function RequestPreview({
   canNavigateNext,
   showRejectDialog: externalShowRejectDialog,
   onRejectDialogChange,
+  onAppointmentCreated,
 }: RequestPreviewProps) {
   const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
@@ -226,9 +229,12 @@ export function RequestPreview({
         />
 
         {/* Section 5: Appointment */}
-        {data.appointment && (
-          <AppointmentSection appointment={data.appointment} />
-        )}
+        <AppointmentSection
+          appointment={data.appointment}
+          requestId={data.id}
+          entityCode={entityCode}
+          onAppointmentCreated={onAppointmentCreated}
+        />
       </div>
 
       {/* Actions Footer */}

@@ -5195,6 +5195,26 @@
         "fechaExpiracion": "Expiry Date",
         "representante": "Legal Representative",
         "docRepresentante": "Rep. Document"
+      },
+      "appointment": {
+        "noAppointment": "No appointment scheduled",
+        "noAppointmentDesc": "The citizen has not booked an appointment. You can schedule one for them.",
+        "schedule": "Schedule Appointment",
+        "loadingSlots": "Loading available slots...",
+        "location": "Location",
+        "selectLocation": "Select a location...",
+        "date": "Date",
+        "selectDate": "Select a date...",
+        "available": "available",
+        "time": "Time",
+        "selectTime": "Select a time...",
+        "cancel": "Cancel",
+        "book": "Book",
+        "booking": "Booking...",
+        "loadError": "Error loading available slots",
+        "selectAll": "Select location, date and time",
+        "bookSuccess": "Appointment scheduled successfully",
+        "bookError": "Error scheduling appointment"
       }
     },
     "accessDenied": {
