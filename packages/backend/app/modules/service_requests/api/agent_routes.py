@@ -3859,7 +3859,7 @@ async def book_for_citizen(
     booking: AgentBookingRequest,
     current_user: dict = Depends(get_current_user),
     db=Depends(get_database),
-    _=Depends(permission_required("service_request.update"))
+    _=Depends(permission_required("service_request.schedule_appointment"))
 ):
     """
     Agent books an appointment on behalf of a citizen.
@@ -3947,6 +3947,8 @@ async def book_for_citizen(
         )
 
     # Create reservation
+    # Note: 'notes' field from booking is ignored - no column exists in table
+    # TODO: Add migration to create 'notes' and 'created_by' columns if needed
     reservation_id = await conn.fetchval("""
         INSERT INTO appointment_reservations (
             service_request_id,
@@ -3954,14 +3956,11 @@ async def book_for_citizen(
             appointment_date,
             appointment_time,
             status,
-            notes,
-            created_by,
             created_at
-        ) VALUES ($1, $2, $3, $4, 'confirmed', $5, $6, NOW())
+        ) VALUES ($1, $2, $3, $4, 'confirmed', NOW())
         RETURNING id::text
     """, booking.request_id, booking.entity_location_id,
-        booking.appointment_date, booking.appointment_time,
-        booking.notes, str(current_user.id))
+        booking.appointment_date, booking.appointment_time)
 
     # Update service request with appointment info
     await conn.execute("""
