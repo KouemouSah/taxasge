@@ -1948,8 +1948,7 @@ async def get_workflow_distribution_widget(
             -- Get all workflows for the entity with their names
             SELECT
                 w.code as workflow_code,
-                w.name_es as workflow_name,
-                w.solicitud_type
+                w.name_es as workflow_name
             FROM workflows w
             WHERE w.code = ANY($1)
         ),
@@ -1966,7 +1965,7 @@ async def get_workflow_distribution_widget(
         )
         SELECT
             wl.workflow_code,
-            COALESCE(rc.solicitud_type, wl.solicitud_type, 'expedicion') as solicitud_type,
+            COALESCE(rc.solicitud_type, 'expedicion') as solicitud_type,
             wl.workflow_name,
             COALESCE(rc.count, 0) as count
         FROM workflow_list wl
@@ -2236,26 +2235,26 @@ async def get_personal_stats_widget(
     """
     user_id = UUID(current_user["sub"])
 
-    async with db.acquire() as conn:
-        # Query the view directly
-        row = await conn.fetchrow("""
-            SELECT
-                agent_profile_id::text,
-                COALESCE(current_month_processed, 0) as current_month_processed,
-                COALESCE(current_month_approved, 0) as current_month_approved,
-                COALESCE(current_month_rejected, 0) as current_month_rejected,
-                COALESCE(current_month_escalated, 0) as current_month_escalated,
-                avg_processing_minutes,
-                COALESCE(sla_respected_count, 0) as sla_respected_count,
-                COALESCE(sla_missed_count, 0) as sla_missed_count,
-                sla_respect_percentage,
-                approval_rate,
-                rejection_rate,
-                escalation_rate,
-                last_action_at
-            FROM v_agent_performance_summary
-            WHERE user_id = $1
-        """, user_id)
+    conn = db
+    # Query the view directly
+    row = await conn.fetchrow("""
+        SELECT
+            agent_profile_id::text,
+            COALESCE(current_month_processed, 0) as current_month_processed,
+            COALESCE(current_month_approved, 0) as current_month_approved,
+            COALESCE(current_month_rejected, 0) as current_month_rejected,
+            COALESCE(current_month_escalated, 0) as current_month_escalated,
+            avg_processing_minutes,
+            COALESCE(sla_respected_count, 0) as sla_respected_count,
+            COALESCE(sla_missed_count, 0) as sla_missed_count,
+            sla_respect_percentage,
+            approval_rate,
+            rejection_rate,
+            escalation_rate,
+            last_action_at
+        FROM v_agent_performance_summary
+        WHERE user_id = $1
+    """, user_id)
 
     if row:
         stats = PersonalStatsItem(
@@ -2323,26 +2322,26 @@ async def get_team_workload_widget(
     Get team workload from v_agents_workload_dashboard.
     Only for supervisors - shows all agents in their entity.
     """
-    async with db.acquire() as conn:
-        # Query the view for the entity
-        rows = await conn.fetch("""
-            SELECT
-                agent_profile_id::text,
-                full_name,
-                email,
-                COALESCE(current_assignments, 0) as current_assignments,
-                COALESCE(max_concurrent_assignments, 10) as max_concurrent_assignments,
-                capacity_percentage,
-                COALESCE(load_level, 'normal') as load_level,
-                COALESCE(workload_status, 'available') as workload_status,
-                COALESCE(availability, 'available') as availability,
-                COALESCE(current_month_processed, 0) as current_month_processed,
-                sla_respect_percentage
-            FROM v_agents_workload_dashboard
-            WHERE entity_code = $1
-              AND is_active = true
-            ORDER BY capacity_percentage DESC NULLS LAST
-        """, entity_code)
+    conn = db
+    # Query the view for the entity
+    rows = await conn.fetch("""
+        SELECT
+            agent_profile_id::text,
+            full_name,
+            email,
+            COALESCE(current_assignments, 0) as current_assignments,
+            COALESCE(max_concurrent_assignments, 10) as max_concurrent_assignments,
+            capacity_percentage,
+            COALESCE(load_level, 'normal') as load_level,
+            COALESCE(workload_status, 'available') as workload_status,
+            COALESCE(availability, 'available') as availability,
+            COALESCE(current_month_processed, 0) as current_month_processed,
+            sla_respect_percentage
+        FROM v_agents_workload_dashboard
+        WHERE entity_code = $1
+          AND is_active = true
+        ORDER BY capacity_percentage DESC NULLS LAST
+    """, entity_code)
 
     members = []
     total_capacity = 0
@@ -2424,50 +2423,50 @@ async def get_escalations_widget(
     Get pending escalations from v_pending_escalations.
     Only for supervisors.
     """
-    async with db.acquire() as conn:
-        # Build query based on entity filter
-        if entity_code:
-            # Get entity's ministry_id
-            entity = await conn.fetchrow(
-                "SELECT ministry_id FROM entities WHERE code = $1",
-                entity_code
-            )
-            ministry_id = entity['ministry_id'] if entity else None
+    conn = db
+    # Build query based on entity filter
+    if entity_code:
+        # Get entity's ministry_id
+        entity = await conn.fetchrow(
+            "SELECT ministry_id FROM entities WHERE code = $1",
+            entity_code
+        )
+        ministry_id = entity['ministry_id'] if entity else None
 
-            rows = await conn.fetch("""
-                SELECT
-                    payment_id::text,
-                    payment_reference,
-                    service_request_reference,
-                    total_amount,
-                    escalation_level::text,
-                    escalation_reason,
-                    escalated_at,
-                    hours_since_escalation,
-                    original_agent_name,
-                    escalated_to_name
-                FROM v_pending_escalations
-                WHERE ($1::int IS NULL OR ministry_id = $1)
-                ORDER BY priority_order ASC, escalated_at ASC
-                LIMIT $2
-            """, ministry_id, limit)
-        else:
-            rows = await conn.fetch("""
-                SELECT
-                    payment_id::text,
-                    payment_reference,
-                    service_request_reference,
-                    total_amount,
-                    escalation_level::text,
-                    escalation_reason,
-                    escalated_at,
-                    hours_since_escalation,
-                    original_agent_name,
-                    escalated_to_name
-                FROM v_pending_escalations
-                ORDER BY priority_order ASC, escalated_at ASC
-                LIMIT $1
-            """, limit)
+        rows = await conn.fetch("""
+            SELECT
+                payment_id::text,
+                payment_reference,
+                service_request_reference,
+                total_amount,
+                escalation_level::text,
+                escalation_reason,
+                escalated_at,
+                hours_since_escalation,
+                original_agent_name,
+                escalated_to_name
+            FROM v_pending_escalations
+            WHERE ($1::int IS NULL OR ministry_id = $1)
+            ORDER BY priority_order ASC, escalated_at ASC
+            LIMIT $2
+        """, ministry_id, limit)
+    else:
+        rows = await conn.fetch("""
+            SELECT
+                payment_id::text,
+                payment_reference,
+                service_request_reference,
+                total_amount,
+                escalation_level::text,
+                escalation_reason,
+                escalated_at,
+                hours_since_escalation,
+                original_agent_name,
+                escalated_to_name
+            FROM v_pending_escalations
+            ORDER BY priority_order ASC, escalated_at ASC
+            LIMIT $1
+        """, limit)
 
     items = []
     critical_count = 0
@@ -2545,44 +2544,44 @@ async def get_pending_payments_widget(
     Get pending payment validations from v_pending_payment_validations.
     For treasury agents.
     """
-    async with db.acquire() as conn:
-        if workflow_code:
-            rows = await conn.fetch("""
-                SELECT
-                    payment_id::text,
-                    payment_reference,
-                    request_reference,
-                    workflow_code,
-                    user_name,
-                    payment_method::text,
-                    total_amount,
-                    currency,
-                    hours_waiting,
-                    assigned_to_name,
-                    created_at
-                FROM v_pending_payment_validations
-                WHERE workflow_code = $1
-                ORDER BY hours_waiting DESC NULLS LAST
-                LIMIT $2
-            """, workflow_code, limit)
-        else:
-            rows = await conn.fetch("""
-                SELECT
-                    payment_id::text,
-                    payment_reference,
-                    request_reference,
-                    workflow_code,
-                    user_name,
-                    payment_method::text,
-                    total_amount,
-                    currency,
-                    hours_waiting,
-                    assigned_to_name,
-                    created_at
-                FROM v_pending_payment_validations
-                ORDER BY hours_waiting DESC NULLS LAST
-                LIMIT $1
-            """, limit)
+    conn = db
+    if workflow_code:
+        rows = await conn.fetch("""
+            SELECT
+                payment_id::text,
+                payment_reference,
+                request_reference,
+                workflow_code,
+                user_name,
+                payment_method::text,
+                total_amount,
+                currency,
+                hours_waiting,
+                assigned_to_name,
+                created_at
+            FROM v_pending_payment_validations
+            WHERE workflow_code = $1
+            ORDER BY hours_waiting DESC NULLS LAST
+            LIMIT $2
+        """, workflow_code, limit)
+    else:
+        rows = await conn.fetch("""
+            SELECT
+                payment_id::text,
+                payment_reference,
+                request_reference,
+                workflow_code,
+                user_name,
+                payment_method::text,
+                total_amount,
+                currency,
+                hours_waiting,
+                assigned_to_name,
+                created_at
+            FROM v_pending_payment_validations
+            ORDER BY hours_waiting DESC NULLS LAST
+            LIMIT $1
+        """, limit)
 
     items = []
     total_amt = 0
@@ -2654,26 +2653,26 @@ async def get_anomaly_summary_widget(
     Get anomaly summary from v_anomaly_summary.
     For treasury agents and supervisors.
     """
-    async with db.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT
-                anomaly_type::text,
-                severity::text,
-                status::text,
-                count,
-                total_affected
-            FROM v_anomaly_summary
-            WHERE status::text IN ('open', 'investigating')
-            ORDER BY
-                CASE severity::text
-                    WHEN 'critical' THEN 1
-                    WHEN 'high' THEN 2
-                    WHEN 'medium' THEN 3
-                    WHEN 'low' THEN 4
-                    ELSE 5
-                END,
-                count DESC
-        """)
+    conn = db
+    rows = await conn.fetch("""
+        SELECT
+            anomaly_type::text,
+            severity::text,
+            status::text,
+            count,
+            total_affected
+        FROM v_anomaly_summary
+        WHERE status::text IN ('open', 'investigating')
+        ORDER BY
+            CASE severity::text
+                WHEN 'critical' THEN 1
+                WHEN 'high' THEN 2
+                WHEN 'medium' THEN 3
+                WHEN 'low' THEN 4
+                ELSE 5
+            END,
+            count DESC
+    """)
 
     items = []
     total_open = 0
@@ -2766,98 +2765,98 @@ async def get_calendar_week_widget(
     # Spanish day names
     day_names_es = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 
-    async with db.acquire() as conn:
-        # Get entity's workflow codes
-        entity = await conn.fetchrow("""
-            SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
-        """, entity_code)
+    conn = db
+    # Get entity's workflow codes
+    entity = await conn.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
 
-        if not entity:
-            raise HTTPException(status_code=404, detail="Entity not found")
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entity not found")
 
-        workflow_codes = entity['workflow_codes'] or []
+    workflow_codes = entity['workflow_codes'] or []
 
-        # Calculate week boundaries
-        today = date.today()
-        # Start of current week (Monday)
-        week_start = today - timedelta(days=today.weekday())
-        # Apply offset
-        week_start = week_start + timedelta(weeks=week_offset)
-        week_end = week_start + timedelta(days=6)
+    # Calculate week boundaries
+    today = date.today()
+    # Start of current week (Monday)
+    week_start = today - timedelta(days=today.weekday())
+    # Apply offset
+    week_start = week_start + timedelta(weeks=week_offset)
+    week_end = week_start + timedelta(days=6)
 
-        # Query appointments for the week
-        rows = await conn.fetch("""
-            SELECT
-                sr.id::text,
-                sr.reference,
-                sr.workflow_code,
-                sr.solicitud_type,
-                COALESCE(u.full_name, u.email, 'N/A') as citizen_name,
-                sr.cita_date,
-                sr.cita_time,
-                sr.cita_location,
-                sr.status,
-                sr.appointment_status
-            FROM service_requests sr
-            JOIN users u ON u.id = sr.user_id
-            WHERE sr.workflow_code = ANY($1)
-              AND sr.cita_date BETWEEN $2 AND $3
-              AND sr.status NOT IN ('cancelled', 'rejected', 'expired')
-            ORDER BY sr.cita_date, sr.cita_time ASC NULLS LAST
-        """, workflow_codes, week_start, week_end)
+    # Query appointments for the week
+    rows = await conn.fetch("""
+        SELECT
+            sr.id::text,
+            sr.reference,
+            sr.workflow_code,
+            sr.solicitud_type,
+            COALESCE(u.full_name, u.email, 'N/A') as citizen_name,
+            sr.cita_date,
+            sr.cita_time,
+            sr.cita_location,
+            sr.status,
+            sr.appointment_status
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE sr.workflow_code = ANY($1)
+          AND sr.cita_date BETWEEN $2 AND $3
+          AND sr.status NOT IN ('cancelled', 'rejected', 'expired')
+        ORDER BY sr.cita_date, sr.cita_time ASC NULLS LAST
+    """, workflow_codes, week_start, week_end)
 
-        # Group by date
-        appointments_by_date: Dict[date, List[WeekAppointmentItem]] = {}
-        for row in rows:
-            cita_date = row['cita_date']
-            if cita_date not in appointments_by_date:
-                appointments_by_date[cita_date] = []
+    # Group by date
+    appointments_by_date: Dict[date, List[WeekAppointmentItem]] = {}
+    for row in rows:
+        cita_date = row['cita_date']
+        if cita_date not in appointments_by_date:
+            appointments_by_date[cita_date] = []
 
-            appointments_by_date[cita_date].append(WeekAppointmentItem(
-                id=row['id'],
-                reference=row['reference'],
-                workflow_code=row['workflow_code'],
-                solicitud_type=row['solicitud_type'],
-                citizen_name=row['citizen_name'],
-                cita_date=row['cita_date'].isoformat(),
-                cita_time=row['cita_time'].strftime('%H:%M') if row['cita_time'] else None,
-                cita_location=row['cita_location'],
-                status=row['status'],
-                appointment_status=row['appointment_status']
-            ))
+        appointments_by_date[cita_date].append(WeekAppointmentItem(
+            id=row['id'],
+            reference=row['reference'],
+            workflow_code=row['workflow_code'],
+            solicitud_type=row['solicitud_type'],
+            citizen_name=row['citizen_name'],
+            cita_date=row['cita_date'].isoformat(),
+            cita_time=row['cita_time'].strftime('%H:%M') if row['cita_time'] else None,
+            cita_location=row['cita_location'],
+            status=row['status'],
+            appointment_status=row['appointment_status']
+        ))
 
-        # Build 7-day structure
-        days = []
-        total_week = 0
-        today_count = 0
+    # Build 7-day structure
+    days = []
+    total_week = 0
+    today_count = 0
 
-        for i in range(7):
-            day_date = week_start + timedelta(days=i)
-            day_appointments = appointments_by_date.get(day_date, [])
-            count = len(day_appointments)
-            total_week += count
+    for i in range(7):
+        day_date = week_start + timedelta(days=i)
+        day_appointments = appointments_by_date.get(day_date, [])
+        count = len(day_appointments)
+        total_week += count
 
-            is_today = day_date == today
-            if is_today:
-                today_count = count
+        is_today = day_date == today
+        if is_today:
+            today_count = count
 
-            days.append(DayAppointments(
-                date=day_date.isoformat(),
-                day_name=day_names_es[day_date.weekday()],
-                day_number=day_date.day,
-                is_today=is_today,
-                is_past=day_date < today,
-                appointments=day_appointments,
-                count=count
-            ))
+        days.append(DayAppointments(
+            date=day_date.isoformat(),
+            day_name=day_names_es[day_date.weekday()],
+            day_number=day_date.day,
+            is_today=is_today,
+            is_past=day_date < today,
+            appointments=day_appointments,
+            count=count
+        ))
 
-        return CalendarWeekWidgetResponse(
-            week_start=week_start.isoformat(),
-            week_end=week_end.isoformat(),
-            days=days,
-            total_week=total_week,
-            today_count=today_count
-        )
+    return CalendarWeekWidgetResponse(
+        week_start=week_start.isoformat(),
+        week_end=week_end.isoformat(),
+        days=days,
+        total_week=total_week,
+        today_count=today_count
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -2926,187 +2925,187 @@ async def get_calendar_slots_widget(
     DEFAULT_MAX_PER_SLOT = 2
     day_names_es = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 
-    async with db.acquire() as conn:
-        # Get entity locations
-        locations_rows = await conn.fetch("""
-            SELECT id::text, location_name, city
-            FROM entity_locations
-            WHERE entity_code = $1 AND is_active = true
-            ORDER BY is_main_office DESC, location_name
-        """, entity_code)
+    conn = db
+    # Get entity locations
+    locations_rows = await conn.fetch("""
+        SELECT id::text, location_name, city
+        FROM entity_locations
+        WHERE entity_code = $1 AND is_active = true
+        ORDER BY is_main_office DESC, location_name
+    """, entity_code)
 
-        locations_available = [
-            LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
-            for row in locations_rows
-        ]
+    locations_available = [
+        LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
+        for row in locations_rows
+    ]
 
-        # Determine which location to use
-        selected_location = None
-        entity_location_id = None
-        if location_id:
-            for loc in locations_available:
-                if loc.id == str(location_id):
-                    selected_location = loc
-                    entity_location_id = location_id
-                    break
-        elif locations_available:
-            selected_location = locations_available[0]
-            entity_location_id = UUID(selected_location.id)
+    # Determine which location to use
+    selected_location = None
+    entity_location_id = None
+    if location_id:
+        for loc in locations_available:
+            if loc.id == str(location_id):
+                selected_location = loc
+                entity_location_id = location_id
+                break
+    elif locations_available:
+        selected_location = locations_available[0]
+        entity_location_id = UUID(selected_location.id)
 
-        # Calculate week boundaries
-        today = date.today()
-        week_start = today - timedelta(days=today.weekday())  # Monday
-        week_start = week_start + timedelta(weeks=week_offset)
-        week_end = week_start + timedelta(days=6)
+    # Calculate week boundaries
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())  # Monday
+    week_start = week_start + timedelta(weeks=week_offset)
+    week_end = week_start + timedelta(days=6)
 
-        # Get slot configs for all days of week
-        slot_configs = {}
-        config_rows = await conn.fetch("""
-            SELECT
-                day_of_week,
-                start_time,
-                end_time,
-                slot_duration_minutes,
-                max_appointments_per_slot
-            FROM appointment_slot_configs
-            WHERE entity_code = $1
-              AND is_active = true
-              AND (entity_location_id IS NULL OR entity_location_id = $2)
-            ORDER BY day_of_week
-        """, entity_code, entity_location_id)
+    # Get slot configs for all days of week
+    slot_configs = {}
+    config_rows = await conn.fetch("""
+        SELECT
+            day_of_week,
+            start_time,
+            end_time,
+            slot_duration_minutes,
+            max_appointments_per_slot
+        FROM appointment_slot_configs
+        WHERE entity_code = $1
+          AND is_active = true
+          AND (entity_location_id IS NULL OR entity_location_id = $2)
+        ORDER BY day_of_week
+    """, entity_code, entity_location_id)
 
-        for row in config_rows:
-            slot_configs[row['day_of_week']] = {
-                'start_time': row['start_time'],
-                'end_time': row['end_time'],
-                'duration': row['slot_duration_minutes'] or 30,
-                'max_per_slot': row['max_appointments_per_slot'] or DEFAULT_MAX_PER_SLOT
-            }
+    for row in config_rows:
+        slot_configs[row['day_of_week']] = {
+            'start_time': row['start_time'],
+            'end_time': row['end_time'],
+            'duration': row['slot_duration_minutes'] or 30,
+            'max_per_slot': row['max_appointments_per_slot'] or DEFAULT_MAX_PER_SLOT
+        }
 
-        # Get blocked dates
-        blocked_dates = set()
-        blocked_rows = await conn.fetch("""
-            SELECT blocked_date
-            FROM appointment_blocked_dates
-            WHERE (entity_code = $1 OR entity_code = 'ALL')
-              AND blocked_date BETWEEN $2 AND $3
-        """, entity_code, week_start, week_end)
-        for row in blocked_rows:
-            blocked_dates.add(row['blocked_date'])
+    # Get blocked dates
+    blocked_dates = set()
+    blocked_rows = await conn.fetch("""
+        SELECT blocked_date
+        FROM appointment_blocked_dates
+        WHERE (entity_code = $1 OR entity_code = 'ALL')
+          AND blocked_date BETWEEN $2 AND $3
+    """, entity_code, week_start, week_end)
+    for row in blocked_rows:
+        blocked_dates.add(row['blocked_date'])
 
-        # Get booked appointments count per day
-        bookings_query = """
-            SELECT
-                ar.appointment_date,
-                COUNT(*) as booked_count
-            FROM appointment_reservations ar
-            LEFT JOIN entity_locations el ON ar.entity_location_id = el.id
-            WHERE el.entity_code = $1
-              AND ar.appointment_date BETWEEN $2 AND $3
-              AND ar.status NOT IN ('cancelled', 'expired')
-        """
-        params = [entity_code, week_start, week_end]
+    # Get booked appointments count per day
+    bookings_query = """
+        SELECT
+            ar.appointment_date,
+            COUNT(*) as booked_count
+        FROM appointment_reservations ar
+        LEFT JOIN entity_locations el ON ar.entity_location_id = el.id
+        WHERE el.entity_code = $1
+          AND ar.appointment_date BETWEEN $2 AND $3
+          AND ar.status NOT IN ('cancelled', 'expired')
+    """
+    params = [entity_code, week_start, week_end]
 
-        if entity_location_id:
-            bookings_query += " AND ar.entity_location_id = $4"
-            params.append(entity_location_id)
+    if entity_location_id:
+        bookings_query += " AND ar.entity_location_id = $4"
+        params.append(entity_location_id)
 
-        bookings_query += " GROUP BY ar.appointment_date"
+    bookings_query += " GROUP BY ar.appointment_date"
 
-        bookings_rows = await conn.fetch(bookings_query, *params)
-        bookings_by_date = {row['appointment_date']: row['booked_count'] for row in bookings_rows}
+    bookings_rows = await conn.fetch(bookings_query, *params)
+    bookings_by_date = {row['appointment_date']: row['booked_count'] for row in bookings_rows}
 
-        # Build 7-day structure
-        days = []
-        total_available = 0
-        total_booked = 0
-        total_capacity = 0
+    # Build 7-day structure
+    days = []
+    total_available = 0
+    total_booked = 0
+    total_capacity = 0
 
-        for i in range(7):
-            day_date = week_start + timedelta(days=i)
-            day_of_week = day_date.weekday()  # 0=Monday
-            is_today = day_date == today
-            is_past = day_date < today
-            is_blocked = day_date in blocked_dates
-            is_weekend = day_of_week >= 5  # Saturday/Sunday
+    for i in range(7):
+        day_date = week_start + timedelta(days=i)
+        day_of_week = day_date.weekday()  # 0=Monday
+        is_today = day_date == today
+        is_past = day_date < today
+        is_blocked = day_date in blocked_dates
+        is_weekend = day_of_week >= 5  # Saturday/Sunday
 
-            # Get config for this day (day_of_week in DB is 0-6 for Mon-Sun)
-            config = slot_configs.get(day_of_week)
+        # Get config for this day (day_of_week in DB is 0-6 for Mon-Sun)
+        config = slot_configs.get(day_of_week)
 
-            if is_blocked or is_weekend or not config:
-                # No slots available
-                days.append(DaySlotSummary(
-                    date=day_date.isoformat(),
-                    day_name=day_names_es[day_of_week],
-                    day_number=day_date.day,
-                    is_today=is_today,
-                    is_past=is_past,
-                    is_blocked=is_blocked,
-                    total_slots=0,
-                    booked_slots=0,
-                    available_slots=0,
-                    fill_percentage=0,
-                    status="closed"
-                ))
-                continue
-
-            # Calculate total slots for the day
-            start = config['start_time']
-            end = config['end_time']
-            duration = config['duration']
-            max_per_slot = config['max_per_slot']
-
-            # Count time slots in the day
-            start_minutes = start.hour * 60 + start.minute
-            end_minutes = end.hour * 60 + end.minute
-            num_slots = (end_minutes - start_minutes) // duration
-
-            total_day_capacity = num_slots * max_per_slot
-            booked = bookings_by_date.get(day_date, 0)
-            available = max(0, total_day_capacity - booked)
-
-            fill_pct = (booked / total_day_capacity * 100) if total_day_capacity > 0 else 0
-
-            # Determine status
-            if is_past:
-                status = "closed"
-            elif available == 0:
-                status = "full"
-            elif fill_pct >= 80:
-                status = "limited"
-            else:
-                status = "available"
-
+        if is_blocked or is_weekend or not config:
+            # No slots available
             days.append(DaySlotSummary(
                 date=day_date.isoformat(),
                 day_name=day_names_es[day_of_week],
                 day_number=day_date.day,
                 is_today=is_today,
                 is_past=is_past,
-                is_blocked=False,
-                total_slots=total_day_capacity,
-                booked_slots=booked,
-                available_slots=available,
-                fill_percentage=round(fill_pct, 1),
-                status=status
+                is_blocked=is_blocked,
+                total_slots=0,
+                booked_slots=0,
+                available_slots=0,
+                fill_percentage=0,
+                status="closed"
             ))
+            continue
 
-            if not is_past:
-                total_available += available
-                total_booked += booked
-                total_capacity += total_day_capacity
+        # Calculate total slots for the day
+        start = config['start_time']
+        end = config['end_time']
+        duration = config['duration']
+        max_per_slot = config['max_per_slot']
 
-        return CalendarSlotsWidgetResponse(
-            week_start=week_start.isoformat(),
-            week_end=week_end.isoformat(),
-            entity_code=entity_code,
-            location=selected_location,
-            locations_available=locations_available,
-            days=days,
-            total_available=total_available,
-            total_booked=total_booked,
-            total_capacity=total_capacity
-        )
+        # Count time slots in the day
+        start_minutes = start.hour * 60 + start.minute
+        end_minutes = end.hour * 60 + end.minute
+        num_slots = (end_minutes - start_minutes) // duration
+
+        total_day_capacity = num_slots * max_per_slot
+        booked = bookings_by_date.get(day_date, 0)
+        available = max(0, total_day_capacity - booked)
+
+        fill_pct = (booked / total_day_capacity * 100) if total_day_capacity > 0 else 0
+
+        # Determine status
+        if is_past:
+            status = "closed"
+        elif available == 0:
+            status = "full"
+        elif fill_pct >= 80:
+            status = "limited"
+        else:
+            status = "available"
+
+        days.append(DaySlotSummary(
+            date=day_date.isoformat(),
+            day_name=day_names_es[day_of_week],
+            day_number=day_date.day,
+            is_today=is_today,
+            is_past=is_past,
+            is_blocked=False,
+            total_slots=total_day_capacity,
+            booked_slots=booked,
+            available_slots=available,
+            fill_percentage=round(fill_pct, 1),
+            status=status
+        ))
+
+        if not is_past:
+            total_available += available
+            total_booked += booked
+            total_capacity += total_day_capacity
+
+    return CalendarSlotsWidgetResponse(
+        week_start=week_start.isoformat(),
+        week_end=week_end.isoformat(),
+        entity_code=entity_code,
+        location=selected_location,
+        locations_available=locations_available,
+        days=days,
+        total_available=total_available,
+        total_booked=total_booked,
+        total_capacity=total_capacity
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -3231,109 +3230,109 @@ async def get_today_appointments_list(
     """
     today = date.today()
 
-    async with db.acquire() as conn:
-        # Get entity locations
-        locations_rows = await conn.fetch("""
-            SELECT id::text, location_name, city
-            FROM entity_locations
-            WHERE entity_code = $1 AND is_active = true
-            ORDER BY is_main_office DESC, location_name
-        """, entity_code)
+    conn = db
+    # Get entity locations
+    locations_rows = await conn.fetch("""
+        SELECT id::text, location_name, city
+        FROM entity_locations
+        WHERE entity_code = $1 AND is_active = true
+        ORDER BY is_main_office DESC, location_name
+    """, entity_code)
 
-        locations_available = [
-            LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
-            for row in locations_rows
-        ]
+    locations_available = [
+        LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
+        for row in locations_rows
+    ]
 
-        # Determine selected location
-        selected_location = None
-        entity_location_id = None
-        if location_id:
-            for loc in locations_available:
-                if loc.id == str(location_id):
-                    selected_location = loc
-                    entity_location_id = location_id
-                    break
-        elif locations_available:
-            selected_location = locations_available[0]
-            entity_location_id = UUID(selected_location.id)
+    # Determine selected location
+    selected_location = None
+    entity_location_id = None
+    if location_id:
+        for loc in locations_available:
+            if loc.id == str(location_id):
+                selected_location = loc
+                entity_location_id = location_id
+                break
+    elif locations_available:
+        selected_location = locations_available[0]
+        entity_location_id = UUID(selected_location.id)
 
-        # Build query for today's appointments
-        query = """
-            SELECT
-                ar.id::text as reservation_id,
-                ar.service_request_id::text as request_id,
-                sr.reference,
-                sr.workflow_code,
-                ar.appointment_time::text,
-                ar.status,
-                ar.notes,
-                ar.created_at,
-                el.id::text as location_id,
-                el.location_name,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.phone_number
-            FROM appointment_reservations ar
-            JOIN entity_locations el ON ar.entity_location_id = el.id
-            JOIN service_requests sr ON ar.service_request_id = sr.id
-            JOIN users u ON sr.user_id = u.id
-            WHERE el.entity_code = $1
-              AND ar.appointment_date = $2
-              AND ar.status != 'expired'
-        """
-        params = [entity_code, today]
+    # Build query for today's appointments
+    query = """
+        SELECT
+            ar.id::text as reservation_id,
+            ar.service_request_id::text as request_id,
+            sr.reference,
+            sr.workflow_code,
+            ar.appointment_time::text,
+            ar.status,
+            ar.notes,
+            ar.created_at,
+            el.id::text as location_id,
+            el.location_name,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.phone_number
+        FROM appointment_reservations ar
+        JOIN entity_locations el ON ar.entity_location_id = el.id
+        JOIN service_requests sr ON ar.service_request_id = sr.id
+        JOIN users u ON sr.user_id = u.id
+        WHERE el.entity_code = $1
+          AND ar.appointment_date = $2
+          AND ar.status != 'expired'
+    """
+    params = [entity_code, today]
 
-        if entity_location_id:
-            query += " AND ar.entity_location_id = $3"
-            params.append(entity_location_id)
+    if entity_location_id:
+        query += " AND ar.entity_location_id = $3"
+        params.append(entity_location_id)
 
-        query += " ORDER BY ar.appointment_time ASC"
+    query += " ORDER BY ar.appointment_time ASC"
 
-        rows = await conn.fetch(query, *params)
+    rows = await conn.fetch(query, *params)
 
-        # Build response
-        appointments = []
-        completed = 0
-        pending = 0
-        cancelled = 0
+    # Build response
+    appointments = []
+    completed = 0
+    pending = 0
+    cancelled = 0
 
-        for row in rows:
-            status = row['status']
-            if status == 'completed':
-                completed += 1
-            elif status == 'cancelled':
-                cancelled += 1
-            else:
-                pending += 1
+    for row in rows:
+        status = row['status']
+        if status == 'completed':
+            completed += 1
+        elif status == 'cancelled':
+            cancelled += 1
+        else:
+            pending += 1
 
-            appointments.append(TodayAppointmentDetail(
-                id=row['reservation_id'],
-                request_id=row['request_id'],
-                reference=row['reference'] or '',
-                workflow_code=row['workflow_code'] or '',
-                citizen_name=f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or 'N/A',
-                citizen_email=row['email'],
-                citizen_phone=row['phone_number'],
-                appointment_time=row['appointment_time'],
-                status=status,
-                location_name=row['location_name'],
-                location_id=row['location_id'],
-                notes=row['notes'],
-                created_at=row['created_at'].isoformat()
-            ))
+        appointments.append(TodayAppointmentDetail(
+            id=row['reservation_id'],
+            request_id=row['request_id'],
+            reference=row['reference'] or '',
+            workflow_code=row['workflow_code'] or '',
+            citizen_name=f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or 'N/A',
+            citizen_email=row['email'],
+            citizen_phone=row['phone_number'],
+            appointment_time=row['appointment_time'],
+            status=status,
+            location_name=row['location_name'],
+            location_id=row['location_id'],
+            notes=row['notes'],
+            created_at=row['created_at'].isoformat()
+        ))
 
-        return TodayAppointmentsListResponse(
-            date=today.isoformat(),
-            entity_code=entity_code,
-            location=selected_location,
-            appointments=appointments,
-            total=len(appointments),
-            completed=completed,
-            pending=pending,
-            cancelled=cancelled
-        )
+    return TodayAppointmentsListResponse(
+        date=today.isoformat(),
+        entity_code=entity_code,
+        location=selected_location,
+        appointments=appointments,
+        total=len(appointments),
+        completed=completed,
+        pending=pending,
+        cancelled=cancelled
+    )
 
 
 @router.get(
@@ -3359,197 +3358,197 @@ async def get_slots_detailed(
     DEFAULT_MAX_PER_SLOT = 2
     day_names_es = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 
-    async with db.acquire() as conn:
-        # Get entity locations
-        locations_rows = await conn.fetch("""
-            SELECT id::text, location_name, city
-            FROM entity_locations
-            WHERE entity_code = $1 AND is_active = true
-            ORDER BY is_main_office DESC, location_name
-        """, entity_code)
+    conn = db
+    # Get entity locations
+    locations_rows = await conn.fetch("""
+        SELECT id::text, location_name, city
+        FROM entity_locations
+        WHERE entity_code = $1 AND is_active = true
+        ORDER BY is_main_office DESC, location_name
+    """, entity_code)
 
-        locations_available = [
-            LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
-            for row in locations_rows
-        ]
+    locations_available = [
+        LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
+        for row in locations_rows
+    ]
 
-        # Determine selected location
-        selected_location = None
-        entity_location_id = None
-        if location_id:
-            for loc in locations_available:
-                if loc.id == str(location_id):
-                    selected_location = loc
-                    entity_location_id = location_id
-                    break
-        elif locations_available:
-            selected_location = locations_available[0]
-            entity_location_id = UUID(selected_location.id)
+    # Determine selected location
+    selected_location = None
+    entity_location_id = None
+    if location_id:
+        for loc in locations_available:
+            if loc.id == str(location_id):
+                selected_location = loc
+                entity_location_id = location_id
+                break
+    elif locations_available:
+        selected_location = locations_available[0]
+        entity_location_id = UUID(selected_location.id)
 
-        # Calculate week boundaries
-        today = date.today()
-        week_start = today - timedelta(days=today.weekday())  # Monday
-        week_start = week_start + timedelta(weeks=week_offset)
-        week_end = week_start + timedelta(days=6)
+    # Calculate week boundaries
+    today = date.today()
+    week_start = today - timedelta(days=today.weekday())  # Monday
+    week_start = week_start + timedelta(weeks=week_offset)
+    week_end = week_start + timedelta(days=6)
 
-        # Get slot configs
-        slot_configs = {}
-        config_rows = await conn.fetch("""
-            SELECT
-                day_of_week,
-                start_time,
-                end_time,
-                slot_duration_minutes,
-                max_appointments_per_slot
-            FROM appointment_slot_configs
-            WHERE entity_code = $1
-              AND is_active = true
-              AND (entity_location_id IS NULL OR entity_location_id = $2)
-            ORDER BY day_of_week
-        """, entity_code, entity_location_id)
+    # Get slot configs
+    slot_configs = {}
+    config_rows = await conn.fetch("""
+        SELECT
+            day_of_week,
+            start_time,
+            end_time,
+            slot_duration_minutes,
+            max_appointments_per_slot
+        FROM appointment_slot_configs
+        WHERE entity_code = $1
+          AND is_active = true
+          AND (entity_location_id IS NULL OR entity_location_id = $2)
+        ORDER BY day_of_week
+    """, entity_code, entity_location_id)
 
-        for row in config_rows:
-            slot_configs[row['day_of_week']] = {
-                'start_time': row['start_time'],
-                'end_time': row['end_time'],
-                'duration': row['slot_duration_minutes'] or 30,
-                'max_per_slot': row['max_appointments_per_slot'] or DEFAULT_MAX_PER_SLOT
-            }
+    for row in config_rows:
+        slot_configs[row['day_of_week']] = {
+            'start_time': row['start_time'],
+            'end_time': row['end_time'],
+            'duration': row['slot_duration_minutes'] or 30,
+            'max_per_slot': row['max_appointments_per_slot'] or DEFAULT_MAX_PER_SLOT
+        }
 
-        # Get blocked dates
-        blocked_dates = set()
-        blocked_rows = await conn.fetch("""
-            SELECT blocked_date
-            FROM appointment_blocked_dates
-            WHERE (entity_code = $1 OR entity_code = 'ALL')
-              AND blocked_date BETWEEN $2 AND $3
-        """, entity_code, week_start, week_end)
-        for row in blocked_rows:
-            blocked_dates.add(row['blocked_date'])
+    # Get blocked dates
+    blocked_dates = set()
+    blocked_rows = await conn.fetch("""
+        SELECT blocked_date
+        FROM appointment_blocked_dates
+        WHERE (entity_code = $1 OR entity_code = 'ALL')
+          AND blocked_date BETWEEN $2 AND $3
+    """, entity_code, week_start, week_end)
+    for row in blocked_rows:
+        blocked_dates.add(row['blocked_date'])
 
-        # Get booked appointments per slot
-        bookings_query = """
-            SELECT
-                ar.appointment_date,
-                ar.appointment_time,
-                COUNT(*) as booked_count
-            FROM appointment_reservations ar
-            LEFT JOIN entity_locations el ON ar.entity_location_id = el.id
-            WHERE el.entity_code = $1
-              AND ar.appointment_date BETWEEN $2 AND $3
-              AND ar.status NOT IN ('cancelled', 'expired')
-        """
-        params = [entity_code, week_start, week_end]
+    # Get booked appointments per slot
+    bookings_query = """
+        SELECT
+            ar.appointment_date,
+            ar.appointment_time,
+            COUNT(*) as booked_count
+        FROM appointment_reservations ar
+        LEFT JOIN entity_locations el ON ar.entity_location_id = el.id
+        WHERE el.entity_code = $1
+          AND ar.appointment_date BETWEEN $2 AND $3
+          AND ar.status NOT IN ('cancelled', 'expired')
+    """
+    params = [entity_code, week_start, week_end]
 
-        if entity_location_id:
-            bookings_query += " AND ar.entity_location_id = $4"
-            params.append(entity_location_id)
+    if entity_location_id:
+        bookings_query += " AND ar.entity_location_id = $4"
+        params.append(entity_location_id)
 
-        bookings_query += " GROUP BY ar.appointment_date, ar.appointment_time"
+    bookings_query += " GROUP BY ar.appointment_date, ar.appointment_time"
 
-        bookings_rows = await conn.fetch(bookings_query, *params)
+    bookings_rows = await conn.fetch(bookings_query, *params)
 
-        # Build bookings lookup: {date: {time: count}}
-        bookings_map = {}
-        for row in bookings_rows:
-            d = row['appointment_date']
-            t = row['appointment_time']
-            if d not in bookings_map:
-                bookings_map[d] = {}
-            bookings_map[d][t] = row['booked_count']
+    # Build bookings lookup: {date: {time: count}}
+    bookings_map = {}
+    for row in bookings_rows:
+        d = row['appointment_date']
+        t = row['appointment_time']
+        if d not in bookings_map:
+            bookings_map[d] = {}
+        bookings_map[d][t] = row['booked_count']
 
-        # Build 7-day structure with time slots
-        days = []
-        grand_total_available = 0
-        grand_total_capacity = 0
+    # Build 7-day structure with time slots
+    days = []
+    grand_total_available = 0
+    grand_total_capacity = 0
 
-        for i in range(7):
-            day_date = week_start + timedelta(days=i)
-            day_of_week = day_date.weekday()
-            is_today = day_date == today
-            is_past = day_date < today
-            is_blocked = day_date in blocked_dates
-            is_weekend = day_of_week >= 5
+    for i in range(7):
+        day_date = week_start + timedelta(days=i)
+        day_of_week = day_date.weekday()
+        is_today = day_date == today
+        is_past = day_date < today
+        is_blocked = day_date in blocked_dates
+        is_weekend = day_of_week >= 5
 
-            config = slot_configs.get(day_of_week)
+        config = slot_configs.get(day_of_week)
 
-            if is_blocked or is_weekend or not config:
-                days.append(DaySlotDetail(
-                    date=day_date.isoformat(),
-                    day_name=day_names_es[day_of_week],
-                    day_number=day_date.day,
-                    is_today=is_today,
-                    is_past=is_past,
-                    is_blocked=is_blocked,
-                    slots=[],
-                    total_available=0,
-                    total_booked=0,
-                    total_capacity=0
-                ))
-                continue
-
-            # Generate time slots for the day
-            start = config['start_time']
-            end = config['end_time']
-            duration = config['duration']
-            max_per_slot = config['max_per_slot']
-
-            slots = []
-            current_time = datetime.combine(day_date, start)
-            end_time = datetime.combine(day_date, end)
-            day_bookings = bookings_map.get(day_date, {})
-
-            day_available = 0
-            day_booked = 0
-            day_capacity = 0
-
-            while current_time < end_time:
-                slot_time = current_time.time()
-                booked = day_bookings.get(slot_time, 0)
-                available = max(0, max_per_slot - booked)
-                is_slot_available = available > 0 and not is_past
-
-                slots.append(SlotTimeDetail(
-                    time=slot_time.strftime('%H:%M'),
-                    available=available if not is_past else 0,
-                    booked=booked,
-                    capacity=max_per_slot,
-                    is_available=is_slot_available
-                ))
-
-                if not is_past:
-                    day_available += available
-                    day_booked += booked
-                    day_capacity += max_per_slot
-
-                current_time += timedelta(minutes=duration)
-
+        if is_blocked or is_weekend or not config:
             days.append(DaySlotDetail(
                 date=day_date.isoformat(),
                 day_name=day_names_es[day_of_week],
                 day_number=day_date.day,
                 is_today=is_today,
                 is_past=is_past,
-                is_blocked=False,
-                slots=slots,
-                total_available=day_available,
-                total_booked=day_booked,
-                total_capacity=day_capacity
+                is_blocked=is_blocked,
+                slots=[],
+                total_available=0,
+                total_booked=0,
+                total_capacity=0
+            ))
+            continue
+
+        # Generate time slots for the day
+        start = config['start_time']
+        end = config['end_time']
+        duration = config['duration']
+        max_per_slot = config['max_per_slot']
+
+        slots = []
+        current_time = datetime.combine(day_date, start)
+        end_time = datetime.combine(day_date, end)
+        day_bookings = bookings_map.get(day_date, {})
+
+        day_available = 0
+        day_booked = 0
+        day_capacity = 0
+
+        while current_time < end_time:
+            slot_time = current_time.time()
+            booked = day_bookings.get(slot_time, 0)
+            available = max(0, max_per_slot - booked)
+            is_slot_available = available > 0 and not is_past
+
+            slots.append(SlotTimeDetail(
+                time=slot_time.strftime('%H:%M'),
+                available=available if not is_past else 0,
+                booked=booked,
+                capacity=max_per_slot,
+                is_available=is_slot_available
             ))
 
-            grand_total_available += day_available
-            grand_total_capacity += day_capacity
+            if not is_past:
+                day_available += available
+                day_booked += booked
+                day_capacity += max_per_slot
 
-        return SlotsCalendarResponse(
-            week_start=week_start.isoformat(),
-            week_end=week_end.isoformat(),
-            entity_code=entity_code,
-            location=selected_location,
-            locations_available=locations_available,
-            days=days,
-            total_available=grand_total_available,
-            total_capacity=grand_total_capacity
-        )
+            current_time += timedelta(minutes=duration)
+
+        days.append(DaySlotDetail(
+            date=day_date.isoformat(),
+            day_name=day_names_es[day_of_week],
+            day_number=day_date.day,
+            is_today=is_today,
+            is_past=is_past,
+            is_blocked=False,
+            slots=slots,
+            total_available=day_available,
+            total_booked=day_booked,
+            total_capacity=day_capacity
+        ))
+
+        grand_total_available += day_available
+        grand_total_capacity += day_capacity
+
+    return SlotsCalendarResponse(
+        week_start=week_start.isoformat(),
+        week_end=week_end.isoformat(),
+        entity_code=entity_code,
+        location=selected_location,
+        locations_available=locations_available,
+        days=days,
+        total_available=grand_total_available,
+        total_capacity=grand_total_capacity
+    )
 
 
 @router.post(
@@ -3568,145 +3567,145 @@ async def book_for_citizen(
     This bypasses the hold mechanism and creates a direct reservation.
     Triggers APPOINTMENT_BOOKED event for notifications.
     """
-    async with db.acquire() as conn:
-        # Verify service request exists and get details
-        request = await conn.fetchrow("""
-            SELECT
-                sr.id,
-                sr.user_id,
-                sr.workflow_code,
-                sr.status,
-                sr.reference,
-                u.email,
-                u.phone_number,
-                u.first_name,
-                u.last_name,
-                u.preferred_language
-            FROM service_requests sr
-            JOIN users u ON sr.user_id = u.id
-            WHERE sr.id = $1
-        """, booking.request_id)
+    conn = db
+    # Verify service request exists and get details
+    request = await conn.fetchrow("""
+        SELECT
+            sr.id,
+            sr.user_id,
+            sr.workflow_code,
+            sr.status,
+            sr.reference,
+            u.email,
+            u.phone_number,
+            u.first_name,
+            u.last_name,
+            u.preferred_language
+        FROM service_requests sr
+        JOIN users u ON sr.user_id = u.id
+        WHERE sr.id = $1
+    """, booking.request_id)
 
-        if not request:
-            return AgentBookingResponse(
-                success=False,
-                error="Service request not found"
-            )
-
-        # Verify location exists
-        location = await conn.fetchrow("""
-            SELECT id, location_name, city, entity_code
-            FROM entity_locations
-            WHERE id = $1 AND is_active = true
-        """, booking.entity_location_id)
-
-        if not location:
-            return AgentBookingResponse(
-                success=False,
-                error="Location not found or inactive"
-            )
-
-        # Check slot availability
-        booked_count = await conn.fetchval("""
-            SELECT COUNT(*)
-            FROM appointment_reservations
-            WHERE entity_location_id = $1
-              AND appointment_date = $2
-              AND appointment_time = $3
-              AND status NOT IN ('cancelled', 'expired')
-        """, booking.entity_location_id, booking.appointment_date, booking.appointment_time)
-
-        # Get max capacity from config
-        config = await conn.fetchrow("""
-            SELECT max_appointments_per_slot
-            FROM appointment_slot_configs
-            WHERE entity_code = $1
-              AND day_of_week = $2
-              AND is_active = true
-              AND (entity_location_id IS NULL OR entity_location_id = $3)
-            LIMIT 1
-        """, location['entity_code'], booking.appointment_date.weekday(), booking.entity_location_id)
-
-        max_per_slot = (config['max_appointments_per_slot'] if config else None) or 2
-
-        if booked_count >= max_per_slot:
-            return AgentBookingResponse(
-                success=False,
-                error=f"Slot is full (capacity: {max_per_slot})"
-            )
-
-        # Check if request already has an appointment
-        existing = await conn.fetchrow("""
-            SELECT id FROM appointment_reservations
-            WHERE service_request_id = $1
-              AND status NOT IN ('cancelled', 'expired')
-        """, booking.request_id)
-
-        if existing:
-            return AgentBookingResponse(
-                success=False,
-                error="Service request already has an active appointment. Use reschedule instead."
-            )
-
-        # Create reservation
-        reservation_id = await conn.fetchval("""
-            INSERT INTO appointment_reservations (
-                service_request_id,
-                entity_location_id,
-                appointment_date,
-                appointment_time,
-                status,
-                notes,
-                created_by,
-                created_at
-            ) VALUES ($1, $2, $3, $4, 'confirmed', $5, $6, NOW())
-            RETURNING id::text
-        """, booking.request_id, booking.entity_location_id,
-            booking.appointment_date, booking.appointment_time,
-            booking.notes, str(current_user.id))
-
-        # Update service request with appointment info
-        await conn.execute("""
-            UPDATE service_requests
-            SET cita_date = $2,
-                cita_time = $3,
-                cita_location = $4,
-                updated_at = NOW()
-            WHERE id = $1
-        """, booking.request_id, booking.appointment_date,
-            booking.appointment_time, location['location_name'])
-
-        # Publish APPOINTMENT_BOOKED event
-        try:
-            EventBus.publish_nowait(
-                EventType.APPOINTMENT_BOOKED,
-                {
-                    "request_id": str(booking.request_id),
-                    "user_id": str(request['user_id']),
-                    "user_email": request['email'],
-                    "user_name": f"{request['first_name'] or ''} {request['last_name'] or ''}".strip(),
-                    "user_phone": request['phone_number'],
-                    "preferred_language": request.get('preferred_language', 'es'),
-                    "workflow_code": request['workflow_code'],
-                    "appointment_date": booking.appointment_date.isoformat(),
-                    "appointment_time": booking.appointment_time.strftime('%H:%M'),
-                    "location": location['location_name'],
-                    "booked_by_agent": True,
-                    "agent_id": str(current_user.id),
-                    "timestamp": datetime.now().isoformat(),
-                }
-            )
-            logger.info(f"APPOINTMENT_BOOKED event published for request {booking.request_id} (agent booking)")
-        except Exception as e:
-            logger.error(f"Failed to publish APPOINTMENT_BOOKED event: {e}")
-
+    if not request:
         return AgentBookingResponse(
-            success=True,
-            reservation_id=reservation_id,
-            appointment_date=booking.appointment_date.isoformat(),
-            appointment_time=booking.appointment_time.strftime('%H:%M'),
-            location_name=location['location_name']
+            success=False,
+            error="Service request not found"
         )
+
+    # Verify location exists
+    location = await conn.fetchrow("""
+        SELECT id, location_name, city, entity_code
+        FROM entity_locations
+        WHERE id = $1 AND is_active = true
+    """, booking.entity_location_id)
+
+    if not location:
+        return AgentBookingResponse(
+            success=False,
+            error="Location not found or inactive"
+        )
+
+    # Check slot availability
+    booked_count = await conn.fetchval("""
+        SELECT COUNT(*)
+        FROM appointment_reservations
+        WHERE entity_location_id = $1
+          AND appointment_date = $2
+          AND appointment_time = $3
+          AND status NOT IN ('cancelled', 'expired')
+    """, booking.entity_location_id, booking.appointment_date, booking.appointment_time)
+
+    # Get max capacity from config
+    config = await conn.fetchrow("""
+        SELECT max_appointments_per_slot
+        FROM appointment_slot_configs
+        WHERE entity_code = $1
+          AND day_of_week = $2
+          AND is_active = true
+          AND (entity_location_id IS NULL OR entity_location_id = $3)
+        LIMIT 1
+    """, location['entity_code'], booking.appointment_date.weekday(), booking.entity_location_id)
+
+    max_per_slot = (config['max_appointments_per_slot'] if config else None) or 2
+
+    if booked_count >= max_per_slot:
+        return AgentBookingResponse(
+            success=False,
+            error=f"Slot is full (capacity: {max_per_slot})"
+        )
+
+    # Check if request already has an appointment
+    existing = await conn.fetchrow("""
+        SELECT id FROM appointment_reservations
+        WHERE service_request_id = $1
+          AND status NOT IN ('cancelled', 'expired')
+    """, booking.request_id)
+
+    if existing:
+        return AgentBookingResponse(
+            success=False,
+            error="Service request already has an active appointment. Use reschedule instead."
+        )
+
+    # Create reservation
+    reservation_id = await conn.fetchval("""
+        INSERT INTO appointment_reservations (
+            service_request_id,
+            entity_location_id,
+            appointment_date,
+            appointment_time,
+            status,
+            notes,
+            created_by,
+            created_at
+        ) VALUES ($1, $2, $3, $4, 'confirmed', $5, $6, NOW())
+        RETURNING id::text
+    """, booking.request_id, booking.entity_location_id,
+        booking.appointment_date, booking.appointment_time,
+        booking.notes, str(current_user.id))
+
+    # Update service request with appointment info
+    await conn.execute("""
+        UPDATE service_requests
+        SET cita_date = $2,
+            cita_time = $3,
+            cita_location = $4,
+            updated_at = NOW()
+        WHERE id = $1
+    """, booking.request_id, booking.appointment_date,
+        booking.appointment_time, location['location_name'])
+
+    # Publish APPOINTMENT_BOOKED event
+    try:
+        EventBus.publish_nowait(
+            EventType.APPOINTMENT_BOOKED,
+            {
+                "request_id": str(booking.request_id),
+                "user_id": str(request['user_id']),
+                "user_email": request['email'],
+                "user_name": f"{request['first_name'] or ''} {request['last_name'] or ''}".strip(),
+                "user_phone": request['phone_number'],
+                "preferred_language": request.get('preferred_language', 'es'),
+                "workflow_code": request['workflow_code'],
+                "appointment_date": booking.appointment_date.isoformat(),
+                "appointment_time": booking.appointment_time.strftime('%H:%M'),
+                "location": location['location_name'],
+                "booked_by_agent": True,
+                "agent_id": str(current_user.id),
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+        logger.info(f"APPOINTMENT_BOOKED event published for request {booking.request_id} (agent booking)")
+    except Exception as e:
+        logger.error(f"Failed to publish APPOINTMENT_BOOKED event: {e}")
+
+    return AgentBookingResponse(
+        success=True,
+        reservation_id=reservation_id,
+        appointment_date=booking.appointment_date.isoformat(),
+        appointment_time=booking.appointment_time.strftime('%H:%M'),
+        location_name=location['location_name']
+    )
 
 
 @router.patch(
@@ -3725,133 +3724,133 @@ async def reschedule_appointment(
     Reschedule an existing appointment to a new date/time.
     Triggers APPOINTMENT_RESCHEDULED event for notifications.
     """
-    async with db.acquire() as conn:
-        # Get existing reservation
-        existing = await conn.fetchrow("""
-            SELECT
-                ar.id,
-                ar.service_request_id,
-                ar.entity_location_id,
-                ar.appointment_date,
-                ar.appointment_time,
-                ar.status,
-                el.entity_code,
-                el.location_name,
-                sr.user_id,
-                sr.workflow_code,
-                u.email,
-                u.phone_number,
-                u.first_name,
-                u.last_name,
-                u.preferred_language
-            FROM appointment_reservations ar
-            JOIN entity_locations el ON ar.entity_location_id = el.id
-            JOIN service_requests sr ON ar.service_request_id = sr.id
-            JOIN users u ON sr.user_id = u.id
-            WHERE ar.id = $1
-        """, reservation_id)
+    conn = db
+    # Get existing reservation
+    existing = await conn.fetchrow("""
+        SELECT
+            ar.id,
+            ar.service_request_id,
+            ar.entity_location_id,
+            ar.appointment_date,
+            ar.appointment_time,
+            ar.status,
+            el.entity_code,
+            el.location_name,
+            sr.user_id,
+            sr.workflow_code,
+            u.email,
+            u.phone_number,
+            u.first_name,
+            u.last_name,
+            u.preferred_language
+        FROM appointment_reservations ar
+        JOIN entity_locations el ON ar.entity_location_id = el.id
+        JOIN service_requests sr ON ar.service_request_id = sr.id
+        JOIN users u ON sr.user_id = u.id
+        WHERE ar.id = $1
+    """, reservation_id)
 
-        if not existing:
-            return RescheduleResponse(
-                success=False,
-                error="Appointment not found"
-            )
-
-        if existing['status'] in ('cancelled', 'expired', 'completed'):
-            return RescheduleResponse(
-                success=False,
-                error=f"Cannot reschedule appointment with status: {existing['status']}"
-            )
-
-        # Check new slot availability
-        booked_count = await conn.fetchval("""
-            SELECT COUNT(*)
-            FROM appointment_reservations
-            WHERE entity_location_id = $1
-              AND appointment_date = $2
-              AND appointment_time = $3
-              AND status NOT IN ('cancelled', 'expired')
-              AND id != $4
-        """, existing['entity_location_id'], reschedule.new_date,
-            reschedule.new_time, reservation_id)
-
-        # Get max capacity
-        config = await conn.fetchrow("""
-            SELECT max_appointments_per_slot
-            FROM appointment_slot_configs
-            WHERE entity_code = $1
-              AND day_of_week = $2
-              AND is_active = true
-              AND (entity_location_id IS NULL OR entity_location_id = $3)
-            LIMIT 1
-        """, existing['entity_code'], reschedule.new_date.weekday(),
-            existing['entity_location_id'])
-
-        max_per_slot = (config['max_appointments_per_slot'] if config else None) or 2
-
-        if booked_count >= max_per_slot:
-            return RescheduleResponse(
-                success=False,
-                error=f"New slot is full (capacity: {max_per_slot})"
-            )
-
-        old_date = existing['appointment_date']
-        old_time = existing['appointment_time']
-
-        # Update reservation
-        await conn.execute("""
-            UPDATE appointment_reservations
-            SET appointment_date = $2,
-                appointment_time = $3,
-                notes = COALESCE(notes, '') || ' [Rescheduled: ' || COALESCE($4, 'no reason') || ']',
-                updated_at = NOW()
-            WHERE id = $1
-        """, reservation_id, reschedule.new_date, reschedule.new_time, reschedule.reason)
-
-        # Update service request
-        await conn.execute("""
-            UPDATE service_requests
-            SET cita_date = $2,
-                cita_time = $3,
-                updated_at = NOW()
-            WHERE id = $1
-        """, existing['service_request_id'], reschedule.new_date, reschedule.new_time)
-
-        # Publish APPOINTMENT_RESCHEDULED event
-        try:
-            EventBus.publish_nowait(
-                EventType.APPOINTMENT_RESCHEDULED,
-                {
-                    "request_id": str(existing['service_request_id']),
-                    "reservation_id": str(reservation_id),
-                    "user_id": str(existing['user_id']),
-                    "user_email": existing['email'],
-                    "user_name": f"{existing['first_name'] or ''} {existing['last_name'] or ''}".strip(),
-                    "user_phone": existing['phone_number'],
-                    "preferred_language": existing.get('preferred_language', 'es'),
-                    "workflow_code": existing['workflow_code'],
-                    "old_date": old_date.isoformat(),
-                    "old_time": old_time.strftime('%H:%M') if old_time else None,
-                    "new_date": reschedule.new_date.isoformat(),
-                    "new_time": reschedule.new_time.strftime('%H:%M'),
-                    "location": existing['location_name'],
-                    "rescheduled_by_agent": True,
-                    "agent_id": str(current_user.id),
-                    "reason": reschedule.reason,
-                    "timestamp": datetime.now().isoformat(),
-                }
-            )
-            logger.info(f"APPOINTMENT_RESCHEDULED event published for reservation {reservation_id}")
-        except Exception as e:
-            logger.error(f"Failed to publish APPOINTMENT_RESCHEDULED event: {e}")
-
+    if not existing:
         return RescheduleResponse(
-            success=True,
-            old_date=old_date.isoformat(),
-            old_time=old_time.strftime('%H:%M') if old_time else None,
-            new_date=reschedule.new_date.isoformat(),
-            new_time=reschedule.new_time.strftime('%H:%M')
+            success=False,
+            error="Appointment not found"
         )
+
+    if existing['status'] in ('cancelled', 'expired', 'completed'):
+        return RescheduleResponse(
+            success=False,
+            error=f"Cannot reschedule appointment with status: {existing['status']}"
+        )
+
+    # Check new slot availability
+    booked_count = await conn.fetchval("""
+        SELECT COUNT(*)
+        FROM appointment_reservations
+        WHERE entity_location_id = $1
+          AND appointment_date = $2
+          AND appointment_time = $3
+          AND status NOT IN ('cancelled', 'expired')
+          AND id != $4
+    """, existing['entity_location_id'], reschedule.new_date,
+        reschedule.new_time, reservation_id)
+
+    # Get max capacity
+    config = await conn.fetchrow("""
+        SELECT max_appointments_per_slot
+        FROM appointment_slot_configs
+        WHERE entity_code = $1
+          AND day_of_week = $2
+          AND is_active = true
+          AND (entity_location_id IS NULL OR entity_location_id = $3)
+        LIMIT 1
+    """, existing['entity_code'], reschedule.new_date.weekday(),
+        existing['entity_location_id'])
+
+    max_per_slot = (config['max_appointments_per_slot'] if config else None) or 2
+
+    if booked_count >= max_per_slot:
+        return RescheduleResponse(
+            success=False,
+            error=f"New slot is full (capacity: {max_per_slot})"
+        )
+
+    old_date = existing['appointment_date']
+    old_time = existing['appointment_time']
+
+    # Update reservation
+    await conn.execute("""
+        UPDATE appointment_reservations
+        SET appointment_date = $2,
+            appointment_time = $3,
+            notes = COALESCE(notes, '') || ' [Rescheduled: ' || COALESCE($4, 'no reason') || ']',
+            updated_at = NOW()
+        WHERE id = $1
+    """, reservation_id, reschedule.new_date, reschedule.new_time, reschedule.reason)
+
+    # Update service request
+    await conn.execute("""
+        UPDATE service_requests
+        SET cita_date = $2,
+            cita_time = $3,
+            updated_at = NOW()
+        WHERE id = $1
+    """, existing['service_request_id'], reschedule.new_date, reschedule.new_time)
+
+    # Publish APPOINTMENT_RESCHEDULED event
+    try:
+        EventBus.publish_nowait(
+            EventType.APPOINTMENT_RESCHEDULED,
+            {
+                "request_id": str(existing['service_request_id']),
+                "reservation_id": str(reservation_id),
+                "user_id": str(existing['user_id']),
+                "user_email": existing['email'],
+                "user_name": f"{existing['first_name'] or ''} {existing['last_name'] or ''}".strip(),
+                "user_phone": existing['phone_number'],
+                "preferred_language": existing.get('preferred_language', 'es'),
+                "workflow_code": existing['workflow_code'],
+                "old_date": old_date.isoformat(),
+                "old_time": old_time.strftime('%H:%M') if old_time else None,
+                "new_date": reschedule.new_date.isoformat(),
+                "new_time": reschedule.new_time.strftime('%H:%M'),
+                "location": existing['location_name'],
+                "rescheduled_by_agent": True,
+                "agent_id": str(current_user.id),
+                "reason": reschedule.reason,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+        logger.info(f"APPOINTMENT_RESCHEDULED event published for reservation {reservation_id}")
+    except Exception as e:
+        logger.error(f"Failed to publish APPOINTMENT_RESCHEDULED event: {e}")
+
+    return RescheduleResponse(
+        success=True,
+        old_date=old_date.isoformat(),
+        old_time=old_time.strftime('%H:%M') if old_time else None,
+        new_date=reschedule.new_date.isoformat(),
+        new_time=reschedule.new_time.strftime('%H:%M')
+    )
 
 
 @router.get(
@@ -3865,61 +3864,61 @@ async def get_appointment_detail(
     _=Depends(permission_required("service_request.view"))
 ):
     """Get detailed appointment information."""
-    async with db.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT
-                ar.id::text as reservation_id,
-                ar.service_request_id::text as request_id,
-                ar.appointment_date,
-                ar.appointment_time,
-                ar.status,
-                ar.notes,
-                ar.created_at,
-                ar.updated_at,
-                el.id::text as location_id,
-                el.location_name,
-                el.location_address,
-                el.city,
-                el.entity_code,
-                sr.reference,
-                sr.workflow_code,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.phone_number
-            FROM appointment_reservations ar
-            JOIN entity_locations el ON ar.entity_location_id = el.id
-            JOIN service_requests sr ON ar.service_request_id = sr.id
-            JOIN users u ON sr.user_id = u.id
-            WHERE ar.id = $1
-        """, reservation_id)
+    conn = db
+    row = await conn.fetchrow("""
+        SELECT
+            ar.id::text as reservation_id,
+            ar.service_request_id::text as request_id,
+            ar.appointment_date,
+            ar.appointment_time,
+            ar.status,
+            ar.notes,
+            ar.created_at,
+            ar.updated_at,
+            el.id::text as location_id,
+            el.location_name,
+            el.location_address,
+            el.city,
+            el.entity_code,
+            sr.reference,
+            sr.workflow_code,
+            u.first_name,
+            u.last_name,
+            u.email,
+            u.phone_number
+        FROM appointment_reservations ar
+        JOIN entity_locations el ON ar.entity_location_id = el.id
+        JOIN service_requests sr ON ar.service_request_id = sr.id
+        JOIN users u ON sr.user_id = u.id
+        WHERE ar.id = $1
+    """, reservation_id)
 
-        if not row:
-            raise HTTPException(status_code=404, detail="Appointment not found")
+    if not row:
+        raise HTTPException(status_code=404, detail="Appointment not found")
 
-        return {
-            "id": row['reservation_id'],
-            "request_id": row['request_id'],
-            "reference": row['reference'],
-            "workflow_code": row['workflow_code'],
-            "citizen": {
-                "name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip(),
-                "email": row['email'],
-                "phone": row['phone_number']
-            },
-            "appointment": {
-                "date": row['appointment_date'].isoformat(),
-                "time": row['appointment_time'].strftime('%H:%M') if row['appointment_time'] else None,
-                "status": row['status']
-            },
-            "location": {
-                "id": row['location_id'],
-                "name": row['location_name'],
-                "address": row['location_address'],
-                "city": row['city'],
-                "entity_code": row['entity_code']
-            },
-            "notes": row['notes'],
-            "created_at": row['created_at'].isoformat(),
-            "updated_at": row['updated_at'].isoformat() if row['updated_at'] else None
-        }
+    return {
+        "id": row['reservation_id'],
+        "request_id": row['request_id'],
+        "reference": row['reference'],
+        "workflow_code": row['workflow_code'],
+        "citizen": {
+            "name": f"{row['first_name'] or ''} {row['last_name'] or ''}".strip(),
+            "email": row['email'],
+            "phone": row['phone_number']
+        },
+        "appointment": {
+            "date": row['appointment_date'].isoformat(),
+            "time": row['appointment_time'].strftime('%H:%M') if row['appointment_time'] else None,
+            "status": row['status']
+        },
+        "location": {
+            "id": row['location_id'],
+            "name": row['location_name'],
+            "address": row['location_address'],
+            "city": row['city'],
+            "entity_code": row['entity_code']
+        },
+        "notes": row['notes'],
+        "created_at": row['created_at'].isoformat(),
+        "updated_at": row['updated_at'].isoformat() if row['updated_at'] else None
+    }

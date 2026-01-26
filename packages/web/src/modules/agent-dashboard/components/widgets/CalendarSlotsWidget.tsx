@@ -94,7 +94,7 @@ export function CalendarSlotsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
-            Créneaux Disponibles
+            Horarios Disponibles
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -115,12 +115,12 @@ export function CalendarSlotsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
-            Créneaux Disponibles
+            Horarios Disponibles
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar créneaux
+            Error al cargar horarios
           </p>
         </CardContent>
       </Card>
@@ -154,7 +154,7 @@ export function CalendarSlotsWidget({
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CalendarPlus className="h-5 w-5 text-emerald-600" />
-            Créneaux Disponibles
+            Horarios Disponibles
             {total_available > 0 && (
               <Badge className="bg-emerald-100 text-emerald-800 ml-2">
                 {total_available} dispo
