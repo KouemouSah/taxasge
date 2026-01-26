@@ -1592,3 +1592,559 @@ async def update_verification_checklist(
         checklist_completed=checklist_completed,
         checklist_total=checklist_total
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# DASHBOARD WIDGETS - Data endpoints for dynamic dashboard
+# ═══════════════════════════════════════════════════════════════
+
+class UrgentRequestItem(BaseModel):
+    """Urgent request item for dashboard widget"""
+    id: str
+    reference: str
+    workflow_code: str
+    solicitud_type: str
+    priority: str
+    status: str
+    citizen_name: str
+    sla_status: str  # on_track, at_risk, violated
+    sla_deadline: Optional[str] = None
+    submitted_at: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+
+class UrgentRequestsWidgetResponse(BaseModel):
+    """Response for urgent requests widget"""
+    items: List[UrgentRequestItem]
+    total_urgent: int
+    total_high: int
+    total_assigned: int
+
+
+@router.get(
+    "/dashboard/widgets/urgent",
+    response_model=UrgentRequestsWidgetResponse,
+    summary="Get urgent requests for dashboard widget",
+    description="""
+    Get urgent (URGENT/HIGH priority) and assigned requests for the dashboard widget.
+    Returns top items sorted by priority and SLA deadline.
+
+    Use `limit` to control number of items (default: 10, use 0 for all).
+    """
+)
+async def get_urgent_requests_widget(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    limit: int = Query(10, ge=0, description="Max items to return (0 = all)"),
+    include_assigned: bool = Query(True, description="Include assigned requests"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.view"))
+):
+    """Get urgent and assigned requests for dashboard widget."""
+
+    # Get entity's workflow codes
+    entity = await db.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity {entity_code} not found"
+        )
+
+    # Parse workflow_codes from JSONB
+    workflow_codes = entity['workflow_codes']
+    if isinstance(workflow_codes, str):
+        workflow_codes = json.loads(workflow_codes)
+    if not workflow_codes:
+        workflow_codes = []
+    workflow_codes = [str(wf) for wf in workflow_codes] if workflow_codes else []
+
+    if not workflow_codes:
+        return UrgentRequestsWidgetResponse(
+            items=[],
+            total_urgent=0,
+            total_high=0,
+            total_assigned=0
+        )
+
+    # Build conditions for urgent/high priority OR assigned
+    priority_condition = "sr.priority::text IN ('URGENT', 'HIGH')"
+    assigned_condition = "sr.assigned_to IS NOT NULL" if include_assigned else "FALSE"
+
+    # Main query with SLA calculation
+    limit_clause = f"LIMIT {limit}" if limit > 0 else ""
+
+    query = f"""
+        SELECT
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            sr.solicitud_type,
+            sr.priority,
+            sr.status,
+            sr.assigned_to,
+            sr.submitted_at,
+            COALESCE(u.first_name || ' ' || u.last_name, 'N/A') as citizen_name,
+            CASE
+                WHEN sr.submitted_at IS NOT NULL AND w.sla_hours IS NOT NULL
+                THEN sr.submitted_at + (w.sla_hours * interval '1 hour')
+                ELSE sr.expires_at
+            END as sla_deadline
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        LEFT JOIN workflows w ON w.code = sr.workflow_code
+        WHERE sr.workflow_code = ANY($1)
+          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+          AND ({priority_condition} OR {assigned_condition})
+        ORDER BY
+            CASE sr.priority
+                WHEN 'URGENT' THEN 1
+                WHEN 'HIGH' THEN 2
+                ELSE 3
+            END,
+            sr.submitted_at ASC NULLS LAST
+        {limit_clause}
+    """
+
+    rows = await db.fetch(query, workflow_codes)
+
+    # Calculate SLA status and build response
+    now = datetime.utcnow()
+    items = []
+    for row in rows:
+        sla_status = "on_track"
+        sla_deadline_str = None
+        if row['sla_deadline']:
+            deadline = row['sla_deadline']
+            if hasattr(deadline, 'replace'):
+                deadline = deadline.replace(tzinfo=None)
+            sla_deadline_str = deadline.isoformat()
+            if deadline < now:
+                sla_status = "violated"
+            elif (deadline - now).total_seconds() < 6 * 3600:
+                sla_status = "at_risk"
+
+        items.append(UrgentRequestItem(
+            id=str(row['id']),
+            reference=row['reference'] or '',
+            workflow_code=row['workflow_code'],
+            solicitud_type=row['solicitud_type'] or '',
+            priority=row['priority'] or 'NORMAL',
+            status=row['status'],
+            citizen_name=row['citizen_name'].strip() or 'N/A',
+            sla_status=sla_status,
+            sla_deadline=sla_deadline_str,
+            submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
+            assigned_to=str(row['assigned_to']) if row['assigned_to'] else None
+        ))
+
+    # Get totals
+    totals = await db.fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE sr.priority::text = 'URGENT') as total_urgent,
+            COUNT(*) FILTER (WHERE sr.priority::text = 'HIGH') as total_high,
+            COUNT(*) FILTER (WHERE sr.assigned_to IS NOT NULL) as total_assigned
+        FROM service_requests sr
+        WHERE sr.workflow_code = ANY($1)
+          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+    """, workflow_codes)
+
+    return UrgentRequestsWidgetResponse(
+        items=items,
+        total_urgent=totals['total_urgent'] or 0,
+        total_high=totals['total_high'] or 0,
+        total_assigned=totals['total_assigned'] or 0
+    )
+
+
+class AppointmentItem(BaseModel):
+    """Appointment item for dashboard widget"""
+    id: str
+    reference: str
+    workflow_code: str
+    solicitud_type: str
+    citizen_name: str
+    cita_date: str
+    cita_time: Optional[str] = None
+    cita_location: Optional[str] = None
+    status: str
+    is_past: bool = False  # True if time has passed
+
+
+class TodayAppointmentsWidgetResponse(BaseModel):
+    """Response for today's appointments widget"""
+    items: List[AppointmentItem]
+    total_today: int
+    completed_today: int
+    upcoming_count: int
+
+
+@router.get(
+    "/dashboard/widgets/appointments",
+    response_model=TodayAppointmentsWidgetResponse,
+    summary="Get today's appointments for dashboard widget",
+    description="""
+    Get all appointments scheduled for today for the dashboard widget.
+    Returns appointments sorted by time.
+    """
+)
+async def get_today_appointments_widget(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    include_past: bool = Query(True, description="Include past appointments from today"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.view"))
+):
+    """Get today's appointments for dashboard widget."""
+
+    # Get entity's workflow codes
+    entity = await db.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity {entity_code} not found"
+        )
+
+    workflow_codes = entity['workflow_codes']
+    if isinstance(workflow_codes, str):
+        workflow_codes = json.loads(workflow_codes)
+    if not workflow_codes:
+        workflow_codes = []
+    workflow_codes = [str(wf) for wf in workflow_codes] if workflow_codes else []
+
+    if not workflow_codes:
+        return TodayAppointmentsWidgetResponse(
+            items=[],
+            total_today=0,
+            completed_today=0,
+            upcoming_count=0
+        )
+
+    # Query today's appointments (no limit - show all)
+    query = """
+        SELECT
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            sr.solicitud_type,
+            sr.cita_date,
+            sr.cita_time,
+            sr.cita_location,
+            sr.status,
+            COALESCE(u.first_name || ' ' || u.last_name, 'N/A') as citizen_name
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        WHERE sr.workflow_code = ANY($1)
+          AND sr.cita_date = CURRENT_DATE
+        ORDER BY sr.cita_time ASC NULLS LAST
+    """
+
+    rows = await db.fetch(query, workflow_codes)
+
+    # Build response with is_past calculation
+    now = datetime.utcnow()
+    current_time = now.time()
+    items = []
+    upcoming_count = 0
+    completed_count = 0
+
+    for row in rows:
+        is_past = False
+        if row['cita_time']:
+            is_past = row['cita_time'] < current_time
+
+        if row['status'] in ('COMPLETED', 'CANCELLED'):
+            completed_count += 1
+        elif not is_past:
+            upcoming_count += 1
+
+        # Skip past if not requested
+        if is_past and not include_past:
+            continue
+
+        items.append(AppointmentItem(
+            id=str(row['id']),
+            reference=row['reference'] or '',
+            workflow_code=row['workflow_code'],
+            solicitud_type=row['solicitud_type'] or '',
+            citizen_name=row['citizen_name'].strip() or 'N/A',
+            cita_date=row['cita_date'].isoformat() if row['cita_date'] else '',
+            cita_time=row['cita_time'].strftime('%H:%M') if row['cita_time'] else None,
+            cita_location=row['cita_location'],
+            status=row['status'],
+            is_past=is_past
+        ))
+
+    return TodayAppointmentsWidgetResponse(
+        items=items,
+        total_today=len(rows),
+        completed_today=completed_count,
+        upcoming_count=upcoming_count
+    )
+
+
+class WorkflowDistributionItem(BaseModel):
+    """Workflow distribution item"""
+    workflow_code: str
+    solicitud_type: str
+    label: str  # Human-readable label
+    count: int
+    percentage: float
+
+
+class WorkflowDistributionWidgetResponse(BaseModel):
+    """Response for workflow distribution widget"""
+    items: List[WorkflowDistributionItem]
+    total: int
+
+
+@router.get(
+    "/dashboard/widgets/distribution",
+    response_model=WorkflowDistributionWidgetResponse,
+    summary="Get workflow distribution for dashboard widget",
+    description="""
+    Get the distribution of active requests by workflow type.
+    Returns all workflow types with counts and percentages.
+    """
+)
+async def get_workflow_distribution_widget(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.view"))
+):
+    """Get workflow distribution for dashboard widget."""
+
+    # Get entity's workflow codes
+    entity = await db.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity {entity_code} not found"
+        )
+
+    workflow_codes = entity['workflow_codes']
+    if isinstance(workflow_codes, str):
+        workflow_codes = json.loads(workflow_codes)
+    if not workflow_codes:
+        workflow_codes = []
+    workflow_codes = [str(wf) for wf in workflow_codes] if workflow_codes else []
+
+    if not workflow_codes:
+        return WorkflowDistributionWidgetResponse(items=[], total=0)
+
+    # Query distribution (no limit - get all)
+    query = """
+        SELECT
+            sr.workflow_code,
+            sr.solicitud_type,
+            w.name_es as workflow_name,
+            COUNT(*) as count
+        FROM service_requests sr
+        LEFT JOIN workflows w ON w.code = sr.workflow_code
+        WHERE sr.workflow_code = ANY($1)
+          AND sr.status::text NOT IN ('DRAFT', 'CANCELLED', 'EXPIRED')
+        GROUP BY sr.workflow_code, sr.solicitud_type, w.name_es
+        ORDER BY count DESC
+    """
+
+    rows = await db.fetch(query, workflow_codes)
+
+    # Calculate total and percentages
+    total = sum(row['count'] for row in rows)
+
+    # Build human-readable labels
+    type_labels = {
+        'expedicion': 'Nuevo',
+        'renovacion': 'Renovación',
+    }
+
+    items = []
+    for row in rows:
+        solicitud_type = row['solicitud_type'] or 'otro'
+        type_label = type_labels.get(solicitud_type, solicitud_type.title())
+
+        # Combine workflow name with type
+        workflow_name = row['workflow_name'] or row['workflow_code']
+        label = f"{type_label}"
+
+        percentage = (row['count'] / total * 100) if total > 0 else 0
+
+        items.append(WorkflowDistributionItem(
+            workflow_code=row['workflow_code'],
+            solicitud_type=solicitud_type,
+            label=label,
+            count=row['count'],
+            percentage=round(percentage, 1)
+        ))
+
+    return WorkflowDistributionWidgetResponse(items=items, total=total)
+
+
+class AlertItem(BaseModel):
+    """Alert item for dashboard widget"""
+    id: str
+    type: str  # sla_warning, documents_pending, assignment_needed, system
+    severity: str  # info, warning, error
+    title: str
+    message: str
+    request_id: Optional[str] = None
+    request_reference: Optional[str] = None
+    action_url: Optional[str] = None
+    created_at: str
+
+
+class AlertsWidgetResponse(BaseModel):
+    """Response for alerts widget"""
+    items: List[AlertItem]
+    total_warnings: int
+    total_errors: int
+
+
+@router.get(
+    "/dashboard/widgets/alerts",
+    response_model=AlertsWidgetResponse,
+    summary="Get system alerts for dashboard widget",
+    description="""
+    Get active alerts for the dashboard widget.
+    Includes SLA warnings, pending documents, and system notifications.
+    """
+)
+async def get_alerts_widget(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.view"))
+):
+    """Get system alerts for dashboard widget."""
+
+    # Get entity's workflow codes
+    entity = await db.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity {entity_code} not found"
+        )
+
+    workflow_codes = entity['workflow_codes']
+    if isinstance(workflow_codes, str):
+        workflow_codes = json.loads(workflow_codes)
+    if not workflow_codes:
+        workflow_codes = []
+    workflow_codes = [str(wf) for wf in workflow_codes] if workflow_codes else []
+
+    alerts = []
+    now = datetime.utcnow()
+
+    if workflow_codes:
+        # 1. SLA Violations (error severity)
+        sla_violated = await db.fetch("""
+            SELECT
+                sr.id,
+                sr.reference,
+                sr.workflow_code,
+                sr.submitted_at,
+                w.sla_hours
+            FROM service_requests sr
+            LEFT JOIN workflows w ON w.code = sr.workflow_code
+            WHERE sr.workflow_code = ANY($1)
+              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+              AND sr.submitted_at IS NOT NULL
+              AND w.sla_hours IS NOT NULL
+              AND sr.submitted_at + (w.sla_hours * interval '1 hour') < NOW()
+        """, workflow_codes)
+
+        for row in sla_violated:
+            alerts.append(AlertItem(
+                id=f"sla_violated_{row['id']}",
+                type="sla_warning",
+                severity="error",
+                title="SLA Vencido",
+                message=f"La solicitud {row['reference']} ha superado el tiempo de SLA",
+                request_id=str(row['id']),
+                request_reference=row['reference'],
+                action_url=f"/dashboard/agent/cnedoge-pasaporte/request/{row['id']}",
+                created_at=now.isoformat()
+            ))
+
+        # 2. SLA At Risk (warning severity) - within 6 hours
+        sla_at_risk = await db.fetch("""
+            SELECT
+                sr.id,
+                sr.reference,
+                sr.workflow_code,
+                sr.submitted_at,
+                w.sla_hours,
+                sr.submitted_at + (w.sla_hours * interval '1 hour') as deadline
+            FROM service_requests sr
+            LEFT JOIN workflows w ON w.code = sr.workflow_code
+            WHERE sr.workflow_code = ANY($1)
+              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+              AND sr.submitted_at IS NOT NULL
+              AND w.sla_hours IS NOT NULL
+              AND sr.submitted_at + (w.sla_hours * interval '1 hour') > NOW()
+              AND sr.submitted_at + (w.sla_hours * interval '1 hour') < NOW() + interval '6 hours'
+        """, workflow_codes)
+
+        for row in sla_at_risk:
+            deadline = row['deadline']
+            hours_left = (deadline.replace(tzinfo=None) - now).total_seconds() / 3600
+            alerts.append(AlertItem(
+                id=f"sla_risk_{row['id']}",
+                type="sla_warning",
+                severity="warning",
+                title="SLA en Riesgo",
+                message=f"La solicitud {row['reference']} vence en {hours_left:.1f} horas",
+                request_id=str(row['id']),
+                request_reference=row['reference'],
+                action_url=f"/dashboard/agent/cnedoge-pasaporte/request/{row['id']}",
+                created_at=now.isoformat()
+            ))
+
+        # 3. Documents pending (info severity)
+        docs_pending = await db.fetch("""
+            SELECT
+                sr.id,
+                sr.reference
+            FROM service_requests sr
+            WHERE sr.workflow_code = ANY($1)
+              AND sr.status::text = 'DOCUMENTS_REQUIRED'
+        """, workflow_codes)
+
+        for row in docs_pending:
+            alerts.append(AlertItem(
+                id=f"docs_pending_{row['id']}",
+                type="documents_pending",
+                severity="info",
+                title="Documentos Pendientes",
+                message=f"La solicitud {row['reference']} está esperando documentos",
+                request_id=str(row['id']),
+                request_reference=row['reference'],
+                action_url=f"/dashboard/agent/cnedoge-pasaporte/request/{row['id']}",
+                created_at=now.isoformat()
+            ))
+
+    # Count by severity
+    total_warnings = sum(1 for a in alerts if a.severity == 'warning')
+    total_errors = sum(1 for a in alerts if a.severity == 'error')
+
+    # Sort: errors first, then warnings, then info
+    severity_order = {'error': 0, 'warning': 1, 'info': 2}
+    alerts.sort(key=lambda a: severity_order.get(a.severity, 3))
+
+    return AlertsWidgetResponse(
+        items=alerts,
+        total_warnings=total_warnings,
+        total_errors=total_errors
+    )
