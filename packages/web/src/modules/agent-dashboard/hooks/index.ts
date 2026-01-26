@@ -23,3 +23,24 @@ export type { AgentPersonalStats, UseAgentPersonalStatsReturn } from './useAgent
 
 export { useEntityServiceRequests } from './useEntityServiceRequests';
 export type { UseEntityServiceRequestsOptions, ActionType, ServiceRequestListItem, ServiceRequestFilters } from './useEntityServiceRequests';
+
+// Widget data hooks
+export {
+  useUrgentRequests,
+  useTodayAppointments,
+  useWorkflowDistribution,
+  useSystemAlerts,
+  useAllWidgetData,
+  widgetQueryKeys,
+} from './useWidgetData';
+export type {
+  UrgentRequestItem,
+  UrgentRequestsWidgetData,
+  AppointmentItem,
+  TodayAppointmentsWidgetData,
+  WorkflowDistributionItem,
+  WorkflowDistributionWidgetData,
+  AlertItem,
+  AlertsWidgetData,
+  AllWidgetData,
+} from './useWidgetData';

@@ -14,7 +14,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocale } from 'next-intl';
 import { getAuthData } from '@/core/auth/storage';
 import apiClient from '@/core/api/client';
@@ -210,3 +210,54 @@ export function useDynamicMenuItems(): {
 }
 
 export default useMenuConfig;
+
+// =============================================================================
+// UTILITY: Prefetch Menu Config
+// Call this after successful login to preload the menu configuration
+// =============================================================================
+
+export const MENU_CONFIG_QUERY_KEY = ['agent-menu-config', 'me'] as const;
+
+/**
+ * Prefetch agent menu configuration after login.
+ * This populates the React Query cache so the sidebar loads instantly.
+ *
+ * @param queryClient - The React Query client instance
+ * @param userId - The logged-in user's ID
+ * @returns Promise that resolves when prefetch is complete
+ */
+export async function prefetchAgentMenuConfig(
+  queryClient: ReturnType<typeof useQueryClient>,
+  userId: string
+): Promise<void> {
+  try {
+    await queryClient.prefetchQuery({
+      queryKey: [...MENU_CONFIG_QUERY_KEY, userId],
+      queryFn: async () => {
+        const response = await apiClient.get<AgentMenuConfigResponse>(
+          '/menu-config/me'
+        );
+        return response.data;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+    console.log('[prefetchAgentMenuConfig] Menu config prefetched successfully');
+  } catch (error) {
+    // Don't throw - prefetch failures shouldn't break the login flow
+    console.warn('[prefetchAgentMenuConfig] Failed to prefetch:', error);
+  }
+}
+
+/**
+ * Hook to get prefetch function with access to query client.
+ * Use this in components that need to trigger prefetch.
+ */
+export function usePrefetchMenuConfig(): {
+  prefetch: (userId: string) => Promise<void>;
+} {
+  const queryClient = useQueryClient();
+
+  return {
+    prefetch: (userId: string) => prefetchAgentMenuConfig(queryClient, userId),
+  };
+}
