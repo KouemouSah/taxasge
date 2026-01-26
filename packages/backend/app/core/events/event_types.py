@@ -139,6 +139,9 @@ class EventType(str, Enum):
     APPOINTMENT_CANCELLED = "appointment.cancelled"
     """Appointment cancelled"""
 
+    APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
+    """Appointment rescheduled to new date/time"""
+
     APPOINTMENT_REMINDER = "appointment.reminder"
     """Appointment reminder (scheduled)"""
 

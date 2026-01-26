@@ -24,3 +24,12 @@ export {
   DEFAULT_ENTITY_WIDGETS,
 } from './widgets';
 export type { WidgetProps, WidgetComponent } from './widgets';
+
+// Appointments components
+export {
+  AppointmentsPage,
+  TodayTab,
+  ScheduleTab,
+  CalendarTab,
+  AppointmentPreviewSheet,
+} from './appointments';

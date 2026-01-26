@@ -41,6 +41,35 @@ export {
   useCalendarWeek,
   useCalendarSlots,
 } from './useWidgetData';
+
+// Appointments hooks
+export {
+  useTodayAppointments as useTodayAppointmentsList,
+  useSlotsDetailed,
+  useAppointmentDetail,
+  useBookForCitizen,
+  useRescheduleAppointment,
+  useCancelAppointment,
+  useCompleteAppointment,
+  APPOINTMENTS_QUERY_KEYS,
+} from './useAppointments';
+export type {
+  UseTodayAppointmentsOptions,
+  UseSlotsDetailedOptions,
+  RescheduleVariables,
+  CancelVariables,
+  TodayAppointmentsListResponse,
+  SlotsCalendarResponse,
+  AgentBookingRequest,
+  AgentBookingResponse,
+  RescheduleRequest,
+  RescheduleResponse,
+  AppointmentDetail,
+  LocationInfo as AppointmentLocationInfo,
+  TodayAppointmentDetail,
+  DaySlotDetail as AppointmentDaySlotDetail,
+  SlotTimeDetail as AppointmentSlotTimeDetail,
+} from './useAppointments';
 export type {
   UrgentRequestItem,
   UrgentRequestsWidgetData,
