@@ -5615,7 +5615,8 @@
       "permiso_circulacion": "Permiso de Circulación",
       "matricula_funcionario": "Matrícula de Funcionario",
       "numero_nombramiento": "Número de Nombramiento",
-      "carnet_funcionario": "Carnet de Funcionario"
+      "carnet_funcionario": "Carnet de Funcionario",
+      "numero_seguridad_social": "N° Seguridad Social"
     },
     "identifierTypes": {
       "dni": "DNI",
@@ -5630,7 +5631,8 @@
       "permiso_circulacion": "Permiso de Circulación",
       "matricula_funcionario": "Matrícula de Funcionario",
       "numero_nombramiento": "Número de Nombramiento",
-      "carnet_funcionario": "Carnet de Funcionario"
+      "carnet_funcionario": "Carnet de Funcionario",
+      "numero_seguridad_social": "N° Seguridad Social"
     },
     "sources": {
       "cnedoge": "CNEDOGE",
@@ -5640,6 +5642,7 @@
       "registro_civil": "Registro Civil",
       "registro_vehiculos": "Registro de Vehículos",
       "ministerio_funcion_publica": "Min. Función Pública",
+      "seguridad_social": "Seguridad Social",
       "agent_manual": "Agente (Manual)",
       "api_integration": "API"
     },

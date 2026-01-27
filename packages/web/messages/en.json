@@ -5509,7 +5509,8 @@
       "permiso_circulacion": "Circulation Permit",
       "matricula_funcionario": "Civil Servant ID",
       "numero_nombramiento": "Appointment Number",
-      "carnet_funcionario": "Civil Servant Card"
+      "carnet_funcionario": "Civil Servant Card",
+      "numero_seguridad_social": "Social Security Number"
     },
     "sources": {
       "cnedoge": "CNEDOGE",
@@ -5519,6 +5520,7 @@
       "registro_civil": "Civil Registry",
       "registro_vehiculos": "Vehicle Registry",
       "ministerio_funcion_publica": "Ministry of Public Function",
+      "seguridad_social": "Social Security",
       "agent_manual": "Agent (Manual)",
       "api_integration": "API"
     },

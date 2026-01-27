@@ -5711,7 +5711,8 @@
       "permiso_circulacion": "Permis de Circulation",
       "matricula_funcionario": "Matricule Fonctionnaire",
       "numero_nombramiento": "Numéro de Nomination",
-      "carnet_funcionario": "Carte Fonctionnaire"
+      "carnet_funcionario": "Carte Fonctionnaire",
+      "numero_seguridad_social": "N° Sécurité Sociale"
     },
     "sources": {
       "cnedoge": "CNEDOGE",
@@ -5721,6 +5722,7 @@
       "registro_civil": "Registre Civil",
       "registro_vehiculos": "Registre des Véhicules",
       "ministerio_funcion_publica": "Min. Fonction Publique",
+      "seguridad_social": "Sécurité Sociale",
       "agent_manual": "Agent (Manuel)",
       "api_integration": "API"
     },
