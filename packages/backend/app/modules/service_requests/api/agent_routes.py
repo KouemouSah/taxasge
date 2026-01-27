@@ -5,7 +5,7 @@ RESTful endpoints for agents to process service requests.
 Includes queue management, approval/rejection, and appointment scheduling.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import date, time, datetime
 import asyncpg
