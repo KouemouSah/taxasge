@@ -5446,5 +5446,85 @@
       "avgResponseTime": "Average Response Time",
       "performanceScore": "Performance Score"
     }
+  },
+  "verification": {
+    "title": "Identity Verification",
+    "subtitle": "Requests pending document verification",
+    "pending": "Pending",
+    "verified": "Verified",
+    "verified_manually": "Manually Verified",
+    "verification_failed": "Verification Failed",
+    "failed": "Failed",
+    "partial": "Partial",
+    "in_progress": "In Progress",
+    "not_found": "Not Found",
+    "rejected": "Rejected",
+    "totalPending": "Total Pending",
+    "noPending": "No pending verifications",
+    "identifiers": "Identifiers",
+    "documentsAttached": "Documents Attached",
+    "citizenInfo": "Citizen Information",
+    "verificationDetails": "Verification Details",
+    "actions": {
+      "verify": "Verify",
+      "verifyAll": "Verify All",
+      "reject": "Reject",
+      "markAsFraud": "Mark as Fraud",
+      "previous": "Previous",
+      "next": "Next",
+      "returnToList": "Return to List"
+    },
+    "dialog": {
+      "verifyTitle": "Confirm Verification",
+      "verifyDescription": "Are you sure you want to verify this identifier?",
+      "verifyBatchTitle": "Verify All Identifiers",
+      "verifyBatchDescription": "This will verify {count} pending identifier(s). Continue?",
+      "rejectTitle": "Reject Identifier",
+      "rejectDescription": "Please provide a reason for rejection.",
+      "fraudWarning": "Warning: Marking as fraud will permanently disable this identifier in the system.",
+      "fraudCheckbox": "This identifier is fraudulent",
+      "confirmVerify": "I confirm this identifier has been verified",
+      "reasonPlaceholder": "Reason for rejection...",
+      "notesPlaceholder": "Optional notes..."
+    },
+    "card": {
+      "type": "Type",
+      "value": "Value",
+      "document": "Document",
+      "confidence": "Confidence",
+      "expiresAt": "Expires At",
+      "source": "Source",
+      "verifiedAt": "Verified At"
+    },
+    "identifierTypes": {
+      "dni": "DNI",
+      "pasaporte": "Passport",
+      "permiso_residencia": "Residence Permit",
+      "certificado_conducir": "Driver's License",
+      "nif": "NIF",
+      "matricula": "Registration",
+      "numero_seguridad_social": "Social Security Number"
+    },
+    "sources": {
+      "cnedoge": "CNEDOGE",
+      "trafico": "Traffic",
+      "hacienda": "Treasury",
+      "agent_manual": "Agent (Manual)",
+      "api_integration": "API"
+    },
+    "success": {
+      "verified": "Identifier verified successfully",
+      "verifiedBatch": "{count} identifier(s) verified successfully",
+      "rejected": "Identifier rejected successfully"
+    },
+    "error": {
+      "loadFailed": "Error loading verification details",
+      "verifyFailed": "Error verifying identifier",
+      "rejectFailed": "Error rejecting identifier"
+    },
+    "empty": {
+      "noIdentifiers": "No identifiers found",
+      "noDocuments": "No documents attached"
+    }
   }
 }

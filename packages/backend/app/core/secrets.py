@@ -5,7 +5,7 @@ Reads secrets from Google Cloud Secret Manager with local .env fallback
 
 import os
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Any
 from loguru import logger
 
 # Try to import Secret Manager client (optional for local dev)
@@ -13,14 +13,15 @@ try:
     from google.cloud import secretmanager
     SECRET_MANAGER_AVAILABLE = True
 except ImportError:
+    secretmanager = None  # type: ignore
     SECRET_MANAGER_AVAILABLE = False
     logger.warning("google-cloud-secret-manager not installed, using .env fallback only")
 
 # Initialize Secret Manager client (lazy)
-_client: Optional[secretmanager.SecretManagerServiceClient] = None
+_client: Optional[Any] = None
 
 
-def get_secret_manager_client() -> Optional[secretmanager.SecretManagerServiceClient]:
+def get_secret_manager_client() -> Optional[Any]:
     """Get or create Secret Manager client (singleton)"""
     global _client
     if not SECRET_MANAGER_AVAILABLE:

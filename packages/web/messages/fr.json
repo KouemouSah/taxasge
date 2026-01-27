@@ -5648,5 +5648,85 @@
       "avgResponseTime": "Temps de Réponse Moyen",
       "performanceScore": "Score de Performance"
     }
+  },
+  "verification": {
+    "title": "Vérification d'Identité",
+    "subtitle": "Demandes en attente de vérification de documents",
+    "pending": "En attente",
+    "verified": "Vérifié",
+    "verified_manually": "Vérifié manuellement",
+    "verification_failed": "Échec de vérification",
+    "failed": "Échoué",
+    "partial": "Partiel",
+    "in_progress": "En cours",
+    "not_found": "Non trouvé",
+    "rejected": "Rejeté",
+    "totalPending": "Total en attente",
+    "noPending": "Aucune vérification en attente",
+    "identifiers": "Identifiants",
+    "documentsAttached": "Documents joints",
+    "citizenInfo": "Informations du citoyen",
+    "verificationDetails": "Détails de la vérification",
+    "actions": {
+      "verify": "Vérifier",
+      "verifyAll": "Tout vérifier",
+      "reject": "Rejeter",
+      "markAsFraud": "Marquer comme fraude",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "returnToList": "Retour à la liste"
+    },
+    "dialog": {
+      "verifyTitle": "Confirmer la Vérification",
+      "verifyDescription": "Êtes-vous sûr de vouloir vérifier cet identifiant ?",
+      "verifyBatchTitle": "Vérifier Tous les Identifiants",
+      "verifyBatchDescription": "Cela vérifiera {count} identifiant(s) en attente. Continuer ?",
+      "rejectTitle": "Rejeter l'Identifiant",
+      "rejectDescription": "Veuillez fournir un motif de rejet.",
+      "fraudWarning": "Attention : Marquer comme fraude désactivera définitivement cet identifiant dans le système.",
+      "fraudCheckbox": "Cet identifiant est frauduleux",
+      "confirmVerify": "Je confirme que cet identifiant a été vérifié",
+      "reasonPlaceholder": "Motif du rejet...",
+      "notesPlaceholder": "Notes optionnelles..."
+    },
+    "card": {
+      "type": "Type",
+      "value": "Valeur",
+      "document": "Document",
+      "confidence": "Confiance",
+      "expiresAt": "Expire le",
+      "source": "Source",
+      "verifiedAt": "Vérifié le"
+    },
+    "identifierTypes": {
+      "dni": "DNI",
+      "pasaporte": "Passeport",
+      "permiso_residencia": "Permis de résidence",
+      "certificado_conducir": "Permis de conduire",
+      "nif": "NIF",
+      "matricula": "Immatriculation",
+      "numero_seguridad_social": "N° Sécurité Sociale"
+    },
+    "sources": {
+      "cnedoge": "CNEDOGE",
+      "trafico": "Trafic",
+      "hacienda": "Trésor",
+      "agent_manual": "Agent (Manuel)",
+      "api_integration": "API"
+    },
+    "success": {
+      "verified": "Identifiant vérifié avec succès",
+      "verifiedBatch": "{count} identifiant(s) vérifié(s) avec succès",
+      "rejected": "Identifiant rejeté avec succès"
+    },
+    "error": {
+      "loadFailed": "Erreur lors du chargement des détails de vérification",
+      "verifyFailed": "Erreur lors de la vérification de l'identifiant",
+      "rejectFailed": "Erreur lors du rejet de l'identifiant"
+    },
+    "empty": {
+      "noIdentifiers": "Aucun identifiant trouvé",
+      "noDocuments": "Aucun document joint"
+    }
   }
 }
