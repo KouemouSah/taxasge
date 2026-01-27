@@ -25,6 +25,8 @@ from ..services.service_request_service import service_request_service
 from ..services.workflow_engine import workflow_engine
 from ..services.summary_pdf_service import SummaryPDFService
 from ..models.service_request import ServiceRequestResponse
+from ..models.history import HistoryListSummaryResponse, HistorySummaryItem
+from ..repositories.service_request_repository import service_request_repository
 from app.core.events import EventBus, EventType
 
 
@@ -307,6 +309,247 @@ async def release_item(
     # This could be done via event bus or directly here
 
     return {"message": "Item released back to queue for reassignment"}
+
+
+# ═══════════════════════════════════════════════════════════════
+# HISTORY ENDPOINTS (MUST BE BEFORE /{request_id} FOR ROUTE MATCHING)
+# ═══════════════════════════════════════════════════════════════
+
+
+class HistoryStatisticsResponse(BaseModel):
+    """Response model for history statistics."""
+    period_days: int = Field(..., description="Number of days covered")
+    action_distribution: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Count by action type"
+    )
+    avg_time_by_status: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Average time spent in each status (hours)"
+    )
+    daily_activity: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Actions per day"
+    )
+    total_actions: int = Field(0, description="Total history entries")
+    total_requests: int = Field(0, description="Total requests with history")
+    busiest_day: Optional[str] = Field(None, description="Day with most activity")
+    most_common_action: Optional[str] = Field(None, description="Most frequent action type")
+
+
+@router.get(
+    "/history",
+    response_model=HistoryListSummaryResponse,
+    summary="List service requests with history",
+    description="Returns paginated list of service requests with history summary"
+)
+async def list_requests_with_history(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get list of service requests with history summary for the history list page.
+    IMPORTANT: This route MUST be defined before /{request_id} to avoid route conflicts.
+    """
+    conn = db
+
+    # Get entity's workflow codes
+    entity = await conn.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity {entity_code} not found"
+        )
+
+    workflow_codes = entity['workflow_codes']
+    if isinstance(workflow_codes, str):
+        import json as json_module
+        workflow_codes = json_module.loads(workflow_codes)
+    workflow_codes = [str(wf) for wf in workflow_codes] if workflow_codes else []
+
+    if not workflow_codes:
+        return HistoryListSummaryResponse(
+            items=[],
+            total=0,
+            page=page,
+            page_size=page_size,
+            workflow_codes=workflow_codes,
+            status_filter=status_filter
+        )
+
+    # Get history list
+    offset = (page - 1) * page_size
+    items, total = await service_request_repository.get_history_list_for_entity(
+        db=conn,
+        workflow_codes=workflow_codes,
+        status_filter=status_filter,
+        limit=page_size,
+        offset=offset
+    )
+
+    # Transform to response model
+    summary_items = [
+        HistorySummaryItem(
+            request_id=item["request_id"],
+            reference=item["reference"],
+            workflow_code=item["workflow_code"],
+            citizen_name=item["citizen_name"],
+            current_status=item["current_status"],
+            last_action=item["last_action"],
+            last_action_at=item["last_action_at"],
+            last_performer=item["last_performer"],
+            total_actions=item["total_actions"],
+            days_since_created=item["days_since_created"],
+            is_stale=item["is_stale"]
+        )
+        for item in items
+    ]
+
+    return HistoryListSummaryResponse(
+        items=summary_items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        workflow_codes=workflow_codes,
+        status_filter=status_filter
+    )
+
+
+@router.get(
+    "/history/statistics",
+    response_model=HistoryStatisticsResponse,
+    summary="Get history statistics",
+    description="Get aggregated statistics for history entries"
+)
+async def get_history_statistics(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    workflow_codes: Optional[List[str]] = Query(None, description="Filter by workflow codes"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get aggregated statistics for service request history.
+    IMPORTANT: This route MUST be defined before /{request_id} to avoid route conflicts.
+    """
+    conn = db
+
+    # Build workflow filter
+    workflow_filter = ""
+    if workflow_codes:
+        workflow_list = ", ".join(f"'{w}'" for w in workflow_codes)
+        workflow_filter = f"AND sr.workflow_code IN ({workflow_list})"
+
+    # Action distribution query
+    action_dist_query = f"""
+        SELECT h.action, COUNT(*) as count
+        FROM service_request_history h
+        JOIN service_requests sr ON sr.id = h.request_id
+        WHERE h.performed_at >= NOW() - INTERVAL '{days} days'
+        {workflow_filter}
+        GROUP BY h.action
+        ORDER BY count DESC
+    """
+
+    # Average time by status (status transitions)
+    time_by_status_query = f"""
+        WITH status_durations AS (
+            SELECT
+                h.request_id,
+                h.new_status as status,
+                h.performed_at,
+                LEAD(h.performed_at) OVER (
+                    PARTITION BY h.request_id ORDER BY h.performed_at
+                ) as next_action_at
+            FROM service_request_history h
+            JOIN service_requests sr ON sr.id = h.request_id
+            WHERE h.action = 'status_change'
+              AND h.performed_at >= NOW() - INTERVAL '{days} days'
+            {workflow_filter}
+        )
+        SELECT
+            status,
+            ROUND(AVG(EXTRACT(EPOCH FROM (next_action_at - performed_at)) / 3600)::numeric, 2) as avg_hours,
+            COUNT(*) as transitions
+        FROM status_durations
+        WHERE next_action_at IS NOT NULL
+        GROUP BY status
+        ORDER BY avg_hours DESC
+    """
+
+    # Daily activity query
+    daily_activity_query = f"""
+        SELECT
+            DATE(h.performed_at) as activity_date,
+            COUNT(*) as action_count,
+            COUNT(DISTINCT h.request_id) as request_count
+        FROM service_request_history h
+        JOIN service_requests sr ON sr.id = h.request_id
+        WHERE h.performed_at >= NOW() - INTERVAL '{days} days'
+        {workflow_filter}
+        GROUP BY DATE(h.performed_at)
+        ORDER BY activity_date DESC
+        LIMIT 30
+    """
+
+    # Total counts query
+    totals_query = f"""
+        SELECT
+            COUNT(*) as total_actions,
+            COUNT(DISTINCT h.request_id) as total_requests
+        FROM service_request_history h
+        JOIN service_requests sr ON sr.id = h.request_id
+        WHERE h.performed_at >= NOW() - INTERVAL '{days} days'
+        {workflow_filter}
+    """
+
+    # Execute queries
+    action_rows = await conn.fetch(action_dist_query)
+    time_rows = await conn.fetch(time_by_status_query)
+    daily_rows = await conn.fetch(daily_activity_query)
+    totals_row = await conn.fetchrow(totals_query)
+
+    # Process results
+    action_distribution = [
+        {"action": row["action"], "count": row["count"]}
+        for row in action_rows
+    ]
+
+    avg_time_by_status = [
+        {"status": row["status"], "avg_hours": float(row["avg_hours"] or 0), "transitions": row["transitions"]}
+        for row in time_rows
+    ]
+
+    daily_activity = [
+        {"date": str(row["activity_date"]), "actions": row["action_count"], "requests": row["request_count"]}
+        for row in daily_rows
+    ]
+
+    # Find busiest day
+    busiest_day = None
+    if daily_rows:
+        max_day = max(daily_rows, key=lambda x: x["action_count"])
+        busiest_day = str(max_day["activity_date"])
+
+    # Find most common action
+    most_common_action = action_distribution[0]["action"] if action_distribution else None
+
+    return HistoryStatisticsResponse(
+        period_days=days,
+        action_distribution=action_distribution,
+        avg_time_by_status=avg_time_by_status,
+        daily_activity=daily_activity,
+        total_actions=totals_row["total_actions"] if totals_row else 0,
+        total_requests=totals_row["total_requests"] if totals_row else 0,
+        busiest_day=busiest_day,
+        most_common_action=most_common_action
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
