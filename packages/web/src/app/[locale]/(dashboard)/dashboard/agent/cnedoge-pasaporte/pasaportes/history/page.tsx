@@ -33,11 +33,21 @@ import {
   AlertTriangle,
   RotateCcw,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Scan,
   ScanLine,
   UserCog,
   Edit3,
   Database,
+  Download,
+  FileSpreadsheet,
+  Loader2,
+  X,
+  SlidersHorizontal,
+  BarChart3,
+  TrendingUp,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +77,11 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { serviceRequestsApi } from '@/modules/service-requests/services/api';
 import {
   HistoryActionType,
@@ -80,6 +95,7 @@ import type {
   HistorySummaryItem,
   HistoryEntry,
   HistoryListResponse,
+  HistoryStatistics,
 } from '@/modules/service-requests/types';
 
 const ENTITY_CODE = 'CNEDOGE_PASAPORTE';
@@ -367,6 +383,15 @@ export default function HistorialPage() {
   const [selectedRequest, setSelectedRequest] = useState<HistorySummaryItem | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // Advanced filters
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [actionTypeFilter, setActionTypeFilter] = useState<string>('all');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+
+  // Statistics
+  const [showStatistics, setShowStatistics] = useState(false);
+
   // Query for list of requests with history summary
   const {
     data: listData,
@@ -399,6 +424,17 @@ export default function HistorialPage() {
     enabled: !!selectedRequest,
   });
 
+  // Query for statistics
+  const {
+    data: statsData,
+    isLoading: isStatsLoading,
+  } = useQuery({
+    queryKey: ['history-stats', ENTITY_CODE, WORKFLOW_CODES],
+    queryFn: () =>
+      serviceRequestsApi.getHistoryStatistics(ENTITY_CODE, 30, WORKFLOW_CODES),
+    enabled: showStatistics,
+  });
+
   const handleRowClick = (item: HistorySummaryItem) => {
     setSelectedRequest(item);
     setIsDetailOpen(true);
@@ -408,14 +444,70 @@ export default function HistorialPage() {
     router.push('/dashboard/agent/cnedoge-pasaporte/pasaportes');
   };
 
+  // Export state
+  const [isExporting, setIsExporting] = useState<'csv' | 'pdf' | null>(null);
+
+  // Export handler
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    if (!selectedRequest) return;
+
+    setIsExporting(format);
+    try {
+      const blob = await serviceRequestsApi.exportHistory(
+        selectedRequest.requestId,
+        format,
+        true,  // includeOcr
+        true   // includeAssignments
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `historial_${selectedRequest.reference}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      // Could add toast notification here
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
   // Filter items by search query (client-side)
+  // Filter items by search query and advanced filters (client-side)
   const filteredItems =
-    listData?.items.filter(
-      (item) =>
+    listData?.items.filter((item) => {
+      // Text search (reference or citizen name)
+      const matchesSearch =
         !searchQuery ||
         item.reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.citizenName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
-    ) || [];
+        (item.citizenName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+
+      // Action type filter
+      const matchesActionType =
+        actionTypeFilter === 'all' || item.lastAction === actionTypeFilter;
+
+      // Date range filter (based on last action date)
+      let matchesDateRange = true;
+      if (item.lastActionAt) {
+        const actionDate = new Date(item.lastActionAt);
+        if (fromDate) {
+          const from = new Date(fromDate);
+          matchesDateRange = matchesDateRange && actionDate >= from;
+        }
+        if (toDate) {
+          const to = new Date(toDate);
+          to.setHours(23, 59, 59, 999); // Include the entire day
+          matchesDateRange = matchesDateRange && actionDate <= to;
+        }
+      }
+
+      return matchesSearch && matchesActionType && matchesDateRange;
+    }) || [];
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -451,6 +543,7 @@ export default function HistorialPage() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
+          {/* Basic filters row */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -486,7 +579,135 @@ export default function HistorialPage() {
                 </SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={showAdvancedFilters ? 'bg-muted' : ''}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
           </div>
+
+          {/* Advanced filters */}
+          <Collapsible open={showAdvancedFilters}>
+            <CollapsibleContent className="pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                {/* Action type filter */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    {t('history.filterByAction', { defaultValue: 'Tipo de Acción' })}
+                  </label>
+                  <Select value={actionTypeFilter} onValueChange={setActionTypeFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        {t('common.all', { defaultValue: 'Todos' })}
+                      </SelectItem>
+                      <SelectItem value="status_change">
+                        {t('history.action.statusChange', { defaultValue: 'Cambio de Estado' })}
+                      </SelectItem>
+                      <SelectItem value="document_added">
+                        {t('history.action.documentAdded', { defaultValue: 'Documento Agregado' })}
+                      </SelectItem>
+                      <SelectItem value="ocr_completed">
+                        {t('history.action.ocrCompleted', { defaultValue: 'OCR Completado' })}
+                      </SelectItem>
+                      <SelectItem value="assigned">
+                        {t('history.action.assigned', { defaultValue: 'Asignado' })}
+                      </SelectItem>
+                      <SelectItem value="cita_scheduled">
+                        {t('history.action.citaScheduled', { defaultValue: 'Cita Programada' })}
+                      </SelectItem>
+                      <SelectItem value="payment_received">
+                        {t('history.action.paymentReceived', { defaultValue: 'Pago Recibido' })}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* From date */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    {t('history.fromDate', { defaultValue: 'Desde' })}
+                  </label>
+                  <Input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* To date */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    {t('history.toDate', { defaultValue: 'Hasta' })}
+                  </label>
+                  <Input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Clear filters button */}
+                <div className="flex items-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setActionTypeFilter('all');
+                      setFromDate('');
+                      setToDate('');
+                      setSearchQuery('');
+                      setStatusFilter('all');
+                    }}
+                    className="w-full"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    {t('common.clearFilters', { defaultValue: 'Limpiar Filtros' })}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Active filters badges */}
+              {(actionTypeFilter !== 'all' || fromDate || toDate) && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {actionTypeFilter !== 'all' && (
+                    <Badge variant="secondary" className="gap-1">
+                      {t('history.action.' + actionTypeFilter, { defaultValue: actionTypeFilter })}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setActionTypeFilter('all')}
+                      />
+                    </Badge>
+                  )}
+                  {fromDate && (
+                    <Badge variant="secondary" className="gap-1">
+                      {t('history.from', { defaultValue: 'Desde' })}: {fromDate}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setFromDate('')}
+                      />
+                    </Badge>
+                  )}
+                  {toDate && (
+                    <Badge variant="secondary" className="gap-1">
+                      {t('history.to', { defaultValue: 'Hasta' })}: {toDate}
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => setToDate('')}
+                      />
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 
@@ -530,6 +751,183 @@ export default function HistorialPage() {
           </Card>
         </div>
       )}
+
+      {/* Statistics Panel */}
+      <Collapsible open={showStatistics} onOpenChange={setShowStatistics}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-4 cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  {t('history.statistics', { defaultValue: 'Estadísticas (últimos 30 días)' })}
+                </CardTitle>
+                {showStatistics ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              {isStatsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="h-24" />
+                  ))}
+                </div>
+              ) : statsData ? (
+                <div className="space-y-6">
+                  {/* Key metrics */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-700">{statsData.totalActions}</p>
+                      <p className="text-xs text-blue-600">
+                        {t('history.totalActions', { defaultValue: 'Total Acciones' })}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-700">{statsData.totalRequests}</p>
+                      <p className="text-xs text-green-600">
+                        {t('history.activeRequests', { defaultValue: 'Solicitudes Activas' })}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <p className="text-2xl font-bold text-purple-700">
+                        {statsData.busiestDay
+                          ? new Date(statsData.busiestDay).toLocaleDateString(
+                              locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : 'en-US',
+                              { day: 'numeric', month: 'short' }
+                            )
+                          : '-'}
+                      </p>
+                      <p className="text-xs text-purple-600">
+                        {t('history.busiestDay', { defaultValue: 'Día más Activo' })}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-amber-50 rounded-lg">
+                      <p className="text-2xl font-bold text-amber-700 truncate">
+                        {statsData.mostCommonAction
+                          ? getHistoryActionLabel(statsData.mostCommonAction, locale)
+                          : '-'}
+                      </p>
+                      <p className="text-xs text-amber-600">
+                        {t('history.mostCommonAction', { defaultValue: 'Acción más Común' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action distribution */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <Activity className="h-4 w-4" />
+                        {t('history.actionDistribution', { defaultValue: 'Distribución de Acciones' })}
+                      </h4>
+                      <div className="space-y-2">
+                        {statsData.actionDistribution.slice(0, 6).map((item) => {
+                          const maxCount = Math.max(...statsData.actionDistribution.map((d) => d.count));
+                          const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                          return (
+                            <div key={item.action} className="flex items-center gap-2">
+                              <span className={`p-1 rounded ${getHistoryActionColor(item.action)}`}>
+                                <ActionIcon action={item.action} className="h-3 w-3" />
+                              </span>
+                              <span className="text-xs text-muted-foreground flex-1 truncate">
+                                {getHistoryActionLabel(item.action, locale)}
+                              </span>
+                              <div className="w-24 bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="bg-blue-600 h-full rounded-full"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-medium w-8 text-right">{item.count}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Average time by status */}
+                    <div>
+                      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        {t('history.avgTimeByStatus', { defaultValue: 'Tiempo Promedio por Estado' })}
+                      </h4>
+                      <div className="space-y-2">
+                        {statsData.avgTimeByStatus.slice(0, 6).map((item) => (
+                          <div key={item.status} className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-xs">
+                              {getStatusLabel(item.status, locale)}
+                            </Badge>
+                            <span className="text-sm">
+                              {item.avgHours < 24
+                                ? `${item.avgHours.toFixed(1)}h`
+                                : `${(item.avgHours / 24).toFixed(1)}d`}
+                            </span>
+                          </div>
+                        ))}
+                        {statsData.avgTimeByStatus.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-4">
+                            {t('history.noTimeData', { defaultValue: 'Sin datos de tiempo' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Daily activity (simple bar visualization) */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      {t('history.dailyActivity', { defaultValue: 'Actividad Diaria (últimos 14 días)' })}
+                    </h4>
+                    <div className="flex items-end gap-1 h-16">
+                      {statsData.dailyActivity.slice(0, 14).reverse().map((day, idx) => {
+                        const maxActions = Math.max(...statsData.dailyActivity.map((d) => d.actions));
+                        const height = maxActions > 0 ? (day.actions / maxActions) * 100 : 0;
+                        return (
+                          <div
+                            key={day.date || idx}
+                            className="flex-1 bg-blue-500 rounded-t hover:bg-blue-600 transition-colors"
+                            style={{ height: `${Math.max(height, 5)}%` }}
+                            title={`${day.date}: ${day.actions} acciones`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>
+                        {statsData.dailyActivity.length > 0
+                          ? new Date(statsData.dailyActivity[statsData.dailyActivity.length - 1]?.date).toLocaleDateString(
+                              locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : 'en-US',
+                              { day: 'numeric', month: 'short' }
+                            )
+                          : ''}
+                      </span>
+                      <span>
+                        {statsData.dailyActivity.length > 0
+                          ? new Date(statsData.dailyActivity[0]?.date).toLocaleDateString(
+                              locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : 'en-US',
+                              { day: 'numeric', month: 'short' }
+                            )
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">
+                  {t('common.noData', { defaultValue: 'Sin datos disponibles' })}
+                </p>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Table */}
       <Card>
@@ -680,7 +1078,7 @@ export default function HistorialPage() {
             ) : detailData ? (
               <>
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 mb-6">
+                <div className="grid grid-cols-3 gap-2 mb-4">
                   <div className="text-center p-2 bg-muted rounded">
                     <p className="text-lg font-bold">{detailData.totalStatusChanges || 0}</p>
                     <p className="text-xs text-muted-foreground">Estados</p>
@@ -693,6 +1091,38 @@ export default function HistorialPage() {
                     <p className="text-lg font-bold">{detailData.totalAssignments || 0}</p>
                     <p className="text-xs text-muted-foreground">Asign.</p>
                   </div>
+                </div>
+
+                {/* Export Buttons */}
+                <div className="flex gap-2 mb-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleExport('csv')}
+                    disabled={isExporting !== null}
+                    className="flex-1"
+                  >
+                    {isExporting === 'csv' ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    )}
+                    {t('history.exportCsv', { defaultValue: 'Exportar CSV' })}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleExport('pdf')}
+                    disabled={isExporting !== null}
+                    className="flex-1"
+                  >
+                    {isExporting === 'pdf' ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {t('history.exportPdf', { defaultValue: 'Exportar PDF' })}
+                  </Button>
                 </div>
 
                 {/* Timeline */}

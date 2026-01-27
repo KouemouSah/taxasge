@@ -35,6 +35,7 @@ import type {
   HistoryListResponse,
   HistorySummaryItem,
   HistoryListSummaryResponse,
+  HistoryStatistics,
   PerformerInfo,
 } from '../types'
 import { HistoryActionType } from '../types'
@@ -1742,6 +1743,88 @@ class ServiceRequestsApiClient {
       pageSize: response.page_size,
       workflowCodes: response.workflow_codes,
       statusFilter: response.status_filter,
+    }
+  }
+
+  /**
+   * Export history timeline as CSV or PDF
+   * Returns a blob URL for download
+   */
+  async exportHistory(
+    requestId: string,
+    format: 'csv' | 'pdf' = 'csv',
+    includeOcr: boolean = true,
+    includeAssignments: boolean = true
+  ): Promise<Blob> {
+    const params = new URLSearchParams({
+      format,
+      include_ocr: includeOcr.toString(),
+      include_assignments: includeAssignments.toString(),
+    })
+
+    const response = await fetch(
+      `${API_BASE_URL}${API_VERSION}${ENDPOINT_BASE}/${requestId}/history/export?${params}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${getAuthData()?.access_token}`,
+        },
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || 'Export failed')
+    }
+
+    return response.blob()
+  }
+
+  /**
+   * Get history statistics
+   */
+  async getHistoryStatistics(
+    entityCode: string,
+    days: number = 30,
+    workflowCodes?: string[]
+  ): Promise<HistoryStatistics> {
+    const params = new URLSearchParams({
+      entity_code: entityCode,
+      days: days.toString(),
+    })
+
+    if (workflowCodes?.length) {
+      workflowCodes.forEach((c) => params.append('workflow_codes', c))
+    }
+
+    interface BackendStatsResponse {
+      period_days: number
+      action_distribution: Array<{ action: string; count: number }>
+      avg_time_by_status: Array<{ status: string; avg_hours: number; transitions: number }>
+      daily_activity: Array<{ date: string; actions: number; requests: number }>
+      total_actions: number
+      total_requests: number
+      busiest_day?: string
+      most_common_action?: string
+    }
+
+    const response = await this.request<BackendStatsResponse>(
+      `${ENDPOINT_BASE}/history/statistics?${params}`
+    )
+
+    return {
+      periodDays: response.period_days,
+      actionDistribution: response.action_distribution,
+      avgTimeByStatus: response.avg_time_by_status.map((s) => ({
+        status: s.status,
+        avgHours: s.avg_hours,
+        transitions: s.transitions,
+      })),
+      dailyActivity: response.daily_activity,
+      totalActions: response.total_actions,
+      totalRequests: response.total_requests,
+      busiestDay: response.busiest_day,
+      mostCommonAction: response.most_common_action,
     }
   }
 }

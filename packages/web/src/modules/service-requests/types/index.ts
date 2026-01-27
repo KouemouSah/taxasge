@@ -1125,6 +1125,20 @@ export interface HistoryListSummaryResponse {
 }
 
 /**
+ * HistoryStatistics - Aggregated statistics for history entries
+ */
+export interface HistoryStatistics {
+  periodDays: number
+  actionDistribution: Array<{ action: string; count: number }>
+  avgTimeByStatus: Array<{ status: string; avgHours: number; transitions: number }>
+  dailyActivity: Array<{ date: string; actions: number; requests: number }>
+  totalActions: number
+  totalRequests: number
+  busiestDay?: string
+  mostCommonAction?: string
+}
+
+/**
  * Get icon name for history action type
  */
 export function getHistoryActionIcon(action: HistoryActionType | string): string {

@@ -4568,3 +4568,273 @@ async def list_requests_with_history(
         workflow_codes=workflow_codes,
         status_filter=status_filter
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# HISTORY EXPORT ENDPOINTS
+# ═══════════════════════════════════════════════════════════════
+
+from fastapi.responses import StreamingResponse
+from ..services.history_export_service import history_export_service
+
+
+@router.get(
+    "/{request_id}/history/export",
+    summary="Export service request history",
+    description="Export the history timeline as CSV or PDF"
+)
+async def export_request_history(
+    request_id: UUID = Path(..., description="Service request ID"),
+    format: str = Query("csv", description="Export format: csv or pdf"),
+    include_ocr: bool = Query(True, description="Include OCR processing logs"),
+    include_assignments: bool = Query(True, description="Include assignment history"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Export the complete history timeline for a service request.
+
+    Supports:
+    - CSV format (Excel compatible with UTF-8 BOM)
+    - PDF format (formatted timeline document)
+    """
+    conn = db
+
+    # Get service request info
+    request_data = await service_request_repository.get_request_with_history_summary(
+        conn, request_id
+    )
+
+    if not request_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service request not found"
+        )
+
+    # Get all history entries (no pagination for export)
+    entries, total = await service_request_repository.get_request_history(
+        db=conn,
+        request_id=request_id,
+        include_ocr=include_ocr,
+        include_assignments=include_assignments,
+        limit=1000,  # Reasonable limit for export
+        offset=0
+    )
+
+    # Prepare request info
+    request_info = {
+        "reference": request_data.get("reference", ""),
+        "workflow_code": request_data.get("workflow_code", ""),
+        "citizen_name": request_data.get("citizen_name", "N/A"),
+        "current_status": request_data.get("status", ""),
+    }
+
+    # Generate export based on format
+    if format.lower() == "pdf":
+        try:
+            content = await history_export_service.export_history_pdf(entries, request_info)
+            filename = f"historial_{request_info['reference']}.pdf"
+            media_type = "application/pdf"
+        except RuntimeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail=str(e)
+            )
+    else:
+        # Default to CSV
+        content = await history_export_service.export_history_csv(entries, request_info)
+        filename = f"historial_{request_info['reference']}.csv"
+        media_type = "text/csv; charset=utf-8"
+
+    return StreamingResponse(
+        iter([content]),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(content)),
+        }
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# HISTORY STATISTICS ENDPOINT
+# ═══════════════════════════════════════════════════════════════
+
+
+class HistoryStatisticsResponse(BaseModel):
+    """Response model for history statistics."""
+    period_days: int = Field(..., description="Number of days covered")
+
+    # Action distribution
+    action_distribution: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Count by action type"
+    )
+
+    # Status transitions timing
+    avg_time_by_status: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Average time spent in each status (hours)"
+    )
+
+    # Daily activity
+    daily_activity: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Actions per day"
+    )
+
+    # Summary
+    total_actions: int = Field(0, description="Total history entries")
+    total_requests: int = Field(0, description="Total requests with history")
+    busiest_day: Optional[str] = Field(None, description="Day with most activity")
+    most_common_action: Optional[str] = Field(None, description="Most frequent action type")
+
+
+@router.get(
+    "/history/statistics",
+    response_model=HistoryStatisticsResponse,
+    summary="Get history statistics",
+    description="Get aggregated statistics for history entries"
+)
+async def get_history_statistics(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    workflow_codes: Optional[List[str]] = Query(None, description="Filter by workflow codes"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get aggregated statistics for service request history.
+
+    Returns:
+    - Action type distribution
+    - Average time per status
+    - Daily activity trends
+    """
+    conn = db
+
+    # Build workflow filter
+    workflow_filter = ""
+    if workflow_codes:
+        workflow_list = ", ".join(f"'{w}'" for w in workflow_codes)
+        workflow_filter = f"AND sr.workflow_code IN ({workflow_list})"
+
+    # Action distribution query
+    action_dist_query = f"""
+        SELECT
+            h.action,
+            COUNT(*) as count
+        FROM service_request_history h
+        JOIN service_requests sr ON sr.id = h.request_id
+        WHERE h.performed_at >= NOW() - INTERVAL '{days} days'
+        {workflow_filter}
+        GROUP BY h.action
+        ORDER BY count DESC
+    """
+
+    # Average time by status (status transitions)
+    time_by_status_query = f"""
+        WITH status_durations AS (
+            SELECT
+                h.request_id,
+                h.new_status as status,
+                h.performed_at,
+                LEAD(h.performed_at) OVER (
+                    PARTITION BY h.request_id
+                    ORDER BY h.performed_at
+                ) as next_action_at
+            FROM service_request_history h
+            JOIN service_requests sr ON sr.id = h.request_id
+            WHERE h.action = 'status_change'
+              AND h.performed_at >= NOW() - INTERVAL '{days} days'
+            {workflow_filter}
+        )
+        SELECT
+            status,
+            ROUND(AVG(EXTRACT(EPOCH FROM (next_action_at - performed_at)) / 3600)::numeric, 2) as avg_hours,
+            COUNT(*) as transitions
+        FROM status_durations
+        WHERE next_action_at IS NOT NULL
+        GROUP BY status
+        ORDER BY avg_hours DESC
+    """
+
+    # Daily activity query
+    daily_activity_query = f"""
+        SELECT
+            DATE(h.performed_at) as activity_date,
+            COUNT(*) as action_count,
+            COUNT(DISTINCT h.request_id) as request_count
+        FROM service_request_history h
+        JOIN service_requests sr ON sr.id = h.request_id
+        WHERE h.performed_at >= NOW() - INTERVAL '{days} days'
+        {workflow_filter}
+        GROUP BY DATE(h.performed_at)
+        ORDER BY activity_date DESC
+        LIMIT 30
+    """
+
+    # Total counts query
+    totals_query = f"""
+        SELECT
+            COUNT(*) as total_actions,
+            COUNT(DISTINCT h.request_id) as total_requests
+        FROM service_request_history h
+        JOIN service_requests sr ON sr.id = h.request_id
+        WHERE h.performed_at >= NOW() - INTERVAL '{days} days'
+        {workflow_filter}
+    """
+
+    # Execute queries
+    action_rows = await conn.fetch(action_dist_query)
+    time_rows = await conn.fetch(time_by_status_query)
+    daily_rows = await conn.fetch(daily_activity_query)
+    totals_row = await conn.fetchrow(totals_query)
+
+    # Process results
+    action_distribution = [
+        {"action": row["action"], "count": row["count"]}
+        for row in action_rows
+    ]
+
+    avg_time_by_status = [
+        {
+            "status": row["status"],
+            "avg_hours": float(row["avg_hours"]) if row["avg_hours"] else 0,
+            "transitions": row["transitions"]
+        }
+        for row in time_rows
+    ]
+
+    daily_activity = [
+        {
+            "date": row["activity_date"].isoformat() if row["activity_date"] else "",
+            "actions": row["action_count"],
+            "requests": row["request_count"]
+        }
+        for row in daily_rows
+    ]
+
+    # Find busiest day and most common action
+    busiest_day = None
+    most_common_action = None
+
+    if daily_rows:
+        busiest = max(daily_rows, key=lambda r: r["action_count"])
+        busiest_day = busiest["activity_date"].isoformat() if busiest["activity_date"] else None
+
+    if action_rows:
+        most_common_action = action_rows[0]["action"]
+
+    return HistoryStatisticsResponse(
+        period_days=days,
+        action_distribution=action_distribution,
+        avg_time_by_status=avg_time_by_status,
+        daily_activity=daily_activity,
+        total_actions=totals_row["total_actions"] if totals_row else 0,
+        total_requests=totals_row["total_requests"] if totals_row else 0,
+        busiest_day=busiest_day,
+        most_common_action=most_common_action
+    )
