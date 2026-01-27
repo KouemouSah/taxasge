@@ -5365,9 +5365,32 @@
         "scheduleAppointment": "Schedule an appointment"
       },
       "history": {
-        "title": "{workflow} - History",
+        "title": "Request History",
+        "subtitle": "Timeline of actions on passport requests",
         "description": "Request history for {workflow}",
-        "placeholder": "Request history will appear here when available."
+        "placeholder": "Request history will appear here when available.",
+        "detailTitle": "Request Timeline",
+        "totalRequests": "Total requests",
+        "noHistory": "No history available",
+        "noEntries": "No history entries",
+        "lastAction": "Last Action",
+        "totalActions": "Actions",
+        "actions": {
+          "status_change": "Status change",
+          "document_added": "Document added",
+          "document_validated": "Document validated",
+          "assigned": "Assigned",
+          "unassigned": "Unassigned",
+          "cita_scheduled": "Appointment scheduled",
+          "cita_cancelled": "Appointment cancelled",
+          "verification_updated": "Verification updated",
+          "comment_added": "Comment added",
+          "payment_received": "Payment received",
+          "payment_failed": "Payment failed",
+          "escalated": "Escalated",
+          "reopened": "Reopened",
+          "note_added": "Note added"
+        }
       },
       "noData": "No data available",
       "checkBackLater": "Data will appear here when there is activity."

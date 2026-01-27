@@ -5567,9 +5567,32 @@
         "scheduleAppointment": "Planifier un rendez-vous"
       },
       "history": {
-        "title": "{workflow} - Historique",
+        "title": "Historique des Demandes",
+        "subtitle": "Timeline des actions sur les demandes de passeport",
         "description": "Historique des demandes de {workflow}",
-        "placeholder": "L'historique des demandes apparaîtra ici quand il sera disponible."
+        "placeholder": "L'historique des demandes apparaîtra ici quand il sera disponible.",
+        "detailTitle": "Timeline de la Demande",
+        "totalRequests": "Total demandes",
+        "noHistory": "Aucun historique disponible",
+        "noEntries": "Aucune entrée d'historique",
+        "lastAction": "Dernière Action",
+        "totalActions": "Actions",
+        "actions": {
+          "status_change": "Changement de statut",
+          "document_added": "Document ajouté",
+          "document_validated": "Document validé",
+          "assigned": "Assigné",
+          "unassigned": "Désassigné",
+          "cita_scheduled": "RDV programmé",
+          "cita_cancelled": "RDV annulé",
+          "verification_updated": "Vérification mise à jour",
+          "comment_added": "Commentaire ajouté",
+          "payment_received": "Paiement reçu",
+          "payment_failed": "Paiement échoué",
+          "escalated": "Escaladé",
+          "reopened": "Réouvert",
+          "note_added": "Note ajoutée"
+        }
       },
       "noData": "Aucune donnée disponible",
       "checkBackLater": "Les données apparaîtront ici quand il y aura de l'activité."

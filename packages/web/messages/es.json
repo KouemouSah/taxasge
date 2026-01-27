@@ -5475,9 +5475,32 @@
         "scheduleAppointment": "Programar una cita"
       },
       "history": {
-        "title": "{workflow} - Historial",
+        "title": "Historial de Solicitudes",
+        "subtitle": "Timeline de acciones en solicitudes de pasaporte",
         "description": "Historial de solicitudes de {workflow}",
-        "placeholder": "El historial de solicitudes aparecerá aquí cuando esté disponible."
+        "placeholder": "El historial de solicitudes aparecerá aquí cuando esté disponible.",
+        "detailTitle": "Timeline de Solicitud",
+        "totalRequests": "Total solicitudes",
+        "noHistory": "No hay historial disponible",
+        "noEntries": "Sin entradas de historial",
+        "lastAction": "Última Acción",
+        "totalActions": "Acciones",
+        "actions": {
+          "status_change": "Cambio de estado",
+          "document_added": "Documento agregado",
+          "document_validated": "Documento validado",
+          "assigned": "Asignado",
+          "unassigned": "Desasignado",
+          "cita_scheduled": "Cita programada",
+          "cita_cancelled": "Cita cancelada",
+          "verification_updated": "Verificación actualizada",
+          "comment_added": "Comentario agregado",
+          "payment_received": "Pago recibido",
+          "payment_failed": "Pago fallido",
+          "escalated": "Escalado",
+          "reopened": "Reabierto",
+          "note_added": "Nota agregada"
+        }
       },
       "noData": "No hay datos disponibles",
       "checkBackLater": "Los datos aparecerán aquí cuando haya actividad."

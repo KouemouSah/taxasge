@@ -971,3 +971,252 @@ export function getVisiblePassportSteps(
     return true
   })
 }
+
+// ============================================================================
+// HISTORY TYPES (Phase 2 - Timeline/Audit Trail)
+// ============================================================================
+
+/**
+ * HistoryActionType - Types of actions tracked in service request history
+ * Matches backend HistoryActionType enum
+ */
+export enum HistoryActionType {
+  STATUS_CHANGE = 'status_change',
+  DOCUMENT_ADDED = 'document_added',
+  DOCUMENT_VALIDATED = 'document_validated',
+  ASSIGNED = 'assigned',
+  UNASSIGNED = 'unassigned',
+  CITA_SCHEDULED = 'cita_scheduled',
+  CITA_CANCELLED = 'cita_cancelled',
+  VERIFICATION_UPDATED = 'verification_updated',
+  COMMENT_ADDED = 'comment_added',
+  PAYMENT_RECEIVED = 'payment_received',
+  PAYMENT_FAILED = 'payment_failed',
+  ESCALATED = 'escalated',
+  REOPENED = 'reopened',
+  NOTE_ADDED = 'note_added',
+}
+
+/**
+ * HistoryActionSource - Source of history action
+ */
+export enum HistoryActionSource {
+  USER = 'user',
+  AGENT = 'agent',
+  SYSTEM = 'system',
+  WEBHOOK = 'webhook',
+}
+
+/**
+ * PerformerInfo - Information about who performed an action
+ */
+export interface PerformerInfo {
+  userId?: string
+  fullName: string
+  email?: string
+  role?: string
+  isSystem: boolean
+}
+
+/**
+ * HistoryEntry - Single entry in request history timeline
+ */
+export interface HistoryEntry {
+  id: string
+  action: HistoryActionType
+  previousStatus?: string
+  newStatus?: string
+  details: Record<string, unknown>
+  comment?: string
+  performedBy?: PerformerInfo
+  performedAt: string // ISO datetime
+}
+
+/**
+ * HistoryFilters - Filters for history queries
+ */
+export interface HistoryFilters {
+  actionTypes?: HistoryActionType[]
+  fromDate?: string
+  toDate?: string
+  includeSystem?: boolean
+}
+
+/**
+ * HistoryListResponse - Response for single request history
+ */
+export interface HistoryListResponse {
+  requestId: string
+  reference: string
+  workflowCode: string
+  solicitudType?: string
+  citizenName?: string
+  currentStatus: string
+  entries: HistoryEntry[]
+  total: number
+  page: number
+  pageSize: number
+  // Statistics
+  totalStatusChanges?: number
+  totalDocuments?: number
+  totalAssignments?: number
+  firstActionAt?: string
+  lastActionAt?: string
+}
+
+/**
+ * HistorySummaryItem - Summary of a request's history for list view
+ */
+export interface HistorySummaryItem {
+  requestId: string
+  reference: string
+  workflowCode: string
+  citizenName?: string
+  currentStatus: string
+  lastAction: HistoryActionType
+  lastActionAt: string
+  lastPerformer?: string
+  totalActions: number
+  daysSinceCreated?: number
+  isStale?: boolean
+}
+
+/**
+ * HistoryListSummaryResponse - Response for list of requests with history summary
+ */
+export interface HistoryListSummaryResponse {
+  items: HistorySummaryItem[]
+  total: number
+  page: number
+  pageSize: number
+  workflowCodes?: string[]
+  statusFilter?: string
+}
+
+/**
+ * Get icon name for history action type
+ */
+export function getHistoryActionIcon(action: HistoryActionType): string {
+  const icons: Record<HistoryActionType, string> = {
+    [HistoryActionType.STATUS_CHANGE]: 'arrow-right-circle',
+    [HistoryActionType.DOCUMENT_ADDED]: 'file-plus',
+    [HistoryActionType.DOCUMENT_VALIDATED]: 'file-check',
+    [HistoryActionType.ASSIGNED]: 'user-plus',
+    [HistoryActionType.UNASSIGNED]: 'user-minus',
+    [HistoryActionType.CITA_SCHEDULED]: 'calendar-check',
+    [HistoryActionType.CITA_CANCELLED]: 'calendar-x',
+    [HistoryActionType.VERIFICATION_UPDATED]: 'shield-check',
+    [HistoryActionType.COMMENT_ADDED]: 'message-square',
+    [HistoryActionType.PAYMENT_RECEIVED]: 'credit-card',
+    [HistoryActionType.PAYMENT_FAILED]: 'credit-card-off',
+    [HistoryActionType.ESCALATED]: 'alert-triangle',
+    [HistoryActionType.REOPENED]: 'rotate-ccw',
+    [HistoryActionType.NOTE_ADDED]: 'sticky-note',
+  }
+  return icons[action] || 'circle'
+}
+
+/**
+ * Get color class for history action type
+ */
+export function getHistoryActionColor(action: HistoryActionType): string {
+  const colors: Record<HistoryActionType, string> = {
+    [HistoryActionType.STATUS_CHANGE]: 'text-blue-600 bg-blue-100',
+    [HistoryActionType.DOCUMENT_ADDED]: 'text-green-600 bg-green-100',
+    [HistoryActionType.DOCUMENT_VALIDATED]: 'text-emerald-600 bg-emerald-100',
+    [HistoryActionType.ASSIGNED]: 'text-purple-600 bg-purple-100',
+    [HistoryActionType.UNASSIGNED]: 'text-orange-600 bg-orange-100',
+    [HistoryActionType.CITA_SCHEDULED]: 'text-cyan-600 bg-cyan-100',
+    [HistoryActionType.CITA_CANCELLED]: 'text-red-600 bg-red-100',
+    [HistoryActionType.VERIFICATION_UPDATED]: 'text-teal-600 bg-teal-100',
+    [HistoryActionType.COMMENT_ADDED]: 'text-gray-600 bg-gray-100',
+    [HistoryActionType.PAYMENT_RECEIVED]: 'text-green-600 bg-green-100',
+    [HistoryActionType.PAYMENT_FAILED]: 'text-red-600 bg-red-100',
+    [HistoryActionType.ESCALATED]: 'text-amber-600 bg-amber-100',
+    [HistoryActionType.REOPENED]: 'text-indigo-600 bg-indigo-100',
+    [HistoryActionType.NOTE_ADDED]: 'text-yellow-600 bg-yellow-100',
+  }
+  return colors[action] || 'text-gray-600 bg-gray-100'
+}
+
+/**
+ * Get localized label for history action type
+ */
+export function getHistoryActionLabel(
+  action: HistoryActionType,
+  locale: 'es' | 'fr' | 'en' = 'es'
+): string {
+  const labels: Record<HistoryActionType, Record<string, string>> = {
+    [HistoryActionType.STATUS_CHANGE]: {
+      es: 'Cambio de estado',
+      fr: 'Changement de statut',
+      en: 'Status change',
+    },
+    [HistoryActionType.DOCUMENT_ADDED]: {
+      es: 'Documento agregado',
+      fr: 'Document ajouté',
+      en: 'Document added',
+    },
+    [HistoryActionType.DOCUMENT_VALIDATED]: {
+      es: 'Documento validado',
+      fr: 'Document validé',
+      en: 'Document validated',
+    },
+    [HistoryActionType.ASSIGNED]: {
+      es: 'Asignado',
+      fr: 'Assigné',
+      en: 'Assigned',
+    },
+    [HistoryActionType.UNASSIGNED]: {
+      es: 'Desasignado',
+      fr: 'Désassigné',
+      en: 'Unassigned',
+    },
+    [HistoryActionType.CITA_SCHEDULED]: {
+      es: 'Cita programada',
+      fr: 'RDV programmé',
+      en: 'Appointment scheduled',
+    },
+    [HistoryActionType.CITA_CANCELLED]: {
+      es: 'Cita cancelada',
+      fr: 'RDV annulé',
+      en: 'Appointment cancelled',
+    },
+    [HistoryActionType.VERIFICATION_UPDATED]: {
+      es: 'Verificación actualizada',
+      fr: 'Vérification mise à jour',
+      en: 'Verification updated',
+    },
+    [HistoryActionType.COMMENT_ADDED]: {
+      es: 'Comentario agregado',
+      fr: 'Commentaire ajouté',
+      en: 'Comment added',
+    },
+    [HistoryActionType.PAYMENT_RECEIVED]: {
+      es: 'Pago recibido',
+      fr: 'Paiement reçu',
+      en: 'Payment received',
+    },
+    [HistoryActionType.PAYMENT_FAILED]: {
+      es: 'Pago fallido',
+      fr: 'Paiement échoué',
+      en: 'Payment failed',
+    },
+    [HistoryActionType.ESCALATED]: {
+      es: 'Escalado',
+      fr: 'Escaladé',
+      en: 'Escalated',
+    },
+    [HistoryActionType.REOPENED]: {
+      es: 'Reabierto',
+      fr: 'Réouvert',
+      en: 'Reopened',
+    },
+    [HistoryActionType.NOTE_ADDED]: {
+      es: 'Nota agregada',
+      fr: 'Note ajoutée',
+      en: 'Note added',
+    },
+  }
+  return labels[action]?.[locale] || action
+}

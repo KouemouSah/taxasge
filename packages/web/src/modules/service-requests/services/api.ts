@@ -29,7 +29,15 @@ import type {
   // Payment types
   PaymentMethodsResponse,
   PaymentInitiateResult,
+  // History types
+  HistoryEntry,
+  HistoryFilters,
+  HistoryListResponse,
+  HistorySummaryItem,
+  HistoryListSummaryResponse,
+  PerformerInfo,
 } from '../types'
+import { HistoryActionType } from '../types'
 import { ExtractionStatus } from '../types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -1566,6 +1574,174 @@ class ServiceRequestsApiClient {
       locationName: response.location_name,
       city: response.city,
       error: response.error,
+    }
+  }
+
+  // =========================================================================
+  // HISTORY / TIMELINE OPERATIONS
+  // =========================================================================
+
+  /**
+   * Get history timeline for a specific service request
+   */
+  async getRequestHistory(
+    requestId: string,
+    filters?: HistoryFilters,
+    page: number = 1,
+    pageSize: number = 50
+  ): Promise<HistoryListResponse> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    })
+
+    if (filters?.actionTypes?.length) {
+      filters.actionTypes.forEach((t) => params.append('action_types', t))
+    }
+    if (filters?.fromDate) params.append('from_date', filters.fromDate)
+    if (filters?.toDate) params.append('to_date', filters.toDate)
+    if (filters?.includeSystem !== undefined) {
+      params.append('include_system', filters.includeSystem.toString())
+    }
+
+    interface BackendHistoryResponse {
+      request_id: string
+      reference: string
+      workflow_code: string
+      solicitud_type?: string
+      citizen_name?: string
+      current_status: string
+      entries: Array<{
+        id: string
+        action: string
+        previous_status?: string
+        new_status?: string
+        details: Record<string, unknown>
+        comment?: string
+        performed_by?: {
+          user_id?: string
+          full_name: string
+          email?: string
+          role?: string
+          is_system: boolean
+        }
+        performed_at: string
+      }>
+      total: number
+      page: number
+      page_size: number
+      total_status_changes?: number
+      total_documents?: number
+      total_assignments?: number
+      first_action_at?: string
+      last_action_at?: string
+    }
+
+    const response = await this.request<BackendHistoryResponse>(
+      `/${requestId}/history?${params.toString()}`
+    )
+
+    return {
+      requestId: response.request_id,
+      reference: response.reference,
+      workflowCode: response.workflow_code,
+      solicitudType: response.solicitud_type,
+      citizenName: response.citizen_name,
+      currentStatus: response.current_status,
+      entries: response.entries.map((e) => ({
+        id: e.id,
+        action: e.action as HistoryActionType,
+        previousStatus: e.previous_status,
+        newStatus: e.new_status,
+        details: e.details,
+        comment: e.comment,
+        performedBy: e.performed_by
+          ? {
+              userId: e.performed_by.user_id,
+              fullName: e.performed_by.full_name,
+              email: e.performed_by.email,
+              role: e.performed_by.role,
+              isSystem: e.performed_by.is_system,
+            }
+          : undefined,
+        performedAt: e.performed_at,
+      })),
+      total: response.total,
+      page: response.page,
+      pageSize: response.page_size,
+      totalStatusChanges: response.total_status_changes,
+      totalDocuments: response.total_documents,
+      totalAssignments: response.total_assignments,
+      firstActionAt: response.first_action_at,
+      lastActionAt: response.last_action_at,
+    }
+  }
+
+  /**
+   * List service requests with history summary for timeline page
+   */
+  async listRequestsWithHistory(
+    entityCode: string,
+    workflowCodes?: string[],
+    statusFilter?: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<HistoryListSummaryResponse> {
+    const params = new URLSearchParams({
+      entity_code: entityCode,
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    })
+
+    if (workflowCodes?.length) {
+      workflowCodes.forEach((c) => params.append('workflow_codes', c))
+    }
+    if (statusFilter) params.append('status', statusFilter)
+
+    interface BackendHistorySummaryResponse {
+      items: Array<{
+        request_id: string
+        reference: string
+        workflow_code: string
+        citizen_name?: string
+        current_status: string
+        last_action: string
+        last_action_at: string
+        last_performer?: string
+        total_actions: number
+        days_since_created?: number
+        is_stale?: boolean
+      }>
+      total: number
+      page: number
+      page_size: number
+      workflow_codes?: string[]
+      status_filter?: string
+    }
+
+    const response = await this.request<BackendHistorySummaryResponse>(
+      `/history?${params.toString()}`
+    )
+
+    return {
+      items: response.items.map((item) => ({
+        requestId: item.request_id,
+        reference: item.reference,
+        workflowCode: item.workflow_code,
+        citizenName: item.citizen_name,
+        currentStatus: item.current_status,
+        lastAction: item.last_action as HistoryActionType,
+        lastActionAt: item.last_action_at,
+        lastPerformer: item.last_performer,
+        totalActions: item.total_actions,
+        daysSinceCreated: item.days_since_created,
+        isStale: item.is_stale,
+      })),
+      total: response.total,
+      page: response.page,
+      pageSize: response.page_size,
+      workflowCodes: response.workflow_codes,
+      statusFilter: response.status_filter,
     }
   }
 }
