@@ -23,7 +23,7 @@ from ..services.agent_queue_service import agent_queue_service
 from ..services.appointment_scheduler import appointment_scheduler
 from ..services.service_request_service import service_request_service
 from ..services.workflow_engine import workflow_engine
-from ..services.summary_pdf_service import SummaryPdfService
+from ..services.summary_pdf_service import SummaryPDFService
 from ..models.service_request import ServiceRequestResponse
 from app.core.events import EventBus, EventType
 
@@ -529,7 +529,7 @@ async def make_decision(
                 photo_url = form_data.get('photo_url') or form_data.get('foto_url')
 
                 # Generate the PDF
-                pdf_service = SummaryPdfService()
+                pdf_service = SummaryPDFService()
                 pdf_bytes = await pdf_service.generate_validation_certificate(
                     request_number=request['reference_number'],
                     workflow_name=workflow_name,
