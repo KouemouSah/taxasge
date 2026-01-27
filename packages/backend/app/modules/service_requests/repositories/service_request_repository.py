@@ -371,11 +371,18 @@ class ServiceRequestRepository:
         from_date: Optional[str] = None,
         to_date: Optional[str] = None,
         include_system: bool = True,
+        include_ocr: bool = True,
+        include_assignments: bool = True,
         limit: int = 50,
         offset: int = 0
     ) -> tuple[List[Dict], int]:
         """
-        Get full history timeline for a service request.
+        Get full consolidated history timeline for a service request.
+
+        Combines data from:
+        - service_request_history (status changes, document uploads, etc.)
+        - gemini_processing_logs (OCR processing results)
+        - assignments (agent assignments and reassignments)
 
         Args:
             db: Database connection
@@ -384,83 +391,176 @@ class ServiceRequestRepository:
             from_date: Filter from date (ISO format)
             to_date: Filter to date (ISO format)
             include_system: Include system-initiated actions (performed_by IS NULL)
+            include_ocr: Include OCR processing logs
+            include_assignments: Include assignment history
             limit: Max entries to return
             offset: Pagination offset
 
         Returns:
             Tuple of (list of history entries, total count)
         """
-        # Build WHERE conditions
-        conditions = ["srh.service_request_id = $1"]
-        params: List[Any] = [request_id]
-        param_idx = 2
-
-        if action_types:
-            conditions.append(f"srh.action = ANY(${param_idx})")
-            params.append(action_types)
-            param_idx += 1
+        # Build date conditions for all queries
+        date_conditions = []
+        date_params: List[Any] = []
+        date_param_idx = 2  # $1 is request_id
 
         if from_date:
-            conditions.append(f"srh.performed_at >= ${param_idx}")
-            params.append(from_date)
-            param_idx += 1
+            date_conditions.append(f"performed_at >= ${date_param_idx}")
+            date_params.append(from_date)
+            date_param_idx += 1
 
         if to_date:
-            conditions.append(f"srh.performed_at <= ${param_idx}")
-            params.append(to_date)
-            param_idx += 1
+            date_conditions.append(f"performed_at <= ${date_param_idx}")
+            date_params.append(to_date)
+            date_param_idx += 1
 
-        if not include_system:
-            conditions.append("srh.performed_by IS NOT NULL")
+        date_filter = " AND " + " AND ".join(date_conditions) if date_conditions else ""
 
-        where_clause = " AND ".join(conditions)
+        # Build action type filter
+        action_filter = ""
+        if action_types:
+            action_filter = f" AND action = ANY(${date_param_idx})"
+            date_params.append(action_types)
+            date_param_idx += 1
 
-        # Count total
-        count_query = f"""
-            SELECT COUNT(*) as total
-            FROM service_request_history srh
-            WHERE {where_clause}
-        """
-        count_row = await db.fetchrow(count_query, *params)
-        total = count_row["total"] if count_row else 0
+        # System filter
+        system_filter = "" if include_system else " AND performed_by IS NOT NULL"
 
-        # Get entries with performer info
-        params.extend([limit, offset])
-        query = f"""
+        # Build UNION query for consolidated history
+        union_parts = []
+
+        # Part 1: service_request_history
+        union_parts.append(f"""
             SELECT
-                srh.id,
+                srh.id::text as id,
                 srh.action,
                 srh.previous_status,
                 srh.new_status,
                 srh.details,
                 srh.comment,
                 srh.performed_at,
-                srh.ip_address,
                 srh.performed_by,
-                -- Performer info
+                'history' as source,
                 u.id as performer_id,
                 COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as performer_name,
                 u.email as performer_email,
                 u.role as performer_role
             FROM service_request_history srh
             LEFT JOIN users u ON u.id = srh.performed_by
-            WHERE {where_clause}
-            ORDER BY srh.performed_at DESC
-            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            WHERE srh.service_request_id = $1{date_filter}{action_filter}{system_filter}
+        """)
+
+        # Part 2: gemini_processing_logs (OCR)
+        if include_ocr:
+            # OCR logs don't have action types in the filter
+            ocr_date_filter = date_filter.replace("performed_at", "created_at")
+            union_parts.append(f"""
+                SELECT
+                    gpl.id::text as id,
+                    CASE
+                        WHEN gpl.has_error THEN 'ocr_failed'
+                        ELSE 'ocr_completed'
+                    END as action,
+                    NULL as previous_status,
+                    NULL as new_status,
+                    jsonb_build_object(
+                        'document_code', gpl.document_code,
+                        'document_name', gpl.document_name,
+                        'extraction_confidence', gpl.extraction_confidence,
+                        'risk_level', gpl.risk_level,
+                        'risk_score', gpl.risk_score,
+                        'processor', gpl.processor,
+                        'processing_time_ms', gpl.processing_time_ms,
+                        'fields_extracted', gpl.fields_extracted,
+                        'fields_missing', gpl.fields_missing,
+                        'has_error', gpl.has_error,
+                        'error_message', gpl.error_message
+                    ) as details,
+                    CASE
+                        WHEN gpl.has_error THEN gpl.error_message
+                        ELSE NULL
+                    END as comment,
+                    gpl.created_at as performed_at,
+                    gpl.user_id as performed_by,
+                    'ocr' as source,
+                    u.id as performer_id,
+                    COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as performer_name,
+                    u.email as performer_email,
+                    u.role as performer_role
+                FROM gemini_processing_logs gpl
+                LEFT JOIN users u ON u.id = gpl.user_id
+                WHERE gpl.service_request_id = $1{ocr_date_filter}
+            """)
+
+        # Part 3: assignments
+        if include_assignments:
+            assign_date_filter = date_filter.replace("performed_at", "assigned_at")
+            union_parts.append(f"""
+                SELECT
+                    a.id::text as id,
+                    CASE
+                        WHEN a.reassigned_at IS NOT NULL THEN 'reassigned'
+                        ELSE 'assigned'
+                    END as action,
+                    NULL as previous_status,
+                    a.status::text as new_status,
+                    jsonb_build_object(
+                        'assignment_method', a.assignment_method::text,
+                        'priority_level', a.priority_level,
+                        'deadline', a.deadline,
+                        'reassignment_reason', a.reassignment_reason::text,
+                        'reassignment_notes', a.reassignment_notes,
+                        'agent_name', COALESCE(agent_user.full_name, agent_user.first_name || ' ' || agent_user.last_name),
+                        'reassigned_to_name', COALESCE(reassign_user.full_name, reassign_user.first_name || ' ' || reassign_user.last_name)
+                    ) as details,
+                    a.notes as comment,
+                    COALESCE(a.reassigned_at, a.assigned_at) as performed_at,
+                    COALESCE(a.assigned_by_profile_id, a.agent_profile_id) as performed_by,
+                    'assignment' as source,
+                    assigner.id as performer_id,
+                    COALESCE(assigner.full_name, assigner.first_name || ' ' || assigner.last_name) as performer_name,
+                    assigner.email as performer_email,
+                    assigner.role as performer_role
+                FROM assignments a
+                LEFT JOIN ministry_agents ma ON ma.id = a.agent_profile_id
+                LEFT JOIN users agent_user ON agent_user.id = ma.user_id
+                LEFT JOIN ministry_agents ma_reassign ON ma_reassign.id = a.reassigned_to_profile_id
+                LEFT JOIN users reassign_user ON reassign_user.id = ma_reassign.user_id
+                LEFT JOIN ministry_agents ma_assigner ON ma_assigner.id = COALESCE(a.assigned_by_profile_id, a.agent_profile_id)
+                LEFT JOIN users assigner ON assigner.id = ma_assigner.user_id
+                WHERE a.item_id = $1 AND a.item_type = 'service_request'{assign_date_filter}
+            """)
+
+        union_query = " UNION ALL ".join(union_parts)
+
+        # Count total
+        count_query = f"""
+            SELECT COUNT(*) as total FROM ({union_query}) consolidated
         """
-        rows = await db.fetch(query, *params)
+        all_params = [request_id] + date_params
+        count_row = await db.fetchrow(count_query, *all_params)
+        total = count_row["total"] if count_row else 0
+
+        # Get paginated entries
+        final_query = f"""
+            SELECT * FROM ({union_query}) consolidated
+            ORDER BY performed_at DESC
+            LIMIT ${len(all_params) + 1} OFFSET ${len(all_params) + 2}
+        """
+        all_params.extend([limit, offset])
+        rows = await db.fetch(final_query, *all_params)
 
         entries = []
         for row in rows:
             entry = {
-                "id": str(row["id"]),
+                "id": row["id"],
                 "action": row["action"],
                 "previous_status": row["previous_status"],
                 "new_status": row["new_status"],
                 "details": row["details"] if isinstance(row["details"], dict) else json.loads(row["details"]) if row["details"] else {},
                 "comment": row["comment"],
                 "performed_at": row["performed_at"].isoformat() if row["performed_at"] else None,
-                "ip_address": str(row["ip_address"]) if row["ip_address"] else None,
+                "source": row["source"],
                 "performed_by": None
             }
 

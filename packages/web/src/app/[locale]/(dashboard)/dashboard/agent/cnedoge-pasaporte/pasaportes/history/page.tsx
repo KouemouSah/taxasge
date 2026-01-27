@@ -94,8 +94,6 @@ import {
 import type {
   HistorySummaryItem,
   HistoryEntry,
-  HistoryListResponse,
-  HistoryStatistics,
 } from '@/modules/service-requests/types';
 
 const ENTITY_CODE = 'CNEDOGE_PASAPORTE';

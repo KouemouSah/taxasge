@@ -30,13 +30,10 @@ import type {
   PaymentMethodsResponse,
   PaymentInitiateResult,
   // History types
-  HistoryEntry,
   HistoryFilters,
   HistoryListResponse,
-  HistorySummaryItem,
   HistoryListSummaryResponse,
   HistoryStatistics,
-  PerformerInfo,
 } from '../types'
 import { HistoryActionType } from '../types'
 import { ExtractionStatus } from '../types'
@@ -1809,7 +1806,7 @@ class ServiceRequestsApiClient {
     }
 
     const response = await this.request<BackendStatsResponse>(
-      `${ENDPOINT_BASE}/history/statistics?${params}`
+      `/history/statistics?${params}`
     )
 
     return {
