@@ -4344,6 +4344,7 @@ async def get_appointment_detail(
 from ..models.history import (
     HistoryActionType,
     HistoryEntry,
+    HistoryEntrySource,
     HistoryListResponse,
     HistoryFilters,
     PerformerInfo,
@@ -4368,6 +4369,8 @@ async def get_request_history(
     from_date: Optional[date] = Query(None, description="Filter from date"),
     to_date: Optional[date] = Query(None, description="Filter to date"),
     include_system: bool = Query(True, description="Include system actions"),
+    include_ocr: bool = Query(True, description="Include OCR processing logs"),
+    include_assignments: bool = Query(True, description="Include assignment history"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: dict = Depends(get_current_user),
@@ -4414,6 +4417,8 @@ async def get_request_history(
         from_date=from_date_str,
         to_date=to_date_str,
         include_system=include_system,
+        include_ocr=include_ocr,
+        include_assignments=include_assignments,
         limit=page_size,
         offset=offset
     )
@@ -4432,10 +4437,20 @@ async def get_request_history(
                 is_system=pb.get("is_system", False)
             )
 
+        # Parse source to enum
+        source_str = entry.get("source")
+        entry_source = None
+        if source_str:
+            try:
+                entry_source = HistoryEntrySource(source_str)
+            except ValueError:
+                entry_source = None
+
         history_entries.append(HistoryEntry(
             id=entry["id"],
             action=entry["action"],
             action_source=None,  # Can be added later
+            source=entry_source,
             previous_status=entry.get("previous_status"),
             new_status=entry.get("new_status"),
             details=entry.get("details", {}),

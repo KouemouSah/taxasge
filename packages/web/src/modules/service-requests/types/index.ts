@@ -981,20 +981,38 @@ export function getVisiblePassportSteps(
  * Matches backend HistoryActionType enum
  */
 export enum HistoryActionType {
+  // Status changes
   STATUS_CHANGE = 'status_change',
+  STATUS_CORRECTION = 'status_correction',
+  // Document actions
   DOCUMENT_ADDED = 'document_added',
+  DOCUMENT_REMOVED = 'document_removed',
   DOCUMENT_VALIDATED = 'document_validated',
+  // OCR processing (from gemini_processing_logs)
+  OCR_COMPLETED = 'ocr_completed',
+  OCR_FAILED = 'ocr_failed',
+  // Assignment actions (from assignments table)
   ASSIGNED = 'assigned',
+  REASSIGNED = 'reassigned',
   UNASSIGNED = 'unassigned',
+  // Appointment actions
   CITA_SCHEDULED = 'cita_scheduled',
+  CITA_RESCHEDULED = 'cita_rescheduled',
   CITA_CANCELLED = 'cita_cancelled',
+  // Verification
   VERIFICATION_UPDATED = 'verification_updated',
-  COMMENT_ADDED = 'comment_added',
+  // Agent actions
+  AGENT_ACTION = 'agent_action_taken',
+  // Payment actions
+  PAYMENT_INITIATED = 'payment_initiated',
   PAYMENT_RECEIVED = 'payment_received',
   PAYMENT_FAILED = 'payment_failed',
+  // Communication
+  COMMENT_ADDED = 'comment_added',
+  NOTE_ADDED = 'note_added',
+  // Other
   ESCALATED = 'escalated',
   REOPENED = 'reopened',
-  NOTE_ADDED = 'note_added',
 }
 
 /**
@@ -1005,6 +1023,17 @@ export enum HistoryActionSource {
   AGENT = 'agent',
   SYSTEM = 'system',
   WEBHOOK = 'webhook',
+  MIGRATION = 'migration',
+}
+
+/**
+ * HistoryEntrySource - Data source table for history entry
+ * Used to track where consolidated data came from
+ */
+export enum HistoryEntrySource {
+  HISTORY = 'history',       // service_request_history table
+  OCR = 'ocr',               // gemini_processing_logs table
+  ASSIGNMENT = 'assignment', // assignments table
 }
 
 /**
@@ -1023,7 +1052,9 @@ export interface PerformerInfo {
  */
 export interface HistoryEntry {
   id: string
-  action: HistoryActionType
+  action: HistoryActionType | string
+  actionSource?: HistoryActionSource
+  source?: HistoryEntrySource  // Data source table (history, ocr, assignment)
   previousStatus?: string
   newStatus?: string
   details: Record<string, unknown>
@@ -1096,22 +1127,30 @@ export interface HistoryListSummaryResponse {
 /**
  * Get icon name for history action type
  */
-export function getHistoryActionIcon(action: HistoryActionType): string {
-  const icons: Record<HistoryActionType, string> = {
+export function getHistoryActionIcon(action: HistoryActionType | string): string {
+  const icons: Record<string, string> = {
     [HistoryActionType.STATUS_CHANGE]: 'arrow-right-circle',
+    [HistoryActionType.STATUS_CORRECTION]: 'edit-3',
     [HistoryActionType.DOCUMENT_ADDED]: 'file-plus',
+    [HistoryActionType.DOCUMENT_REMOVED]: 'file-minus',
     [HistoryActionType.DOCUMENT_VALIDATED]: 'file-check',
+    [HistoryActionType.OCR_COMPLETED]: 'scan',
+    [HistoryActionType.OCR_FAILED]: 'scan-line',
     [HistoryActionType.ASSIGNED]: 'user-plus',
+    [HistoryActionType.REASSIGNED]: 'users',
     [HistoryActionType.UNASSIGNED]: 'user-minus',
     [HistoryActionType.CITA_SCHEDULED]: 'calendar-check',
+    [HistoryActionType.CITA_RESCHEDULED]: 'calendar-clock',
     [HistoryActionType.CITA_CANCELLED]: 'calendar-x',
     [HistoryActionType.VERIFICATION_UPDATED]: 'shield-check',
-    [HistoryActionType.COMMENT_ADDED]: 'message-square',
+    [HistoryActionType.AGENT_ACTION]: 'user-cog',
+    [HistoryActionType.PAYMENT_INITIATED]: 'wallet',
     [HistoryActionType.PAYMENT_RECEIVED]: 'credit-card',
     [HistoryActionType.PAYMENT_FAILED]: 'credit-card-off',
+    [HistoryActionType.COMMENT_ADDED]: 'message-square',
+    [HistoryActionType.NOTE_ADDED]: 'sticky-note',
     [HistoryActionType.ESCALATED]: 'alert-triangle',
     [HistoryActionType.REOPENED]: 'rotate-ccw',
-    [HistoryActionType.NOTE_ADDED]: 'sticky-note',
   }
   return icons[action] || 'circle'
 }
@@ -1119,22 +1158,30 @@ export function getHistoryActionIcon(action: HistoryActionType): string {
 /**
  * Get color class for history action type
  */
-export function getHistoryActionColor(action: HistoryActionType): string {
-  const colors: Record<HistoryActionType, string> = {
+export function getHistoryActionColor(action: HistoryActionType | string): string {
+  const colors: Record<string, string> = {
     [HistoryActionType.STATUS_CHANGE]: 'text-blue-600 bg-blue-100',
+    [HistoryActionType.STATUS_CORRECTION]: 'text-indigo-600 bg-indigo-100',
     [HistoryActionType.DOCUMENT_ADDED]: 'text-green-600 bg-green-100',
+    [HistoryActionType.DOCUMENT_REMOVED]: 'text-orange-600 bg-orange-100',
     [HistoryActionType.DOCUMENT_VALIDATED]: 'text-emerald-600 bg-emerald-100',
+    [HistoryActionType.OCR_COMPLETED]: 'text-teal-600 bg-teal-100',
+    [HistoryActionType.OCR_FAILED]: 'text-red-600 bg-red-100',
     [HistoryActionType.ASSIGNED]: 'text-purple-600 bg-purple-100',
+    [HistoryActionType.REASSIGNED]: 'text-violet-600 bg-violet-100',
     [HistoryActionType.UNASSIGNED]: 'text-orange-600 bg-orange-100',
     [HistoryActionType.CITA_SCHEDULED]: 'text-cyan-600 bg-cyan-100',
+    [HistoryActionType.CITA_RESCHEDULED]: 'text-sky-600 bg-sky-100',
     [HistoryActionType.CITA_CANCELLED]: 'text-red-600 bg-red-100',
     [HistoryActionType.VERIFICATION_UPDATED]: 'text-teal-600 bg-teal-100',
-    [HistoryActionType.COMMENT_ADDED]: 'text-gray-600 bg-gray-100',
+    [HistoryActionType.AGENT_ACTION]: 'text-slate-600 bg-slate-100',
+    [HistoryActionType.PAYMENT_INITIATED]: 'text-amber-600 bg-amber-100',
     [HistoryActionType.PAYMENT_RECEIVED]: 'text-green-600 bg-green-100',
     [HistoryActionType.PAYMENT_FAILED]: 'text-red-600 bg-red-100',
+    [HistoryActionType.COMMENT_ADDED]: 'text-gray-600 bg-gray-100',
+    [HistoryActionType.NOTE_ADDED]: 'text-yellow-600 bg-yellow-100',
     [HistoryActionType.ESCALATED]: 'text-amber-600 bg-amber-100',
     [HistoryActionType.REOPENED]: 'text-indigo-600 bg-indigo-100',
-    [HistoryActionType.NOTE_ADDED]: 'text-yellow-600 bg-yellow-100',
   }
   return colors[action] || 'text-gray-600 bg-gray-100'
 }
@@ -1143,29 +1190,54 @@ export function getHistoryActionColor(action: HistoryActionType): string {
  * Get localized label for history action type
  */
 export function getHistoryActionLabel(
-  action: HistoryActionType,
+  action: HistoryActionType | string,
   locale: 'es' | 'fr' | 'en' = 'es'
 ): string {
-  const labels: Record<HistoryActionType, Record<string, string>> = {
+  const labels: Record<string, Record<string, string>> = {
     [HistoryActionType.STATUS_CHANGE]: {
       es: 'Cambio de estado',
       fr: 'Changement de statut',
       en: 'Status change',
+    },
+    [HistoryActionType.STATUS_CORRECTION]: {
+      es: 'Corrección de estado',
+      fr: 'Correction de statut',
+      en: 'Status correction',
     },
     [HistoryActionType.DOCUMENT_ADDED]: {
       es: 'Documento agregado',
       fr: 'Document ajouté',
       en: 'Document added',
     },
+    [HistoryActionType.DOCUMENT_REMOVED]: {
+      es: 'Documento eliminado',
+      fr: 'Document supprimé',
+      en: 'Document removed',
+    },
     [HistoryActionType.DOCUMENT_VALIDATED]: {
       es: 'Documento validado',
       fr: 'Document validé',
       en: 'Document validated',
     },
+    [HistoryActionType.OCR_COMPLETED]: {
+      es: 'OCR completado',
+      fr: 'OCR terminé',
+      en: 'OCR completed',
+    },
+    [HistoryActionType.OCR_FAILED]: {
+      es: 'OCR fallido',
+      fr: 'OCR échoué',
+      en: 'OCR failed',
+    },
     [HistoryActionType.ASSIGNED]: {
       es: 'Asignado',
       fr: 'Assigné',
       en: 'Assigned',
+    },
+    [HistoryActionType.REASSIGNED]: {
+      es: 'Reasignado',
+      fr: 'Réassigné',
+      en: 'Reassigned',
     },
     [HistoryActionType.UNASSIGNED]: {
       es: 'Desasignado',
@@ -1177,6 +1249,11 @@ export function getHistoryActionLabel(
       fr: 'RDV programmé',
       en: 'Appointment scheduled',
     },
+    [HistoryActionType.CITA_RESCHEDULED]: {
+      es: 'Cita reprogramada',
+      fr: 'RDV reprogrammé',
+      en: 'Appointment rescheduled',
+    },
     [HistoryActionType.CITA_CANCELLED]: {
       es: 'Cita cancelada',
       fr: 'RDV annulé',
@@ -1187,10 +1264,15 @@ export function getHistoryActionLabel(
       fr: 'Vérification mise à jour',
       en: 'Verification updated',
     },
-    [HistoryActionType.COMMENT_ADDED]: {
-      es: 'Comentario agregado',
-      fr: 'Commentaire ajouté',
-      en: 'Comment added',
+    [HistoryActionType.AGENT_ACTION]: {
+      es: 'Acción del agente',
+      fr: 'Action de l\'agent',
+      en: 'Agent action',
+    },
+    [HistoryActionType.PAYMENT_INITIATED]: {
+      es: 'Pago iniciado',
+      fr: 'Paiement initié',
+      en: 'Payment initiated',
     },
     [HistoryActionType.PAYMENT_RECEIVED]: {
       es: 'Pago recibido',
@@ -1202,6 +1284,16 @@ export function getHistoryActionLabel(
       fr: 'Paiement échoué',
       en: 'Payment failed',
     },
+    [HistoryActionType.COMMENT_ADDED]: {
+      es: 'Comentario agregado',
+      fr: 'Commentaire ajouté',
+      en: 'Comment added',
+    },
+    [HistoryActionType.NOTE_ADDED]: {
+      es: 'Nota agregada',
+      fr: 'Note ajoutée',
+      en: 'Note added',
+    },
     [HistoryActionType.ESCALATED]: {
       es: 'Escalado',
       fr: 'Escaladé',
@@ -1211,11 +1303,6 @@ export function getHistoryActionLabel(
       es: 'Reabierto',
       fr: 'Réouvert',
       en: 'Reopened',
-    },
-    [HistoryActionType.NOTE_ADDED]: {
-      es: 'Nota agregada',
-      fr: 'Note ajoutée',
-      en: 'Note added',
     },
   }
   return labels[action]?.[locale] || action

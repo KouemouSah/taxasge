@@ -19,14 +19,25 @@ import {
   Clock,
   ArrowRightCircle,
   FileText,
+  FileMinus,
   UserPlus,
+  Users,
+  UserMinus,
   Calendar,
+  CalendarClock,
+  CalendarX,
   ShieldCheck,
   MessageSquare,
   CreditCard,
+  Wallet,
   AlertTriangle,
   RotateCcw,
   ChevronRight,
+  Scan,
+  ScanLine,
+  UserCog,
+  Edit3,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +70,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { serviceRequestsApi } from '@/modules/service-requests/services/api';
 import {
   HistoryActionType,
+  HistoryEntrySource,
   getHistoryActionLabel,
   getHistoryActionColor,
   getStatusLabel,
@@ -74,30 +86,59 @@ const ENTITY_CODE = 'CNEDOGE_PASAPORTE';
 const WORKFLOW_CODES = ['PASAPORTE_NUEVO', 'PASAPORTE_RENOVACION'];
 
 // Icon mapping for history action types
-const ActionIcon: React.FC<{ action: HistoryActionType; className?: string }> = ({
+const ActionIcon: React.FC<{ action: HistoryActionType | string; className?: string }> = ({
   action,
   className = 'h-4 w-4',
 }) => {
   switch (action) {
+    // Status changes
     case HistoryActionType.STATUS_CHANGE:
       return <ArrowRightCircle className={className} />;
+    case HistoryActionType.STATUS_CORRECTION:
+      return <Edit3 className={className} />;
+    // Document actions
     case HistoryActionType.DOCUMENT_ADDED:
     case HistoryActionType.DOCUMENT_VALIDATED:
       return <FileText className={className} />;
+    case HistoryActionType.DOCUMENT_REMOVED:
+      return <FileMinus className={className} />;
+    // OCR actions
+    case HistoryActionType.OCR_COMPLETED:
+      return <Scan className={className} />;
+    case HistoryActionType.OCR_FAILED:
+      return <ScanLine className={className} />;
+    // Assignment actions
     case HistoryActionType.ASSIGNED:
-    case HistoryActionType.UNASSIGNED:
       return <UserPlus className={className} />;
+    case HistoryActionType.REASSIGNED:
+      return <Users className={className} />;
+    case HistoryActionType.UNASSIGNED:
+      return <UserMinus className={className} />;
+    // Appointment actions
     case HistoryActionType.CITA_SCHEDULED:
-    case HistoryActionType.CITA_CANCELLED:
       return <Calendar className={className} />;
+    case HistoryActionType.CITA_RESCHEDULED:
+      return <CalendarClock className={className} />;
+    case HistoryActionType.CITA_CANCELLED:
+      return <CalendarX className={className} />;
+    // Verification
     case HistoryActionType.VERIFICATION_UPDATED:
       return <ShieldCheck className={className} />;
+    // Agent actions
+    case HistoryActionType.AGENT_ACTION:
+      return <UserCog className={className} />;
+    // Payment actions
+    case HistoryActionType.PAYMENT_INITIATED:
+      return <Wallet className={className} />;
+    case HistoryActionType.PAYMENT_RECEIVED:
+      return <CreditCard className={className} />;
+    case HistoryActionType.PAYMENT_FAILED:
+      return <CreditCard className={className} />;
+    // Communication
     case HistoryActionType.COMMENT_ADDED:
     case HistoryActionType.NOTE_ADDED:
       return <MessageSquare className={className} />;
-    case HistoryActionType.PAYMENT_RECEIVED:
-    case HistoryActionType.PAYMENT_FAILED:
-      return <CreditCard className={className} />;
+    // Other
     case HistoryActionType.ESCALATED:
       return <AlertTriangle className={className} />;
     case HistoryActionType.REOPENED:
@@ -105,6 +146,35 @@ const ActionIcon: React.FC<{ action: HistoryActionType; className?: string }> = 
     default:
       return <Clock className={className} />;
   }
+};
+
+// Source badge labels
+const getSourceLabel = (source: HistoryEntrySource | undefined, locale: 'es' | 'fr' | 'en'): string => {
+  if (!source) return '';
+  const labels: Record<string, Record<string, string>> = {
+    [HistoryEntrySource.HISTORY]: { es: 'Historial', fr: 'Historique', en: 'History' },
+    [HistoryEntrySource.OCR]: { es: 'OCR', fr: 'OCR', en: 'OCR' },
+    [HistoryEntrySource.ASSIGNMENT]: { es: 'Asignación', fr: 'Assignation', en: 'Assignment' },
+  };
+  return labels[source]?.[locale] || source;
+};
+
+// Get confidence color
+const getConfidenceColor = (confidence: number): string => {
+  if (confidence >= 0.9) return 'text-green-600 bg-green-100';
+  if (confidence >= 0.7) return 'text-yellow-600 bg-yellow-100';
+  return 'text-red-600 bg-red-100';
+};
+
+// Get risk level color
+const getRiskLevelColor = (level: string): string => {
+  const colors: Record<string, string> = {
+    low: 'text-green-600 bg-green-100',
+    medium: 'text-yellow-600 bg-yellow-100',
+    high: 'text-orange-600 bg-orange-100',
+    critical: 'text-red-600 bg-red-100',
+  };
+  return colors[level?.toLowerCase()] || 'text-gray-600 bg-gray-100';
 };
 
 // Timeline entry component
@@ -115,6 +185,17 @@ const TimelineEntry: React.FC<{
 }> = ({ entry, locale, isLast }) => {
   const colorClass = getHistoryActionColor(entry.action);
   const date = new Date(entry.performedAt);
+  const details = entry.details || {};
+
+  // Check if this is an OCR entry
+  const isOcrEntry = entry.action === HistoryActionType.OCR_COMPLETED ||
+                     entry.action === HistoryActionType.OCR_FAILED ||
+                     entry.source === HistoryEntrySource.OCR;
+
+  // Check if this is an assignment entry
+  const isAssignmentEntry = entry.action === HistoryActionType.ASSIGNED ||
+                            entry.action === HistoryActionType.REASSIGNED ||
+                            entry.source === HistoryEntrySource.ASSIGNMENT;
 
   return (
     <div className="flex gap-4">
@@ -129,10 +210,21 @@ const TimelineEntry: React.FC<{
       {/* Content */}
       <div className="flex-1 pb-4">
         <div className="flex items-start justify-between">
-          <div>
-            <p className="font-medium text-sm">
-              {getHistoryActionLabel(entry.action, locale)}
-            </p>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-sm">
+                {getHistoryActionLabel(entry.action, locale)}
+              </p>
+              {/* Source badge for OCR/Assignment entries */}
+              {entry.source && entry.source !== HistoryEntrySource.HISTORY && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  <Database className="h-2.5 w-2.5 mr-1" />
+                  {getSourceLabel(entry.source, locale)}
+                </Badge>
+              )}
+            </div>
+
+            {/* Status change display */}
             {entry.action === HistoryActionType.STATUS_CHANGE && (
               <div className="flex items-center gap-2 mt-1">
                 {entry.previousStatus && (
@@ -148,21 +240,95 @@ const TimelineEntry: React.FC<{
                 )}
               </div>
             )}
-            {entry.comment && (
-              <p className="text-sm text-muted-foreground mt-1">{entry.comment}</p>
-            )}
-            {entry.details && Object.keys(entry.details).length > 0 && (
-              <div className="text-xs text-muted-foreground mt-1">
-                {entry.details.document_code && (
-                  <span>Doc: {entry.details.document_code as string}</span>
+
+            {/* OCR-specific details */}
+            {isOcrEntry && (
+              <div className="mt-2 p-2 bg-muted/50 rounded-md text-xs space-y-1">
+                {!!details.document_code && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Documento:</span>
+                    <span className="font-medium">{String(details.document_name || details.document_code)}</span>
+                  </div>
                 )}
-                {entry.details.agent_name && (
-                  <span>Agent: {entry.details.agent_name as string}</span>
+                {details.extraction_confidence !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Confianza:</span>
+                    <Badge className={`text-[10px] px-1.5 ${getConfidenceColor(Number(details.extraction_confidence))}`}>
+                      {Math.round(Number(details.extraction_confidence) * 100)}%
+                    </Badge>
+                  </div>
+                )}
+                {!!details.risk_level && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Riesgo:</span>
+                    <Badge className={`text-[10px] px-1.5 ${getRiskLevelColor(String(details.risk_level))}`}>
+                      {String(details.risk_level)}
+                    </Badge>
+                  </div>
+                )}
+                {!!details.processor && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Procesador:</span>
+                    <span>{String(details.processor)}</span>
+                  </div>
+                )}
+                {!!details.has_error && !!details.error_message && (
+                  <div className="text-red-600 mt-1">
+                    Error: {String(details.error_message)}
+                  </div>
                 )}
               </div>
             )}
+
+            {/* Assignment-specific details */}
+            {isAssignmentEntry && (
+              <div className="mt-2 p-2 bg-muted/50 rounded-md text-xs space-y-1">
+                {!!details.agent_name && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Agente:</span>
+                    <span className="font-medium">{String(details.agent_name)}</span>
+                  </div>
+                )}
+                {!!details.reassigned_to_name && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Reasignado a:</span>
+                    <span className="font-medium">{String(details.reassigned_to_name)}</span>
+                  </div>
+                )}
+                {!!details.assignment_method && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Método:</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5">
+                      {String(details.assignment_method)}
+                    </Badge>
+                  </div>
+                )}
+                {!!details.reassignment_reason && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Motivo:</span>
+                    <span>{String(details.reassignment_reason)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Generic details for other entry types */}
+            {!isOcrEntry && !isAssignmentEntry && entry.details && Object.keys(entry.details).length > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {!!details.document_code && (
+                  <span>Doc: {String(details.document_code)}</span>
+                )}
+                {!!details.agent_name && (
+                  <span>Agent: {String(details.agent_name)}</span>
+                )}
+              </div>
+            )}
+
+            {entry.comment && (
+              <p className="text-sm text-muted-foreground mt-1">{entry.comment}</p>
+            )}
           </div>
-          <div className="text-right text-xs text-muted-foreground">
+          <div className="text-right text-xs text-muted-foreground ml-2">
             <p>{date.toLocaleDateString(locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : 'en-US')}</p>
             <p>{date.toLocaleTimeString(locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</p>
           </div>

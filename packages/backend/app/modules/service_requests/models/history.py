@@ -19,22 +19,52 @@ class HistoryActionType(str, Enum):
     """
     Types of actions recorded in service_request_history.
     Must match values used in repository INSERT statements.
+    Includes consolidated entries from OCR logs and assignments.
     """
+    # Status changes
     STATUS_CHANGE = "status_change"
+    STATUS_CORRECTION = "status_correction"
+
+    # Document actions
     DOCUMENT_ADDED = "document_added"
     DOCUMENT_REMOVED = "document_removed"
+
+    # OCR processing (from gemini_processing_logs)
+    OCR_COMPLETED = "ocr_completed"
+    OCR_FAILED = "ocr_failed"
+
+    # Assignment actions (from assignments table)
     ASSIGNED = "assigned"
     REASSIGNED = "reassigned"
+
+    # Appointment actions
     CITA_SCHEDULED = "cita_scheduled"
     CITA_RESCHEDULED = "cita_rescheduled"
     CITA_CANCELLED = "cita_cancelled"
+
+    # Verification
     VERIFICATION_UPDATED = "verification_updated"
+
+    # Agent actions
     AGENT_ACTION = "agent_action_taken"
+
+    # Payment actions
     PAYMENT_INITIATED = "payment_initiated"
     PAYMENT_RECEIVED = "payment_received"
     PAYMENT_FAILED = "payment_failed"
+
+    # Communication
     COMMENT_ADDED = "comment_added"
-    STATUS_CORRECTION = "status_correction"
+
+
+class HistoryEntrySource(str, Enum):
+    """
+    Source table of the history entry.
+    Used to track where consolidated data came from.
+    """
+    HISTORY = "history"       # service_request_history table
+    OCR = "ocr"               # gemini_processing_logs table
+    ASSIGNMENT = "assignment" # assignments table
 
 
 class HistoryActionSource(str, Enum):
@@ -79,6 +109,10 @@ class HistoryEntry(BaseModel):
     action_source: Optional[HistoryActionSource] = Field(
         None,
         description="Source of the action (user, agent, system)"
+    )
+    source: Optional[HistoryEntrySource] = Field(
+        None,
+        description="Data source table (history, ocr, assignment)"
     )
 
     # Status transition (for status_change actions)
