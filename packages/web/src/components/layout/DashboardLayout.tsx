@@ -12,14 +12,17 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { DashboardSidebar, MobileSidebar } from './DashboardSidebar'
+import { DashboardSidebar } from './DashboardSidebar'
 import { DashboardErrorBoundary } from './DashboardErrorBoundary'
-import { AdminSidebar } from '@/modules/admin/components'
-import { GenericAgentSidebar } from '@/modules/agent-dashboard'
+import { AdminSidebar, MobileAdminSidebar } from '@/modules/admin/components'
+import { GenericAgentSidebar, MobileAgentSidebar } from '@/modules/agent-dashboard'
 import { getAuthData } from '@/core/auth/storage'
 import { APP_CONSTANTS } from '@/core/config/constants'
 import type { User } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Menu } from 'lucide-react'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -78,6 +81,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return <DashboardSidebar />
   }
 
+  // Role-aware mobile sidebar
+  const getMobileSidebar = () => {
+    if (isAdmin) return <MobileAdminSidebar />
+    if (isAgent) return <MobileAgentSidebar />
+    // Default citizen mobile sidebar
+    return (
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="md:hidden">
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Toggle menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 p-0">
+          <DashboardSidebar />
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
   const getTitle = () => {
     if (isAdmin) return 'TaxasGE Admin'
     if (isAgent) return 'TaxasGE Agent'
@@ -93,9 +116,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Mobile Header */}
+        {/* Mobile Header - Role-aware sidebar */}
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:hidden">
-          <MobileSidebar />
+          {getMobileSidebar()}
           <Image src="/logo.png" alt="TaxasGE Logo" width={32} height={32} className="h-8 w-8" />
           <h1 className="text-lg font-semibold">{getTitle()}</h1>
         </header>

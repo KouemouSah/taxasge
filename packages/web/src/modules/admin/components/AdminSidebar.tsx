@@ -59,6 +59,8 @@ import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Menu } from 'lucide-react'
 
 // Type definitions for navigation items
 interface NavSubItem {
@@ -616,4 +618,30 @@ export default function AdminSidebar() {
       </div>
     </aside>
   )
+}
+
+// =============================================================================
+// MOBILE ADMIN SIDEBAR
+// =============================================================================
+
+/**
+ * Mobile Admin Sidebar
+ * Sheet-based sidebar for mobile viewports
+ */
+export function MobileAdminSidebar() {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu className="h-6 w-6" />
+          <span className="sr-only">Toggle admin menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-72 p-0">
+        <AdminSidebar />
+      </SheetContent>
+    </Sheet>
+  );
 }

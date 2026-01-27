@@ -3,7 +3,7 @@
  * @module agent-dashboard/components
  */
 
-export { GenericAgentSidebar, default } from './GenericAgentSidebar';
+export { GenericAgentSidebar, MobileAgentSidebar, default } from './GenericAgentSidebar';
 export { GenericEntityDashboard } from './GenericEntityDashboard';
 export { AccessDenied } from './AccessDenied';
 export { DynamicMenu } from './DynamicMenu';

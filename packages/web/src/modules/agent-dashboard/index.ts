@@ -65,6 +65,7 @@ export {
 // Components
 export {
   GenericAgentSidebar,
+  MobileAgentSidebar,
   GenericEntityDashboard,
   DynamicMenu,
   DynamicDashboard,

@@ -6,7 +6,7 @@
  */
 
 export { default as AdminHeader } from "./AdminHeader"
-export { default as AdminSidebar } from "./AdminSidebar"
+export { default as AdminSidebar, MobileAdminSidebar } from "./AdminSidebar"
 export { default as StatsCards } from "./StatsCards"
 export { default as RecentActivity } from "./RecentActivity"
 export { default as QuickActions } from "./QuickActions"

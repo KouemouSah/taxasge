@@ -22,11 +22,13 @@ import { cn } from '@/core/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   LogOut,
+  Menu,
   Shield,
   User,
   Settings,
@@ -765,6 +767,32 @@ function renderDynamicSubItem(
         <span className="truncate">{getTitle(item.titleKey)}</span>
       )}
     </Link>
+  );
+}
+
+// =============================================================================
+// MOBILE AGENT SIDEBAR
+// =============================================================================
+
+/**
+ * Mobile Agent Sidebar
+ * Sheet-based sidebar for mobile viewports
+ */
+export function MobileAgentSidebar() {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu className="h-6 w-6" />
+          <span className="sr-only">Toggle agent menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-72 p-0">
+        <GenericAgentSidebar />
+      </SheetContent>
+    </Sheet>
   );
 }
 
