@@ -5,6 +5,7 @@
  * Shows type, value, document source, confidence, expiration, and action buttons
  */
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { VerificationStatusBadge } from './VerificationStatusBadge';
@@ -26,22 +27,6 @@ interface IdentifierCardProps {
   className?: string;
 }
 
-const identifierTypeLabels: Record<string, string> = {
-  dni: 'DNI',
-  pasaporte: 'Pasaporte',
-  permiso_residencia: 'Permiso de Residencia',
-  certificado_conducir: 'Certificado de Conducir',
-  matricula_vehiculo: 'Matrícula de Vehículo',
-  nif: 'NIF',
-  contrato_ornc: 'Contrato ORNC',
-  registro_civil: 'Registro Civil',
-  cuve: 'CUVE',
-  permiso_circulacion: 'Permiso de Circulación',
-  matricula_funcionario: 'Matrícula de Funcionario',
-  numero_nombramiento: 'Número de Nombramiento',
-  carnet_funcionario: 'Carnet de Funcionario',
-};
-
 export function IdentifierCard({
   identifier,
   onVerify,
@@ -49,12 +34,33 @@ export function IdentifierCard({
   isLoading = false,
   className,
 }: IdentifierCardProps) {
+  const t = useTranslations('verification');
+  const tCommon = useTranslations('common');
+
   const isPending = identifier.status === 'pending';
   const isVerified =
     identifier.status === 'verified' ||
     identifier.status === 'verified_manually';
   const isRejected =
     identifier.status === 'rejected' || identifier.status === 'fraud';
+
+  // Get identifier type label from translations, fallback to raw value
+  const getIdentifierTypeLabel = (type: string): string => {
+    try {
+      return t(`identifierTypes.${type}`);
+    } catch {
+      return type;
+    }
+  };
+
+  // Get source label from translations, fallback to raw value
+  const getSourceLabel = (source: string): string => {
+    try {
+      return t(`sources.${source}`);
+    } catch {
+      return source;
+    }
+  };
 
   return (
     <Card
@@ -70,8 +76,7 @@ export function IdentifierCard({
         <div className="flex items-start justify-between mb-3">
           <div>
             <p className="text-sm font-medium text-muted-foreground">
-              {identifierTypeLabels[identifier.identifierType] ||
-                identifier.identifierType}
+              {getIdentifierTypeLabel(identifier.identifierType)}
             </p>
             <p className="text-xl font-mono font-semibold tracking-wider">
               {identifier.value}
@@ -89,7 +94,7 @@ export function IdentifierCard({
           {identifier.confidence !== null && (
             <div className="flex items-center gap-1.5">
               <Percent className="h-3.5 w-3.5" />
-              <span>{Math.round(identifier.confidence * 100)}% confianza</span>
+              <span>{Math.round(identifier.confidence * 100)}% {t('card.confidence')}</span>
             </div>
           )}
 
@@ -97,8 +102,8 @@ export function IdentifierCard({
             <div className="flex items-center gap-1.5 col-span-2">
               <Calendar className="h-3.5 w-3.5" />
               <span>
-                Expira:{' '}
-                {new Date(identifier.expiresAt).toLocaleDateString('es-ES')}
+                {t('card.expiresAt')}:{' '}
+                {new Date(identifier.expiresAt).toLocaleDateString()}
               </span>
             </div>
           )}
@@ -107,9 +112,9 @@ export function IdentifierCard({
             <div className="flex items-center gap-1.5 col-span-2 text-green-600">
               <CheckCircle className="h-3.5 w-3.5" />
               <span>
-                Verificado:{' '}
-                {new Date(identifier.verifiedAt).toLocaleDateString('es-ES')}
-                {identifier.source && ` (${identifier.source})`}
+                {t('card.verifiedAt')}:{' '}
+                {new Date(identifier.verifiedAt).toLocaleDateString()}
+                {identifier.source && ` (${getSourceLabel(identifier.source)})`}
               </span>
             </div>
           )}
@@ -126,7 +131,7 @@ export function IdentifierCard({
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4 mr-1.5" />
-              Validar
+              {t('actions.verify')}
             </Button>
           )}
           {onReject && (
@@ -138,7 +143,7 @@ export function IdentifierCard({
               className="flex-1"
             >
               <XCircle className="h-4 w-4 mr-1.5" />
-              Rechazar
+              {t('actions.reject')}
             </Button>
           )}
         </CardFooter>
