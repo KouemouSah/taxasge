@@ -439,7 +439,7 @@ async def list_pending_verifications(
                 sr.reference,
                 sr.workflow_code,
                 sr.solicitud_type,
-                sr.status,
+                sr.status::text as status,
                 sr.verification_status,
                 sr.verification_details,
                 sr.submitted_at,
@@ -588,14 +588,18 @@ async def list_pending_verifications(
             pending_count = len([i for i in identifiers if i.status == 'pending'])
             verified_count = len([i for i in identifiers if i.status in ('verified', 'verified_manually')])
 
+            # Safely extract values, handling None cases
+            citizen_name_raw = row['citizen_name']
+            citizen_name = (citizen_name_raw.strip() if citizen_name_raw else 'N/A') or 'N/A'
+
             items.append(PendingVerificationItem(
                 id=str(row['id']),
                 reference=row['reference'] or '',
-                workflow_code=row['workflow_code'],
+                workflow_code=row['workflow_code'] or '',
                 solicitud_type=row['solicitud_type'] or '',
-                status=row['status'],
+                status=str(row['status']) if row['status'] else 'submitted',
                 verification_status=row['verification_status'] or 'pending',
-                citizen_name=row['citizen_name'].strip() or 'N/A',
+                citizen_name=citizen_name,
                 submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
                 identifiers=identifiers,
                 pending_count=pending_count,
