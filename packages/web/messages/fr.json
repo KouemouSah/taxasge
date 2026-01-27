@@ -5701,16 +5701,26 @@
     "identifierTypes": {
       "dni": "DNI",
       "pasaporte": "Passeport",
-      "permiso_residencia": "Permis de résidence",
-      "certificado_conducir": "Permis de conduire",
+      "permiso_residencia": "Permis de Résidence",
+      "certificado_conducir": "Permis de Conduire",
+      "matricula_vehiculo": "Immatriculation Véhicule",
       "nif": "NIF",
-      "matricula": "Immatriculation",
-      "numero_seguridad_social": "N° Sécurité Sociale"
+      "contrato_ornc": "Contrat ORNC",
+      "registro_civil": "Registre Civil",
+      "cuve": "CUVE",
+      "permiso_circulacion": "Permis de Circulation",
+      "matricula_funcionario": "Matricule Fonctionnaire",
+      "numero_nombramiento": "Numéro de Nomination",
+      "carnet_funcionario": "Carte Fonctionnaire"
     },
     "sources": {
       "cnedoge": "CNEDOGE",
       "trafico": "Trafic",
       "hacienda": "Trésor",
+      "ornc": "ORNC",
+      "registro_civil": "Registre Civil",
+      "registro_vehiculos": "Registre des Véhicules",
+      "ministerio_funcion_publica": "Min. Fonction Publique",
       "agent_manual": "Agent (Manuel)",
       "api_integration": "API"
     },

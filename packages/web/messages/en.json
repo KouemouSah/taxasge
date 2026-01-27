@@ -5501,14 +5501,24 @@
       "pasaporte": "Passport",
       "permiso_residencia": "Residence Permit",
       "certificado_conducir": "Driver's License",
+      "matricula_vehiculo": "Vehicle Registration",
       "nif": "NIF",
-      "matricula": "Registration",
-      "numero_seguridad_social": "Social Security Number"
+      "contrato_ornc": "ORNC Contract",
+      "registro_civil": "Civil Registry",
+      "cuve": "CUVE",
+      "permiso_circulacion": "Circulation Permit",
+      "matricula_funcionario": "Civil Servant ID",
+      "numero_nombramiento": "Appointment Number",
+      "carnet_funcionario": "Civil Servant Card"
     },
     "sources": {
       "cnedoge": "CNEDOGE",
       "trafico": "Traffic",
       "hacienda": "Treasury",
+      "ornc": "ORNC",
+      "registro_civil": "Civil Registry",
+      "registro_vehiculos": "Vehicle Registry",
+      "ministerio_funcion_publica": "Ministry of Public Function",
       "agent_manual": "Agent (Manual)",
       "api_integration": "API"
     },
