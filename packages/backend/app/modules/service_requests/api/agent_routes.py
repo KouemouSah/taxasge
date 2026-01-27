@@ -4335,3 +4335,221 @@ async def get_appointment_detail(
         "created_at": row['created_at'].isoformat(),
         "updated_at": row['updated_at'].isoformat() if row['updated_at'] else None
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# HISTORY ENDPOINTS
+# ═══════════════════════════════════════════════════════════════
+
+from ..models.history import (
+    HistoryActionType,
+    HistoryEntry,
+    HistoryListResponse,
+    HistoryFilters,
+    PerformerInfo,
+    HistorySummaryItem,
+    HistoryListSummaryResponse
+)
+from ..repositories.service_request_repository import service_request_repository
+
+
+@router.get(
+    "/{request_id}/history",
+    response_model=HistoryListResponse,
+    summary="Get service request history timeline",
+    description="Returns the complete history/audit trail for a service request"
+)
+async def get_request_history(
+    request_id: UUID = Path(..., description="Service request ID"),
+    action_type: Optional[HistoryActionType] = Query(
+        None,
+        description="Filter by action type"
+    ),
+    from_date: Optional[date] = Query(None, description="Filter from date"),
+    to_date: Optional[date] = Query(None, description="Filter to date"),
+    include_system: bool = Query(True, description="Include system actions"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get the complete history timeline for a service request.
+
+    Returns all recorded events including:
+    - Status changes
+    - Document uploads
+    - Agent assignments
+    - Appointment scheduling
+    - Verification updates
+    - Payment events
+
+    Events are ordered by date descending (most recent first).
+    """
+    conn = db
+
+    # Get service request with history summary
+    request_data = await service_request_repository.get_request_with_history_summary(
+        conn, request_id
+    )
+
+    if not request_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service request not found"
+        )
+
+    # Build filters
+    action_types = [action_type.value] if action_type else None
+    from_date_str = from_date.isoformat() if from_date else None
+    to_date_str = to_date.isoformat() + "T23:59:59" if to_date else None
+
+    # Get history entries
+    offset = (page - 1) * page_size
+    entries, total = await service_request_repository.get_request_history(
+        db=conn,
+        request_id=request_id,
+        action_types=action_types,
+        from_date=from_date_str,
+        to_date=to_date_str,
+        include_system=include_system,
+        limit=page_size,
+        offset=offset
+    )
+
+    # Transform entries to response model
+    history_entries = []
+    for entry in entries:
+        performer = None
+        if entry.get("performed_by"):
+            pb = entry["performed_by"]
+            performer = PerformerInfo(
+                user_id=pb.get("user_id"),
+                full_name=pb.get("full_name"),
+                email=pb.get("email"),
+                role=pb.get("role"),
+                is_system=pb.get("is_system", False)
+            )
+
+        history_entries.append(HistoryEntry(
+            id=entry["id"],
+            action=entry["action"],
+            action_source=None,  # Can be added later
+            previous_status=entry.get("previous_status"),
+            new_status=entry.get("new_status"),
+            details=entry.get("details", {}),
+            comment=entry.get("comment"),
+            performed_by=performer,
+            performed_at=entry["performed_at"],
+            ip_address=entry.get("ip_address")
+        ))
+
+    return HistoryListResponse(
+        request_id=request_id,
+        reference=request_data.get("reference", ""),
+        workflow_code=request_data.get("workflow_code", ""),
+        solicitud_type=request_data.get("solicitud_type"),
+        citizen_name=request_data.get("citizen_name", "N/A"),
+        current_status=request_data.get("status", ""),
+        entries=history_entries,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_status_changes=request_data.get("total_status_changes", 0),
+        total_documents=request_data.get("total_documents", 0),
+        total_assignments=request_data.get("total_assignments", 0),
+        first_action_at=request_data.get("first_action_at"),
+        last_action_at=request_data.get("last_action_at")
+    )
+
+
+@router.get(
+    "/history",
+    response_model=HistoryListSummaryResponse,
+    summary="List service requests with history",
+    description="Returns paginated list of service requests with history summary"
+)
+async def list_requests_with_history(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    status_filter: Optional[str] = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get list of service requests with history summary for the history list page.
+
+    Returns for each request:
+    - Basic info (reference, citizen, status)
+    - Last action info
+    - Total number of history entries
+    - Staleness indicator (no action in 7+ days)
+    """
+    conn = db
+
+    # Get entity's workflow codes
+    entity = await conn.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Entity {entity_code} not found"
+        )
+
+    workflow_codes = entity['workflow_codes']
+    if isinstance(workflow_codes, str):
+        import json as json_module
+        workflow_codes = json_module.loads(workflow_codes)
+    workflow_codes = [str(wf) for wf in workflow_codes] if workflow_codes else []
+
+    if not workflow_codes:
+        return HistoryListSummaryResponse(
+            items=[],
+            total=0,
+            page=page,
+            page_size=page_size,
+            workflow_codes=workflow_codes,
+            status_filter=status_filter
+        )
+
+    # Get history list
+    offset = (page - 1) * page_size
+    items, total = await service_request_repository.get_history_list_for_entity(
+        db=conn,
+        workflow_codes=workflow_codes,
+        status_filter=status_filter,
+        limit=page_size,
+        offset=offset
+    )
+
+    # Transform to response model
+    summary_items = [
+        HistorySummaryItem(
+            request_id=item["request_id"],
+            reference=item["reference"],
+            workflow_code=item["workflow_code"],
+            citizen_name=item["citizen_name"],
+            current_status=item["current_status"],
+            last_action=item["last_action"],
+            last_action_at=item["last_action_at"],
+            last_performer=item["last_performer"],
+            total_actions=item["total_actions"],
+            days_since_created=item["days_since_created"],
+            is_stale=item["is_stale"]
+        )
+        for item in items
+    ]
+
+    return HistoryListSummaryResponse(
+        items=summary_items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        workflow_codes=workflow_codes,
+        status_filter=status_filter
+    )

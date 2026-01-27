@@ -359,6 +359,278 @@ class ServiceRequestRepository:
             "config": row["config"] if isinstance(row["config"], dict) else json.loads(row["config"]) if row["config"] else {}
         }
 
+    # =========================================================================
+    # HISTORY METHODS
+    # =========================================================================
+
+    async def get_request_history(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        action_types: Optional[List[str]] = None,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
+        include_system: bool = True,
+        limit: int = 50,
+        offset: int = 0
+    ) -> tuple[List[Dict], int]:
+        """
+        Get full history timeline for a service request.
+
+        Args:
+            db: Database connection
+            request_id: Service request UUID
+            action_types: Filter by action types (e.g., ['status_change', 'document_added'])
+            from_date: Filter from date (ISO format)
+            to_date: Filter to date (ISO format)
+            include_system: Include system-initiated actions (performed_by IS NULL)
+            limit: Max entries to return
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (list of history entries, total count)
+        """
+        # Build WHERE conditions
+        conditions = ["srh.service_request_id = $1"]
+        params: List[Any] = [request_id]
+        param_idx = 2
+
+        if action_types:
+            conditions.append(f"srh.action = ANY(${param_idx})")
+            params.append(action_types)
+            param_idx += 1
+
+        if from_date:
+            conditions.append(f"srh.performed_at >= ${param_idx}")
+            params.append(from_date)
+            param_idx += 1
+
+        if to_date:
+            conditions.append(f"srh.performed_at <= ${param_idx}")
+            params.append(to_date)
+            param_idx += 1
+
+        if not include_system:
+            conditions.append("srh.performed_by IS NOT NULL")
+
+        where_clause = " AND ".join(conditions)
+
+        # Count total
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM service_request_history srh
+            WHERE {where_clause}
+        """
+        count_row = await db.fetchrow(count_query, *params)
+        total = count_row["total"] if count_row else 0
+
+        # Get entries with performer info
+        params.extend([limit, offset])
+        query = f"""
+            SELECT
+                srh.id,
+                srh.action,
+                srh.previous_status,
+                srh.new_status,
+                srh.details,
+                srh.comment,
+                srh.performed_at,
+                srh.ip_address,
+                srh.performed_by,
+                -- Performer info
+                u.id as performer_id,
+                COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as performer_name,
+                u.email as performer_email,
+                u.role as performer_role
+            FROM service_request_history srh
+            LEFT JOIN users u ON u.id = srh.performed_by
+            WHERE {where_clause}
+            ORDER BY srh.performed_at DESC
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+        """
+        rows = await db.fetch(query, *params)
+
+        entries = []
+        for row in rows:
+            entry = {
+                "id": str(row["id"]),
+                "action": row["action"],
+                "previous_status": row["previous_status"],
+                "new_status": row["new_status"],
+                "details": row["details"] if isinstance(row["details"], dict) else json.loads(row["details"]) if row["details"] else {},
+                "comment": row["comment"],
+                "performed_at": row["performed_at"].isoformat() if row["performed_at"] else None,
+                "ip_address": str(row["ip_address"]) if row["ip_address"] else None,
+                "performed_by": None
+            }
+
+            # Add performer info if available
+            if row["performer_id"]:
+                entry["performed_by"] = {
+                    "user_id": str(row["performer_id"]),
+                    "full_name": row["performer_name"],
+                    "email": row["performer_email"],
+                    "role": row["performer_role"],
+                    "is_system": False
+                }
+            elif row["performed_by"] is None:
+                entry["performed_by"] = {
+                    "user_id": None,
+                    "full_name": "Sistema",
+                    "email": None,
+                    "role": "system",
+                    "is_system": True
+                }
+
+            entries.append(entry)
+
+        return entries, total
+
+    async def get_request_with_history_summary(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID
+    ) -> Optional[Dict]:
+        """
+        Get service request with history summary statistics.
+
+        Returns request data plus:
+        - total_status_changes
+        - total_documents
+        - total_assignments
+        - first_action_at
+        - last_action_at
+        """
+        query = """
+            SELECT
+                sr.*,
+                COALESCE(u.full_name, u.first_name || ' ' || u.last_name, u.email) as citizen_name,
+                -- History stats
+                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id AND action = 'status_change') as total_status_changes,
+                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id AND action = 'document_added') as total_documents,
+                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id AND action IN ('assigned', 'reassigned')) as total_assignments,
+                (SELECT MIN(performed_at) FROM service_request_history WHERE service_request_id = sr.id) as first_action_at,
+                (SELECT MAX(performed_at) FROM service_request_history WHERE service_request_id = sr.id) as last_action_at
+            FROM service_requests sr
+            JOIN users u ON u.id = sr.user_id
+            WHERE sr.id = $1
+        """
+        row = await db.fetchrow(query, request_id)
+        if not row:
+            return None
+
+        result = self._row_to_dict(row)
+        result["citizen_name"] = row["citizen_name"]
+        result["total_status_changes"] = row["total_status_changes"] or 0
+        result["total_documents"] = row["total_documents"] or 0
+        result["total_assignments"] = row["total_assignments"] or 0
+        result["first_action_at"] = row["first_action_at"].isoformat() if row["first_action_at"] else None
+        result["last_action_at"] = row["last_action_at"].isoformat() if row["last_action_at"] else None
+        return result
+
+    async def get_history_list_for_entity(
+        self,
+        db: asyncpg.Connection,
+        workflow_codes: List[str],
+        status_filter: Optional[str] = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> tuple[List[Dict], int]:
+        """
+        Get list of requests with history summary for an entity.
+        Used by the history list page.
+
+        Args:
+            db: Database connection
+            workflow_codes: List of workflow codes for the entity
+            status_filter: Optional status filter
+            limit: Max items to return
+            offset: Pagination offset
+
+        Returns:
+            Tuple of (list of summary items, total count)
+        """
+        conditions = ["sr.workflow_code = ANY($1)"]
+        params: List[Any] = [workflow_codes]
+        param_idx = 2
+
+        if status_filter:
+            conditions.append(f"sr.status = ${param_idx}")
+            params.append(status_filter)
+            param_idx += 1
+
+        where_clause = " AND ".join(conditions)
+
+        # Count total
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM service_requests sr
+            WHERE {where_clause}
+        """
+        count_row = await db.fetchrow(count_query, *params)
+        total = count_row["total"] if count_row else 0
+
+        # Get items with last action info
+        params.extend([limit, offset])
+        query = f"""
+            SELECT
+                sr.id,
+                sr.reference,
+                sr.workflow_code,
+                sr.status,
+                sr.created_at,
+                COALESCE(u.full_name, u.first_name || ' ' || u.last_name, u.email) as citizen_name,
+                -- Last action info
+                last_history.action as last_action,
+                last_history.performed_at as last_action_at,
+                COALESCE(last_performer.full_name, last_performer.first_name || ' ' || last_performer.last_name, 'Sistema') as last_performer,
+                -- Total actions
+                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id) as total_actions
+            FROM service_requests sr
+            JOIN users u ON u.id = sr.user_id
+            LEFT JOIN LATERAL (
+                SELECT action, performed_at, performed_by
+                FROM service_request_history
+                WHERE service_request_id = sr.id
+                ORDER BY performed_at DESC
+                LIMIT 1
+            ) last_history ON true
+            LEFT JOIN users last_performer ON last_performer.id = last_history.performed_by
+            WHERE {where_clause}
+            ORDER BY COALESCE(last_history.performed_at, sr.created_at) DESC
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+        """
+        rows = await db.fetch(query, *params)
+
+        items = []
+        for row in rows:
+            days_since = (row["created_at"].date() - row["created_at"].date()).days if row["created_at"] else 0
+            last_action_at = row["last_action_at"]
+            is_stale = False
+            if last_action_at:
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+                if last_action_at.tzinfo is None:
+                    from datetime import timezone as tz
+                    last_action_at = last_action_at.replace(tzinfo=tz.utc)
+                is_stale = (now - last_action_at).days >= 7
+
+            items.append({
+                "request_id": str(row["id"]),
+                "reference": row["reference"] or "",
+                "workflow_code": row["workflow_code"],
+                "citizen_name": row["citizen_name"] or "N/A",
+                "current_status": row["status"],
+                "last_action": row["last_action"] or "status_change",
+                "last_action_at": row["last_action_at"].isoformat() if row["last_action_at"] else None,
+                "last_performer": row["last_performer"],
+                "total_actions": row["total_actions"] or 0,
+                "days_since_created": days_since,
+                "is_stale": is_stale
+            })
+
+        return items, total
+
     def _row_to_dict(self, row: asyncpg.Record) -> Dict:
         """Convert asyncpg Record to dict with proper JSON parsing"""
         if not row:

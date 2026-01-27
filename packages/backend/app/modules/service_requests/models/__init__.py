@@ -19,6 +19,18 @@ from .service_request import (
     ProvidedDocument,
     TariffBreakdown
 )
+from .history import (
+    HistoryActionType,
+    HistoryActionSource,
+    PerformerInfo,
+    HistoryEntry,
+    DocumentHistoryEntry,
+    AssignmentHistoryEntry,
+    HistoryFilters,
+    HistoryListResponse,
+    HistorySummaryItem,
+    HistoryListSummaryResponse
+)
 
 __all__ = [
     # DB-mapped enums
@@ -32,11 +44,22 @@ __all__ = [
     "WorkflowCategory",
     "EntityCode",
     "TariffType",
-    # Pydantic models
+    # Pydantic models - Service Request
     "ServiceRequestCreate",
     "ServiceRequestUpdate",
     "ServiceRequestResponse",
     "RequiredDocument",
     "ProvidedDocument",
-    "TariffBreakdown"
+    "TariffBreakdown",
+    # Pydantic models - History
+    "HistoryActionType",
+    "HistoryActionSource",
+    "PerformerInfo",
+    "HistoryEntry",
+    "DocumentHistoryEntry",
+    "AssignmentHistoryEntry",
+    "HistoryFilters",
+    "HistoryListResponse",
+    "HistorySummaryItem",
+    "HistoryListSummaryResponse"
 ]
