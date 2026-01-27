@@ -85,7 +85,7 @@ export const CNEDOGE_CONFIG: EntityDashboardConfig = {
         {
           id: 'pasaportes-validacion',
           titleKey: 'agent.nav.validation',
-          href: '/dashboard/agent/cnedoge-pasaporte/validation',
+          href: '/dashboard/agent/cnedoge-pasaporte/pasaportes/validation',
           icon: CheckCircle,
           permission: 'service_request.approve',
           workflows: ['PASAPORTE_NUEVO', 'PASAPORTE_RENOVACION', 'PASAPORTE_PERDIDA', 'PASAPORTE_ROBO', 'PASAPORTE_DETERIORO'],
@@ -200,7 +200,7 @@ export const CNEDOGE_PASAPORTE_CONFIG: EntityDashboardConfig = {
         {
           id: 'pasaportes-validacion',
           titleKey: 'agent.nav.validation',
-          href: '/dashboard/agent/cnedoge-pasaporte/validation',
+          href: '/dashboard/agent/cnedoge-pasaporte/pasaportes/validation',
           icon: CheckCircle,
           permission: 'service_request.approve',
         },

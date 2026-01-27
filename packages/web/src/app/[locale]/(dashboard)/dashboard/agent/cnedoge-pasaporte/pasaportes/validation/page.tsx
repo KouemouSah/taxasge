@@ -56,7 +56,7 @@ export default function ValidationListPage() {
 
   const handleRowClick = (item: PendingVerificationItem) => {
     router.push(
-      `/dashboard/agent/cnedoge-pasaporte/validation/${item.id}?entity=${ENTITY_CODE}`
+      `/dashboard/agent/cnedoge-pasaporte/pasaportes/validation/${item.id}?entity=${ENTITY_CODE}`
     );
   };
 

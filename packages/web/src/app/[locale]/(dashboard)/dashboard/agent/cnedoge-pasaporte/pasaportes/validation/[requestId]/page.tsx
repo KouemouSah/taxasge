@@ -105,13 +105,13 @@ export default function VerificationDetailPage() {
 
   // Navigation handlers
   const handleBack = () => {
-    router.push('/dashboard/agent/cnedoge-pasaporte/validation');
+    router.push('/dashboard/agent/cnedoge-pasaporte/pasaportes/validation');
   };
 
   const handlePrevious = useCallback(() => {
     if (data?.previousId) {
       router.push(
-        `/dashboard/agent/cnedoge-pasaporte/validation/${data.previousId}?entity=${entityCode}`
+        `/dashboard/agent/cnedoge-pasaporte/pasaportes/validation/${data.previousId}?entity=${entityCode}`
       );
     }
   }, [data?.previousId, entityCode, router]);
@@ -119,7 +119,7 @@ export default function VerificationDetailPage() {
   const handleNext = useCallback(() => {
     if (data?.nextId) {
       router.push(
-        `/dashboard/agent/cnedoge-pasaporte/validation/${data.nextId}?entity=${entityCode}`
+        `/dashboard/agent/cnedoge-pasaporte/pasaportes/validation/${data.nextId}?entity=${entityCode}`
       );
     }
   }, [data?.nextId, entityCode, router]);
