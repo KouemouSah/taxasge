@@ -22,7 +22,7 @@ from loguru import logger
 
 from app.database.connection import get_db_pool
 from app.modules.auth.dependencies import get_current_user, require_permission
-from app.modules.users.models.user import User
+from app.modules.users.models.user import UserResponse as User
 
 from ..services.verification_service import VerificationService
 from ..services.batch_import_service import BatchImportService, BatchImportError
