@@ -25,6 +25,8 @@ class IdentifierType(str, Enum):
     MATRICULA_FUNCIONARIO = "matricula_funcionario"
     NUMERO_NOMBRAMIENTO = "numero_nombramiento"
     CARNET_FUNCIONARIO = "carnet_funcionario"
+    # Social security (from migration 081)
+    NUMERO_SEGURIDAD_SOCIAL = "numero_seguridad_social"
 
 
 class VerificationSource(str, Enum):
@@ -38,6 +40,8 @@ class VerificationSource(str, Enum):
     MINISTERIO_FUNCION_PUBLICA = "ministerio_funcion_publica"
     AGENT_MANUAL = "agent_manual"
     API_INTEGRATION = "api_integration"
+    # Social security (from migration 081)
+    SEGURIDAD_SOCIAL = "seguridad_social"
 
 
 class VerificationStatus(str, Enum):
