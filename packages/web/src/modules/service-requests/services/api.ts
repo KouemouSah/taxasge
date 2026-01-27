@@ -41,6 +41,7 @@ import { ExtractionStatus } from '../types'
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const API_VERSION = '/api/v1'
 const ENDPOINT_BASE = '/service-requests'
+const AGENT_ENDPOINT_BASE = '/agent/service-requests'
 
 
 // ============================================================================
@@ -550,6 +551,59 @@ class ServiceRequestsApiClient {
     }
 
     return response.json()
+  }
+
+  /**
+   * Make a request to agent-specific endpoints (/agent/service-requests/...)
+   */
+  private async agentRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const token = this.getToken()
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    }
+
+    const agentBaseUrl = `${API_BASE_URL}${API_VERSION}${AGENT_ENDPOINT_BASE}`
+    const url = `${agentBaseUrl}${endpoint}`
+    console.log(`[ServiceRequests:Agent] ${options.method || 'GET'} ${url}`)
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      })
+
+      console.log(`[ServiceRequests:Agent] Response status: ${response.status}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        let errorMessage = `API Error: ${response.status}`
+        if (errorData.detail) {
+          if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail
+          } else if (typeof errorData.detail === 'object') {
+            errorMessage = errorData.detail.message || errorData.detail.msg || JSON.stringify(errorData.detail)
+          }
+        }
+        console.error(`[ServiceRequests:Agent] Error: ${errorMessage}`)
+        throw new Error(errorMessage)
+      }
+
+      if (response.status === 204) {
+        return {} as T
+      }
+
+      const data = await response.json()
+      console.log(`[ServiceRequests:Agent] Success`)
+      return data
+    } catch (error) {
+      console.error(`[ServiceRequests:Agent] Fetch error:`, error)
+      throw error
+    }
   }
 
   // =========================================================================
@@ -1581,6 +1635,7 @@ class ServiceRequestsApiClient {
 
   /**
    * Get history timeline for a specific service request
+   * Uses AGENT_ENDPOINT_BASE because history endpoints are under /agent/service-requests
    */
   async getRequestHistory(
     requestId: string,
@@ -1635,7 +1690,7 @@ class ServiceRequestsApiClient {
       last_action_at?: string
     }
 
-    const response = await this.request<BackendHistoryResponse>(
+    const response = await this.agentRequest<BackendHistoryResponse>(
       `/${requestId}/history?${params.toString()}`
     )
 
@@ -1677,6 +1732,7 @@ class ServiceRequestsApiClient {
 
   /**
    * List service requests with history summary for timeline page
+   * Uses AGENT_ENDPOINT_BASE because history endpoints are under /agent/service-requests
    */
   async listRequestsWithHistory(
     entityCode: string,
@@ -1717,7 +1773,7 @@ class ServiceRequestsApiClient {
       status_filter?: string
     }
 
-    const response = await this.request<BackendHistorySummaryResponse>(
+    const response = await this.agentRequest<BackendHistorySummaryResponse>(
       `/history?${params.toString()}`
     )
 
@@ -1746,6 +1802,7 @@ class ServiceRequestsApiClient {
   /**
    * Export history timeline as CSV or PDF
    * Returns a blob URL for download
+   * Uses AGENT_ENDPOINT_BASE because history endpoints are under /agent/service-requests
    */
   async exportHistory(
     requestId: string,
@@ -1760,7 +1817,7 @@ class ServiceRequestsApiClient {
     })
 
     const response = await fetch(
-      `${API_BASE_URL}${API_VERSION}${ENDPOINT_BASE}/${requestId}/history/export?${params}`,
+      `${API_BASE_URL}${API_VERSION}${AGENT_ENDPOINT_BASE}/${requestId}/history/export?${params}`,
       {
         method: 'GET',
         headers: {
@@ -1779,6 +1836,7 @@ class ServiceRequestsApiClient {
 
   /**
    * Get history statistics
+   * Uses AGENT_ENDPOINT_BASE because history endpoints are under /agent/service-requests
    */
   async getHistoryStatistics(
     entityCode: string,
@@ -1805,7 +1863,7 @@ class ServiceRequestsApiClient {
       most_common_action?: string
     }
 
-    const response = await this.request<BackendStatsResponse>(
+    const response = await this.agentRequest<BackendStatsResponse>(
       `/history/statistics?${params}`
     )
 
