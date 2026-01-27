@@ -7,6 +7,8 @@ Endpoints for:
 - Manual verification by agents
 - Re-verification triggers
 - Identity verification page for agents (CNEDOGE)
+
+Last updated: 2026-01-27 - Force redeploy to staging
 """
 
 from datetime import datetime
