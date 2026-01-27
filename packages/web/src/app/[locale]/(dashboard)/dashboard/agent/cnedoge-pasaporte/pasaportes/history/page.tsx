@@ -4,7 +4,7 @@
  * History/Timeline Page for CNEDOGE Passport Agents
  * Displays chronological history of actions on service requests
  *
- * @route /[locale]/dashboard/agent/cnedoge-pasaporte/historial
+ * @route /[locale]/dashboard/agent/cnedoge-pasaporte/pasaportes/history
  */
 
 import { useState, useEffect } from 'react';
@@ -239,7 +239,7 @@ export default function HistorialPage() {
   };
 
   const handleBack = () => {
-    router.push('/dashboard/agent/cnedoge-pasaporte');
+    router.push('/dashboard/agent/cnedoge-pasaporte/pasaportes');
   };
 
   // Filter items by search query (client-side)
