@@ -35,7 +35,6 @@ export function IdentifierCard({
   className,
 }: IdentifierCardProps) {
   const t = useTranslations('verification');
-  const tCommon = useTranslations('common');
 
   const isPending = identifier.status === 'pending';
   const isVerified =
