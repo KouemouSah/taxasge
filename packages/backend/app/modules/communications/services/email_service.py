@@ -13,7 +13,9 @@ import smtplib
 import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional, Dict, Any, Set
+from email.mime.base import MIMEBase
+from email import encoders
+from typing import Optional, Dict, Any, Set, List, Tuple
 from datetime import datetime
 from pathlib import Path
 import asyncpg
@@ -118,41 +120,84 @@ class EmailService:
         subject: str,
         body_html: str,
         body_text: Optional[str] = None,
+        attachments: Optional[List[Tuple[str, bytes, str]]] = None,
     ) -> bool:
         """
-        Send an email
+        Send an email with optional attachments
 
         Args:
             to_email: Recipient email address
             subject: Email subject
             body_html: Email body in HTML format
             body_text: Email body in plain text (optional, defaults to HTML stripped)
+            attachments: Optional list of attachments as tuples:
+                         (filename, content_bytes, mime_type)
+                         Example: [("certificate.pdf", pdf_bytes, "application/pdf")]
 
         Returns:
             bool: True if email sent successfully, False otherwise
         """
         try:
-            # Create message
-            message = MIMEMultipart("alternative")
-            message["From"] = f"{self.smtp_from_name} <{self.smtp_from_email}>"
-            message["To"] = to_email
-            message["Subject"] = subject
+            # Determine message structure based on attachments
+            if attachments:
+                # Mixed container for attachments + body
+                message = MIMEMultipart("mixed")
+                message["From"] = f"{self.smtp_from_name} <{self.smtp_from_email}>"
+                message["To"] = to_email
+                message["Subject"] = subject
 
-            # Attach plain text version
-            if body_text:
-                part_text = MIMEText(body_text, "plain")
-                message.attach(part_text)
+                # Alternative container for text/html body
+                body_part = MIMEMultipart("alternative")
 
-            # Attach HTML version
-            part_html = MIMEText(body_html, "html")
-            message.attach(part_html)
+                # Attach plain text version
+                if body_text:
+                    part_text = MIMEText(body_text, "plain", "utf-8")
+                    body_part.attach(part_text)
+
+                # Attach HTML version
+                part_html = MIMEText(body_html, "html", "utf-8")
+                body_part.attach(part_html)
+
+                # Add body to main message
+                message.attach(body_part)
+
+                # Add attachments
+                for filename, content, mime_type in attachments:
+                    maintype, subtype = mime_type.split("/", 1)
+                    attachment = MIMEBase(maintype, subtype)
+                    attachment.set_payload(content)
+                    encoders.encode_base64(attachment)
+                    attachment.add_header(
+                        "Content-Disposition",
+                        "attachment",
+                        filename=filename
+                    )
+                    message.attach(attachment)
+                    logger.debug(f"Attached file: {filename} ({mime_type}, {len(content)} bytes)")
+
+            else:
+                # Simple alternative message (no attachments)
+                message = MIMEMultipart("alternative")
+                message["From"] = f"{self.smtp_from_name} <{self.smtp_from_email}>"
+                message["To"] = to_email
+                message["Subject"] = subject
+
+                # Attach plain text version
+                if body_text:
+                    part_text = MIMEText(body_text, "plain", "utf-8")
+                    message.attach(part_text)
+
+                # Attach HTML version
+                part_html = MIMEText(body_html, "html", "utf-8")
+                message.attach(part_html)
 
             # Send email
             server = self._create_smtp_connection()
             server.sendmail(self.smtp_from_email, to_email, message.as_string())
             server.quit()
 
-            logger.info(f"Email sent successfully to {to_email}: {subject}")
+            attachment_info = f" with {len(attachments)} attachment(s)" if attachments else ""
+            logger.info(f"Email sent successfully to {to_email}: {subject}{attachment_info}")
             return True
 
         except smtplib.SMTPException as e:

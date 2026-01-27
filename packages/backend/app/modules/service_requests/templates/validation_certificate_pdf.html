@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="{{ language or 'es' }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #1a1a1a;
+        }
+
+        /* ================================================================
+           HEADER - Logo + Security Text + Barcode
+           ================================================================ */
+        .header {
+            display: table;
+            width: 100%;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .header-left {
+            display: table-cell;
+            vertical-align: middle;
+            width: 80px;
+        }
+
+        .logo {
+            width: 65px;
+            height: 65px;
+        }
+
+        .header-center {
+            display: table-cell;
+            vertical-align: middle;
+            padding-left: 15px;
+        }
+
+        .platform-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 2px;
+        }
+
+        .security-text {
+            font-size: 8pt;
+            color: #666;
+            line-height: 1.3;
+        }
+
+        .document-type {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #1e40af;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-right {
+            display: table-cell;
+            vertical-align: middle;
+            text-align: right;
+            width: 150px;
+        }
+
+        .barcode-container {
+            text-align: right;
+        }
+
+        .barcode {
+            font-family: 'Libre Barcode 39', 'Free 3 of 9', monospace;
+            font-size: 28pt;
+            letter-spacing: -2px;
+        }
+
+        .barcode-text {
+            font-size: 7pt;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* ================================================================
+           REFERENCE BOX
+           ================================================================ */
+        .reference-box {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: table;
+            width: 100%;
+        }
+
+        .reference-box .left {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .reference-box .right {
+            display: table-cell;
+            vertical-align: middle;
+            text-align: right;
+        }
+
+        .reference-number {
+            font-size: 14pt;
+            font-weight: bold;
+        }
+
+        .workflow-info {
+            font-size: 9pt;
+            opacity: 0.9;
+        }
+
+        .validation-date {
+            font-size: 9pt;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #22c55e;
+            color: white;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 9pt;
+            font-weight: bold;
+            margin-top: 3px;
+        }
+
+        /* ================================================================
+           MAIN CONTENT - Two columns
+           ================================================================ */
+        .main-content {
+            display: table;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .photo-column {
+            display: table-cell;
+            vertical-align: top;
+            width: 100px;
+            padding-right: 15px;
+        }
+
+        .photo-box {
+            width: 90px;
+            height: 110px;
+            border: 2px solid #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #f9fafb;
+        }
+
+        .photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 8pt;
+            text-align: center;
+        }
+
+        .data-column {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        /* ================================================================
+           SECTIONS
+           ================================================================ */
+        .section {
+            margin-bottom: 12px;
+        }
+
+        .section-header {
+            background: #f3f4f6;
+            padding: 6px 10px;
+            font-weight: bold;
+            font-size: 9pt;
+            color: #374151;
+            border-left: 3px solid #2563eb;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .section-content {
+            padding: 0 10px;
+        }
+
+        /* ================================================================
+           DATA GRID
+           ================================================================ */
+        .data-grid {
+            display: table;
+            width: 100%;
+        }
+
+        .data-row {
+            display: table-row;
+        }
+
+        .data-label {
+            display: table-cell;
+            width: 35%;
+            padding: 3px 8px 3px 0;
+            color: #6b7280;
+            font-size: 9pt;
+            vertical-align: top;
+        }
+
+        .data-value {
+            display: table-cell;
+            padding: 3px 0;
+            font-weight: 500;
+            font-size: 9pt;
+        }
+
+        /* Two column data */
+        .two-columns {
+            display: table;
+            width: 100%;
+        }
+
+        .column {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            padding-right: 10px;
+        }
+
+        /* ================================================================
+           DOCUMENTS LIST - Two columns layout
+           ================================================================ */
+        .documents-grid {
+            display: table;
+            width: 100%;
+        }
+
+        .documents-row {
+            display: table-row;
+        }
+
+        .documents-column {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            padding-right: 10px;
+        }
+
+        .documents-column:last-child {
+            padding-right: 0;
+            padding-left: 10px;
+        }
+
+        .document-item {
+            display: table;
+            width: 100%;
+            margin-bottom: 4px;
+        }
+
+        .document-icon {
+            display: table-cell;
+            width: 18px;
+            padding: 3px 0;
+            color: #22c55e;
+            font-size: 10pt;
+            vertical-align: middle;
+        }
+
+        .document-name {
+            display: table-cell;
+            padding: 3px 0;
+            font-size: 9pt;
+            vertical-align: middle;
+        }
+
+        .document-status {
+            display: table-cell;
+            width: 22px;
+            text-align: right;
+            padding: 3px 0;
+            vertical-align: middle;
+        }
+
+        .status-verified {
+            color: #22c55e;
+            font-size: 12pt;
+        }
+
+        .status-pending {
+            color: #f59e0b;
+            font-size: 12pt;
+        }
+
+        /* ================================================================
+           APPOINTMENT + PAYMENT ROW (70% / 30%)
+           ================================================================ */
+        .appointment-payment-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .appointment-cell {
+            display: table-cell;
+            width: 68%;
+            vertical-align: top;
+            padding-right: 10px;
+        }
+
+        .payment-cell {
+            display: table-cell;
+            width: 32%;
+            vertical-align: top;
+        }
+
+        .appointment-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 10px;
+            height: 100%;
+        }
+
+        .appointment-title {
+            font-weight: bold;
+            color: #1e40af;
+            font-size: 9pt;
+            margin-bottom: 6px;
+        }
+
+        .appointment-details {
+            display: table;
+            width: 100%;
+        }
+
+        .appointment-item {
+            display: table-row;
+        }
+
+        .appointment-icon {
+            display: table-cell;
+            width: 22px;
+            font-size: 10pt;
+            padding: 2px 0;
+            vertical-align: middle;
+        }
+
+        .appointment-label {
+            display: table-cell;
+            font-size: 8pt;
+            color: #6b7280;
+            width: 45px;
+            padding: 2px 0;
+            vertical-align: middle;
+        }
+
+        .appointment-value {
+            display: table-cell;
+            font-weight: bold;
+            font-size: 9pt;
+            color: #1e40af;
+            padding: 2px 0;
+            vertical-align: middle;
+        }
+
+        /* ================================================================
+           PAYMENT BOX
+           ================================================================ */
+        .payment-box {
+            background: #d1fae5;
+            border: 1px solid #6ee7b7;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+            height: 100%;
+        }
+
+        .payment-icon {
+            font-size: 18pt;
+            color: #059669;
+            margin-bottom: 2px;
+        }
+
+        .payment-amount {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #065f46;
+        }
+
+        .payment-currency {
+            font-size: 8pt;
+            color: #065f46;
+            font-weight: normal;
+        }
+
+        .payment-status {
+            font-size: 7pt;
+            color: #047857;
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payment-status-icon {
+            color: #22c55e;
+            font-size: 10pt;
+            margin-right: 3px;
+        }
+
+        /* ================================================================
+           FOOTER
+           ================================================================ */
+        .footer {
+            margin-top: 15px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+            display: table;
+            width: 100%;
+        }
+
+        .footer-left {
+            display: table-cell;
+            vertical-align: bottom;
+            width: 70%;
+        }
+
+        .footer-right {
+            display: table-cell;
+            vertical-align: bottom;
+            text-align: right;
+        }
+
+        .qr-box {
+            width: 70px;
+            height: 70px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            display: inline-block;
+        }
+
+        .qr-box img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7pt;
+            color: #9ca3af;
+            text-align: center;
+        }
+
+        .footer-text {
+            font-size: 8pt;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .verify-url {
+            font-size: 8pt;
+            color: #2563eb;
+            font-weight: 500;
+        }
+
+        .generated-date {
+            font-size: 7pt;
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+
+        /* ================================================================
+           AGENT SIGNATURE
+           ================================================================ */
+        .agent-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 10px;
+            font-size: 8pt;
+        }
+
+        .agent-label {
+            color: #6b7280;
+        }
+
+        .agent-name {
+            font-weight: bold;
+            color: #374151;
+        }
+
+        /* ================================================================
+           NOTICE BOX
+           ================================================================ */
+        .notice-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-top: 10px;
+            font-size: 8pt;
+            color: #166534;
+        }
+
+        .notice-title {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ================================================================
+         HEADER
+         ================================================================ -->
+    <div class="header">
+        <div class="header-left">
+            {% if logo_base64 %}
+            <img src="{{ logo_base64 }}" class="logo" alt="TaxasGE" />
+            {% else %}
+            <div class="logo" style="background: linear-gradient(135deg, #2563eb, #22c55e); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16pt;">TGE</div>
+            {% endif %}
+        </div>
+        <div class="header-center">
+            <div class="platform-name">TaxasGE</div>
+            <div class="security-text">
+                {{ texts.security_text }}
+            </div>
+            <div class="document-type">{{ texts.certificate_title }}</div>
+        </div>
+        <div class="header-right">
+            <div class="barcode-container">
+                <div class="barcode">*{{ barcode_value }}*</div>
+                <div class="barcode-text">{{ barcode_value }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         REFERENCE BOX
+         ================================================================ -->
+    <div class="reference-box">
+        <div class="left">
+            <div class="reference-number">{{ request_number }}</div>
+            <div class="workflow-info">{{ workflow_name }} - {{ solicitud_type_label }}</div>
+        </div>
+        <div class="right">
+            <div class="validation-date">{{ texts.validated_on }}: {{ validated_at }}</div>
+            <div class="status-badge">{{ texts.status_validated }}</div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         MAIN CONTENT - Photo + Data
+         ================================================================ -->
+    <div class="main-content">
+        <div class="photo-column">
+            <div class="photo-box">
+                {% if photo_base64 %}
+                <img src="{{ photo_base64 }}" alt="Photo" />
+                {% else %}
+                <div class="photo-placeholder">{{ texts.no_photo }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="data-column">
+            <!-- Personal Data Section -->
+            <div class="section">
+                <div class="section-header">{{ texts.personal_data }}</div>
+                <div class="section-content">
+                    <div class="two-columns">
+                        <div class="column">
+                            <div class="data-grid">
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.full_name }}</div>
+                                    <div class="data-value">{{ personal_data.nombres }} {{ personal_data.apellidos }}</div>
+                                </div>
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.dip_number }}</div>
+                                    <div class="data-value">{{ personal_data.numero_dip or '-' }}</div>
+                                </div>
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.sex }}</div>
+                                    <div class="data-value">{{ personal_data.sexo or '-' }}</div>
+                                </div>
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.birth_date }}</div>
+                                    <div class="data-value">{{ personal_data.fecha_nacimiento or '-' }}</div>
+                                </div>
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.native_of }}</div>
+                                    <div class="data-value">{{ personal_data.natural_de or '-' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="data-grid">
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.nationality }}</div>
+                                    <div class="data-value">{{ personal_data.nacionalidad or '-' }}</div>
+                                </div>
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.address }}</div>
+                                    <div class="data-value">{{ personal_data.domicilio or '-' }}</div>
+                                </div>
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.profession }}</div>
+                                    <div class="data-value">{{ personal_data.profesion or '-' }}</div>
+                                </div>
+                                <div class="data-row">
+                                    <div class="data-label">{{ texts.marital_status }}</div>
+                                    <div class="data-value">{{ personal_data.estado_civil or '-' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filiation Section -->
+            <div class="section">
+                <div class="section-header">{{ texts.filiation }}</div>
+                <div class="section-content">
+                    <div class="data-grid">
+                        <div class="data-row">
+                            <div class="data-label">{{ texts.father_name }}</div>
+                            <div class="data-value">{{ personal_data.nombre_padre or '-' }}</div>
+                        </div>
+                        <div class="data-row">
+                            <div class="data-label">{{ texts.mother_name }}</div>
+                            <div class="data-value">{{ personal_data.nombre_madre or '-' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         DOCUMENTS SECTION - Two columns layout
+         ================================================================ -->
+    <div class="section">
+        <div class="section-header">{{ texts.verified_documents }} ({{ documents|length }})</div>
+        <div class="section-content">
+            <div class="documents-grid">
+                <div class="documents-row">
+                    <div class="documents-column">
+                        {% for doc in documents[:((documents|length + 1) // 2)] %}
+                        <div class="document-item">
+                            <div class="document-name">{{ doc.name }}</div>
+                            <div class="document-status">
+                                <span class="{{ doc.status_class }}">{% if doc.status_class == 'status-verified' %}&#10004;{% else %}&#9203;{% endif %}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="documents-column">
+                        {% for doc in documents[((documents|length + 1) // 2):] %}
+                        <div class="document-item">
+                            <div class="document-name">{{ doc.name }}</div>
+                            <div class="document-status">
+                                <span class="{{ doc.status_class }}">{% if doc.status_class == 'status-verified' %}&#10004;{% else %}&#9203;{% endif %}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         APPOINTMENT + PAYMENT ROW (70% / 30%)
+         ================================================================ -->
+    <div class="appointment-payment-row">
+        <!-- Appointment Section (70%) -->
+        <div class="appointment-cell">
+            {% if appointment %}
+            <div class="appointment-box">
+                <div class="appointment-title">{{ texts.scheduled_appointment }}</div>
+                <div class="appointment-details">
+                    <div class="appointment-item">
+                        <span class="appointment-icon">&#128197;</span>
+                        <span class="appointment-label">{{ texts.date }}:</span>
+                        <span class="appointment-value">{{ appointment.date }}</span>
+                    </div>
+                    <div class="appointment-item">
+                        <span class="appointment-icon">&#128337;</span>
+                        <span class="appointment-label">{{ texts.time }}:</span>
+                        <span class="appointment-value">{{ appointment.time }}</span>
+                    </div>
+                    <div class="appointment-item">
+                        <span class="appointment-icon">&#128205;</span>
+                        <span class="appointment-label">{{ texts.location }}:</span>
+                        <span class="appointment-value">{{ appointment.location }}</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="appointment-box" style="background: #f3f4f6; border-color: #e5e7eb;">
+                <div class="appointment-title" style="color: #6b7280;">{{ texts.scheduled_appointment }}</div>
+                <div style="font-size: 9pt; color: #9ca3af;">{{ texts.no_appointment }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Payment Section (30%) -->
+        <div class="payment-cell">
+            <div class="payment-box">
+                <div class="payment-icon">&#128176;</div>
+                <div class="payment-amount">{{ tariff.total_amount }} <span class="payment-currency">XAF</span></div>
+                <div class="payment-status">
+                    <span class="payment-status-icon">&#10004;</span>
+                    {{ texts.payment_confirmed }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         AGENT SIGNATURE
+         ================================================================ -->
+    {% if agent_name %}
+    <div class="agent-box">
+        <span class="agent-label">{{ texts.validated_by }}:</span>
+        <span class="agent-name">{{ agent_name }}</span>
+        {% if agent_entity %}
+        <span class="agent-label"> ({{ agent_entity }})</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ================================================================
+         NOTICE BOX
+         ================================================================ -->
+    <div class="notice-box">
+        <div class="notice-title">{{ texts.important_notice }}</div>
+        {{ texts.notice_content }}
+    </div>
+
+    <!-- ================================================================
+         FOOTER
+         ================================================================ -->
+    <div class="footer">
+        <div class="footer-left">
+            <div class="footer-text">
+                <strong>{{ texts.reference }}:</strong> {{ request_number }}<br/>
+                <span class="verify-url">{{ texts.verify_at }}: {{ verify_url }}/verify/{{ request_number }}</span>
+            </div>
+            <div class="generated-date">
+                {{ texts.generated_on }}: {{ generated_at }}
+            </div>
+        </div>
+        <div class="footer-right">
+            <div class="qr-box">
+                {% if qr_code_base64 %}
+                <img src="{{ qr_code_base64 }}" alt="QR Code" />
+                {% else %}
+                <div class="qr-placeholder">QR<br/>Code</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

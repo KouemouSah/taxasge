@@ -11,7 +11,7 @@ Module: Communications
 Architecture: 3-tier (Routes → Services → External APIs)
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from loguru import logger
 
 from app.modules.communications.models.communication import (
@@ -98,7 +98,9 @@ class CommunicationService:
             recipient: Email address
             subject: Email subject
             content: HTML content
-            metadata: Additional metadata
+            metadata: Additional metadata including:
+                - body_text: Optional plain text version
+                - attachments: Optional list of tuples (filename, bytes, mime_type)
 
         Returns:
             bool: True if sent successfully
@@ -110,11 +112,20 @@ class CommunicationService:
         # Extract plain text from metadata if available
         body_text = metadata.get("body_text") if metadata else None
 
+        # Extract attachments from metadata if available
+        # Format: List[Tuple[str, bytes, str]] - (filename, content, mime_type)
+        attachments: Optional[List[Tuple[str, bytes, str]]] = None
+        if metadata and "attachments" in metadata:
+            attachments = metadata.get("attachments")
+            if attachments:
+                logger.info(f"Email includes {len(attachments)} attachment(s)")
+
         return self.email_service.send_email(
             to_email=recipient,
             subject=subject,
             body_html=content,
             body_text=body_text,
+            attachments=attachments,
         )
 
     # ========================================================================

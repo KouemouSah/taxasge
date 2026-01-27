@@ -243,72 +243,85 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="flex-1 min-w-[200px] max-w-sm">
+      {/* Filters - Full Width */}
+      <div className="grid grid-cols-12 gap-3 mb-4">
+        {/* Search - 5 columns */}
+        <div className="col-span-5">
           <Input
             placeholder={t('search')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9"
+            className="h-9 w-full"
           />
         </div>
-        <Select
-          value={solicitudType || 'all'}
-          onValueChange={(v) => {
-            setSolicitudType(v === 'all' ? undefined : v as 'expedicion' | 'renovacion');
-            if (v !== 'renovacion') setMotivo(undefined);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[150px] h-9">
-            <SelectValue placeholder={t('filters.type')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filters.allTypes')}</SelectItem>
-            <SelectItem value="expedicion">{t('filters.expedicion')}</SelectItem>
-            <SelectItem value="renovacion">{t('filters.renovacion')}</SelectItem>
-          </SelectContent>
-        </Select>
-        {solicitudType === 'renovacion' && (
+        {/* Type filter - 2 columns */}
+        <div className="col-span-2">
           <Select
-            value={motivo || 'all'}
+            value={solicitudType || 'all'}
             onValueChange={(v) => {
-              setMotivo(v === 'all' ? undefined : v as 'vencimiento' | 'perdida' | 'robo' | 'deterioro');
+              setSolicitudType(v === 'all' ? undefined : v as 'expedicion' | 'renovacion');
+              if (v !== 'renovacion') setMotivo(undefined);
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-[150px] h-9">
-              <SelectValue placeholder={t('filters.motivo')} />
+            <SelectTrigger className="h-9 w-full">
+              <SelectValue placeholder={t('filters.type')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('filters.allMotivos')}</SelectItem>
-              <SelectItem value="vencimiento">{t('filters.vencimiento')}</SelectItem>
-              <SelectItem value="perdida">{t('filters.perdida')}</SelectItem>
-              <SelectItem value="robo">{t('filters.robo')}</SelectItem>
-              <SelectItem value="deterioro">{t('filters.deterioro')}</SelectItem>
+              <SelectItem value="all">{t('filters.allTypes')}</SelectItem>
+              <SelectItem value="expedicion">{t('filters.expedicion')}</SelectItem>
+              <SelectItem value="renovacion">{t('filters.renovacion')}</SelectItem>
             </SelectContent>
           </Select>
-        )}
-        <Select
-          value={priority || 'all'}
-          onValueChange={(v) => {
-            setPriority(v === 'all' ? undefined : v as Priority);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[140px] h-9">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder={t('filters.priority')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filters.all')}</SelectItem>
-            <SelectItem value="URGENT">Urgente</SelectItem>
-            <SelectItem value="HIGH">Alta</SelectItem>
-            <SelectItem value="NORMAL">Normal</SelectItem>
-            <SelectItem value="LOW">Baja</SelectItem>
-          </SelectContent>
-        </Select>
+        </div>
+        {/* Motivo filter - 3 columns (visible only for renovacion) */}
+        <div className="col-span-3">
+          {solicitudType === 'renovacion' ? (
+            <Select
+              value={motivo || 'all'}
+              onValueChange={(v) => {
+                setMotivo(v === 'all' ? undefined : v as 'vencimiento' | 'perdida' | 'robo' | 'deterioro');
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 w-full">
+                <SelectValue placeholder={t('filters.motivo')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('filters.allMotivos')}</SelectItem>
+                <SelectItem value="vencimiento">{t('filters.vencimiento')}</SelectItem>
+                <SelectItem value="perdida">{t('filters.perdida')}</SelectItem>
+                <SelectItem value="robo">{t('filters.robo')}</SelectItem>
+                <SelectItem value="deterioro">{t('filters.deterioro')}</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            /* Placeholder to maintain grid layout */
+            <div className="h-9" />
+          )}
+        </div>
+        {/* Priority filter - 2 columns */}
+        <div className="col-span-2">
+          <Select
+            value={priority || 'all'}
+            onValueChange={(v) => {
+              setPriority(v === 'all' ? undefined : v as Priority);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-9 w-full">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder={t('filters.priority')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('filters.all')}</SelectItem>
+              <SelectItem value="URGENT">Urgente</SelectItem>
+              <SelectItem value="HIGH">Alta</SelectItem>
+              <SelectItem value="NORMAL">Normal</SelectItem>
+              <SelectItem value="LOW">Baja</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Split View */}

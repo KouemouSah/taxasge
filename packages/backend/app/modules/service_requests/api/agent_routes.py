@@ -23,6 +23,7 @@ from ..services.agent_queue_service import agent_queue_service
 from ..services.appointment_scheduler import appointment_scheduler
 from ..services.service_request_service import service_request_service
 from ..services.workflow_engine import workflow_engine
+from ..services.summary_pdf_service import SummaryPdfService
 from ..models.service_request import ServiceRequestResponse
 from app.core.events import EventBus, EventType
 
@@ -417,7 +418,7 @@ async def make_decision(
         # Schedule appointment if workflow requires it
         workflow_code = request['workflow_code']
         workflow_data = await db.fetchrow("""
-            SELECT requires_appointment FROM workflows WHERE code = $1
+            SELECT requires_appointment, name_es, name_fr FROM workflows WHERE code = $1
         """, workflow_code)
 
         appointment_info = None
@@ -434,30 +435,147 @@ async def make_decision(
                 "location": reservation.appointment_location
             }
 
-        # Publish REQUEST_APPROVED event
-        try:
-            user_info = await db.fetchrow(
-                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
-                request['user_id']
-            )
-            if user_info:
-                EventBus.publish_nowait(
-                    EventType.REQUEST_APPROVED,
-                    {
-                        "request_id": str(request_id),
-                        "user_id": str(user_info['id']),
-                        "user_email": user_info['email'],
-                        "user_name": f"{user_info['first_name']} {user_info['last_name']}",
-                        "user_phone": user_info['phone_number'],
-                        "preferred_language": user_info['preferred_language'] or 'es',
-                        "workflow_code": request['workflow_code'],
-                        "agent_id": str(current_user.id),
-                        "appointment_date": appointment_info['date'] if appointment_info else None,
-                        "appointment_time": appointment_info['time'] if appointment_info else None,
-                        "location": appointment_info['location'] if appointment_info else None,
-                        "timestamp": datetime.now().isoformat(),
+        # Fetch user info for notification and PDF
+        user_info = await db.fetchrow(
+            "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+            request['user_id']
+        )
+
+        # Generate validation certificate PDF
+        pdf_attachment = None
+        if user_info:
+            try:
+                # Fetch data for PDF generation
+                form_data = request.get('form_data') or {}
+                if isinstance(form_data, str):
+                    form_data = json.loads(form_data)
+
+                # Extract personal data from form_data
+                personal_data = {
+                    "full_name": f"{user_info['first_name']} {user_info['last_name']}",
+                    "dni": form_data.get('dni_pasaporte') or form_data.get('dni') or '',
+                    "birth_date": form_data.get('fecha_nacimiento') or '',
+                    "birth_place": form_data.get('lugar_nacimiento') or '',
+                    "sexo": form_data.get('sexo') or '',
+                    "natural_de": form_data.get('natural_de') or '',
+                    "nombre_padre": form_data.get('nombre_padre') or '',
+                    "nombre_madre": form_data.get('nombre_madre') or '',
+                    "address": form_data.get('direccion') or form_data.get('domicilio') or '',
+                    "phone": user_info['phone_number'] or '',
+                    "email": user_info['email'] or '',
+                }
+
+                # Fetch uploaded documents
+                docs_rows = await db.fetch("""
+                    SELECT dt.name_es, dt.name_fr, uf.status
+                    FROM uploaded_files uf
+                    JOIN document_templates dt ON dt.code = uf.document_type
+                    WHERE uf.service_request_id = $1
+                """, request_id)
+
+                documents = []
+                for doc in docs_rows:
+                    doc_status = doc.get('status', 'pending')
+                    is_verified = doc_status in ('verified', 'approved', 'validated')
+                    documents.append({
+                        "name": doc['name_es'] or doc['name_fr'] or 'Document',
+                        "status": "verified" if is_verified else "pending",
+                        "status_class": "status-verified" if is_verified else "status-pending"
+                    })
+
+                # Fetch tariff info
+                tariff_row = await db.fetchrow("""
+                    SELECT sp.amount, sp.status, fsd.expedicion_rate, fsd.renewal_rate
+                    FROM service_payments sp
+                    LEFT JOIN fiscal_service_data fsd ON fsd.workflow_code = $2
+                    WHERE sp.service_request_id = $1
+                    ORDER BY sp.created_at DESC
+                    LIMIT 1
+                """, request_id, workflow_code)
+
+                tariff = {
+                    "total_amount": str(tariff_row['amount']) if tariff_row and tariff_row['amount'] else "0",
+                    "payment_status": "paid" if tariff_row and tariff_row['status'] == 'completed' else "pending"
+                }
+
+                # Appointment info for PDF
+                appointment_pdf = None
+                if appointment_info:
+                    appointment_pdf = {
+                        "date": appointment_info['date'],
+                        "time": appointment_info['time'],
+                        "location": appointment_info['location'] or ''
                     }
+
+                # Determine solicitud type
+                solicitud_type = form_data.get('tipo_solicitud', 'expedicion')
+
+                # Get workflow name based on language
+                language = user_info['preferred_language'] or 'es'
+                workflow_name = workflow_data.get('name_fr') if language == 'fr' else workflow_data.get('name_es')
+                workflow_name = workflow_name or workflow_code
+
+                # Agent info
+                agent_name = f"{current_user.first_name} {current_user.last_name}"
+                agent_entity_row = await db.fetchrow("""
+                    SELECT el.name FROM entity_locations el
+                    JOIN user_entity_assignments uea ON uea.entity_location_id = el.id
+                    WHERE uea.user_id = $1
+                    LIMIT 1
+                """, current_user.id)
+                agent_entity = agent_entity_row['name'] if agent_entity_row else 'DGI'
+
+                # Get photo URL if available
+                photo_url = form_data.get('photo_url') or form_data.get('foto_url')
+
+                # Generate the PDF
+                pdf_service = SummaryPdfService()
+                pdf_bytes = await pdf_service.generate_validation_certificate(
+                    request_number=request['reference_number'],
+                    workflow_name=workflow_name,
+                    solicitud_type=solicitud_type,
+                    personal_data=personal_data,
+                    documents=documents,
+                    tariff=tariff,
+                    appointment=appointment_pdf,
+                    agent_name=agent_name,
+                    agent_entity=agent_entity,
+                    photo_url=photo_url,
+                    language=language
                 )
+
+                # Prepare attachment tuple: (filename, bytes, mime_type)
+                pdf_filename = f"certificat_validation_{request['reference_number']}.pdf"
+                pdf_attachment = [(pdf_filename, pdf_bytes, "application/pdf")]
+                logger.info(f"Generated validation certificate PDF: {pdf_filename}")
+
+            except Exception as pdf_error:
+                logger.warning(f"Failed to generate validation PDF: {pdf_error}")
+                # Continue without PDF - don't block the approval
+
+        # Publish REQUEST_APPROVED event with optional PDF attachment
+        try:
+            if user_info:
+                event_payload = {
+                    "request_id": str(request_id),
+                    "user_id": str(user_info['id']),
+                    "user_email": user_info['email'],
+                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                    "user_phone": user_info['phone_number'],
+                    "preferred_language": user_info['preferred_language'] or 'es',
+                    "workflow_code": request['workflow_code'],
+                    "agent_id": str(current_user.id),
+                    "appointment_date": appointment_info['date'] if appointment_info else None,
+                    "appointment_time": appointment_info['time'] if appointment_info else None,
+                    "location": appointment_info['location'] if appointment_info else None,
+                    "timestamp": datetime.now().isoformat(),
+                }
+
+                # Add PDF attachment if generated
+                if pdf_attachment:
+                    event_payload["attachments"] = pdf_attachment
+
+                EventBus.publish_nowait(EventType.REQUEST_APPROVED, event_payload)
         except Exception:
             pass  # Non-blocking
 

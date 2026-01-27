@@ -13,7 +13,8 @@ Maps event types to notification templates and sends via:
 """
 
 import asyncio
-from typing import Dict, Optional, Any, List
+from datetime import datetime
+from typing import Dict, Optional, Any, List, Tuple
 from dataclasses import dataclass
 from enum import Enum
 from loguru import logger
@@ -387,6 +388,20 @@ class NotificationEventHandler:
                 )
                 return False
 
+            # Build metadata with optional attachments
+            # Attachments format: List[Tuple[str, bytes, str]] - (filename, content, mime_type)
+            metadata: Dict[str, Any] = {
+                "language": language,
+                "user_name": user_name
+            }
+
+            # Extract attachments from context if present
+            # These are passed from the event payload (e.g., PDF certificates)
+            attachments: Optional[List[Tuple[str, bytes, str]]] = context.get("attachments")
+            if attachments:
+                metadata["attachments"] = attachments
+                logger.info(f"Email includes {len(attachments)} attachment(s)")
+
             # Send via communication service (run in thread pool since it's sync)
             loop = asyncio.get_running_loop()
             success = await loop.run_in_executor(
@@ -396,12 +411,13 @@ class NotificationEventHandler:
                     recipient=user_email,
                     subject=subject,
                     content=content,
-                    metadata={"language": language, "user_name": user_name}
+                    metadata=metadata
                 )
             )
 
             if success:
-                logger.info(f"Email sent to {user_email} ({config.template_code})")
+                attachment_info = f" with {len(attachments)} attachment(s)" if attachments else ""
+                logger.info(f"Email sent to {user_email} ({config.template_code}){attachment_info}")
             return success
 
         elif channel == NotificationChannel.SMS:
@@ -580,6 +596,10 @@ class NotificationEventHandler:
             # Timestamp
             "timestamp": payload.get("timestamp"),
 
+            # Attachments for email (List[Tuple[filename, bytes, mime_type]])
+            # Used for PDF certificates, receipts, etc.
+            "attachments": payload.get("attachments"),
+
             # Any additional metadata
             **(payload.get("metadata") or {}),
         }
@@ -742,32 +762,116 @@ class NotificationEventHandler:
         # In production, this would fetch from email_templates table
         user_name = context.get("user_name", "Usuario")
 
-        # Generic template structure
+        # Get greeting and footer based on language
+        greetings = {
+            "es": f"Estimado/a {user_name},",
+            "fr": f"Cher/Chère {user_name},",
+            "en": f"Dear {user_name},"
+        }
+        footers = {
+            "es": ("Este es un mensaje automático de TaxasGE.", "No responda a este correo.", "Todos los derechos reservados."),
+            "fr": ("Ceci est un message automatique de TaxasGE.", "Ne répondez pas à cet e-mail.", "Tous droits réservés."),
+            "en": ("This is an automated message from TaxasGE.", "Please do not reply to this email.", "All rights reserved.")
+        }
+
+        greeting = greetings.get(language, greetings["es"])
+        footer_auto, footer_noreply, footer_rights = footers.get(language, footers["es"])
+        body_content = self._get_template_body(template_code, language, context)
+
+        # Professional template structure
         html = f"""
         <!DOCTYPE html>
-        <html>
+        <html lang="{language}">
         <head>
             <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ background: #1a73e8; color: white; padding: 20px; text-align: center; }}
-                .content {{ padding: 20px; background: #f9f9f9; }}
-                .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #666; }}
+                body {{
+                    margin: 0;
+                    padding: 0;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333333;
+                    background-color: #f5f5f5;
+                }}
+                .email-wrapper {{
+                    padding: 20px;
+                    background-color: #f5f5f5;
+                }}
+                .email-container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background-color: #ffffff;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }}
+                .email-header {{
+                    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+                    padding: 30px 20px;
+                    text-align: center;
+                }}
+                .email-header h1 {{
+                    color: #ffffff;
+                    margin: 0;
+                    font-size: 28px;
+                    font-weight: 700;
+                }}
+                .email-body {{
+                    padding: 40px 30px;
+                }}
+                .greeting {{
+                    font-size: 16px;
+                    color: #333333;
+                    margin-bottom: 20px;
+                }}
+                .content {{
+                    font-size: 15px;
+                    color: #4b5563;
+                    line-height: 1.8;
+                }}
+                .email-footer {{
+                    background-color: #f9fafb;
+                    padding: 25px 30px;
+                    text-align: center;
+                    border-top: 1px solid #e5e7eb;
+                }}
+                .email-footer p {{
+                    margin: 5px 0;
+                    font-size: 12px;
+                    color: #6b7280;
+                }}
+                .email-footer a {{
+                    color: #2563eb;
+                    text-decoration: none;
+                }}
+                @media only screen and (max-width: 600px) {{
+                    .email-body {{
+                        padding: 30px 20px;
+                    }}
+                }}
             </style>
         </head>
         <body>
-            <div class="container">
-                <div class="header">
-                    <h1>TaxasGE</h1>
-                </div>
-                <div class="content">
-                    <p>Estimado/a {user_name},</p>
-                    <p>{self._get_template_body(template_code, language, context)}</p>
-                </div>
-                <div class="footer">
-                    <p>Este es un mensaje automático de TaxasGE.</p>
-                    <p>No responda a este correo.</p>
+            <div class="email-wrapper">
+                <div class="email-container">
+                    <div class="email-header">
+                        <h1>TaxasGE</h1>
+                    </div>
+                    <div class="email-body">
+                        <p class="greeting">{greeting}</p>
+                        <div class="content">{body_content}</div>
+                    </div>
+                    <div class="email-footer">
+                        <p>{footer_auto}</p>
+                        <p>{footer_noreply}</p>
+                        <p style="margin-top: 15px;">
+                            <a href="https://taxasge.emacsah.com">taxasge.emacsah.com</a>
+                        </p>
+                        <p style="margin-top: 10px; font-size: 11px;">
+                            &copy; {datetime.now().year} TaxasGE Platform. {footer_rights}
+                        </p>
+                    </div>
                 </div>
             </div>
         </body>
@@ -818,9 +922,9 @@ class NotificationEventHandler:
                 "en": "Your request has been received and is being processed."
             },
             "request_approved": {
-                "es": "Su solicitud ha sido aprobada.",
-                "fr": "Votre demande a été approuvée.",
-                "en": "Your request has been approved."
+                "es": self._get_request_approved_body("es", context),
+                "fr": self._get_request_approved_body("fr", context),
+                "en": self._get_request_approved_body("en", context),
             },
             "request_rejected": {
                 "es": f"Su solicitud ha sido rechazada. Motivo: {reason}",
@@ -859,6 +963,93 @@ class NotificationEventHandler:
             language,
             template_bodies.get("es", "Tiene una nueva notificación de TaxasGE.")
         )
+
+    def _get_request_approved_body(self, language: str, context: Dict[str, Any]) -> str:
+        """
+        Generate rich body text for request_approved notification.
+
+        Includes appointment info and reference to attached PDF certificate.
+        """
+        request_id = context.get("request_id", "")
+        workflow_code = context.get("workflow_code", "")
+        appointment_date = context.get("appointment_date")
+        appointment_time = context.get("appointment_time")
+        location = context.get("location", "")
+        has_attachment = context.get("attachments") is not None
+
+        if language == "fr":
+            lines = [
+                f"Nous avons le plaisir de vous informer que votre demande <strong>{workflow_code}</strong> a été approuvée.",
+                "",
+            ]
+
+            if appointment_date and appointment_time:
+                lines.append("<strong>📅 Rendez-vous programmé:</strong>")
+                lines.append(f"• Date: {appointment_date}")
+                lines.append(f"• Heure: {appointment_time}")
+                if location:
+                    lines.append(f"• Lieu: {location}")
+                lines.append("")
+                lines.append("Veuillez vous présenter à l'heure indiquée avec une pièce d'identité valide.")
+                lines.append("")
+
+            if has_attachment:
+                lines.append("<strong>📎 Document joint:</strong>")
+                lines.append("Vous trouverez ci-joint votre <strong>Certificat de Validation</strong> au format PDF.")
+                lines.append("Ce document atteste l'approbation de votre dossier.")
+                lines.append("")
+
+            lines.append("Pour toute question, contactez notre support.")
+
+        elif language == "en":
+            lines = [
+                f"We are pleased to inform you that your request <strong>{workflow_code}</strong> has been approved.",
+                "",
+            ]
+
+            if appointment_date and appointment_time:
+                lines.append("<strong>📅 Scheduled Appointment:</strong>")
+                lines.append(f"• Date: {appointment_date}")
+                lines.append(f"• Time: {appointment_time}")
+                if location:
+                    lines.append(f"• Location: {location}")
+                lines.append("")
+                lines.append("Please arrive on time with a valid ID document.")
+                lines.append("")
+
+            if has_attachment:
+                lines.append("<strong>📎 Attached Document:</strong>")
+                lines.append("Please find attached your <strong>Validation Certificate</strong> in PDF format.")
+                lines.append("This document certifies the approval of your application.")
+                lines.append("")
+
+            lines.append("For any questions, please contact our support team.")
+
+        else:  # Spanish (default)
+            lines = [
+                f"Nos complace informarle que su solicitud <strong>{workflow_code}</strong> ha sido aprobada.",
+                "",
+            ]
+
+            if appointment_date and appointment_time:
+                lines.append("<strong>📅 Cita programada:</strong>")
+                lines.append(f"• Fecha: {appointment_date}")
+                lines.append(f"• Hora: {appointment_time}")
+                if location:
+                    lines.append(f"• Lugar: {location}")
+                lines.append("")
+                lines.append("Por favor, preséntese a la hora indicada con un documento de identidad válido.")
+                lines.append("")
+
+            if has_attachment:
+                lines.append("<strong>📎 Documento adjunto:</strong>")
+                lines.append("Adjunto encontrará su <strong>Certificado de Validación</strong> en formato PDF.")
+                lines.append("Este documento certifica la aprobación de su expediente.")
+                lines.append("")
+
+            lines.append("Para cualquier consulta, contacte con nuestro servicio de soporte.")
+
+        return "<br>".join(lines)
 
     def _get_push_body(
         self,
