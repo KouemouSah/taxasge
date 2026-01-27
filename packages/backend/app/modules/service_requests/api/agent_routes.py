@@ -3218,7 +3218,7 @@ async def get_calendar_week_widget(
         JOIN users u ON u.id = sr.user_id
         WHERE sr.workflow_code = ANY($1)
           AND sr.cita_date BETWEEN $2 AND $3
-          AND sr.status NOT IN ('cancelled', 'rejected', 'expired')
+          AND sr.status NOT IN ('CANCELLED', 'REJECTED', 'EXPIRED')
         ORDER BY sr.cita_date, sr.cita_time ASC NULLS LAST
     """, workflow_codes, week_start, week_end)
 
