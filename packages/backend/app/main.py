@@ -9,8 +9,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 import uvicorn
-# Note: functions_framework import moved to bottom of file (conditional)
-# to avoid interference with Cloud Run uvicorn deployment
+# Note: functions_framework removed in v1.1.8 - Cloud Run uses uvicorn directly
 from fastapi import FastAPI, Request, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -33,7 +32,7 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/taxasge")
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     secret_key: str = os.getenv("SECRET_KEY", "taxasge-secret-key-change-in-production")
-    api_version: str = "1.1.7"  # v1.1.7: Remove functions-framework from requirements
+    api_version: str = "1.1.8"  # v1.1.8: Remove functions_framework wrapper to fix 422/func error
 
     # SMTP Configuration using secured secrets
     smtp_password: str = os.getenv("SMTP_PASSWORD_GMAIL", os.getenv("SMTP_PASSWORD", ""))
@@ -376,7 +375,7 @@ async def health_check():
         "version": settings.api_version,
         "timestamp": datetime.utcnow().isoformat(),
         "python_version": sys.version,
-        "platform": "FastAPI + Firebase Functions",
+        "platform": "FastAPI + Cloud Run",
         "checks": {
             "api": "ok",
             "database": "unknown",
@@ -437,7 +436,7 @@ async def root():
             "enterprise_support": "B2B declarations"
         },
         "timestamp": datetime.utcnow().isoformat(),
-        "platform": "FastAPI + Firebase Functions"
+        "platform": "FastAPI + Cloud Run"
     }
 
 # Debug endpoint to check loaded routers (helps diagnose 404 issues)
@@ -1212,77 +1211,9 @@ if routers_loaded:
 else:
     logger.error("❌ No API routers could be loaded!")
 
-# Firebase Functions wrapper - Only loaded when running as Firebase Function
-# This is NOT used by Cloud Run (which uses uvicorn directly with app.main:app)
-# The functions_framework import and decorator are kept here for Firebase Functions compatibility
-# but isolated to prevent interference with Cloud Run deployment
-try:
-    import functions_framework
-
-    @functions_framework.http
-    def main(request):
-        """Firebase Functions entry point - wraps FastAPI"""
-        from fastapi.testclient import TestClient
-
-        # Handle CORS preflight for Firebase Functions
-        if request.method == 'OPTIONS':
-            headers = {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-                'Access-Control-Max-Age': '3600'
-            }
-            return ('', 204, headers)
-
-        # Create test client for Firebase Functions
-        with TestClient(app) as client:
-            # Extract path and handle Firebase Functions routing
-            path = request.path or '/'
-
-            # Forward request to FastAPI
-            try:
-                if request.method == 'GET':
-                    response = client.get(path, headers=dict(request.headers))
-                elif request.method == 'POST':
-                    response = client.post(
-                        path,
-                        json=request.get_json(silent=True),
-                        headers=dict(request.headers)
-                    )
-                elif request.method == 'PUT':
-                    response = client.put(
-                        path,
-                        json=request.get_json(silent=True),
-                        headers=dict(request.headers)
-                    )
-                elif request.method == 'DELETE':
-                    response = client.delete(path, headers=dict(request.headers))
-                else:
-                    response = client.get(path, headers=dict(request.headers))
-
-                headers = {
-                    'Access-Control-Allow-Origin': '*',
-                    'Content-Type': 'application/json'
-                }
-
-                return (response.content, response.status_code, headers)
-
-            except Exception as e:
-                error_response = {
-                    "error": "Internal Server Error",
-                    "message": str(e),
-                    "status": 500,
-                    "environment": settings.environment
-                }
-                headers = {
-                    'Access-Control-Allow-Origin': '*',
-                    'Content-Type': 'application/json'
-                }
-                return (json.dumps(error_response), 500, headers)
-
-except ImportError:
-    # functions_framework not installed - running in Cloud Run or local dev
-    logger.debug("functions_framework not available - using uvicorn directly")
+# NOTE: functions_framework wrapper removed in v1.1.8
+# Cloud Run uses uvicorn directly with app.main:app
+# The functions_framework decorator was causing 422 errors (expecting 'func' query param)
 
 # Direct FastAPI server (for local development)
 if __name__ == "__main__":
