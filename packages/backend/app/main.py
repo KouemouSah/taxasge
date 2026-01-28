@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/taxasge")
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     secret_key: str = os.getenv("SECRET_KEY", "taxasge-secret-key-change-in-production")
-    api_version: str = "1.1.4"  # v1.1.4: ValidationError handlers + treasury logging
+    api_version: str = "1.1.5"  # v1.1.5: Fix 422/func error on verified-identifiers/pending
 
     # SMTP Configuration using secured secrets
     smtp_password: str = os.getenv("SMTP_PASSWORD_GMAIL", os.getenv("SMTP_PASSWORD", ""))
