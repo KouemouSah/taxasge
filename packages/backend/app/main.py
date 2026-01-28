@@ -9,7 +9,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 import uvicorn
-import functions_framework
+# Note: functions_framework import moved to bottom of file (conditional)
+# to avoid interference with Cloud Run uvicorn deployment
 from fastapi import FastAPI, Request, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -32,7 +33,7 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost/taxasge")
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379")
     secret_key: str = os.getenv("SECRET_KEY", "taxasge-secret-key-change-in-production")
-    api_version: str = "1.1.5"  # v1.1.5: Fix 422/func error on verified-identifiers/pending
+    api_version: str = "1.1.6"  # v1.1.6: Isolate functions_framework to fix 422/func error
 
     # SMTP Configuration using secured secrets
     smtp_password: str = os.getenv("SMTP_PASSWORD_GMAIL", os.getenv("SMTP_PASSWORD", ""))
@@ -1211,68 +1212,77 @@ if routers_loaded:
 else:
     logger.error("❌ No API routers could be loaded!")
 
-# Firebase Functions wrapper
-@functions_framework.http
-def main(request):
-    """Firebase Functions entry point - wraps FastAPI"""
-    import asyncio
-    from fastapi.testclient import TestClient
+# Firebase Functions wrapper - Only loaded when running as Firebase Function
+# This is NOT used by Cloud Run (which uses uvicorn directly with app.main:app)
+# The functions_framework import and decorator are kept here for Firebase Functions compatibility
+# but isolated to prevent interference with Cloud Run deployment
+try:
+    import functions_framework
 
-    # Handle CORS preflight for Firebase Functions
-    if request.method == 'OPTIONS':
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            'Access-Control-Max-Age': '3600'
-        }
-        return ('', 204, headers)
+    @functions_framework.http
+    def main(request):
+        """Firebase Functions entry point - wraps FastAPI"""
+        from fastapi.testclient import TestClient
 
-    # Create test client for Firebase Functions
-    with TestClient(app) as client:
-        # Extract path and handle Firebase Functions routing
-        path = request.path or '/'
-
-        # Forward request to FastAPI
-        try:
-            if request.method == 'GET':
-                response = client.get(path, headers=dict(request.headers))
-            elif request.method == 'POST':
-                response = client.post(
-                    path,
-                    json=request.get_json(silent=True),
-                    headers=dict(request.headers)
-                )
-            elif request.method == 'PUT':
-                response = client.put(
-                    path,
-                    json=request.get_json(silent=True),
-                    headers=dict(request.headers)
-                )
-            elif request.method == 'DELETE':
-                response = client.delete(path, headers=dict(request.headers))
-            else:
-                response = client.get(path, headers=dict(request.headers))
-
+        # Handle CORS preflight for Firebase Functions
+        if request.method == 'OPTIONS':
             headers = {
                 'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                'Access-Control-Max-Age': '3600'
             }
+            return ('', 204, headers)
 
-            return (response.content, response.status_code, headers)
+        # Create test client for Firebase Functions
+        with TestClient(app) as client:
+            # Extract path and handle Firebase Functions routing
+            path = request.path or '/'
 
-        except Exception as e:
-            error_response = {
-                "error": "Internal Server Error",
-                "message": str(e),
-                "status": 500,
-                "environment": settings.environment
-            }
-            headers = {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            }
-            return (json.dumps(error_response), 500, headers)
+            # Forward request to FastAPI
+            try:
+                if request.method == 'GET':
+                    response = client.get(path, headers=dict(request.headers))
+                elif request.method == 'POST':
+                    response = client.post(
+                        path,
+                        json=request.get_json(silent=True),
+                        headers=dict(request.headers)
+                    )
+                elif request.method == 'PUT':
+                    response = client.put(
+                        path,
+                        json=request.get_json(silent=True),
+                        headers=dict(request.headers)
+                    )
+                elif request.method == 'DELETE':
+                    response = client.delete(path, headers=dict(request.headers))
+                else:
+                    response = client.get(path, headers=dict(request.headers))
+
+                headers = {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                }
+
+                return (response.content, response.status_code, headers)
+
+            except Exception as e:
+                error_response = {
+                    "error": "Internal Server Error",
+                    "message": str(e),
+                    "status": 500,
+                    "environment": settings.environment
+                }
+                headers = {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                }
+                return (json.dumps(error_response), 500, headers)
+
+except ImportError:
+    # functions_framework not installed - running in Cloud Run or local dev
+    logger.debug("functions_framework not available - using uvicorn directly")
 
 # Direct FastAPI server (for local development)
 if __name__ == "__main__":
