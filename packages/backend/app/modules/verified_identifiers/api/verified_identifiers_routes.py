@@ -8,7 +8,7 @@ Endpoints for:
 - Re-verification triggers
 - Identity verification page for agents (CNEDOGE)
 
-Last updated: 2026-01-27 - Force redeploy to staging
+Last updated: 2026-01-28 10:02 - Force redeploy to fix 422/func error
 """
 
 from datetime import datetime
