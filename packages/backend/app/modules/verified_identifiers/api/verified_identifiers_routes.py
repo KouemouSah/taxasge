@@ -44,6 +44,20 @@ router = APIRouter(prefix="/verified-identifiers", tags=["Verified Identifiers"]
 
 
 # =============================================================================
+# DEBUG ENDPOINT - Test if router is working
+# =============================================================================
+
+@router.get("/health-test")
+async def health_test():
+    """Simple health test endpoint - no dependencies, no auth."""
+    return {
+        "status": "ok",
+        "module": "verified-identifiers",
+        "message": "Router is functioning correctly"
+    }
+
+
+# =============================================================================
 # DEPENDENCIES
 # =============================================================================
 
