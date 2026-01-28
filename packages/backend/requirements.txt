@@ -1,6 +1,6 @@
 # ============================================================================
 # TaxasGE Backend - Production Dependencies
-# Version: 2.0 - Production Ready
+# Version: 2.1 - Force clean Docker build (2026-01-28 21:15 UTC)
 # ============================================================================
 
 # Core Framework
