@@ -72,6 +72,117 @@ async def get_repository() -> VerifiedIdentifiersRepository:
 
 
 # =============================================================================
+# ACCESS CONTROL HELPERS
+# =============================================================================
+
+# Statuts où les vérifications sont pertinentes (après paiement, en traitement)
+VERIFICATION_ELIGIBLE_STATUSES = [
+    'PAID', 'IN_PROGRESS', 'CITA_SCHEDULED', 'UNDER_REVIEW',
+    'SUBMITTED', 'DOSSIER_VALIDE', 'PENDING_APPOINTMENT'
+]
+
+# Statuts à exclure (brouillon, annulé, terminé, paiement en attente)
+VERIFICATION_EXCLUDED_STATUSES = [
+    'DRAFT', 'PAYMENT_PENDING', 'PAYMENT_PROCESSING', 'PAYMENT_FAILED',
+    'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED'
+]
+
+
+async def check_user_has_view_all_permission(conn, user_id: UUID) -> bool:
+    """
+    Check if user has 'service_request.view_all' permission (supervisor).
+    """
+    result = await conn.fetchval("""
+        SELECT EXISTS (
+            SELECT 1 FROM user_permissions up
+            JOIN permissions p ON p.id = up.permission_id
+            WHERE up.user_id = $1 AND p.name = 'service_request.view_all'
+            UNION
+            SELECT 1 FROM user_roles ur
+            JOIN role_permissions rp ON rp.role_id = ur.role_id
+            JOIN permissions p ON p.id = rp.permission_id
+            WHERE ur.user_id = $1 AND p.name = 'service_request.view_all'
+        )
+    """, user_id)
+    return result or False
+
+
+async def get_user_entity_code(conn, user_id: UUID) -> Optional[str]:
+    """
+    Get the entity code for a user via their agent_profile.
+    """
+    result = await conn.fetchval("""
+        SELECT e.code
+        FROM agent_profiles ap
+        JOIN entities e ON e.id = ap.entity_id
+        WHERE ap.user_id = $1 AND ap.is_active = true
+        LIMIT 1
+    """, user_id)
+    return result
+
+
+async def check_verification_access(
+    conn,
+    request_id: UUID,
+    user_id: UUID,
+    has_view_all: bool
+) -> bool:
+    """
+    Check if user has access to verify a specific service request.
+
+    - Agent normal: must be assigned to the request
+    - Supervisor (has_view_all): request must be in their entity
+
+    Returns True if access granted, False otherwise.
+    """
+    if has_view_all:
+        # Supervisor: check if request is in their entity
+        user_entity_code = await get_user_entity_code(conn, user_id)
+        if not user_entity_code:
+            return False
+
+        result = await conn.fetchval("""
+            SELECT EXISTS (
+                SELECT 1 FROM service_requests sr
+                JOIN entities e ON e.code = sr.entity_code OR sr.workflow_code = ANY(e.workflow_codes)
+                WHERE sr.id = $1 AND e.code = $2
+            )
+        """, request_id, user_entity_code)
+        return result or False
+    else:
+        # Agent: must be assigned to this request
+        result = await conn.fetchval("""
+            SELECT EXISTS (
+                SELECT 1 FROM service_requests
+                WHERE id = $1 AND assigned_to = $2
+            )
+        """, request_id, user_id)
+        return result or False
+
+
+def build_access_filter_sql(has_view_all: bool, user_entity_code: Optional[str], user_id: UUID) -> tuple:
+    """
+    Build SQL WHERE clause for filtering verifications by access.
+
+    Returns (sql_fragment, params_dict)
+    """
+    if has_view_all and user_entity_code:
+        # Supervisor: see all verifications in their entity
+        return (
+            "AND (sr.entity_code = ${{entity_param}} OR sr.workflow_code = ANY("
+            "SELECT unnest(workflow_codes) FROM entities WHERE code = ${{entity_param}}"
+            "))",
+            {"entity_code": user_entity_code}
+        )
+    else:
+        # Agent: see only their assigned requests
+        return (
+            "AND sr.assigned_to = ${{user_param}}",
+            {"user_id": user_id}
+        )
+
+
+# =============================================================================
 # BATCH IMPORT ENDPOINTS (Admin only)
 # =============================================================================
 
@@ -381,17 +492,24 @@ async def list_pending_verifications(
     """
     List service requests that need identity verification for a specific entity.
 
-    Returns requests with:
-    - verification_status = 'pending' (default)
-    - Extracted identifiers from uploaded documents
-    - Individual identifier status (checked against verified_identifiers cache)
+    ACCESS CONTROL:
+    - Supervisor (has service_request.view_all): sees all verifications in their entity
+    - Agent: sees only verifications for requests assigned to them
 
-    Used by the agent validation page to show requests needing manual verification.
+    FILTERING:
+    - Only shows requests after payment (excludes DRAFT, PAYMENT_PENDING, etc.)
+    - Only shows requests with matching verification_status
     """
     pool = await get_db_pool()
     crypto = get_crypto_service()
 
     async with pool.acquire() as conn:
+        # Check user access level
+        user_id = UUID(str(current_user.id))
+        has_view_all = await check_user_has_view_all_permission(conn, user_id)
+
+        logger.info(f"User {current_user.email} listing verifications (supervisor={has_view_all})")
+
         # Get entity's workflow codes
         entity = await conn.fetchrow("""
             SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
@@ -427,20 +545,44 @@ async def list_pending_verifications(
         """)
         config_map = {c['document_code']: dict(c) for c in configs}
 
-        # Get total count
-        count_query = """
+        # Build access filter based on user role
+        # Supervisor: can see all in entity; Agent: only their assigned requests
+        if has_view_all:
+            # Supervisor sees all verifications (no assignment filter)
+            access_filter = ""
+            access_params = [workflow_codes, verification_status]
+        else:
+            # Agent sees only their assigned requests
+            access_filter = "AND sr.assigned_to = $3"
+            access_params = [workflow_codes, verification_status, user_id]
+
+        # Status filter: exclude drafts, payment pending, completed, cancelled
+        status_filter = "AND sr.status::text NOT IN ('DRAFT', 'PAYMENT_PENDING', 'PAYMENT_PROCESSING', 'PAYMENT_FAILED', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')"
+
+        # Get total count with access control
+        count_query = f"""
             SELECT COUNT(*) as total
             FROM service_requests sr
             WHERE sr.workflow_code = ANY($1)
-              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+              {status_filter}
               AND sr.verification_status = $2
+              {access_filter}
         """
-        total_row = await conn.fetchrow(count_query, workflow_codes, verification_status)
+        total_row = await conn.fetchrow(count_query, *access_params)
         total = total_row['total'] if total_row else 0
 
         # Get paginated items with citizen name, documents and extraction data
         offset = (page - 1) * page_size
-        query = """
+
+        # Add pagination params
+        if has_view_all:
+            query_params = [workflow_codes, verification_status, page_size, offset]
+            pagination_placeholders = "$3, $4"
+        else:
+            query_params = [workflow_codes, verification_status, user_id, page_size, offset]
+            pagination_placeholders = "$4, $5"
+
+        query = f"""
             SELECT
                 sr.id,
                 sr.reference,
@@ -455,12 +597,13 @@ async def list_pending_verifications(
             FROM service_requests sr
             JOIN users u ON u.id = sr.user_id
             WHERE sr.workflow_code = ANY($1)
-              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+              {status_filter}
               AND sr.verification_status = $2
+              {access_filter}
             ORDER BY sr.submitted_at ASC NULLS LAST
-            LIMIT $3 OFFSET $4
+            LIMIT {pagination_placeholders}
         """
-        rows = await conn.fetch(query, workflow_codes, verification_status, page_size, offset)
+        rows = await conn.fetch(query, *query_params)
 
         items = []
         for row in rows:
@@ -791,18 +934,33 @@ async def get_verification_details(
     """
     Get detailed verification information for a service request.
 
+    ACCESS CONTROL:
+    - Supervisor (has service_request.view_all): can access any request in their entity
+    - Agent: can only access requests assigned to them
+
     Includes:
     - Request details (reference, citizen, status)
     - All documents with URLs and extraction data
     - All extracted identifiers with individual status
     - Navigation to previous/next pending request
-
-    Used by the verification detail page for split-view layout.
     """
     pool = await get_db_pool()
     crypto = get_crypto_service()
 
     async with pool.acquire() as conn:
+        # Check user access
+        user_id = UUID(str(current_user.id))
+        has_view_all = await check_user_has_view_all_permission(conn, user_id)
+
+        # Verify access to this specific request
+        has_access = await check_verification_access(conn, UUID(request_id), user_id, has_view_all)
+        if not has_access:
+            logger.warning(f"User {current_user.email} denied access to verification {request_id}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to this verification. Request must be assigned to you."
+            )
+
         # Get entity's workflow codes for navigation
         entity = await conn.fetchrow("""
             SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
@@ -1057,16 +1215,34 @@ async def verify_identifier(
     """
     Verify a single identifier and store it in the verified_identifiers cache.
 
+    ACCESS CONTROL:
+    - Supervisor (has service_request.view_all): can verify any request in their entity
+    - Agent: can only verify requests assigned to them
+
     When an agent manually verifies an identifier:
     1. The identifier is encrypted and stored in verified_identifiers
     2. The service_request.verification_details is updated
     3. If all identifiers are verified, verification_status becomes 'verified_manually'
+    4. Other pending requests with the same identifier are auto-updated (propagation)
 
     Future requests with the same identifier will be auto-verified.
     """
     pool = await get_db_pool()
 
     async with pool.acquire() as conn:
+        # Check user access
+        user_id = UUID(str(current_user.id))
+        has_view_all = await check_user_has_view_all_permission(conn, user_id)
+
+        # Verify access to this specific request
+        has_access = await check_verification_access(conn, UUID(request_id), user_id, has_view_all)
+        if not has_access:
+            logger.warning(f"User {current_user.email} denied verify access to {request_id}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to verify this request. Request must be assigned to you."
+            )
+
         # Check service request exists
         sr = await conn.fetchrow("""
             SELECT id, user_id, verification_details, verification_status
@@ -1327,12 +1503,27 @@ async def verify_batch(
     """
     Verify multiple identifiers at once and store all in the cache.
 
+    ACCESS CONTROL:
+    - Supervisor (has service_request.view_all): can verify any request in their entity
+    - Agent: can only verify requests assigned to them
+
     Useful for validating all pending identifiers in a single click.
     All operations are performed in a single transaction.
     """
     pool = await get_db_pool()
 
     async with pool.acquire() as conn:
+        # ACCESS CONTROL CHECK
+        user_id = UUID(str(current_user.id))
+        has_view_all = await check_user_has_view_all_permission(conn, user_id)
+        has_access = await check_verification_access(conn, UUID(request_id), user_id, has_view_all)
+        if not has_access:
+            logger.warning(f"User {current_user.email} denied batch verify access to {request_id}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to verify this request. Request must be assigned to you."
+            )
+
         # Check service request exists
         sr = await conn.fetchrow("""
             SELECT id, user_id, verification_details, verification_status
@@ -1451,6 +1642,10 @@ async def reject_identifier(
     """
     Reject an identifier.
 
+    ACCESS CONTROL:
+    - Supervisor (has service_request.view_all): can reject for any request in their entity
+    - Agent: can only reject for requests assigned to them
+
     Options:
     - Normal rejection: Mark as rejected in verification_details
     - Fraud marking: Also store with is_active=false in cache to block future use
@@ -1462,6 +1657,17 @@ async def reject_identifier(
     crypto = get_crypto_service()
 
     async with pool.acquire() as conn:
+        # ACCESS CONTROL CHECK
+        user_id = UUID(str(current_user.id))
+        has_view_all = await check_user_has_view_all_permission(conn, user_id)
+        has_access = await check_verification_access(conn, UUID(request_id), user_id, has_view_all)
+        if not has_access:
+            logger.warning(f"User {current_user.email} denied reject access to {request_id}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to reject identifiers for this request. Request must be assigned to you."
+            )
+
         # Check service request exists
         sr = await conn.fetchrow("""
             SELECT id, user_id, verification_details, verification_status
