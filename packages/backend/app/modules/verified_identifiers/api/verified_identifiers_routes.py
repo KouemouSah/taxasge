@@ -91,17 +91,24 @@ VERIFICATION_EXCLUDED_STATUSES = [
 async def check_user_has_view_all_permission(conn, user_id: UUID) -> bool:
     """
     Check if user has 'service_request.view_all' permission (supervisor).
+
+    Schema uses:
+    - users.role_id -> roles.id (direct reference, not user_roles table)
+    - role_permissions -> permissions
+    - user_permissions -> permissions (direct user overrides)
     """
     result = await conn.fetchval("""
         SELECT EXISTS (
+            -- Check direct user permission override
             SELECT 1 FROM user_permissions up
             JOIN permissions p ON p.id = up.permission_id
-            WHERE up.user_id = $1 AND p.name = 'service_request.view_all'
+            WHERE up.user_id = $1 AND p.name = 'service_request.view_all' AND up.granted = true
             UNION
-            SELECT 1 FROM user_roles ur
-            JOIN role_permissions rp ON rp.role_id = ur.role_id
+            -- Check permission via role (users.role_id -> roles -> role_permissions -> permissions)
+            SELECT 1 FROM users u
+            JOIN role_permissions rp ON rp.role_id = u.role_id
             JOIN permissions p ON p.id = rp.permission_id
-            WHERE ur.user_id = $1 AND p.name = 'service_request.view_all'
+            WHERE u.id = $1 AND p.name = 'service_request.view_all' AND rp.granted = true
         )
     """, user_id)
     return result or False
