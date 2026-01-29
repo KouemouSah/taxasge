@@ -75,10 +75,14 @@ class CryptoService:
             return
 
         if self._aes_key is None:
+            logger.info(f"Loading AES key from secret: {self.AES_KEY_NAME}")
             aes_key_str = get_secret(self.AES_KEY_NAME)
             if not aes_key_str:
+                logger.error(f"AES key not found. Secret name: {self.AES_KEY_NAME}")
+                logger.error("Check: 1) Secret exists in Secret Manager 2) Correct name (with dashes) 3) Service account has secretAccessor role")
                 raise KeyNotFoundError(
-                    f"AES key not found in Secret Manager: {self.AES_KEY_NAME}"
+                    f"AES key not found in Secret Manager: {self.AES_KEY_NAME}. "
+                    f"Ensure the secret exists with this exact name and the service account has access."
                 )
             # Key is stored as base64
             try:
