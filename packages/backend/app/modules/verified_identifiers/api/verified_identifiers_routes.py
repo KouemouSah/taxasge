@@ -57,6 +57,32 @@ async def health_test():
     }
 
 
+@router.get("/health-test-auth")
+async def health_test_with_auth(
+    current_user: User = Depends(get_current_user)
+):
+    """Test endpoint WITH auth dependency."""
+    return {
+        "status": "ok",
+        "module": "verified-identifiers",
+        "user_id": str(current_user.id),
+        "message": "Auth dependency works"
+    }
+
+
+@router.get(
+    "/health-test-permission",
+    dependencies=[Depends(require_permission("identifiers.stats"))]
+)
+async def health_test_with_permission():
+    """Test endpoint WITH permission dependency."""
+    return {
+        "status": "ok",
+        "module": "verified-identifiers",
+        "message": "Permission dependency works"
+    }
+
+
 # =============================================================================
 # DEPENDENCIES
 # =============================================================================
