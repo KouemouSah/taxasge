@@ -48,7 +48,7 @@ const nextConfig = {
         headers: [
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN',
           },
           {
             key: 'X-Content-Type-Options',
@@ -61,6 +61,20 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'geolocation=(), microphone=(), camera=()',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.supabase.co",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.run.app https://*.supabase.co https://storage.googleapis.com https://firebasestorage.googleapis.com",
+              "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+            ].join('; '),
           },
         ],
       },
