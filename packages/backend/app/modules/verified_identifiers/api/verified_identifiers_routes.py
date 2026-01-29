@@ -1139,6 +1139,170 @@ async def verify_identifier(
 
         logger.info(f"Identifier {body.identifier_type} verified manually for request {request_id} by {current_user.id}")
 
+        # =============================================================================
+        # PROPAGATION: Auto-verify other pending requests with same identifier
+        # =============================================================================
+        crypto = get_crypto_service()
+        blind_index = crypto.compute_blind_index(body.identifier_value, body.identifier_type)
+
+        # Find other pending requests with the same identifier type in their documents
+        other_requests = await conn.fetch("""
+            SELECT DISTINCT sr.id, sr.verification_details, sr.verification_status
+            FROM service_requests sr
+            JOIN service_request_documents srd ON srd.service_request_id = sr.id
+            JOIN document_verification_config dvc ON dvc.document_code = srd.document_code
+            WHERE sr.id != $1
+              AND sr.verification_status IN ('pending', 'partial')
+              AND dvc.identifier_type = $2
+              AND dvc.is_active = true
+        """, UUID(request_id), body.identifier_type)
+
+        propagated_count = 0
+        for other_sr in other_requests:
+            # Get extraction data for this request to check if identifier matches
+            extraction = await conn.fetchrow("""
+                SELECT srd.extraction_data
+                FROM service_request_documents srd
+                JOIN document_verification_config dvc ON dvc.document_code = srd.document_code
+                WHERE srd.service_request_id = $1
+                  AND dvc.identifier_type = $2
+                  AND srd.extraction_data IS NOT NULL
+            """, other_sr['id'], body.identifier_type)
+
+            if not extraction or not extraction['extraction_data']:
+                continue
+
+            extraction_data = extraction['extraction_data']
+            if isinstance(extraction_data, str):
+                extraction_data = json.loads(extraction_data)
+
+            # Get identifier value from extraction using config paths
+            config = await conn.fetchrow("""
+                SELECT extraction_paths FROM document_verification_config
+                WHERE identifier_type = $1 AND is_active = true LIMIT 1
+            """, body.identifier_type)
+
+            if not config:
+                continue
+
+            extracted_value = None
+            for path in config['extraction_paths']:
+                keys = path.split('.')
+                value = extraction_data
+                for key in keys:
+                    if isinstance(value, dict) and key in value:
+                        value = value[key]
+                    else:
+                        value = None
+                        break
+                if value:
+                    extracted_value = str(value)
+                    break
+
+            if not extracted_value:
+                continue
+
+            # Check if this identifier matches the one we just verified (compare blind indexes)
+            other_blind_index = crypto.compute_blind_index(extracted_value, body.identifier_type)
+            if other_blind_index != blind_index:
+                continue
+
+            # Match found! Update this request's verification_details
+            other_details = other_sr['verification_details'] or {}
+            if isinstance(other_details, str):
+                other_details = json.loads(other_details)
+
+            other_details[body.identifier_type] = {
+                'status': 'verified',  # Auto-verified from cache
+                'verified_at': datetime.now().isoformat(),
+                'propagated_from': request_id,
+                'notes': 'Auto-verified: same identifier verified in another request'
+            }
+
+            # Check if all identifiers for this request are now verified
+            other_docs = await conn.fetch("""
+                SELECT DISTINCT dvc.identifier_type
+                FROM service_request_documents srd
+                JOIN document_verification_config dvc ON dvc.document_code = srd.document_code
+                WHERE srd.service_request_id = $1 AND dvc.is_active = true
+            """, other_sr['id'])
+
+            other_all_types = [d['identifier_type'] for d in other_docs]
+
+            # For unverified types, check if they exist in cache
+            for otype in other_all_types:
+                if other_details.get(otype, {}).get('status') in ('verified', 'verified_manually'):
+                    continue
+
+                # Check cache for this identifier
+                other_extraction = await conn.fetchrow("""
+                    SELECT srd.extraction_data
+                    FROM service_request_documents srd
+                    JOIN document_verification_config dvc ON dvc.document_code = srd.document_code
+                    WHERE srd.service_request_id = $1
+                      AND dvc.identifier_type = $2
+                      AND srd.extraction_data IS NOT NULL
+                """, other_sr['id'], otype)
+
+                if other_extraction and other_extraction['extraction_data']:
+                    oext_data = other_extraction['extraction_data']
+                    if isinstance(oext_data, str):
+                        oext_data = json.loads(oext_data)
+
+                    oconfig = await conn.fetchrow("""
+                        SELECT extraction_paths FROM document_verification_config
+                        WHERE identifier_type = $1 AND is_active = true LIMIT 1
+                    """, otype)
+
+                    if oconfig:
+                        oval = None
+                        for path in oconfig['extraction_paths']:
+                            keys = path.split('.')
+                            value = oext_data
+                            for key in keys:
+                                if isinstance(value, dict) and key in value:
+                                    value = value[key]
+                                else:
+                                    value = None
+                                    break
+                            if value:
+                                oval = str(value)
+                                break
+
+                        if oval:
+                            obi = crypto.compute_blind_index(oval, otype)
+                            cache_hit = await conn.fetchrow("""
+                                SELECT is_active FROM verified_identifiers
+                                WHERE blind_index = $1 AND identifier_type = $2
+                            """, obi, otype)
+                            if cache_hit and cache_hit['is_active']:
+                                other_details[otype] = {
+                                    'status': 'verified',
+                                    'verified_at': datetime.now().isoformat(),
+                                    'notes': 'Auto-verified from cache'
+                                }
+
+            other_all_verified = all(
+                other_details.get(t, {}).get('status') in ('verified', 'verified_manually')
+                for t in other_all_types
+            ) if other_all_types else True
+
+            other_new_status = 'verified' if other_all_verified else 'partial'
+
+            await conn.execute("""
+                UPDATE service_requests
+                SET verification_details = $1,
+                    verification_status = $2,
+                    updated_at = NOW()
+                WHERE id = $3
+            """, json.dumps(other_details), other_new_status, other_sr['id'])
+
+            propagated_count += 1
+            logger.info(f"Propagated verification to request {other_sr['id']}, new status: {other_new_status}")
+
+        if propagated_count > 0:
+            logger.info(f"Auto-verified {propagated_count} other request(s) with same identifier")
+
         return VerifyIdentifierResponse(
             verified_identifier_id=verified_id,
             identifier_type=body.identifier_type,
