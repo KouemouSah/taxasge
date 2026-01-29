@@ -21,7 +21,8 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 from app.database.connection import get_db_pool
-from app.modules.auth.dependencies import get_current_user, require_permission
+from app.modules.auth.dependencies import get_current_user
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.users.models.user import UserResponse as User
 
 from ..services.verification_service import VerificationService
@@ -46,42 +47,6 @@ router = APIRouter(prefix="/verified-identifiers", tags=["Verified Identifiers"]
 # =============================================================================
 # DEBUG ENDPOINT - Test if router is working
 # =============================================================================
-
-@router.get("/health-test")
-async def health_test():
-    """Simple health test endpoint - no dependencies, no auth."""
-    return {
-        "status": "ok",
-        "module": "verified-identifiers",
-        "message": "Router is functioning correctly"
-    }
-
-
-@router.get("/health-test-auth")
-async def health_test_with_auth(
-    current_user: User = Depends(get_current_user)
-):
-    """Test endpoint WITH auth dependency."""
-    return {
-        "status": "ok",
-        "module": "verified-identifiers",
-        "user_id": str(current_user.id),
-        "message": "Auth dependency works"
-    }
-
-
-@router.get(
-    "/health-test-permission",
-    dependencies=[Depends(require_permission("identifiers.stats"))]
-)
-async def health_test_with_permission():
-    """Test endpoint WITH permission dependency."""
-    return {
-        "status": "ok",
-        "module": "verified-identifiers",
-        "message": "Permission dependency works"
-    }
-
 
 # =============================================================================
 # DEPENDENCIES
@@ -112,7 +77,7 @@ async def get_repository() -> VerifiedIdentifiersRepository:
 @router.post(
     "/import",
     response_model=BatchImportResult,
-    dependencies=[Depends(require_permission("identifiers.import"))],
+    dependencies=[Depends(permission_required("identifiers.import"))],
     summary="Import verified identifiers from file"
 )
 async def import_batch(
@@ -175,7 +140,7 @@ async def import_batch(
 
 @router.post(
     "/import/validate",
-    dependencies=[Depends(require_permission("identifiers.import"))],
+    dependencies=[Depends(permission_required("identifiers.import"))],
     summary="Validate import file without importing"
 )
 async def validate_import_file(
@@ -207,7 +172,7 @@ async def validate_import_file(
 @router.get(
     "/stats",
     response_model=VerificationStatsResponse,
-    dependencies=[Depends(require_permission("identifiers.stats"))],
+    dependencies=[Depends(permission_required("identifiers.stats"))],
     summary="Get verified identifiers statistics"
 )
 async def get_stats(
@@ -232,7 +197,7 @@ async def get_stats(
 @router.get(
     "/queue/stats",
     response_model=VerificationQueueStats,
-    dependencies=[Depends(require_permission("identifiers.stats"))],
+    dependencies=[Depends(permission_required("identifiers.stats"))],
     summary="Get verification queue statistics"
 )
 async def get_queue_stats(
@@ -252,7 +217,7 @@ async def get_queue_stats(
 @router.get(
     "/config",
     response_model=List[VerificationConfigResponse],
-    dependencies=[Depends(require_permission("identifiers.config"))],
+    dependencies=[Depends(permission_required("identifiers.config"))],
     summary="Get document verification configurations"
 )
 async def get_verification_configs(
@@ -401,7 +366,7 @@ class RejectIdentifierRequest(BaseModel):
 @router.get(
     "/pending",
     response_model=PendingVerificationListResponse,
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="List service requests pending identity verification"
 )
 async def list_pending_verifications(
@@ -661,7 +626,7 @@ async def list_pending_verifications(
 
 @router.post(
     "/requests/{request_id}/verify-manually",
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="Manually verify a service request"
 )
 async def verify_manually(
@@ -697,7 +662,7 @@ async def verify_manually(
 
 @router.post(
     "/requests/{request_id}/re-verify",
-    dependencies=[Depends(require_permission("requests.reverify"))],
+    dependencies=[Depends(permission_required("requests.reverify"))],
     summary="Trigger re-verification of a service request"
 )
 async def re_verify(
@@ -733,7 +698,7 @@ async def re_verify(
 
 @router.get(
     "/requests/{request_id}/verification-status",
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="Get verification status for a service request"
 )
 async def get_verification_status(
@@ -772,7 +737,7 @@ async def get_verification_status(
 
 @router.post(
     "/requests/{request_id}/verify",
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="Trigger verification for a service request"
 )
 async def trigger_verification(
@@ -813,7 +778,7 @@ async def trigger_verification(
 @router.get(
     "/requests/{request_id}/verification-details",
     response_model=VerificationDetailResponse,
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="Get detailed verification info with navigation"
 )
 async def get_verification_details(
@@ -1056,7 +1021,7 @@ async def get_verification_details(
 @router.post(
     "/requests/{request_id}/verify-identifier",
     response_model=VerifyIdentifierResponse,
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="Verify a single identifier and store in cache"
 )
 async def verify_identifier(
@@ -1162,7 +1127,7 @@ async def verify_identifier(
 @router.post(
     "/requests/{request_id}/verify-batch",
     response_model=VerifyBatchResponse,
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="Verify all pending identifiers at once"
 )
 async def verify_batch(
@@ -1286,7 +1251,7 @@ async def verify_batch(
 
 @router.post(
     "/requests/{request_id}/reject-identifier",
-    dependencies=[Depends(require_permission("requests.verify"))],
+    dependencies=[Depends(permission_required("requests.verify"))],
     summary="Reject an identifier with optional fraud marking"
 )
 async def reject_identifier(
