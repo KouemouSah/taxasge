@@ -17,7 +17,9 @@ import {
   FileText,
   Calendar,
   Percent,
+  AlertTriangle,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface IdentifierCardProps {
   identifier: ExtractedIdentifier;
@@ -42,6 +44,14 @@ export function IdentifierCard({
     identifier.status === 'verified_manually';
   const isRejected =
     identifier.status === 'rejected' || identifier.status === 'fraud';
+
+  // Check expiration status
+  const isExpired = identifier.expiresAt
+    ? new Date(identifier.expiresAt) < new Date()
+    : false;
+  const expiresSoon = identifier.expiresAt
+    ? new Date(identifier.expiresAt) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) && !isExpired
+    : false;
 
   // Get identifier type label from translations, fallback to raw value
   const getIdentifierTypeLabel = (type: string): string => {
@@ -98,12 +108,30 @@ export function IdentifierCard({
           )}
 
           {identifier.expiresAt && (
-            <div className="flex items-center gap-1.5 col-span-2">
-              <Calendar className="h-3.5 w-3.5" />
+            <div className={cn(
+              "flex items-center gap-1.5 col-span-2",
+              isExpired && "text-red-600 font-medium",
+              expiresSoon && !isExpired && "text-orange-500"
+            )}>
+              {isExpired ? (
+                <AlertTriangle className="h-3.5 w-3.5" />
+              ) : (
+                <Calendar className="h-3.5 w-3.5" />
+              )}
               <span>
                 {t('card.expiresAt')}:{' '}
                 {new Date(identifier.expiresAt).toLocaleDateString()}
               </span>
+              {isExpired && (
+                <Badge variant="destructive" className="ml-1 text-xs">
+                  {t('card.expired')}
+                </Badge>
+              )}
+              {expiresSoon && !isExpired && (
+                <Badge variant="outline" className="ml-1 text-xs border-orange-400 text-orange-500">
+                  {t('card.expiresSoon')}
+                </Badge>
+              )}
             </div>
           )}
 

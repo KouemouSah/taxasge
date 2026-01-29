@@ -845,13 +845,15 @@ async def get_verification_details(
         """)
         config_map = {c['document_code']: dict(c) for c in configs}
 
-        # Get all documents
+        # Get only documents that have a verification config (filter out photos, etc.)
         docs_rows = await conn.fetch("""
-            SELECT id, document_code, document_name, file_path, file_name,
-                   mime_type, extraction_data, extraction_confidence, extraction_status
-            FROM service_request_documents
-            WHERE service_request_id = $1
-            ORDER BY created_at
+            SELECT srd.id, srd.document_code, srd.document_name, srd.file_path, srd.file_name,
+                   srd.mime_type, srd.extraction_data, srd.extraction_confidence, srd.extraction_status
+            FROM service_request_documents srd
+            INNER JOIN document_verification_config dvc
+                ON dvc.document_code = srd.document_code AND dvc.is_active = true
+            WHERE srd.service_request_id = $1
+            ORDER BY srd.created_at
         """, UUID(request_id))
 
         documents = []
