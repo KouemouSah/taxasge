@@ -5629,6 +5629,19 @@
     "confirmationCheckbox": "He verificado este identificador con la fuente externa",
     "notes": "Notas",
     "reason": "Motivo del rechazo",
+    "card": {
+      "confidence": "confianza",
+      "expiresAt": "Expira",
+      "verifiedAt": "Verificado",
+      "expired": "EXPIRADO",
+      "expiresSoon": "Expira pronto"
+    },
+    "actions": {
+      "verify": "Validar",
+      "reject": "Rechazar",
+      "verifyAll": "Validar todos",
+      "viewDocument": "Ver documento"
+    },
     "identifierType": {
       "dni": "DNI",
       "pasaporte": "Pasaporte",

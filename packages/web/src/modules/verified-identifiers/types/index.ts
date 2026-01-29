@@ -127,6 +127,7 @@ export interface DocumentInfo {
   documentName: string;
   filePath: string;
   fileName: string;
+  fileUrl: string | null;  // Signed URL for document access
   mimeType: string | null;
   extractionData: Record<string, unknown> | null;
   extractionConfidence: number | null;
@@ -139,6 +140,7 @@ export interface DocumentInfoApi {
   document_name: string;
   file_path: string;
   file_name: string;
+  file_url: string | null;  // Signed URL for document access
   mime_type: string | null;
   extraction_data: Record<string, unknown> | null;
   extraction_confidence: number | null;

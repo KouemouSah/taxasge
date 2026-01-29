@@ -24,6 +24,7 @@ from app.database.connection import get_db_pool
 from app.modules.auth.dependencies import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.users.models.user import UserResponse as User
+from app.modules.documents.services.storage_service import firebase_storage_service, ensure_storage_initialized
 
 from ..services.verification_service import VerificationService
 from ..services.batch_import_service import BatchImportService, BatchImportError
@@ -295,6 +296,7 @@ class DocumentInfo(BaseModel):
     document_name: str
     file_path: str
     file_name: str
+    file_url: Optional[str] = None  # Signed URL for document access
     mime_type: Optional[str] = None
     extraction_data: Optional[dict] = None
     extraction_confidence: Optional[float] = None
@@ -858,10 +860,29 @@ async def get_verification_details(
         if isinstance(verification_details, str):
             verification_details = json.loads(verification_details)
 
+        # Initialize Firebase Storage for signed URLs
+        storage_available = False
+        try:
+            await ensure_storage_initialized()
+            storage_available = True
+        except Exception as e:
+            logger.warning(f"Firebase Storage not available, documents will have no file_url: {e}")
+
         for doc in docs_rows:
             extraction_data = doc['extraction_data'] or {}
             if isinstance(extraction_data, str):
                 extraction_data = json.loads(extraction_data)
+
+            # Generate signed URL for document access
+            file_url = None
+            if storage_available and doc['file_path']:
+                try:
+                    file_url = await firebase_storage_service.get_signed_url(
+                        file_path=doc['file_path'],
+                        expiration_hours=24
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to generate signed URL for {doc['file_path']}: {e}")
 
             documents.append(DocumentInfo(
                 id=str(doc['id']),
@@ -869,6 +890,7 @@ async def get_verification_details(
                 document_name=doc['document_name'] or doc['document_code'],
                 file_path=doc['file_path'],
                 file_name=doc['file_name'],
+                file_url=file_url,
                 mime_type=doc['mime_type'],
                 extraction_data=extraction_data,
                 extraction_confidence=float(doc['extraction_confidence']) if doc['extraction_confidence'] else None,

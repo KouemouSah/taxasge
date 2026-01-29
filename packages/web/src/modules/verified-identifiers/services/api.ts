@@ -78,6 +78,7 @@ function transformDocumentInfo(api: DocumentInfoApi): DocumentInfo {
     documentName: api.document_name,
     filePath: api.file_path,
     fileName: api.file_name,
+    fileUrl: api.file_url,
     mimeType: api.mime_type,
     extractionData: api.extraction_data,
     extractionConfidence: api.extraction_confidence,

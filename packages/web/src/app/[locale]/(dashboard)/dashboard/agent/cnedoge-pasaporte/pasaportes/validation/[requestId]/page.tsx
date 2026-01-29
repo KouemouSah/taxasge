@@ -471,15 +471,23 @@ export default function VerificationDetailPage() {
             <div className="space-y-4">
               {/* Document preview (iframe or image) */}
               <div className="border rounded-lg overflow-hidden bg-muted min-h-[400px] flex items-center justify-center">
-                {documentPreview.mimeType?.startsWith('image/') ? (
+                {!documentPreview.fileUrl ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">URL del documento no disponible</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {documentPreview.filePath}
+                    </p>
+                  </div>
+                ) : documentPreview.mimeType?.startsWith('image/') ? (
                   <img
-                    src={documentPreview.filePath}
+                    src={documentPreview.fileUrl}
                     alt={documentPreview.documentName}
                     className="max-w-full max-h-[500px] object-contain"
                   />
                 ) : documentPreview.mimeType === 'application/pdf' ? (
                   <iframe
-                    src={documentPreview.filePath}
+                    src={documentPreview.fileUrl}
                     className="w-full h-[500px]"
                     title={documentPreview.documentName}
                   />
@@ -488,7 +496,7 @@ export default function VerificationDetailPage() {
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <p>Vista previa no disponible</p>
                     <a
-                      href={documentPreview.filePath}
+                      href={documentPreview.fileUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline"
