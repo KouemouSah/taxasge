@@ -584,10 +584,12 @@ async def list_pending_verifications(
         # Add pagination params
         if has_view_all:
             query_params = [workflow_codes, verification_status, page_size, offset]
-            pagination_placeholders = "$3, $4"
+            limit_placeholder = "$3"
+            offset_placeholder = "$4"
         else:
             query_params = [workflow_codes, verification_status, user_id, page_size, offset]
-            pagination_placeholders = "$4, $5"
+            limit_placeholder = "$4"
+            offset_placeholder = "$5"
 
         query = f"""
             SELECT
@@ -608,7 +610,7 @@ async def list_pending_verifications(
               AND sr.verification_status = $2
               {access_filter}
             ORDER BY sr.submitted_at ASC NULLS LAST
-            LIMIT {pagination_placeholders}
+            LIMIT {limit_placeholder} OFFSET {offset_placeholder}
         """
         rows = await conn.fetch(query, *query_params)
 
