@@ -486,11 +486,20 @@ export default function VerificationDetailPage() {
                     className="max-w-full max-h-[500px] object-contain"
                   />
                 ) : documentPreview.mimeType === 'application/pdf' ? (
-                  <iframe
-                    src={documentPreview.fileUrl}
-                    className="w-full h-[500px]"
-                    title={documentPreview.documentName}
-                  />
+                  <div className="text-center py-12">
+                    <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium mb-2">Documento PDF</p>
+                    <p className="text-muted-foreground mb-4">
+                      Los PDFs se abren en una nueva pestaña para mejor visualización
+                    </p>
+                    <Button
+                      onClick={() => window.open(documentPreview.fileUrl!, '_blank')}
+                      className="gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Abrir PDF en nueva pestaña
+                    </Button>
+                  </div>
                 ) : (
                   <div className="text-center py-12">
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
