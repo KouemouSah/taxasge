@@ -274,14 +274,18 @@ class MenuConfigService:
 
         # Generate menu items
         menus: List[MenuItemBase] = []
+        entity_path = entity_code.lower().replace('_', '-') if entity_code else 'default'
 
         # Always add dashboard first
         menus.append(MenuItemBase(
             id="dashboard",
             titleKey="agent.nav.dashboard",
-            href=f"/dashboard/agent/{entity_code.lower().replace('_', '-') if entity_code else 'default'}",
+            href=f"/dashboard/agent/{entity_path}",
             icon="LayoutDashboard"
         ))
+
+        # Track if any workflow group needs appointments
+        has_appointments = False
 
         # Generate menu for each workflow group
         for category, category_workflows in sorted(workflow_groups.items()):
@@ -294,6 +298,9 @@ class MenuConfigService:
                     entity_code
                 )
                 menus.append(menu_item)
+                # Check if this group needs appointments
+                if mapping.get('include_appointments', False):
+                    has_appointments = True
             else:
                 # Default menu generation
                 menu_item = self._create_default_menu(
@@ -302,6 +309,17 @@ class MenuConfigService:
                     entity_code
                 )
                 menus.append(menu_item)
+
+        # Add appointments as SEPARATE top-level menu (not submenu)
+        # Path: /dashboard/agent/{entity}/appointments (matches original JSON structure)
+        if has_appointments:
+            menus.append(MenuItemBase(
+                id="appointments",
+                titleKey="agent.nav.appointments",
+                href=f"/dashboard/agent/{entity_path}/appointments",
+                icon="Calendar",
+                permission="service_request.view_appointments"
+            ))
 
         return MenuConfigResponse(
             version="1.0",
@@ -385,14 +403,8 @@ class MenuConfigService:
                 permission=f"{permission_prefix}.process"
             ))
 
-        if mapping.get('include_appointments', False):
-            items.append(SubMenuItemWithBadge(
-                id="appointments",
-                titleKey="agent.nav.appointments",
-                href=f"{base_path}/appointments",
-                icon="Calendar",
-                permission=f"{permission_prefix}.view_appointments"
-            ))
+        # NOTE: Appointments is now added as a SEPARATE top-level menu in _generate_workflow_menus()
+        # This ensures the path is /dashboard/agent/{entity}/appointments (not /dashboard/agent/{entity}/{group}/appointments)
 
         if mapping.get('include_history', True):
             items.append(SubMenuItemWithBadge(
@@ -598,13 +610,16 @@ class MenuConfigService:
     def _get_default_dashboard_config(self, entity_type: str) -> DashboardConfigResponse:
         """Return default dashboard config based on entity type"""
         if entity_type == "workflow":
+            # Widget IDs must match frontend components
             widgets = [
-                WidgetConfigBase(id="pending_requests", visible=True, position=1, size="small"),
-                WidgetConfigBase(id="in_progress", visible=True, position=2, size="small"),
-                WidgetConfigBase(id="completed_today", visible=True, position=3, size="small"),
-                WidgetConfigBase(id="recent_activity", visible=True, position=4, size="large"),
+                WidgetConfigBase(id="alerts", visible=True, position=1, size="medium"),
+                WidgetConfigBase(id="urgent_requests", visible=True, position=2, size="medium"),
+                WidgetConfigBase(id="calendar_slots", visible=True, position=3, size="full"),
+                WidgetConfigBase(id="today_appointments", visible=True, position=4, size="medium"),
+                WidgetConfigBase(id="workflow_distribution", visible=True, position=5, size="medium"),
             ]
         else:
+            # Module-based entities (TESORO, etc.)
             widgets = [
                 WidgetConfigBase(id="stats_card", visible=True, position=1, size="medium"),
                 WidgetConfigBase(id="recent_activity", visible=True, position=2, size="large"),
