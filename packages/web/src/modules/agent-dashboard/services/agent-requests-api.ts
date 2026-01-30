@@ -149,6 +149,7 @@ export interface RequestPreviewDocument {
   code: string;
   name: string;
   fileUrl?: string | null;
+  mimeType?: string | null;  // For displaying image thumbnails
   validationStatus: string;
 }
 
@@ -250,6 +251,7 @@ interface BackendRequestPreviewDocument {
   code: string;
   name: string;
   file_url?: string | null;
+  mime_type?: string | null;
   validation_status: string;
 }
 
@@ -353,6 +355,7 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
       code: doc.code,
       name: doc.name,
       fileUrl: doc.file_url,
+      mimeType: doc.mime_type,
       validationStatus: doc.validation_status,
     })),
     documentsCount: data.documents_count,
