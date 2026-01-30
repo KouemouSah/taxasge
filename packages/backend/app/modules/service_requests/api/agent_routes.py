@@ -396,10 +396,24 @@ async def list_requests_with_history(
     - Regular agents: Only see requests assigned to them
     """
     conn = db
-    user_id = UUID(current_user["sub"])
+
+    try:
+        user_id = UUID(current_user["sub"])
+    except (KeyError, ValueError) as e:
+        logger.error(f"[History] Failed to parse user_id from token: {e}, current_user keys: {current_user.keys()}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user token"
+        )
 
     # Check if user has view_all permission (supervisor)
-    has_view_all = await check_user_has_view_all_permission(conn, user_id)
+    try:
+        has_view_all = await check_user_has_view_all_permission(conn, user_id)
+        logger.info(f"[History] User {user_id} has_view_all={has_view_all}")
+    except Exception as e:
+        logger.error(f"[History] Error checking view_all permission: {e}")
+        # Default to restricted access if permission check fails
+        has_view_all = False
 
     # Get entity's workflow codes
     entity = await conn.fetchrow("""
@@ -430,15 +444,23 @@ async def list_requests_with_history(
 
     # Get history list with access control
     offset = (page - 1) * page_size
-    items, total = await service_request_repository.get_history_list_for_entity(
-        db=conn,
-        workflow_codes=workflow_codes,
-        status_filter=status_filter,
-        limit=page_size,
-        offset=offset,
-        user_id=user_id if not has_view_all else None,  # Filter by assigned_to for agents
-        has_view_all=has_view_all
-    )
+    try:
+        items, total = await service_request_repository.get_history_list_for_entity(
+            db=conn,
+            workflow_codes=workflow_codes,
+            status_filter=status_filter,
+            limit=page_size,
+            offset=offset,
+            user_id=user_id if not has_view_all else None,  # Filter by assigned_to for agents
+            has_view_all=has_view_all
+        )
+        logger.info(f"[History] Found {total} items for entity_code={entity_code}, user={user_id}, has_view_all={has_view_all}")
+    except Exception as e:
+        logger.error(f"[History] Error fetching history: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching history: {str(e)}"
+        )
 
     # Transform to response model
     summary_items = [
