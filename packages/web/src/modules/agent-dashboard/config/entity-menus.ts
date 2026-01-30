@@ -37,6 +37,8 @@ import {
   Home,
   Plane,
   Globe,
+  Shield,
+  FileCheck,
 } from 'lucide-react';
 import type { EntityDashboardConfig, EntityCode } from '../types';
 
@@ -880,6 +882,38 @@ export const ENTITY_CONFIGS: Record<EntityCode, EntityDashboardConfig> = {
         titleKey: 'agent.nav.dashboard',
         href: '/dashboard/agent/dgi',
         icon: LayoutDashboard,
+      },
+    ],
+  },
+  POLICIA: {
+    entityCode: 'POLICIA',
+    titleKey: 'agent.entities.policia.title',
+    icon: Shield,
+    basePath: '/dashboard/agent/policia',
+    workflows: [],  // Will be populated when POLICIA workflows are defined
+    menuItems: [
+      {
+        id: 'dashboard',
+        titleKey: 'agent.nav.dashboard',
+        href: '/dashboard/agent/policia',
+        icon: LayoutDashboard,
+      },
+      {
+        id: 'certificados',
+        titleKey: 'agent.nav.certificates',
+        icon: FileCheck,
+        items: [
+          { id: 'pending', titleKey: 'agent.nav.pending', href: '/dashboard/agent/policia/certificados/pending', icon: Clock, permission: 'service_request.view_queue' },
+          { id: 'validation', titleKey: 'agent.nav.validation', href: '/dashboard/agent/policia/certificados/validation', icon: CheckCircle, permission: 'service_request.process' },
+          { id: 'history', titleKey: 'agent.nav.history', href: '/dashboard/agent/policia/certificados/history', icon: History, permission: 'service_request.view' },
+        ],
+      },
+      {
+        id: 'appointments',
+        titleKey: 'agent.nav.appointments',
+        href: '/dashboard/agent/policia/appointments',
+        icon: Calendar,
+        permission: 'service_request.view_appointments',
       },
     ],
   },

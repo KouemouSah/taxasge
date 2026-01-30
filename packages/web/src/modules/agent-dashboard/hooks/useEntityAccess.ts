@@ -59,6 +59,7 @@ const ENTITY_HIERARCHY: Record<EntityCode, EntityCode[]> = {
   EXTRANJERIA: ['EXTRANJERIA'],
   ITVE: ['ITVE'],
   DGI: ['DGI'],
+  POLICIA: ['POLICIA'],
   GENERAL: ['GENERAL'],
 };
 

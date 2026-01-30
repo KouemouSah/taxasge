@@ -26,7 +26,8 @@ export type EntityCode =
   | 'ONRC'              // Oficina Nacional de Registro de Contratos
   | 'MINFP'             // Ministerio de Función Pública
   | 'TESORO'            // Treasury (Trésor)
-  | 'DGI'               // Dirección General de Impuestos
+  | 'DGI'               // Dirección General de Impuestos (not yet implemented)
+  | 'POLICIA'           // Policía Nacional - Certificados y verificaciones
   | 'GENERAL';          // Generic/fallback
 
 // =============================================================================

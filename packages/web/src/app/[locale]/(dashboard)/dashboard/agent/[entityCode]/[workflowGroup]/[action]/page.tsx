@@ -82,9 +82,11 @@ const ENTITY_CODE_MAP: Record<string, EntityCode> = {
   'ofive': 'OFIVE',
   'onrc': 'ONRC',
   'extranjeria': 'EXTRANJERIA',
+  'policia': 'POLICIA',
   'minfp': 'MINFP',
   'itve': 'ITVE',
-  'dgi': 'DGI',
+  // DGI not yet implemented - uncomment when ready
+  // 'dgi': 'DGI',
   // CNEDOGE entities have their own dedicated routes
 };
 
@@ -94,9 +96,10 @@ const ENTITY_WORKFLOW_TITLES: Record<string, string> = {
   'ofive': 'agent.nav.vehicles',
   'onrc': 'agent.nav.contracts',
   'extranjeria': 'agent.nav.residences',
+  'policia': 'agent.nav.certificates',
   'minfp': 'agent.nav.civilServants',
   'itve': 'agent.nav.inspections',
-  'dgi': 'agent.nav.declarations',
+  // 'dgi': 'agent.nav.declarations', // Not yet implemented
 };
 
 // =============================================================================
