@@ -53,7 +53,7 @@ export function RequestCombobox({
   disabled = false,
   includeWithAppointment = true,
 }: RequestComboboxProps) {
-  const t = useTranslations('agent.appointments.scheduleTab');
+  const t = useTranslations('agent.pages.appointments.scheduleTab');
   const [open, setOpen] = useState(false);
 
   const { data, isLoading } = useMyAssignedRequests(entityCode, {

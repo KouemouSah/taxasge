@@ -54,7 +54,7 @@ const STATUS_STYLES: Record<string, { bg: string; border: string }> = {
 // =============================================================================
 
 export function CalendarTab({ entityCode, locationId: _locationId }: CalendarTabProps) {
-  const t = useTranslations('agent.appointments.calendarTab');
+  const t = useTranslations('agent.pages.appointments.calendarTab');
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedAppointment, setSelectedAppointment] = useState<WeekAppointmentItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -245,7 +245,7 @@ interface DayColumnProps {
 }
 
 function DayColumn({ day, onAppointmentClick }: DayColumnProps) {
-  const t = useTranslations('agent.appointments.calendarTab');
+  const t = useTranslations('agent.pages.appointments.calendarTab');
 
   // Map Spanish day names to translation keys
   const dayKeyMap: Record<string, string> = {

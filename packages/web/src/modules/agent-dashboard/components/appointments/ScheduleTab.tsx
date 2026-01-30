@@ -75,7 +75,7 @@ export function ScheduleTab({
   locationId,
   onLocationChange,
 }: ScheduleTabProps) {
-  const t = useTranslations('agent.appointments.scheduleTab');
+  const t = useTranslations('agent.pages.appointments.scheduleTab');
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState<{
@@ -455,7 +455,7 @@ interface DayColumnProps {
 }
 
 function DayColumn({ day, selectedSlot, onSlotClick }: DayColumnProps) {
-  const t = useTranslations('agent.appointments.scheduleTab');
+  const t = useTranslations('agent.pages.appointments.scheduleTab');
   const isSelected = (slot: SlotTimeDetail) =>
     selectedSlot?.date === day.date && selectedSlot?.time === slot.time;
 

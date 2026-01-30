@@ -80,7 +80,7 @@ export function RescheduleDialog({
   locationId,
   onSuccess,
 }: RescheduleDialogProps) {
-  const t = useTranslations('agent.appointments.scheduleTab');
+  const t = useTranslations('agent.pages.appointments.scheduleTab');
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState<{
