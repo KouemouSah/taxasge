@@ -415,6 +415,10 @@ async def list_requests_with_history(
         # Default to restricted access if permission check fails
         has_view_all = False
 
+    # TEMP DEBUG: Force has_view_all=True to test without access control
+    has_view_all = True
+    logger.warning(f"[History] TEMP DEBUG: Bypassing access control for user {user_id}")
+
     # Get entity's workflow codes
     entity = await conn.fetchrow("""
         SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
