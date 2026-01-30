@@ -17,7 +17,6 @@ import {
   RescheduleResponse,
   AppointmentDetail,
   AssignedRequestsListResponse,
-  AssignedRequestForAppointment,
 } from '../services/appointments-api';
 import type { EntityCode } from '../types';
 
