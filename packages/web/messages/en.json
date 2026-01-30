@@ -5359,13 +5359,56 @@
           "title": "Schedule Appointment",
           "selectSlot": "Select a time slot",
           "available": "Available",
-          "full": "Full"
+          "limited": "Limited",
+          "full": "Full",
+          "closed": "Closed",
+          "newBooking": "New Booking",
+          "selectSlotPrompt": "Select a time slot in the calendar",
+          "changeSlot": "Change slot",
+          "requestNumber": "Request ID",
+          "confirmBooking": "Confirm Appointment",
+          "creating": "Creating...",
+          "slotsAvailable": "{available} slots available / {total} total",
+          "avail": "avail",
+          "loadError": "Error loading calendar",
+          "retry": "Retry",
+          "today": "Today",
+          "error": "Error",
+          "bookingCreated": "Appointment created",
+          "bookingSuccess": "Appointment confirmed for {date} at {time}",
+          "selectSlotAndRequest": "Please select a slot and enter a request ID",
+          "creationError": "Error creating appointment",
+          "days": {
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri"
+          }
         },
         "calendarTab": {
           "title": "Calendar View",
           "previousWeek": "Previous week",
           "nextWeek": "Next week",
-          "currentWeek": "This week"
+          "currentWeek": "This week",
+          "appointmentsThisWeek": "{count} appointments this week",
+          "loadError": "Error loading calendar",
+          "retry": "Retry",
+          "noAppointments": "No appointments",
+          "appointments": "appts",
+          "legend": {
+            "confirmed": "Confirmed",
+            "pending": "Pending",
+            "completed": "Completed",
+            "cancelled": "Cancelled"
+          },
+          "days": {
+            "mon": "Mon",
+            "tue": "Tue",
+            "wed": "Wed",
+            "thu": "Thu",
+            "fri": "Fri"
+          }
         },
         "scheduleAppointment": "Schedule an appointment"
       },

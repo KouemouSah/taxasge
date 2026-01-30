@@ -5561,13 +5561,56 @@
           "title": "Planifier un rendez-vous",
           "selectSlot": "Sélectionnez un créneau",
           "available": "Disponible",
-          "full": "Complet"
+          "limited": "Limité",
+          "full": "Complet",
+          "closed": "Fermé",
+          "newBooking": "Nouvelle Réservation",
+          "selectSlotPrompt": "Sélectionnez un créneau dans le calendrier",
+          "changeSlot": "Changer de créneau",
+          "requestNumber": "N° de demande",
+          "confirmBooking": "Confirmer le RDV",
+          "creating": "Création...",
+          "slotsAvailable": "{available} créneaux disponibles / {total} total",
+          "avail": "dispo",
+          "loadError": "Erreur lors du chargement du calendrier",
+          "retry": "Réessayer",
+          "today": "Aujourd'hui",
+          "error": "Erreur",
+          "bookingCreated": "Rendez-vous créé",
+          "bookingSuccess": "RDV confirmé pour le {date} à {time}",
+          "selectSlotAndRequest": "Veuillez sélectionner un créneau et entrer un numéro de demande",
+          "creationError": "Erreur lors de la création du rendez-vous",
+          "days": {
+            "mon": "Lun",
+            "tue": "Mar",
+            "wed": "Mer",
+            "thu": "Jeu",
+            "fri": "Ven"
+          }
         },
         "calendarTab": {
           "title": "Vue calendrier",
           "previousWeek": "Semaine précédente",
           "nextWeek": "Semaine suivante",
-          "currentWeek": "Cette semaine"
+          "currentWeek": "Cette semaine",
+          "appointmentsThisWeek": "{count} rendez-vous cette semaine",
+          "loadError": "Erreur lors du chargement du calendrier",
+          "retry": "Réessayer",
+          "noAppointments": "Aucun RDV",
+          "appointments": "RDV",
+          "legend": {
+            "confirmed": "Confirmé",
+            "pending": "En attente",
+            "completed": "Terminé",
+            "cancelled": "Annulé"
+          },
+          "days": {
+            "mon": "Lun",
+            "tue": "Mar",
+            "wed": "Mer",
+            "thu": "Jeu",
+            "fri": "Ven"
+          }
         },
         "scheduleAppointment": "Planifier un rendez-vous"
       },

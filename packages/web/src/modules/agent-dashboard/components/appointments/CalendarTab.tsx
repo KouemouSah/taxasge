@@ -1,14 +1,15 @@
 /**
  * CalendarTab Component
- * Weekly calendar view of existing appointments
+ * Weekly calendar view of existing appointments (Monday-Friday only)
  *
  * @module agent-dashboard/components/appointments
- * @date 2026-01-26
+ * @date 2026-01-30
  */
 
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,7 @@ const STATUS_STYLES: Record<string, { bg: string; border: string }> = {
 // =============================================================================
 
 export function CalendarTab({ entityCode, locationId: _locationId }: CalendarTabProps) {
+  const t = useTranslations('agent.appointments.calendarTab');
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedAppointment, setSelectedAppointment] = useState<WeekAppointmentItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -78,8 +80,8 @@ export function CalendarTab({ entityCode, locationId: _locationId }: CalendarTab
             <Skeleton className="h-10 w-10" />
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-2">
-          {[...Array(7)].map((_, i) => (
+        <div className="grid grid-cols-5 gap-2">
+          {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-64 w-full" />
           ))}
         </div>
@@ -94,28 +96,34 @@ export function CalendarTab({ entityCode, locationId: _locationId }: CalendarTab
         <CardContent className="py-8 text-center">
           <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <p className="text-muted-foreground">
-            Erreur lors du chargement du calendrier
+            {t('loadError')}
           </p>
           <Button variant="outline" onClick={() => refetch()} className="mt-4">
-            Réessayer
+            {t('retry')}
           </Button>
         </CardContent>
       </Card>
     );
   }
 
-  const days = data?.days || [];
+  const allDays = data?.days || [];
+  // Filter to show only weekdays (Monday-Friday)
+  const days = allDays.filter((day) => {
+    const dayName = day.day_name.toLowerCase();
+    return !['sábado', 'domingo', 'saturday', 'sunday', 'samedi', 'dimanche'].includes(dayName);
+  });
 
-  // Format week range
+  // Format week range (Monday to Friday)
   const formatWeekRange = () => {
-    if (!data?.week_start || !data?.week_end) return '';
+    if (!data?.week_start) return '';
     const start = new Date(data.week_start);
-    const end = new Date(data.week_end);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 4); // Friday = Monday + 4
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-    return `${start.toLocaleDateString('fr-FR', options)} - ${end.toLocaleDateString('fr-FR', options)}`;
+    return `${start.toLocaleDateString('es-ES', options)} - ${end.toLocaleDateString('es-ES', options)}`;
   };
 
-  // Count total appointments
+  // Count total appointments (weekdays only)
   const totalAppointments = days.reduce((sum, day) => sum + day.appointments.length, 0);
 
   return (
@@ -146,21 +154,21 @@ export function CalendarTab({ entityCode, locationId: _locationId }: CalendarTab
               size="sm"
               onClick={() => setWeekOffset(0)}
             >
-              Cette semaine
+              {t('currentWeek')}
             </Button>
           )}
         </div>
 
         <div className="text-sm text-muted-foreground flex items-center gap-2">
           <CalendarDays className="h-4 w-4" />
-          {totalAppointments} rendez-vous cette semaine
+          {t('appointmentsThisWeek', { count: totalAppointments })}
         </div>
       </div>
 
-      {/* Calendar Grid */}
+      {/* Calendar Grid - 5 columns for weekdays */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {days.map((day) => (
               <DayColumn
                 key={day.date}
@@ -176,19 +184,19 @@ export function CalendarTab({ entityCode, locationId: _locationId }: CalendarTab
       <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-blue-500" />
-          <span>Confirmé</span>
+          <span>{t('legend.confirmed')}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-yellow-500" />
-          <span>En attente</span>
+          <span>{t('legend.pending')}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-green-500" />
-          <span>Terminé</span>
+          <span>{t('legend.completed')}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-red-500" />
-          <span>Annulé</span>
+          <span>{t('legend.cancelled')}</span>
         </div>
       </div>
 
@@ -236,15 +244,17 @@ interface DayColumnProps {
 }
 
 function DayColumn({ day, onAppointmentClick }: DayColumnProps) {
-  const dayNames: Record<string, string> = {
-    lunes: 'Lun',
-    martes: 'Mar',
-    miércoles: 'Mer',
-    jueves: 'Jeu',
-    viernes: 'Ven',
-    sábado: 'Sam',
-    domingo: 'Dim',
+  const t = useTranslations('agent.appointments.calendarTab');
+
+  // Map Spanish day names to translation keys
+  const dayKeyMap: Record<string, string> = {
+    lunes: 'mon',
+    martes: 'tue',
+    miércoles: 'wed',
+    jueves: 'thu',
+    viernes: 'fri',
   };
+  const dayKey = dayKeyMap[day.day_name.toLowerCase()] || 'mon';
 
   return (
     <div
@@ -262,7 +272,7 @@ function DayColumn({ day, onAppointmentClick }: DayColumnProps) {
         `}
       >
         <p className="text-xs uppercase tracking-wide">
-          {dayNames[day.day_name] || day.day_name.slice(0, 3)}
+          {t(`days.${dayKey}`)}
         </p>
         <p className="text-lg font-bold">{day.day_number}</p>
       </div>
@@ -271,7 +281,7 @@ function DayColumn({ day, onAppointmentClick }: DayColumnProps) {
       <div className="p-1 max-h-[280px] overflow-y-auto">
         {day.appointments.length === 0 ? (
           <div className="p-4 text-center text-xs text-muted-foreground">
-            Aucun RDV
+            {t('noAppointments')}
           </div>
         ) : (
           day.appointments.map((appointment) => {
@@ -318,7 +328,7 @@ function DayColumn({ day, onAppointmentClick }: DayColumnProps) {
       {/* Day Footer */}
       <div className="p-2 border-t bg-muted/50 text-center">
         <Badge variant="secondary" className="text-xs">
-          {day.appointments.length} RDV
+          {day.appointments.length} {t('appointments')}
         </Badge>
       </div>
     </div>

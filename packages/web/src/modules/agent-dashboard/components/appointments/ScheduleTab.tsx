@@ -1,17 +1,17 @@
 /**
  * ScheduleTab Component
- * Calendar view for scheduling new appointments
+ * Calendar view for scheduling new appointments (Monday-Friday only)
  *
  * @module agent-dashboard/components/appointments
- * @date 2026-01-26
+ * @date 2026-01-30
  */
 
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-// Badge removed - not currently used
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,6 +71,7 @@ export function ScheduleTab({
   locationId,
   onLocationChange,
 }: ScheduleTabProps) {
+  const t = useTranslations('agent.appointments.scheduleTab');
   const { toast } = useToast();
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState<{
@@ -99,8 +100,8 @@ export function ScheduleTab({
   const handleBook = async () => {
     if (!selectedSlot || !requestId.trim() || !locationId) {
       toast({
-        title: 'Erreur',
-        description: 'Veuillez sélectionner un créneau et entrer un numéro de demande',
+        title: t('error'),
+        description: t('selectSlotAndRequest'),
         variant: 'destructive',
       });
       return;
@@ -116,23 +117,23 @@ export function ScheduleTab({
 
       if (result.success) {
         toast({
-          title: 'Rendez-vous créé',
-          description: `RDV confirmé pour le ${selectedSlot.date} à ${selectedSlot.time}`,
+          title: t('bookingCreated'),
+          description: t('bookingSuccess', { date: selectedSlot.date, time: selectedSlot.time }),
         });
         setSelectedSlot(null);
         setRequestId('');
         refetch();
       } else {
         toast({
-          title: 'Erreur',
-          description: result.error || 'Impossible de créer le rendez-vous',
+          title: t('error'),
+          description: result.error || t('creationError'),
           variant: 'destructive',
         });
       }
     } catch (error) {
       toast({
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Erreur lors de la création',
+        title: t('error'),
+        description: error instanceof Error ? error.message : t('creationError'),
         variant: 'destructive',
       });
     }
@@ -153,8 +154,8 @@ export function ScheduleTab({
             <Skeleton className="h-10 w-10" />
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-2">
-          {[...Array(7)].map((_, i) => (
+        <div className="grid grid-cols-5 gap-2">
+          {[...Array(5)].map((_, i) => (
             <Skeleton key={i} className="h-64 w-full" />
           ))}
         </div>
@@ -169,27 +170,37 @@ export function ScheduleTab({
         <CardContent className="py-8 text-center">
           <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <p className="text-muted-foreground">
-            Erreur lors du chargement du calendrier
+            {t('loadError')}
           </p>
           <Button variant="outline" onClick={() => refetch()} className="mt-4">
-            Réessayer
+            {t('retry')}
           </Button>
         </CardContent>
       </Card>
     );
   }
 
-  const days = data?.days || [];
+  const allDays = data?.days || [];
+  // Filter to show only weekdays (Monday-Friday)
+  const days = allDays.filter((day) => {
+    const dayName = day.dayName.toLowerCase();
+    return !['sábado', 'domingo', 'saturday', 'sunday', 'samedi', 'dimanche'].includes(dayName);
+  });
   const locations = data?.locationsAvailable || [];
   const currentLocation = data?.location;
 
-  // Format week range
+  // Calculate available slots for weekdays only
+  const totalAvailable = days.reduce((sum, day) => sum + day.totalAvailable, 0);
+  const totalCapacity = days.reduce((sum, day) => sum + day.totalCapacity, 0);
+
+  // Format week range (Monday to Friday)
   const formatWeekRange = () => {
-    if (!data?.weekStart || !data?.weekEnd) return '';
+    if (!data?.weekStart) return '';
     const start = new Date(data.weekStart);
-    const end = new Date(data.weekEnd);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 4); // Friday = Monday + 4
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
-    return `${start.toLocaleDateString('fr-FR', options)} - ${end.toLocaleDateString('fr-FR', options)}`;
+    return `${start.toLocaleDateString('es-ES', options)} - ${end.toLocaleDateString('es-ES', options)}`;
   };
 
   return (
@@ -242,7 +253,7 @@ export function ScheduleTab({
                 size="sm"
                 onClick={() => setWeekOffset(0)}
               >
-                Aujourd&apos;hui
+                {t('today')}
               </Button>
             )}
           </div>
@@ -250,17 +261,17 @@ export function ScheduleTab({
 
         {/* Capacity Info */}
         <div className="text-sm text-muted-foreground">
-          {data?.totalAvailable} créneaux disponibles / {data?.totalCapacity} total
+          {t('slotsAvailable', { available: totalAvailable, total: totalCapacity })}
         </div>
       </div>
 
       {/* Calendar Grid + Booking Form */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Calendar Grid */}
+        {/* Calendar Grid - 5 columns for weekdays */}
         <div className="lg:col-span-3">
           <Card>
             <CardContent className="p-4">
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {days.map((day) => (
                   <DayColumn
                     key={day.date}
@@ -277,19 +288,19 @@ export function ScheduleTab({
           <div className="flex flex-wrap gap-4 mt-4 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-green-100 border border-green-300" />
-              <span>Disponible</span>
+              <span>{t('available')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-orange-100 border border-orange-300" />
-              <span>Limité</span>
+              <span>{t('limited')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-red-100 border border-red-300" />
-              <span>Complet</span>
+              <span>{t('full')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-gray-100 border border-gray-300" />
-              <span>Fermé</span>
+              <span>{t('closed')}</span>
             </div>
           </div>
         </div>
@@ -298,7 +309,7 @@ export function ScheduleTab({
         <div className="lg:col-span-1">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Nouvelle Réservation</CardTitle>
+              <CardTitle className="text-base">{t('newBooking')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {selectedSlot ? (
@@ -312,7 +323,7 @@ export function ScheduleTab({
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(selectedSlot.date).toLocaleDateString('fr-FR', {
+                      {new Date(selectedSlot.date).toLocaleDateString('es-ES', {
                         day: 'numeric',
                         month: 'long',
                         year: 'numeric',
@@ -328,14 +339,14 @@ export function ScheduleTab({
                       className="mt-2 text-xs"
                       onClick={handleCancelSelection}
                     >
-                      Changer créneau
+                      {t('changeSlot')}
                     </Button>
                   </div>
 
                   {/* Request ID Input */}
                   <div className="space-y-2">
                     <Label htmlFor="requestId">
-                      N° de demande <span className="text-destructive">*</span>
+                      {t('requestNumber')} <span className="text-destructive">*</span>
                     </Label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -356,11 +367,11 @@ export function ScheduleTab({
                     disabled={!requestId.trim() || bookMutation.isPending}
                   >
                     {bookMutation.isPending ? (
-                      'Création...'
+                      t('creating')
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Confirmer le RDV
+                        {t('confirmBooking')}
                       </>
                     )}
                   </Button>
@@ -368,7 +379,7 @@ export function ScheduleTab({
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Sélectionnez un créneau dans le calendrier</p>
+                  <p>{t('selectSlotPrompt')}</p>
                 </div>
               )}
             </CardContent>
@@ -390,8 +401,19 @@ interface DayColumnProps {
 }
 
 function DayColumn({ day, selectedSlot, onSlotClick }: DayColumnProps) {
+  const t = useTranslations('agent.appointments.scheduleTab');
   const isSelected = (slot: SlotTimeDetail) =>
     selectedSlot?.date === day.date && selectedSlot?.time === slot.time;
+
+  // Map Spanish day names to translation keys
+  const dayKeyMap: Record<string, string> = {
+    lunes: 'mon',
+    martes: 'tue',
+    miércoles: 'wed',
+    jueves: 'thu',
+    viernes: 'fri',
+  };
+  const dayKey = dayKeyMap[day.dayName.toLowerCase()] || 'mon';
 
   return (
     <div
@@ -409,7 +431,7 @@ function DayColumn({ day, selectedSlot, onSlotClick }: DayColumnProps) {
         `}
       >
         <p className="text-xs uppercase tracking-wide">
-          {day.dayName.slice(0, 3)}
+          {t(`days.${dayKey}`)}
         </p>
         <p className="text-lg font-bold">{day.dayNumber}</p>
       </div>
@@ -418,7 +440,7 @@ function DayColumn({ day, selectedSlot, onSlotClick }: DayColumnProps) {
       <div className="p-1 max-h-64 overflow-y-auto">
         {day.slots.length === 0 ? (
           <div className="p-2 text-center text-xs text-muted-foreground">
-            Fermé
+            {t('closed')}
           </div>
         ) : (
           day.slots.map((slot) => (
@@ -447,7 +469,7 @@ function DayColumn({ day, selectedSlot, onSlotClick }: DayColumnProps) {
       {/* Day Summary */}
       <div className="p-2 border-t bg-muted/50 text-center">
         <span className="text-xs text-muted-foreground">
-          {day.totalAvailable} dispo
+          {day.totalAvailable} {t('avail')}
         </span>
       </div>
     </div>

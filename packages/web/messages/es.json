@@ -5468,13 +5468,56 @@
           "title": "Programar Cita",
           "selectSlot": "Seleccione un horario",
           "available": "Disponible",
-          "full": "Completo"
+          "limited": "Limitado",
+          "full": "Completo",
+          "closed": "Cerrado",
+          "newBooking": "Nueva Reserva",
+          "selectSlotPrompt": "Seleccione un horario en el calendario",
+          "changeSlot": "Cambiar horario",
+          "requestNumber": "N° de solicitud",
+          "confirmBooking": "Confirmar cita",
+          "creating": "Creando...",
+          "slotsAvailable": "{available} horarios disponibles / {total} total",
+          "avail": "dispo",
+          "loadError": "Error al cargar el calendario",
+          "retry": "Reintentar",
+          "today": "Hoy",
+          "error": "Error",
+          "bookingCreated": "Cita creada",
+          "bookingSuccess": "Cita confirmada para el {date} a las {time}",
+          "selectSlotAndRequest": "Seleccione un horario e ingrese un número de solicitud",
+          "creationError": "Error al crear la cita",
+          "days": {
+            "mon": "Lun",
+            "tue": "Mar",
+            "wed": "Mié",
+            "thu": "Jue",
+            "fri": "Vie"
+          }
         },
         "calendarTab": {
           "title": "Vista de Calendario",
           "previousWeek": "Semana anterior",
           "nextWeek": "Semana siguiente",
-          "currentWeek": "Esta semana"
+          "currentWeek": "Esta semana",
+          "appointmentsThisWeek": "{count} citas esta semana",
+          "loadError": "Error al cargar el calendario",
+          "retry": "Reintentar",
+          "noAppointments": "Sin citas",
+          "appointments": "citas",
+          "legend": {
+            "confirmed": "Confirmado",
+            "pending": "Pendiente",
+            "completed": "Completado",
+            "cancelled": "Cancelado"
+          },
+          "days": {
+            "mon": "Lun",
+            "tue": "Mar",
+            "wed": "Mié",
+            "thu": "Jue",
+            "fri": "Vie"
+          }
         },
         "scheduleAppointment": "Programar una cita"
       },
