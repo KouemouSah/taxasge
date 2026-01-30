@@ -1,14 +1,14 @@
 /**
  * AppointmentPreviewSheet Component
- * Sheet component for viewing appointment details
+ * Sheet component for viewing appointment details with reschedule functionality
  *
  * @module agent-dashboard/components/appointments
- * @date 2026-01-26
+ * @date 2026-01-30
  */
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -27,12 +27,14 @@ import {
   Mail,
   MapPin,
   FileText,
-  Edit3,
+  RefreshCw,
   ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import type { TodayAppointmentDetail } from '../../hooks/useAppointments';
+import { RescheduleDialog } from './RescheduleDialog';
+import type { EntityCode } from '../../types';
 
 // =============================================================================
 // PROPS
@@ -43,6 +45,9 @@ interface AppointmentPreviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onReschedule?: () => void;
+  entityCode?: EntityCode;
+  /** Called when appointment is successfully rescheduled */
+  onRescheduleSuccess?: () => void;
 }
 
 // =============================================================================
@@ -66,13 +71,33 @@ export function AppointmentPreviewSheet({
   open,
   onOpenChange,
   onReschedule,
+  entityCode,
+  onRescheduleSuccess,
 }: AppointmentPreviewSheetProps) {
   const locale = useLocale();
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
 
   if (!appointment) return null;
 
   const statusStyle = STATUS_STYLES[appointment.status] || STATUS_STYLES.pending;
   const canModify = appointment.status !== 'completed' && appointment.status !== 'cancelled';
+
+  const handleRescheduleClick = () => {
+    if (entityCode) {
+      // Open reschedule dialog
+      setRescheduleDialogOpen(true);
+    } else if (onReschedule) {
+      // Fallback to old behavior if entityCode not provided
+      onReschedule();
+    }
+  };
+
+  const handleRescheduleSuccess = () => {
+    setRescheduleDialogOpen(false);
+    onRescheduleSuccess?.();
+    // Close the preview sheet after successful reschedule
+    onOpenChange(false);
+  };
 
   // Format the time for display
   const formatTime = (timeStr: string) => {
@@ -210,19 +235,34 @@ export function AppointmentPreviewSheet({
               </Button>
             </Link>
 
-            {canModify && onReschedule && (
+            {canModify && (onReschedule || entityCode) && (
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={onReschedule}
+                onClick={handleRescheduleClick}
               >
-                <Edit3 className="h-4 w-4 mr-2" />
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Reprogrammer
               </Button>
             )}
           </div>
         </div>
       </SheetContent>
+
+      {/* Reschedule Dialog */}
+      {entityCode && (
+        <RescheduleDialog
+          open={rescheduleDialogOpen}
+          onOpenChange={setRescheduleDialogOpen}
+          reservationId={appointment.id}
+          currentDate={new Date().toISOString().split('T')[0]}
+          currentTime={appointment.appointmentTime}
+          reference={appointment.reference}
+          entityCode={entityCode}
+          locationId={appointment.locationId}
+          onSuccess={handleRescheduleSuccess}
+        />
+      )}
     </Sheet>
   );
 }

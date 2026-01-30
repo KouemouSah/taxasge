@@ -5390,7 +5390,8 @@
           "existingAppointmentWarning": "This request has an appointment on {date} at {time}",
           "reschedule": "Reschedule",
           "rescheduleSuccess": "Appointment rescheduled successfully",
-          "rescheduleError": "Error rescheduling appointment"
+          "rescheduleError": "Error rescheduling appointment",
+          "cancel": "Cancel"
         },
         "calendarTab": {
           "title": "Calendar View",

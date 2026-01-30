@@ -5499,7 +5499,8 @@
           "existingAppointmentWarning": "Esta solicitud tiene una cita el {date} a las {time}",
           "reschedule": "Reprogramar",
           "rescheduleSuccess": "Cita reprogramada correctamente",
-          "rescheduleError": "Error al reprogramar la cita"
+          "rescheduleError": "Error al reprogramar la cita",
+          "cancel": "Cancelar"
         },
         "calendarTab": {
           "title": "Vista de Calendario",

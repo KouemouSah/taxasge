@@ -315,10 +315,8 @@ export function TodayTab({ entityCode, locationId }: TodayTabProps) {
         appointment={selectedAppointment}
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        onReschedule={() => {
-          setPreviewOpen(false);
-          // Could navigate to schedule tab or open reschedule dialog
-        }}
+        entityCode={entityCode}
+        onRescheduleSuccess={() => refetch()}
       />
 
       {/* Cancel Confirmation Dialog */}

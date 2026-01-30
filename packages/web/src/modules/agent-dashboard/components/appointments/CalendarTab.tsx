@@ -220,7 +220,8 @@ export function CalendarTab({ entityCode, locationId: _locationId }: CalendarTab
           }}
           open={previewOpen}
           onOpenChange={setPreviewOpen}
-          onReschedule={() => setPreviewOpen(false)}
+          entityCode={entityCode}
+          onRescheduleSuccess={() => refetch()}
         />
       )}
     </div>

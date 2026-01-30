@@ -5592,7 +5592,8 @@
           "existingAppointmentWarning": "Cette demande a un RDV le {date} à {time}",
           "reschedule": "Reprogrammer",
           "rescheduleSuccess": "RDV reprogrammé avec succès",
-          "rescheduleError": "Erreur lors de la reprogrammation"
+          "rescheduleError": "Erreur lors de la reprogrammation",
+          "cancel": "Annuler"
         },
         "calendarTab": {
           "title": "Vue calendrier",
