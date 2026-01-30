@@ -13,8 +13,8 @@ import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -28,17 +28,21 @@ import {
   MapPin,
   Calendar,
   Clock,
-  Search,
   XCircle,
   CheckCircle2,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   useSlotsDetailed,
   useBookForCitizen,
+  useRescheduleAppointment,
   DaySlotDetail,
   SlotTimeDetail,
+  AssignedRequestForAppointment,
 } from '../../hooks/useAppointments';
+import { RequestCombobox } from './RequestCombobox';
 import type { EntityCode } from '../../types';
 
 // =============================================================================
@@ -79,7 +83,7 @@ export function ScheduleTab({
     time: string;
     dayName: string;
   } | null>(null);
-  const [requestId, setRequestId] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState<AssignedRequestForAppointment | null>(null);
 
   const { data, isLoading, isError, refetch } = useSlotsDetailed(entityCode, {
     weekOffset,
@@ -87,6 +91,11 @@ export function ScheduleTab({
   });
 
   const bookMutation = useBookForCitizen();
+  const rescheduleMutation = useRescheduleAppointment();
+
+  // Check if selected request already has an appointment
+  const hasExistingAppointment = selectedRequest?.existingAppointment != null;
+  const isReschedule = hasExistingAppointment;
 
   const handleSlotClick = (day: DaySlotDetail, slot: SlotTimeDetail) => {
     if (!slot.isAvailable) return;
@@ -98,7 +107,7 @@ export function ScheduleTab({
   };
 
   const handleBook = async () => {
-    if (!selectedSlot || !requestId.trim() || !locationId) {
+    if (!selectedSlot || !selectedRequest || !locationId) {
       toast({
         title: t('error'),
         description: t('selectSlotAndRequest'),
@@ -108,27 +117,55 @@ export function ScheduleTab({
     }
 
     try {
-      const result = await bookMutation.mutateAsync({
-        requestId: requestId.trim(),
-        entityLocationId: locationId,
-        appointmentDate: selectedSlot.date,
-        appointmentTime: selectedSlot.time,
-      });
+      if (isReschedule && selectedRequest.existingAppointment) {
+        // Reschedule existing appointment
+        const result = await rescheduleMutation.mutateAsync({
+          reservationId: selectedRequest.existingAppointment.reservationId,
+          data: {
+            newDate: selectedSlot.date,
+            newTime: selectedSlot.time,
+          },
+        });
 
-      if (result.success) {
-        toast({
-          title: t('bookingCreated'),
-          description: t('bookingSuccess', { date: selectedSlot.date, time: selectedSlot.time }),
-        });
-        setSelectedSlot(null);
-        setRequestId('');
-        refetch();
+        if (result.success) {
+          toast({
+            title: t('rescheduleSuccess'),
+            description: t('bookingSuccess', { date: selectedSlot.date, time: selectedSlot.time }),
+          });
+          setSelectedSlot(null);
+          setSelectedRequest(null);
+          refetch();
+        } else {
+          toast({
+            title: t('error'),
+            description: result.error || t('rescheduleError'),
+            variant: 'destructive',
+          });
+        }
       } else {
-        toast({
-          title: t('error'),
-          description: result.error || t('creationError'),
-          variant: 'destructive',
+        // Create new appointment
+        const result = await bookMutation.mutateAsync({
+          requestId: selectedRequest.id,
+          entityLocationId: locationId,
+          appointmentDate: selectedSlot.date,
+          appointmentTime: selectedSlot.time,
         });
+
+        if (result.success) {
+          toast({
+            title: t('bookingCreated'),
+            description: t('bookingSuccess', { date: selectedSlot.date, time: selectedSlot.time }),
+          });
+          setSelectedSlot(null);
+          setSelectedRequest(null);
+          refetch();
+        } else {
+          toast({
+            title: t('error'),
+            description: result.error || t('creationError'),
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error) {
       toast({
@@ -138,6 +175,8 @@ export function ScheduleTab({
       });
     }
   };
+
+  const isPending = bookMutation.isPending || rescheduleMutation.isPending;
 
   const handleCancelSelection = () => {
     setSelectedSlot(null);
@@ -343,31 +382,46 @@ export function ScheduleTab({
                     </Button>
                   </div>
 
-                  {/* Request ID Input */}
+                  {/* Request Selection */}
                   <div className="space-y-2">
-                    <Label htmlFor="requestId">
+                    <Label>
                       {t('requestNumber')} <span className="text-destructive">*</span>
                     </Label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="requestId"
-                        placeholder="REQ-..."
-                        value={requestId}
-                        onChange={(e) => setRequestId(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
+                    <RequestCombobox
+                      entityCode={entityCode}
+                      selectedRequest={selectedRequest}
+                      onSelect={setSelectedRequest}
+                      includeWithAppointment={true}
+                    />
                   </div>
 
-                  {/* Book Button */}
+                  {/* Warning if request has existing appointment */}
+                  {hasExistingAppointment && selectedRequest?.existingAppointment && (
+                    <Alert variant="default" className="bg-orange-50 border-orange-200">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <AlertDescription className="text-orange-800 text-sm">
+                        {t('existingAppointmentWarning', {
+                          date: selectedRequest.existingAppointment.date,
+                          time: selectedRequest.existingAppointment.time,
+                        })}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Book/Reschedule Button */}
                   <Button
                     className="w-full"
                     onClick={handleBook}
-                    disabled={!requestId.trim() || bookMutation.isPending}
+                    disabled={!selectedRequest || isPending}
+                    variant={isReschedule ? 'secondary' : 'default'}
                   >
-                    {bookMutation.isPending ? (
+                    {isPending ? (
                       t('creating')
+                    ) : isReschedule ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {t('reschedule')}
+                      </>
                     ) : (
                       <>
                         <CheckCircle2 className="h-4 w-4 mr-2" />

@@ -5493,7 +5493,13 @@
             "wed": "Mié",
             "thu": "Jue",
             "fri": "Vie"
-          }
+          },
+          "noRequestsFound": "No hay solicitudes asignadas",
+          "selectRequest": "Seleccionar solicitud",
+          "existingAppointmentWarning": "Esta solicitud tiene una cita el {date} a las {time}",
+          "reschedule": "Reprogramar",
+          "rescheduleSuccess": "Cita reprogramada correctamente",
+          "rescheduleError": "Error al reprogramar la cita"
         },
         "calendarTab": {
           "title": "Vista de Calendario",

@@ -111,6 +111,29 @@ export interface RescheduleResponse {
   error?: string;
 }
 
+export interface ExistingAppointmentInfo {
+  reservationId: string;
+  date: string;
+  time: string;
+  locationName: string | null;
+  status: string;
+}
+
+export interface AssignedRequestForAppointment {
+  id: string;
+  reference: string;
+  citizenName: string;
+  workflowCode: string;
+  status: string;
+  createdAt: string;
+  existingAppointment: ExistingAppointmentInfo | null;
+}
+
+export interface AssignedRequestsListResponse {
+  requests: AssignedRequestForAppointment[];
+  total: number;
+}
+
 export interface AppointmentDetail {
   id: string;
   requestId: string;
@@ -198,6 +221,29 @@ interface BackendTodayAppointmentsListResponse {
   cancelled: number;
 }
 
+interface BackendExistingAppointmentInfo {
+  reservation_id: string;
+  date: string;
+  time: string;
+  location_name: string | null;
+  status: string;
+}
+
+interface BackendAssignedRequest {
+  id: string;
+  reference: string;
+  citizen_name: string;
+  workflow_code: string;
+  status: string;
+  created_at: string;
+  existing_appointment: BackendExistingAppointmentInfo | null;
+}
+
+interface BackendAssignedRequestsListResponse {
+  requests: BackendAssignedRequest[];
+  total: number;
+}
+
 // =============================================================================
 // TRANSFORM FUNCTIONS
 // =============================================================================
@@ -271,6 +317,31 @@ function transformTodayAppointmentsList(response: BackendTodayAppointmentsListRe
   };
 }
 
+function transformAssignedRequest(req: BackendAssignedRequest): AssignedRequestForAppointment {
+  return {
+    id: req.id,
+    reference: req.reference,
+    citizenName: req.citizen_name,
+    workflowCode: req.workflow_code,
+    status: req.status,
+    createdAt: req.created_at,
+    existingAppointment: req.existing_appointment ? {
+      reservationId: req.existing_appointment.reservation_id,
+      date: req.existing_appointment.date,
+      time: req.existing_appointment.time,
+      locationName: req.existing_appointment.location_name,
+      status: req.existing_appointment.status,
+    } : null,
+  };
+}
+
+function transformAssignedRequestsList(response: BackendAssignedRequestsListResponse): AssignedRequestsListResponse {
+  return {
+    requests: response.requests.map(transformAssignedRequest),
+    total: response.total,
+  };
+}
+
 // =============================================================================
 // API CLIENT
 // =============================================================================
@@ -320,6 +391,24 @@ class AgentAppointmentsApiClient {
     }
 
     return response.json();
+  }
+
+  /**
+   * Get assigned requests for appointment scheduling dropdown
+   */
+  async getMyAssignedRequests(
+    entityCode: string,
+    includeWithAppointment: boolean = false
+  ): Promise<AssignedRequestsListResponse> {
+    const params = new URLSearchParams();
+    params.append('entity_code', entityCode);
+    params.append('include_with_appointment', includeWithAppointment.toString());
+
+    const response = await this.request<BackendAssignedRequestsListResponse>(
+      `/appointments/my-assigned?${params.toString()}`
+    );
+
+    return transformAssignedRequestsList(response);
   }
 
   /**

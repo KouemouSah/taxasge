@@ -16,6 +16,8 @@ import {
   RescheduleRequest,
   RescheduleResponse,
   AppointmentDetail,
+  AssignedRequestsListResponse,
+  AssignedRequestForAppointment,
 } from '../services/appointments-api';
 import type { EntityCode } from '../types';
 
@@ -30,6 +32,8 @@ export const APPOINTMENTS_QUERY_KEYS = {
     ['appointments', 'slots-detailed', entityCode, weekOffset, locationId] as const,
   detail: (reservationId: string) =>
     ['appointments', 'detail', reservationId] as const,
+  myAssigned: (entityCode: string, includeWithAppointment: boolean) =>
+    ['appointments', 'my-assigned', entityCode, includeWithAppointment] as const,
 };
 
 // =============================================================================
@@ -53,6 +57,29 @@ export function useTodayAppointments(
     enabled: enabled && !!entityCode,
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 60 * 1000, // Refresh every minute
+  });
+}
+
+// =============================================================================
+// MY ASSIGNED REQUESTS HOOK (for appointment scheduling dropdown)
+// =============================================================================
+
+export interface UseMyAssignedRequestsOptions {
+  includeWithAppointment?: boolean;
+  enabled?: boolean;
+}
+
+export function useMyAssignedRequests(
+  entityCode: EntityCode,
+  options: UseMyAssignedRequestsOptions = {}
+) {
+  const { includeWithAppointment = true, enabled = true } = options;
+
+  return useQuery<AssignedRequestsListResponse, Error>({
+    queryKey: APPOINTMENTS_QUERY_KEYS.myAssigned(entityCode, includeWithAppointment),
+    queryFn: () => agentAppointmentsApi.getMyAssignedRequests(entityCode, includeWithAppointment),
+    enabled: enabled && !!entityCode,
+    staleTime: 60 * 1000, // 1 minute
   });
 }
 
@@ -198,4 +225,7 @@ export type {
   TodayAppointmentDetail,
   DaySlotDetail,
   SlotTimeDetail,
+  AssignedRequestsListResponse,
+  AssignedRequestForAppointment,
+  ExistingAppointmentInfo,
 } from '../services/appointments-api';

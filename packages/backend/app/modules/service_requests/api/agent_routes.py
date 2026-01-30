@@ -78,6 +78,36 @@ class EscalationRequest(BaseModel):
     priority_boost: int = Field(default=10, ge=0, le=50)
 
 
+# ═══════════════════════════════════════════════════════════════
+# MODELS FOR ASSIGNED REQUESTS (Appointment Scheduling)
+# ═══════════════════════════════════════════════════════════════
+
+class ExistingAppointmentInfo(BaseModel):
+    """Info about existing appointment for a request"""
+    reservation_id: str
+    date: str
+    time: str
+    location_name: Optional[str] = None
+    status: str
+
+
+class AssignedRequestForAppointment(BaseModel):
+    """Service request assigned to agent, for appointment dropdown"""
+    id: str
+    reference: str
+    citizen_name: str
+    workflow_code: str
+    status: str
+    created_at: str
+    existing_appointment: Optional[ExistingAppointmentInfo] = None
+
+
+class AssignedRequestsListResponse(BaseModel):
+    """List of assigned requests for appointment scheduling"""
+    requests: List[AssignedRequestForAppointment]
+    total: int
+
+
 class QueueItemResponse(BaseModel):
     """Queue item with service request details"""
     queue_id: str
@@ -4240,6 +4270,106 @@ async def get_slots_detailed(
         days=days,
         total_available=grand_total_available,
         total_capacity=grand_total_capacity
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+# ENDPOINT: MY ASSIGNED REQUESTS FOR APPOINTMENT
+# Returns requests assigned to the current agent for the dropdown
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/appointments/my-assigned",
+    response_model=AssignedRequestsListResponse,
+    summary="Get agent's assigned requests for appointment scheduling"
+)
+async def get_my_assigned_for_appointment(
+    entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
+    include_with_appointment: bool = Query(False, description="Include requests that already have an appointment"),
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get service requests assigned to the current agent for appointment scheduling.
+    Returns requests eligible for appointments (certain statuses) with info about existing appointments.
+    """
+    conn = db
+    user_id = UUID(str(current_user.id))
+
+    # Get entity's workflow codes
+    entity = await conn.fetchrow("""
+        SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true
+    """, entity_code)
+
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    workflow_codes = entity['workflow_codes'] or []
+
+    # Statuses eligible for appointments
+    eligible_statuses = ['PAYMENT_PENDING', 'PAID', 'SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'APPROVED']
+
+    # Query assigned requests with existing appointment info
+    query = """
+        SELECT
+            sr.id::text,
+            sr.reference,
+            sr.workflow_code,
+            sr.status,
+            sr.created_at,
+            COALESCE(u.full_name, CONCAT(u.first_name, ' ', u.last_name), u.email, 'N/A') as citizen_name,
+            ar.id::text as reservation_id,
+            ar.appointment_date::text as appointment_date,
+            ar.appointment_time::text as appointment_time,
+            ar.status as appointment_status,
+            el.location_name
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        LEFT JOIN appointment_reservations ar ON ar.service_request_id = sr.id
+            AND ar.status NOT IN ('cancelled', 'expired')
+        LEFT JOIN entity_locations el ON el.id = ar.entity_location_id
+        WHERE sr.workflow_code = ANY($1)
+          AND sr.assigned_to = $2
+          AND sr.status = ANY($3)
+    """
+
+    params = [workflow_codes, user_id, eligible_statuses]
+
+    # Filter by appointment status if needed
+    if not include_with_appointment:
+        query += " AND ar.id IS NULL"
+
+    query += " ORDER BY sr.created_at DESC LIMIT 100"
+
+    rows = await conn.fetch(query, *params)
+
+    # Transform to response
+    requests = []
+    for row in rows:
+        existing_appointment = None
+        if row['reservation_id']:
+            existing_appointment = ExistingAppointmentInfo(
+                reservation_id=row['reservation_id'],
+                date=row['appointment_date'],
+                time=row['appointment_time'][:5] if row['appointment_time'] else '',
+                location_name=row['location_name'],
+                status=row['appointment_status']
+            )
+
+        requests.append(AssignedRequestForAppointment(
+            id=row['id'],
+            reference=row['reference'],
+            citizen_name=row['citizen_name'],
+            workflow_code=row['workflow_code'],
+            status=row['status'],
+            created_at=row['created_at'].isoformat(),
+            existing_appointment=existing_appointment
+        ))
+
+    return AssignedRequestsListResponse(
+        requests=requests,
+        total=len(requests)
     )
 
 

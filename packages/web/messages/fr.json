@@ -5586,7 +5586,13 @@
             "wed": "Mer",
             "thu": "Jeu",
             "fri": "Ven"
-          }
+          },
+          "noRequestsFound": "Aucune demande assignée",
+          "selectRequest": "Sélectionner une demande",
+          "existingAppointmentWarning": "Cette demande a un RDV le {date} à {time}",
+          "reschedule": "Reprogrammer",
+          "rescheduleSuccess": "RDV reprogrammé avec succès",
+          "rescheduleError": "Erreur lors de la reprogrammation"
         },
         "calendarTab": {
           "title": "Vue calendrier",

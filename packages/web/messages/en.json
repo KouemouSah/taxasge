@@ -5384,7 +5384,13 @@
             "wed": "Wed",
             "thu": "Thu",
             "fri": "Fri"
-          }
+          },
+          "noRequestsFound": "No assigned requests",
+          "selectRequest": "Select request",
+          "existingAppointmentWarning": "This request has an appointment on {date} at {time}",
+          "reschedule": "Reschedule",
+          "rescheduleSuccess": "Appointment rescheduled successfully",
+          "rescheduleError": "Error rescheduling appointment"
         },
         "calendarTab": {
           "title": "Calendar View",
