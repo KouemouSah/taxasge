@@ -3007,7 +3007,7 @@ class TeamWorkloadWidgetResponse(BaseModel):
 )
 async def get_team_workload_widget(
     entity_code: str = Query(..., description="Entity code to filter"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("agent.view_team"))
 ):
@@ -3108,7 +3108,7 @@ class EscalationsWidgetResponse(BaseModel):
 async def get_escalations_widget(
     entity_code: Optional[str] = Query(None, description="Entity code to filter"),
     limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("agent.view_escalations"))
 ):
@@ -3229,7 +3229,7 @@ class PendingPaymentsWidgetResponse(BaseModel):
 async def get_pending_payments_widget(
     workflow_code: Optional[str] = Query(None, description="Filter by workflow code"),
     limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("treasury.view_pending"))
 ):
@@ -3338,7 +3338,7 @@ class AnomalySummaryWidgetResponse(BaseModel):
     summary="Get payment anomaly summary"
 )
 async def get_anomaly_summary_widget(
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("treasury.view_anomalies"))
 ):
@@ -3444,7 +3444,7 @@ class CalendarWeekWidgetResponse(BaseModel):
 async def get_calendar_week_widget(
     entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
     week_offset: int = Query(0, description="Week offset from current (0=this week, 1=next, -1=previous)"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -3601,7 +3601,7 @@ async def get_calendar_slots_widget(
     entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
     week_offset: int = Query(0, description="Week offset (0=current, 1=next, -1=prev)"),
     location_id: Optional[UUID] = Query(None, description="Filter by location"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -3912,7 +3912,7 @@ class RescheduleResponse(BaseModel):
 async def get_today_appointments_list(
     entity_code: str = Query(..., description="Entity code"),
     location_id: Optional[UUID] = Query(None, description="Filter by location"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -4036,7 +4036,7 @@ async def get_slots_detailed(
     entity_code: str = Query(..., description="Entity code"),
     week_offset: int = Query(0, description="Week offset (0=current, 1=next, -1=prev)"),
     location_id: Optional[UUID] = Query(None, description="Filter by location"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -4250,7 +4250,7 @@ async def get_slots_detailed(
 )
 async def book_for_citizen(
     booking: AgentBookingRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.schedule_appointment"))
 ):
@@ -4405,7 +4405,7 @@ async def book_for_citizen(
 async def reschedule_appointment(
     reservation_id: UUID = Path(..., description="Appointment reservation ID"),
     reschedule: RescheduleRequest = Body(...),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.update"))
 ):
@@ -4548,7 +4548,7 @@ async def reschedule_appointment(
 )
 async def get_appointment_detail(
     reservation_id: UUID = Path(..., description="Appointment reservation ID"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -4637,7 +4637,7 @@ async def get_request_history(
     include_assignments: bool = Query(True, description="Include assignment history"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -4761,7 +4761,7 @@ async def export_request_history(
     format: str = Query("csv", description="Export format: csv or pdf"),
     include_ocr: bool = Query(True, description="Include OCR processing logs"),
     include_assignments: bool = Query(True, description="Include assignment history"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
