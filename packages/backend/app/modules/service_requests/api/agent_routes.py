@@ -45,36 +45,6 @@ router = APIRouter(
 
 
 # ═══════════════════════════════════════════════════════════════
-# ACCESS CONTROL HELPERS
-# ═══════════════════════════════════════════════════════════════
-
-async def check_user_has_view_all_permission(conn, user_id: UUID) -> bool:
-    """
-    Check if user has 'service_request.view_all' permission (supervisor).
-
-    Schema uses:
-    - users.role_id -> roles.id (direct reference, not user_roles table)
-    - role_permissions -> permissions
-    - user_permissions -> permissions (direct user overrides)
-    """
-    result = await conn.fetchval("""
-        SELECT EXISTS (
-            -- Check direct user permission override
-            SELECT 1 FROM user_permissions up
-            JOIN permissions p ON p.id = up.permission_id
-            WHERE up.user_id = $1 AND p.name = 'service_request.view_all' AND up.granted = true
-            UNION
-            -- Check permission via role (users.role_id -> roles -> role_permissions -> permissions)
-            SELECT 1 FROM users u
-            JOIN role_permissions rp ON rp.role_id = u.role_id
-            JOIN permissions p ON p.id = rp.permission_id
-            WHERE u.id = $1 AND p.name = 'service_request.view_all' AND rp.granted = true
-        )
-    """, user_id)
-    return result or False
-
-
-# ═══════════════════════════════════════════════════════════════
 # PYDANTIC MODELS FOR AGENT ACTIONS
 # ═══════════════════════════════════════════════════════════════
 
@@ -390,34 +360,8 @@ async def list_requests_with_history(
     """
     Get list of service requests with history summary for the history list page.
     IMPORTANT: This route MUST be defined before /{request_id} to avoid route conflicts.
-
-    Access control:
-    - Supervisors (service_request.view_all): See all requests for entity
-    - Regular agents: Only see requests assigned to them
     """
     conn = db
-
-    try:
-        user_id = UUID(current_user["sub"])
-    except (KeyError, ValueError) as e:
-        logger.error(f"[History] Failed to parse user_id from token: {e}, current_user keys: {current_user.keys()}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user token"
-        )
-
-    # Check if user has view_all permission (supervisor)
-    try:
-        has_view_all = await check_user_has_view_all_permission(conn, user_id)
-        logger.info(f"[History] User {user_id} has_view_all={has_view_all}")
-    except Exception as e:
-        logger.error(f"[History] Error checking view_all permission: {e}")
-        # Default to restricted access if permission check fails
-        has_view_all = False
-
-    # TEMP DEBUG: Force has_view_all=True to test without access control
-    has_view_all = True
-    logger.warning(f"[History] TEMP DEBUG: Bypassing access control for user {user_id}")
 
     # Get entity's workflow codes
     entity = await conn.fetchrow("""
@@ -446,25 +390,15 @@ async def list_requests_with_history(
             status_filter=status_filter
         )
 
-    # Get history list with access control
+    # Get history list
     offset = (page - 1) * page_size
-    try:
-        items, total = await service_request_repository.get_history_list_for_entity(
-            db=conn,
-            workflow_codes=workflow_codes,
-            status_filter=status_filter,
-            limit=page_size,
-            offset=offset,
-            user_id=user_id if not has_view_all else None,  # Filter by assigned_to for agents
-            has_view_all=has_view_all
-        )
-        logger.info(f"[History] Found {total} items for entity_code={entity_code}, user={user_id}, has_view_all={has_view_all}")
-    except Exception as e:
-        logger.error(f"[History] Error fetching history: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error fetching history: {str(e)}"
-        )
+    items, total = await service_request_repository.get_history_list_for_entity(
+        db=conn,
+        workflow_codes=workflow_codes,
+        status_filter=status_filter,
+        limit=page_size,
+        offset=offset
+    )
 
     # Transform to response model
     summary_items = [
@@ -1678,7 +1612,6 @@ class RequestPreviewDocument(BaseModel):
     code: str
     name: str
     file_url: Optional[str] = None
-    mime_type: Optional[str] = None  # For displaying image thumbnails
     validation_status: str = "pending"
 
 
@@ -2092,7 +2025,7 @@ async def get_request_preview(
 
     # Get documents (max 4 for preview)
     docs_query = """
-        SELECT id, document_type, file_name, file_url, mime_type, validation_status
+        SELECT id, document_type, file_name, file_url, validation_status
         FROM uploaded_files
         WHERE related_to_type = 'service_request'
           AND related_to_id = $1
@@ -2107,7 +2040,6 @@ async def get_request_preview(
             code=d['document_type'] or 'unknown',
             name=d['file_name'] or 'Document',
             file_url=d['file_url'],
-            mime_type=d['mime_type'],
             validation_status=d['validation_status'] or 'pending'
         )
         for d in doc_rows
