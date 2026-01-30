@@ -3497,7 +3497,16 @@ async def get_calendar_week_widget(
     if not entity:
         raise HTTPException(status_code=404, detail="Entity not found")
 
+    # Handle workflow_codes - ensure it's a list (JSONB can sometimes return as string)
     workflow_codes = entity['workflow_codes'] or []
+    if isinstance(workflow_codes, str):
+        import json
+        try:
+            workflow_codes = json.loads(workflow_codes)
+        except (json.JSONDecodeError, TypeError):
+            workflow_codes = []
+    if not isinstance(workflow_codes, list):
+        workflow_codes = []
 
     # Calculate week boundaries
     today = date.today()
@@ -4305,7 +4314,16 @@ async def get_my_assigned_for_appointment(
     if not entity:
         raise HTTPException(status_code=404, detail="Entity not found")
 
+    # Handle workflow_codes - ensure it's a list (JSONB can sometimes return as string)
     workflow_codes = entity['workflow_codes'] or []
+    if isinstance(workflow_codes, str):
+        import json
+        try:
+            workflow_codes = json.loads(workflow_codes)
+        except (json.JSONDecodeError, TypeError):
+            workflow_codes = []
+    if not isinstance(workflow_codes, list):
+        workflow_codes = []
 
     # Statuses eligible for appointments
     eligible_statuses = ['PAYMENT_PENDING', 'PAID', 'SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'APPROVED']
