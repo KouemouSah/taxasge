@@ -180,7 +180,7 @@ export default function UnifiedWorkflowActionPage() {
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [_statusFilter, _setStatusFilter] = useState<string>('all');
   const [priority, setPriority] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
