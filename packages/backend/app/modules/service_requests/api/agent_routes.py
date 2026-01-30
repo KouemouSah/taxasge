@@ -360,8 +360,29 @@ async def list_requests_with_history(
     """
     Get list of service requests with history summary for the history list page.
     IMPORTANT: This route MUST be defined before /{request_id} to avoid route conflicts.
+
+    ACCESS CONTROL:
+    - Supervisor (has service_request.view_all): sees all requests in the entity
+    - Agent: sees only requests assigned to them
     """
     conn = db
+
+    # Get user ID and check access level
+    user_id = UUID(current_user["sub"])
+
+    # Check if user has supervisor permission (view_all)
+    has_view_all = await conn.fetchval("""
+        SELECT EXISTS (
+            SELECT 1 FROM user_permissions up
+            JOIN permissions p ON p.id = up.permission_id
+            WHERE up.user_id = $1 AND p.name = 'service_request.view_all' AND up.granted = true
+            UNION
+            SELECT 1 FROM users u
+            JOIN role_permissions rp ON rp.role_id = u.role_id
+            JOIN permissions p ON p.id = rp.permission_id
+            WHERE u.id = $1 AND p.name = 'service_request.view_all' AND rp.granted = true
+        )
+    """, user_id) or False
 
     # Get entity's workflow codes
     entity = await conn.fetchrow("""
@@ -390,14 +411,15 @@ async def list_requests_with_history(
             status_filter=status_filter
         )
 
-    # Get history list
+    # Get history list with access control
     offset = (page - 1) * page_size
     items, total = await service_request_repository.get_history_list_for_entity(
         db=conn,
         workflow_codes=workflow_codes,
         status_filter=status_filter,
         limit=page_size,
-        offset=offset
+        offset=offset,
+        assigned_to_user_id=None if has_view_all else user_id  # Filter by assigned_to for agents
     )
 
     # Transform to response model
