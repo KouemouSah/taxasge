@@ -2919,14 +2919,14 @@ class PersonalStatsWidgetResponse(BaseModel):
     summary="Get personal performance stats for current agent"
 )
 async def get_personal_stats_widget(
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database)
 ):
     """
     Get personal performance statistics from v_agent_performance_summary.
     Uses the view to get pre-calculated metrics.
     """
-    user_id = UUID(current_user["sub"])
+    user_id = UUID(str(current_user.id))
 
     conn = db
     # Query the view directly
