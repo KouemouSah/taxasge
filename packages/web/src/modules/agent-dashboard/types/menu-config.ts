@@ -94,6 +94,8 @@ export interface AgentMenuConfigResponse {
   menu_config: MenuConfig;
   dashboard_config: DashboardConfig;
   permissions: string[];
+  /** True if role.menu_config is NOT NULL in DB - for fallback detection */
+  has_role_menu_config: boolean;
 }
 
 // =============================================================================

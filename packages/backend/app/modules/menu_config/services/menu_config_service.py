@@ -126,7 +126,7 @@ class MenuConfigService:
         # 3. Generate or fetch menu config
         if is_module_based:
             # Module-based: use role.menu_config directly
-            menu_config = self._parse_menu_config(role_menu_config, "role")
+            menu_config = self._parse_menu_config(role_menu_config, "role", role_code=role_code)
             logger.debug(f"Using role menu_config for {role_code}")
         else:
             # Workflow-based: generate from workflows
@@ -167,7 +167,8 @@ class MenuConfigService:
             available_workflows=available_workflows,
             menu_config=menu_config,
             dashboard_config=dashboard_config,
-            permissions=permissions
+            permissions=permissions,
+            has_role_menu_config=role_menu_config is not None
         )
 
         # 8. Cache the result (5 min TTL)
@@ -456,38 +457,88 @@ class MenuConfigService:
     def _parse_menu_config(
         self,
         config: Optional[Dict],
-        source: str
+        source: str,
+        role_code: Optional[str] = None
     ) -> MenuConfigResponse:
-        """Parse menu config from JSON"""
+        """
+        Parse and validate menu config from JSON.
+
+        Uses Pydantic models for validation with detailed error logging.
+        Falls back to default config if validation fails.
+
+        Args:
+            config: Raw menu config dict from DB
+            source: Menu source type (workflow, role, custom)
+            role_code: Role code for error context
+        """
         if not config:
             return self._get_default_menu_config(source)
 
-        try:
-            # Parse menus
-            menus = []
-            for menu_data in config.get('menus', []):
-                items = None
-                if menu_data.get('items'):
-                    items = [
-                        SubMenuItemWithBadge(
-                            id=item['id'],
-                            titleKey=item['titleKey'],
-                            href=item['href'],
-                            icon=item['icon'],
-                            permission=item.get('permission'),
-                            badge=MenuBadgeConfig(**item['badge']) if item.get('badge') else None
-                        )
-                        for item in menu_data['items']
-                    ]
+        # Validate required structure
+        if not isinstance(config, dict):
+            logger.error(
+                f"[MenuConfig Validation] Invalid config type for role={role_code}: "
+                f"expected dict, got {type(config).__name__}"
+            )
+            return self._get_default_menu_config(source)
 
-                menus.append(MenuItemBase(
-                    id=menu_data['id'],
-                    titleKey=menu_data['titleKey'],
-                    icon=menu_data['icon'],
-                    href=menu_data.get('href'),
-                    permission=menu_data.get('permission'),
-                    items=items
-                ))
+        if 'menus' not in config or not isinstance(config.get('menus'), list):
+            logger.error(
+                f"[MenuConfig Validation] Missing or invalid 'menus' array for role={role_code}. "
+                f"Config keys: {list(config.keys())}"
+            )
+            return self._get_default_menu_config(source)
+
+        try:
+            # Parse and validate each menu item with Pydantic
+            menus = []
+            for idx, menu_data in enumerate(config.get('menus', [])):
+                try:
+                    items = None
+                    if menu_data.get('items'):
+                        items = []
+                        for item_idx, item in enumerate(menu_data['items']):
+                            try:
+                                items.append(SubMenuItemWithBadge(
+                                    id=item['id'],
+                                    titleKey=item['titleKey'],
+                                    href=item['href'],
+                                    icon=item['icon'],
+                                    permission=item.get('permission'),
+                                    badge=MenuBadgeConfig(**item['badge']) if item.get('badge') else None
+                                ))
+                            except Exception as item_err:
+                                logger.warning(
+                                    f"[MenuConfig Validation] Invalid sub-item at menus[{idx}].items[{item_idx}] "
+                                    f"for role={role_code}: {item_err}. Item data: {item}"
+                                )
+                                # Continue with other items
+
+                    menus.append(MenuItemBase(
+                        id=menu_data['id'],
+                        titleKey=menu_data['titleKey'],
+                        icon=menu_data['icon'],
+                        href=menu_data.get('href'),
+                        permission=menu_data.get('permission'),
+                        items=items
+                    ))
+                except Exception as menu_err:
+                    logger.warning(
+                        f"[MenuConfig Validation] Invalid menu at index {idx} for role={role_code}: "
+                        f"{menu_err}. Menu data: {menu_data}"
+                    )
+                    # Continue with other menus
+
+            if not menus:
+                logger.error(
+                    f"[MenuConfig Validation] No valid menus parsed for role={role_code}. "
+                    f"Original had {len(config.get('menus', []))} items."
+                )
+                return self._get_default_menu_config(source)
+
+            logger.debug(
+                f"[MenuConfig Validation] ✓ Parsed {len(menus)} menus for role={role_code}"
+            )
 
             return MenuConfigResponse(
                 version=config.get('version', '1.0'),
@@ -495,7 +546,9 @@ class MenuConfigService:
                 menus=menus
             )
         except Exception as e:
-            logger.error(f"Failed to parse menu config: {e}")
+            logger.error(
+                f"[MenuConfig Validation] Unexpected error parsing config for role={role_code}: {e}"
+            )
             return self._get_default_menu_config(source)
 
     def _get_default_menu_config(self, source: str) -> MenuConfigResponse:

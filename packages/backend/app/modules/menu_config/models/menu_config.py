@@ -245,5 +245,11 @@ class AgentMenuConfigResponse(BaseModel):
     # Permissions (for frontend filtering)
     permissions: List[str] = Field(default_factory=list)
 
+    # Flag indicating if role has menu_config in DB (for frontend fallback detection)
+    has_role_menu_config: bool = Field(
+        default=False,
+        description="True if role.menu_config is NOT NULL in DB"
+    )
+
     class Config:
         from_attributes = True

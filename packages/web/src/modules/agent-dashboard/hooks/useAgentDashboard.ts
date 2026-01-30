@@ -200,8 +200,26 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
   // Use dynamic menus if:
   // 1. Feature flag is enabled (default: true, set NEXT_PUBLIC_FEATURE_DYNAMIC_MENUS=false to disable)
   // 2. API returns menu config with menus
-  const useDynamicMenus =
-    FEATURE_DYNAMIC_MENUS && !!menuConfigData?.menu_config?.menus?.length;
+  const hasDynamicMenusFromApi = !!menuConfigData?.menu_config?.menus?.length;
+  const useDynamicMenus = FEATURE_DYNAMIC_MENUS && hasDynamicMenusFromApi;
+
+  // Warning: Detect fallback scenarios and log appropriately
+  // has_role_menu_config = true means DB has menu_config, so if menus are empty, it's a parsing issue
+  if (typeof window !== 'undefined' && !menuConfigLoading && menuConfigData) {
+    if (menuConfigData.has_role_menu_config && !hasDynamicMenusFromApi) {
+      // DB has config but parsing failed - critical issue
+      console.error(
+        `[useAgentDashboard] ❌ ERREUR: role.menu_config existe en DB mais aucun menu parsé. ` +
+        `role=${menuConfigData.role_code}. Vérifier le format JSON dans roles.menu_config.`
+      );
+    } else if (!menuConfigData.has_role_menu_config && !hasDynamicMenusFromApi) {
+      // No DB config - expected fallback for non-migrated entities
+      console.info(
+        `[useAgentDashboard] ℹ️ Fallback statique: role.menu_config NULL en DB. ` +
+        `role=${menuConfigData.role_code}, entity_type=${menuConfigData.entity_type}`
+      );
+    }
+  }
 
   // Include userState.isLoaded in loading check to prevent SSR mismatch
   const isLoading = !userState.isLoaded || profileLoading || (isAgent && menuConfigLoading);
