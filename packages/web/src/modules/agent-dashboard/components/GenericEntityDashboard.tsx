@@ -26,6 +26,15 @@ import {
   BarChart3,
   ClipboardList,
   History,
+  Calendar,
+  Car,
+  Globe,
+  FileSignature,
+  Plane,
+  Truck,
+  BadgeCheck,
+  FileText,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAgentDashboard, useEntityAccess, useMenuConfig } from '../hooks';
 import { useEntityStats } from '../hooks/useEntityStats';
@@ -35,6 +44,7 @@ import { renderWidget, DEFAULT_ENTITY_WIDGETS } from './widgets';
 import type { EntityCode, MenuItem } from '../types';
 import { isMenuGroup } from '../types';
 import type { DashboardConfig } from '../types/menu-config';
+import { isDynamicMenuGroup } from '../types/menu-config';
 
 // =============================================================================
 // PROPS
@@ -77,6 +87,8 @@ export function GenericEntityDashboard({
     context,
     entityConfig,
     menuItems,
+    dynamicMenuItems,
+    useDynamicMenus,
   } = useAgentDashboard();
 
   const { isLoading: statsLoading, stats } = useEntityStats(entityCode);
@@ -157,45 +169,111 @@ export function GenericEntityDashboard({
 
   const EntityIcon = entityConfig.icon;
 
-  // Extract quick actions from menu items (first level items with href)
-  const quickActions = menuItems
-    .filter((item) => !isMenuGroup(item) && 'href' in item && item.id !== 'dashboard')
-    .slice(0, 3) as (MenuItem & { href: string })[];
+  // Icon mapping for dynamic menu items (string icon names to Lucide components)
+  const iconMap: Record<string, typeof Clock> = {
+    Clock,
+    CheckCircle,
+    History,
+    BarChart3,
+    ClipboardList,
+    AlertCircle,
+    Users,
+    Calendar,
+    Car,
+    Globe,
+    FileSignature,
+    Plane,
+    Truck,
+    BadgeCheck,
+    FileText,
+    LayoutDashboard,
+  };
 
-  // Extract sub-menu actions (for groups)
-  const groupActions = menuItems
-    .filter(isMenuGroup)
-    .flatMap((group) => group.items.slice(0, 2))
-    .slice(0, 6);
+  // Extract quick actions - USE DYNAMIC MENUS if available
+  const displayActions = (() => {
+    // Priority 1: Dynamic menus from API (workflow-based entities with auto-generation)
+    if (useDynamicMenus && dynamicMenuItems.length > 0) {
+      const dynamicGroupActions: Array<{
+        id: string;
+        titleKey: string;
+        href: string;
+        icon: typeof Clock;
+      }> = [];
 
-  // Default actions based on entity workflows (fallback when permissions filter everything)
-  const defaultActions = entityConfig ? [
-    {
-      id: 'default-pending',
-      titleKey: 'agent.nav.pending',
-      href: `${entityConfig.basePath}/pending`,
-      icon: Clock,
-    },
-    {
-      id: 'default-validation',
-      titleKey: 'agent.nav.validation',
-      href: `${entityConfig.basePath}/validation`,
-      icon: CheckCircle,
-    },
-    {
-      id: 'default-history',
-      titleKey: 'agent.nav.history',
-      href: `${entityConfig.basePath}/history`,
-      icon: History,
-    },
-  ] : [];
+      // Extract sub-menu actions from dynamic menu groups
+      for (const item of dynamicMenuItems) {
+        if (isDynamicMenuGroup(item)) {
+          // Take first 2 items from each group, max 6 total
+          const groupItems = item.items.slice(0, 2).map((subItem) => ({
+            id: subItem.id,
+            titleKey: subItem.titleKey,
+            href: subItem.href,
+            icon: iconMap[subItem.icon] || Clock,
+          }));
+          dynamicGroupActions.push(...groupItems);
+          if (dynamicGroupActions.length >= 6) break;
+        }
+      }
 
-  // Use groupActions if available, otherwise quickActions, otherwise defaultActions
-  const displayActions = groupActions.length > 0
-    ? groupActions
-    : quickActions.length > 0
-      ? quickActions
-      : defaultActions;
+      if (dynamicGroupActions.length > 0) {
+        return dynamicGroupActions.slice(0, 6);
+      }
+
+      // Fallback: top-level items with href (excluding dashboard)
+      const dynamicQuickActions = dynamicMenuItems
+        .filter((item) => !isDynamicMenuGroup(item) && item.href && item.id !== 'dashboard')
+        .slice(0, 3)
+        .map((item) => ({
+          id: item.id,
+          titleKey: item.titleKey,
+          href: item.href!,
+          icon: iconMap[item.icon] || Clock,
+        }));
+
+      if (dynamicQuickActions.length > 0) {
+        return dynamicQuickActions;
+      }
+    }
+
+    // Priority 2: Static menus (legacy/fallback)
+    const quickActions = menuItems
+      .filter((item) => !isMenuGroup(item) && 'href' in item && item.id !== 'dashboard')
+      .slice(0, 3) as (MenuItem & { href: string })[];
+
+    const groupActions = menuItems
+      .filter(isMenuGroup)
+      .flatMap((group) => group.items.slice(0, 2))
+      .slice(0, 6);
+
+    if (groupActions.length > 0) {
+      return groupActions;
+    }
+    if (quickActions.length > 0) {
+      return quickActions;
+    }
+
+    // Priority 3: Default actions (hardcoded fallback)
+    return entityConfig ? [
+      {
+        id: 'default-pending',
+        titleKey: 'agent.nav.pending',
+        href: `${entityConfig.basePath}/pending`,
+        icon: Clock,
+      },
+      {
+        id: 'default-validation',
+        titleKey: 'agent.nav.validation',
+        href: `${entityConfig.basePath}/validation`,
+        icon: CheckCircle,
+      },
+      {
+        id: 'default-history',
+        titleKey: 'agent.nav.history',
+        href: `${entityConfig.basePath}/history`,
+        icon: History,
+      },
+    ] : [];
+  })();
 
   return (
     <div className={`space-y-6 ${className || ''}`}>
