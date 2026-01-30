@@ -233,7 +233,7 @@ export default function UnifiedWorkflowActionPage() {
   // Reset filters
   const handleResetFilters = () => {
     setSearchTerm('');
-    setStatusFilter('all');
+    _setStatusFilter('all');
     setPriority('all');
     setCurrentPage(1);
   };
