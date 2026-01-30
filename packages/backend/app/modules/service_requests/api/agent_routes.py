@@ -463,7 +463,7 @@ async def get_history_statistics(
     entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     workflow_codes: Optional[List[str]] = Query(None, description="Filter by workflow codes"),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
