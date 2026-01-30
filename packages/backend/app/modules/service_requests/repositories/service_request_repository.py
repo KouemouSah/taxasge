@@ -634,8 +634,7 @@ class ServiceRequestRepository:
         workflow_codes: List[str],
         status_filter: Optional[str] = None,
         limit: int = 20,
-        offset: int = 0,
-        assigned_to_user_id: Optional[UUID] = None
+        offset: int = 0
     ) -> tuple[List[Dict], int]:
         """
         Get list of requests with history summary for an entity.
@@ -647,7 +646,6 @@ class ServiceRequestRepository:
             status_filter: Optional status filter
             limit: Max items to return
             offset: Pagination offset
-            assigned_to_user_id: If provided, filter by assigned_to (for agent access control)
 
         Returns:
             Tuple of (list of summary items, total count)
@@ -659,12 +657,6 @@ class ServiceRequestRepository:
         if status_filter:
             conditions.append(f"sr.status = ${param_idx}")
             params.append(status_filter)
-            param_idx += 1
-
-        # Access control: filter by assigned agent if provided
-        if assigned_to_user_id is not None:
-            conditions.append(f"sr.assigned_to = ${param_idx}")
-            params.append(assigned_to_user_id)
             param_idx += 1
 
         where_clause = " AND ".join(conditions)
