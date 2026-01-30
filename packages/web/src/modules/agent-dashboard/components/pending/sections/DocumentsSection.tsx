@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileText, Check, AlertCircle, Clock, ExternalLink, Eye } from 'lucide-react';
+import { FileText, Check, AlertCircle, Clock, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { RequestPreviewDocument } from '../../../services/agent-requests-api';
 
