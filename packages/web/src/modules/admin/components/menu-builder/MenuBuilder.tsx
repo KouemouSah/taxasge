@@ -396,7 +396,7 @@ export function MenuBuilder({
                       </Label>
                       <div className="text-xs text-destructive space-y-0.5 max-h-[80px] overflow-auto">
                         {errors.slice(0, 5).map((err, i) => (
-                          <p key={i}>{err.message}</p>
+                          <p key={i}>{t(err.message, err.params)}</p>
                         ))}
                         {errors.length > 5 && (
                           <p className="text-muted-foreground">

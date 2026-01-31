@@ -1011,7 +1011,16 @@
         "fixJsonErrors": "Fix JSON errors before saving",
         "configReset": "Configuration reset",
         "items": "items",
-        "subItems": "sub-items"
+        "subItems": "sub-items",
+        "validation": {
+          "idRequired": "ID is required",
+          "titleKeyRequired": "Title key is required",
+          "iconRequired": "Icon is required",
+          "groupNoHref": "Groups should not have href",
+          "linkRequiresHref": "Links require href",
+          "duplicateId": "Duplicate ID: {id}",
+          "subItemHrefRequired": "Sub-item href is required"
+        }
       },
       "menuItemEditor": {
         "menuGroup": "Menu Group",

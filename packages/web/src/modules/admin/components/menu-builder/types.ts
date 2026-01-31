@@ -59,32 +59,44 @@ export interface MenuItemFormData {
 
 export interface ValidationError {
   field: string;
-  message: string;
+  message: string; // Translation key (e.g., 'validation.idRequired')
+  params?: Record<string, string>; // Interpolation params for translation
 }
+
+// Validation message keys (for i18n)
+export const ValidationKeys = {
+  idRequired: 'validation.idRequired',
+  titleKeyRequired: 'validation.titleKeyRequired',
+  iconRequired: 'validation.iconRequired',
+  groupNoHref: 'validation.groupNoHref',
+  linkRequiresHref: 'validation.linkRequiresHref',
+  duplicateId: 'validation.duplicateId',
+  subItemHrefRequired: 'validation.subItemHrefRequired',
+} as const;
 
 export function validateMenuItem(item: MenuItem): ValidationError[] {
   const errors: ValidationError[] = [];
 
   if (!item.id.trim()) {
-    errors.push({ field: 'id', message: 'ID is required' });
+    errors.push({ field: 'id', message: ValidationKeys.idRequired });
   }
 
   if (!item.titleKey.trim()) {
-    errors.push({ field: 'titleKey', message: 'Title key is required' });
+    errors.push({ field: 'titleKey', message: ValidationKeys.titleKeyRequired });
   }
 
   if (!item.icon.trim()) {
-    errors.push({ field: 'icon', message: 'Icon is required' });
+    errors.push({ field: 'icon', message: ValidationKeys.iconRequired });
   }
 
   // Group items must not have href
   if (item.items && item.items.length > 0 && item.href) {
-    errors.push({ field: 'href', message: 'Group items should not have href' });
+    errors.push({ field: 'href', message: ValidationKeys.groupNoHref });
   }
 
   // Link items must have href
   if (!item.items && !item.href) {
-    errors.push({ field: 'href', message: 'Link items require href' });
+    errors.push({ field: 'href', message: ValidationKeys.linkRequiresHref });
   }
 
   return errors;
@@ -99,8 +111,10 @@ export function validateMenuConfig(menus: MenuItem[]): ValidationError[] {
     if (ids.has(menu.id)) {
       errors.push({
         field: `menus[${index}].id`,
-        message: `Duplicate ID: ${menu.id}`,
-      });
+        message: ValidationKeys.duplicateId,
+        // Store the duplicate ID for interpolation
+        params: { id: menu.id },
+      } as ValidationError);
     }
     ids.add(menu.id);
 
@@ -118,15 +132,16 @@ export function validateMenuConfig(menus: MenuItem[]): ValidationError[] {
       if (ids.has(subItem.id)) {
         errors.push({
           field: `menus[${index}].items[${subIndex}].id`,
-          message: `Duplicate ID: ${subItem.id}`,
-        });
+          message: ValidationKeys.duplicateId,
+          params: { id: subItem.id },
+        } as ValidationError);
       }
       ids.add(subItem.id);
 
       if (!subItem.href.trim()) {
         errors.push({
           field: `menus[${index}].items[${subIndex}].href`,
-          message: 'Sub-item href is required',
+          message: ValidationKeys.subItemHrefRequired,
         });
       }
     });

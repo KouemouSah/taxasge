@@ -959,7 +959,16 @@
         "fixJsonErrors": "Corrija los errores de JSON antes de guardar",
         "configReset": "Configuración restablecida",
         "items": "elementos",
-        "subItems": "subelementos"
+        "subItems": "subelementos",
+        "validation": {
+          "idRequired": "El ID es requerido",
+          "titleKeyRequired": "La clave del título es requerida",
+          "iconRequired": "El icono es requerido",
+          "groupNoHref": "Los grupos no deben tener href",
+          "linkRequiresHref": "Los enlaces requieren href",
+          "duplicateId": "ID duplicado: {id}",
+          "subItemHrefRequired": "El href del subelemento es requerido"
+        }
       },
       "menuItemEditor": {
         "menuGroup": "Grupo de Menú",
