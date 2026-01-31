@@ -60,6 +60,7 @@ import {
   Square,
   Check,
   X,
+  Menu,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -527,6 +528,14 @@ export default function EditRolePage() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Menu Config Button */}
+          <Link href={`/${locale}/dashboard/admin/roles/${roleId}/menu-config`}>
+            <Button variant="outline">
+              <Menu className="mr-2 h-4 w-4" />
+              Menu Config
+            </Button>
+          </Link>
 
           {!role.is_system && (
             <Button
