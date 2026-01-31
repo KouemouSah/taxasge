@@ -70,6 +70,9 @@ import { useEntityServiceRequests, type ActionType } from '@/modules/agent-dashb
 
 // Split View for pending action
 import { PendingPage } from '@/modules/agent-dashboard/components/pending/PendingPage';
+// Validation and History pages (same as CNEDOGE)
+import { ValidationPage } from '@/modules/agent-dashboard/components/validation';
+import { HistoryPage } from '@/modules/agent-dashboard/components/history';
 import type { EntityCode } from '@/modules/agent-dashboard/types';
 
 // =============================================================================
@@ -250,10 +253,30 @@ export default function UnifiedWorkflowActionPage() {
     });
   };
 
-  // Use split view for pending, validation, and history (optimized for bulk processing)
-  // PendingPage supports all action types via the action prop
-  if (currentAction === 'pending' || currentAction === 'validation' || currentAction === 'history') {
-    return <PendingPage entityCode={ENTITY_CODE} action={currentAction} />;
+  // Use split view for pending action (optimized for bulk processing)
+  if (currentAction === 'pending') {
+    return <PendingPage entityCode={ENTITY_CODE} />;
+  }
+
+  // Use ValidationPage for validation action (same as CNEDOGE)
+  if (currentAction === 'validation') {
+    return (
+      <ValidationPage
+        entityCode={ENTITY_CODE}
+        basePath={`/dashboard/agent/${entityCode}`}
+        workflowGroup={workflowGroup as string}
+      />
+    );
+  }
+
+  // Use HistoryPage for history action (same as CNEDOGE with stats)
+  if (currentAction === 'history') {
+    return (
+      <HistoryPage
+        entityCode={ENTITY_CODE}
+        basePath={`/dashboard/agent/${entityCode}`}
+      />
+    );
   }
 
   // Invalid action - show error
