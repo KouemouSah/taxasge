@@ -66,12 +66,16 @@ import { useEntityServiceRequests, type ActionType } from '@/modules/agent-dashb
 
 // Split View for pending action
 import { PendingPage } from '@/modules/agent-dashboard/components/pending/PendingPage';
+// Validation and History pages (generic components)
+import { ValidationPage } from '@/modules/agent-dashboard/components/validation';
+import { HistoryPage } from '@/modules/agent-dashboard/components/history';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
 const ENTITY_CODE = 'CNEDOGE_PASAPORTE';
+const WORKFLOW_CODES = ['PASAPORTE_NUEVO', 'PASAPORTE_RENOVACION'];
 
 const VALID_ACTIONS: ActionType[] = ['pending', 'validation', 'appointments', 'history'];
 
@@ -221,6 +225,28 @@ export default function WorkflowActionPage() {
   // Use split view for pending action (optimized for bulk processing)
   if (currentAction === 'pending') {
     return <PendingPage entityCode={ENTITY_CODE} />;
+  }
+
+  // Use ValidationPage for validation action
+  if (currentAction === 'validation') {
+    return (
+      <ValidationPage
+        entityCode={ENTITY_CODE}
+        basePath="/dashboard/agent/cnedoge-pasaporte"
+        workflowGroup={workflowGroup as string}
+      />
+    );
+  }
+
+  // Use HistoryPage for history action (with 30-day stats)
+  if (currentAction === 'history') {
+    return (
+      <HistoryPage
+        entityCode={ENTITY_CODE}
+        workflowCodes={WORKFLOW_CODES}
+        basePath="/dashboard/agent/cnedoge-pasaporte"
+      />
+    );
   }
 
   // Invalid action - show error

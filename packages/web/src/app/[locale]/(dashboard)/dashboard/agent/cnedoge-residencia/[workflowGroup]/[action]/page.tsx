@@ -64,11 +64,23 @@ import {
 // Hooks
 import { useEntityServiceRequests, type ActionType } from '@/modules/agent-dashboard/hooks';
 
+// Split View components
+import { PendingPage } from '@/modules/agent-dashboard/components/pending/PendingPage';
+import { ValidationPage } from '@/modules/agent-dashboard/components/validation';
+import { HistoryPage } from '@/modules/agent-dashboard/components/history';
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
 const ENTITY_CODE = 'CNEDOGE_RESIDENCIA';
+const WORKFLOW_CODES = [
+  'RESIDENCIA_PRIMERA_VEZ',
+  'RESIDENCIA_RENOVACION',
+  'RESIDENCIA_DUPLICADO',
+  'RESIDENCIA_CAMBIO_DATOS',
+  'RESIDENCIA_REAGRUPACION',
+];
 
 const VALID_ACTIONS: ActionType[] = ['pending', 'validation', 'appointments', 'history'];
 
@@ -213,6 +225,33 @@ export default function WorkflowActionPage() {
     };
     return labels[wfCode] || wfCode;
   };
+
+  // Use split view for pending action (optimized for bulk processing)
+  if (currentAction === 'pending') {
+    return <PendingPage entityCode={ENTITY_CODE} />;
+  }
+
+  // Use ValidationPage for validation action
+  if (currentAction === 'validation') {
+    return (
+      <ValidationPage
+        entityCode={ENTITY_CODE}
+        basePath="/dashboard/agent/cnedoge-residencia"
+        workflowGroup={workflowGroup as string}
+      />
+    );
+  }
+
+  // Use HistoryPage for history action (with 30-day stats)
+  if (currentAction === 'history') {
+    return (
+      <HistoryPage
+        entityCode={ENTITY_CODE}
+        workflowCodes={WORKFLOW_CODES}
+        basePath="/dashboard/agent/cnedoge-residencia"
+      />
+    );
+  }
 
   // Invalid action - show error
   if (!isValidAction) {
