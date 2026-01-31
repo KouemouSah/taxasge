@@ -129,7 +129,7 @@ function SubItemEditor({ item, onChange, onDelete, disabled }: SubItemEditorProp
 // =============================================================================
 
 export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemEditorProps) {
-  const t = useTranslations('menuConfig.menuItemEditor');
+  const t = useTranslations('admin.menuConfig.menuItemEditor');
   const isGroup = Array.isArray(item.items);
 
   // Toggle between group and link

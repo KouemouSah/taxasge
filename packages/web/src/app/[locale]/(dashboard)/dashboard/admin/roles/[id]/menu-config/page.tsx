@@ -80,7 +80,7 @@ export default function RoleMenuConfigPage() {
   const _router = useRouter();
   const params = useParams();
   const locale = useLocale();
-  const t = useTranslations('menuConfig');
+  const t = useTranslations('admin.menuConfig');
   const tCommon = useTranslations('common');
 
   const roleId = params.id as string;

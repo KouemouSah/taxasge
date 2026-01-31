@@ -172,7 +172,7 @@ export function MenuBuilder({
   entityCode,
   disabled = false,
 }: MenuBuilderProps) {
-  const t = useTranslations('menuConfig.menuBuilder');
+  const t = useTranslations('admin.menuConfig.menuBuilder');
 
   // State
   const [menus, setMenus] = useState<MenuItem[]>([]);

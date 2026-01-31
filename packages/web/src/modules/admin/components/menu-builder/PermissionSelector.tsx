@@ -43,7 +43,7 @@ export function PermissionSelector({
   disabled = false,
   placeholder,
 }: PermissionSelectorProps) {
-  const t = useTranslations('menuConfig.permissionSelector');
+  const t = useTranslations('admin.menuConfig.permissionSelector');
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const displayPlaceholder = placeholder || t('noPermissionRequired');

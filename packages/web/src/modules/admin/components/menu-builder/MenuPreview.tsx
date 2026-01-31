@@ -113,7 +113,7 @@ function PreviewMenuItem({ item, isActive }: PreviewMenuItemProps) {
 // =============================================================================
 
 export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
-  const t = useTranslations('menuConfig.menuPreview');
+  const t = useTranslations('admin.menuConfig.menuPreview');
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   return (

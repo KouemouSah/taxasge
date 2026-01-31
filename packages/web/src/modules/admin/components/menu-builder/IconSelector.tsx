@@ -52,7 +52,7 @@ const ICON_CATEGORIES: Record<string, string[]> = {
 // =============================================================================
 
 export function IconSelector({ value, onChange, disabled = false }: IconSelectorProps) {
-  const t = useTranslations('menuConfig.iconSelector');
+  const t = useTranslations('admin.menuConfig.iconSelector');
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
