@@ -175,7 +175,7 @@ export default function RoleMenuConfigPage() {
   const handleSaveAll = async () => {
     // Check for JSON errors
     if (dashboardConfig.error || uiConfig.error) {
-      toast.error('Fix JSON errors before saving');
+      toast.error(t('roleConfig.fixJsonErrors'));
       return;
     }
 
@@ -201,7 +201,7 @@ export default function RoleMenuConfigPage() {
 
       // Only save if there are changes
       if (Object.keys(data).length === 0) {
-        toast.info('No changes to save');
+        toast.info(t('roleConfig.noChanges'));
         return;
       }
 
@@ -221,7 +221,7 @@ export default function RoleMenuConfigPage() {
     // Menu config uses MenuBuilder, others use JSON editor
     if (type === 'menu') {
       if (!menuBuilderState.isDirty) {
-        toast.info('No changes to save');
+        toast.info(t('roleConfig.noChanges'));
         return;
       }
 
@@ -249,12 +249,12 @@ export default function RoleMenuConfigPage() {
     const { state, key } = configMap[type];
 
     if (state.error) {
-      toast.error('Fix JSON errors before saving');
+      toast.error(t('roleConfig.fixJsonErrors'));
       return;
     }
 
     if (!state.isDirty) {
-      toast.info('No changes to save');
+      toast.info(t('roleConfig.noChanges'));
       return;
     }
 
@@ -303,7 +303,7 @@ export default function RoleMenuConfigPage() {
     }
 
     setIsResetDialogOpen(false);
-    toast.success('Configuration reset');
+    toast.success(t('roleConfig.configReset'));
   };
 
   // Check if any config has unsaved changes
@@ -332,7 +332,7 @@ export default function RoleMenuConfigPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Configuration not found</h1>
+          <h1 className="text-2xl font-bold">{t('roleConfig.notFound')}</h1>
         </div>
         <Card className="border-destructive">
           <CardContent className="pt-6">
@@ -343,12 +343,12 @@ export default function RoleMenuConfigPage() {
                   ? roleError.message
                   : configError instanceof Error
                   ? configError.message
-                  : 'Unable to load configuration'}
+                  : t('roleConfig.loadError')}
               </span>
             </div>
             <Link href={`/${locale}/dashboard/admin/roles/${roleId}`}>
               <Button variant="outline" className="mt-4">
-                Return to role
+                {t('roleConfig.returnToRole')}
               </Button>
             </Link>
           </CardContent>
@@ -363,7 +363,7 @@ export default function RoleMenuConfigPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href={`/${locale}/dashboard/admin/roles/${roleId}`}>
-            <Button variant="ghost" size="icon" title="Back to role">
+            <Button variant="ghost" size="icon" title={t('roleConfig.backToRole')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -383,7 +383,7 @@ export default function RoleMenuConfigPage() {
           {hasUnsavedChanges && (
             <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300">
               <AlertCircle className="h-3 w-3" />
-              Unsaved changes
+              {t('menuBuilder.unsavedChanges')}
             </Badge>
           )}
 
@@ -397,7 +397,7 @@ export default function RoleMenuConfigPage() {
             disabled={!hasUnsavedChanges}
           >
             <RotateCcw className="h-4 w-4 mr-2" />
-            Reset
+            {t('roleConfig.reset')}
           </Button>
 
           {/* Save All button */}
@@ -410,7 +410,7 @@ export default function RoleMenuConfigPage() {
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            Save All
+            {t('roleConfig.saveAll')}
           </Button>
         </div>
       </div>
@@ -420,19 +420,19 @@ export default function RoleMenuConfigPage() {
         <CardContent className="pt-4 pb-4">
           <div className="flex items-center gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Role</p>
+              <p className="text-sm text-muted-foreground">{tCommon('role')}</p>
               <p className="font-medium">{role.name}</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div>
-              <p className="text-sm text-muted-foreground">Code</p>
+              <p className="text-sm text-muted-foreground">{tCommon('code')}</p>
               <code className="text-sm bg-muted px-2 py-0.5 rounded">{role.code}</code>
             </div>
             {role.entity_type && (
               <>
                 <div className="h-8 w-px bg-border" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Entity Type</p>
+                  <p className="text-sm text-muted-foreground">{tCommon('entityType')}</p>
                   <Badge variant="secondary">{role.entity_type}</Badge>
                 </div>
               </>
@@ -446,17 +446,17 @@ export default function RoleMenuConfigPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="menu" className="gap-2">
             <Menu className="h-4 w-4" />
-            Menu Config
+            {t('roleConfig.tabs.menu')}
             {menuBuilderState.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
           </TabsTrigger>
           <TabsTrigger value="dashboard" className="gap-2">
             <LayoutDashboard className="h-4 w-4" />
-            Dashboard Config
+            {t('roleConfig.tabs.dashboard')}
             {dashboardConfig.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
           </TabsTrigger>
           <TabsTrigger value="ui" className="gap-2">
             <Palette className="h-4 w-4" />
-            UI Config
+            {t('roleConfig.tabs.ui')}
             {uiConfig.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
           </TabsTrigger>
         </TabsList>
@@ -488,7 +488,7 @@ export default function RoleMenuConfigPage() {
                     ) : (
                       <Save className="h-4 w-4 mr-2" />
                     )}
-                    Save Menu Config
+                    {t('roleConfig.saveMenuConfig')}
                   </Button>
                 </div>
               </CardHeader>
@@ -531,7 +531,7 @@ export default function RoleMenuConfigPage() {
                   ) : (
                     <Save className="h-4 w-4 mr-2" />
                   )}
-                  Save
+                  {t('roleConfig.save')}
                 </Button>
               </div>
             </CardHeader>
@@ -539,18 +539,18 @@ export default function RoleMenuConfigPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <Code className="h-4 w-4" />
-                  <span>JSON Editor</span>
+                  <span>{t('roleConfig.jsonEditor')}</span>
                   {dashboardConfig.error ? (
                     <Badge variant="destructive" className="gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      Error
+                      {t('roleConfig.error')}
                     </Badge>
                   ) : dashboardConfig.isDirty ? (
-                    <Badge variant="secondary">Modified</Badge>
+                    <Badge variant="secondary">{t('roleConfig.modified')}</Badge>
                   ) : (
                     <Badge variant="outline" className="gap-1 text-green-600 border-green-300">
                       <CheckCircle className="h-3 w-3" />
-                      Valid
+                      {t('roleConfig.valid')}
                     </Badge>
                   )}
                 </div>
@@ -596,7 +596,7 @@ export default function RoleMenuConfigPage() {
                   ) : (
                     <Save className="h-4 w-4 mr-2" />
                   )}
-                  Save
+                  {t('roleConfig.save')}
                 </Button>
               </div>
             </CardHeader>
@@ -604,18 +604,18 @@ export default function RoleMenuConfigPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <Code className="h-4 w-4" />
-                  <span>JSON Editor</span>
+                  <span>{t('roleConfig.jsonEditor')}</span>
                   {uiConfig.error ? (
                     <Badge variant="destructive" className="gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      Error
+                      {t('roleConfig.error')}
                     </Badge>
                   ) : uiConfig.isDirty ? (
-                    <Badge variant="secondary">Modified</Badge>
+                    <Badge variant="secondary">{t('roleConfig.modified')}</Badge>
                   ) : (
                     <Badge variant="outline" className="gap-1 text-green-600 border-green-300">
                       <CheckCircle className="h-3 w-3" />
-                      Valid
+                      {t('roleConfig.valid')}
                     </Badge>
                   )}
                 </div>
@@ -641,16 +641,15 @@ export default function RoleMenuConfigPage() {
       <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset Configuration</AlertDialogTitle>
+            <AlertDialogTitle>{t('roleConfig.resetDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will discard all unsaved changes and restore the original configuration.
-              This action cannot be undone.
+              {t('roleConfig.resetDialog.description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('roleConfig.resetDialog.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleReset}>
-              Reset
+              {t('roleConfig.resetDialog.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

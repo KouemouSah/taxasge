@@ -883,6 +883,11 @@
       "roleConfig": {
         "title": "Configuration du Menu du Rôle",
         "description": "Gérer la configuration du menu, tableau de bord et interface pour le rôle {roleName}",
+        "tabs": {
+          "menu": "Config Menu",
+          "dashboard": "Config Tableau de Bord",
+          "ui": "Config Interface"
+        },
         "menuConfig": {
           "title": "Configuration du Menu",
           "description": "Définir la structure du menu de navigation pour ce rôle"
@@ -894,6 +899,29 @@
         "uiConfig": {
           "title": "Configuration de l'Interface",
           "description": "Définir les préférences d'interface et les thèmes pour ce rôle"
+        },
+        "saveMenuConfig": "Enregistrer Config Menu",
+        "resetConfig": "Réinitialiser la Configuration",
+        "resetDescription": "Ceci annulera toutes les modifications non enregistrées et restaurera la configuration originale. Cette action est irréversible.",
+        "saveAll": "Tout Enregistrer",
+        "reset": "Réinitialiser",
+        "save": "Enregistrer",
+        "jsonEditor": "Éditeur JSON",
+        "valid": "Valide",
+        "modified": "Modifié",
+        "error": "Erreur",
+        "notFound": "Configuration non trouvée",
+        "loadError": "Impossible de charger la configuration",
+        "returnToRole": "Retourner au rôle",
+        "backToRole": "Retour au rôle",
+        "fixJsonErrors": "Corrigez les erreurs JSON avant d'enregistrer",
+        "noChanges": "Aucune modification à enregistrer",
+        "configReset": "Configuration réinitialisée",
+        "resetDialog": {
+          "title": "Réinitialiser la Configuration",
+          "description": "Ceci annulera toutes les modifications non enregistrées et restaurera la configuration originale. Cette action est irréversible.",
+          "cancel": "Annuler",
+          "confirm": "Réinitialiser"
         }
       },
       "menuBuilder": {

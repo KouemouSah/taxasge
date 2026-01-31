@@ -883,6 +883,11 @@
       "roleConfig": {
         "title": "Configuración de Menú del Rol",
         "description": "Gestionar configuración de menú, dashboard y UI para el rol {roleName}",
+        "tabs": {
+          "menu": "Config Menú",
+          "dashboard": "Config Dashboard",
+          "ui": "Config UI"
+        },
         "menuConfig": {
           "title": "Configuración de Menú",
           "description": "Define la estructura del menú de navegación para este rol"
@@ -894,6 +899,29 @@
         "uiConfig": {
           "title": "Configuración de UI",
           "description": "Define preferencias de interfaz y temas para este rol"
+        },
+        "saveMenuConfig": "Guardar Config Menú",
+        "resetConfig": "Restablecer Configuración",
+        "resetDescription": "Esto descartará todos los cambios no guardados y restaurará la configuración original. Esta acción no se puede deshacer.",
+        "saveAll": "Guardar Todo",
+        "reset": "Restablecer",
+        "save": "Guardar",
+        "jsonEditor": "Editor JSON",
+        "valid": "Válido",
+        "modified": "Modificado",
+        "error": "Error",
+        "notFound": "Configuración no encontrada",
+        "loadError": "No se pudo cargar la configuración",
+        "returnToRole": "Volver al rol",
+        "backToRole": "Volver al rol",
+        "fixJsonErrors": "Corrija los errores JSON antes de guardar",
+        "noChanges": "No hay cambios para guardar",
+        "configReset": "Configuración restablecida",
+        "resetDialog": {
+          "title": "Restablecer Configuración",
+          "description": "Esto descartará todos los cambios no guardados y restaurará la configuración original. Esta acción no se puede deshacer.",
+          "cancel": "Cancelar",
+          "confirm": "Restablecer"
         }
       },
       "menuBuilder": {

@@ -935,6 +935,11 @@
       "roleConfig": {
         "title": "Role Menu Configuration",
         "description": "Manage menu, dashboard and UI configuration for role {roleName}",
+        "tabs": {
+          "menu": "Menu Config",
+          "dashboard": "Dashboard Config",
+          "ui": "UI Config"
+        },
         "menuConfig": {
           "title": "Menu Configuration",
           "description": "Define the navigation menu structure for this role"
@@ -946,6 +951,29 @@
         "uiConfig": {
           "title": "UI Configuration",
           "description": "Define interface preferences and themes for this role"
+        },
+        "saveMenuConfig": "Save Menu Config",
+        "resetConfig": "Reset Configuration",
+        "resetDescription": "This will discard all unsaved changes and restore the original configuration. This action cannot be undone.",
+        "saveAll": "Save All",
+        "reset": "Reset",
+        "save": "Save",
+        "jsonEditor": "JSON Editor",
+        "valid": "Valid",
+        "modified": "Modified",
+        "error": "Error",
+        "notFound": "Configuration not found",
+        "loadError": "Unable to load configuration",
+        "returnToRole": "Return to role",
+        "backToRole": "Back to role",
+        "fixJsonErrors": "Fix JSON errors before saving",
+        "noChanges": "No changes to save",
+        "configReset": "Configuration reset",
+        "resetDialog": {
+          "title": "Reset Configuration",
+          "description": "This will discard all unsaved changes and restore the original configuration. This action cannot be undone.",
+          "cancel": "Cancel",
+          "confirm": "Reset"
         }
       },
       "menuBuilder": {
