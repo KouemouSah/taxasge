@@ -104,56 +104,6 @@ class DashboardConfigResponse(DashboardConfigBase):
 
 
 # =============================================================================
-# MENU TEMPLATE MODELS
-# =============================================================================
-
-class MenuTemplateBase(BaseModel):
-    """Base menu template"""
-    code: str = Field(..., min_length=2, max_length=50, description="Unique template code")
-    name: str = Field(..., min_length=2, max_length=100, description="Template name")
-    description: Optional[str] = Field(None, description="Template description")
-    template_type: Literal["workflow", "module", "custom"] = Field(..., description="Template type")
-    entity_code: Optional[str] = Field(None, max_length=50, description="Entity scope (NULL=global)")
-    menu_structure: Dict[str, Any] = Field(..., description="Menu structure JSON")
-    dashboard_widgets: Optional[Dict[str, Any]] = Field(None, description="Dashboard widgets JSON")
-
-
-class MenuTemplateCreate(MenuTemplateBase):
-    """Schema for creating menu template"""
-    pass
-
-
-class MenuTemplateUpdate(BaseModel):
-    """Schema for updating menu template"""
-    name: Optional[str] = Field(None, min_length=2, max_length=100)
-    description: Optional[str] = None
-    menu_structure: Optional[Dict[str, Any]] = None
-    dashboard_widgets: Optional[Dict[str, Any]] = None
-    is_active: Optional[bool] = None
-
-
-class MenuTemplateResponse(MenuTemplateBase):
-    """Schema for menu template response"""
-    id: UUID
-    is_active: bool
-    created_at: datetime
-    updated_at: datetime
-    created_by: Optional[UUID] = None
-
-    class Config:
-        from_attributes = True
-
-
-class MenuTemplateListResponse(BaseModel):
-    """Schema for paginated menu template list"""
-    items: List[MenuTemplateResponse]
-    total: int
-    page: int
-    page_size: int
-    pages: int
-
-
-# =============================================================================
 # WORKFLOW MENU MAPPING MODELS
 # =============================================================================
 

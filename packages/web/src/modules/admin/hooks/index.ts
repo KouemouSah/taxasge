@@ -11,17 +11,6 @@
  * @date 2026-01-25
  */
 
-// Menu configuration hooks
-export {
-  useMenuTemplates,
-  useMenuTemplate,
-  useCreateMenuTemplate,
-  useUpdateMenuTemplate,
-  useDeleteMenuTemplate,
-  useMenuTemplateOperations,
-  menuTemplateKeys,
-} from './useMenuTemplates';
-
 // Workflow mapping hooks
 export {
   useWorkflowMappings,

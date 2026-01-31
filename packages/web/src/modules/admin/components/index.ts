@@ -13,7 +13,6 @@ export { default as QuickActions } from "./QuickActions"
 export { BackendUnavailableAlert } from "./BackendUnavailableAlert"
 
 // Menu Configuration Components
-export { MenuTemplateForm } from "./MenuTemplateForm"
 export { WorkflowMappingForm } from "./WorkflowMappingForm"
 export { MenuConfigEditor } from "./MenuConfigEditor"
 export { ItemNavigation } from "./ItemNavigation"

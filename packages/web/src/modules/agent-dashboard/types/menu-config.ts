@@ -99,33 +99,6 @@ export interface AgentMenuConfigResponse {
 }
 
 // =============================================================================
-// MENU TEMPLATE (Admin)
-// =============================================================================
-
-export interface MenuTemplate {
-  id: string;
-  code: string;
-  name: string;
-  description?: string;
-  template_type: 'workflow' | 'module' | 'custom';
-  entity_code?: string;
-  menu_structure: Record<string, unknown>;
-  dashboard_widgets?: Record<string, unknown>;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by?: string;
-}
-
-export interface MenuTemplateListResponse {
-  items: MenuTemplate[];
-  total: number;
-  page: number;
-  page_size: number;
-  pages: number;
-}
-
-// =============================================================================
 // WORKFLOW MENU MAPPING (Admin)
 // =============================================================================
 

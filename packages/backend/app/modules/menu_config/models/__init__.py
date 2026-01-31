@@ -18,12 +18,6 @@ from app.modules.menu_config.models.menu_config import (
     DashboardConfigBase,
     DashboardConfigCreate,
     DashboardConfigResponse,
-    # Menu templates
-    MenuTemplateBase,
-    MenuTemplateCreate,
-    MenuTemplateUpdate,
-    MenuTemplateResponse,
-    MenuTemplateListResponse,
     # Workflow menu mappings
     WorkflowMenuMappingBase,
     WorkflowMenuMappingCreate,
@@ -48,12 +42,6 @@ __all__ = [
     "DashboardConfigBase",
     "DashboardConfigCreate",
     "DashboardConfigResponse",
-    # Menu templates
-    "MenuTemplateBase",
-    "MenuTemplateCreate",
-    "MenuTemplateUpdate",
-    "MenuTemplateResponse",
-    "MenuTemplateListResponse",
     # Workflow menu mappings
     "WorkflowMenuMappingBase",
     "WorkflowMenuMappingCreate",

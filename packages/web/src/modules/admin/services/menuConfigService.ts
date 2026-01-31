@@ -1,18 +1,14 @@
 /**
  * Menu Configuration API Service
- * Handles menu templates, workflow mappings, and role menu configuration
+ * Handles workflow mappings and role menu configuration
  *
  * @module admin/services
  * @date 2026-01-19
+ * @updated 2026-01-31 - Removed unused menu_templates endpoints
  *
  * BACKEND ALIGNMENT:
  * Routes: /api/v1/menu-config (from app/modules/menu_config/api/menu_config_routes.py)
  * - GET    /api/v1/menu-config/me                    → get_my_menu_config
- * - GET    /api/v1/menu-config/templates             → list_menu_templates
- * - POST   /api/v1/menu-config/templates             → create_menu_template
- * - GET    /api/v1/menu-config/templates/{id}        → get_menu_template
- * - PUT    /api/v1/menu-config/templates/{id}        → update_menu_template
- * - DELETE /api/v1/menu-config/templates/{id}        → delete_menu_template
  * - GET    /api/v1/menu-config/workflow-mappings     → list_workflow_mappings
  * - POST   /api/v1/menu-config/workflow-mappings     → create_workflow_mapping
  * - PUT    /api/v1/menu-config/workflow-mappings/{id} → update_workflow_mapping
@@ -21,8 +17,6 @@
 
 import { fetchClient } from '@/core/api';
 import type {
-  MenuTemplate,
-  MenuTemplateListResponse,
   WorkflowMenuMapping,
   WorkflowMenuMappingListResponse,
   AgentMenuConfigResponse,
@@ -37,24 +31,6 @@ const MENU_CONFIG_BASE = '/menu-config';
 // =============================================================================
 // TYPES
 // =============================================================================
-
-export interface MenuTemplateCreateRequest {
-  code: string;
-  name: string;
-  description?: string;
-  template_type: 'workflow' | 'module' | 'custom';
-  entity_code?: string;
-  menu_structure: Record<string, unknown>;
-  dashboard_widgets?: Record<string, unknown>;
-}
-
-export interface MenuTemplateUpdateRequest {
-  name?: string;
-  description?: string;
-  menu_structure?: Record<string, unknown>;
-  dashboard_widgets?: Record<string, unknown>;
-  is_active?: boolean;
-}
 
 export interface WorkflowMappingCreateRequest {
   workflow_pattern: string;
@@ -102,69 +78,6 @@ export const menuConfigApi = {
    */
   getMyMenuConfig: async (): Promise<AgentMenuConfigResponse> => {
     return fetchClient.get<AgentMenuConfigResponse>(`${MENU_CONFIG_BASE}/me`);
-  },
-
-  // ===========================================================================
-  // MENU TEMPLATES
-  // ===========================================================================
-
-  /**
-   * List all menu templates with pagination
-   * BACKEND: GET /api/v1/menu-config/templates
-   * PERMISSION: menu.view_templates
-   */
-  listTemplates: async (
-    params?: PaginationParams
-  ): Promise<MenuTemplateListResponse> => {
-    const searchParams = new URLSearchParams();
-    if (params?.page) searchParams.set('page', params.page.toString());
-    if (params?.page_size) searchParams.set('page_size', params.page_size.toString());
-
-    const query = searchParams.toString();
-    const url = query ? `${MENU_CONFIG_BASE}/templates?${query}` : `${MENU_CONFIG_BASE}/templates`;
-
-    return fetchClient.get<MenuTemplateListResponse>(url);
-  },
-
-  /**
-   * Get a single menu template by ID
-   * BACKEND: GET /api/v1/menu-config/templates/{id}
-   * PERMISSION: menu.view_templates
-   */
-  getTemplate: async (id: string): Promise<MenuTemplate> => {
-    return fetchClient.get<MenuTemplate>(`${MENU_CONFIG_BASE}/templates/${id}`);
-  },
-
-  /**
-   * Create a new menu template
-   * BACKEND: POST /api/v1/menu-config/templates
-   * PERMISSION: menu.create_template
-   */
-  createTemplate: async (
-    data: MenuTemplateCreateRequest
-  ): Promise<MenuTemplate> => {
-    return fetchClient.post<MenuTemplate>(`${MENU_CONFIG_BASE}/templates`, data);
-  },
-
-  /**
-   * Update an existing menu template
-   * BACKEND: PUT /api/v1/menu-config/templates/{id}
-   * PERMISSION: menu.update_template
-   */
-  updateTemplate: async (
-    id: string,
-    data: MenuTemplateUpdateRequest
-  ): Promise<MenuTemplate> => {
-    return fetchClient.put<MenuTemplate>(`${MENU_CONFIG_BASE}/templates/${id}`, data);
-  },
-
-  /**
-   * Delete a menu template
-   * BACKEND: DELETE /api/v1/menu-config/templates/{id}
-   * PERMISSION: menu.delete_template
-   */
-  deleteTemplate: async (id: string): Promise<void> => {
-    return fetchClient.delete(`${MENU_CONFIG_BASE}/templates/${id}`);
   },
 
   // ===========================================================================

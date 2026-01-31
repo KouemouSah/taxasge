@@ -2,22 +2,21 @@
 
 /**
  * Menu Configuration Admin Page
- * Manage menu templates and workflow menu mappings
+ * Manage workflow menu mappings (auto-generation rules)
  *
  * @module dashboard/admin/menu-config
  * @date 2026-01-19
+ * @updated 2026-01-31 - Removed unused menu_templates tab
  */
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -56,8 +55,6 @@ import {
   RefreshCw,
   ChevronRight,
   ChevronLeft,
-  Workflow,
-  LayoutTemplate,
   Check,
   X,
 } from 'lucide-react';
@@ -66,7 +63,6 @@ import apiClient from '@/core/api/client';
 import type {
   WorkflowMenuMapping,
   WorkflowMenuMappingListResponse,
-  MenuTemplateListResponse,
 } from '@/modules/agent-dashboard/types/menu-config';
 
 const PAGE_SIZE = 10;
@@ -107,48 +103,12 @@ async function deleteWorkflowMapping(id: number): Promise<void> {
   await apiClient.delete(`/menu-config/workflow-mappings/${id}`);
 }
 
-async function fetchMenuTemplates(
-  page: number,
-  templateType?: string,
-  entityCode?: string
-): Promise<MenuTemplateListResponse> {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    page_size: PAGE_SIZE.toString(),
-  });
-  if (templateType && templateType !== 'all') {
-    params.append('template_type', templateType);
-  }
-  if (entityCode && entityCode !== 'all') {
-    params.append('entity_code', entityCode);
-  }
-  const response = await apiClient.get<MenuTemplateListResponse>(
-    `/menu-config/templates?${params}`
-  );
-  return response.data;
-}
-
-async function fetchTemplateEntityCodes(): Promise<string[]> {
-  const response = await apiClient.get<string[]>('/menu-config/templates/entity-codes');
-  return response.data;
-}
 
 // =============================================================================
 // MAIN PAGE COMPONENT
 // =============================================================================
 
 export default function MenuConfigPage() {
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabParam || 'workflow-mappings');
-
-  // Sync tab state with URL parameter
-  useEffect(() => {
-    if (tabParam && (tabParam === 'templates' || tabParam === 'workflow-mappings')) {
-      setActiveTab(tabParam);
-    }
-  }, [tabParam]);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -159,32 +119,13 @@ export default function MenuConfigPage() {
             Configuration des Menus
           </h1>
           <p className="text-muted-foreground mt-2">
-            Configurer les menus dynamiques et mappings workflow
+            Configurer les règles de génération automatique des menus agent
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="workflow-mappings" className="flex items-center gap-2">
-            <Workflow className="h-4 w-4" />
-            Mappings Workflow
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="flex items-center gap-2">
-            <LayoutTemplate className="h-4 w-4" />
-            Templates Menu
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="workflow-mappings" className="mt-6">
-          <WorkflowMappingsTab />
-        </TabsContent>
-
-        <TabsContent value="templates" className="mt-6">
-          <MenuTemplatesTab />
-        </TabsContent>
-      </Tabs>
+      {/* Workflow Mappings */}
+      <WorkflowMappingsTab />
     </div>
   );
 }
@@ -647,437 +588,3 @@ function WorkflowMappingsTab() {
   );
 }
 
-// =============================================================================
-// MENU TEMPLATES TAB
-// =============================================================================
-
-function MenuTemplatesTab() {
-  const locale = useLocale();
-  const queryClient = useQueryClient();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [entityFilter, setEntityFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<{ id: string; code: string } | null>(null);
-  // Selection state for batch actions
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
-
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['menu-templates', currentPage, typeFilter, entityFilter],
-    queryFn: () => fetchMenuTemplates(currentPage, typeFilter, entityFilter),
-  });
-
-  // Fetch distinct entity codes for filter dropdown
-  const { data: entityCodes = [] } = useQuery({
-    queryKey: ['menu-templates-entity-codes'],
-    queryFn: fetchTemplateEntityCodes,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await apiClient.delete(`/menu-config/templates/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['menu-templates'] });
-      toast.success('Template supprimé');
-      setIsDeleteDialogOpen(false);
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Erreur de suppression');
-    },
-  });
-
-  // Batch delete mutation
-  const batchDeleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map(id => apiClient.delete(`/menu-config/templates/${id}`)));
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['menu-templates'] });
-      toast.success(`${selectedIds.size} template(s) supprimé(s)`);
-      setSelectedIds(new Set());
-      setIsBatchDeleteDialogOpen(false);
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Erreur de suppression batch');
-    },
-  });
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [typeFilter, entityFilter]);
-
-  // Clear selection when page changes
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [currentPage]);
-
-  // Client-side search filter
-  const templates = (data?.items || []).filter((template) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      template.code.toLowerCase().includes(query) ||
-      template.name.toLowerCase().includes(query) ||
-      (template.description?.toLowerCase().includes(query) ?? false)
-    );
-  });
-
-  // Selection helpers
-  const isAllSelected = templates.length > 0 &&
-    templates.every(t => selectedIds.has(t.id));
-  const isSomeSelected = selectedIds.size > 0 && !isAllSelected;
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(templates.map(t => t.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  };
-
-  const handleSelectOne = (id: string, checked: boolean) => {
-    const newSet = new Set(selectedIds);
-    if (checked) {
-      newSet.add(id);
-    } else {
-      newSet.delete(id);
-    }
-    setSelectedIds(newSet);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="border-destructive">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-5 w-5" />
-            <span>{error instanceof Error ? error.message : 'Erreur de chargement'}</span>
-          </div>
-          <Button variant="outline" className="mt-4" onClick={() => refetch()}>
-            Réessayer
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Templates</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.total || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Type Workflow</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {data?.items?.filter(t => t.template_type === 'workflow').length || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Type Module</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {data?.items?.filter(t => t.template_type === 'module').length || 0}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Templates de Menu</CardTitle>
-              <CardDescription>
-                Configurations de menu réutilisables pour différents types d&apos;agents
-              </CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Actualiser
-              </Button>
-              <Button size="sm" asChild>
-                <Link href={`/${locale}/dashboard/admin/menu-templates/new`}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouveau Template
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par code, nom..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                <SelectItem value="workflow">Workflow</SelectItem>
-                <SelectItem value="module">Module</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={entityFilter} onValueChange={setEntityFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Entité" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes entités</SelectItem>
-                {entityCodes.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Batch Actions Bar */}
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 p-3 mb-4 bg-muted/50 border rounded-lg">
-              <span className="text-sm font-medium">
-                {selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}
-              </span>
-              <div className="flex-1" />
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setIsBatchDeleteDialogOpen(true)}
-                disabled={batchDeleteMutation.isPending}
-              >
-                <Trash2 className="mr-1 h-3 w-3" />
-                Supprimer
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Annuler
-              </Button>
-            </div>
-          )}
-
-          <div className="border rounded-md overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={isAllSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Sélectionner tout"
-                      className={isSomeSelected ? 'data-[state=checked]:bg-primary/50' : ''}
-                    />
-                  </TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="hidden md:table-cell">Entité</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {templates.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      Aucun template trouvé
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  templates.map((template) => (
-                    <TableRow key={template.id} data-state={selectedIds.has(template.id) ? 'selected' : undefined}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedIds.has(template.id)}
-                          onCheckedChange={(checked) => handleSelectOne(template.id, !!checked)}
-                          aria-label={`Sélectionner ${template.code}`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded">
-                          {template.code}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{template.name}</div>
-                          {template.description && (
-                            <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                              {template.description}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            template.template_type === 'workflow'
-                              ? 'default'
-                              : template.template_type === 'module'
-                              ? 'secondary'
-                              : 'outline'
-                          }
-                        >
-                          {template.template_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {template.entity_code || (
-                          <span className="text-muted-foreground">Global</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {template.is_active ? (
-                          <Badge variant="outline" className="gap-1 text-green-600 border-green-300">
-                            <Check className="h-3 w-3" />
-                            Actif
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="gap-1 text-muted-foreground">
-                            <X className="h-3 w-3" />
-                            Inactif
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" asChild>
-                            <Link href={`/${locale}/dashboard/admin/menu-templates/${template.id}`}>
-                              <Pencil className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => {
-                              setSelectedTemplate({ id: template.id, code: template.code });
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          {data && data.pages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
-                Page {data.page} sur {data.pages}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(data.pages, prev + 1))}
-                  disabled={currentPage >= data.pages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Delete Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le Template ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer le template &quot;{selectedTemplate?.code}&quot; ?
-              Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedTemplate && deleteMutation.mutate(selectedTemplate.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Batch Delete Dialog */}
-      <AlertDialog open={isBatchDeleteDialogOpen} onOpenChange={setIsBatchDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer {selectedIds.size} Template(s) ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer les {selectedIds.size} templates sélectionnés ?
-              Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => batchDeleteMutation.mutate(Array.from(selectedIds))}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {batchDeleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Supprimer {selectedIds.size} template(s)
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
