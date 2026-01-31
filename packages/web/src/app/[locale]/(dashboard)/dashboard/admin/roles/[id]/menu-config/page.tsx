@@ -4,11 +4,12 @@
  *
  * @page /dashboard/admin/roles/[id]/menu-config
  * @date 2026-01-25
+ * @updated 2026-01-31 - Added visual MenuBuilder for menu configuration
  */
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -53,6 +54,7 @@ import {
   useUpdateRoleMenuConfig,
   type RoleMenuConfigUpdateRequest,
 } from '@/modules/admin/hooks/useRoleMenuConfig';
+import { MenuBuilder, type MenuItem, menuConfigToJson } from '@/modules/admin/components/menu-builder';
 
 // =============================================================================
 // TYPES
@@ -61,6 +63,12 @@ import {
 interface JsonEditorState {
   value: string;
   error: string | null;
+  isDirty: boolean;
+}
+
+interface MenuBuilderState {
+  menus: MenuItem[];
+  isAutoMode: boolean;
   isDirty: boolean;
 }
 
@@ -94,12 +102,14 @@ export default function RoleMenuConfigPage() {
   // Update mutation
   const updateMutation = useUpdateRoleMenuConfig();
 
-  // JSON editor states
-  const [menuConfig, setMenuConfig] = useState<JsonEditorState>({
-    value: '{}',
-    error: null,
+  // Menu builder state (visual editor)
+  const [menuBuilderState, setMenuBuilderState] = useState<MenuBuilderState>({
+    menus: [],
+    isAutoMode: true,
     isDirty: false,
   });
+
+  // JSON editor states (for dashboard and UI configs)
   const [dashboardConfig, setDashboardConfig] = useState<JsonEditorState>({
     value: '{}',
     error: null,
@@ -118,9 +128,11 @@ export default function RoleMenuConfigPage() {
   // Initialize states from fetched data
   useEffect(() => {
     if (config) {
-      setMenuConfig({
-        value: config.menu_config ? JSON.stringify(config.menu_config, null, 2) : '{}',
-        error: null,
+      // Menu config is handled by MenuBuilder - it parses internally
+      // We just track if it's auto mode (null = auto)
+      setMenuBuilderState({
+        menus: [],
+        isAutoMode: config.menu_config === null,
         isDirty: false,
       });
       setDashboardConfig({
@@ -135,6 +147,16 @@ export default function RoleMenuConfigPage() {
       });
     }
   }, [config]);
+
+  // MenuBuilder onChange callback
+  const handleMenuBuilderChange = useCallback((menus: MenuItem[], isAutoMode: boolean) => {
+    setMenuBuilderState((prev) => ({
+      menus,
+      isAutoMode,
+      // Mark dirty if we have menus and it changed, or if mode changed
+      isDirty: prev.isDirty || menus.length > 0 || prev.isAutoMode !== isAutoMode,
+    }));
+  }, []);
 
   // Handle JSON change with validation
   const handleJsonChange = (
@@ -152,7 +174,7 @@ export default function RoleMenuConfigPage() {
   // Save all configurations
   const handleSaveAll = async () => {
     // Check for JSON errors
-    if (menuConfig.error || dashboardConfig.error || uiConfig.error) {
+    if (dashboardConfig.error || uiConfig.error) {
       toast.error('Fix JSON errors before saving');
       return;
     }
@@ -160,8 +182,15 @@ export default function RoleMenuConfigPage() {
     try {
       const data: RoleMenuConfigUpdateRequest = {};
 
-      if (menuConfig.isDirty) {
-        data.menu_config = JSON.parse(menuConfig.value);
+      if (menuBuilderState.isDirty) {
+        // Auto mode = null, Manual mode = JSON config
+        if (menuBuilderState.isAutoMode) {
+          data.menu_config = null;
+        } else {
+          // Build menu config from MenuBuilder state
+          const menuConfigJson = menuConfigToJson(menuBuilderState.menus);
+          data.menu_config = JSON.parse(menuConfigJson);
+        }
       }
       if (dashboardConfig.isDirty) {
         data.dashboard_config = JSON.parse(dashboardConfig.value);
@@ -179,7 +208,7 @@ export default function RoleMenuConfigPage() {
       await updateMutation.mutateAsync({ roleId, data });
 
       // Reset dirty flags
-      setMenuConfig((prev) => ({ ...prev, isDirty: false }));
+      setMenuBuilderState((prev) => ({ ...prev, isDirty: false }));
       setDashboardConfig((prev) => ({ ...prev, isDirty: false }));
       setUiConfig((prev) => ({ ...prev, isDirty: false }));
     } catch {
@@ -189,8 +218,30 @@ export default function RoleMenuConfigPage() {
 
   // Save individual configuration
   const handleSaveConfig = async (type: 'menu' | 'dashboard' | 'ui') => {
+    // Menu config uses MenuBuilder, others use JSON editor
+    if (type === 'menu') {
+      if (!menuBuilderState.isDirty) {
+        toast.info('No changes to save');
+        return;
+      }
+
+      try {
+        const data: RoleMenuConfigUpdateRequest = {
+          menu_config: menuBuilderState.isAutoMode
+            ? null
+            : JSON.parse(menuConfigToJson(menuBuilderState.menus)),
+        };
+
+        await updateMutation.mutateAsync({ roleId, data });
+        setMenuBuilderState((prev) => ({ ...prev, isDirty: false }));
+      } catch {
+        // Error handled by mutation
+      }
+      return;
+    }
+
+    // Dashboard and UI configs use JSON editor
     const configMap = {
-      menu: { state: menuConfig, key: 'menu_config' as const },
       dashboard: { state: dashboardConfig, key: 'dashboard_config' as const },
       ui: { state: uiConfig, key: 'ui_config' as const },
     };
@@ -215,9 +266,7 @@ export default function RoleMenuConfigPage() {
       await updateMutation.mutateAsync({ roleId, data });
 
       // Reset dirty flag for this config
-      if (type === 'menu') {
-        setMenuConfig((prev) => ({ ...prev, isDirty: false }));
-      } else if (type === 'dashboard') {
+      if (type === 'dashboard') {
         setDashboardConfig((prev) => ({ ...prev, isDirty: false }));
       } else {
         setUiConfig((prev) => ({ ...prev, isDirty: false }));
@@ -232,9 +281,9 @@ export default function RoleMenuConfigPage() {
     if (!config) return;
 
     if (resetTarget === 'all' || resetTarget === 'menu') {
-      setMenuConfig({
-        value: config.menu_config ? JSON.stringify(config.menu_config, null, 2) : '{}',
-        error: null,
+      setMenuBuilderState({
+        menus: [],
+        isAutoMode: config.menu_config === null,
         isDirty: false,
       });
     }
@@ -258,8 +307,8 @@ export default function RoleMenuConfigPage() {
   };
 
   // Check if any config has unsaved changes
-  const hasUnsavedChanges = menuConfig.isDirty || dashboardConfig.isDirty || uiConfig.isDirty;
-  const hasErrors = menuConfig.error || dashboardConfig.error || uiConfig.error;
+  const hasUnsavedChanges = menuBuilderState.isDirty || dashboardConfig.isDirty || uiConfig.isDirty;
+  const hasErrors = dashboardConfig.error || uiConfig.error;
 
   // Loading state
   if (roleLoading || configLoading) {
@@ -398,7 +447,7 @@ export default function RoleMenuConfigPage() {
           <TabsTrigger value="menu" className="gap-2">
             <Menu className="h-4 w-4" />
             Menu Config
-            {menuConfig.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
+            {menuBuilderState.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
           </TabsTrigger>
           <TabsTrigger value="dashboard" className="gap-2">
             <LayoutDashboard className="h-4 w-4" />
@@ -412,69 +461,49 @@ export default function RoleMenuConfigPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Menu Config Tab */}
+        {/* Menu Config Tab - Visual MenuBuilder */}
         <TabsContent value="menu">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Menu className="h-5 w-5" />
-                    {t('roleConfig.menuConfig.title')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('roleConfig.menuConfig.description')}
-                  </CardDescription>
+          <div className="space-y-4">
+            {/* Header with save button */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Menu className="h-5 w-5" />
+                      {t('roleConfig.menuConfig.title')}
+                    </CardTitle>
+                    <CardDescription>
+                      {t('roleConfig.menuConfig.description')}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSaveConfig('menu')}
+                    disabled={!menuBuilderState.isDirty || updateMutation.isPending}
+                  >
+                    {updateMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Save Menu Config
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSaveConfig('menu')}
-                  disabled={!menuConfig.isDirty || !!menuConfig.error || updateMutation.isPending}
-                >
-                  {updateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Save
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Code className="h-4 w-4" />
-                  <span>JSON Editor</span>
-                  {menuConfig.error ? (
-                    <Badge variant="destructive" className="gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Error
-                    </Badge>
-                  ) : menuConfig.isDirty ? (
-                    <Badge variant="secondary">Modified</Badge>
-                  ) : (
-                    <Badge variant="outline" className="gap-1 text-green-600 border-green-300">
-                      <CheckCircle className="h-3 w-3" />
-                      Valid
-                    </Badge>
-                  )}
-                </div>
-                <Textarea
-                  value={menuConfig.value}
-                  onChange={(e) => handleJsonChange(e.target.value, setMenuConfig)}
-                  className="font-mono text-sm min-h-[300px]"
-                  placeholder='{"items": []}'
-                />
-                {menuConfig.error && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-4 w-4" />
-                    {menuConfig.error}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+            </Card>
+
+            {/* Visual Menu Builder */}
+            <MenuBuilder
+              initialConfig={config?.menu_config ?? null}
+              onChange={handleMenuBuilderChange}
+              isSaving={updateMutation.isPending}
+              roleCode={role?.code}
+              entityCode={role?.entity_type || undefined}
+              disabled={false}
+            />
+          </div>
         </TabsContent>
 
         {/* Dashboard Config Tab */}
