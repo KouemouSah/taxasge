@@ -192,8 +192,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
           break;
         case 'a':
         case 'A':
-          // Quick approve with 'A' key
-          if (selectedId && preview && !showRejectDialog) {
+          // Quick approve with 'A' key (disabled for history/read-only mode)
+          if (action !== 'history' && selectedId && preview && !showRejectDialog) {
             e.preventDefault();
             setIsProcessing(true);
             handleApprove().finally(() => setIsProcessing(false));
@@ -201,8 +201,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
           break;
         case 'r':
         case 'R':
-          // Open reject dialog with 'R' key
-          if (selectedId && preview && !showRejectDialog) {
+          // Open reject dialog with 'R' key (disabled for history/read-only mode)
+          if (action !== 'history' && selectedId && preview && !showRejectDialog) {
             e.preventDefault();
             setShowRejectDialog(true);
           }
@@ -353,6 +353,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
             <RequestPreview
               data={preview}
               entityCode={entityCode}
+              action={action}
               onApprove={handleApprove}
               onReject={handleReject}
               onNavigate={handleNavigate}

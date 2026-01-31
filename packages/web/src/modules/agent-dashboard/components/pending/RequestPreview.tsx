@@ -42,7 +42,7 @@ import { ExtractedDataSection } from './sections/ExtractedDataSection';
 import { DocumentsSection } from './sections/DocumentsSection';
 import { ContactSection } from './sections/ContactSection';
 import { AppointmentSection } from './sections/AppointmentSection';
-import type { ServiceRequestPreview } from '../../services/agent-requests-api';
+import type { ServiceRequestPreview, ActionType } from '../../services/agent-requests-api';
 import type { EntityCode } from '../../types';
 
 // =============================================================================
@@ -65,6 +65,7 @@ const REJECTION_REASONS = [
 interface RequestPreviewProps {
   data: ServiceRequestPreview;
   entityCode: EntityCode;
+  action?: ActionType;
   onApprove: () => Promise<void>;
   onReject: (reason: string) => Promise<void>;
   onNavigate: (direction: 'prev' | 'next') => void;
@@ -84,6 +85,7 @@ interface RequestPreviewProps {
 export function RequestPreview({
   data,
   entityCode,
+  action = 'pending',
   onApprove,
   onReject,
   onNavigate,
@@ -93,6 +95,8 @@ export function RequestPreview({
   onRejectDialogChange,
   onAppointmentCreated,
 }: RequestPreviewProps) {
+  // History action is read-only (no approve/reject buttons)
+  const isReadOnly = action === 'history';
   const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
 
@@ -237,37 +241,39 @@ export function RequestPreview({
         />
       </div>
 
-      {/* Actions Footer */}
-      <div className="p-4 border-t bg-muted/30">
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={handleApprove}
-            disabled={isApproving || isRejecting}
-            className="flex-1 bg-green-600 hover:bg-green-700"
-          >
-            {isApproving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4 mr-2" />
-            )}
-            {isApproving ? t('approving') : t('approve')}
-            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-green-700/50 rounded">A</kbd>
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setShowRejectDialog(true)}
-            disabled={isApproving || isRejecting}
-            className="flex-1"
-          >
-            <X className="h-4 w-4 mr-2" />
-            {t('reject')}
-            <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-red-700/50 rounded">R</kbd>
-          </Button>
+      {/* Actions Footer - Hidden for read-only (history) mode */}
+      {!isReadOnly && (
+        <div className="p-4 border-t bg-muted/30">
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleApprove}
+              disabled={isApproving || isRejecting}
+              className="flex-1 bg-green-600 hover:bg-green-700"
+            >
+              {isApproving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
+              {isApproving ? t('approving') : t('approve')}
+              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-green-700/50 rounded">A</kbd>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setShowRejectDialog(true)}
+              disabled={isApproving || isRejecting}
+              className="flex-1"
+            >
+              <X className="h-4 w-4 mr-2" />
+              {t('reject')}
+              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-red-700/50 rounded">R</kbd>
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center mt-2">
+            {t('keyboardHint')}
+          </p>
         </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-2">
-          {t('keyboardHint')}
-        </p>
-      </div>
+      )}
 
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={(open) => {

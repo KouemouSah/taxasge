@@ -250,9 +250,10 @@ export default function UnifiedWorkflowActionPage() {
     });
   };
 
-  // Use split view for pending action (optimized for bulk processing)
-  if (currentAction === 'pending') {
-    return <PendingPage entityCode={ENTITY_CODE} />;
+  // Use split view for pending, validation, and history (optimized for bulk processing)
+  // PendingPage supports all action types via the action prop
+  if (currentAction === 'pending' || currentAction === 'validation' || currentAction === 'history') {
+    return <PendingPage entityCode={ENTITY_CODE} action={currentAction} />;
   }
 
   // Invalid action - show error
