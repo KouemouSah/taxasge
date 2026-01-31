@@ -9,6 +9,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -171,6 +172,8 @@ export function MenuBuilder({
   entityCode,
   disabled = false,
 }: MenuBuilderProps) {
+  const t = useTranslations('menuConfig.menuBuilder');
+
   // State
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -272,17 +275,15 @@ export function MenuBuilder({
         <CardContent className="pt-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-base font-medium">Menu Generation Mode</Label>
+              <Label className="text-base font-medium">{t('modeTitle')}</Label>
               <p className="text-sm text-muted-foreground">
-                {isAutoMode
-                  ? 'Menus are auto-generated from entity workflows'
-                  : 'Menus are manually configured (explicit JSON)'}
+                {isAutoMode ? t('modeAuto') : t('modeManual')}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <span className={`text-sm ${isAutoMode ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
                 <Wand2 className="h-4 w-4 inline mr-1" />
-                Auto
+                {t('auto')}
               </span>
               <Switch
                 checked={!isAutoMode}
@@ -291,7 +292,7 @@ export function MenuBuilder({
               />
               <span className={`text-sm ${!isAutoMode ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
                 <Menu className="h-4 w-4 inline mr-1" />
-                Manual
+                {t('manual')}
               </span>
             </div>
           </div>
@@ -305,10 +306,9 @@ export function MenuBuilder({
             <div className="flex items-start gap-3">
               <Wand2 className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
-                <p className="font-medium text-blue-900">Auto-Generation Active</p>
+                <p className="font-medium text-blue-900">{t('autoModeActive')}</p>
                 <p className="text-sm text-blue-700 mt-1">
-                  The menu will be automatically generated based on the entity&apos;s workflow codes
-                  and the workflow_menu_mapping configuration. Switch to Manual mode to customize.
+                  {t('autoModeDescription')}
                 </p>
               </div>
             </div>
@@ -324,11 +324,11 @@ export function MenuBuilder({
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Menu Items</CardTitle>
+                  <CardTitle className="text-base">{t('menuItems')}</CardTitle>
                   <Badge variant="secondary">{menus.length}</Badge>
                 </div>
                 <CardDescription>
-                  Click to edit, drag to reorder
+                  {t('clickToEditDragToReorder')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -342,7 +342,7 @@ export function MenuBuilder({
                     disabled={disabled || isSaving}
                   >
                     <LinkIcon className="h-4 w-4 mr-1" />
-                    Link
+                    {t('addLink')}
                   </Button>
                   <Button
                     variant="outline"
@@ -352,7 +352,7 @@ export function MenuBuilder({
                     disabled={disabled || isSaving}
                   >
                     <FolderPlus className="h-4 w-4 mr-1" />
-                    Group
+                    {t('addGroup')}
                   </Button>
                 </div>
 
@@ -379,8 +379,8 @@ export function MenuBuilder({
                   ) : (
                     <div className="p-4 text-center text-muted-foreground border border-dashed rounded-md">
                       <Plus className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No menu items</p>
-                      <p className="text-xs">Click &quot;Link&quot; or &quot;Group&quot; to add</p>
+                      <p className="text-sm">{t('noMenuItems')}</p>
+                      <p className="text-xs">{t('clickLinkOrGroup')}</p>
                     </div>
                   )}
                 </ScrollArea>
@@ -392,7 +392,7 @@ export function MenuBuilder({
                     <div className="space-y-1">
                       <Label className="text-xs text-destructive flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
-                        Validation Errors ({errors.length})
+                        {t('validationErrors')} ({errors.length})
                       </Label>
                       <div className="text-xs text-destructive space-y-0.5 max-h-[80px] overflow-auto">
                         {errors.slice(0, 5).map((err, i) => (
@@ -400,7 +400,7 @@ export function MenuBuilder({
                         ))}
                         {errors.length > 5 && (
                           <p className="text-muted-foreground">
-                            ...and {errors.length - 5} more
+                            {t('andMore', { count: errors.length - 5 })}
                           </p>
                         )}
                       </div>
@@ -417,7 +417,7 @@ export function MenuBuilder({
                   onClick={() => setShowJsonSheet(true)}
                 >
                   <Code className="h-4 w-4 mr-2" />
-                  View JSON
+                  {t('viewJson')}
                 </Button>
               </CardContent>
             </Card>
@@ -437,9 +437,9 @@ export function MenuBuilder({
                 <CardContent className="pt-6">
                   <div className="text-center text-muted-foreground py-12">
                     <Menu className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                    <p className="font-medium">Select a menu item</p>
+                    <p className="font-medium">{t('menuItems')}</p>
                     <p className="text-sm mt-1">
-                      Click on an item in the list to edit it
+                      {t('clickToEditDragToReorder')}
                     </p>
                   </div>
                 </CardContent>
@@ -462,9 +462,9 @@ export function MenuBuilder({
       <Sheet open={showJsonSheet} onOpenChange={setShowJsonSheet}>
         <SheetContent className="sm:max-w-[600px]">
           <SheetHeader>
-            <SheetTitle>Menu Configuration JSON</SheetTitle>
+            <SheetTitle>{t('menuConfigJson')}</SheetTitle>
             <SheetDescription>
-              This is the JSON that will be saved to roles.menu_config
+              {t('jsonDescription')}
             </SheetDescription>
           </SheetHeader>
           <div className="mt-4">
@@ -480,22 +480,18 @@ export function MenuBuilder({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pendingSwitchMode
-                ? 'Switch to Auto Mode?'
-                : 'Switch to Manual Mode?'}
+              {pendingSwitchMode ? t('switchToAutoMode') : t('switchToManualMode')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingSwitchMode
-                ? 'Switching to auto mode will discard all manual menu configuration. The menu will be auto-generated from workflow mappings.'
-                : 'Switching to manual mode allows you to customize the menu structure. You will need to configure the menu items manually.'}
+              {pendingSwitchMode ? t('switchToAutoDescription') : t('switchToManualDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingSwitchMode(null)}>
-              Cancel
+              {t('cancel')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={confirmModeSwitch}>
-              {pendingSwitchMode ? 'Switch to Auto' : 'Switch to Manual'}
+              {pendingSwitchMode ? t('switchToAuto') : t('switchToManual')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -505,7 +501,7 @@ export function MenuBuilder({
       {isSaving && (
         <div className="fixed bottom-4 right-4 flex items-center gap-2 bg-background border rounded-md px-4 py-2 shadow-lg">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Saving...</span>
+          <span className="text-sm">{t('saving')}</span>
         </div>
       )}
     </div>

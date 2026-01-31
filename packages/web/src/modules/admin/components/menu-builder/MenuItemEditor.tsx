@@ -9,6 +9,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,6 +129,7 @@ function SubItemEditor({ item, onChange, onDelete, disabled }: SubItemEditorProp
 // =============================================================================
 
 export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemEditorProps) {
+  const t = useTranslations('menuConfig.menuItemEditor');
   const isGroup = Array.isArray(item.items);
 
   // Toggle between group and link
@@ -176,12 +178,12 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
             {isGroup ? (
               <>
                 <FolderOpen className="h-4 w-4 text-amber-500" />
-                Menu Group
+                {t('menuGroup')}
               </>
             ) : (
               <>
                 <LinkIcon className="h-4 w-4 text-blue-500" />
-                Menu Link
+                {t('menuLink')}
               </>
             )}
             {item.id && (
@@ -206,14 +208,14 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
         {/* Type Toggle */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label className="text-sm">Menu Type</Label>
+            <Label className="text-sm">{t('menuType')}</Label>
             <p className="text-xs text-muted-foreground">
-              {isGroup ? 'Contains sub-items' : 'Direct link'}
+              {isGroup ? t('containsSubItems') : t('directLink')}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <span className={`text-xs ${!isGroup ? 'font-medium' : 'text-muted-foreground'}`}>
-              Link
+              {t('link')}
             </span>
             <Switch
               checked={isGroup}
@@ -221,7 +223,7 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
               disabled={disabled}
             />
             <span className={`text-xs ${isGroup ? 'font-medium' : 'text-muted-foreground'}`}>
-              Group
+              {t('group')}
             </span>
           </div>
         </div>
@@ -231,21 +233,21 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
         {/* Basic Fields */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>ID</Label>
+            <Label>{t('id')}</Label>
             <Input
               value={item.id}
               onChange={(e) => onChange({ ...item, id: e.target.value })}
-              placeholder="menu_id"
+              placeholder={t('idPlaceholder')}
               disabled={disabled}
               className="font-mono"
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Title Key (i18n)</Label>
+            <Label>{t('titleKey')}</Label>
             <Input
               value={item.titleKey}
               onChange={(e) => onChange({ ...item, titleKey: e.target.value })}
-              placeholder="agent.nav.menuTitle"
+              placeholder={t('titleKeyPlaceholder')}
               disabled={disabled}
             />
           </div>
@@ -253,7 +255,7 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label>Icon</Label>
+            <Label>{t('icon')}</Label>
             <IconSelector
               value={item.icon}
               onChange={(icon) => onChange({ ...item, icon })}
@@ -261,7 +263,7 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Permission</Label>
+            <Label>{t('permission')}</Label>
             <PermissionSelector
               value={item.permission || ''}
               onChange={(permission) => onChange({ ...item, permission: permission || undefined })}
@@ -273,11 +275,11 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
         {/* Href (only for links) */}
         {!isGroup && (
           <div className="space-y-1.5">
-            <Label>Href</Label>
+            <Label>{t('href')}</Label>
             <Input
               value={item.href || ''}
               onChange={(e) => onChange({ ...item, href: e.target.value })}
-              placeholder="/dashboard/agent/entity"
+              placeholder={t('hrefPlaceholder')}
               disabled={disabled}
               className="font-mono"
             />
@@ -290,7 +292,7 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
             <Separator />
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Sub-items ({item.items?.length || 0})</Label>
+                <Label>{t('subItems')} ({item.items?.length || 0})</Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -298,7 +300,7 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
                   disabled={disabled}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Add Sub-item
+                  {t('addSubItem')}
                 </Button>
               </div>
 
@@ -316,7 +318,7 @@ export function MenuItemEditor({ item, onChange, onDelete, disabled }: MenuItemE
                 </div>
               ) : (
                 <div className="p-4 text-center text-muted-foreground bg-muted/30 rounded-md border border-dashed">
-                  No sub-items. Click &quot;Add Sub-item&quot; to create one.
+                  {t('noSubItems')}
                 </div>
               )}
             </div>

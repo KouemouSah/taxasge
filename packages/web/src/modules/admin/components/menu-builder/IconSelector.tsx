@@ -9,6 +9,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Popover,
   PopoverContent,
@@ -51,6 +52,7 @@ const ICON_CATEGORIES: Record<string, string[]> = {
 // =============================================================================
 
 export function IconSelector({ value, onChange, disabled = false }: IconSelectorProps) {
+  const t = useTranslations('menuConfig.iconSelector');
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -94,6 +96,22 @@ export function IconSelector({ value, onChange, disabled = false }: IconSelector
     setSearch('');
   };
 
+  // Map category names to translation keys
+  const getCategoryLabel = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      'Navigation': t('categories.navigation'),
+      'Documents': t('categories.documents'),
+      'Status': t('categories.status'),
+      'Finance': t('categories.finance'),
+      'Business': t('categories.business'),
+      'Users': t('categories.users'),
+      'Communication': t('categories.communication'),
+      'Settings': t('categories.settings'),
+      'Other': t('categories.other'),
+    };
+    return categoryMap[category] || category;
+  };
+
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -106,7 +124,7 @@ export function IconSelector({ value, onChange, disabled = false }: IconSelector
         >
           <div className="flex items-center gap-2">
             <CurrentIcon className="h-4 w-4" />
-            <span className="truncate">{value || 'Select icon...'}</span>
+            <span className="truncate">{value || t('selectIcon')}</span>
           </div>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -117,7 +135,7 @@ export function IconSelector({ value, onChange, disabled = false }: IconSelector
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search icons..."
+              placeholder={t('searchIcons')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-9"
@@ -131,7 +149,7 @@ export function IconSelector({ value, onChange, disabled = false }: IconSelector
             {Object.entries(groupedIcons).map(([category, icons]) => (
               <div key={category}>
                 <h4 className="text-xs font-medium text-muted-foreground mb-2 px-1">
-                  {category}
+                  {getCategoryLabel(category)}
                 </h4>
                 <div className="grid grid-cols-6 gap-1">
                   {icons.map((iconName) => {
@@ -160,7 +178,7 @@ export function IconSelector({ value, onChange, disabled = false }: IconSelector
 
             {filteredIcons.length === 0 && (
               <div className="text-center text-muted-foreground py-8">
-                No icons found
+                {t('noIconsFound')}
               </div>
             )}
           </div>
@@ -168,7 +186,7 @@ export function IconSelector({ value, onChange, disabled = false }: IconSelector
 
         {/* Footer with count */}
         <div className="p-2 border-t bg-muted/30 text-xs text-muted-foreground text-center">
-          {filteredIcons.length} icons available
+          {t('iconsAvailable', { count: filteredIcons.length })}
         </div>
       </PopoverContent>
     </Popover>

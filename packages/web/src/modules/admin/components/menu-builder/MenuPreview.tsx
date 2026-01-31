@@ -9,6 +9,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -112,6 +113,7 @@ function PreviewMenuItem({ item, isActive }: PreviewMenuItemProps) {
 // =============================================================================
 
 export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
+  const t = useTranslations('menuConfig.menuPreview');
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   return (
@@ -120,7 +122,7 @@ export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Eye className="h-4 w-4" />
-            Preview
+            {t('preview')}
           </CardTitle>
           <div className="flex items-center gap-1">
             <Button
@@ -128,6 +130,7 @@ export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
               size="icon"
               className="h-7 w-7"
               onClick={() => setViewMode('desktop')}
+              title={t('desktop')}
             >
               <Monitor className="h-3.5 w-3.5" />
             </Button>
@@ -136,6 +139,7 @@ export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
               size="icon"
               className="h-7 w-7"
               onClick={() => setViewMode('mobile')}
+              title={t('mobile')}
             >
               <Smartphone className="h-3.5 w-3.5" />
             </Button>
@@ -172,7 +176,7 @@ export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
                 <span className="text-xs font-bold text-primary">AG</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">Agent Dashboard</p>
+                <p className="text-sm font-medium truncate">{t('agentDashboard')}</p>
                 <p className="text-xs text-muted-foreground truncate">
                   {roleCode || 'role_code'}
                 </p>
@@ -193,7 +197,7 @@ export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
                 ))
               ) : (
                 <div className="p-4 text-center text-muted-foreground text-sm">
-                  No menu items to preview
+                  {t('noMenuItemsToPreview')}
                 </div>
               )}
             </div>
@@ -202,10 +206,10 @@ export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
           {/* Sidebar Footer */}
           <div className="p-3 border-t bg-muted/30">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{menus.length} menu items</span>
+              <span>{t('menuItemsCount', { count: menus.length })}</span>
               <span>•</span>
               <span>
-                {menus.reduce((acc, m) => acc + (m.items?.length || 0), 0)} sub-items
+                {t('subItemsCount', { count: menus.reduce((acc, m) => acc + (m.items?.length || 0), 0) })}
               </span>
             </div>
           </div>
@@ -213,15 +217,15 @@ export function MenuPreview({ menus, roleCode, entityCode }: MenuPreviewProps) {
 
         {/* Legend */}
         <div className="px-4 pb-4">
-          <p className="text-xs text-muted-foreground mb-2">Legend:</p>
+          <p className="text-xs text-muted-foreground mb-2">{t('legend')}</p>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="flex items-center gap-1">
               <div className="h-3 w-3 rounded bg-primary/10" />
-              Active item
+              {t('activeItem')}
             </span>
             <span className="flex items-center gap-1">
               <ChevronDown className="h-3 w-3" />
-              Expandable group
+              {t('expandableGroup')}
             </span>
           </div>
         </div>

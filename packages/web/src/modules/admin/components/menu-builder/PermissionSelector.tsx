@@ -9,6 +9,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Popover,
   PopoverContent,
@@ -40,10 +41,12 @@ export function PermissionSelector({
   value,
   onChange,
   disabled = false,
-  placeholder = 'No permission required',
+  placeholder,
 }: PermissionSelectorProps) {
+  const t = useTranslations('menuConfig.permissionSelector');
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const displayPlaceholder = placeholder || t('noPermissionRequired');
 
   // Fetch all permissions
   const { data: permissions = [], isLoading } = usePermissions();
@@ -105,7 +108,7 @@ export function PermissionSelector({
             ) : (
               <>
                 <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="text-muted-foreground">{placeholder}</span>
+                <span className="text-muted-foreground">{displayPlaceholder}</span>
               </>
             )}
           </div>
@@ -118,7 +121,7 @@ export function PermissionSelector({
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search permissions..."
+              placeholder={t('searchPermissions')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8 h-9"
@@ -136,7 +139,7 @@ export function PermissionSelector({
               className="w-full justify-start text-muted-foreground"
             >
               <X className="h-4 w-4 mr-2" />
-              Clear permission (no restriction)
+              {t('clearPermission')}
             </Button>
           </div>
         )}
@@ -145,11 +148,11 @@ export function PermissionSelector({
         <ScrollArea className="h-[300px]">
           {isLoading ? (
             <div className="p-4 text-center text-muted-foreground">
-              Loading permissions...
+              {t('loadingPermissions')}
             </div>
           ) : groupedPermissions.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">
-              No permissions found
+              {t('noPermissionsFound')}
             </div>
           ) : (
             <div className="p-2 space-y-3">
@@ -179,7 +182,7 @@ export function PermissionSelector({
                             </span>
                             {perm.is_critical && (
                               <Badge variant="outline" className="text-[10px] h-5 text-amber-600 border-amber-300">
-                                Critical
+                                {t('critical')}
                               </Badge>
                             )}
                           </div>
@@ -202,7 +205,7 @@ export function PermissionSelector({
         {selectedPermission && (
           <div className="p-2 border-t bg-muted/30">
             <div className="text-xs">
-              <span className="text-muted-foreground">Selected: </span>
+              <span className="text-muted-foreground">{t('selected')} </span>
               <span className="font-mono">{selectedPermission.name}</span>
             </div>
             {selectedPermission.description && (
