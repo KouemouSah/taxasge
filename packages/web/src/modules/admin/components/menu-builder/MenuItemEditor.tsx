@@ -52,6 +52,8 @@ interface SubItemEditorProps {
 // =============================================================================
 
 function SubItemEditor({ item, onChange, onDelete, disabled }: SubItemEditorProps) {
+  const t = useTranslations('admin.menuConfig.menuItemEditor');
+
   return (
     <div className="flex items-start gap-2 p-3 bg-muted/30 rounded-md border">
       <GripVertical className="h-4 w-4 mt-2.5 text-muted-foreground cursor-grab" />
@@ -59,21 +61,21 @@ function SubItemEditor({ item, onChange, onDelete, disabled }: SubItemEditorProp
       <div className="flex-1 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">ID</Label>
+            <Label className="text-xs">{t('id')}</Label>
             <Input
               value={item.id}
               onChange={(e) => onChange({ ...item, id: e.target.value })}
-              placeholder="sub_item_id"
+              placeholder={t('idPlaceholder')}
               disabled={disabled}
               className="h-8 text-sm font-mono"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Title Key (i18n)</Label>
+            <Label className="text-xs">{t('titleKey')}</Label>
             <Input
               value={item.titleKey}
               onChange={(e) => onChange({ ...item, titleKey: e.target.value })}
-              placeholder="agent.nav.menuItem"
+              placeholder={t('titleKeyPlaceholder')}
               disabled={disabled}
               className="h-8 text-sm"
             />
@@ -82,7 +84,7 @@ function SubItemEditor({ item, onChange, onDelete, disabled }: SubItemEditorProp
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Icon</Label>
+            <Label className="text-xs">{t('icon')}</Label>
             <IconSelector
               value={item.icon}
               onChange={(icon) => onChange({ ...item, icon })}
@@ -90,7 +92,7 @@ function SubItemEditor({ item, onChange, onDelete, disabled }: SubItemEditorProp
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Permission</Label>
+            <Label className="text-xs">{t('permission')}</Label>
             <PermissionSelector
               value={item.permission || ''}
               onChange={(permission) => onChange({ ...item, permission: permission || undefined })}
@@ -100,11 +102,11 @@ function SubItemEditor({ item, onChange, onDelete, disabled }: SubItemEditorProp
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Href (required)</Label>
+          <Label className="text-xs">{t('hrefRequired')}</Label>
           <Input
             value={item.href}
             onChange={(e) => onChange({ ...item, href: e.target.value })}
-            placeholder="/dashboard/agent/entity/page"
+            placeholder={t('hrefPlaceholder')}
             disabled={disabled}
             className="h-8 text-sm font-mono"
           />
