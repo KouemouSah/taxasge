@@ -67,7 +67,12 @@ import {
   Workflow,
   ChevronsUpDown,
   X,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useLocale } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import { useWorkflows } from '@/modules/service-requests-admin/hooks'
 import {
@@ -77,6 +82,7 @@ import {
   useUpdateEntity,
   useDeleteEntity,
 } from '@/modules/cities'
+import { useWorkflowMappings } from '@/modules/admin/hooks/useWorkflowMappings'
 import { hierarchyApi } from '@/modules/fiscal-services/services/api'
 import type {
   EntityWithDetails,
@@ -85,6 +91,62 @@ import type {
   EntityType,
   EntityFilters,
 } from '@/modules/cities'
+import type { WorkflowMenuMapping } from '@/modules/agent-dashboard/types/menu-config'
+
+// =============================================================================
+// HELPER: Match workflow code against SQL LIKE pattern
+// =============================================================================
+
+/**
+ * Convert SQL LIKE pattern to JavaScript RegExp
+ * Supports: % (any chars), _ (single char)
+ */
+function sqlLikeToRegex(pattern: string): RegExp {
+  // Escape special regex chars except % and _
+  let regexStr = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // Convert SQL LIKE wildcards to regex
+  regexStr = regexStr.replace(/%/g, '.*')
+  regexStr = regexStr.replace(/_/g, '.')
+  return new RegExp(`^${regexStr}$`, 'i')
+}
+
+/**
+ * Check if a workflow code matches any mapping pattern
+ */
+function findMatchingMapping(
+  workflowCode: string,
+  mappings: WorkflowMenuMapping[]
+): WorkflowMenuMapping | null {
+  for (const mapping of mappings) {
+    const regex = sqlLikeToRegex(mapping.workflow_pattern)
+    if (regex.test(workflowCode)) {
+      return mapping
+    }
+  }
+  return null
+}
+
+/**
+ * Calculate mapping coverage for a list of workflow codes
+ */
+function calculateMappingCoverage(
+  workflowCodes: string[],
+  mappings: WorkflowMenuMapping[]
+): { covered: number; total: number; missingCodes: string[] } {
+  const missingCodes: string[] = []
+  let covered = 0
+
+  for (const code of workflowCodes) {
+    const match = findMatchingMapping(code, mappings)
+    if (match) {
+      covered++
+    } else {
+      missingCodes.push(code)
+    }
+  }
+
+  return { covered, total: workflowCodes.length, missingCodes }
+}
 
 interface EntityFormData {
   code: string
@@ -114,6 +176,11 @@ export default function EntitiesTabContent() {
   const t = useTranslations('admin.entities')
   const tCommon = useTranslations('common')
   const { toast } = useToast()
+  const locale = useLocale()
+
+  // Fetch workflow mappings for coverage calculation
+  const { data: mappingsData } = useWorkflowMappings({ page_size: 100 })
+  const workflowMappings = mappingsData?.items || []
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('')
@@ -436,16 +503,30 @@ export default function EntitiesTabContent() {
                       )}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-1">
-                        <Workflow className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{entity.workflow_count}</span>
-                        {entity.resolved_workflow_codes.length > 0 && (
-                          <span className="text-xs text-muted-foreground ml-1">
-                            ({entity.resolved_workflow_codes.slice(0, 2).join(', ')}
-                            {entity.resolved_workflow_codes.length > 2 && '...'})
-                          </span>
-                        )}
-                      </div>
+                      {(() => {
+                        const codes = entity.resolved_workflow_codes || []
+                        const coverage = calculateMappingCoverage(codes, workflowMappings)
+                        const coveragePercent = codes.length > 0 ? Math.round((coverage.covered / coverage.total) * 100) : 0
+                        const badgeClass = coveragePercent === 100
+                          ? 'bg-green-100 text-green-700 border-green-300'
+                          : coveragePercent >= 50
+                          ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                          : 'bg-red-100 text-red-700 border-red-300'
+
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <Workflow className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm">{entity.workflow_count}</span>
+                            </div>
+                            {codes.length > 0 && (
+                              <Badge variant="outline" className={`text-[10px] h-5 ${badgeClass}`}>
+                                {coverage.covered}/{coverage.total} {t('mappings')}
+                              </Badge>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -729,6 +810,59 @@ export default function EntitiesTabContent() {
                       </Badge>
                     )
                   })}
+                </div>
+              )}
+
+              {/* Mapping coverage status */}
+              {formData.workflow_codes.length > 0 && (
+                <div className="mt-3 p-3 bg-muted/50 rounded-md border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">{t('mappingCoverage')}</span>
+                    {(() => {
+                      const coverage = calculateMappingCoverage(formData.workflow_codes, workflowMappings)
+                      const badgeClass = coverage.covered === coverage.total
+                        ? 'bg-green-100 text-green-700'
+                        : coverage.covered > 0
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-red-100 text-red-700'
+                      return (
+                        <Badge variant="outline" className={`text-xs ${badgeClass}`}>
+                          {coverage.covered}/{coverage.total}
+                        </Badge>
+                      )
+                    })()}
+                  </div>
+                  <div className="space-y-1">
+                    {formData.workflow_codes.map((code) => {
+                      const mapping = findMatchingMapping(code, workflowMappings)
+                      return (
+                        <div key={code} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            {mapping ? (
+                              <CheckCircle2 className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-amber-500" />
+                            )}
+                            <span className="font-mono">{code}</span>
+                          </div>
+                          {mapping ? (
+                            <span className="text-muted-foreground">
+                              → {mapping.menu_group_id}
+                            </span>
+                          ) : (
+                            <Link
+                              href={`/${locale}/dashboard/admin/workflow-mappings/new?pattern=${encodeURIComponent(code.split('_')[0] + '_%')}`}
+                              className="text-primary hover:underline flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {t('createMapping')}
+                              <ExternalLink className="h-3 w-3" />
+                            </Link>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>

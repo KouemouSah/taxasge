@@ -1083,6 +1083,9 @@
       "parentTypeEntity": "Entidad",
       "parentTypeHint": "Selecciona si esta entidad está vinculada a un ministerio o a otra entidad",
       "noMinistriesFound": "No se encontraron ministerios",
+      "mappings": "mappings",
+      "mappingCoverage": "Cobertura de Mappings",
+      "createMapping": "Crear mapping",
       "table": {
         "code": "Código",
         "name": "Nombre",
