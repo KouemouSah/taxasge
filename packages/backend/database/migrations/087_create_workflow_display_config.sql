@@ -54,53 +54,22 @@ CREATE TRIGGER tr_workflow_display_config_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================================================
--- SEED DATA - Default configurations for existing workflows
+-- SEED DATA - Only migrated workflows (PASAPORTE)
+-- Other workflows will be added after their migration to new architecture
 -- =============================================================================
 
 INSERT INTO workflow_display_config (workflow_pattern, list_columns, preview_sections, labels) VALUES
--- Passports
+-- Passports (only migrated workflow as of 2026-02-01)
+-- Uses only validated system columns from service_requests table
 ('PASAPORTE_%',
- '["reference", "fullName", "solicitudType", "createdAt", "priority", "slaStatus"]'::jsonb,
+ '["reference", "fullName", "solicitudType", "createdAt", "priority", "status"]'::jsonb,
  '["info", "extractedData", "documents", "contact", "appointment"]'::jsonb,
- '{"pageTitle": "agent.pending.passportRequests"}'::jsonb),
-
--- Residences
-('RESIDENCIA_%',
- '["reference", "fullName", "solicitudType", "createdAt", "priority", "slaStatus"]'::jsonb,
- '["info", "extractedData", "documents", "contact", "appointment"]'::jsonb,
- '{"pageTitle": "agent.pending.residenceRequests"}'::jsonb),
-
--- Driver licenses
-('CONDUCIR_%',
- '["reference", "fullName", "licenseType", "createdAt", "priority", "slaStatus"]'::jsonb,
- '["info", "extractedData", "documents", "contact", "appointment"]'::jsonb,
- '{"pageTitle": "agent.pending.licenseRequests"}'::jsonb),
-
--- Vehicles
-('VEHICULO_%',
- '["reference", "ownerName", "plateNumber", "vehicleType", "createdAt", "priority"]'::jsonb,
- '["info", "extractedData", "documents", "contact"]'::jsonb,
- '{"pageTitle": "agent.pending.vehicleRequests"}'::jsonb),
-
--- Certificates
-('CERTIFICADO_%',
- '["reference", "fullName", "certificateType", "createdAt", "priority"]'::jsonb,
- '["info", "extractedData", "documents", "contact"]'::jsonb,
- '{"pageTitle": "agent.pending.certificateRequests"}'::jsonb),
-
--- Verifications
-('VERIFICACION_%',
- '["reference", "fullName", "verificationType", "createdAt", "priority"]'::jsonb,
- '["info", "extractedData", "documents", "contact"]'::jsonb,
- '{"pageTitle": "agent.pending.verificationRequests"}'::jsonb),
-
--- Treasury/Payments
-('PAGO_%',
- '["reference", "payerName", "amount", "paymentType", "createdAt", "status"]'::jsonb,
- '["info", "paymentDetails", "documents"]'::jsonb,
- '{"pageTitle": "agent.pending.paymentRequests"}'::jsonb)
+ '{"pageTitle": "agent.pending.passportRequests"}'::jsonb)
 
 ON CONFLICT (workflow_pattern) DO NOTHING;
+
+-- NOTE: Add more workflow configurations here after their migration:
+-- RESIDENCIA_%, CONDUCIR_%, VEHICULO_%, CERTIFICADO_%, VERIFICACION_%, PAGO_%
 
 -- =============================================================================
 -- GRANT PERMISSIONS (if needed)
