@@ -2,13 +2,16 @@
  * PendingPage - Split View for processing pending requests
  * Optimized for processing 50+ requests/day in 3-4 clicks
  *
+ * Supports dynamic column configuration via workflow_display_config table
+ *
  * @module agent-dashboard/components/pending
  * @date 2026-01-26
+ * @updated 2026-02-01 - Added dynamic display config support
  */
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Filter } from 'lucide-react';
@@ -27,8 +30,26 @@ import { agentRequestsApi } from '../../services/agent-requests-api';
 import { RequestList } from './RequestList';
 import { RequestPreview } from './RequestPreview';
 import { PreviewSkeleton } from './PreviewSkeleton';
+import { DEFAULT_LIST_COLUMNS } from './RequestListItem';
+import { useDisplayConfigForWorkflow } from '@/modules/admin/hooks/useDisplayConfigs';
 import type { EntityCode } from '../../types';
 import type { ActionType, Priority } from '../../services/agent-requests-api';
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Derives workflow pattern from entity code
+ * Example: 'cnedoge-pasaporte' → 'PASAPORTE_%'
+ */
+function deriveWorkflowPattern(entityCode: EntityCode): string {
+  // Extract the workflow part from entity code
+  // e.g., 'cnedoge-pasaporte' → 'pasaporte'
+  const parts = entityCode.split('-');
+  const workflowPart = parts[parts.length - 1];
+  return `${workflowPart.toUpperCase()}_%`;
+}
 
 // =============================================================================
 // PROPS
@@ -58,6 +79,25 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   const [page, setPage] = useState(1);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Derive workflow pattern from entity code for display config
+  const workflowPattern = useMemo(() => deriveWorkflowPattern(entityCode), [entityCode]);
+
+  // Fetch display configuration for this workflow
+  const { data: displayConfig, isLoading: configLoading } = useDisplayConfigForWorkflow(
+    workflowPattern,
+    true
+  );
+
+  // Determine which columns to display (from config or defaults)
+  const displayColumns = useMemo(() => {
+    if (displayConfig?.list_columns && displayConfig.list_columns.length > 0) {
+      console.log('[PendingPage] Using display config columns:', displayConfig.list_columns);
+      return displayConfig.list_columns;
+    }
+    console.log('[PendingPage] Using default columns:', [...DEFAULT_LIST_COLUMNS]);
+    return [...DEFAULT_LIST_COLUMNS];
+  }, [displayConfig]);
 
   // Debounce search
   useEffect(() => {
@@ -332,12 +372,13 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
             items={requests}
             selectedId={selectedId}
             onSelect={handleSelect}
-            isLoading={listLoading}
+            isLoading={listLoading || configLoading}
             isError={listError}
             page={currentPage}
             totalPages={totalPages}
             total={total}
             onPageChange={setPage}
+            displayColumns={displayColumns}
           />
         </div>
 

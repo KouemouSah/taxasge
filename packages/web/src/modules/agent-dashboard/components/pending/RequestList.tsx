@@ -1,8 +1,10 @@
 /**
  * RequestList - Left column list of pending requests
+ * Supports dynamic column configuration from workflow_display_config
  *
  * @module agent-dashboard/components/pending
  * @date 2026-01-26
+ * @updated 2026-02-01 - Added dynamic column support
  */
 
 'use client';
@@ -29,6 +31,8 @@ interface RequestListProps {
   totalPages: number;
   total: number;
   onPageChange: (page: number) => void;
+  /** Dynamic columns to display - if not provided, uses defaults */
+  displayColumns?: string[];
 }
 
 // =============================================================================
@@ -45,6 +49,7 @@ export function RequestList({
   totalPages,
   total,
   onPageChange,
+  displayColumns,
 }: RequestListProps) {
   const t = useTranslations('agent.pending.list');
 
@@ -94,6 +99,7 @@ export function RequestList({
             item={item}
             isSelected={item.id === selectedId}
             onClick={() => onSelect(item.id, index)}
+            displayColumns={displayColumns}
           />
         ))}
       </div>

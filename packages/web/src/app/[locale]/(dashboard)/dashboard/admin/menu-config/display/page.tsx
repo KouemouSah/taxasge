@@ -70,7 +70,6 @@ import type { AvailableColumn } from '@/modules/admin/services/menuConfigService
 import type {
   DisplayConfig,
   DisplayConfigCreateRequest,
-  DisplayConfigUpdateRequest,
 } from '@/modules/admin/services/menuConfigService';
 
 // =============================================================================
@@ -83,7 +82,6 @@ export default function DisplayConfigPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<DisplayConfig | null>(null);
 
@@ -112,13 +110,6 @@ export default function DisplayConfigPage() {
   const handleCreate = async (data: DisplayConfigCreateRequest) => {
     await createConfigAsync(data);
     setIsCreateDialogOpen(false);
-  };
-
-  const handleUpdate = async (data: DisplayConfigUpdateRequest) => {
-    if (!selectedConfig) return;
-    await updateConfigAsync(selectedConfig.id, data);
-    setIsEditDialogOpen(false);
-    setSelectedConfig(null);
   };
 
   const handleDelete = async () => {
@@ -311,12 +302,11 @@ export default function DisplayConfigPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
-                              setSelectedConfig(config);
-                              setIsEditDialogOpen(true);
-                            }}
+                            asChild
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Link href={`/${locale}/dashboard/admin/menu-config/display/${config.id}`}>
+                              <Pencil className="h-4 w-4" />
+                            </Link>
                           </Button>
                           <Button
                             variant="ghost"
@@ -376,21 +366,6 @@ export default function DisplayConfigPage() {
         mode="create"
       />
 
-      {/* Edit Dialog */}
-      {selectedConfig && (
-        <DisplayConfigFormDialog
-          open={isEditDialogOpen}
-          onOpenChange={(open) => {
-            setIsEditDialogOpen(open);
-            if (!open) setSelectedConfig(null);
-          }}
-          onSubmit={handleUpdate}
-          isSubmitting={isUpdating}
-          mode="edit"
-          initialData={selectedConfig}
-        />
-      )}
-
       {/* Delete Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -417,34 +392,22 @@ export default function DisplayConfigPage() {
 }
 
 // =============================================================================
-// FORM DIALOG COMPONENT
+// CREATE DIALOG COMPONENT
 // =============================================================================
 
-type DisplayConfigFormDialogProps =
-  | {
-      open: boolean;
-      onOpenChange: (open: boolean) => void;
-      onSubmit: (data: DisplayConfigCreateRequest) => Promise<void>;
-      isSubmitting: boolean;
-      mode: 'create';
-      initialData?: never;
-    }
-  | {
-      open: boolean;
-      onOpenChange: (open: boolean) => void;
-      onSubmit: (data: DisplayConfigUpdateRequest) => Promise<void>;
-      isSubmitting: boolean;
-      mode: 'edit';
-      initialData: DisplayConfig;
-    };
+interface DisplayConfigFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: DisplayConfigCreateRequest) => Promise<void>;
+  isSubmitting: boolean;
+  mode: 'create';
+}
 
 function DisplayConfigFormDialog({
   open,
   onOpenChange,
   onSubmit,
   isSubmitting,
-  mode,
-  initialData,
 }: DisplayConfigFormDialogProps) {
   const t = useTranslations('admin.menuConfig.displayConfig');
   const [pattern, setPattern] = useState('');
@@ -463,18 +426,12 @@ function DisplayConfigFormDialog({
 
   useEffect(() => {
     if (open) {
-      if (initialData) {
-        setPattern(initialData.workflow_pattern);
-        setSelectedColumns(initialData.list_columns);
-        setSelectedSections(initialData.preview_sections);
-      } else {
-        setPattern('');
-        // Use default selected columns from backend
-        setSelectedColumns(defaultSelected);
-        setSelectedSections(['info', 'extractedData', 'documents', 'contact']);
-      }
+      setPattern('');
+      // Use default selected columns from backend
+      setSelectedColumns(defaultSelected);
+      setSelectedSections(['info', 'extractedData', 'documents', 'contact']);
     }
-  }, [open, initialData, defaultSelected]);
+  }, [open, defaultSelected]);
 
   // Columns to show: use dynamic if available, fallback otherwise
   const columnsToShow: AvailableColumn[] =
@@ -490,18 +447,11 @@ function DisplayConfigFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'create') {
-      await (onSubmit as (data: DisplayConfigCreateRequest) => Promise<void>)({
-        workflow_pattern: pattern,
-        list_columns: selectedColumns,
-        preview_sections: selectedSections,
-      });
-    } else {
-      await (onSubmit as (data: DisplayConfigUpdateRequest) => Promise<void>)({
-        list_columns: selectedColumns,
-        preview_sections: selectedSections,
-      });
-    }
+    await onSubmit({
+      workflow_pattern: pattern,
+      list_columns: selectedColumns,
+      preview_sections: selectedSections,
+    });
   };
 
   const toggleColumn = (columnId: string) => {
@@ -520,18 +470,15 @@ function DisplayConfigFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? t('createTitle') : t('editTitle')}</DialogTitle>
+          <DialogTitle>{t('createTitle')}</DialogTitle>
           <DialogDescription>
-            {mode === 'create'
-              ? t('createDescription')
-              : t('editDescription', { pattern: initialData?.workflow_pattern })}
+            {t('createDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Pattern */}
-          {mode === 'create' && (
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label htmlFor="pattern">{t('pattern')}</Label>
               <Input
                 id="pattern"
@@ -542,7 +489,6 @@ function DisplayConfigFormDialog({
               />
               <p className="text-xs text-muted-foreground">{t('patternDescription')}</p>
             </div>
-          )}
 
           {/* Columns */}
           <div className="space-y-3">
@@ -686,7 +632,7 @@ function DisplayConfigFormDialog({
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === 'create' ? 'Créer' : 'Enregistrer'}
+              Créer
             </Button>
           </DialogFooter>
         </form>

@@ -52,9 +52,7 @@ import {
   Workflow,
   Cog,
   LayoutList,
-  FileStack,
   Link2,
-  LayoutGrid,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -300,11 +298,6 @@ export default function AdminSidebar() {
               title: t('nav.workflowMappings'),
               href: `/${locale}/dashboard/admin/menu-config`,
               icon: Link2,
-            },
-            {
-              title: t('nav.displayConfig'),
-              href: `/${locale}/dashboard/admin/menu-config/display`,
-              icon: LayoutGrid,
             },
           ],
         },
