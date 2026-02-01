@@ -1359,6 +1359,7 @@
       "menuConfiguration": "Configuración de Menús",
       "menuTemplates": "Plantillas de Menú",
       "workflowMappings": "Mapeos de Workflow",
+      "displayConfig": "Configuración de Columnas",
       "roleMenuConfig": "Menús por Rol"
     },
     "noResults": "No se encontraron resultados",

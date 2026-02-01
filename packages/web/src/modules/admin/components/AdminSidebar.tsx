@@ -54,6 +54,7 @@ import {
   LayoutList,
   FileStack,
   Link2,
+  LayoutGrid,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -296,19 +297,14 @@ export default function AdminSidebar() {
           icon: LayoutList,
           items: [
             {
-              title: t('nav.menuTemplates'),
-              href: `/${locale}/dashboard/admin/menu-config?tab=templates`,
-              icon: FileStack,
-            },
-            {
               title: t('nav.workflowMappings'),
-              href: `/${locale}/dashboard/admin/menu-config?tab=workflow-mappings`,
+              href: `/${locale}/dashboard/admin/menu-config`,
               icon: Link2,
             },
             {
-              title: t('nav.roleMenuConfig'),
-              href: `/${locale}/dashboard/admin/menu-config`,
-              icon: Key,
+              title: t('nav.displayConfig'),
+              href: `/${locale}/dashboard/admin/menu-config/display`,
+              icon: LayoutGrid,
             },
           ],
         },

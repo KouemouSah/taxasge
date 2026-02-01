@@ -1359,6 +1359,7 @@
       "menuConfiguration": "Configuration des Menus",
       "menuTemplates": "Modèles de Menu",
       "workflowMappings": "Mappages Workflow",
+      "displayConfig": "Configuration des Colonnes",
       "roleMenuConfig": "Menus par Rôle"
     },
     "noResults": "Aucun résultat trouvé",
