@@ -57,6 +57,8 @@ import {
   ChevronLeft,
   Check,
   X,
+  LayoutGrid,
+  Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import apiClient from '@/core/api/client';
@@ -109,19 +111,56 @@ async function deleteWorkflowMapping(id: number): Promise<void> {
 // =============================================================================
 
 export default function MenuConfigPage() {
+  const locale = useLocale();
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Menu className="h-8 w-8" />
-            Configuration des Menus
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Configurer les règles de génération automatique des menus agent
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+          <Menu className="h-8 w-8" />
+          Configuration des Menus
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Configurer les règles de génération automatique des menus agent
+        </p>
+      </div>
+
+      {/* Navigation Cards */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="border-2 border-primary/20 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Mappings Workflow → Menu
+            </CardTitle>
+            <CardDescription>
+              Règles de génération automatique des menus depuis les codes workflow
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Badge variant="secondary">Section actuelle</Badge>
+          </CardContent>
+        </Card>
+
+        <Link href={`/${locale}/dashboard/admin/menu-config/display`}>
+          <Card className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <LayoutGrid className="h-5 w-5" />
+                Configuration d&apos;Affichage
+              </CardTitle>
+              <CardDescription>
+                Personnaliser les colonnes et sections affichées par type de workflow
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" size="sm">
+                Accéder <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Workflow Mappings */}
