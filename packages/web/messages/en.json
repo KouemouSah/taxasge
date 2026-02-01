@@ -1100,6 +1100,24 @@
         "labelsDescription": "Override default translations (optional)",
         "noConfigsFound": "No configurations found",
         "configsFound": "{count} configuration(s) found",
+        "availableColumns": "Available Columns",
+        "selectedColumns": "Selected Columns",
+        "selectedColumnsDescription": "Reorder with arrows to define display order",
+        "searchColumns": "Search column...",
+        "noColumnsMatchSearch": "No columns match search",
+        "allColumnsSelected": "All columns are selected",
+        "noColumnsSelected": "No columns selected",
+        "loadingColumns": "Loading columns...",
+        "preview": "Preview",
+        "moreColumns": "more columns",
+        "unsavedChanges": "Unsaved changes",
+        "actions": {
+          "cancel": "Cancel",
+          "save": "Save",
+          "create": "Create",
+          "retry": "Retry",
+          "backToList": "Back to list"
+        },
         "columns": {
           "reference": "Reference",
           "fullName": "Full Name",
@@ -1152,7 +1170,8 @@
           "deleted": "Configuration deleted successfully",
           "createError": "Error creating configuration",
           "updateError": "Error updating configuration",
-          "deleteError": "Error deleting configuration"
+          "deleteError": "Error deleting configuration",
+          "loadError": "Error loading configuration"
         },
         "confirmDelete": "Are you sure you want to delete this configuration?",
         "confirmDeleteDescription": "The configuration for \"{pattern}\" will be permanently deleted."

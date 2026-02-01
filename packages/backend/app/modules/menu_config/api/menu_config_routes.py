@@ -119,7 +119,7 @@ async def get_my_menu_config(
     "/workflow-mappings",
     response_model=WorkflowMenuMappingListResponse,
     summary="List workflow menu mappings",
-    description="Get all workflow menu mappings with pagination. Requires admin.menu.read permission."
+    description="Get all workflow menu mappings with pagination. Requires menu.view_mappings permission."
 )
 async def list_workflow_mappings(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
@@ -133,7 +133,7 @@ async def list_workflow_mappings(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.read", raise_exception=True
+        current_user.id, "menu.view_mappings", raise_exception=True
     )
 
     repo = WorkflowMappingRepository(db)
@@ -162,7 +162,7 @@ async def list_workflow_mappings(
     response_model=WorkflowMenuMappingResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create workflow mapping",
-    description="Create a new workflow menu mapping. Requires admin.menu.create permission."
+    description="Create a new workflow menu mapping. Requires menu.create_mapping permission."
 )
 async def create_workflow_mapping(
     mapping: WorkflowMenuMappingCreate,
@@ -174,7 +174,7 @@ async def create_workflow_mapping(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.create", raise_exception=True
+        current_user.id, "menu.create_mapping", raise_exception=True
     )
 
     repo = WorkflowMappingRepository(db)
@@ -199,7 +199,7 @@ async def create_workflow_mapping(
     "/workflow-mappings/{mapping_id}",
     response_model=WorkflowMenuMappingResponse,
     summary="Get workflow mapping",
-    description="Get a workflow mapping by ID. Requires admin.menu.read permission."
+    description="Get a workflow mapping by ID. Requires menu.view_mappings permission."
 )
 async def get_workflow_mapping(
     mapping_id: int,
@@ -211,7 +211,7 @@ async def get_workflow_mapping(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.read", raise_exception=True
+        current_user.id, "menu.view_mappings", raise_exception=True
     )
 
     repo = WorkflowMappingRepository(db)
@@ -230,7 +230,7 @@ async def get_workflow_mapping(
     "/workflow-mappings/{mapping_id}",
     response_model=WorkflowMenuMappingResponse,
     summary="Update workflow mapping",
-    description="Update a workflow mapping. Requires admin.menu.update permission."
+    description="Update a workflow mapping. Requires menu.update_mapping permission."
 )
 async def update_workflow_mapping(
     mapping_id: int,
@@ -243,7 +243,7 @@ async def update_workflow_mapping(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.update", raise_exception=True
+        current_user.id, "menu.update_mapping", raise_exception=True
     )
 
     repo = WorkflowMappingRepository(db)
@@ -265,7 +265,7 @@ async def update_workflow_mapping(
     "/workflow-mappings/{mapping_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete workflow mapping",
-    description="Delete a workflow mapping. Requires admin.menu.delete permission."
+    description="Delete a workflow mapping. Requires menu.delete_mapping permission."
 )
 async def delete_workflow_mapping(
     mapping_id: int,
@@ -277,7 +277,7 @@ async def delete_workflow_mapping(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.delete", raise_exception=True
+        current_user.id, "menu.delete_mapping", raise_exception=True
     )
 
     repo = WorkflowMappingRepository(db)
@@ -301,7 +301,7 @@ async def delete_workflow_mapping(
     "/display-configs",
     response_model=WorkflowDisplayConfigListResponse,
     summary="List workflow display configurations",
-    description="Get all workflow display configs with pagination. Requires admin.menu.read permission."
+    description="Get all workflow display configs with pagination. Requires menu.view_mappings permission."
 )
 async def list_display_configs(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
@@ -315,7 +315,7 @@ async def list_display_configs(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.read", raise_exception=True
+        current_user.id, "menu.view_mappings", raise_exception=True
     )
 
     repo = DisplayConfigRepository(db)
@@ -344,7 +344,7 @@ async def list_display_configs(
     response_model=WorkflowDisplayConfigResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create display configuration",
-    description="Create a new workflow display configuration. Requires admin.menu.create permission."
+    description="Create a new workflow display configuration. Requires menu.create_mapping permission."
 )
 async def create_display_config(
     config: WorkflowDisplayConfigCreate,
@@ -356,7 +356,7 @@ async def create_display_config(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.create", raise_exception=True
+        current_user.id, "menu.create_mapping", raise_exception=True
     )
 
     repo = DisplayConfigRepository(db)
@@ -377,7 +377,7 @@ async def create_display_config(
     "/display-configs/{config_id}",
     response_model=WorkflowDisplayConfigResponse,
     summary="Get display configuration",
-    description="Get a display configuration by ID. Requires admin.menu.read permission."
+    description="Get a display configuration by ID. Requires menu.view_mappings permission."
 )
 async def get_display_config(
     config_id: int,
@@ -389,7 +389,7 @@ async def get_display_config(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.read", raise_exception=True
+        current_user.id, "menu.view_mappings", raise_exception=True
     )
 
     repo = DisplayConfigRepository(db)
@@ -433,7 +433,7 @@ async def get_display_config_for_workflow(
     "/display-configs/{config_id}",
     response_model=WorkflowDisplayConfigResponse,
     summary="Update display configuration",
-    description="Update a display configuration. Requires admin.menu.update permission."
+    description="Update a display configuration. Requires menu.update_mapping permission."
 )
 async def update_display_config(
     config_id: int,
@@ -446,7 +446,7 @@ async def update_display_config(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.update", raise_exception=True
+        current_user.id, "menu.update_mapping", raise_exception=True
     )
 
     repo = DisplayConfigRepository(db)
@@ -465,7 +465,7 @@ async def update_display_config(
     "/display-configs/{config_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete display configuration",
-    description="Delete a display configuration. Requires admin.menu.delete permission."
+    description="Delete a display configuration. Requires menu.delete_mapping permission."
 )
 async def delete_display_config(
     config_id: int,
@@ -477,7 +477,7 @@ async def delete_display_config(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.delete", raise_exception=True
+        current_user.id, "menu.delete_mapping", raise_exception=True
     )
 
     repo = DisplayConfigRepository(db)
@@ -585,7 +585,7 @@ DEFAULT_SELECTED_COLUMNS = [
     - extracted_columns: Dynamic columns discovered from form_data JSONB
 
     The workflow_pattern should use SQL LIKE syntax (e.g., PASAPORTE_%).
-    Requires admin.menu.read permission.
+    Requires menu.view_mappings permission.
     """
 )
 async def get_available_columns(
@@ -598,7 +598,7 @@ async def get_available_columns(
 
     # Check permission
     await permission_service.check_permission(
-        current_user.id, "admin.menu.read", raise_exception=True
+        current_user.id, "menu.view_mappings", raise_exception=True
     )
 
     repo = DisplayConfigRepository(db)

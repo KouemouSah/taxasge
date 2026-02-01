@@ -1047,6 +1047,24 @@
         "labelsDescription": "Sobrescribir traducciones predeterminadas (opcional)",
         "noConfigsFound": "No se encontraron configuraciones",
         "configsFound": "{count} configuración(es) encontrada(s)",
+        "availableColumns": "Columnas Disponibles",
+        "selectedColumns": "Columnas Seleccionadas",
+        "selectedColumnsDescription": "Reordenar con las flechas para definir el orden de visualización",
+        "searchColumns": "Buscar columna...",
+        "noColumnsMatchSearch": "No hay columnas que coincidan con la búsqueda",
+        "allColumnsSelected": "Todas las columnas están seleccionadas",
+        "noColumnsSelected": "No hay columnas seleccionadas",
+        "loadingColumns": "Cargando columnas...",
+        "preview": "Vista Previa",
+        "moreColumns": "columnas más",
+        "unsavedChanges": "Cambios sin guardar",
+        "actions": {
+          "cancel": "Cancelar",
+          "save": "Guardar",
+          "create": "Crear",
+          "retry": "Reintentar",
+          "backToList": "Volver a la lista"
+        },
         "columns": {
           "reference": "Referencia",
           "fullName": "Nombre Completo",
@@ -1099,7 +1117,8 @@
           "deleted": "Configuración eliminada exitosamente",
           "createError": "Error al crear configuración",
           "updateError": "Error al actualizar configuración",
-          "deleteError": "Error al eliminar configuración"
+          "deleteError": "Error al eliminar configuración",
+          "loadError": "Error al cargar configuración"
         },
         "confirmDelete": "¿Está seguro de eliminar esta configuración?",
         "confirmDeleteDescription": "La configuración para \"{pattern}\" será eliminada permanentemente."

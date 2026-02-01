@@ -8,15 +8,13 @@
  * @date 2026-02-01
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -25,14 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,15 +52,9 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import {
   useDisplayConfigOperations,
-  useAllAvailableColumns,
-  FALLBACK_SYSTEM_COLUMNS,
   AVAILABLE_SECTIONS,
 } from '@/modules/admin/hooks';
-import type { AvailableColumn } from '@/modules/admin/services/menuConfigService';
-import type {
-  DisplayConfig,
-  DisplayConfigCreateRequest,
-} from '@/modules/admin/services/menuConfigService';
+import type { DisplayConfig } from '@/modules/admin/services/menuConfigService';
 
 // =============================================================================
 // MAIN PAGE COMPONENT
@@ -81,7 +65,6 @@ export default function DisplayConfigPage() {
   const locale = useLocale();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<DisplayConfig | null>(null);
 
@@ -93,10 +76,8 @@ export default function DisplayConfigPage() {
     isError,
     error,
     refetch,
-    createConfigAsync,
     updateConfigAsync,
     deleteConfigAsync,
-    isCreating,
     isUpdating,
     isDeleting,
   } = useDisplayConfigOperations({ page: currentPage, page_size: 10 });
@@ -106,11 +87,6 @@ export default function DisplayConfigPage() {
     const query = searchQuery.toLowerCase();
     return config.workflow_pattern.toLowerCase().includes(query);
   });
-
-  const handleCreate = async (data: DisplayConfigCreateRequest) => {
-    await createConfigAsync(data);
-    setIsCreateDialogOpen(false);
-  };
 
   const handleDelete = async () => {
     if (!selectedConfig) return;
@@ -140,7 +116,7 @@ export default function DisplayConfigPage() {
             <span>{error instanceof Error ? error.message : 'Error loading configurations'}</span>
           </div>
           <Button variant="outline" className="mt-4" onClick={() => refetch()}>
-            {t('messages.createError')}
+            {t('actions.retry')}
           </Button>
         </CardContent>
       </Card>
@@ -185,9 +161,7 @@ export default function DisplayConfigPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              Dynamique par workflow
-            </div>
+            <div className="text-sm text-muted-foreground">Dynamique par workflow</div>
           </CardContent>
         </Card>
         <Card>
@@ -216,9 +190,11 @@ export default function DisplayConfigPage() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
               </Button>
-              <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t('createTitle')}
+              <Button size="sm" asChild>
+                <Link href={`/${locale}/dashboard/admin/menu-config/display/new`}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t('createTitle')}
+                </Link>
               </Button>
             </div>
           </div>
@@ -299,12 +275,10 @@ export default function DisplayConfigPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            asChild
-                          >
-                            <Link href={`/${locale}/dashboard/admin/menu-config/display/${config.id}`}>
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link
+                              href={`/${locale}/dashboard/admin/menu-config/display/${config.id}`}
+                            >
                               <Pencil className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -357,15 +331,6 @@ export default function DisplayConfigPage() {
         </CardContent>
       </Card>
 
-      {/* Create Dialog */}
-      <DisplayConfigFormDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onSubmit={handleCreate}
-        isSubmitting={isCreating}
-        mode="create"
-      />
-
       {/* Delete Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -388,255 +353,5 @@ export default function DisplayConfigPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-// =============================================================================
-// CREATE DIALOG COMPONENT
-// =============================================================================
-
-interface DisplayConfigFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSubmit: (data: DisplayConfigCreateRequest) => Promise<void>;
-  isSubmitting: boolean;
-  mode: 'create';
-}
-
-function DisplayConfigFormDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-  isSubmitting,
-}: DisplayConfigFormDialogProps) {
-  const t = useTranslations('admin.menuConfig.displayConfig');
-  const [pattern, setPattern] = useState('');
-  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
-
-  // Fetch available columns dynamically based on pattern
-  const {
-    columns: availableColumns,
-    systemColumns,
-    extractedColumns,
-    defaultSelected,
-    totalRequests,
-    isLoading: isLoadingColumns,
-  } = useAllAvailableColumns(pattern, open && !!pattern);
-
-  useEffect(() => {
-    if (open) {
-      setPattern('');
-      // Use default selected columns from backend
-      setSelectedColumns(defaultSelected);
-      setSelectedSections(['info', 'extractedData', 'documents', 'contact']);
-    }
-  }, [open, defaultSelected]);
-
-  // Columns to show: use dynamic if available, fallback otherwise
-  const columnsToShow: AvailableColumn[] =
-    availableColumns.length > 0
-      ? availableColumns
-      : FALLBACK_SYSTEM_COLUMNS.map((c) => ({
-          id: c.id,
-          label_key: `columns.${c.id}`,
-          source: 'system' as const,
-          data_type: 'string' as const,
-          sample_count: 0,
-        }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await onSubmit({
-      workflow_pattern: pattern,
-      list_columns: selectedColumns,
-      preview_sections: selectedSections,
-    });
-  };
-
-  const toggleColumn = (columnId: string) => {
-    setSelectedColumns((prev) =>
-      prev.includes(columnId) ? prev.filter((c) => c !== columnId) : [...prev, columnId]
-    );
-  };
-
-  const toggleSection = (sectionId: string) => {
-    setSelectedSections((prev) =>
-      prev.includes(sectionId) ? prev.filter((s) => s !== sectionId) : [...prev, sectionId]
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{t('createTitle')}</DialogTitle>
-          <DialogDescription>
-            {t('createDescription')}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Pattern */}
-          <div className="space-y-2">
-              <Label htmlFor="pattern">{t('pattern')}</Label>
-              <Input
-                id="pattern"
-                value={pattern}
-                onChange={(e) => setPattern(e.target.value)}
-                placeholder={t('patternPlaceholder')}
-                required
-              />
-              <p className="text-xs text-muted-foreground">{t('patternDescription')}</p>
-            </div>
-
-          {/* Columns */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>{t('listColumns')}</Label>
-                <p className="text-xs text-muted-foreground">{t('listColumnsDescription')}</p>
-              </div>
-              {pattern && (
-                <div className="text-xs text-muted-foreground">
-                  {isLoadingColumns ? (
-                    <span className="flex items-center gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Chargement...
-                    </span>
-                  ) : (
-                    <span>
-                      {systemColumns.length} système + {extractedColumns.length} extraites
-                      {totalRequests > 0 && ` (${totalRequests} demandes)`}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {isLoadingColumns ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <>
-                {/* System columns */}
-                {systemColumns.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Colonnes système</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {systemColumns.map((col) => (
-                        <div key={col.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`col-${col.id}`}
-                            checked={selectedColumns.includes(col.id)}
-                            onCheckedChange={() => toggleColumn(col.id)}
-                          />
-                          <label
-                            htmlFor={`col-${col.id}`}
-                            className="text-sm cursor-pointer"
-                          >
-                            {t(`columns.${col.id}` as Parameters<typeof t>[0], {
-                              defaultValue: col.id,
-                            })}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Extracted columns */}
-                {extractedColumns.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Colonnes extraites des données
-                    </p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {extractedColumns.map((col) => (
-                        <div key={col.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`col-${col.id}`}
-                            checked={selectedColumns.includes(col.id)}
-                            onCheckedChange={() => toggleColumn(col.id)}
-                          />
-                          <label
-                            htmlFor={`col-${col.id}`}
-                            className="text-sm cursor-pointer flex items-center gap-1"
-                          >
-                            {t(`columns.${col.id}` as Parameters<typeof t>[0], {
-                              defaultValue: col.id,
-                            })}
-                            <Badge variant="outline" className="text-[10px] px-1">
-                              {col.sample_count}
-                            </Badge>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Fallback when no pattern entered */}
-                {!pattern && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {columnsToShow.map((col) => (
-                      <div key={col.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`col-${col.id}`}
-                          checked={selectedColumns.includes(col.id)}
-                          onCheckedChange={() => toggleColumn(col.id)}
-                        />
-                        <label htmlFor={`col-${col.id}`} className="text-sm cursor-pointer">
-                          {t(`columns.${col.id}` as Parameters<typeof t>[0], {
-                            defaultValue: col.id,
-                          })}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Sections */}
-          <div className="space-y-3">
-            <div>
-              <Label>{t('previewSections')}</Label>
-              <p className="text-xs text-muted-foreground">{t('previewSectionsDescription')}</p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {AVAILABLE_SECTIONS.map((sec) => (
-                <div key={sec.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`sec-${sec.id}`}
-                    checked={selectedSections.includes(sec.id)}
-                    onCheckedChange={() => toggleSection(sec.id)}
-                  />
-                  <label
-                    htmlFor={`sec-${sec.id}`}
-                    className="text-sm cursor-pointer"
-                    title={sec.description}
-                  >
-                    {t(`sections.${sec.id}` as Parameters<typeof t>[0], { defaultValue: sec.label })}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Créer
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
