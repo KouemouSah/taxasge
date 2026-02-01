@@ -38,6 +38,15 @@ from app.modules.menu_config.models.menu_config import (
     WorkflowMenuMappingUpdate,
     WorkflowMenuMappingResponse,
     WorkflowMenuMappingListResponse,
+    WorkflowDisplayConfigCreate,
+    WorkflowDisplayConfigUpdate,
+    WorkflowDisplayConfigResponse,
+    WorkflowDisplayConfigListResponse,
+    AvailableColumn,
+    AvailableColumnsResponse,
+)
+from app.modules.menu_config.repositories.display_config_repository import (
+    DisplayConfigRepository,
 )
 
 
@@ -282,3 +291,345 @@ async def delete_workflow_mapping(
 
     # Invalidate cache
     await invalidate_workflow_mappings_cache()
+
+
+# =============================================================================
+# WORKFLOW DISPLAY CONFIG CRUD ENDPOINTS (Admin only)
+# =============================================================================
+
+@router.get(
+    "/display-configs",
+    response_model=WorkflowDisplayConfigListResponse,
+    summary="List workflow display configurations",
+    description="Get all workflow display configs with pagination. Requires admin.menu.read permission."
+)
+async def list_display_configs(
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """List all workflow display configurations with pagination"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "admin.menu.read", raise_exception=True
+    )
+
+    repo = DisplayConfigRepository(db)
+
+    offset = (page - 1) * page_size
+    configs = await repo.get_all(
+        is_active=is_active,
+        limit=page_size,
+        offset=offset
+    )
+
+    total = await repo.count(is_active=is_active)
+    pages = (total + page_size - 1) // page_size
+
+    return WorkflowDisplayConfigListResponse(
+        items=[WorkflowDisplayConfigResponse(**c) for c in configs],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=pages
+    )
+
+
+@router.post(
+    "/display-configs",
+    response_model=WorkflowDisplayConfigResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create display configuration",
+    description="Create a new workflow display configuration. Requires admin.menu.create permission."
+)
+async def create_display_config(
+    config: WorkflowDisplayConfigCreate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Create a new workflow display configuration"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "admin.menu.create", raise_exception=True
+    )
+
+    repo = DisplayConfigRepository(db)
+
+    # Check if pattern already exists
+    existing = await repo.get_by_pattern(config.workflow_pattern)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Display config with pattern '{config.workflow_pattern}' already exists"
+        )
+
+    created = await repo.create(config)
+    return WorkflowDisplayConfigResponse(**created)
+
+
+@router.get(
+    "/display-configs/{config_id}",
+    response_model=WorkflowDisplayConfigResponse,
+    summary="Get display configuration",
+    description="Get a display configuration by ID. Requires admin.menu.read permission."
+)
+async def get_display_config(
+    config_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Get a display configuration by ID"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "admin.menu.read", raise_exception=True
+    )
+
+    repo = DisplayConfigRepository(db)
+    config = await repo.get_by_id(config_id)
+
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Display config with id '{config_id}' not found"
+        )
+
+    return WorkflowDisplayConfigResponse(**config)
+
+
+@router.get(
+    "/display-configs/by-workflow/{workflow_code}",
+    response_model=WorkflowDisplayConfigResponse,
+    summary="Get display config for workflow",
+    description="Get display configuration matching a specific workflow code. Uses pattern matching."
+)
+async def get_display_config_for_workflow(
+    workflow_code: str,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """Get display configuration for a specific workflow code"""
+
+    repo = DisplayConfigRepository(db)
+    config = await repo.find_config_for_workflow(workflow_code)
+
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No display config found for workflow '{workflow_code}'"
+        )
+
+    return WorkflowDisplayConfigResponse(**config)
+
+
+@router.put(
+    "/display-configs/{config_id}",
+    response_model=WorkflowDisplayConfigResponse,
+    summary="Update display configuration",
+    description="Update a display configuration. Requires admin.menu.update permission."
+)
+async def update_display_config(
+    config_id: int,
+    config: WorkflowDisplayConfigUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Update a display configuration"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "admin.menu.update", raise_exception=True
+    )
+
+    repo = DisplayConfigRepository(db)
+    updated = await repo.update(config_id, config)
+
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Display config with id '{config_id}' not found"
+        )
+
+    return WorkflowDisplayConfigResponse(**updated)
+
+
+@router.delete(
+    "/display-configs/{config_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete display configuration",
+    description="Delete a display configuration. Requires admin.menu.delete permission."
+)
+async def delete_display_config(
+    config_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Delete a display configuration"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "admin.menu.delete", raise_exception=True
+    )
+
+    repo = DisplayConfigRepository(db)
+    deleted = await repo.delete(config_id)
+
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Display config with id '{config_id}' not found"
+        )
+
+
+# =============================================================================
+# AVAILABLE COLUMNS DISCOVERY ENDPOINT
+# =============================================================================
+
+# System columns always available (from service_requests table + joins)
+SYSTEM_COLUMNS = [
+    AvailableColumn(
+        id="reference",
+        label_key="columns.reference",
+        source="system",
+        data_type="string",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="fullName",
+        label_key="columns.fullName",
+        source="system",
+        data_type="string",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="solicitudType",
+        label_key="columns.solicitudType",
+        source="system",
+        data_type="string",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="createdAt",
+        label_key="columns.createdAt",
+        source="system",
+        data_type="date",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="priority",
+        label_key="columns.priority",
+        source="system",
+        data_type="string",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="status",
+        label_key="columns.status",
+        source="system",
+        data_type="string",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="totalAmount",
+        label_key="columns.totalAmount",
+        source="system",
+        data_type="number",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="paymentStatus",
+        label_key="columns.paymentStatus",
+        source="system",
+        data_type="string",
+        sample_count=0
+    ),
+    AvailableColumn(
+        id="assignedAgent",
+        label_key="columns.assignedAgent",
+        source="system",
+        data_type="string",
+        sample_count=0
+    ),
+]
+
+# Default pre-selected columns (admin can disable but starts with these)
+DEFAULT_SELECTED_COLUMNS = [
+    "reference",
+    "fullName",
+    "solicitudType",
+    "createdAt",
+    "status",
+    "priority",
+]
+
+
+@router.get(
+    "/display-configs/available-columns/{workflow_pattern:path}",
+    response_model=AvailableColumnsResponse,
+    summary="Discover available columns for a workflow pattern",
+    description="""
+    Dynamically discovers available columns for a workflow pattern by introspecting
+    actual data in service_requests.form_data.
+
+    Returns:
+    - system_columns: Fixed columns from the service_requests table
+    - extracted_columns: Dynamic columns discovered from form_data JSONB
+
+    The workflow_pattern should use SQL LIKE syntax (e.g., PASAPORTE_%).
+    Requires admin.menu.read permission.
+    """
+)
+async def get_available_columns(
+    workflow_pattern: str,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Discover available columns for a workflow pattern from actual DB data"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "admin.menu.read", raise_exception=True
+    )
+
+    repo = DisplayConfigRepository(db)
+
+    try:
+        # Get extracted columns from actual data
+        result = await repo.get_available_columns_for_workflow(workflow_pattern)
+
+        # Build extracted columns list
+        extracted_columns = [
+            AvailableColumn(
+                id=col["id"],
+                label_key=col["label_key"],
+                source="extracted",
+                data_type=col["data_type"],
+                sample_count=col["sample_count"]
+            )
+            for col in result["extracted_columns"]
+        ]
+
+        return AvailableColumnsResponse(
+            workflow_pattern=workflow_pattern,
+            total_requests=result["total_requests"],
+            system_columns=SYSTEM_COLUMNS,
+            extracted_columns=extracted_columns,
+            default_selected=DEFAULT_SELECTED_COLUMNS
+        )
+
+    except Exception as e:
+        logger.error(f"Error discovering columns for {workflow_pattern}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to discover columns: {str(e)}"
+        )

@@ -203,3 +203,102 @@ class AgentMenuConfigResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# =============================================================================
+# WORKFLOW DISPLAY CONFIG MODELS
+# =============================================================================
+
+class WorkflowDisplayConfigBase(BaseModel):
+    """Base workflow display configuration"""
+    workflow_pattern: str = Field(
+        ..., min_length=1, max_length=50,
+        description="SQL LIKE pattern for workflow matching (e.g., PASAPORTE_%)"
+    )
+    list_columns: List[str] = Field(
+        default=["reference", "fullName", "createdAt", "priority"],
+        description="Column IDs to display in request list"
+    )
+    preview_sections: List[str] = Field(
+        default=["info", "extractedData", "documents", "contact", "appointment"],
+        description="Section IDs to display in request preview"
+    )
+    labels: Optional[Dict[str, str]] = Field(
+        default_factory=dict,
+        description="Custom label overrides (i18n keys)"
+    )
+
+
+class WorkflowDisplayConfigCreate(WorkflowDisplayConfigBase):
+    """Schema for creating display config"""
+    pass
+
+
+class WorkflowDisplayConfigUpdate(BaseModel):
+    """Schema for updating display config"""
+    list_columns: Optional[List[str]] = None
+    preview_sections: Optional[List[str]] = None
+    labels: Optional[Dict[str, str]] = None
+    is_active: Optional[bool] = None
+
+
+class WorkflowDisplayConfigResponse(WorkflowDisplayConfigBase):
+    """Schema for display config response"""
+    id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class WorkflowDisplayConfigListResponse(BaseModel):
+    """Schema for paginated display config list"""
+    items: List[WorkflowDisplayConfigResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+# =============================================================================
+# AVAILABLE COLUMNS MODELS (Dynamic discovery from DB)
+# =============================================================================
+
+class AvailableColumn(BaseModel):
+    """A column available for display configuration"""
+    id: str = Field(..., description="Column identifier (e.g., 'numero_dip', 'apellidos')")
+    label_key: str = Field(..., description="i18n key for column label")
+    source: Literal["system", "extracted"] = Field(
+        ..., description="'system' for table columns, 'extracted' for form_data fields"
+    )
+    data_type: str = Field(
+        default="string",
+        description="Data type hint: string, date, number, boolean"
+    )
+    sample_count: int = Field(
+        default=0,
+        description="Number of requests with this field populated"
+    )
+
+
+class AvailableColumnsResponse(BaseModel):
+    """Response with available columns for a workflow pattern"""
+    workflow_pattern: str = Field(..., description="The workflow pattern queried")
+    total_requests: int = Field(
+        default=0,
+        description="Total requests matching this pattern (for context)"
+    )
+    system_columns: List[AvailableColumn] = Field(
+        default_factory=list,
+        description="Fixed system columns always available"
+    )
+    extracted_columns: List[AvailableColumn] = Field(
+        default_factory=list,
+        description="Dynamic columns from extracted/form data"
+    )
+    default_selected: List[str] = Field(
+        default_factory=list,
+        description="Column IDs that should be pre-selected by default"
+    )

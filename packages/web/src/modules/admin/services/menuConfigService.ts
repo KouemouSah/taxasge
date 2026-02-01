@@ -62,6 +62,57 @@ export interface PaginationParams {
   page_size?: number;
 }
 
+// Display Config types
+export interface DisplayConfig {
+  id: number;
+  workflow_pattern: string;
+  list_columns: string[];
+  preview_sections: string[];
+  labels: Record<string, string>;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DisplayConfigListResponse {
+  items: DisplayConfig[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+export interface DisplayConfigCreateRequest {
+  workflow_pattern: string;
+  list_columns?: string[];
+  preview_sections?: string[];
+  labels?: Record<string, string>;
+}
+
+export interface DisplayConfigUpdateRequest {
+  list_columns?: string[];
+  preview_sections?: string[];
+  labels?: Record<string, string>;
+  is_active?: boolean;
+}
+
+// Available Columns types (dynamic discovery from DB)
+export interface AvailableColumn {
+  id: string;
+  label_key: string;
+  source: 'system' | 'extracted';
+  data_type: 'string' | 'number' | 'date' | 'boolean';
+  sample_count: number;
+}
+
+export interface AvailableColumnsResponse {
+  workflow_pattern: string;
+  total_requests: number;
+  system_columns: AvailableColumn[];
+  extracted_columns: AvailableColumn[];
+  default_selected: string[];
+}
+
 // =============================================================================
 // MENU CONFIG API
 // =============================================================================
@@ -182,6 +233,92 @@ export const menuConfigApi = {
     }
   ): Promise<void> => {
     return fetchClient.put(`/roles/${roleId}/menu-config`, data);
+  },
+
+  // ===========================================================================
+  // WORKFLOW DISPLAY CONFIG
+  // ===========================================================================
+
+  /**
+   * List all workflow display configs with pagination
+   * BACKEND: GET /api/v1/menu-config/display-configs
+   * PERMISSION: admin.menu.read
+   */
+  listDisplayConfigs: async (
+    params?: PaginationParams
+  ): Promise<DisplayConfigListResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.page_size) searchParams.set('page_size', params.page_size.toString());
+
+    const query = searchParams.toString();
+    const url = query
+      ? `${MENU_CONFIG_BASE}/display-configs?${query}`
+      : `${MENU_CONFIG_BASE}/display-configs`;
+
+    return fetchClient.get<DisplayConfigListResponse>(url);
+  },
+
+  /**
+   * Get a single display config by ID
+   * BACKEND: GET /api/v1/menu-config/display-configs/{id}
+   * PERMISSION: admin.menu.read
+   */
+  getDisplayConfig: async (id: number): Promise<DisplayConfig> => {
+    return fetchClient.get<DisplayConfig>(`${MENU_CONFIG_BASE}/display-configs/${id}`);
+  },
+
+  /**
+   * Get display config for a specific workflow code
+   * BACKEND: GET /api/v1/menu-config/display-configs/by-workflow/{workflow_code}
+   * PERMISSION: authenticated
+   */
+  getDisplayConfigForWorkflow: async (workflowCode: string): Promise<DisplayConfig> => {
+    return fetchClient.get<DisplayConfig>(
+      `${MENU_CONFIG_BASE}/display-configs/by-workflow/${encodeURIComponent(workflowCode)}`
+    );
+  },
+
+  /**
+   * Create a new display config
+   * BACKEND: POST /api/v1/menu-config/display-configs
+   * PERMISSION: admin.menu.create
+   */
+  createDisplayConfig: async (data: DisplayConfigCreateRequest): Promise<DisplayConfig> => {
+    return fetchClient.post<DisplayConfig>(`${MENU_CONFIG_BASE}/display-configs`, data);
+  },
+
+  /**
+   * Update an existing display config
+   * BACKEND: PUT /api/v1/menu-config/display-configs/{id}
+   * PERMISSION: admin.menu.update
+   */
+  updateDisplayConfig: async (
+    id: number,
+    data: DisplayConfigUpdateRequest
+  ): Promise<DisplayConfig> => {
+    return fetchClient.put<DisplayConfig>(`${MENU_CONFIG_BASE}/display-configs/${id}`, data);
+  },
+
+  /**
+   * Delete a display config
+   * BACKEND: DELETE /api/v1/menu-config/display-configs/{id}
+   * PERMISSION: admin.menu.delete
+   */
+  deleteDisplayConfig: async (id: number): Promise<void> => {
+    return fetchClient.delete(`${MENU_CONFIG_BASE}/display-configs/${id}`);
+  },
+
+  /**
+   * Discover available columns for a workflow pattern
+   * Introspects actual data in service_requests.form_data
+   * BACKEND: GET /api/v1/menu-config/display-configs/available-columns/{workflow_pattern}
+   * PERMISSION: admin.menu.read
+   */
+  getAvailableColumns: async (workflowPattern: string): Promise<AvailableColumnsResponse> => {
+    return fetchClient.get<AvailableColumnsResponse>(
+      `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowPattern)}`
+    );
   },
 };
 

@@ -25,6 +25,29 @@ export {
 // Role menu config hooks
 export { useRoleMenuConfig } from './useRoleMenuConfig';
 
+// Display config hooks
+export {
+  useDisplayConfigs,
+  useDisplayConfig,
+  useDisplayConfigForWorkflow,
+  useCreateDisplayConfig,
+  useUpdateDisplayConfig,
+  useDeleteDisplayConfig,
+  useDisplayConfigOperations,
+  useAvailableColumns,
+  useAllAvailableColumns,
+  displayConfigKeys,
+  AVAILABLE_COLUMNS,
+  FALLBACK_SYSTEM_COLUMNS,
+  DEFAULT_SELECTED_COLUMNS,
+  AVAILABLE_SECTIONS,
+} from './useDisplayConfigs';
+export type {
+  DisplayConfig,
+  AvailableColumn,
+  AvailableColumnsResponse,
+} from '../services/menuConfigService';
+
 // Admin dashboard hooks (users, audit, stats)
 export {
   useAdminStats,
