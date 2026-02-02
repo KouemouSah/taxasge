@@ -233,7 +233,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNavigate, handleApprove, selectedId, preview, showRejectDialog, isProcessing]);
+  }, [handleNavigate, handleApprove, selectedId, preview, showRejectDialog, isProcessing, action]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)]">

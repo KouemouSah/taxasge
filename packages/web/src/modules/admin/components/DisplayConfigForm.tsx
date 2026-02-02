@@ -39,7 +39,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Separator } from '@/components/ui/separator';
 import {
   Loader2,
   Search,
@@ -401,12 +400,7 @@ export function DisplayConfigForm({
     });
   };
 
-  // Separate selected columns into system and extracted
-  const selectedSystemColumns = useMemo(
-    () => selectedColumns.filter((col) => SYSTEM_COLUMN_IDS.includes(col)),
-    [selectedColumns]
-  );
-
+  // Get selected extracted columns (non-system columns)
   const selectedExtractedColumns = useMemo(
     () => selectedColumns.filter((col) => !SYSTEM_COLUMN_IDS.includes(col)),
     [selectedColumns]
