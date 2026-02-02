@@ -1157,7 +1157,15 @@
           "pasaporteAntiguoFechaNacimiento": "Date Naissance (Ancien Passeport)",
           "pasaporteAntiguoLugarNacimiento": "Lieu Naissance (Ancien Passeport)",
           "pasaporteAntiguoSexo": "Sexe (Ancien Passeport)",
-          "pasaporteAntiguoNacionalidad": "Nationalité (Ancien Passeport)"
+          "pasaporteAntiguoNacionalidad": "Nationalité (Ancien Passeport)",
+          "certNombre": "Prénom (Certificat)",
+          "certPrimerApellido": "Premier Nom (Certificat)",
+          "certSegundoApellido": "Second Nom (Certificat)",
+          "certFechaNacimiento": "Date Naissance (Certificat)",
+          "certLugarNacimiento": "Lieu Naissance (Certificat)",
+          "rep1Nombre": "Nom Représentant",
+          "rep1DocumentoNumero": "N° Document Représentant",
+          "isMinor": "Est Mineur"
         },
         "sectionDescriptions": {
           "info": "Informations de base de la demande",
