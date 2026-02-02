@@ -628,13 +628,22 @@ DEFAULT_SELECTED_COLUMNS = [
     Returns:
     - system_columns: Fixed columns from the service_requests table
     - extracted_columns: Dynamic columns discovered from form_data JSONB
+      (includes both top-level and flattened nested columns like dip_*, pasaporte_antiguo_*)
+
+    Optional filters:
+    - is_minor: Filter by minor requests (true/false)
+    - motivo: Filter by renovation reason (perdida/robo/deterioro/vencimiento)
 
     Uses exact workflow_code matching (not patterns).
     Requires menu.view_mappings permission.
+
+    @updated 2026-02-02 - Added is_minor and motivo filters for sub-type column discovery
     """
 )
 async def get_available_columns(
     workflow_code: str,
+    is_minor: Optional[bool] = Query(None, description="Filter by minor requests"),
+    motivo: Optional[str] = Query(None, description="Filter by renovation reason (perdida/robo/deterioro/vencimiento)"),
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
     permission_service: PermissionService = Depends(get_permission_service),
@@ -649,15 +658,19 @@ async def get_available_columns(
     repo = DisplayConfigRepository(db)
 
     try:
-        # Get extracted columns from actual data
-        result = await repo.get_available_columns_for_workflow(workflow_code)
+        # Get extracted columns from actual data with optional filters
+        result = await repo.get_available_columns_for_workflow(
+            workflow_code,
+            is_minor=is_minor,
+            motivo=motivo
+        )
 
-        # Build extracted columns list
+        # Build extracted columns list (source comes from DB now: 'extracted' or 'extracted_nested')
         extracted_columns = [
             AvailableColumn(
                 id=col["id"],
                 label_key=col["label_key"],
-                source="extracted",
+                source=col["source"],  # 'extracted' or 'extracted_nested'
                 data_type=col["data_type"],
                 sample_count=col["sample_count"]
             )

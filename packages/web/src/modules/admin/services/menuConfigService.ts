@@ -112,7 +112,13 @@ export interface DisplayConfigUpdateRequest {
 export interface AvailableColumn {
   id: string;
   label_key: string;
-  source: 'system' | 'extracted';
+  /**
+   * Source type:
+   * - 'system': Built-in columns (reference, status, priority, etc.)
+   * - 'extracted': Top-level form_data fields (nombres, apellidos, etc.)
+   * - 'extracted_nested': Flattened nested objects (dip_natural_de, pasaporte_antiguo_numero)
+   */
+  source: 'system' | 'extracted' | 'extracted_nested';
   data_type: 'string' | 'number' | 'date' | 'boolean';
   sample_count: number;
 }
@@ -339,11 +345,28 @@ export const menuConfigApi = {
    * Introspects actual data in service_requests.form_data
    * BACKEND: GET /api/v1/menu-config/display-configs/available-columns/{workflow_code}
    * PERMISSION: menu.view_mappings
+   *
+   * @param workflowCode - Exact workflow code (e.g., 'PASAPORTE_NUEVO')
+   * @param filters - Optional filters for sub-type column discovery
+   * @param filters.isMinor - Filter by minor requests (true/false)
+   * @param filters.motivo - Filter by renovation reason (perdida/robo/deterioro/vencimiento)
+   *
+   * @updated 2026-02-02 - Added isMinor and motivo filter support
    */
-  getAvailableColumns: async (workflowCode: string): Promise<AvailableColumnsResponse> => {
-    return fetchClient.get<AvailableColumnsResponse>(
-      `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowCode)}`
-    );
+  getAvailableColumns: async (
+    workflowCode: string,
+    filters?: { isMinor?: boolean; motivo?: string }
+  ): Promise<AvailableColumnsResponse> => {
+    const params = new URLSearchParams();
+    if (filters?.isMinor !== undefined) {
+      params.append('is_minor', String(filters.isMinor));
+    }
+    if (filters?.motivo) {
+      params.append('motivo', filters.motivo);
+    }
+    const queryString = params.toString();
+    const url = `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowCode)}${queryString ? `?${queryString}` : ''}`;
+    return fetchClient.get<AvailableColumnsResponse>(url);
   },
 
   // ===========================================================================

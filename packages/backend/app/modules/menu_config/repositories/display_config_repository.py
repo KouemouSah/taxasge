@@ -15,6 +15,10 @@ from app.modules.menu_config.models.menu_config import (
     WorkflowDisplayConfigCreate,
     WorkflowDisplayConfigUpdate,
 )
+from app.modules.menu_config.constants import (
+    NESTED_KEYS_TO_FLATTEN,
+    SQL_EXCLUDE_KEYS,
+)
 
 
 def _row_to_dict(record: asyncpg.Record) -> Optional[Dict[str, Any]]:
@@ -297,67 +301,121 @@ class DisplayConfigRepository:
 
     async def get_available_columns_for_workflow(
         self,
-        workflow_code: str
+        workflow_code: str,
+        is_minor: Optional[bool] = None,
+        motivo: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Discover available columns for a workflow by introspecting
         the actual data in service_requests.form_data.
 
+        This function extracts:
+        1. Top-level scalar fields (strings, numbers, booleans, dates)
+        2. Flattened nested object fields (dip.*, pasaporte_antiguo.*)
+           Flattening: dip.natural_de → dip_natural_de
+
+        This matches the logic in agent_routes._extract_preview_data()
+
         Args:
             workflow_code: Exact workflow code (e.g., 'PASAPORTE_EXPEDICION_ADULTO')
+            is_minor: Optional filter for minor requests (True/False/None=all)
+            motivo: Optional filter for renovation reason (perdida/robo/deterioro/None=all)
 
         Returns:
             Dict with total_requests and extracted_columns list
+
+        @updated 2026-02-02 - Include flattened nested object columns (dip, pasaporte_antiguo)
+        @updated 2026-02-02 - Optimized: Single query with CTE + UNION ALL
+        @updated 2026-02-02 - Added optional filters: is_minor, motivo
         """
-        # Count total requests matching exact workflow code
+        # Convert constants to lists for SQL array parameters
+        exclude_keys_list = list(SQL_EXCLUDE_KEYS)
+        nested_keys_list = list(NESTED_KEYS_TO_FLATTEN)
+
+        # OPTIMIZED: Single query with CTE and UNION ALL
+        # - CTE filters base data once (avoids double table scan)
+        # - UNION ALL combines top-level and nested columns in one result
+        # - Optional filters for is_minor and motivo
+        rows = await self.db.fetch("""
+            WITH base_data AS (
+                -- Filter once, reuse in both parts of UNION
+                SELECT id, form_data
+                FROM service_requests
+                WHERE workflow_code = $1
+                  AND form_data IS NOT NULL
+                  AND form_data != '{}'::jsonb
+                  -- Optional filter: is_minor
+                  AND ($4::boolean IS NULL OR (form_data->>'is_minor')::boolean = $4)
+                  -- Optional filter: motivo
+                  AND ($5::text IS NULL OR UPPER(form_data->>'motivo') = UPPER($5))
+            ),
+            -- Part 1: Top-level scalar fields
+            top_level AS (
+                SELECT
+                    key,
+                    'extracted' as source,
+                    COUNT(*) as sample_count,
+                    CASE
+                        WHEN jsonb_typeof((array_agg(value ORDER BY value::text DESC))[1]) = 'number' THEN 'number'
+                        WHEN jsonb_typeof((array_agg(value ORDER BY value::text DESC))[1]) = 'boolean' THEN 'boolean'
+                        WHEN (array_agg(value ORDER BY value::text DESC))[1]::text ~ '^"?[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN 'date'
+                        ELSE 'string'
+                    END as data_type
+                FROM base_data bd,
+                     jsonb_each(bd.form_data) AS kv(key, value)
+                WHERE jsonb_typeof(value) NOT IN ('object', 'array')
+                  AND key != ALL($2::text[])  -- Exclude internal keys
+                GROUP BY key
+            ),
+            -- Part 2: Flattened nested object fields
+            nested_flat AS (
+                SELECT
+                    parent_key || '_' || nested_key as key,
+                    'extracted_nested' as source,
+                    COUNT(*) as sample_count,
+                    CASE
+                        WHEN jsonb_typeof((array_agg(nested_value ORDER BY nested_value::text DESC))[1]) = 'number' THEN 'number'
+                        WHEN jsonb_typeof((array_agg(nested_value ORDER BY nested_value::text DESC))[1]) = 'boolean' THEN 'boolean'
+                        WHEN (array_agg(nested_value ORDER BY nested_value::text DESC))[1]::text ~ '^"?[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN 'date'
+                        ELSE 'string'
+                    END as data_type
+                FROM base_data bd,
+                     jsonb_each(bd.form_data) AS parent(parent_key, parent_value),
+                     jsonb_each(parent_value) AS nested(nested_key, nested_value)
+                WHERE parent_key = ANY($3::text[])  -- Only flatten specific nested objects
+                  AND jsonb_typeof(parent_value) = 'object'
+                  AND jsonb_typeof(nested_value) NOT IN ('object', 'array', 'null')
+                  AND nested_value::text NOT IN ('""', 'null')
+                GROUP BY parent_key, nested_key
+            )
+            -- Combine results
+            SELECT key, source, sample_count, data_type
+            FROM top_level
+            UNION ALL
+            SELECT key, source, sample_count, data_type
+            FROM nested_flat
+            ORDER BY source, sample_count DESC, key
+        """, workflow_code, exclude_keys_list, nested_keys_list, is_minor, motivo)
+
+        # Count total (from base_data CTE result would require another query,
+        # but we can count from rows or use a separate fast count)
         total = await self.db.fetchval("""
             SELECT COUNT(*)
             FROM service_requests
             WHERE workflow_code = $1
               AND form_data IS NOT NULL
               AND form_data != '{}'::jsonb
-        """, workflow_code)
+              AND ($2::boolean IS NULL OR (form_data->>'is_minor')::boolean = $2)
+              AND ($3::text IS NULL OR UPPER(form_data->>'motivo') = UPPER($3))
+        """, workflow_code, is_minor, motivo)
 
-        # Get distinct keys from form_data (excluding nested objects)
-        # and count how many requests have each key
-        rows = await self.db.fetch("""
-            SELECT
-                key,
-                COUNT(*) as sample_count,
-                -- Try to infer data type from first non-null value
-                CASE
-                    WHEN jsonb_typeof(first_value) = 'number' THEN 'number'
-                    WHEN jsonb_typeof(first_value) = 'boolean' THEN 'boolean'
-                    WHEN first_value::text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN 'date'
-                    ELSE 'string'
-                END as data_type
-            FROM (
-                SELECT
-                    key,
-                    (array_agg(value ORDER BY value::text DESC))[1] as first_value
-                FROM service_requests sr,
-                     jsonb_each(sr.form_data) AS kv(key, value)
-                WHERE sr.workflow_code = $1
-                  AND sr.form_data IS NOT NULL
-                  AND sr.form_data != '{}'::jsonb
-                  -- Exclude nested objects (like 'dip', 'pasaporte_antiguo')
-                  AND jsonb_typeof(value) != 'object'
-                  -- Exclude arrays
-                  AND jsonb_typeof(value) != 'array'
-                  -- Exclude internal/technical fields
-                  AND key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
-                GROUP BY key
-            ) subq
-            GROUP BY key, first_value
-            ORDER BY sample_count DESC, key
-        """, workflow_code)
-
+        # Build extracted_columns list from unified results
         extracted_columns = []
         for row in rows:
             extracted_columns.append({
                 "id": row["key"],
                 "label_key": f"columns.{row['key']}",
-                "source": "extracted",
+                "source": row["source"],
                 "data_type": row["data_type"],
                 "sample_count": row["sample_count"]
             })

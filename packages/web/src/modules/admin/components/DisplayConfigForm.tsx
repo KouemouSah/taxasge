@@ -337,9 +337,13 @@ export function DisplayConfigForm({
   const {
     systemColumns,
     extractedColumns,
+    nestedColumns,
     totalRequests,
     isLoading: isLoadingColumns,
   } = useAllAvailableColumns(selectedWorkflow, shouldFetchColumns);
+
+  // State for collapsible nested columns section
+  const [isNestedExpanded, setIsNestedExpanded] = useState(false);
 
   // Reset state when initialData changes (for edit mode)
   useEffect(() => {
@@ -415,6 +419,20 @@ export function DisplayConfigForm({
       );
     });
   }, [extractedColumns, columnSearch, t]);
+
+  const filteredNestedColumns = useMemo(() => {
+    if (!columnSearch) return nestedColumns;
+
+    return nestedColumns.filter((col) => {
+      const label = t(`columns.${col.id}` as Parameters<typeof t>[0], {
+        defaultValue: humanizeColumnId(col.id),
+      });
+      return (
+        col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
+        label.toLowerCase().includes(columnSearch.toLowerCase())
+      );
+    });
+  }, [nestedColumns, columnSearch, t]);
 
   // Handlers
   const toggleColumn = (columnId: string) => {
@@ -596,6 +614,7 @@ export function DisplayConfigForm({
                 <>
                   {filteredSystemColumns.length} système
                   {extractedColumns.length > 0 && ` + ${extractedColumns.length} extraites`}
+                  {nestedColumns.length > 0 && ` + ${nestedColumns.length} imbriquées`}
                 </>
               )}
             </CardDescription>
@@ -646,7 +665,7 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
-                  {/* Extracted Columns */}
+                  {/* Extracted Columns (top-level form_data fields) */}
                   {filteredExtractedColumns.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -675,6 +694,49 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
+                  {/* Nested Object Columns (dip.*, pasaporte_antiguo.* - collapsible) */}
+                  {filteredNestedColumns.length > 0 && (
+                    <div className="space-y-2 border-t pt-3 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsNestedExpanded(!isNestedExpanded)}
+                        className="flex items-center gap-2 w-full text-left text-xs font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+                      >
+                        {isNestedExpanded ? (
+                          <ChevronDown className="h-3 w-3" />
+                        ) : (
+                          <ChevronUp className="h-3 w-3 rotate-90" />
+                        )}
+                        Colonnes Imbriquées (DIP, Pasaporte)
+                        <Badge variant="outline" className="text-[10px] px-1 ml-auto">
+                          {filteredNestedColumns.length}
+                        </Badge>
+                      </button>
+                      {isNestedExpanded && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-5 animate-in fade-in-50 duration-200">
+                          {filteredNestedColumns.map((col) => (
+                            <div key={col.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`col-${col.id}`}
+                                checked={selectedColumns.includes(col.id)}
+                                onCheckedChange={() => toggleColumn(col.id)}
+                              />
+                              <label
+                                htmlFor={`col-${col.id}`}
+                                className="text-sm cursor-pointer truncate flex items-center gap-1"
+                              >
+                                {getColumnLabel(col.id)}
+                                <Badge variant="outline" className="text-[10px] px-1">
+                                  {col.sample_count}
+                                </Badge>
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* No workflow selected message */}
                   {!selectedWorkflow && (
                     <p className="text-sm text-muted-foreground text-center py-4">
@@ -683,7 +745,7 @@ export function DisplayConfigForm({
                   )}
 
                   {/* No results */}
-                  {selectedWorkflow && filteredSystemColumns.length === 0 && filteredExtractedColumns.length === 0 && (
+                  {selectedWorkflow && filteredSystemColumns.length === 0 && filteredExtractedColumns.length === 0 && filteredNestedColumns.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       {t('noColumnsMatchSearch', { defaultValue: 'Aucune colonne ne correspond à la recherche' })}
                     </p>

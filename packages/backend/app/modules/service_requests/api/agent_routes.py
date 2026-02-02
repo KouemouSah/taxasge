@@ -37,6 +37,7 @@ from ..models.history import (
 )
 from ..repositories.service_request_repository import service_request_repository
 from app.core.events import EventBus, EventType
+from app.modules.menu_config.constants import NESTED_KEYS_TO_FLATTEN, EXCLUDE_KEYS
 
 
 router = APIRouter(
@@ -1934,10 +1935,9 @@ def _extract_preview_data(form_data: dict) -> Dict[str, Any]:
     if not form_data:
         return {}
 
-    # Keys to flatten (nested objects with useful data)
-    NESTED_KEYS_TO_FLATTEN = ['dip', 'pasaporte_antiguo']
-    # Keys to exclude (complex objects not useful for preview display)
-    EXCLUDE_KEYS = ['photo_carnet']  # Binary/file data, not useful as text
+    # Constants imported from app.modules.menu_config.constants
+    # NESTED_KEYS_TO_FLATTEN = ['dip', 'pasaporte_antiguo']
+    # EXCLUDE_KEYS = {'photo_carnet'}
 
     result: Dict[str, Any] = {}
 

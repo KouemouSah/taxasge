@@ -224,45 +224,90 @@ export function useDeleteDisplayConfig() {
 }
 
 /**
+ * Column discovery filter options
+ * Used to filter columns by workflow sub-type
+ */
+export interface ColumnDiscoveryFilters {
+  isMinor?: boolean;
+  motivo?: string;
+}
+
+/**
  * Hook to discover available columns for a workflow pattern
  * Dynamically introspects form_data from actual DB records
+ *
+ * @param workflowCode - Exact workflow code
+ * @param enabled - Whether to enable the query
+ * @param filters - Optional filters for sub-type column discovery
+ *
+ * @updated 2026-02-02 - Added isMinor and motivo filter support
  */
-export function useAvailableColumns(workflowPattern: string, enabled = true) {
+export function useAvailableColumns(
+  workflowCode: string,
+  enabled = true,
+  filters?: ColumnDiscoveryFilters
+) {
+  // Include filters in query key for proper cache invalidation
+  const queryKey = filters
+    ? [...displayConfigKeys.availableColumns(workflowCode), filters]
+    : displayConfigKeys.availableColumns(workflowCode);
+
   return useQuery<AvailableColumnsResponse, Error>({
-    queryKey: displayConfigKeys.availableColumns(workflowPattern),
+    queryKey,
     queryFn: async () => {
-      logInfo(`Discovering columns for pattern=${workflowPattern}`);
+      logInfo(`Discovering columns for code=${workflowCode}`, filters);
       try {
-        const result = await menuConfigApi.getAvailableColumns(workflowPattern);
+        const result = await menuConfigApi.getAvailableColumns(workflowCode, filters);
         logInfo(
           `Found ${result.system_columns.length} system + ${result.extracted_columns.length} extracted columns`
         );
         return result;
       } catch (error) {
-        logError(`Failed to discover columns for ${workflowPattern}`, error);
+        logError(`Failed to discover columns for ${workflowCode}`, error);
         throw error;
       }
     },
-    enabled: enabled && !!workflowPattern,
+    enabled: enabled && !!workflowCode,
     staleTime: 10 * 60 * 1000, // 10 minutes - column discovery is expensive
   });
 }
 
 /**
- * Hook to get all available columns (system + extracted) as a flat list
+ * Hook to get all available columns (system + extracted + nested) as a flat list
  * Useful for column selector components
+ *
+ * @param workflowCode - Exact workflow code
+ * @param enabled - Whether to enable the query
+ * @param filters - Optional filters for sub-type column discovery
+ *
+ * @updated 2026-02-02 - Separate extracted_nested columns for better UI grouping
+ * @updated 2026-02-02 - Added isMinor and motivo filter support
  */
-export function useAllAvailableColumns(workflowPattern: string, enabled = true) {
+export function useAllAvailableColumns(
+  workflowCode: string,
+  enabled = true,
+  filters?: ColumnDiscoveryFilters
+) {
   const { data, isLoading, isError, error } = useAvailableColumns(
-    workflowPattern,
-    enabled
+    workflowCode,
+    enabled,
+    filters
+  );
+
+  // Separate extracted columns by source
+  const allExtractedColumns = data?.extracted_columns ?? [];
+  const topLevelColumns = allExtractedColumns.filter(
+    (col) => col.source === 'extracted'
+  );
+  const nestedColumns = allExtractedColumns.filter(
+    (col) => col.source === 'extracted_nested'
   );
 
   const allColumns: AvailableColumn[] = data
-    ? [...data.system_columns, ...data.extracted_columns]
+    ? [...data.system_columns, ...allExtractedColumns]
     : [];
 
-  // Default selected columns from backend
+  // Default selected columns from backend - ONLY system columns, not extracted
   const defaultSelected = data?.default_selected ?? [
     'reference',
     'fullName',
@@ -275,7 +320,10 @@ export function useAllAvailableColumns(workflowPattern: string, enabled = true) 
   return {
     columns: allColumns,
     systemColumns: data?.system_columns ?? [],
-    extractedColumns: data?.extracted_columns ?? [],
+    // Top-level form_data fields (nombres, apellidos, etc.)
+    extractedColumns: topLevelColumns,
+    // Flattened nested objects (dip_*, pasaporte_antiguo_*)
+    nestedColumns,
     defaultSelected,
     totalRequests: data?.total_requests ?? 0,
     isLoading,
