@@ -54,7 +54,6 @@ export default function DisplayConfigCreatePage() {
 
       {/* Form */}
       <DisplayConfigForm
-        patternEditable={true}
         onSubmit={handleSubmit}
         isSubmitting={createMutation.isPending}
         mode="create"

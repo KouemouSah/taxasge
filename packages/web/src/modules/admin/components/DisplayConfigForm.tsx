@@ -5,14 +5,16 @@
  * Reusable form for creating/editing workflow display configurations
  *
  * Features:
+ * - Dropdown selection of workflow codes (grouped by category)
  * - Checkbox toggle for column selection
  * - Real drag & drop reordering with @dnd-kit
  * - Arrow buttons as alternative for reordering
  * - Section checkboxes
- * - Live preview panel
+ * - Live preview panel with REAL DATA from sample request
  *
  * @module admin/components
  * @date 2026-02-01
+ * @updated 2026-02-02 - Refactored to use workflow_code exact match instead of pattern
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -40,6 +42,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Loader2,
   Search,
   X,
@@ -57,14 +68,17 @@ import {
   CreditCard,
   Clock,
   History,
+  Database,
 } from 'lucide-react';
 import {
   useAllAvailableColumns,
+  useWorkflowCodesGrouped,
+  useSampleRequest,
   FALLBACK_SYSTEM_COLUMNS,
   AVAILABLE_SECTIONS,
   DEFAULT_SELECTED_COLUMNS,
 } from '@/modules/admin/hooks';
-// AvailableColumn type used internally by hooks
+import type { SampleRequest } from '@/modules/admin/hooks';
 
 // =============================================================================
 // CONSTANTS
@@ -110,14 +124,46 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 // =============================================================================
-// HELPER: Humanize column ID for display
+// HELPER FUNCTIONS
 // =============================================================================
 
+/**
+ * Humanize column ID for display
+ */
 function humanizeColumnId(id: string): string {
   return id
     .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+/**
+ * Extract value from sample request data
+ * Checks both form_data and extracted_data
+ */
+function getSampleValue(
+  sampleRequest: SampleRequest | null | undefined,
+  fieldId: string
+): string | null {
+  if (!sampleRequest) return null;
+
+  // Check form_data first
+  if (sampleRequest.form_data && fieldId in sampleRequest.form_data) {
+    const value = sampleRequest.form_data[fieldId];
+    if (value !== null && value !== undefined) {
+      return String(value);
+    }
+  }
+
+  // Then check extracted_data
+  if (sampleRequest.extracted_data && fieldId in sampleRequest.extracted_data) {
+    const value = sampleRequest.extracted_data[fieldId];
+    if (value !== null && value !== undefined) {
+      return String(value);
+    }
+  }
+
+  return null;
 }
 
 // =============================================================================
@@ -132,7 +178,6 @@ export interface DisplayConfigFormData {
 
 export interface DisplayConfigFormProps {
   initialData?: DisplayConfigFormData;
-  patternEditable?: boolean;
   onSubmit: (data: DisplayConfigFormData) => Promise<void>;
   onDirtyChange?: (isDirty: boolean) => void;
   isSubmitting?: boolean;
@@ -241,7 +286,6 @@ function SortableColumnItem({
 
 export function DisplayConfigForm({
   initialData,
-  patternEditable = true,
   onSubmit,
   onDirtyChange,
   isSubmitting = false,
@@ -250,7 +294,9 @@ export function DisplayConfigForm({
   const t = useTranslations('admin.menuConfig.displayConfig');
 
   // Local state
-  const [pattern, setPattern] = useState(initialData?.workflow_code ?? '');
+  const [selectedWorkflow, setSelectedWorkflow] = useState<string>(
+    initialData?.workflow_code ?? ''
+  );
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
     initialData?.list_columns ?? [...DEFAULT_SELECTED_COLUMNS]
   );
@@ -272,19 +318,33 @@ export function DisplayConfigForm({
     })
   );
 
-  // Fetch available columns dynamically when pattern is entered
-  const shouldFetchColumns = !!pattern && pattern.length >= 3;
+  // Hook for workflow list (dropdown)
+  const {
+    grouped: workflowGroups,
+    categories: workflowCategories,
+    isLoading: workflowsLoading,
+    isError: workflowsError,
+  } = useWorkflowCodesGrouped();
+
+  // Hook for sample request (preview with real data)
+  const {
+    data: sampleRequest,
+    isLoading: sampleLoading,
+  } = useSampleRequest(selectedWorkflow || undefined);
+
+  // Fetch available columns dynamically when workflow is selected
+  const shouldFetchColumns = !!selectedWorkflow && selectedWorkflow.length > 0;
   const {
     systemColumns,
     extractedColumns,
     totalRequests,
     isLoading: isLoadingColumns,
-  } = useAllAvailableColumns(pattern, shouldFetchColumns);
+  } = useAllAvailableColumns(selectedWorkflow, shouldFetchColumns);
 
   // Reset state when initialData changes (for edit mode)
   useEffect(() => {
     if (initialData) {
-      setPattern(initialData.workflow_code);
+      setSelectedWorkflow(initialData.workflow_code);
       setSelectedColumns(initialData.list_columns);
       setSelectedSections(initialData.preview_sections);
       setIsDirty(false);
@@ -294,23 +354,30 @@ export function DisplayConfigForm({
   // Track dirty state
   useEffect(() => {
     if (!initialData) {
-      setIsDirty(pattern.length > 0);
+      setIsDirty(selectedWorkflow.length > 0);
     } else {
+      const workflowChanged = selectedWorkflow !== initialData.workflow_code;
       const columnsChanged =
         JSON.stringify(selectedColumns) !== JSON.stringify(initialData.list_columns);
       const sectionsChanged =
         JSON.stringify(selectedSections) !== JSON.stringify(initialData.preview_sections);
-      setIsDirty(columnsChanged || sectionsChanged);
+      setIsDirty(workflowChanged || columnsChanged || sectionsChanged);
     }
-  }, [pattern, selectedColumns, selectedSections, initialData]);
+  }, [selectedWorkflow, selectedColumns, selectedSections, initialData]);
 
   // Notify parent of dirty state changes
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  // Note: availableColumns was removed as it was unused
-  // We use filteredSystemColumns and filteredExtractedColumns directly
+  // Handler for workflow change
+  const handleWorkflowChange = (workflowCode: string) => {
+    setSelectedWorkflow(workflowCode);
+    // Reset columns to defaults when changing workflow in create mode
+    if (mode === 'create') {
+      setSelectedColumns([...DEFAULT_SELECTED_COLUMNS]);
+    }
+  };
 
   // Filter columns by search
   const filteredSystemColumns = useMemo(() => {
@@ -388,7 +455,7 @@ export function DisplayConfigForm({
 
   const handleSubmit = async () => {
     await onSubmit({
-      workflow_code: pattern,
+      workflow_code: selectedWorkflow,
       list_columns: selectedColumns,
       preview_sections: selectedSections,
     });
@@ -406,49 +473,106 @@ export function DisplayConfigForm({
     [selectedColumns]
   );
 
-  const isValid = pattern.length >= 3 && selectedColumns.length > 0;
+  const isValid = selectedWorkflow.length > 0 && selectedColumns.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* Pattern Input */}
-      {patternEditable && (
+      {/* Workflow Selection - Mode Create: Dropdown */}
+      {mode === 'create' && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t('pattern')}</CardTitle>
-            <CardDescription>{t('patternDescription')}</CardDescription>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              {t('workflowCode', { defaultValue: 'Código de Workflow' })}
+            </CardTitle>
+            <CardDescription>
+              {t('workflowCodeDescription', { defaultValue: 'Seleccione el workflow para configurar las columnas y secciones' })}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <Input
-                  value={pattern}
-                  onChange={(e) => setPattern(e.target.value.toUpperCase())}
-                  placeholder={t('patternPlaceholder')}
-                  className="font-mono"
-                />
+                <Select
+                  value={selectedWorkflow}
+                  onValueChange={handleWorkflowChange}
+                  disabled={workflowsLoading}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t('selectWorkflow', { defaultValue: 'Seleccionar un workflow...' })} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {workflowCategories.map((category) => (
+                      <SelectGroup key={category}>
+                        <SelectLabel className="text-xs font-semibold text-muted-foreground uppercase">
+                          {category}
+                        </SelectLabel>
+                        {workflowGroups[category]?.map((wf) => (
+                          <SelectItem key={wf.code} value={wf.code}>
+                            <span className="font-medium">{wf.name_es}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              ({wf.code})
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              {pattern && (
-                <div className="text-sm text-muted-foreground">
+
+              {/* Loading / Result indicator */}
+              {selectedWorkflow && (
+                <div className="text-sm text-muted-foreground whitespace-nowrap">
                   {isLoadingColumns ? (
                     <span className="flex items-center gap-1">
                       <Loader2 className="h-3 w-3 animate-spin" />
-                      {t('loadingColumns')}
+                      {t('loadingColumns', { defaultValue: 'Chargement...' })}
                     </span>
                   ) : (
                     <span>
                       {totalRequests > 0
-                        ? `${totalRequests} demandes trouvées`
-                        : 'Aucune demande existante'}
+                        ? t('requestsFound', { count: totalRequests, defaultValue: `${totalRequests} demandes trouvées` })
+                        : t('noRequestsFound', { defaultValue: 'Aucune demande existante' })}
                     </span>
                   )}
                 </div>
               )}
             </div>
-            {!pattern && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Exemples: PASAPORTE_%, RESIDENCIA_%, CONDUCIR_%, VEHICULO_%
+
+            {/* Error message if workflow loading fails */}
+            {workflowsError && (
+              <p className="text-sm text-destructive mt-2">
+                {t('workflowLoadError', { defaultValue: 'Erreur de chargement des workflows' })}
               </p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Workflow Display - Mode Edit: Read-only */}
+      {mode === 'edit' && initialData && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              {t('workflowCode', { defaultValue: 'Código de Workflow' })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="font-mono text-sm px-3 py-1">
+                {initialData.workflow_code}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                ({t('readOnly', { defaultValue: 'Lecture seule' })})
+              </span>
+              {/* Show request count in edit mode too */}
+              {!isLoadingColumns && totalRequests > 0 && (
+                <span className="text-sm text-muted-foreground ml-auto">
+                  {totalRequests} demandes
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -460,13 +584,13 @@ export function DisplayConfigForm({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Columns className="h-4 w-4" />
-              {t('availableColumns')}
+              {t('availableColumns', { defaultValue: 'Colonnes Disponibles' })}
             </CardTitle>
             <CardDescription>
               {isLoadingColumns ? (
                 <span className="flex items-center gap-1">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  {t('loadingColumns')}
+                  {t('loadingColumns', { defaultValue: 'Chargement...' })}
                 </span>
               ) : (
                 <>
@@ -481,7 +605,7 @@ export function DisplayConfigForm({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={t('searchColumns')}
+                placeholder={t('searchColumns', { defaultValue: 'Buscar columna...' })}
                 value={columnSearch}
                 onChange={(e) => setColumnSearch(e.target.value)}
                 className="pl-9"
@@ -551,10 +675,17 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
-                  {/* No results */}
-                  {filteredSystemColumns.length === 0 && filteredExtractedColumns.length === 0 && (
+                  {/* No workflow selected message */}
+                  {!selectedWorkflow && (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      {t('noColumnsMatchSearch')}
+                      {t('selectWorkflowFirst', { defaultValue: 'Sélectionnez un workflow pour voir les colonnes extraites' })}
+                    </p>
+                  )}
+
+                  {/* No results */}
+                  {selectedWorkflow && filteredSystemColumns.length === 0 && filteredExtractedColumns.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      {t('noColumnsMatchSearch', { defaultValue: 'Aucune colonne ne correspond à la recherche' })}
                     </p>
                   )}
                 </>
@@ -568,10 +699,12 @@ export function DisplayConfigForm({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Layers className="h-4 w-4" />
-              {t('selectedColumns')}
+              {t('selectedColumns', { defaultValue: 'Colonnes Sélectionnées' })}
               <Badge variant="secondary">{selectedColumns.length}</Badge>
             </CardTitle>
-            <CardDescription>{t('selectedColumnsDescription')}</CardDescription>
+            <CardDescription>
+              {t('selectedColumnsDescription', { defaultValue: 'Réordonner avec les flèches pour définir l\'ordre d\'affichage' })}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <DndContext
@@ -586,7 +719,7 @@ export function DisplayConfigForm({
                 <div className="space-y-1 max-h-[400px] overflow-y-auto">
                   {selectedColumns.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-8">
-                      {t('noColumnsSelected')}
+                      {t('noColumnsSelected', { defaultValue: 'Aucune colonne sélectionnée' })}
                     </p>
                   ) : (
                     selectedColumns.map((colId, index) => (
@@ -613,10 +746,12 @@ export function DisplayConfigForm({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Layers className="h-4 w-4" />
-              {t('previewSections')}
+              {t('previewSections', { defaultValue: 'Secciones de Vista Previa' })}
               <Badge variant="secondary">{selectedSections.length}</Badge>
             </CardTitle>
-            <CardDescription>{t('previewSectionsDescription')}</CardDescription>
+            <CardDescription>
+              {t('previewSectionsDescription', { defaultValue: 'Secciones a mostrar en el panel de vista previa' })}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -657,7 +792,7 @@ export function DisplayConfigForm({
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground italic py-1">
-                          Aucune colonne extraite sélectionnée
+                          {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne extraite sélectionnée' })}
                         </p>
                       )}
                     </div>
@@ -673,9 +808,27 @@ export function DisplayConfigForm({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Eye className="h-4 w-4" />
-              {t('preview')}
+              {t('preview', { defaultValue: 'Vista Previa' })}
+              {sampleRequest && (
+                <Badge variant="outline" className="text-[10px] text-green-600 border-green-300">
+                  Datos reales
+                </Badge>
+              )}
+              {!sampleRequest && selectedWorkflow && !sampleLoading && (
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                  Aperçu
+                </Badge>
+              )}
+              {sampleLoading && (
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              )}
             </CardTitle>
-            <CardDescription>Aperçu du panneau agent</CardDescription>
+            <CardDescription>
+              {sampleRequest
+                ? t('previewRealData', { defaultValue: 'Aperçu avec données réelles' })
+                : t('previewDescription', { defaultValue: 'Aperçu du panneau agent' })
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="border rounded-md bg-muted/30 max-h-[350px] overflow-y-auto">
@@ -691,25 +844,31 @@ export function DisplayConfigForm({
                       <div className="flex items-center gap-2 mb-2">
                         <FileText className="h-4 w-4 text-primary" />
                         <span className="text-sm font-medium">
-                          {t('sections.info' as Parameters<typeof t>[0], { defaultValue: 'Info' })}
+                          {t('sections.info' as Parameters<typeof t>[0], { defaultValue: 'Información General' })}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-muted-foreground">Référence:</span>
-                          <span className="ml-1 font-medium">REF-2026-00142</span>
+                          <span className="ml-1 font-medium">
+                            {sampleRequest?.reference || 'REF-XXXX-XXXXX'}
+                          </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Priorité:</span>
-                          <Badge className="ml-1 text-[10px] bg-blue-100 text-blue-700">Normal</Badge>
+                          <Badge className="ml-1 text-[10px] bg-blue-100 text-blue-700">
+                            {sampleRequest?.priority || 'Normal'}
+                          </Badge>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Statut:</span>
-                          <span className="ml-1">En revisión</span>
+                          <span className="ml-1">{sampleRequest?.status || '—'}</span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">SLA:</span>
-                          <span className="ml-1 text-green-600">4h restantes</span>
+                          <span className="text-muted-foreground">Workflow:</span>
+                          <span className="ml-1 text-xs font-mono">
+                            {sampleRequest?.workflow_code || selectedWorkflow || '—'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -729,21 +888,26 @@ export function DisplayConfigForm({
                       </div>
                       {selectedExtractedColumns.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          {selectedExtractedColumns.slice(0, 6).map((col) => (
-                            <div key={col}>
-                              <span className="text-muted-foreground">{getColumnLabel(col)}:</span>
-                              <span className="ml-1 font-medium">—</span>
-                            </div>
-                          ))}
-                          {selectedExtractedColumns.length > 6 && (
+                          {selectedExtractedColumns.slice(0, 8).map((col) => {
+                            const value = getSampleValue(sampleRequest, col);
+                            return (
+                              <div key={col}>
+                                <span className="text-muted-foreground">{getColumnLabel(col)}:</span>
+                                <span className="ml-1 font-medium">
+                                  {value || '—'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {selectedExtractedColumns.length > 8 && (
                             <div className="col-span-2 text-muted-foreground italic">
-                              +{selectedExtractedColumns.length - 6} más...
+                              +{selectedExtractedColumns.length - 8} más...
                             </div>
                           )}
                         </div>
                       ) : (
                         <p className="text-xs text-amber-600 italic">
-                          ⚠️ Aucune colonne extraite sélectionnée
+                          ⚠️ {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne extraite sélectionnée' })}
                         </p>
                       )}
                     </div>
@@ -774,8 +938,28 @@ export function DisplayConfigForm({
                         </span>
                       </div>
                       <div className="text-xs space-y-1">
-                        <div><span className="text-muted-foreground">Email:</span> juan@email.com</div>
-                        <div><span className="text-muted-foreground">Teléfono:</span> +240 555 1234</div>
+                        <div>
+                          <span className="text-muted-foreground">Email:</span>
+                          <span className="ml-1">
+                            {getSampleValue(sampleRequest, 'email') ||
+                             getSampleValue(sampleRequest, 'correo') ||
+                             '—'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Teléfono:</span>
+                          <span className="ml-1">
+                            {getSampleValue(sampleRequest, 'telefono') ||
+                             getSampleValue(sampleRequest, 'phone') ||
+                             '—'}
+                          </span>
+                        </div>
+                        {sampleRequest?.citizen_name && (
+                          <div>
+                            <span className="text-muted-foreground">Ciudadano:</span>
+                            <span className="ml-1">{sampleRequest.citizen_name}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -790,7 +974,12 @@ export function DisplayConfigForm({
                         </span>
                       </div>
                       <div className="text-xs">
-                        <span className="text-muted-foreground">Fecha:</span> 15/02/2026 10:00
+                        <span className="text-muted-foreground">Fecha:</span>
+                        <span className="ml-1">
+                          {getSampleValue(sampleRequest, 'appointment_date') ||
+                           getSampleValue(sampleRequest, 'fecha_cita') ||
+                           '—'}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -801,11 +990,16 @@ export function DisplayConfigForm({
                       <div className="flex items-center gap-2 mb-2">
                         <CreditCard className="h-4 w-4 text-primary" />
                         <span className="text-sm font-medium">
-                          {t('sections.paymentDetails' as Parameters<typeof t>[0], { defaultValue: 'Pago' })}
+                          {t('sections.paymentDetails' as Parameters<typeof t>[0], { defaultValue: 'Detalles de Pago' })}
                         </span>
                       </div>
                       <div className="text-xs">
-                        <span className="text-muted-foreground">Total:</span> 25,000 XAF
+                        <span className="text-muted-foreground">Total:</span>
+                        <span className="ml-1">
+                          {getSampleValue(sampleRequest, 'total_amount') ||
+                           getSampleValue(sampleRequest, 'monto_total') ||
+                           '—'} XAF
+                        </span>
                       </div>
                     </div>
                   )}
@@ -816,7 +1010,7 @@ export function DisplayConfigForm({
                       <div className="flex items-center gap-2 mb-2">
                         <Clock className="h-4 w-4 text-primary" />
                         <span className="text-sm font-medium">
-                          {t('sections.timeline' as Parameters<typeof t>[0], { defaultValue: 'Timeline' })}
+                          {t('sections.timeline' as Parameters<typeof t>[0], { defaultValue: 'Línea de Tiempo' })}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -850,7 +1044,7 @@ export function DisplayConfigForm({
               disabled={!isValid || isSubmitting}
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === 'create' ? t('actions.create') : t('actions.save')}
+              {mode === 'create' ? t('actions.create', { defaultValue: 'Crear Configuración' }) : t('actions.save', { defaultValue: 'Guardar Cambios' })}
             </Button>
           </CardContent>
         </Card>

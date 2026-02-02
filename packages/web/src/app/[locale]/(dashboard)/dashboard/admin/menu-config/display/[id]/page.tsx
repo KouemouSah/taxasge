@@ -135,7 +135,6 @@ export default function DisplayConfigEditPage() {
           list_columns: config.list_columns,
           preview_sections: config.preview_sections,
         }}
-        patternEditable={false}
         onSubmit={handleSubmit}
         onDirtyChange={handleDirtyChange}
         isSubmitting={updateMutation.isPending}
