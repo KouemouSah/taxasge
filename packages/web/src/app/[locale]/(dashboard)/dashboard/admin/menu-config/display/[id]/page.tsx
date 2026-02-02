@@ -101,7 +101,7 @@ export default function DisplayConfigEditPage() {
               {t('editTitle')}
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              <code className="text-sm bg-muted px-2 py-1 rounded">{config.workflow_pattern}</code>
+              <code className="text-sm bg-muted px-2 py-1 rounded">{config.workflow_code}</code>
               {isDirty && (
                 <Badge variant="secondary" className="bg-amber-100 text-amber-800">
                   {t('unsavedChanges')}
@@ -131,7 +131,7 @@ export default function DisplayConfigEditPage() {
       {/* Form */}
       <DisplayConfigForm
         initialData={{
-          workflow_pattern: config.workflow_pattern,
+          workflow_code: config.workflow_code,
           list_columns: config.list_columns,
           preview_sections: config.preview_sections,
         }}

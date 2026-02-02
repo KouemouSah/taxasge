@@ -31,25 +31,8 @@ import { RequestList } from './RequestList';
 import { RequestPreview } from './RequestPreview';
 import { PreviewSkeleton } from './PreviewSkeleton';
 import { DEFAULT_LIST_COLUMNS } from './RequestListItem';
-import { useDisplayConfigForWorkflow } from '@/modules/admin/hooks/useDisplayConfigs';
 import type { EntityCode } from '../../types';
 import type { ActionType, Priority } from '../../services/agent-requests-api';
-
-// =============================================================================
-// HELPERS
-// =============================================================================
-
-/**
- * Derives workflow pattern from entity code
- * Example: 'cnedoge-pasaporte' → 'PASAPORTE_%'
- */
-function deriveWorkflowPattern(entityCode: EntityCode): string {
-  // Extract the workflow part from entity code
-  // e.g., 'cnedoge-pasaporte' → 'pasaporte'
-  const parts = entityCode.split('-');
-  const workflowPart = parts[parts.length - 1];
-  return `${workflowPart.toUpperCase()}_%`;
-}
 
 // =============================================================================
 // PROPS
@@ -80,32 +63,13 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Derive workflow pattern from entity code for display config
-  const workflowPattern = useMemo(() => deriveWorkflowPattern(entityCode), [entityCode]);
-
-  // Fetch display configuration for this workflow
-  const { data: displayConfig, isLoading: configLoading } = useDisplayConfigForWorkflow(
-    workflowPattern,
-    true
-  );
-
-  // Determine which columns to display (from config or defaults)
-  const displayColumns = useMemo(() => {
-    if (displayConfig?.list_columns && displayConfig.list_columns.length > 0) {
-      console.log('[PendingPage] Using display config columns:', displayConfig.list_columns);
-      return displayConfig.list_columns;
-    }
-    console.log('[PendingPage] Using default columns:', [...DEFAULT_LIST_COLUMNS]);
-    return [...DEFAULT_LIST_COLUMNS];
-  }, [displayConfig]);
-
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch list
+  // Fetch list of requests
   const {
     requests,
     total,
@@ -124,6 +88,17 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     page,
     pageSize: 20,
   });
+
+  // List always uses default columns (Option D: consistent columns for mixed workflows)
+  // Preview will fetch workflow-specific config for sections
+  const displayColumns = [...DEFAULT_LIST_COLUMNS];
+
+  // Get selected request's workflow code for preview config
+  const selectedRequest = useMemo(
+    () => requests.find((r) => r.id === selectedId),
+    [requests, selectedId]
+  );
+  const selectedWorkflowCode = selectedRequest?.workflowCode;
 
   // Fetch preview
   const {
@@ -372,7 +347,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
             items={requests}
             selectedId={selectedId}
             onSelect={handleSelect}
-            isLoading={listLoading || configLoading}
+            isLoading={listLoading}
             isError={listError}
             page={currentPage}
             totalPages={totalPages}
@@ -395,6 +370,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
               data={preview}
               entityCode={entityCode}
               action={action}
+              workflowCode={selectedWorkflowCode}
               onApprove={handleApprove}
               onReject={handleReject}
               onNavigate={handleNavigate}

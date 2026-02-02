@@ -1152,7 +1152,19 @@
           "email": "Email Address",
           "fecha_expedicion": "Issue Date",
           "fecha_vencimiento": "Expiry Date",
-          "natural_de": "Native of"
+          "natural_de": "Native of",
+          "ciudad": "City",
+          "departamento": "Department",
+          "domicilio": "Home Address",
+          "fecha_expedicion_antiguo": "Previous Issue Date",
+          "fecha_expiracion_antiguo": "Previous Expiry Date",
+          "grupo_sanguineo": "Blood Type",
+          "nombre_madre": "Mother's Name",
+          "nombre_padre": "Father's Name",
+          "numero_pasaporte_antiguo": "Previous Passport Number",
+          "representante_unico": "Legal Guardian",
+          "motivo_renovacion": "Renewal Reason",
+          "slaDeadline": "SLA Deadline"
         },
         "sections": {
           "info": "General Info",

@@ -52,7 +52,7 @@ class DisplayConfigRepository:
             Config dict or None if not found
         """
         result = await self.db.fetchrow("""
-            SELECT id, workflow_pattern, list_columns, preview_sections, labels,
+            SELECT id, workflow_code, list_columns, preview_sections, labels,
                    is_active, created_at, updated_at
             FROM workflow_display_config
             WHERE id = $1
@@ -60,24 +60,33 @@ class DisplayConfigRepository:
 
         return _row_to_dict(result)
 
-    async def get_by_pattern(self, workflow_pattern: str) -> Optional[Dict[str, Any]]:
+    async def get_by_code(self, workflow_code: str) -> Optional[Dict[str, Any]]:
         """
-        Get display config by exact workflow pattern
+        Get display config by exact workflow code
 
         Args:
-            workflow_pattern: Workflow pattern (e.g., 'PASAPORTE_%')
+            workflow_code: Exact workflow code (e.g., 'PASAPORTE_EXPEDICION_ADULTO')
 
         Returns:
             Config dict or None if not found
         """
         result = await self.db.fetchrow("""
-            SELECT id, workflow_pattern, list_columns, preview_sections, labels,
+            SELECT id, workflow_code, list_columns, preview_sections, labels,
                    is_active, created_at, updated_at
             FROM workflow_display_config
-            WHERE workflow_pattern = $1
-        """, workflow_pattern)
+            WHERE workflow_code = $1
+            AND is_active = true
+            AND deleted_at IS NULL
+        """, workflow_code)
 
         return _row_to_dict(result)
+
+    async def get_by_pattern(self, workflow_pattern: str) -> Optional[Dict[str, Any]]:
+        """
+        DEPRECATED: Use get_by_code instead.
+        Kept for backward compatibility during migration.
+        """
+        return await self.get_by_code(workflow_pattern)
 
     async def get_all(
         self,
@@ -98,20 +107,22 @@ class DisplayConfigRepository:
         """
         if is_active is not None:
             query = """
-                SELECT id, workflow_pattern, list_columns, preview_sections, labels,
+                SELECT id, workflow_code, list_columns, preview_sections, labels,
                        is_active, created_at, updated_at
                 FROM workflow_display_config
                 WHERE is_active = $1
-                ORDER BY workflow_pattern
+                AND deleted_at IS NULL
+                ORDER BY workflow_code
                 LIMIT $2 OFFSET $3
             """
             results = await self.db.fetch(query, is_active, limit, offset)
         else:
             query = """
-                SELECT id, workflow_pattern, list_columns, preview_sections, labels,
+                SELECT id, workflow_code, list_columns, preview_sections, labels,
                        is_active, created_at, updated_at
                 FROM workflow_display_config
-                ORDER BY workflow_pattern
+                WHERE deleted_at IS NULL
+                ORDER BY workflow_code
                 LIMIT $1 OFFSET $2
             """
             results = await self.db.fetch(query, limit, offset)
@@ -126,11 +137,12 @@ class DisplayConfigRepository:
             List of active config dicts
         """
         results = await self.db.fetch("""
-            SELECT id, workflow_pattern, list_columns, preview_sections, labels,
+            SELECT id, workflow_code, list_columns, preview_sections, labels,
                    is_active, created_at, updated_at
             FROM workflow_display_config
             WHERE is_active = true
-            ORDER BY workflow_pattern
+            AND deleted_at IS NULL
+            ORDER BY workflow_code
         """)
 
         return [_row_to_dict(row) for row in results]
@@ -147,12 +159,12 @@ class DisplayConfigRepository:
         """
         if is_active is not None:
             result = await self.db.fetchval(
-                "SELECT COUNT(*) FROM workflow_display_config WHERE is_active = $1",
+                "SELECT COUNT(*) FROM workflow_display_config WHERE is_active = $1 AND deleted_at IS NULL",
                 is_active
             )
         else:
             result = await self.db.fetchval(
-                "SELECT COUNT(*) FROM workflow_display_config"
+                "SELECT COUNT(*) FROM workflow_display_config WHERE deleted_at IS NULL"
             )
 
         return result or 0
@@ -169,13 +181,13 @@ class DisplayConfigRepository:
         """
         result = await self.db.fetchrow("""
             INSERT INTO workflow_display_config (
-                workflow_pattern, list_columns, preview_sections, labels
+                workflow_code, list_columns, preview_sections, labels
             )
             VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb)
-            RETURNING id, workflow_pattern, list_columns, preview_sections, labels,
+            RETURNING id, workflow_code, list_columns, preview_sections, labels,
                       is_active, created_at, updated_at
         """,
-            config.workflow_pattern,
+            config.workflow_code,
             json.dumps(config.list_columns),
             json.dumps(config.preview_sections),
             json.dumps(config.labels or {})
@@ -233,7 +245,8 @@ class DisplayConfigRepository:
             UPDATE workflow_display_config
             SET {', '.join(update_fields)}, updated_at = NOW()
             WHERE id = ${param_count}
-            RETURNING id, workflow_pattern, list_columns, preview_sections, labels,
+            AND deleted_at IS NULL
+            RETURNING id, workflow_code, list_columns, preview_sections, labels,
                       is_active, created_at, updated_at
         """
 
@@ -262,49 +275,48 @@ class DisplayConfigRepository:
         workflow_code: str
     ) -> Optional[Dict[str, Any]]:
         """
-        Find the matching display config for a workflow code using SQL LIKE pattern matching
+        Find the display config for an exact workflow code
 
         Args:
-            workflow_code: Workflow code (e.g., 'PASAPORTE_NUEVO')
+            workflow_code: Exact workflow code (e.g., 'PASAPORTE_EXPEDICION_ADULTO')
 
         Returns:
             Matching config dict or None
         """
-        # Use SQL LIKE pattern matching
+        # Use exact match (migration 088 changed from pattern to exact code)
         result = await self.db.fetchrow("""
-            SELECT id, workflow_pattern, list_columns, preview_sections, labels,
+            SELECT id, workflow_code, list_columns, preview_sections, labels,
                    is_active, created_at, updated_at
             FROM workflow_display_config
             WHERE is_active = true
-              AND $1 LIKE workflow_pattern
-            ORDER BY LENGTH(workflow_pattern) DESC
-            LIMIT 1
+              AND workflow_code = $1
+              AND deleted_at IS NULL
         """, workflow_code)
 
         return _row_to_dict(result)
 
     async def get_available_columns_for_workflow(
         self,
-        workflow_pattern: str
+        workflow_code: str
     ) -> Dict[str, Any]:
         """
-        Discover available columns for a workflow pattern by introspecting
+        Discover available columns for a workflow by introspecting
         the actual data in service_requests.form_data.
 
         Args:
-            workflow_pattern: SQL LIKE pattern (e.g., 'PASAPORTE_%')
+            workflow_code: Exact workflow code (e.g., 'PASAPORTE_EXPEDICION_ADULTO')
 
         Returns:
             Dict with total_requests and extracted_columns list
         """
-        # Count total requests matching pattern
+        # Count total requests matching exact workflow code
         total = await self.db.fetchval("""
             SELECT COUNT(*)
             FROM service_requests
-            WHERE workflow_code LIKE $1
+            WHERE workflow_code = $1
               AND form_data IS NOT NULL
               AND form_data != '{}'::jsonb
-        """, workflow_pattern)
+        """, workflow_code)
 
         # Get distinct keys from form_data (excluding nested objects)
         # and count how many requests have each key
@@ -325,7 +337,7 @@ class DisplayConfigRepository:
                     (array_agg(value ORDER BY value::text DESC))[1] as first_value
                 FROM service_requests sr,
                      jsonb_each(sr.form_data) AS kv(key, value)
-                WHERE sr.workflow_code LIKE $1
+                WHERE sr.workflow_code = $1
                   AND sr.form_data IS NOT NULL
                   AND sr.form_data != '{}'::jsonb
                   -- Exclude nested objects (like 'dip', 'pasaporte_antiguo')
@@ -338,7 +350,7 @@ class DisplayConfigRepository:
             ) subq
             GROUP BY key, first_value
             ORDER BY sample_count DESC, key
-        """, workflow_pattern)
+        """, workflow_code)
 
         extracted_columns = []
         for row in rows:
@@ -354,3 +366,33 @@ class DisplayConfigRepository:
             "total_requests": total or 0,
             "extracted_columns": extracted_columns
         }
+
+    async def get_sample_request(
+        self,
+        workflow_code: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get a sample service request for preview purposes.
+
+        Args:
+            workflow_code: Exact workflow code
+
+        Returns:
+            Sample request dict or None if no requests found
+        """
+        result = await self.db.fetchrow("""
+            SELECT
+                sr.id, sr.reference, sr.citizen_name,
+                sr.workflow_code, sr.status, sr.priority,
+                sr.extracted_data, sr.form_data, sr.created_at
+            FROM service_requests sr
+            WHERE sr.workflow_code = $1
+            AND (sr.extracted_data IS NOT NULL OR sr.form_data IS NOT NULL)
+            ORDER BY sr.created_at DESC
+            LIMIT 1
+        """, workflow_code)
+
+        if result is None:
+            return None
+
+        return dict(result)

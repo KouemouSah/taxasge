@@ -1,8 +1,14 @@
 /**
  * ExtractedDataSection - Display extracted form data
  *
+ * Dynamically renders fields based on display_config columns.
+ * - Labels from translations (columns.*)
+ * - Date formatting auto-detected
+ * - No hardcoded workflow-specific logic
+ *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
+ * @updated 2026-02-02 - Fully dynamic, no hardcoding
  */
 
 'use client';
@@ -10,7 +16,7 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, FileText } from 'lucide-react';
+import { User } from 'lucide-react';
 import type { RequestPreviewExtractedData } from '../../../services/agent-requests-api';
 
 // =============================================================================
@@ -19,8 +25,45 @@ import type { RequestPreviewExtractedData } from '../../../services/agent-reques
 
 interface ExtractedDataSectionProps {
   data: RequestPreviewExtractedData;
-  isMinor: boolean;
-  solicitudType: string;
+  /** Extracted columns to display (from display_config.list_columns) */
+  columns: string[];
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Check if a string value is an ISO date format
+ */
+function isIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}/.test(value);
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+/**
+ * Humanize column ID: camelCase → Title Case
+ * Example: certFechaNacimiento → Cert Fecha Nacimiento
+ */
+function humanizeColumnId(columnId: string): string {
+  return columnId
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (str) => str.toUpperCase());
 }
 
 // =============================================================================
@@ -29,103 +72,78 @@ interface ExtractedDataSectionProps {
 
 export function ExtractedDataSection({
   data,
-  isMinor,
-  solicitudType,
+  columns,
 }: ExtractedDataSectionProps) {
-  const t = useTranslations('agent.pending.extractedFields');
+  const t = useTranslations('admin.menuConfig.displayConfig');
 
-  // Format date for display
-  const formatDate = (dateStr?: string | null): string => {
-    if (!dateStr) return '-';
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
+  // Get label from translations, fallback to humanized column ID
+  const getLabel = (columnId: string): string => {
+    // Use existing translations from columns.*
+    const translated = t(`columns.${columnId}` as Parameters<typeof t>[0], {
+      defaultValue: '',
+    });
+    return translated || humanizeColumnId(columnId);
   };
 
-  // Render a data field
-  const Field = ({ label, value }: { label: string; value?: string | null }) => (
+  // Get value from data, auto-format dates
+  const getValue = (columnId: string): string => {
+    const value = data[columnId as keyof RequestPreviewExtractedData];
+
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+
+    const strValue = String(value);
+
+    // Auto-detect and format ISO dates
+    if (isIsoDate(strValue)) {
+      return formatDate(strValue);
+    }
+
+    return strValue;
+  };
+
+  // Render a single field
+  const Field = ({ columnId }: { columnId: string }) => (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium">{value || '-'}</p>
+      <p className="text-xs text-muted-foreground">{getLabel(columnId)}</p>
+      <p className="text-sm font-medium">{getValue(columnId)}</p>
     </div>
   );
 
-  // Check if renovation
-  const isRenovacion = solicitudType?.toLowerCase() === 'renovacion';
+  // If no columns configured, show message
+  if (columns.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            {t('sections.extractedData')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            No hay campos configurados para este workflow.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <User className="h-5 w-5 text-primary" />
-          {t('title')}
+          {t('sections.extractedData')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Personal Data */}
-        {isMinor ? (
-          // Minor data from certificado_nacimiento
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <Field label={t('nombres')} value={data.certNombre} />
-            <Field
-              label={t('apellidos')}
-              value={[data.certPrimerApellido, data.certSegundoApellido].filter(Boolean).join(' ')}
-            />
-            <Field label={t('fechaNacimiento')} value={formatDate(data.certFechaNacimiento)} />
-            <Field label={t('sexo')} value={data.sexo} />
-            <Field label={t('lugarNacimiento')} value={data.certLugarNacimiento} />
-            <Field label={t('representante')} value={data.rep1Nombre} />
-            <Field label={t('docRepresentante')} value={data.rep1DocumentoNumero} />
-          </div>
-        ) : (
-          // Adult data from DIP
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <Field label={t('apellidos')} value={data.apellidos} />
-            <Field label={t('nombres')} value={data.nombres} />
-            <Field label={t('fechaNacimiento')} value={formatDate(data.fechaNacimiento)} />
-            <Field label={t('sexo')} value={data.sexo} />
-            <Field label={t('lugarNacimiento')} value={data.lugarNacimiento} />
-            <Field label={t('naturalDe')} value={data.naturalDe} />
-            <Field label={t('numeroDip')} value={data.numeroDip} />
-            <Field label={t('nacionalidad')} value={data.nacionalidad} />
-            <Field label={t('estadoCivil')} value={data.estadoCivil} />
-            <Field label={t('profesion')} value={data.profesion} />
-            <Field label={t('domicilio')} value={data.domicilio} />
-          </div>
-        )}
-
-        {/* Filiation */}
-        {(data.nombrePadre || data.nombreMadre) && (
-          <div className="pt-3 border-t">
-            <p className="text-xs text-muted-foreground mb-2 font-medium">{t('filiation')}</p>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              <Field label={t('nombrePadre')} value={data.nombrePadre} />
-              <Field label={t('nombreMadre')} value={data.nombreMadre} />
-            </div>
-          </div>
-        )}
-
-        {/* Old Passport Data (for renovation) */}
-        {isRenovacion && data.numeroPasaporteAntiguo && (
-          <div className="pt-3 border-t">
-            <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1">
-              <FileText className="h-3 w-3" />
-              {t('pasaporteAntiguo')}
-            </p>
-            <div className="grid grid-cols-3 gap-x-4 gap-y-2">
-              <Field label={t('numeroPasaporte')} value={data.numeroPasaporteAntiguo} />
-              <Field label={t('fechaExpedicion')} value={formatDate(data.fechaExpedicionAntiguo)} />
-              <Field label={t('fechaExpiracion')} value={formatDate(data.fechaExpiracionAntiguo)} />
-            </div>
-          </div>
-        )}
+      <CardContent>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {columns.map((columnId) => (
+            <Field key={columnId} columnId={columnId} />
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

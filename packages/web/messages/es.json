@@ -1099,7 +1099,19 @@
           "email": "Correo Electrónico",
           "fecha_expedicion": "Fecha de Expedición",
           "fecha_vencimiento": "Fecha de Vencimiento",
-          "natural_de": "Natural de"
+          "natural_de": "Natural de",
+          "ciudad": "Ciudad",
+          "departamento": "Departamento",
+          "domicilio": "Domicilio",
+          "fecha_expedicion_antiguo": "Fecha Expedición Anterior",
+          "fecha_expiracion_antiguo": "Fecha Expiración Anterior",
+          "grupo_sanguineo": "Grupo Sanguíneo",
+          "nombre_madre": "Nombre de la Madre",
+          "nombre_padre": "Nombre del Padre",
+          "numero_pasaporte_antiguo": "N° Pasaporte Anterior",
+          "representante_unico": "Representante Único",
+          "motivo_renovacion": "Motivo de Renovación",
+          "slaDeadline": "Plazo SLA"
         },
         "sections": {
           "info": "Información General",

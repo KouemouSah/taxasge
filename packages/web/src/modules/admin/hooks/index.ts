@@ -46,7 +46,17 @@ export type {
   DisplayConfig,
   AvailableColumn,
   AvailableColumnsResponse,
+  WorkflowCode,
+  SampleRequest,
 } from '../services/menuConfigService';
+
+// Workflow codes hooks (for dropdown selection)
+export {
+  useWorkflowCodes,
+  useWorkflowCodesGrouped,
+  useSampleRequest,
+  workflowCodesKeys,
+} from './useWorkflowCodes';
 
 // Admin dashboard hooks (users, audit, stats)
 export {

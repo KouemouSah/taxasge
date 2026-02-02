@@ -50,6 +50,14 @@ import {
   Eye,
   Columns,
   Layers,
+  FileText,
+  User,
+  File,
+  Phone,
+  Calendar,
+  CreditCard,
+  Clock,
+  History,
 } from 'lucide-react';
 import {
   useAllAvailableColumns,
@@ -58,6 +66,49 @@ import {
   DEFAULT_SELECTED_COLUMNS,
 } from '@/modules/admin/hooks';
 // AvailableColumn type used internally by hooks
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+/**
+ * System column IDs (not extracted from form_data)
+ * Used to separate system columns from extracted columns
+ */
+const SYSTEM_COLUMN_IDS = [
+  'reference',
+  'fullName',
+  'citizenName',
+  'status',
+  'priority',
+  'createdAt',
+  'submittedAt',
+  'slaDeadline',
+  'slaStatus',
+  'solicitudType',
+  'motivo',
+  'workflowCode',
+  'workflowLabel',
+  'assignedTo',
+  'assignedAgent',
+  'entityCode',
+  'totalAmount',
+  'paymentStatus',
+];
+
+/**
+ * Section icons mapping
+ */
+const SECTION_ICONS: Record<string, React.ReactNode> = {
+  info: <FileText className="h-4 w-4" />,
+  extractedData: <User className="h-4 w-4" />,
+  documents: <File className="h-4 w-4" />,
+  contact: <Phone className="h-4 w-4" />,
+  appointment: <Calendar className="h-4 w-4" />,
+  paymentDetails: <CreditCard className="h-4 w-4" />,
+  timeline: <Clock className="h-4 w-4" />,
+  history: <History className="h-4 w-4" />,
+};
 
 // =============================================================================
 // HELPER: Humanize column ID for display
@@ -75,7 +126,7 @@ function humanizeColumnId(id: string): string {
 // =============================================================================
 
 export interface DisplayConfigFormData {
-  workflow_pattern: string;
+  workflow_code: string;
   list_columns: string[];
   preview_sections: string[];
 }
@@ -200,7 +251,7 @@ export function DisplayConfigForm({
   const t = useTranslations('admin.menuConfig.displayConfig');
 
   // Local state
-  const [pattern, setPattern] = useState(initialData?.workflow_pattern ?? '');
+  const [pattern, setPattern] = useState(initialData?.workflow_code ?? '');
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
     initialData?.list_columns ?? [...DEFAULT_SELECTED_COLUMNS]
   );
@@ -234,7 +285,7 @@ export function DisplayConfigForm({
   // Reset state when initialData changes (for edit mode)
   useEffect(() => {
     if (initialData) {
-      setPattern(initialData.workflow_pattern);
+      setPattern(initialData.workflow_code);
       setSelectedColumns(initialData.list_columns);
       setSelectedSections(initialData.preview_sections);
       setIsDirty(false);
@@ -338,7 +389,7 @@ export function DisplayConfigForm({
 
   const handleSubmit = async () => {
     await onSubmit({
-      workflow_pattern: pattern,
+      workflow_code: pattern,
       list_columns: selectedColumns,
       preview_sections: selectedSections,
     });
@@ -349,6 +400,17 @@ export function DisplayConfigForm({
       defaultValue: humanizeColumnId(colId),
     });
   };
+
+  // Separate selected columns into system and extracted
+  const selectedSystemColumns = useMemo(
+    () => selectedColumns.filter((col) => SYSTEM_COLUMN_IDS.includes(col)),
+    [selectedColumns]
+  );
+
+  const selectedExtractedColumns = useMemo(
+    () => selectedColumns.filter((col) => !SYSTEM_COLUMN_IDS.includes(col)),
+    [selectedColumns]
+  );
 
   const isValid = pattern.length >= 3 && selectedColumns.length > 0;
 
@@ -563,23 +625,49 @@ export function DisplayConfigForm({
             <CardDescription>{t('previewSectionsDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               {AVAILABLE_SECTIONS.map((sec) => (
-                <div key={sec.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`sec-${sec.id}`}
-                    checked={selectedSections.includes(sec.id)}
-                    onCheckedChange={() => toggleSection(sec.id)}
-                  />
-                  <label
-                    htmlFor={`sec-${sec.id}`}
-                    className="text-sm cursor-pointer"
-                    title={sec.description}
-                  >
-                    {t(`sections.${sec.id}` as Parameters<typeof t>[0], {
-                      defaultValue: sec.label,
-                    })}
-                  </label>
+                <div key={sec.id} className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`sec-${sec.id}`}
+                      checked={selectedSections.includes(sec.id)}
+                      onCheckedChange={() => toggleSection(sec.id)}
+                    />
+                    <label
+                      htmlFor={`sec-${sec.id}`}
+                      className="text-sm cursor-pointer flex items-center gap-2"
+                      title={sec.description}
+                    >
+                      {SECTION_ICONS[sec.id]}
+                      {t(`sections.${sec.id}` as Parameters<typeof t>[0], {
+                        defaultValue: sec.label,
+                      })}
+                    </label>
+                  </div>
+                  {/* Show extracted columns under extractedData section */}
+                  {sec.id === 'extractedData' && selectedSections.includes('extractedData') && (
+                    <div className="ml-6 pl-2 border-l-2 border-muted">
+                      {selectedExtractedColumns.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 py-1">
+                          {selectedExtractedColumns.slice(0, 6).map((col) => (
+                            <Badge key={col} variant="secondary" className="text-[10px]">
+                              {getColumnLabel(col)}
+                            </Badge>
+                          ))}
+                          {selectedExtractedColumns.length > 6 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              +{selectedExtractedColumns.length - 6}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic py-1">
+                          Aucune colonne extraite sélectionnée
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -593,55 +681,172 @@ export function DisplayConfigForm({
               <Eye className="h-4 w-4" />
               {t('preview')}
             </CardTitle>
+            <CardDescription>Aperçu du panneau agent</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-md p-4 bg-muted/30">
-              {/* Preview Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="font-medium text-sm">REF-2026-00142</p>
-                  <p className="text-xs text-muted-foreground">Juan Carlos García López</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-[10px]">
-                    Normal
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px]">
-                    En revisión
-                  </Badge>
-                </div>
-              </div>
-              <Separator className="my-2" />
+            <div className="border rounded-md bg-muted/30 max-h-[350px] overflow-y-auto">
+              {selectedSections.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  Sélectionnez des sections à afficher
+                </p>
+              ) : (
+                <div className="divide-y">
+                  {/* Info Section Preview */}
+                  {selectedSections.includes('info') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.info' as Parameters<typeof t>[0], { defaultValue: 'Info' })}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Référence:</span>
+                          <span className="ml-1 font-medium">REF-2026-00142</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Priorité:</span>
+                          <Badge className="ml-1 text-[10px] bg-blue-100 text-blue-700">Normal</Badge>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Statut:</span>
+                          <span className="ml-1">En revisión</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">SLA:</span>
+                          <span className="ml-1 text-green-600">4h restantes</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Preview Columns */}
-              <div className="space-y-1">
-                {selectedColumns.slice(0, 5).map((colId) => (
-                  <div key={colId} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground truncate max-w-[120px]">
-                      {getColumnLabel(colId)}
-                    </span>
-                    <span className="font-medium">—</span>
-                  </div>
-                ))}
-                {selectedColumns.length > 5 && (
-                  <p className="text-xs text-muted-foreground text-center pt-1">
-                    +{selectedColumns.length - 5} {t('moreColumns')}
-                  </p>
-                )}
-              </div>
-              <Separator className="my-2" />
+                  {/* Extracted Data Section Preview */}
+                  {selectedSections.includes('extractedData') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <User className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.extractedData' as Parameters<typeof t>[0], { defaultValue: 'Datos Extraídos' })}
+                        </span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {selectedExtractedColumns.length}
+                        </Badge>
+                      </div>
+                      {selectedExtractedColumns.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {selectedExtractedColumns.slice(0, 6).map((col) => (
+                            <div key={col}>
+                              <span className="text-muted-foreground">{getColumnLabel(col)}:</span>
+                              <span className="ml-1 font-medium">—</span>
+                            </div>
+                          ))}
+                          {selectedExtractedColumns.length > 6 && (
+                            <div className="col-span-2 text-muted-foreground italic">
+                              +{selectedExtractedColumns.length - 6} más...
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-600 italic">
+                          ⚠️ Aucune colonne extraite sélectionnée
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-              {/* Preview Sections */}
-              <div className="flex flex-wrap gap-1">
-                {selectedSections.map((secId) => (
-                  <Badge key={secId} variant="outline" className="text-[10px]">
-                    {t(`sections.${secId}` as Parameters<typeof t>[0], { defaultValue: secId })}
-                  </Badge>
-                ))}
-                {selectedSections.length === 0 && (
-                  <span className="text-xs text-muted-foreground">Aucune section</span>
-                )}
-              </div>
+                  {/* Documents Section Preview */}
+                  {selectedSections.includes('documents') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <File className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.documents' as Parameters<typeof t>[0], { defaultValue: 'Documentos' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Documents requis selon le workflow sélectionné
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Contact Section Preview */}
+                  {selectedSections.includes('contact') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Phone className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.contact' as Parameters<typeof t>[0], { defaultValue: 'Contacto' })}
+                        </span>
+                      </div>
+                      <div className="text-xs space-y-1">
+                        <div><span className="text-muted-foreground">Email:</span> juan@email.com</div>
+                        <div><span className="text-muted-foreground">Teléfono:</span> +240 555 1234</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Appointment Section Preview */}
+                  {selectedSections.includes('appointment') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.appointment' as Parameters<typeof t>[0], { defaultValue: 'Cita' })}
+                        </span>
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Fecha:</span> 15/02/2026 10:00
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Section Preview */}
+                  {selectedSections.includes('paymentDetails') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.paymentDetails' as Parameters<typeof t>[0], { defaultValue: 'Pago' })}
+                        </span>
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Total:</span> 25,000 XAF
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timeline Section Preview */}
+                  {selectedSections.includes('timeline') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.timeline' as Parameters<typeof t>[0], { defaultValue: 'Timeline' })}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Historial de la solicitud
+                      </div>
+                    </div>
+                  )}
+
+                  {/* History Section Preview */}
+                  {selectedSections.includes('history') && (
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <History className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
+                          {t('sections.history' as Parameters<typeof t>[0], { defaultValue: 'Historial' })}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Acciones realizadas
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Submit Button */}

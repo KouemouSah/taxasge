@@ -27,7 +27,7 @@ export default function DisplayConfigCreatePage() {
 
   const handleSubmit = async (data: DisplayConfigFormData) => {
     await createMutation.mutateAsync({
-      workflow_pattern: data.workflow_pattern,
+      workflow_code: data.workflow_code,
       list_columns: data.list_columns,
       preview_sections: data.preview_sections,
     });

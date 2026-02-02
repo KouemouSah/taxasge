@@ -85,7 +85,7 @@ export default function DisplayConfigPage() {
   const filteredConfigs = configs.filter((config) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    return config.workflow_pattern.toLowerCase().includes(query);
+    return config.workflow_code.toLowerCase().includes(query);
   });
 
   const handleDelete = async () => {
@@ -235,7 +235,7 @@ export default function DisplayConfigPage() {
                     <TableRow key={config.id}>
                       <TableCell>
                         <code className="text-sm bg-muted px-2 py-1 rounded">
-                          {config.workflow_pattern}
+                          {config.workflow_code}
                         </code>
                       </TableCell>
                       <TableCell>
@@ -337,7 +337,7 @@ export default function DisplayConfigPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('confirmDeleteDescription', { pattern: selectedConfig?.workflow_pattern })}
+              {t('confirmDeleteDescription', { pattern: selectedConfig?.workflow_code })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

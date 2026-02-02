@@ -62,10 +62,22 @@ export interface PaginationParams {
   page_size?: number;
 }
 
+// Workflow Code types (for dropdown selection)
+export interface WorkflowCode {
+  code: string;
+  name_es: string;
+  category: string | null;
+}
+
+export interface WorkflowCodeListResponse {
+  items: WorkflowCode[];
+  total: number;
+}
+
 // Display Config types
 export interface DisplayConfig {
   id: number;
-  workflow_pattern: string;
+  workflow_code: string;  // Changed from workflow_pattern (migration 088)
   list_columns: string[];
   preview_sections: string[];
   labels: Record<string, string>;
@@ -83,7 +95,7 @@ export interface DisplayConfigListResponse {
 }
 
 export interface DisplayConfigCreateRequest {
-  workflow_pattern: string;
+  workflow_code: string;  // Changed from workflow_pattern (migration 088)
   list_columns?: string[];
   preview_sections?: string[];
   labels?: Record<string, string>;
@@ -106,11 +118,24 @@ export interface AvailableColumn {
 }
 
 export interface AvailableColumnsResponse {
-  workflow_pattern: string;
+  workflow_code: string;  // Changed from workflow_pattern (migration 088)
   total_requests: number;
   system_columns: AvailableColumn[];
   extracted_columns: AvailableColumn[];
   default_selected: string[];
+}
+
+// Sample Request types (for real data preview)
+export interface SampleRequest {
+  id: string;
+  reference: string;
+  citizen_name: string | null;
+  workflow_code: string;
+  status: string;
+  priority: string | null;
+  extracted_data: Record<string, unknown> | null;
+  form_data: Record<string, unknown> | null;
+  created_at: string;
 }
 
 // =============================================================================
@@ -310,14 +335,38 @@ export const menuConfigApi = {
   },
 
   /**
-   * Discover available columns for a workflow pattern
+   * Discover available columns for a workflow code
    * Introspects actual data in service_requests.form_data
-   * BACKEND: GET /api/v1/menu-config/display-configs/available-columns/{workflow_pattern}
-   * PERMISSION: admin.menu.read
+   * BACKEND: GET /api/v1/menu-config/display-configs/available-columns/{workflow_code}
+   * PERMISSION: menu.view_mappings
    */
-  getAvailableColumns: async (workflowPattern: string): Promise<AvailableColumnsResponse> => {
+  getAvailableColumns: async (workflowCode: string): Promise<AvailableColumnsResponse> => {
     return fetchClient.get<AvailableColumnsResponse>(
-      `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowPattern)}`
+      `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowCode)}`
+    );
+  },
+
+  // ===========================================================================
+  // WORKFLOW CODES (for dropdown selection)
+  // ===========================================================================
+
+  /**
+   * List all available workflow codes for dropdown selection
+   * BACKEND: GET /api/v1/menu-config/workflows
+   * PERMISSION: menu.view_mappings
+   */
+  getWorkflowCodes: async (): Promise<WorkflowCodeListResponse> => {
+    return fetchClient.get<WorkflowCodeListResponse>(`${MENU_CONFIG_BASE}/workflows`);
+  },
+
+  /**
+   * Get a sample service request for preview purposes
+   * BACKEND: GET /api/v1/menu-config/display-configs/sample-request/{workflow_code}
+   * PERMISSION: menu.view_mappings
+   */
+  getSampleRequest: async (workflowCode: string): Promise<SampleRequest | null> => {
+    return fetchClient.get<SampleRequest | null>(
+      `${MENU_CONFIG_BASE}/display-configs/sample-request/${encodeURIComponent(workflowCode)}`
     );
   },
 };

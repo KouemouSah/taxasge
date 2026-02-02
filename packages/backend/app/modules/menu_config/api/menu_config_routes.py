@@ -44,6 +44,9 @@ from app.modules.menu_config.models.menu_config import (
     WorkflowDisplayConfigListResponse,
     AvailableColumn,
     AvailableColumnsResponse,
+    WorkflowCodeResponse,
+    WorkflowCodeListResponse,
+    SampleRequestResponse,
 )
 from app.modules.menu_config.repositories.display_config_repository import (
     DisplayConfigRepository,
@@ -294,6 +297,48 @@ async def delete_workflow_mapping(
 
 
 # =============================================================================
+# WORKFLOW CODES ENDPOINT (for dropdown selection)
+# =============================================================================
+
+@router.get(
+    "/workflows",
+    response_model=WorkflowCodeListResponse,
+    summary="List available workflow codes",
+    description="Get all distinct workflow codes from workflows table for dropdown selection."
+)
+async def list_workflow_codes(
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """List all available workflow codes for dropdown selection."""
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "menu.view_mappings", raise_exception=True
+    )
+
+    # Query distinct workflows from workflows table
+    query = """
+        SELECT code, name_es, category
+        FROM workflows
+        WHERE is_active = true
+        ORDER BY category NULLS LAST, code
+    """
+    rows = await db.fetch(query)
+
+    items = [
+        WorkflowCodeResponse(
+            code=row["code"],
+            name_es=row["name_es"],
+            category=row.get("category")
+        )
+        for row in rows
+    ]
+
+    return WorkflowCodeListResponse(items=items, total=len(items))
+
+
+# =============================================================================
 # WORKFLOW DISPLAY CONFIG CRUD ENDPOINTS (Admin only)
 # =============================================================================
 
@@ -361,12 +406,12 @@ async def create_display_config(
 
     repo = DisplayConfigRepository(db)
 
-    # Check if pattern already exists
-    existing = await repo.get_by_pattern(config.workflow_pattern)
+    # Check if workflow_code already has a config
+    existing = await repo.get_by_code(config.workflow_code)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Display config with pattern '{config.workflow_pattern}' already exists"
+            detail=f"Display config for workflow '{config.workflow_code}' already exists"
         )
 
     created = await repo.create(config)
@@ -408,14 +453,14 @@ async def get_display_config(
     "/display-configs/by-workflow/{workflow_code}",
     response_model=WorkflowDisplayConfigResponse,
     summary="Get display config for workflow",
-    description="Get display configuration matching a specific workflow code. Uses pattern matching."
+    description="Get display configuration for an exact workflow code."
 )
 async def get_display_config_for_workflow(
     workflow_code: str,
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
 ):
-    """Get display configuration for a specific workflow code"""
+    """Get display configuration for a specific workflow code (exact match)"""
 
     repo = DisplayConfigRepository(db)
     config = await repo.find_config_for_workflow(workflow_code)
@@ -573,28 +618,28 @@ DEFAULT_SELECTED_COLUMNS = [
 
 
 @router.get(
-    "/display-configs/available-columns/{workflow_pattern:path}",
+    "/display-configs/available-columns/{workflow_code:path}",
     response_model=AvailableColumnsResponse,
-    summary="Discover available columns for a workflow pattern",
+    summary="Discover available columns for a workflow",
     description="""
-    Dynamically discovers available columns for a workflow pattern by introspecting
+    Dynamically discovers available columns for an exact workflow code by introspecting
     actual data in service_requests.form_data.
 
     Returns:
     - system_columns: Fixed columns from the service_requests table
     - extracted_columns: Dynamic columns discovered from form_data JSONB
 
-    The workflow_pattern should use SQL LIKE syntax (e.g., PASAPORTE_%).
+    Uses exact workflow_code matching (not patterns).
     Requires menu.view_mappings permission.
     """
 )
 async def get_available_columns(
-    workflow_pattern: str,
+    workflow_code: str,
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
     permission_service: PermissionService = Depends(get_permission_service),
 ):
-    """Discover available columns for a workflow pattern from actual DB data"""
+    """Discover available columns for an exact workflow code from actual DB data"""
 
     # Check permission
     await permission_service.check_permission(
@@ -605,7 +650,7 @@ async def get_available_columns(
 
     try:
         # Get extracted columns from actual data
-        result = await repo.get_available_columns_for_workflow(workflow_pattern)
+        result = await repo.get_available_columns_for_workflow(workflow_code)
 
         # Build extracted columns list
         extracted_columns = [
@@ -620,7 +665,7 @@ async def get_available_columns(
         ]
 
         return AvailableColumnsResponse(
-            workflow_pattern=workflow_pattern,
+            workflow_code=workflow_code,
             total_requests=result["total_requests"],
             system_columns=SYSTEM_COLUMNS,
             extracted_columns=extracted_columns,
@@ -628,8 +673,36 @@ async def get_available_columns(
         )
 
     except Exception as e:
-        logger.error(f"Error discovering columns for {workflow_pattern}: {e}")
+        logger.error(f"Error discovering columns for {workflow_code}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to discover columns: {str(e)}"
         )
+
+
+@router.get(
+    "/display-configs/sample-request/{workflow_code}",
+    response_model=Optional[SampleRequestResponse],
+    summary="Get sample request for preview",
+    description="Get a sample service request for a workflow to preview real data."
+)
+async def get_sample_request(
+    workflow_code: str,
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Get a sample service request for preview purposes"""
+
+    # Check permission
+    await permission_service.check_permission(
+        current_user.id, "menu.view_mappings", raise_exception=True
+    )
+
+    repo = DisplayConfigRepository(db)
+    sample = await repo.get_sample_request(workflow_code)
+
+    if not sample:
+        return None
+
+    return SampleRequestResponse(**sample)

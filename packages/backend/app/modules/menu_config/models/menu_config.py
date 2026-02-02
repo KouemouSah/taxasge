@@ -206,14 +206,31 @@ class AgentMenuConfigResponse(BaseModel):
 
 
 # =============================================================================
+# WORKFLOW CODE MODELS (for dropdown selection)
+# =============================================================================
+
+class WorkflowCodeResponse(BaseModel):
+    """Workflow code for dropdown selection"""
+    code: str = Field(..., description="Exact workflow code (e.g., PASAPORTE_NUEVO)")
+    name_es: str = Field(..., description="Spanish name")
+    category: Optional[str] = Field(None, description="Workflow category (e.g., IDENTIDAD)")
+
+
+class WorkflowCodeListResponse(BaseModel):
+    """List of workflow codes"""
+    items: List[WorkflowCodeResponse]
+    total: int
+
+
+# =============================================================================
 # WORKFLOW DISPLAY CONFIG MODELS
 # =============================================================================
 
 class WorkflowDisplayConfigBase(BaseModel):
-    """Base workflow display configuration"""
-    workflow_pattern: str = Field(
-        ..., min_length=1, max_length=50,
-        description="SQL LIKE pattern for workflow matching (e.g., PASAPORTE_%)"
+    """Base workflow display configuration - uses exact workflow_code (not pattern)"""
+    workflow_code: str = Field(
+        ..., min_length=1, max_length=100,
+        description="Exact workflow code (e.g., PASAPORTE_EXPEDICION_ADULTO). Must match service_request_workflows.code."
     )
     list_columns: List[str] = Field(
         default=["reference", "fullName", "createdAt", "priority"],
@@ -284,11 +301,11 @@ class AvailableColumn(BaseModel):
 
 
 class AvailableColumnsResponse(BaseModel):
-    """Response with available columns for a workflow pattern"""
-    workflow_pattern: str = Field(..., description="The workflow pattern queried")
+    """Response with available columns for a workflow code"""
+    workflow_code: str = Field(..., description="The exact workflow code queried")
     total_requests: int = Field(
         default=0,
-        description="Total requests matching this pattern (for context)"
+        description="Total requests with this workflow code (for context)"
     )
     system_columns: List[AvailableColumn] = Field(
         default_factory=list,
@@ -302,3 +319,23 @@ class AvailableColumnsResponse(BaseModel):
         default_factory=list,
         description="Column IDs that should be pre-selected by default"
     )
+
+
+# =============================================================================
+# SAMPLE REQUEST MODEL (for real data preview)
+# =============================================================================
+
+class SampleRequestResponse(BaseModel):
+    """Sample service request for preview purposes"""
+    id: UUID = Field(..., description="Request ID")
+    reference: str = Field(..., description="Request reference")
+    citizen_name: Optional[str] = Field(None, description="Citizen full name")
+    workflow_code: str = Field(..., description="Workflow code")
+    status: str = Field(..., description="Request status")
+    priority: Optional[str] = Field(None, description="Priority level")
+    extracted_data: Optional[Dict[str, Any]] = Field(None, description="Extracted OCR data")
+    form_data: Optional[Dict[str, Any]] = Field(None, description="Form submission data")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+    class Config:
+        from_attributes = True

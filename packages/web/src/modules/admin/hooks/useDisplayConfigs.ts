@@ -97,7 +97,7 @@ export function useDisplayConfig(id: number, enabled = true) {
       logInfo(`Fetching display config id=${id}`);
       try {
         const result = await menuConfigApi.getDisplayConfig(id);
-        logInfo(`Fetched config: ${result.workflow_pattern}`);
+        logInfo(`Fetched config: ${result.workflow_code}`);
         return result;
       } catch (error) {
         logError(`Failed to fetch display config id=${id}`, error);
@@ -119,7 +119,7 @@ export function useDisplayConfigForWorkflow(workflowCode: string, enabled = true
       logInfo(`Fetching display config for workflow=${workflowCode}`);
       try {
         const result = await menuConfigApi.getDisplayConfigForWorkflow(workflowCode);
-        logInfo(`Found config: ${result.workflow_pattern}`);
+        logInfo(`Found config: ${result.workflow_code}`);
         return result;
       } catch (error) {
         logError(`No display config found for workflow=${workflowCode}`, error);
@@ -141,17 +141,17 @@ export function useCreateDisplayConfig() {
 
   return useMutation<DisplayConfig, Error, DisplayConfigCreateRequest>({
     mutationFn: async (data) => {
-      logInfo('Creating display config', { pattern: data.workflow_pattern });
+      logInfo('Creating display config', { workflowCode: data.workflow_code });
       return menuConfigApi.createDisplayConfig(data);
     },
     onSuccess: (result) => {
-      logInfo(`Config created successfully: id=${result.id}, pattern=${result.workflow_pattern}`);
+      logInfo(`Config created successfully: id=${result.id}, workflowCode=${result.workflow_code}`);
       queryClient.invalidateQueries({ queryKey: displayConfigKeys.lists() });
       toast.success(t('messages.created'));
     },
     onError: (error, variables) => {
       logError('Failed to create display config', error, {
-        pattern: variables.workflow_pattern,
+        workflowCode: variables.workflow_code,
         data: variables,
       });
       toast.error(t('messages.createError'), {

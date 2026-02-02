@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -42,8 +42,37 @@ import { ExtractedDataSection } from './sections/ExtractedDataSection';
 import { DocumentsSection } from './sections/DocumentsSection';
 import { ContactSection } from './sections/ContactSection';
 import { AppointmentSection } from './sections/AppointmentSection';
+import { useDisplayConfigForWorkflow } from '@/modules/admin/hooks/useDisplayConfigs';
 import type { ServiceRequestPreview, ActionType } from '../../services/agent-requests-api';
 import type { EntityCode } from '../../types';
+
+// =============================================================================
+// DEFAULT PREVIEW SECTIONS
+// =============================================================================
+
+const DEFAULT_PREVIEW_SECTIONS = ['info', 'extractedData', 'documents', 'contact', 'appointment'];
+
+// =============================================================================
+// SYSTEM COLUMNS (not extracted from form_data)
+// =============================================================================
+
+const SYSTEM_COLUMNS = [
+  'reference',
+  'fullName',
+  'citizenName',
+  'status',
+  'priority',
+  'createdAt',
+  'submittedAt',
+  'slaDeadline',
+  'slaStatus',
+  'solicitudType',
+  'motivo',
+  'workflowCode',
+  'workflowLabel',
+  'assignedTo',
+  'entityCode',
+];
 
 // =============================================================================
 // PREDEFINED REJECTION REASONS
@@ -66,6 +95,8 @@ interface RequestPreviewProps {
   data: ServiceRequestPreview;
   entityCode: EntityCode;
   action?: ActionType;
+  /** Workflow code for fetching display config (sections to show) */
+  workflowCode?: string;
   onApprove: () => Promise<void>;
   onReject: (reason: string) => Promise<void>;
   onNavigate: (direction: 'prev' | 'next') => void;
@@ -86,6 +117,7 @@ export function RequestPreview({
   data,
   entityCode,
   action = 'pending',
+  workflowCode,
   onApprove,
   onReject,
   onNavigate,
@@ -99,6 +131,23 @@ export function RequestPreview({
   const isReadOnly = action === 'history';
   const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
+
+  // Fetch display config for this specific workflow (Option D: workflow-specific preview)
+  const { data: displayConfig } = useDisplayConfigForWorkflow(
+    workflowCode ?? '',
+    !!workflowCode
+  );
+
+  // Determine which sections to show (from config or defaults)
+  const previewSections = displayConfig?.preview_sections ?? DEFAULT_PREVIEW_SECTIONS;
+  const shouldShowSection = (sectionId: string) => previewSections.includes(sectionId);
+
+  // Extract only the extracted columns (not system columns) from list_columns
+  // These will be displayed in the ExtractedDataSection
+  const extractedColumns = useMemo(() => {
+    const configColumns = displayConfig?.list_columns ?? [];
+    return configColumns.filter((col) => !SYSTEM_COLUMNS.includes(col));
+  }, [displayConfig?.list_columns]);
 
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -196,49 +245,58 @@ export function RequestPreview({
         </Link>
       </div>
 
-      {/* Content */}
+      {/* Content - Sections rendered based on display config */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Section 1: Request Info */}
-        <RequestInfoSection
-          reference={data.reference}
-          workflowLabel={data.workflowLabel}
-          solicitudType={data.solicitudType}
-          motivo={data.motivo}
-          priority={data.priority}
-          status={data.status}
-          slaStatus={data.slaStatus}
-          slaRemainingHours={data.slaRemainingHours}
-          isMinor={data.isMinor}
-        />
+        {/* Section: Request Info (always shown - critical info) */}
+        {shouldShowSection('info') && (
+          <RequestInfoSection
+            reference={data.reference}
+            workflowLabel={data.workflowLabel}
+            solicitudType={data.solicitudType}
+            motivo={data.motivo}
+            priority={data.priority}
+            status={data.status}
+            slaStatus={data.slaStatus}
+            slaRemainingHours={data.slaRemainingHours}
+            isMinor={data.isMinor}
+          />
+        )}
 
-        {/* Section 2: Extracted Data */}
-        <ExtractedDataSection
-          data={data.extractedData}
-          isMinor={data.isMinor}
-          solicitudType={data.solicitudType}
-        />
+        {/* Section: Extracted Data - displays columns from display_config */}
+        {shouldShowSection('extractedData') && (
+          <ExtractedDataSection
+            data={data.extractedData}
+            columns={extractedColumns}
+          />
+        )}
 
-        {/* Section 3: Documents */}
-        <DocumentsSection
-          documents={data.documents}
-          documentsCount={data.documentsCount}
-          requestId={data.id}
-        />
+        {/* Section: Documents */}
+        {shouldShowSection('documents') && (
+          <DocumentsSection
+            documents={data.documents}
+            documentsCount={data.documentsCount}
+            requestId={data.id}
+          />
+        )}
 
-        {/* Section 4: Contact */}
-        <ContactSection
-          name={data.contactName}
-          email={data.contactEmail}
-          phone={data.contactPhone}
-        />
+        {/* Section: Contact */}
+        {shouldShowSection('contact') && (
+          <ContactSection
+            name={data.contactName}
+            email={data.contactEmail}
+            phone={data.contactPhone}
+          />
+        )}
 
-        {/* Section 5: Appointment */}
-        <AppointmentSection
-          appointment={data.appointment}
-          requestId={data.id}
-          entityCode={entityCode}
-          onAppointmentCreated={onAppointmentCreated}
-        />
+        {/* Section: Appointment */}
+        {shouldShowSection('appointment') && (
+          <AppointmentSection
+            appointment={data.appointment}
+            requestId={data.id}
+            entityCode={entityCode}
+            onAppointmentCreated={onAppointmentCreated}
+          />
+        )}
       </div>
 
       {/* Actions Footer - Hidden for read-only (history) mode */}

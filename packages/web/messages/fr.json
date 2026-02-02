@@ -1108,7 +1108,10 @@
           "nombre_madre": "Nom de la Mère",
           "motivo_renovacion": "Motif Renouvellement",
           "representante_unico": "Représentant Unique",
-          "slaDeadline": "Délai SLA"
+          "slaDeadline": "Délai SLA",
+          "ciudad": "Ville",
+          "departamento": "Département",
+          "grupo_sanguineo": "Groupe Sanguin"
         },
         "sectionDescriptions": {
           "info": "Informations de base de la demande",
