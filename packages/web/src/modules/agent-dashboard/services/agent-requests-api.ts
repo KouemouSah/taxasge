@@ -115,34 +115,17 @@ export interface VerificationResponse {
 // PREVIEW TYPES FOR SPLIT VIEW
 // =============================================================================
 
-export interface RequestPreviewExtractedData {
-  apellidos?: string | null;
-  nombres?: string | null;
-  fechaNacimiento?: string | null;
-  sexo?: string | null;
-  lugarNacimiento?: string | null;
-  naturalDe?: string | null;
-  numeroDip?: string | null;
-  domicilio?: string | null;
-  nacionalidad?: string | null;
-  estadoCivil?: string | null;
-  profesion?: string | null;
-  // Renovation
-  numeroPasaporteAntiguo?: string | null;
-  fechaExpedicionAntiguo?: string | null;
-  fechaExpiracionAntiguo?: string | null;
-  // Minor
-  certNombre?: string | null;
-  certPrimerApellido?: string | null;
-  certSegundoApellido?: string | null;
-  certFechaNacimiento?: string | null;
-  certLugarNacimiento?: string | null;
-  // Representatives
-  rep1Nombre?: string | null;
-  rep1DocumentoNumero?: string | null;
-  nombrePadre?: string | null;
-  nombreMadre?: string | null;
-}
+/**
+ * RequestPreviewExtractedData - Flexible type for all form_data columns
+ *
+ * This is now a Record to support dynamic columns from workflow_display_config.
+ * Backend returns all form_data columns with flattened nested objects:
+ * - dip.natural_de → dip_natural_de (camelCase: dipNaturalDe)
+ * - pasaporte_antiguo.numero → pasaporte_antiguo_numero (camelCase: pasaporteAntiguoNumero)
+ *
+ * @updated 2026-02-02 - Changed to Record<string, unknown> for admin flexibility
+ */
+export type RequestPreviewExtractedData = Record<string, unknown>;
 
 export interface RequestPreviewDocument {
   id: string;
@@ -220,30 +203,28 @@ interface BackendServiceRequestListResponse {
 }
 
 // Backend preview types (snake_case)
-interface BackendRequestPreviewExtractedData {
-  apellidos?: string | null;
-  nombres?: string | null;
-  fecha_nacimiento?: string | null;
-  sexo?: string | null;
-  lugar_nacimiento?: string | null;
-  natural_de?: string | null;
-  numero_dip?: string | null;
-  domicilio?: string | null;
-  nacionalidad?: string | null;
-  estado_civil?: string | null;
-  profesion?: string | null;
-  numero_pasaporte_antiguo?: string | null;
-  fecha_expedicion_antiguo?: string | null;
-  fecha_expiracion_antiguo?: string | null;
-  cert_nombre?: string | null;
-  cert_primer_apellido?: string | null;
-  cert_segundo_apellido?: string | null;
-  cert_fecha_nacimiento?: string | null;
-  cert_lugar_nacimiento?: string | null;
-  rep1_nombre?: string | null;
-  rep1_documento_numero?: string | null;
-  nombre_padre?: string | null;
-  nombre_madre?: string | null;
+// Now flexible Record to support all form_data columns
+type BackendRequestPreviewExtractedData = Record<string, unknown>;
+
+/**
+ * Convert snake_case to camelCase
+ * Example: fecha_nacimiento → fechaNacimiento
+ *          dip_natural_de → dipNaturalDe
+ */
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+/**
+ * Transform all keys in an object from snake_case to camelCase
+ */
+function transformExtractedData(data: BackendRequestPreviewExtractedData): RequestPreviewExtractedData {
+  if (!data || typeof data !== 'object') return {};
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    result[snakeToCamel(key)] = value;
+  }
+  return result;
 }
 
 interface BackendRequestPreviewDocument {
@@ -325,31 +306,8 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     slaDeadline: data.sla_deadline,
     slaRemainingHours: data.sla_remaining_hours,
     slaStatus: (data.sla_status || 'on_track') as 'on_track' | 'warning' | 'breached',
-    extractedData: {
-      apellidos: data.extracted_data?.apellidos,
-      nombres: data.extracted_data?.nombres,
-      fechaNacimiento: data.extracted_data?.fecha_nacimiento,
-      sexo: data.extracted_data?.sexo,
-      lugarNacimiento: data.extracted_data?.lugar_nacimiento,
-      naturalDe: data.extracted_data?.natural_de,
-      numeroDip: data.extracted_data?.numero_dip,
-      domicilio: data.extracted_data?.domicilio,
-      nacionalidad: data.extracted_data?.nacionalidad,
-      estadoCivil: data.extracted_data?.estado_civil,
-      profesion: data.extracted_data?.profesion,
-      numeroPasaporteAntiguo: data.extracted_data?.numero_pasaporte_antiguo,
-      fechaExpedicionAntiguo: data.extracted_data?.fecha_expedicion_antiguo,
-      fechaExpiracionAntiguo: data.extracted_data?.fecha_expiracion_antiguo,
-      certNombre: data.extracted_data?.cert_nombre,
-      certPrimerApellido: data.extracted_data?.cert_primer_apellido,
-      certSegundoApellido: data.extracted_data?.cert_segundo_apellido,
-      certFechaNacimiento: data.extracted_data?.cert_fecha_nacimiento,
-      certLugarNacimiento: data.extracted_data?.cert_lugar_nacimiento,
-      rep1Nombre: data.extracted_data?.rep1_nombre,
-      rep1DocumentoNumero: data.extracted_data?.rep1_documento_numero,
-      nombrePadre: data.extracted_data?.nombre_padre,
-      nombreMadre: data.extracted_data?.nombre_madre,
-    },
+    // Dynamic transformation: snake_case → camelCase for all form_data columns
+    extractedData: transformExtractedData(data.extracted_data || {}),
     documents: data.documents.map(doc => ({
       id: doc.id,
       code: doc.code,

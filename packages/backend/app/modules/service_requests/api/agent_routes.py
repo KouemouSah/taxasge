@@ -1630,35 +1630,10 @@ class ServiceRequestListResponse(BaseModel):
 # PREVIEW MODELS FOR SPLIT VIEW
 # ═══════════════════════════════════════════════════════════════
 
-class RequestPreviewExtractedData(BaseModel):
-    """Extracted data for preview - dynamically populated from form_data"""
-    # Common fields (adults)
-    apellidos: Optional[str] = None
-    nombres: Optional[str] = None
-    fecha_nacimiento: Optional[str] = None
-    sexo: Optional[str] = None
-    lugar_nacimiento: Optional[str] = None
-    natural_de: Optional[str] = None
-    numero_dip: Optional[str] = None
-    domicilio: Optional[str] = None
-    nacionalidad: Optional[str] = None
-    estado_civil: Optional[str] = None
-    profesion: Optional[str] = None
-    # Renovation fields
-    numero_pasaporte_antiguo: Optional[str] = None
-    fecha_expedicion_antiguo: Optional[str] = None
-    fecha_expiracion_antiguo: Optional[str] = None
-    # Minor fields (from certificado_nacimiento)
-    cert_nombre: Optional[str] = None
-    cert_primer_apellido: Optional[str] = None
-    cert_segundo_apellido: Optional[str] = None
-    cert_fecha_nacimiento: Optional[str] = None
-    cert_lugar_nacimiento: Optional[str] = None
-    # Parent representative (for minors)
-    rep1_nombre: Optional[str] = None
-    rep1_documento_numero: Optional[str] = None
-    nombre_padre: Optional[str] = None
-    nombre_madre: Optional[str] = None
+# RequestPreviewExtractedData is now a Dict[str, Any] for flexibility
+# This allows admin to configure any column from form_data in workflow_display_config
+# Type alias for documentation purposes
+RequestPreviewExtractedData = Dict[str, Any]
 
 
 class RequestPreviewDocument(BaseModel):
@@ -1694,8 +1669,8 @@ class ServiceRequestPreview(BaseModel):
     sla_deadline: Optional[str] = None
     sla_remaining_hours: Optional[float] = None
     sla_status: str = "on_track"  # on_track, warning, breached
-    # Extracted data
-    extracted_data: RequestPreviewExtractedData
+    # Extracted data - now flexible Dict to support any form_data column
+    extracted_data: Dict[str, Any] = {}
     # Documents (max 4 for preview)
     documents: List[RequestPreviewDocument] = []
     documents_count: int = 0
@@ -1941,52 +1916,54 @@ async def get_entity_service_requests(
 # REQUEST PREVIEW FOR SPLIT VIEW
 # ═══════════════════════════════════════════════════════════════
 
-def _extract_preview_data(form_data: dict) -> RequestPreviewExtractedData:
-    """Extract preview data from form_data based on request type."""
+def _extract_preview_data(form_data: dict) -> Dict[str, Any]:
+    """
+    Extract ALL form_data for preview with flattened nested objects.
+
+    This function returns all columns from form_data to allow admin flexibility
+    in configuring which columns to display via workflow_display_config.
+
+    Nested objects (dip, pasaporte_antiguo, photo_carnet) are flattened:
+    - dip.natural_de → dip_natural_de
+    - pasaporte_antiguo.numero → pasaporte_antiguo_numero
+
+    The frontend filters which columns to display based on workflow_display_config.
+
+    @updated 2026-02-02 - Return all form_data with flattened nested objects
+    """
     if not form_data:
-        return RequestPreviewExtractedData()
+        return {}
 
-    is_minor = form_data.get('is_minor', False)
-    solicitud_type = form_data.get('solicitud_type', '').upper()
+    # Keys to flatten (nested objects with useful data)
+    NESTED_KEYS_TO_FLATTEN = ['dip', 'pasaporte_antiguo']
+    # Keys to exclude (complex objects not useful for preview display)
+    EXCLUDE_KEYS = ['photo_carnet']  # Binary/file data, not useful as text
 
-    # Get nested DIP data if available (natural_de is inside dip object)
-    dip_data = form_data.get('dip', {}) if isinstance(form_data.get('dip'), dict) else {}
+    result: Dict[str, Any] = {}
 
-    data = RequestPreviewExtractedData(
-        # Common fields
-        apellidos=form_data.get('apellidos'),
-        nombres=form_data.get('nombres'),
-        fecha_nacimiento=form_data.get('fecha_nacimiento'),
-        sexo=form_data.get('sexo'),
-        lugar_nacimiento=form_data.get('lugar_nacimiento'),
-        natural_de=dip_data.get('natural_de'),  # Nested in dip object
-        numero_dip=form_data.get('numero_dip'),
-        domicilio=form_data.get('domicilio'),
-        nacionalidad=form_data.get('nacionalidad'),
-        estado_civil=form_data.get('estado_civil'),
-        profesion=form_data.get('profesion'),
-        # Parents
-        nombre_padre=form_data.get('nombre_padre'),
-        nombre_madre=form_data.get('nombre_madre'),
-    )
+    for key, value in form_data.items():
+        if key in EXCLUDE_KEYS:
+            # Skip complex/binary objects
+            continue
+        elif key in NESTED_KEYS_TO_FLATTEN and isinstance(value, dict):
+            # Flatten nested object: dip.field → dip_field
+            for nested_key, nested_value in value.items():
+                flattened_key = f"{key}_{nested_key}"
+                # Only include non-null, non-empty values
+                if nested_value is not None and nested_value != '':
+                    result[flattened_key] = nested_value
+        elif isinstance(value, dict):
+            # Other nested objects - skip for now (could be complex)
+            continue
+        elif isinstance(value, list):
+            # Skip arrays (e.g., documents, files) - not displayable as simple text
+            continue
+        else:
+            # Simple value - include if not null/empty
+            if value is not None and value != '':
+                result[key] = value
 
-    # Renovation fields
-    if solicitud_type == 'RENOVACION':
-        data.numero_pasaporte_antiguo = form_data.get('numero_pasaporte_antiguo')
-        data.fecha_expedicion_antiguo = form_data.get('fecha_expedicion_antiguo')
-        data.fecha_expiracion_antiguo = form_data.get('fecha_expiracion_antiguo')
-
-    # Minor fields
-    if is_minor:
-        data.cert_nombre = form_data.get('cert_nombre')
-        data.cert_primer_apellido = form_data.get('cert_primer_apellido')
-        data.cert_segundo_apellido = form_data.get('cert_segundo_apellido')
-        data.cert_fecha_nacimiento = form_data.get('cert_fecha_nacimiento')
-        data.cert_lugar_nacimiento = form_data.get('cert_lugar_nacimiento')
-        data.rep1_nombre = form_data.get('rep1_nombre')
-        data.rep1_documento_numero = form_data.get('rep1_documento_numero')
-
-    return data
+    return result
 
 
 @router.get(

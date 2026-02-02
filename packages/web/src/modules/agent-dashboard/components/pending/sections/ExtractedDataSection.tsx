@@ -96,8 +96,9 @@ export function ExtractedDataSection({
   };
 
   // Get value from data, auto-format dates
+  // Note: data is now Record<string, unknown> for flexibility
   const getValue = (columnId: string): string => {
-    const value = data[columnId as keyof RequestPreviewExtractedData];
+    const value = data[columnId];
 
     if (value === null || value === undefined || value === '') {
       return '-';
@@ -123,12 +124,12 @@ export function ExtractedDataSection({
 
   // Filter configured columns to only those with actual values in the data
   // This solves the problem of showing irrelevant columns (e.g., "pasaporte_antiguo" for primera expedicion)
-  // The backend already filters data based on is_minor and solicitud_type, so we just need to
-  // show configured columns that have values
+  // The backend now returns ALL form_data columns with non-null values,
+  // and frontend filters based on workflow_display_config
   const visibleColumns = useMemo(() => {
     // Filter to only columns that have actual values
     return columns.filter((col) => {
-      const value = data[col as keyof RequestPreviewExtractedData];
+      const value = data[col];
       return value !== null && value !== undefined && value !== '';
     });
   }, [columns, data]);
