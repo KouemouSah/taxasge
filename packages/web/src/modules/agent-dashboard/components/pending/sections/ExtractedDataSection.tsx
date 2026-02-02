@@ -1,14 +1,24 @@
 /**
  * ExtractedDataSection - Display extracted form data
  *
- * Dynamically renders fields based on display_config columns.
- * - Labels from translations (columns.*)
- * - Date formatting auto-detected
- * - No hardcoded workflow-specific logic
+ * Renders fields based on workflow_display_config.list_columns.
+ *
+ * Logic:
+ * 1. Takes columns from display_config (admin-controlled)
+ * 2. Filters to only show columns that have actual values in the data
+ * 3. This solves the "irrelevant columns" problem:
+ *    - Config can list ALL possible columns (adulte + mineur + renovation)
+ *    - Backend returns only relevant data based on is_minor/solicitud_type
+ *    - Frontend shows only configured columns that have values
+ *
+ * Examples:
+ * - PASAPORTE_NUEVO adulte: shows nombres, apellidos, numeroDip (not pasaporteAntiguo)
+ * - PASAPORTE_NUEVO mineur: shows nombres, apellidos, rep1Nombre, certNombre
+ * - PASAPORTE_RENOVACION: shows nombres, apellidos, numeroPasaporteAntiguo
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
- * @updated 2026-02-02 - Fully dynamic, no hardcoding
+ * @updated 2026-02-02 - Filter configured columns by actual values
  */
 
 'use client';
@@ -111,25 +121,39 @@ export function ExtractedDataSection({
     </div>
   );
 
-  // DYNAMIC APPROACH: Extract columns from actual data if no config provided
-  // This ensures we only show fields that have actual values
-  const dynamicColumns = useMemo(() => {
-    // If columns are configured, filter to only those with actual values
-    if (columns.length > 0) {
-      return columns.filter((col) => {
-        const value = data[col as keyof RequestPreviewExtractedData];
-        return value !== null && value !== undefined && value !== '';
-      });
-    }
-
-    // No config: extract all non-empty keys from data
-    return Object.entries(data)
-      .filter(([, value]) => value !== null && value !== undefined && value !== '')
-      .map(([key]) => key);
+  // Filter configured columns to only those with actual values in the data
+  // This solves the problem of showing irrelevant columns (e.g., "pasaporte_antiguo" for primera expedicion)
+  // The backend already filters data based on is_minor and solicitud_type, so we just need to
+  // show configured columns that have values
+  const visibleColumns = useMemo(() => {
+    // Filter to only columns that have actual values
+    return columns.filter((col) => {
+      const value = data[col as keyof RequestPreviewExtractedData];
+      return value !== null && value !== undefined && value !== '';
+    });
   }, [columns, data]);
 
-  // If no data at all, show message
-  if (dynamicColumns.length === 0) {
+  // If no columns configured in display_config, show admin message
+  if (columns.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            {t('sections.extractedData')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Configuración de columnas no definida para este workflow.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // If columns configured but none have values, show appropriate message
+  if (visibleColumns.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -157,7 +181,7 @@ export function ExtractedDataSection({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {dynamicColumns.map((columnId) => (
+          {visibleColumns.map((columnId) => (
             <Field key={columnId} columnId={columnId} />
           ))}
         </div>
