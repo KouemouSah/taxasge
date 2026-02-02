@@ -13,7 +13,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User } from 'lucide-react';
@@ -111,8 +111,25 @@ export function ExtractedDataSection({
     </div>
   );
 
-  // If no columns configured, show message
-  if (columns.length === 0) {
+  // DYNAMIC APPROACH: Extract columns from actual data if no config provided
+  // This ensures we only show fields that have actual values
+  const dynamicColumns = useMemo(() => {
+    // If columns are configured, filter to only those with actual values
+    if (columns.length > 0) {
+      return columns.filter((col) => {
+        const value = data[col as keyof RequestPreviewExtractedData];
+        return value !== null && value !== undefined && value !== '';
+      });
+    }
+
+    // No config: extract all non-empty keys from data
+    return Object.entries(data)
+      .filter(([, value]) => value !== null && value !== undefined && value !== '')
+      .map(([key]) => key);
+  }, [columns, data]);
+
+  // If no data at all, show message
+  if (dynamicColumns.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -123,7 +140,7 @@ export function ExtractedDataSection({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No hay campos configurados para este workflow.
+            No hay datos extraídos para esta solicitud.
           </p>
         </CardContent>
       </Card>
@@ -140,7 +157,7 @@ export function ExtractedDataSection({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {columns.map((columnId) => (
+          {dynamicColumns.map((columnId) => (
             <Field key={columnId} columnId={columnId} />
           ))}
         </div>
