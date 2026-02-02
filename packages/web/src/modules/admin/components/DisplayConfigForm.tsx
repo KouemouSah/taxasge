@@ -306,6 +306,10 @@ export function DisplayConfigForm({
   const [columnSearch, setColumnSearch] = useState('');
   const [isDirty, setIsDirty] = useState(false);
 
+  // Filters for sub-type column discovery
+  const [filterIsMinor, setFilterIsMinor] = useState<boolean | undefined>(undefined);
+  const [filterMotivo, setFilterMotivo] = useState<string | undefined>(undefined);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -333,14 +337,19 @@ export function DisplayConfigForm({
   } = useSampleRequest(selectedWorkflow || undefined);
 
   // Fetch available columns dynamically when workflow is selected
+  // Pass filters for sub-type column discovery (is_minor, motivo)
   const shouldFetchColumns = !!selectedWorkflow && selectedWorkflow.length > 0;
+  const columnFilters = {
+    isMinor: filterIsMinor,
+    motivo: filterMotivo,
+  };
   const {
     systemColumns,
     extractedColumns,
     nestedColumns,
     totalRequests,
     isLoading: isLoadingColumns,
-  } = useAllAvailableColumns(selectedWorkflow, shouldFetchColumns);
+  } = useAllAvailableColumns(selectedWorkflow, shouldFetchColumns, columnFilters);
 
   // State for collapsible nested columns section
   const [isNestedExpanded, setIsNestedExpanded] = useState(false);
@@ -557,6 +566,81 @@ export function DisplayConfigForm({
               )}
             </div>
 
+            {/* Sub-type filters - Only show for passport workflows */}
+            {selectedWorkflow && selectedWorkflow.toUpperCase().includes('PASAPORTE') && (
+              <div className="flex flex-wrap items-center gap-4 pt-3 mt-3 border-t">
+                <span className="text-xs font-medium text-muted-foreground uppercase">
+                  Filtres:
+                </span>
+
+                {/* is_minor filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Tipo:</span>
+                  <Select
+                    value={filterIsMinor === undefined ? 'all' : filterIsMinor ? 'minor' : 'adult'}
+                    onValueChange={(value) => {
+                      if (value === 'all') setFilterIsMinor(undefined);
+                      else if (value === 'minor') setFilterIsMinor(true);
+                      else setFilterIsMinor(false);
+                    }}
+                  >
+                    <SelectTrigger className="w-[140px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="adult">Adulto</SelectItem>
+                      <SelectItem value="minor">Menor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* motivo filter - Only for renovation workflows */}
+                {(selectedWorkflow.toUpperCase().includes('RENOVACION') ||
+                  selectedWorkflow.toUpperCase().includes('PERDIDA') ||
+                  selectedWorkflow.toUpperCase().includes('ROBO') ||
+                  selectedWorkflow.toUpperCase().includes('DETERIORO')) && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Motivo:</span>
+                    <Select
+                      value={filterMotivo ?? 'all'}
+                      onValueChange={(value) => {
+                        setFilterMotivo(value === 'all' ? undefined : value);
+                      }}
+                    >
+                      <SelectTrigger className="w-[140px] h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="vencimiento">Vencimiento</SelectItem>
+                        <SelectItem value="perdida">Pérdida</SelectItem>
+                        <SelectItem value="robo">Robo</SelectItem>
+                        <SelectItem value="deterioro">Deterioro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Clear filters button */}
+                {(filterIsMinor !== undefined || filterMotivo !== undefined) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setFilterIsMinor(undefined);
+                      setFilterMotivo(undefined);
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Limpiar filtros
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Error message if workflow loading fails */}
             {workflowsError && (
               <p className="text-sm text-destructive mt-2">
@@ -591,6 +675,81 @@ export function DisplayConfigForm({
                 </span>
               )}
             </div>
+
+            {/* Sub-type filters in edit mode */}
+            {initialData.workflow_code.toUpperCase().includes('PASAPORTE') && (
+              <div className="flex flex-wrap items-center gap-4 pt-3 mt-3 border-t">
+                <span className="text-xs font-medium text-muted-foreground uppercase">
+                  Filtres:
+                </span>
+
+                {/* is_minor filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Tipo:</span>
+                  <Select
+                    value={filterIsMinor === undefined ? 'all' : filterIsMinor ? 'minor' : 'adult'}
+                    onValueChange={(value) => {
+                      if (value === 'all') setFilterIsMinor(undefined);
+                      else if (value === 'minor') setFilterIsMinor(true);
+                      else setFilterIsMinor(false);
+                    }}
+                  >
+                    <SelectTrigger className="w-[140px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="adult">Adulto</SelectItem>
+                      <SelectItem value="minor">Menor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* motivo filter */}
+                {(initialData.workflow_code.toUpperCase().includes('RENOVACION') ||
+                  initialData.workflow_code.toUpperCase().includes('PERDIDA') ||
+                  initialData.workflow_code.toUpperCase().includes('ROBO') ||
+                  initialData.workflow_code.toUpperCase().includes('DETERIORO')) && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Motivo:</span>
+                    <Select
+                      value={filterMotivo ?? 'all'}
+                      onValueChange={(value) => {
+                        setFilterMotivo(value === 'all' ? undefined : value);
+                      }}
+                    >
+                      <SelectTrigger className="w-[140px] h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="vencimiento">Vencimiento</SelectItem>
+                        <SelectItem value="perdida">Pérdida</SelectItem>
+                        <SelectItem value="robo">Robo</SelectItem>
+                        <SelectItem value="deterioro">Deterioro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Clear filters */}
+                {(filterIsMinor !== undefined || filterMotivo !== undefined) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setFilterIsMinor(undefined);
+                      setFilterMotivo(undefined);
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Limpiar
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
