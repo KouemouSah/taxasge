@@ -1186,6 +1186,19 @@
           "deleteError": "Error al eliminar configuración",
           "loadError": "Error al cargar configuración"
         },
+        "filters": {
+          "title": "Filtros",
+          "type": "Tipo",
+          "reason": "Motivo",
+          "all": "Todos",
+          "adult": "Adulto",
+          "minor": "Menor",
+          "expiration": "Vencimiento",
+          "lost": "Pérdida",
+          "theft": "Robo",
+          "deterioration": "Deterioro",
+          "clear": "Limpiar filtros"
+        },
         "confirmDelete": "¿Está seguro de eliminar esta configuración?",
         "confirmDeleteDescription": "La configuración para \"{pattern}\" será eliminada permanentemente."
       }

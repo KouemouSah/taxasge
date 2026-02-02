@@ -390,6 +390,22 @@ export function DisplayConfigForm({
     if (mode === 'create') {
       setSelectedColumns([...DEFAULT_SELECTED_COLUMNS]);
     }
+
+    // Auto-select motivo based on workflow code pattern
+    const upperCode = workflowCode.toUpperCase();
+    if (upperCode.includes('PERDIDA')) {
+      setFilterMotivo('perdida');
+    } else if (upperCode.includes('ROBO')) {
+      setFilterMotivo('robo');
+    } else if (upperCode.includes('DETERIORO')) {
+      setFilterMotivo('deterioro');
+    } else if (upperCode.includes('RENOVACION') || upperCode.includes('VENCIMIENTO')) {
+      setFilterMotivo('vencimiento');
+    } else {
+      setFilterMotivo(undefined);
+    }
+    // Reset isMinor filter on workflow change
+    setFilterIsMinor(undefined);
   };
 
   // Filter columns by search
@@ -570,12 +586,12 @@ export function DisplayConfigForm({
             {selectedWorkflow && selectedWorkflow.toUpperCase().includes('PASAPORTE') && (
               <div className="flex flex-wrap items-center gap-4 pt-3 mt-3 border-t">
                 <span className="text-xs font-medium text-muted-foreground uppercase">
-                  Filtres:
+                  {t('filters.title')}:
                 </span>
 
                 {/* is_minor filter */}
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Tipo:</span>
+                  <span className="text-sm text-muted-foreground">{t('filters.type')}:</span>
                   <Select
                     value={filterIsMinor === undefined ? 'all' : filterIsMinor ? 'minor' : 'adult'}
                     onValueChange={(value) => {
@@ -588,9 +604,9 @@ export function DisplayConfigForm({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="adult">Adulto</SelectItem>
-                      <SelectItem value="minor">Menor</SelectItem>
+                      <SelectItem value="all">{t('filters.all')}</SelectItem>
+                      <SelectItem value="adult">{t('filters.adult')}</SelectItem>
+                      <SelectItem value="minor">{t('filters.minor')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -601,7 +617,7 @@ export function DisplayConfigForm({
                   selectedWorkflow.toUpperCase().includes('ROBO') ||
                   selectedWorkflow.toUpperCase().includes('DETERIORO')) && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Motivo:</span>
+                    <span className="text-sm text-muted-foreground">{t('filters.reason')}:</span>
                     <Select
                       value={filterMotivo ?? 'all'}
                       onValueChange={(value) => {
@@ -612,11 +628,11 @@ export function DisplayConfigForm({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="vencimiento">Vencimiento</SelectItem>
-                        <SelectItem value="perdida">Pérdida</SelectItem>
-                        <SelectItem value="robo">Robo</SelectItem>
-                        <SelectItem value="deterioro">Deterioro</SelectItem>
+                        <SelectItem value="all">{t('filters.all')}</SelectItem>
+                        <SelectItem value="vencimiento">{t('filters.expiration')}</SelectItem>
+                        <SelectItem value="perdida">{t('filters.lost')}</SelectItem>
+                        <SelectItem value="robo">{t('filters.theft')}</SelectItem>
+                        <SelectItem value="deterioro">{t('filters.deterioration')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -635,7 +651,7 @@ export function DisplayConfigForm({
                     }}
                   >
                     <X className="h-3 w-3 mr-1" />
-                    Limpiar filtros
+                    {t('filters.clear')}
                   </Button>
                 )}
               </div>
@@ -680,12 +696,12 @@ export function DisplayConfigForm({
             {initialData.workflow_code.toUpperCase().includes('PASAPORTE') && (
               <div className="flex flex-wrap items-center gap-4 pt-3 mt-3 border-t">
                 <span className="text-xs font-medium text-muted-foreground uppercase">
-                  Filtres:
+                  {t('filters.title')}:
                 </span>
 
                 {/* is_minor filter */}
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Tipo:</span>
+                  <span className="text-sm text-muted-foreground">{t('filters.type')}:</span>
                   <Select
                     value={filterIsMinor === undefined ? 'all' : filterIsMinor ? 'minor' : 'adult'}
                     onValueChange={(value) => {
@@ -698,9 +714,9 @@ export function DisplayConfigForm({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="adult">Adulto</SelectItem>
-                      <SelectItem value="minor">Menor</SelectItem>
+                      <SelectItem value="all">{t('filters.all')}</SelectItem>
+                      <SelectItem value="adult">{t('filters.adult')}</SelectItem>
+                      <SelectItem value="minor">{t('filters.minor')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -711,7 +727,7 @@ export function DisplayConfigForm({
                   initialData.workflow_code.toUpperCase().includes('ROBO') ||
                   initialData.workflow_code.toUpperCase().includes('DETERIORO')) && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Motivo:</span>
+                    <span className="text-sm text-muted-foreground">{t('filters.reason')}:</span>
                     <Select
                       value={filterMotivo ?? 'all'}
                       onValueChange={(value) => {
@@ -722,11 +738,11 @@ export function DisplayConfigForm({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="vencimiento">Vencimiento</SelectItem>
-                        <SelectItem value="perdida">Pérdida</SelectItem>
-                        <SelectItem value="robo">Robo</SelectItem>
-                        <SelectItem value="deterioro">Deterioro</SelectItem>
+                        <SelectItem value="all">{t('filters.all')}</SelectItem>
+                        <SelectItem value="vencimiento">{t('filters.expiration')}</SelectItem>
+                        <SelectItem value="perdida">{t('filters.lost')}</SelectItem>
+                        <SelectItem value="robo">{t('filters.theft')}</SelectItem>
+                        <SelectItem value="deterioro">{t('filters.deterioration')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -745,7 +761,7 @@ export function DisplayConfigForm({
                     }}
                   >
                     <X className="h-3 w-3 mr-1" />
-                    Limpiar
+                    {t('filters.clear')}
                   </Button>
                 )}
               </div>

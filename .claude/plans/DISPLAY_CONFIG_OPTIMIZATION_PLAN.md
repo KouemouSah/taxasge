@@ -54,7 +54,7 @@ Permettre de filtrer les colonnes par is_minor, motivo, etc.
 - [x] **3.2** Requête SQL avec filtres conditionnels
 - [x] **3.3** Endpoint API accepte query params
 - [x] **3.4** Frontend (hook + service) accepte filters
-- [ ] **3.5** UI de filtrage dans DisplayConfigForm (optionnel - pour plus tard)
+- [x] **3.5** UI de filtrage dans DisplayConfigForm (commit 65f0a9d5)
 
 ### Checklist de validation Phase 3 ✅
 - [x] Paramètres optionnels fonctionnels dans repository
@@ -74,14 +74,32 @@ Permettre de filtrer les colonnes par is_minor, motivo, etc.
 
 ---
 
-## Phase 5: Commit et push (EN COURS)
+## Phase 5: Améliorations UI et i18n ✅
+
+### Objectif
+Améliorer l'ergonomie des filtres et internationaliser les chaînes hardcodées
+
+### Étapes réalisées
+
+- [x] **5.1** Ajout traductions filters dans es.json, en.json, fr.json
+- [x] **5.2** Remplacement chaînes hardcodées par `t('filters.*')` dans DisplayConfigForm
+- [x] **5.3** Auto-sélection du motivo selon workflow_code:
+  - PASAPORTE_PERDIDA → motivo="perdida"
+  - PASAPORTE_ROBO → motivo="robo"
+  - PASAPORTE_DETERIORO → motivo="deterioro"
+  - PASAPORTE_RENOVACION → motivo="vencimiento"
+- [x] **5.4** Type-check validé
+
+---
+
+## Phase 6: Commit et push
 
 ### Étapes
 
-- [ ] **5.1** Git status pour voir les fichiers modifiés
-- [ ] **5.2** Commit avec message descriptif
-- [ ] **5.3** Push vers remote
-- [ ] **5.4** Vérifier GitHub Actions
+- [ ] **6.1** Git status pour voir les fichiers modifiés
+- [ ] **6.2** Commit avec message descriptif
+- [ ] **6.3** Push vers remote
+- [ ] **6.4** Vérifier GitHub Actions
 
 ---
 
@@ -96,5 +114,8 @@ Permettre de filtrer les colonnes par is_minor, motivo, etc.
 | `web/src/modules/admin/services/menuConfigService.ts` | 3 | ✅ MODIFIÉ |
 | `web/src/modules/admin/hooks/useDisplayConfigs.ts` | 3 | ✅ MODIFIÉ |
 | `web/src/modules/admin/hooks/index.ts` | 3 | ✅ MODIFIÉ |
-| `web/src/modules/admin/components/DisplayConfigForm.tsx` | 1 | ✅ MODIFIÉ |
+| `web/src/modules/admin/components/DisplayConfigForm.tsx` | 1, 5 | ✅ MODIFIÉ |
 | `database/migrations/089_reset_display_config_to_defaults.sql` | - | ✅ CRÉÉ |
+| `web/messages/es.json` | 5 | ✅ MODIFIÉ |
+| `web/messages/en.json` | 5 | ✅ MODIFIÉ |
+| `web/messages/fr.json` | 5 | ✅ MODIFIÉ |

@@ -1194,6 +1194,19 @@
           "deleteError": "Error deleting configuration",
           "loadError": "Error loading configuration"
         },
+        "filters": {
+          "title": "Filters",
+          "type": "Type",
+          "reason": "Reason",
+          "all": "All",
+          "adult": "Adult",
+          "minor": "Minor",
+          "expiration": "Expiration",
+          "lost": "Lost",
+          "theft": "Theft",
+          "deterioration": "Deterioration",
+          "clear": "Clear filters"
+        },
         "confirmDelete": "Are you sure you want to delete this configuration?",
         "confirmDeleteDescription": "The configuration for \"{pattern}\" will be permanently deleted."
       }
