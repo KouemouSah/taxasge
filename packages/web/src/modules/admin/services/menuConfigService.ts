@@ -118,11 +118,19 @@ export interface AvailableColumn {
 }
 
 export interface AvailableColumnsResponse {
-  workflow_code: string;  // Changed from workflow_pattern (migration 088)
+  workflow_code: string;
   total_requests: number;
   system_columns: AvailableColumn[];
   extracted_columns: AvailableColumn[];
-  default_selected: string[];
+  filters_applied: Record<string, unknown> | null;
+  available_filters: Record<string, unknown[]> | null;
+}
+
+/** Filters for available columns discovery */
+export interface AvailableColumnsFilters {
+  is_minor?: boolean;
+  solicitud_type?: string;
+  motivo?: string;
 }
 
 // Sample Request types (for real data preview)
@@ -337,13 +345,28 @@ export const menuConfigApi = {
   /**
    * Discover available columns for a workflow code
    * Introspects actual data in service_requests.form_data
+   * Supports sub-workflow filtering (is_minor, solicitud_type, motivo)
    * BACKEND: GET /api/v1/menu-config/display-configs/available-columns/{workflow_code}
    * PERMISSION: menu.view_mappings
    */
-  getAvailableColumns: async (workflowCode: string): Promise<AvailableColumnsResponse> => {
-    return fetchClient.get<AvailableColumnsResponse>(
-      `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowCode)}`
-    );
+  getAvailableColumns: async (
+    workflowCode: string,
+    filters?: AvailableColumnsFilters,
+  ): Promise<AvailableColumnsResponse> => {
+    const searchParams = new URLSearchParams();
+    if (filters?.is_minor !== undefined) {
+      searchParams.set('is_minor', String(filters.is_minor));
+    }
+    if (filters?.solicitud_type) {
+      searchParams.set('solicitud_type', filters.solicitud_type);
+    }
+    if (filters?.motivo) {
+      searchParams.set('motivo', filters.motivo);
+    }
+    const query = searchParams.toString();
+    const base = `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowCode)}`;
+    const url = query ? `${base}?${query}` : base;
+    return fetchClient.get<AvailableColumnsResponse>(url);
   },
 
   // ===========================================================================

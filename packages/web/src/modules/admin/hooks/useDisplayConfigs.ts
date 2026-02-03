@@ -25,6 +25,7 @@ import type {
   PaginationParams,
   AvailableColumn,
   AvailableColumnsResponse,
+  AvailableColumnsFilters,
 } from '../services/menuConfigService';
 
 // =============================================================================
@@ -58,8 +59,8 @@ export const displayConfigKeys = {
   details: () => [...displayConfigKeys.all, 'detail'] as const,
   detail: (id: number) => [...displayConfigKeys.details(), id] as const,
   byWorkflow: (code: string) => [...displayConfigKeys.all, 'by-workflow', code] as const,
-  availableColumns: (pattern: string) =>
-    [...displayConfigKeys.all, 'available-columns', pattern] as const,
+  availableColumns: (pattern: string, filters?: AvailableColumnsFilters) =>
+    [...displayConfigKeys.all, 'available-columns', pattern, filters] as const,
 };
 
 // =============================================================================
@@ -224,26 +225,34 @@ export function useDeleteDisplayConfig() {
 }
 
 /**
- * Hook to discover available columns for a workflow pattern
+ * Hook to discover available columns for a workflow code
  * Dynamically introspects form_data from actual DB records
+ * Supports sub-workflow filtering (is_minor, solicitud_type, motivo)
  */
-export function useAvailableColumns(workflowPattern: string, enabled = true) {
+export function useAvailableColumns(
+  workflowCode: string,
+  filters?: AvailableColumnsFilters,
+  enabled = true,
+) {
   return useQuery<AvailableColumnsResponse, Error>({
-    queryKey: displayConfigKeys.availableColumns(workflowPattern),
+    queryKey: displayConfigKeys.availableColumns(workflowCode, filters),
     queryFn: async () => {
-      logInfo(`Discovering columns for pattern=${workflowPattern}`);
+      logInfo(`Discovering columns for code=${workflowCode}`, filters);
       try {
-        const result = await menuConfigApi.getAvailableColumns(workflowPattern);
+        const result = await menuConfigApi.getAvailableColumns(
+          workflowCode,
+          filters,
+        );
         logInfo(
           `Found ${result.system_columns.length} system + ${result.extracted_columns.length} extracted columns`
         );
         return result;
       } catch (error) {
-        logError(`Failed to discover columns for ${workflowPattern}`, error);
+        logError(`Failed to discover columns for ${workflowCode}`, error);
         throw error;
       }
     },
-    enabled: enabled && !!workflowPattern,
+    enabled: enabled && !!workflowCode,
     staleTime: 10 * 60 * 1000, // 10 minutes - column discovery is expensive
   });
 }
@@ -251,32 +260,29 @@ export function useAvailableColumns(workflowPattern: string, enabled = true) {
 /**
  * Hook to get all available columns (system + extracted) as a flat list
  * Useful for column selector components
+ * Supports sub-workflow filtering (is_minor, solicitud_type, motivo)
  */
-export function useAllAvailableColumns(workflowPattern: string, enabled = true) {
+export function useAllAvailableColumns(
+  workflowCode: string,
+  filters?: AvailableColumnsFilters,
+  enabled = true,
+) {
   const { data, isLoading, isError, error } = useAvailableColumns(
-    workflowPattern,
-    enabled
+    workflowCode,
+    filters,
+    enabled,
   );
 
   const allColumns: AvailableColumn[] = data
     ? [...data.system_columns, ...data.extracted_columns]
     : [];
 
-  // Default selected columns from backend
-  const defaultSelected = data?.default_selected ?? [
-    'reference',
-    'fullName',
-    'solicitudType',
-    'createdAt',
-    'status',
-    'priority',
-  ];
-
   return {
     columns: allColumns,
     systemColumns: data?.system_columns ?? [],
     extractedColumns: data?.extracted_columns ?? [],
-    defaultSelected,
+    availableFilters: data?.available_filters ?? null,
+    filtersApplied: data?.filters_applied ?? null,
     totalRequests: data?.total_requests ?? 0,
     isLoading,
     isError,

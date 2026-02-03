@@ -313,11 +313,15 @@ class AvailableColumnsResponse(BaseModel):
     )
     extracted_columns: List[AvailableColumn] = Field(
         default_factory=list,
-        description="Dynamic columns from extracted/form data"
+        description="Dynamic columns from extracted/form data (flattened with dot notation)"
     )
-    default_selected: List[str] = Field(
-        default_factory=list,
-        description="Column IDs that should be pre-selected by default"
+    filters_applied: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Filters currently applied (is_minor, solicitud_type, motivo)"
+    )
+    available_filters: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Available filter values for this workflow (e.g., is_minor: [true, false])"
     )
 
 

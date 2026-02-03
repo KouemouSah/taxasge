@@ -606,17 +606,6 @@ SYSTEM_COLUMNS = [
     ),
 ]
 
-# Default pre-selected columns (admin can disable but starts with these)
-DEFAULT_SELECTED_COLUMNS = [
-    "reference",
-    "fullName",
-    "solicitudType",
-    "createdAt",
-    "status",
-    "priority",
-]
-
-
 @router.get(
     "/display-configs/available-columns/{workflow_code:path}",
     response_model=AvailableColumnsResponse,
@@ -625,9 +614,16 @@ DEFAULT_SELECTED_COLUMNS = [
     Dynamically discovers available columns for an exact workflow code by introspecting
     actual data in service_requests.form_data.
 
+    Supports sub-workflow filtering:
+    - is_minor: Filter by minor status (true/false)
+    - solicitud_type: Filter by solicitud type (expedicion, renovacion)
+    - motivo: Filter by motivo (vencimiento, perdida, deterioro, etc.)
+
     Returns:
     - system_columns: Fixed columns from the service_requests table
-    - extracted_columns: Dynamic columns discovered from form_data JSONB
+    - extracted_columns: Dynamic columns discovered from form_data JSONB (flattened with dot notation)
+    - available_filters: Possible filter values for this workflow
+    - filters_applied: Currently active filters
 
     Uses exact workflow_code matching (not patterns).
     Requires menu.view_mappings permission.
@@ -635,6 +631,9 @@ DEFAULT_SELECTED_COLUMNS = [
 )
 async def get_available_columns(
     workflow_code: str,
+    is_minor: Optional[bool] = Query(None, description="Filter by minor status"),
+    solicitud_type: Optional[str] = Query(None, description="Filter by solicitud type"),
+    motivo: Optional[str] = Query(None, description="Filter by motivo"),
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
     permission_service: PermissionService = Depends(get_permission_service),
@@ -649,8 +648,13 @@ async def get_available_columns(
     repo = DisplayConfigRepository(db)
 
     try:
-        # Get extracted columns from actual data
-        result = await repo.get_available_columns_for_workflow(workflow_code)
+        # Get extracted columns from actual data (with flattening + filters)
+        result = await repo.get_available_columns_for_workflow(
+            workflow_code,
+            is_minor=is_minor,
+            solicitud_type=solicitud_type,
+            motivo=motivo,
+        )
 
         # Build extracted columns list
         extracted_columns = [
@@ -669,7 +673,8 @@ async def get_available_columns(
             total_requests=result["total_requests"],
             system_columns=SYSTEM_COLUMNS,
             extracted_columns=extracted_columns,
-            default_selected=DEFAULT_SELECTED_COLUMNS
+            filters_applied=result.get("filters_applied"),
+            available_filters=result.get("available_filters"),
         )
 
     except Exception as e:

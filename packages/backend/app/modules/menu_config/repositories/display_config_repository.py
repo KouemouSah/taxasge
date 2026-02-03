@@ -295,77 +295,215 @@ class DisplayConfigRepository:
 
         return _row_to_dict(result)
 
+    # Technical fields excluded from column discovery
+    TECHNICAL_FIELDS = frozenset({
+        'sub_type', 'is_minor', 'solicitud_type', 'motivo'
+    })
+
     async def get_available_columns_for_workflow(
         self,
-        workflow_code: str
+        workflow_code: str,
+        is_minor: Optional[bool] = None,
+        solicitud_type: Optional[str] = None,
+        motivo: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Discover available columns for a workflow by introspecting
         the actual data in service_requests.form_data.
 
+        Flattens nested JSONB objects (e.g., dip.natural_de, cert.nombre)
+        and supports sub-workflow filtering.
+
         Args:
-            workflow_code: Exact workflow code (e.g., 'PASAPORTE_EXPEDICION_ADULTO')
+            workflow_code: Exact workflow code (e.g., 'PASAPORTE_NUEVO')
+            is_minor: Filter by minor status (True/False/None=all)
+            solicitud_type: Filter by solicitud_type (e.g., 'expedicion', 'renovacion')
+            motivo: Filter by motivo (e.g., 'vencimiento', 'perdida')
 
         Returns:
-            Dict with total_requests and extracted_columns list
+            Dict with total_requests, extracted_columns, and available_filters
         """
-        # Count total requests matching exact workflow code
-        total = await self.db.fetchval("""
-            SELECT COUNT(*)
+        # Build WHERE clause with optional filters
+        where_clauses = [
+            "sr.workflow_code = $1",
+            "sr.form_data IS NOT NULL",
+            "sr.form_data != '{}'::jsonb",
+        ]
+        params: list = [workflow_code]
+        param_idx = 1
+
+        if is_minor is not None:
+            param_idx += 1
+            where_clauses.append(
+                f"(sr.form_data->>'is_minor')::boolean = ${param_idx}"
+            )
+            params.append(is_minor)
+
+        if solicitud_type is not None:
+            param_idx += 1
+            where_clauses.append(
+                f"sr.form_data->>'solicitud_type' = ${param_idx}"
+            )
+            params.append(solicitud_type)
+
+        if motivo is not None:
+            param_idx += 1
+            where_clauses.append(f"sr.form_data->>'motivo' = ${param_idx}")
+            params.append(motivo)
+
+        where_sql = " AND ".join(where_clauses)
+
+        # Count total matching requests
+        total = await self.db.fetchval(
+            f"SELECT COUNT(*) FROM service_requests sr WHERE {where_sql}",
+            *params,
+        )
+
+        # Discover columns with flattening of nested objects (2 levels)
+        # Level 1: scalar keys at root level
+        # Level 2: scalar keys inside nested objects (dip.*, cert.*, etc.)
+        rows = await self.db.fetch(f"""
+            WITH flat_keys AS (
+                -- Level 1: root-level scalar fields
+                SELECT
+                    kv.key AS col_key,
+                    kv.value AS col_value
+                FROM service_requests sr,
+                     jsonb_each(sr.form_data) AS kv(key, value)
+                WHERE {where_sql}
+                  AND jsonb_typeof(kv.value) NOT IN ('object', 'array')
+                  AND kv.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
+
+                UNION ALL
+
+                -- Level 2: nested object fields (dip.*, pasaporte_antiguo.*, cert.*, etc.)
+                SELECT
+                    parent.key || '.' || child.key AS col_key,
+                    child.value AS col_value
+                FROM service_requests sr,
+                     jsonb_each(sr.form_data) AS parent(key, value),
+                     jsonb_each(parent.value) AS child(key, value)
+                WHERE {where_sql}
+                  AND jsonb_typeof(parent.value) = 'object'
+                  AND jsonb_typeof(child.value) NOT IN ('object', 'array')
+                  AND parent.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
+            )
+            SELECT
+                col_key,
+                COUNT(*) AS sample_count,
+                CASE
+                    WHEN jsonb_typeof(first_val) = 'number' THEN 'number'
+                    WHEN jsonb_typeof(first_val) = 'boolean' THEN 'boolean'
+                    WHEN first_val::text ~ '"[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' THEN 'date'
+                    ELSE 'string'
+                END AS data_type
+            FROM (
+                SELECT
+                    col_key,
+                    (array_agg(col_value ORDER BY col_value::text DESC)
+                        FILTER (WHERE col_value IS NOT NULL AND jsonb_typeof(col_value) != 'null')
+                    )[1] AS first_val
+                FROM flat_keys
+                GROUP BY col_key
+            ) grouped
+            ORDER BY sample_count DESC, col_key
+        """, *params)
+
+        extracted_columns = []
+        for row in rows:
+            col_key = row["col_key"]
+            extracted_columns.append({
+                "id": col_key,
+                "label_key": f"columns.{col_key}",
+                "source": "extracted",
+                "data_type": row["data_type"],
+                "sample_count": row["sample_count"],
+            })
+
+        # Discover available filter values for this workflow
+        available_filters = await self._get_available_filters(
+            workflow_code
+        )
+
+        # Build filters_applied dict
+        filters_applied = {}
+        if is_minor is not None:
+            filters_applied["is_minor"] = is_minor
+        if solicitud_type is not None:
+            filters_applied["solicitud_type"] = solicitud_type
+        if motivo is not None:
+            filters_applied["motivo"] = motivo
+
+        return {
+            "total_requests": total or 0,
+            "extracted_columns": extracted_columns,
+            "filters_applied": filters_applied if filters_applied else None,
+            "available_filters": available_filters,
+        }
+
+    async def _get_available_filters(
+        self, workflow_code: str
+    ) -> Dict[str, Any]:
+        """
+        Discover available filter values for a workflow code.
+        Inspects form_data for is_minor, solicitud_type, motivo fields.
+
+        Returns:
+            Dict with available filter values, e.g.:
+            {
+                "is_minor": [true, false],
+                "solicitud_type": ["expedicion", "renovacion"],
+                "motivo": ["vencimiento", "perdida"]
+            }
+        """
+        rows = await self.db.fetch("""
+            SELECT
+                jsonb_agg(DISTINCT form_data->'is_minor')
+                    FILTER (WHERE form_data ? 'is_minor'
+                              AND form_data->'is_minor' IS NOT NULL
+                              AND jsonb_typeof(form_data->'is_minor') != 'null')
+                    AS is_minor_vals,
+                jsonb_agg(DISTINCT form_data->'solicitud_type')
+                    FILTER (WHERE form_data ? 'solicitud_type'
+                              AND form_data->'solicitud_type' IS NOT NULL
+                              AND jsonb_typeof(form_data->'solicitud_type') != 'null')
+                    AS solicitud_type_vals,
+                jsonb_agg(DISTINCT form_data->'motivo')
+                    FILTER (WHERE form_data ? 'motivo'
+                              AND form_data->'motivo' IS NOT NULL
+                              AND jsonb_typeof(form_data->'motivo') != 'null')
+                    AS motivo_vals
             FROM service_requests
             WHERE workflow_code = $1
               AND form_data IS NOT NULL
               AND form_data != '{}'::jsonb
         """, workflow_code)
 
-        # Get distinct keys from form_data (excluding nested objects)
-        # and count how many requests have each key
-        rows = await self.db.fetch("""
-            SELECT
-                key,
-                COUNT(*) as sample_count,
-                -- Try to infer data type from first non-null value
-                CASE
-                    WHEN jsonb_typeof(first_value) = 'number' THEN 'number'
-                    WHEN jsonb_typeof(first_value) = 'boolean' THEN 'boolean'
-                    WHEN first_value::text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN 'date'
-                    ELSE 'string'
-                END as data_type
-            FROM (
-                SELECT
-                    key,
-                    (array_agg(value ORDER BY value::text DESC))[1] as first_value
-                FROM service_requests sr,
-                     jsonb_each(sr.form_data) AS kv(key, value)
-                WHERE sr.workflow_code = $1
-                  AND sr.form_data IS NOT NULL
-                  AND sr.form_data != '{}'::jsonb
-                  -- Exclude nested objects (like 'dip', 'pasaporte_antiguo')
-                  AND jsonb_typeof(value) != 'object'
-                  -- Exclude arrays
-                  AND jsonb_typeof(value) != 'array'
-                  -- Exclude internal/technical fields
-                  AND key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
-                GROUP BY key
-            ) subq
-            GROUP BY key, first_value
-            ORDER BY sample_count DESC, key
-        """, workflow_code)
+        filters: Dict[str, Any] = {}
+        if rows:
+            row = rows[0]
+            if row["is_minor_vals"]:
+                vals = json.loads(row["is_minor_vals"]) if isinstance(
+                    row["is_minor_vals"], str
+                ) else row["is_minor_vals"]
+                if vals:
+                    filters["is_minor"] = sorted(
+                        set(vals), key=lambda x: str(x)
+                    )
+            if row["solicitud_type_vals"]:
+                vals = json.loads(row["solicitud_type_vals"]) if isinstance(
+                    row["solicitud_type_vals"], str
+                ) else row["solicitud_type_vals"]
+                if vals:
+                    filters["solicitud_type"] = sorted(set(vals))
+            if row["motivo_vals"]:
+                vals = json.loads(row["motivo_vals"]) if isinstance(
+                    row["motivo_vals"], str
+                ) else row["motivo_vals"]
+                if vals:
+                    filters["motivo"] = sorted(set(vals))
 
-        extracted_columns = []
-        for row in rows:
-            extracted_columns.append({
-                "id": row["key"],
-                "label_key": f"columns.{row['key']}",
-                "source": "extracted",
-                "data_type": row["data_type"],
-                "sample_count": row["sample_count"]
-            })
-
-        return {
-            "total_requests": total or 0,
-            "extracted_columns": extracted_columns
-        }
+        return filters
 
     async def get_sample_request(
         self,

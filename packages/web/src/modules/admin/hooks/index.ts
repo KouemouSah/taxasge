@@ -37,15 +37,14 @@ export {
   useAvailableColumns,
   useAllAvailableColumns,
   displayConfigKeys,
-  AVAILABLE_COLUMNS,
   FALLBACK_SYSTEM_COLUMNS,
-  DEFAULT_SELECTED_COLUMNS,
   AVAILABLE_SECTIONS,
 } from './useDisplayConfigs';
 export type {
   DisplayConfig,
   AvailableColumn,
   AvailableColumnsResponse,
+  AvailableColumnsFilters,
   WorkflowCode,
   SampleRequest,
 } from '../services/menuConfigService';

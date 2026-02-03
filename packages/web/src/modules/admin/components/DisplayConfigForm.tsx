@@ -6,7 +6,9 @@
  *
  * Features:
  * - Dropdown selection of workflow codes (grouped by category)
- * - Checkbox toggle for column selection
+ * - Checkbox toggle for column selection (NOTHING pre-selected in create mode)
+ * - Sub-workflow filters (is_minor, solicitud_type, motivo)
+ * - Extracted columns grouped by source prefix (dip.*, cert.*, etc.)
  * - Real drag & drop reordering with @dnd-kit
  * - Arrow buttons as alternative for reordering
  * - Section checkboxes
@@ -14,10 +16,10 @@
  *
  * @module admin/components
  * @date 2026-02-01
- * @updated 2026-02-02 - Refactored to use workflow_code exact match instead of pattern
+ * @updated 2026-02-03 - Dynamic flattening, filters, no pre-selection
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   DndContext,
@@ -51,12 +53,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   Loader2,
   Search,
   X,
   GripVertical,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Eye,
   Columns,
   Layers,
@@ -69,6 +77,7 @@ import {
   Clock,
   History,
   Database,
+  Filter,
 } from 'lucide-react';
 import {
   useAllAvailableColumns,
@@ -76,38 +85,12 @@ import {
   useSampleRequest,
   FALLBACK_SYSTEM_COLUMNS,
   AVAILABLE_SECTIONS,
-  DEFAULT_SELECTED_COLUMNS,
 } from '@/modules/admin/hooks';
-import type { SampleRequest } from '@/modules/admin/hooks';
+import type { SampleRequest, AvailableColumn, AvailableColumnsFilters } from '@/modules/admin/hooks';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
-
-/**
- * System column IDs (not extracted from form_data)
- * Used to separate system columns from extracted columns
- */
-const SYSTEM_COLUMN_IDS = [
-  'reference',
-  'fullName',
-  'citizenName',
-  'status',
-  'priority',
-  'createdAt',
-  'submittedAt',
-  'slaDeadline',
-  'slaStatus',
-  'solicitudType',
-  'motivo',
-  'workflowCode',
-  'workflowLabel',
-  'assignedTo',
-  'assignedAgent',
-  'entityCode',
-  'totalAmount',
-  'paymentStatus',
-];
 
 /**
  * Section icons mapping
@@ -129,8 +112,18 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 
 /**
  * Humanize column ID for display
+ * Handles dot-notation: "dip.natural_de" → "Natural De (DIP)"
  */
 function humanizeColumnId(id: string): string {
+  const parts = id.split('.');
+  if (parts.length > 1) {
+    const source = parts[0].toUpperCase();
+    const field = parts[1]
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\b\w/g, (l) => l.toUpperCase());
+    return `${field} (${source})`;
+  }
   return id
     .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -138,8 +131,24 @@ function humanizeColumnId(id: string): string {
 }
 
 /**
+ * Group extracted columns by source prefix
+ * e.g., "dip.natural_de" → group "dip", "cert.nombre" → group "cert"
+ * Columns without prefix go into "root" group
+ */
+function groupColumnsBySource(columns: AvailableColumn[]): Record<string, AvailableColumn[]> {
+  const groups: Record<string, AvailableColumn[]> = {};
+  for (const col of columns) {
+    const dotIdx = col.id.indexOf('.');
+    const group = dotIdx > 0 ? col.id.substring(0, dotIdx) : '_root';
+    if (!groups[group]) groups[group] = [];
+    groups[group].push(col);
+  }
+  return groups;
+}
+
+/**
  * Extract value from sample request data
- * Checks both form_data and extracted_data
+ * Handles dot-notation keys (e.g., "dip.natural_de")
  */
 function getSampleValue(
   sampleRequest: SampleRequest | null | undefined,
@@ -147,20 +156,27 @@ function getSampleValue(
 ): string | null {
   if (!sampleRequest) return null;
 
+  const parts = fieldId.split('.');
+
   // Check form_data first
-  if (sampleRequest.form_data && fieldId in sampleRequest.form_data) {
-    const value = sampleRequest.form_data[fieldId];
-    if (value !== null && value !== undefined) {
-      return String(value);
+  if (sampleRequest.form_data) {
+    if (parts.length > 1) {
+      // Dot-notation: e.g., "dip.natural_de"
+      const parent = sampleRequest.form_data[parts[0]];
+      if (parent && typeof parent === 'object' && !Array.isArray(parent)) {
+        const val = (parent as Record<string, unknown>)[parts[1]];
+        if (val !== null && val !== undefined) return String(val);
+      }
+    } else if (fieldId in sampleRequest.form_data) {
+      const value = sampleRequest.form_data[fieldId];
+      if (value !== null && value !== undefined) return String(value);
     }
   }
 
   // Then check extracted_data
   if (sampleRequest.extracted_data && fieldId in sampleRequest.extracted_data) {
     const value = sampleRequest.extracted_data[fieldId];
-    if (value !== null && value !== undefined) {
-      return String(value);
-    }
+    if (value !== null && value !== undefined) return String(value);
   }
 
   return null;
@@ -233,7 +249,7 @@ function SortableColumnItem({
         isDragging ? 'shadow-lg ring-2 ring-primary' : ''
       }`}
     >
-      {/* Drag Handle - FUNCTIONAL */}
+      {/* Drag Handle */}
       <button
         type="button"
         className="cursor-grab active:cursor-grabbing touch-none"
@@ -301,7 +317,7 @@ export function DisplayConfigForm({
     initialData?.workflow_code ?? ''
   );
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
-    initialData?.list_columns ?? [...DEFAULT_SELECTED_COLUMNS]
+    initialData?.list_columns ?? []
   );
   const [selectedSections, setSelectedSections] = useState<string[]>(
     initialData?.preview_sections ?? ['info', 'extractedData', 'documents', 'contact']
@@ -309,12 +325,27 @@ export function DisplayConfigForm({
   const [columnSearch, setColumnSearch] = useState('');
   const [isDirty, setIsDirty] = useState(false);
 
+  // Sub-workflow filters
+  const [filterIsMinor, setFilterIsMinor] = useState<boolean | undefined>(undefined);
+  const [filterSolicitudType, setFilterSolicitudType] = useState<string | undefined>(undefined);
+  const [filterMotivo, setFilterMotivo] = useState<string | undefined>(undefined);
+
+  // Collapsible state for column groups
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  // Build filters object for API
+  const columnFilters = useMemo<AvailableColumnsFilters | undefined>(() => {
+    const f: AvailableColumnsFilters = {};
+    if (filterIsMinor !== undefined) f.is_minor = filterIsMinor;
+    if (filterSolicitudType) f.solicitud_type = filterSolicitudType;
+    if (filterMotivo) f.motivo = filterMotivo;
+    return Object.keys(f).length > 0 ? f : undefined;
+  }, [filterIsMinor, filterSolicitudType, filterMotivo]);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -340,9 +371,34 @@ export function DisplayConfigForm({
   const {
     systemColumns,
     extractedColumns,
+    availableFilters,
     totalRequests,
     isLoading: isLoadingColumns,
-  } = useAllAvailableColumns(selectedWorkflow, shouldFetchColumns);
+  } = useAllAvailableColumns(selectedWorkflow, columnFilters, shouldFetchColumns);
+
+  // Group extracted columns by source prefix
+  const extractedGroups = useMemo(
+    () => groupColumnsBySource(extractedColumns),
+    [extractedColumns]
+  );
+  const extractedGroupNames = useMemo(
+    () => Object.keys(extractedGroups).sort((a, b) => {
+      // "_root" first, then alphabetical
+      if (a === '_root') return -1;
+      if (b === '_root') return 1;
+      return a.localeCompare(b);
+    }),
+    [extractedGroups]
+  );
+
+  // Auto-open all groups when they change
+  useEffect(() => {
+    const newOpen: Record<string, boolean> = {};
+    for (const name of extractedGroupNames) {
+      newOpen[name] = openGroups[name] ?? true;
+    }
+    setOpenGroups(newOpen);
+  }, [extractedGroupNames]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset state when initialData changes (for edit mode)
   useEffect(() => {
@@ -376,10 +432,14 @@ export function DisplayConfigForm({
   // Handler for workflow change
   const handleWorkflowChange = (workflowCode: string) => {
     setSelectedWorkflow(workflowCode);
-    // Reset columns to defaults when changing workflow in create mode
+    // Reset columns to EMPTY when changing workflow in create mode
     if (mode === 'create') {
-      setSelectedColumns([...DEFAULT_SELECTED_COLUMNS]);
+      setSelectedColumns([]);
     }
+    // Reset filters when changing workflow
+    setFilterIsMinor(undefined);
+    setFilterSolicitudType(undefined);
+    setFilterMotivo(undefined);
   };
 
   // Filter columns by search
@@ -405,42 +465,48 @@ export function DisplayConfigForm({
     });
   }, [systemColumns, columnSearch, t]);
 
-  const filteredExtractedColumns = useMemo(() => {
-    if (!columnSearch) return extractedColumns;
+  const filteredExtractedGroups = useMemo(() => {
+    if (!columnSearch) return extractedGroups;
 
-    return extractedColumns.filter((col) => {
-      const label = t(`columns.${col.id}` as Parameters<typeof t>[0], {
-        defaultValue: humanizeColumnId(col.id),
+    const filtered: Record<string, AvailableColumn[]> = {};
+    for (const [group, cols] of Object.entries(extractedGroups)) {
+      const matching = cols.filter((col) => {
+        const label = t(`columns.${col.id}` as Parameters<typeof t>[0], {
+          defaultValue: humanizeColumnId(col.id),
+        });
+        return (
+          col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
+          label.toLowerCase().includes(columnSearch.toLowerCase())
+        );
       });
-      return (
-        col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
-        label.toLowerCase().includes(columnSearch.toLowerCase())
-      );
-    });
-  }, [extractedColumns, columnSearch, t]);
+      if (matching.length > 0) filtered[group] = matching;
+    }
+    return filtered;
+  }, [extractedGroups, columnSearch, t]);
+
+  const hasFilteredExtracted = Object.keys(filteredExtractedGroups).length > 0;
 
   // Handlers
-  const toggleColumn = (columnId: string) => {
+  const toggleColumn = useCallback((columnId: string) => {
     setSelectedColumns((prev) =>
       prev.includes(columnId)
         ? prev.filter((c) => c !== columnId)
         : [...prev, columnId]
     );
-  };
+  }, []);
 
-  const removeColumn = (columnId: string) => {
+  const removeColumn = useCallback((columnId: string) => {
     setSelectedColumns((prev) => prev.filter((c) => c !== columnId));
-  };
+  }, []);
 
-  const moveColumn = (index: number, direction: 'up' | 'down') => {
+  const moveColumn = useCallback((index: number, direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= selectedColumns.length) return;
     setSelectedColumns((items) => arrayMove(items, index, newIndex));
-  };
+  }, [selectedColumns.length]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
       setSelectedColumns((items) => {
         const oldIndex = items.indexOf(active.id as string);
@@ -448,13 +514,13 @@ export function DisplayConfigForm({
         return arrayMove(items, oldIndex, newIndex);
       });
     }
-  };
+  }, []);
 
-  const toggleSection = (sectionId: string) => {
+  const toggleSection = useCallback((sectionId: string) => {
     setSelectedSections((prev) =>
       prev.includes(sectionId) ? prev.filter((s) => s !== sectionId) : [...prev, sectionId]
     );
-  };
+  }, []);
 
   const handleSubmit = async () => {
     await onSubmit({
@@ -469,19 +535,31 @@ export function DisplayConfigForm({
     onSubmitRef?.(handleSubmit);
   }, [selectedWorkflow, selectedColumns, selectedSections]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const getColumnLabel = (colId: string) => {
+  const getColumnLabel = useCallback((colId: string) => {
     return t(`columns.${colId}` as Parameters<typeof t>[0], {
       defaultValue: humanizeColumnId(colId),
     });
-  };
+  }, [t]);
 
-  // Get selected extracted columns (non-system columns)
-  const selectedExtractedColumns = useMemo(
-    () => selectedColumns.filter((col) => !SYSTEM_COLUMN_IDS.includes(col)),
-    [selectedColumns]
-  );
+  const toggleGroup = useCallback((groupName: string) => {
+    setOpenGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
+  }, []);
 
   const isValid = selectedWorkflow.length > 0 && selectedColumns.length > 0;
+
+  // Derive filter options from available_filters
+  const filterOptions = useMemo(() => {
+    if (!availableFilters) return null;
+    return {
+      isMinor: (availableFilters.is_minor as boolean[] | undefined) ?? null,
+      solicitudType: (availableFilters.solicitud_type as string[] | undefined) ?? null,
+      motivo: (availableFilters.motivo as string[] | undefined) ?? null,
+    };
+  }, [availableFilters]);
+
+  const hasAnyFilter = filterOptions && (
+    filterOptions.isMinor || filterOptions.solicitudType || filterOptions.motivo
+  );
 
   return (
     <div className="space-y-6">
@@ -547,7 +625,6 @@ export function DisplayConfigForm({
               )}
             </div>
 
-            {/* Error message if workflow loading fails */}
             {workflowsError && (
               <p className="text-sm text-destructive mt-2">
                 {t('workflowLoadError', { defaultValue: 'Erreur de chargement des workflows' })}
@@ -574,7 +651,6 @@ export function DisplayConfigForm({
               <span className="text-sm text-muted-foreground">
                 ({t('readOnly', { defaultValue: 'Lecture seule' })})
               </span>
-              {/* Show request count in edit mode too */}
               {!isLoadingColumns && totalRequests > 0 && (
                 <span className="text-sm text-muted-foreground ml-auto">
                   {totalRequests} demandes
@@ -620,6 +696,64 @@ export function DisplayConfigForm({
               />
             </div>
 
+            {/* Sub-workflow Filters */}
+            {hasAnyFilter && (
+              <div className="flex flex-wrap items-center gap-2 p-2 bg-muted/50 rounded-md">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                {filterOptions?.isMinor && (
+                  <Select
+                    value={filterIsMinor === undefined ? '__all__' : String(filterIsMinor)}
+                    onValueChange={(v) => setFilterIsMinor(v === '__all__' ? undefined : v === 'true')}
+                  >
+                    <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs">
+                      <SelectValue placeholder="Menor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Menor: Todos</SelectItem>
+                      <SelectItem value="true">Menor: Sí</SelectItem>
+                      <SelectItem value="false">Menor: No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {filterOptions?.solicitudType && (
+                  <Select
+                    value={filterSolicitudType ?? '__all__'}
+                    onValueChange={(v) => setFilterSolicitudType(v === '__all__' ? undefined : v)}
+                  >
+                    <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Tipo: Todos</SelectItem>
+                      {filterOptions.solicitudType.map((val) => (
+                        <SelectItem key={val} value={val}>
+                          {val}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {filterOptions?.motivo && (
+                  <Select
+                    value={filterMotivo ?? '__all__'}
+                    onValueChange={(v) => setFilterMotivo(v === '__all__' ? undefined : v)}
+                  >
+                    <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
+                      <SelectValue placeholder="Motivo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Motivo: Todos</SelectItem>
+                      {filterOptions.motivo.map((val) => (
+                        <SelectItem key={val} value={val}>
+                          {val}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
             {/* Column Checkboxes */}
             <div className="max-h-[400px] overflow-y-auto space-y-4">
               {isLoadingColumns ? (
@@ -632,7 +766,10 @@ export function DisplayConfigForm({
                   {filteredSystemColumns.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Colonnes Système
+                        Colonnes Système ({filteredSystemColumns.length})
+                      </p>
+                      <p className="text-[10px] text-muted-foreground italic">
+                        reference, status, priority, workflow sont déjà dans Información General
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {filteredSystemColumns.map((col) => (
@@ -654,31 +791,62 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
-                  {/* Extracted Columns */}
-                  {filteredExtractedColumns.length > 0 && (
+                  {/* Extracted Columns - Grouped by source */}
+                  {hasFilteredExtracted && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Colonnes Extraites ({totalRequests} demandes)
+                        Colonnes Extraites ({extractedColumns.length})
                       </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {filteredExtractedColumns.map((col) => (
-                          <div key={col.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`col-${col.id}`}
-                              checked={selectedColumns.includes(col.id)}
-                              onCheckedChange={() => toggleColumn(col.id)}
-                            />
-                            <label
-                              htmlFor={`col-${col.id}`}
-                              className="text-sm cursor-pointer truncate flex items-center gap-1"
+                      <div className="space-y-1">
+                        {Object.entries(filteredExtractedGroups)
+                          .sort(([a], [b]) => {
+                            if (a === '_root') return -1;
+                            if (b === '_root') return 1;
+                            return a.localeCompare(b);
+                          })
+                          .map(([groupName, groupCols]) => (
+                            <Collapsible
+                              key={groupName}
+                              open={openGroups[groupName] !== false}
+                              onOpenChange={() => toggleGroup(groupName)}
                             >
-                              {getColumnLabel(col.id)}
-                              <Badge variant="outline" className="text-[10px] px-1">
-                                {col.sample_count}
-                              </Badge>
-                            </label>
-                          </div>
-                        ))}
+                              <CollapsibleTrigger className="flex items-center gap-1.5 w-full text-left py-1 hover:bg-muted/50 rounded px-1">
+                                <ChevronRight
+                                  className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${
+                                    openGroups[groupName] !== false ? 'rotate-90' : ''
+                                  }`}
+                                />
+                                <span className="text-xs font-medium">
+                                  {groupName === '_root' ? 'Datos Personales' : groupName.toUpperCase()}
+                                </span>
+                                <Badge variant="outline" className="text-[10px] px-1 ml-1">
+                                  {groupCols.length}
+                                </Badge>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-5 pt-1 pb-2">
+                                  {groupCols.map((col) => (
+                                    <div key={col.id} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`col-${col.id}`}
+                                        checked={selectedColumns.includes(col.id)}
+                                        onCheckedChange={() => toggleColumn(col.id)}
+                                      />
+                                      <label
+                                        htmlFor={`col-${col.id}`}
+                                        className="text-sm cursor-pointer truncate flex items-center gap-1"
+                                      >
+                                        {getColumnLabel(col.id)}
+                                        <Badge variant="outline" className="text-[10px] px-1">
+                                          {col.sample_count}
+                                        </Badge>
+                                      </label>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ))}
                       </div>
                     </div>
                   )}
@@ -691,7 +859,7 @@ export function DisplayConfigForm({
                   )}
 
                   {/* No results */}
-                  {selectedWorkflow && filteredSystemColumns.length === 0 && filteredExtractedColumns.length === 0 && (
+                  {selectedWorkflow && filteredSystemColumns.length === 0 && !hasFilteredExtracted && (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       {t('noColumnsMatchSearch', { defaultValue: 'Aucune colonne ne correspond à la recherche' })}
                     </p>
@@ -782,25 +950,25 @@ export function DisplayConfigForm({
                       })}
                     </label>
                   </div>
-                  {/* Show extracted columns under extractedData section */}
+                  {/* Show selected columns under extractedData section */}
                   {sec.id === 'extractedData' && selectedSections.includes('extractedData') && (
                     <div className="ml-6 pl-2 border-l-2 border-muted">
-                      {selectedExtractedColumns.length > 0 ? (
+                      {selectedColumns.length > 0 ? (
                         <div className="flex flex-wrap gap-1 py-1">
-                          {selectedExtractedColumns.slice(0, 6).map((col) => (
+                          {selectedColumns.slice(0, 8).map((col) => (
                             <Badge key={col} variant="secondary" className="text-[10px]">
                               {getColumnLabel(col)}
                             </Badge>
                           ))}
-                          {selectedExtractedColumns.length > 6 && (
+                          {selectedColumns.length > 8 && (
                             <Badge variant="outline" className="text-[10px]">
-                              +{selectedExtractedColumns.length - 6}
+                              +{selectedColumns.length - 8}
                             </Badge>
                           )}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground italic py-1">
-                          {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne extraite sélectionnée' })}
+                          {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne sélectionnée' })}
                         </p>
                       )}
                     </div>
@@ -882,7 +1050,7 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
-                  {/* Extracted Data Section Preview */}
+                  {/* Extracted Data Section Preview - Shows ALL selected columns */}
                   {selectedSections.includes('extractedData') && (
                     <div className="p-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -891,12 +1059,12 @@ export function DisplayConfigForm({
                           {t('sections.extractedData' as Parameters<typeof t>[0], { defaultValue: 'Datos Extraídos' })}
                         </span>
                         <Badge variant="secondary" className="text-[10px]">
-                          {selectedExtractedColumns.length}
+                          {selectedColumns.length}
                         </Badge>
                       </div>
-                      {selectedExtractedColumns.length > 0 ? (
+                      {selectedColumns.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          {selectedExtractedColumns.slice(0, 8).map((col) => {
+                          {selectedColumns.map((col) => {
                             const value = getSampleValue(sampleRequest, col);
                             return (
                               <div key={col}>
@@ -907,15 +1075,10 @@ export function DisplayConfigForm({
                               </div>
                             );
                           })}
-                          {selectedExtractedColumns.length > 8 && (
-                            <div className="col-span-2 text-muted-foreground italic">
-                              +{selectedExtractedColumns.length - 8} más...
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <p className="text-xs text-amber-600 italic">
-                          ⚠️ {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne extraite sélectionnée' })}
+                          {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne sélectionnée' })}
                         </p>
                       )}
                     </div>
