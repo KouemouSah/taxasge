@@ -93,6 +93,22 @@ import type { SampleRequest, AvailableColumn, AvailableColumnsFilters } from '@/
 // =============================================================================
 
 /**
+ * System columns that belong in "Información General" section of the preview.
+ * When selected, they enrich the Info General card — NOT "Datos Extraídos".
+ */
+const INFO_GENERAL_COLUMN_IDS = new Set([
+  'reference', 'fullName', 'citizenName', 'solicitudType',
+  'createdAt', 'submittedAt', 'priority', 'status',
+  'workflowCode', 'workflowLabel',
+]);
+
+/**
+ * Default system columns pre-selected in create mode.
+ * These are the most commonly needed for any workflow.
+ */
+const DEFAULT_SYSTEM_COLUMNS = ['reference', 'fullName', 'solicitudType'];
+
+/**
  * Section icons mapping
  */
 const SECTION_ICONS: Record<string, React.ReactNode> = {
@@ -444,25 +460,32 @@ export function DisplayConfigForm({
   // Resets when workflow changes; prevents re-applying after manual edits
   const [suggestedApplied, setSuggestedApplied] = useState(false);
 
-  // Auto-select suggested columns in create mode when they arrive from API
+  // Auto-select suggested extracted columns in create mode when they arrive from API
+  // Appends to existing default system columns (does not replace)
   useEffect(() => {
     if (
       mode === 'create' &&
       suggestedColumns.length > 0 &&
-      !suggestedApplied &&
-      selectedColumns.length === 0
+      !suggestedApplied
     ) {
-      setSelectedColumns(suggestedColumns);
+      setSelectedColumns((prev) => {
+        // Merge: keep existing system defaults + add suggested extracted columns
+        const merged = [...prev];
+        for (const col of suggestedColumns) {
+          if (!merged.includes(col)) merged.push(col);
+        }
+        return merged;
+      });
       setSuggestedApplied(true);
     }
-  }, [suggestedColumns, mode, suggestedApplied, selectedColumns.length]);
+  }, [suggestedColumns, mode, suggestedApplied]);
 
   // Handler for workflow change
   const handleWorkflowChange = (workflowCode: string) => {
     setSelectedWorkflow(workflowCode);
-    // Reset columns to EMPTY when changing workflow in create mode
     if (mode === 'create') {
-      setSelectedColumns([]);
+      // Reset to default system columns (not empty)
+      setSelectedColumns([...DEFAULT_SYSTEM_COLUMNS]);
       setSuggestedApplied(false); // Allow new suggestions for new workflow
     }
     // Reset filters when changing workflow
@@ -578,6 +601,16 @@ export function DisplayConfigForm({
   }, []);
 
   const isValid = selectedWorkflow.length > 0 && selectedColumns.length > 0;
+
+  // Split selected columns: system → Info General, extracted → Datos Extraídos
+  const infoGeneralSelectedColumns = useMemo(
+    () => selectedColumns.filter((col) => INFO_GENERAL_COLUMN_IDS.has(col)),
+    [selectedColumns]
+  );
+  const extractedDataSelectedColumns = useMemo(
+    () => selectedColumns.filter((col) => !INFO_GENERAL_COLUMN_IDS.has(col)),
+    [selectedColumns]
+  );
 
   // Derive filter options from available_filters
   const filterOptions = useMemo(() => {
@@ -982,25 +1015,37 @@ export function DisplayConfigForm({
                       })}
                     </label>
                   </div>
-                  {/* Show selected columns under extractedData section */}
+                  {/* Show selected system columns under info section */}
+                  {sec.id === 'info' && selectedSections.includes('info') && infoGeneralSelectedColumns.length > 0 && (
+                    <div className="ml-6 pl-2 border-l-2 border-muted">
+                      <div className="flex flex-wrap gap-1 py-1">
+                        {infoGeneralSelectedColumns.map((col) => (
+                          <Badge key={col} variant="secondary" className="text-[10px]">
+                            {getColumnLabel(col)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Show selected extracted columns under extractedData section */}
                   {sec.id === 'extractedData' && selectedSections.includes('extractedData') && (
                     <div className="ml-6 pl-2 border-l-2 border-muted">
-                      {selectedColumns.length > 0 ? (
+                      {extractedDataSelectedColumns.length > 0 ? (
                         <div className="flex flex-wrap gap-1 py-1">
-                          {selectedColumns.slice(0, 8).map((col) => (
+                          {extractedDataSelectedColumns.slice(0, 8).map((col) => (
                             <Badge key={col} variant="secondary" className="text-[10px]">
                               {getColumnLabel(col)}
                             </Badge>
                           ))}
-                          {selectedColumns.length > 8 && (
+                          {extractedDataSelectedColumns.length > 8 && (
                             <Badge variant="outline" className="text-[10px]">
-                              +{selectedColumns.length - 8}
+                              +{extractedDataSelectedColumns.length - 8}
                             </Badge>
                           )}
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground italic py-1">
-                          {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne sélectionnée' })}
+                          {t('noExtractedColumnsSelected', { defaultValue: 'Aucune colonne extraite sélectionnée' })}
                         </p>
                       )}
                     </div>
@@ -1046,7 +1091,7 @@ export function DisplayConfigForm({
                 </p>
               ) : (
                 <div className="divide-y">
-                  {/* Info Section Preview */}
+                  {/* Info Section Preview — fixed fields + selected system columns */}
                   {selectedSections.includes('info') && (
                     <div className="p-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -1054,24 +1099,41 @@ export function DisplayConfigForm({
                         <span className="text-sm font-medium">
                           {t('sections.info' as Parameters<typeof t>[0], { defaultValue: 'Información General' })}
                         </span>
+                        {infoGeneralSelectedColumns.length > 0 && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {infoGeneralSelectedColumns.length}
+                          </Badge>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-muted-foreground">Référence:</span>
-                          <span className="ml-1 font-medium">
-                            {sampleRequest?.reference || 'REF-XXXX-XXXXX'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Priorité:</span>
-                          <Badge className="ml-1 text-[10px] bg-blue-100 text-blue-700">
-                            {sampleRequest?.priority || 'Normal'}
-                          </Badge>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Statut:</span>
-                          <span className="ml-1">{sampleRequest?.status || '—'}</span>
-                        </div>
+                        {/* Dynamic: show ALL selected Info General columns */}
+                        {infoGeneralSelectedColumns.map((col) => {
+                          const value = getSampleValue(sampleRequest, col);
+                          return (
+                            <div key={col}>
+                              <span className="text-muted-foreground">{getColumnLabel(col)}:</span>
+                              <span className="ml-1 font-medium">
+                                {value || '—'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {/* Fallback when no system columns selected */}
+                        {infoGeneralSelectedColumns.length === 0 && (
+                          <>
+                            <div>
+                              <span className="text-muted-foreground">Référence:</span>
+                              <span className="ml-1 font-medium">
+                                {sampleRequest?.reference || 'REF-XXXX-XXXXX'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Statut:</span>
+                              <span className="ml-1">{sampleRequest?.status || '—'}</span>
+                            </div>
+                          </>
+                        )}
+                        {/* Always show workflow */}
                         <div>
                           <span className="text-muted-foreground">Workflow:</span>
                           <span className="ml-1 text-xs font-mono">
@@ -1082,7 +1144,7 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
-                  {/* Extracted Data Section Preview - Shows ALL selected columns */}
+                  {/* Extracted Data Section Preview — ONLY non-system columns */}
                   {selectedSections.includes('extractedData') && (
                     <div className="p-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -1090,13 +1152,15 @@ export function DisplayConfigForm({
                         <span className="text-sm font-medium">
                           {t('sections.extractedData' as Parameters<typeof t>[0], { defaultValue: 'Datos Extraídos' })}
                         </span>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {selectedColumns.length}
-                        </Badge>
+                        {extractedDataSelectedColumns.length > 0 && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {extractedDataSelectedColumns.length}
+                          </Badge>
+                        )}
                       </div>
-                      {selectedColumns.length > 0 ? (
+                      {extractedDataSelectedColumns.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          {selectedColumns.map((col) => {
+                          {extractedDataSelectedColumns.map((col) => {
                             const value = getSampleValue(sampleRequest, col);
                             return (
                               <div key={col}>
