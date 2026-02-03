@@ -13,6 +13,7 @@
 
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -184,6 +185,12 @@ export function useUpdateDisplayConfig() {
         queryKey: displayConfigKeys.detail(variables.id),
       });
       queryClient.invalidateQueries({ queryKey: displayConfigKeys.lists() });
+      // Invalidate byWorkflow so agent previews pick up changes immediately
+      if (result.workflow_code) {
+        queryClient.invalidateQueries({
+          queryKey: displayConfigKeys.byWorkflow(result.workflow_code),
+        });
+      }
       toast.success(t('messages.updated'));
     },
     onError: (error, variables) => {
@@ -204,15 +211,21 @@ export function useDeleteDisplayConfig() {
   const queryClient = useQueryClient();
   const t = useTranslations('admin.menuConfig.displayConfig');
 
-  return useMutation<void, Error, number>({
-    mutationFn: async (id) => {
+  return useMutation<void, Error, { id: number; workflowCode?: string }>({
+    mutationFn: async ({ id }) => {
       logInfo(`Deleting display config id=${id}`);
       return menuConfigApi.deleteDisplayConfig(id);
     },
-    onSuccess: (_, id) => {
+    onSuccess: (_, { id, workflowCode }) => {
       logInfo(`Config deleted successfully: id=${id}`);
       queryClient.removeQueries({ queryKey: displayConfigKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: displayConfigKeys.lists() });
+      // Invalidate byWorkflow cache
+      if (workflowCode) {
+        queryClient.invalidateQueries({
+          queryKey: displayConfigKeys.byWorkflow(workflowCode),
+        });
+      }
       toast.success(t('messages.deleted'));
     },
     onError: (error, id) => {
@@ -262,6 +275,9 @@ export function useAvailableColumns(
  * Useful for column selector components
  * Supports sub-workflow filtering (is_minor, solicitud_type, motivo)
  */
+const EMPTY_COLUMNS: AvailableColumn[] = [];
+const EMPTY_STRINGS: string[] = [];
+
 export function useAllAvailableColumns(
   workflowCode: string,
   filters?: AvailableColumnsFilters,
@@ -273,14 +289,21 @@ export function useAllAvailableColumns(
     enabled,
   );
 
-  const allColumns: AvailableColumn[] = data
-    ? [...data.system_columns, ...data.extracted_columns]
-    : [];
+  // Stable references: use module-level constants when data is absent
+  // to prevent infinite re-render loops in downstream useMemo/useEffect chains
+  const systemColumns = data?.system_columns ?? EMPTY_COLUMNS;
+  const extractedColumns = data?.extracted_columns ?? EMPTY_COLUMNS;
+  const suggestedColumns = data?.suggested_columns ?? EMPTY_STRINGS;
+  const allColumns = useMemo<AvailableColumn[]>(
+    () => data ? [...data.system_columns, ...data.extracted_columns] : EMPTY_COLUMNS,
+    [data]
+  );
 
   return {
     columns: allColumns,
-    systemColumns: data?.system_columns ?? [],
-    extractedColumns: data?.extracted_columns ?? [],
+    systemColumns,
+    extractedColumns,
+    suggestedColumns,
     availableFilters: data?.available_filters ?? null,
     filtersApplied: data?.filters_applied ?? null,
     totalRequests: data?.total_requests ?? 0,
@@ -325,8 +348,10 @@ export function useDisplayConfigOperations(params?: PaginationParams) {
       updateMutation.mutateAsync({ id, data }),
     isUpdating: updateMutation.isPending,
 
-    deleteConfig: deleteMutation.mutate,
-    deleteConfigAsync: deleteMutation.mutateAsync,
+    deleteConfig: (id: number, workflowCode?: string) =>
+      deleteMutation.mutate({ id, workflowCode }),
+    deleteConfigAsync: (id: number, workflowCode?: string) =>
+      deleteMutation.mutateAsync({ id, workflowCode }),
     isDeleting: deleteMutation.isPending,
 
     // Combined loading state

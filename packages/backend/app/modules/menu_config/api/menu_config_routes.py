@@ -675,6 +675,7 @@ async def get_available_columns(
             extracted_columns=extracted_columns,
             filters_applied=result.get("filters_applied"),
             available_filters=result.get("available_filters"),
+            suggested_columns=result.get("suggested_columns", []),
         )
 
     except Exception as e:

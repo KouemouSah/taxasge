@@ -658,6 +658,11 @@ class CacheKeys:
     def entity_translations(entity_type: str, entity_id: Union[str, int], locale: str) -> str:
         return f"trans:entity:{entity_type}:{entity_id}:{locale}"
 
+    # Display config keys
+    @staticmethod
+    def display_config(workflow_code: str) -> str:
+        return f"menu:display_config:{workflow_code}"
+
     # Rate limiting keys
     @staticmethod
     def rate_limit(identifier: str, endpoint: str) -> str:

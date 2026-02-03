@@ -60,6 +60,7 @@ function formatDate(dateStr: string): string {
  * Handles dot-notation: "dip.natural_de" → "Natural De (DIP)"
  * Handles snake_case: "fecha_nacimiento" → "Fecha Nacimiento"
  * Handles camelCase: "fechaNacimiento" → "Fecha Nacimiento"
+ * NOTE: Must match DisplayConfigForm.tsx humanizeColumnId for consistency.
  */
 function humanizeColumnId(columnId: string): string {
   const parts = columnId.split('.');
@@ -68,13 +69,13 @@ function humanizeColumnId(columnId: string): string {
     const field = parts[1]
       .replace(/_/g, ' ')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/^./, (str) => str.toUpperCase());
+      .replace(/\b\w/g, (l) => l.toUpperCase());
     return `${field} (${source})`;
   }
   return columnId
     .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/^./, (str) => str.toUpperCase());
+    .replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
 // =============================================================================

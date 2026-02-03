@@ -124,6 +124,8 @@ export interface AvailableColumnsResponse {
   extracted_columns: AvailableColumn[];
   filters_applied: Record<string, unknown> | null;
   available_filters: Record<string, unknown[]> | null;
+  /** Suggested extracted column IDs for pre-selection (top columns by frequency, >= 50% coverage) */
+  suggested_columns: string[];
 }
 
 /** Filters for available columns discovery */

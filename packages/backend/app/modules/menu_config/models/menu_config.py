@@ -323,6 +323,10 @@ class AvailableColumnsResponse(BaseModel):
         default=None,
         description="Available filter values for this workflow (e.g., is_minor: [true, false])"
     )
+    suggested_columns: List[str] = Field(
+        default_factory=list,
+        description="Suggested extracted column IDs for pre-selection (top columns by frequency, >= 50% coverage)"
+    )
 
 
 # =============================================================================

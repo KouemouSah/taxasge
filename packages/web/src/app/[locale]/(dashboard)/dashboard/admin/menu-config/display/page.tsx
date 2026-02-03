@@ -90,7 +90,7 @@ export default function DisplayConfigPage() {
 
   const handleDelete = async () => {
     if (!selectedConfig) return;
-    await deleteConfigAsync(selectedConfig.id);
+    await deleteConfigAsync(selectedConfig.id, selectedConfig.workflow_code);
     setIsDeleteDialogOpen(false);
     setSelectedConfig(null);
   };

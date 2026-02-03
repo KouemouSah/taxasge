@@ -10,11 +10,17 @@ Date: 2026-02-01
 from typing import List, Optional, Dict, Any
 import json
 import asyncpg
+import logging
 
 from app.modules.menu_config.models.menu_config import (
     WorkflowDisplayConfigCreate,
     WorkflowDisplayConfigUpdate,
 )
+from app.core.cache import get_cache, CacheKeys
+
+logger = logging.getLogger(__name__)
+
+DISPLAY_CONFIG_CACHE_TTL = 300  # 5 minutes
 
 
 def _row_to_dict(record: asyncpg.Record) -> Optional[Dict[str, Any]]:
@@ -251,7 +257,13 @@ class DisplayConfigRepository:
         """
 
         result = await self.db.fetchrow(query, *params)
-        return _row_to_dict(result)
+        updated = _row_to_dict(result)
+
+        # Invalidate cache for this workflow_code
+        if updated and updated.get('workflow_code'):
+            await self.invalidate_cache(updated['workflow_code'])
+
+        return updated
 
     async def delete(self, config_id: int) -> bool:
         """
@@ -263,19 +275,31 @@ class DisplayConfigRepository:
         Returns:
             True if deleted, False if not found
         """
+        # Fetch workflow_code before deleting (for cache invalidation)
+        existing = await self.db.fetchval(
+            "SELECT workflow_code FROM workflow_display_config WHERE id = $1",
+            config_id,
+        )
+
         result = await self.db.execute("""
             DELETE FROM workflow_display_config
             WHERE id = $1
         """, config_id)
 
-        return "DELETE 1" in result
+        deleted = "DELETE 1" in result
+        if deleted and existing:
+            await self.invalidate_cache(existing)
+
+        return deleted
 
     async def find_config_for_workflow(
         self,
         workflow_code: str
     ) -> Optional[Dict[str, Any]]:
         """
-        Find the display config for an exact workflow code
+        Find the display config for an exact workflow code.
+        Uses Redis cache (5 min TTL) to avoid repeated DB queries
+        when agents navigate multiple requests of the same workflow.
 
         Args:
             workflow_code: Exact workflow code (e.g., 'PASAPORTE_EXPEDICION_ADULTO')
@@ -283,7 +307,21 @@ class DisplayConfigRepository:
         Returns:
             Matching config dict or None
         """
-        # Use exact match (migration 088 changed from pattern to exact code)
+        cache = get_cache()
+        cache_key = CacheKeys.display_config(workflow_code)
+
+        # Try cache first
+        try:
+            cached = await cache.get(cache_key)
+            if cached is not None:
+                # "__none__" marker means we cached a "not found" result
+                if isinstance(cached, dict) and cached.get("__none__"):
+                    return None
+                return cached
+        except Exception:
+            pass  # Cache miss or error, fall through to DB
+
+        # DB lookup
         result = await self.db.fetchrow("""
             SELECT id, workflow_code, list_columns, preview_sections, labels,
                    is_active, created_at, updated_at
@@ -293,7 +331,28 @@ class DisplayConfigRepository:
               AND deleted_at IS NULL
         """, workflow_code)
 
-        return _row_to_dict(result)
+        config = _row_to_dict(result)
+
+        # Cache result (even None as empty dict marker)
+        try:
+            await cache.set(
+                cache_key,
+                config if config else {"__none__": True},
+                ttl=DISPLAY_CONFIG_CACHE_TTL,
+            )
+        except Exception:
+            pass
+
+        return config
+
+    @staticmethod
+    async def invalidate_cache(workflow_code: str) -> None:
+        """Invalidate cached display config for a workflow code."""
+        try:
+            cache = get_cache()
+            await cache.delete(CacheKeys.display_config(workflow_code))
+        except Exception:
+            pass
 
     # Technical fields excluded from column discovery
     TECHNICAL_FIELDS = frozenset({
@@ -360,18 +419,25 @@ class DisplayConfigRepository:
         )
 
         # Discover columns with flattening of nested objects (2 levels)
-        # Level 1: scalar keys at root level
-        # Level 2: scalar keys inside nested objects (dip.*, cert.*, etc.)
+        # Uses a sampled subset (latest 200 requests) for performance.
+        # NOTE: Ensure index exists: CREATE INDEX idx_sr_workflow_code ON service_requests(workflow_code)
         rows = await self.db.fetch(f"""
-            WITH flat_keys AS (
+            WITH sampled_requests AS (
+                -- Sample latest 200 requests for column discovery (avoid full scan)
+                SELECT sr.form_data
+                FROM service_requests sr
+                WHERE {where_sql}
+                ORDER BY sr.created_at DESC
+                LIMIT 200
+            ),
+            flat_keys AS (
                 -- Level 1: root-level scalar fields
                 SELECT
                     kv.key AS col_key,
                     kv.value AS col_value
-                FROM service_requests sr,
+                FROM sampled_requests sr,
                      jsonb_each(sr.form_data) AS kv(key, value)
-                WHERE {where_sql}
-                  AND jsonb_typeof(kv.value) NOT IN ('object', 'array')
+                WHERE jsonb_typeof(kv.value) NOT IN ('object', 'array')
                   AND kv.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
 
                 UNION ALL
@@ -380,11 +446,10 @@ class DisplayConfigRepository:
                 SELECT
                     parent.key || '.' || child.key AS col_key,
                     child.value AS col_value
-                FROM service_requests sr,
+                FROM sampled_requests sr,
                      jsonb_each(sr.form_data) AS parent(key, value),
                      jsonb_each(parent.value) AS child(key, value)
-                WHERE {where_sql}
-                  AND jsonb_typeof(parent.value) = 'object'
+                WHERE jsonb_typeof(parent.value) = 'object'
                   AND jsonb_typeof(child.value) NOT IN ('object', 'array')
                   AND parent.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
             )
@@ -434,11 +499,23 @@ class DisplayConfigRepository:
         if motivo is not None:
             filters_applied["motivo"] = motivo
 
+        # Compute suggested columns: extracted columns with >= 50% coverage
+        # (present in at least half of sampled requests), limited to top 10
+        total_count = total or 0
+        sampled_count = min(total_count, 200)  # We sampled at most 200
+        threshold = max(sampled_count * 0.5, 1)  # At least 50% coverage
+        suggested_columns = [
+            col["id"]
+            for col in extracted_columns
+            if col["sample_count"] >= threshold
+        ][:10]  # Cap at 10 suggestions
+
         return {
-            "total_requests": total or 0,
+            "total_requests": total_count,
             "extracted_columns": extracted_columns,
             "filters_applied": filters_applied if filters_applied else None,
             "available_filters": available_filters,
+            "suggested_columns": suggested_columns,
         }
 
     async def _get_available_filters(
@@ -456,22 +533,24 @@ class DisplayConfigRepository:
                 "motivo": ["vencimiento", "perdida"]
             }
         """
-        rows = await self.db.fetch("""
+        # Use ->> (text extraction) for consistent Python types
+        # and array_agg(DISTINCT ...) for deduplication
+        row = await self.db.fetchrow("""
             SELECT
-                jsonb_agg(DISTINCT form_data->'is_minor')
+                array_agg(DISTINCT form_data->>'is_minor')
                     FILTER (WHERE form_data ? 'is_minor'
-                              AND form_data->'is_minor' IS NOT NULL
-                              AND jsonb_typeof(form_data->'is_minor') != 'null')
+                              AND form_data->>'is_minor' IS NOT NULL
+                              AND form_data->>'is_minor' != '')
                     AS is_minor_vals,
-                jsonb_agg(DISTINCT form_data->'solicitud_type')
+                array_agg(DISTINCT form_data->>'solicitud_type')
                     FILTER (WHERE form_data ? 'solicitud_type'
-                              AND form_data->'solicitud_type' IS NOT NULL
-                              AND jsonb_typeof(form_data->'solicitud_type') != 'null')
+                              AND form_data->>'solicitud_type' IS NOT NULL
+                              AND form_data->>'solicitud_type' != '')
                     AS solicitud_type_vals,
-                jsonb_agg(DISTINCT form_data->'motivo')
+                array_agg(DISTINCT form_data->>'motivo')
                     FILTER (WHERE form_data ? 'motivo'
-                              AND form_data->'motivo' IS NOT NULL
-                              AND jsonb_typeof(form_data->'motivo') != 'null')
+                              AND form_data->>'motivo' IS NOT NULL
+                              AND form_data->>'motivo' != '')
                     AS motivo_vals
             FROM service_requests
             WHERE workflow_code = $1
@@ -480,28 +559,23 @@ class DisplayConfigRepository:
         """, workflow_code)
 
         filters: Dict[str, Any] = {}
-        if rows:
-            row = rows[0]
+        if row:
+            # is_minor: convert text "true"/"false" to Python booleans
             if row["is_minor_vals"]:
-                vals = json.loads(row["is_minor_vals"]) if isinstance(
-                    row["is_minor_vals"], str
-                ) else row["is_minor_vals"]
-                if vals:
-                    filters["is_minor"] = sorted(
-                        set(vals), key=lambda x: str(x)
-                    )
+                filters["is_minor"] = sorted(
+                    {v.lower() == 'true' for v in row["is_minor_vals"] if v},
+                    key=lambda x: str(x),
+                )
+            # solicitud_type: already text strings
             if row["solicitud_type_vals"]:
-                vals = json.loads(row["solicitud_type_vals"]) if isinstance(
-                    row["solicitud_type_vals"], str
-                ) else row["solicitud_type_vals"]
-                if vals:
-                    filters["solicitud_type"] = sorted(set(vals))
+                filters["solicitud_type"] = sorted(
+                    v for v in row["solicitud_type_vals"] if v
+                )
+            # motivo: already text strings
             if row["motivo_vals"]:
-                vals = json.loads(row["motivo_vals"]) if isinstance(
-                    row["motivo_vals"], str
-                ) else row["motivo_vals"]
-                if vals:
-                    filters["motivo"] = sorted(set(vals))
+                filters["motivo"] = sorted(
+                    v for v in row["motivo_vals"] if v
+                )
 
         return filters
 

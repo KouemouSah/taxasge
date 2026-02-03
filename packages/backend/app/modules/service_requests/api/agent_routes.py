@@ -1933,59 +1933,101 @@ def _flatten_form_data(form_data: dict) -> dict:
         if key in TECHNICAL_FIELDS:
             continue
         if isinstance(value, dict):
-            # Flatten nested object with dot notation
             for sub_key, sub_value in value.items():
                 if not isinstance(sub_value, (dict, list)):
                     flat[f"{key}.{sub_key}"] = sub_value
         elif isinstance(value, list):
-            continue  # Skip arrays
+            continue
         else:
             flat[key] = value
 
     return flat
 
 
+# ═══════════════════════════════════════════════════════════════
+# SYSTEM COLUMN RESOLVERS REGISTRY
+# ═══════════════════════════════════════════════════════════════
+# Maps system column IDs to extraction lambdas from the preview query row.
+# Adding a new system column = 1 entry here (+ JOIN if needed).
+
+def _resolve_full_name(row) -> Optional[str]:
+    first = row.get('first_name') or ''
+    last = row.get('last_name') or ''
+    name = f"{first} {last}".strip()
+    return name or None
+
+def _resolve_iso(row, field: str) -> Optional[str]:
+    val = row.get(field)
+    if val is None:
+        return None
+    return val.isoformat() if hasattr(val, 'isoformat') else str(val)
+
+SYSTEM_COLUMN_RESOLVERS: Dict[str, Any] = {
+    'reference':       lambda row: row.get('reference'),
+    'fullName':        _resolve_full_name,
+    'citizenName':     _resolve_full_name,
+    'status':          lambda row: row.get('status'),
+    'priority':        lambda row: row.get('priority'),
+    'createdAt':       lambda row: _resolve_iso(row, 'created_at'),
+    'submittedAt':     lambda row: _resolve_iso(row, 'submitted_at'),
+    'solicitudType':   lambda row: row.get('solicitud_type'),
+    'workflowCode':    lambda row: row.get('workflow_code'),
+    'workflowLabel':   lambda row: row.get('workflow_label'),
+    'paymentStatus':   lambda row: row.get('payment_status'),
+    'totalAmount':     lambda row: row.get('total_amount'),
+    'assignedAgent':   lambda row: row.get('assigned_agent_name'),
+}
+
+
 async def _extract_preview_data_dynamic(
     form_data: dict,
     workflow_code: str,
     db: asyncpg.Connection,
+    row: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Extract preview data dynamically based on workflow_display_config.
 
-    Only returns fields that are configured in display_config.list_columns.
+    Resolves both system columns (from row) and extracted columns (from form_data).
     If no display_config exists, returns empty dict.
+    Degrades gracefully on errors (returns empty dict instead of 500).
     """
-    if not form_data:
+    try:
+        from app.modules.menu_config.repositories.display_config_repository import (
+            DisplayConfigRepository,
+        )
+
+        repo = DisplayConfigRepository(db)
+        config = await repo.find_config_for_workflow(workflow_code)
+
+        if not config:
+            return {}
+
+        configured_columns = config.get('list_columns', [])
+        if not configured_columns:
+            return {}
+
+        # Flatten form_data for extracted columns
+        flat_data = _flatten_form_data(form_data) if form_data else {}
+
+        # Resolve each configured column: system resolver first, then form_data
+        result: Dict[str, Any] = {}
+        for col_id in configured_columns:
+            resolver = SYSTEM_COLUMN_RESOLVERS.get(col_id)
+            if resolver and row is not None:
+                result[col_id] = resolver(row)
+            elif col_id in flat_data:
+                result[col_id] = flat_data[col_id]
+            else:
+                result[col_id] = None
+
+        return result
+
+    except Exception as e:
+        logger.warning(
+            f"Failed to extract preview data for workflow={workflow_code}: {e}"
+        )
         return {}
-
-    # Import here to avoid circular imports
-    from app.modules.menu_config.repositories.display_config_repository import (
-        DisplayConfigRepository,
-    )
-
-    repo = DisplayConfigRepository(db)
-    config = await repo.find_config_for_workflow(workflow_code)
-
-    if not config:
-        return {}  # No config = no extracted data
-
-    configured_columns = config.get('list_columns', [])
-    if not configured_columns:
-        return {}
-
-    # Flatten form_data (same logic as column discovery)
-    flat_data = _flatten_form_data(form_data)
-
-    # Return only configured columns
-    result: Dict[str, Any] = {}
-    for col_id in configured_columns:
-        if col_id in flat_data:
-            result[col_id] = flat_data[col_id]
-        else:
-            result[col_id] = None
-
-    return result
 
 
 @router.get(
@@ -2014,7 +2056,7 @@ async def get_request_preview(
     _=Depends(permission_required("service_request.view"))
 ):
     """Get service request preview for split view."""
-    # Main query with all necessary joins
+    # Main query with all necessary joins (including payment + assignment for system columns)
     query = """
         SELECT
             sr.id,
@@ -2035,13 +2077,20 @@ async def get_request_preview(
             ar.appointment_date,
             ar.appointment_time,
             el.location_name,
-            el.location_address
+            el.location_address,
+            sp.workflow_status AS payment_status,
+            sp.amount AS total_amount,
+            agent_u.first_name || ' ' || agent_u.last_name AS assigned_agent_name
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
         LEFT JOIN appointment_reservations ar ON ar.service_request_id = sr.id
             AND ar.status NOT IN ('cancelled', 'expired')
         LEFT JOIN entity_locations el ON el.id = ar.entity_location_id
+        LEFT JOIN service_payments sp ON sp.request_id = sr.id
+        LEFT JOIN assignments a ON a.item_id = sr.id::text
+            AND a.status IN ('assigned', 'in_progress')
+        LEFT JOIN users agent_u ON agent_u.id = a.agent_id
         WHERE sr.id = $1
     """
 
@@ -2120,7 +2169,7 @@ async def get_request_preview(
 
     # Extract preview data dynamically from display_config
     extracted_data = await _extract_preview_data_dynamic(
-        form_data, row['workflow_code'], db
+        form_data, row['workflow_code'], db, row=row
     )
 
     return ServiceRequestPreview(

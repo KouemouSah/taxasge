@@ -371,6 +371,7 @@ export function DisplayConfigForm({
   const {
     systemColumns,
     extractedColumns,
+    suggestedColumns,
     availableFilters,
     totalRequests,
     isLoading: isLoadingColumns,
@@ -392,15 +393,25 @@ export function DisplayConfigForm({
   );
 
   // Auto-open all groups when they change
+  // Serialized key prevents infinite loop from unstable array references
+  const extractedGroupKey = extractedGroupNames.join(',');
   useEffect(() => {
-    const newOpen: Record<string, boolean> = {};
-    for (const name of extractedGroupNames) {
-      newOpen[name] = openGroups[name] ?? true;
-    }
-    setOpenGroups(newOpen);
-  }, [extractedGroupNames]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (extractedGroupNames.length === 0) return;
+    setOpenGroups((prev) => {
+      const newOpen: Record<string, boolean> = {};
+      for (const name of extractedGroupNames) {
+        newOpen[name] = prev[name] ?? true;
+      }
+      return newOpen;
+    });
+  }, [extractedGroupKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset state when initialData changes (for edit mode)
+  // Compare by serialized value to avoid spurious resets from parent re-renders
+  const initialDataKey = useMemo(
+    () => initialData ? JSON.stringify([initialData.workflow_code, initialData.list_columns, initialData.preview_sections]) : '',
+    [initialData]
+  );
   useEffect(() => {
     if (initialData) {
       setSelectedWorkflow(initialData.workflow_code);
@@ -408,7 +419,7 @@ export function DisplayConfigForm({
       setSelectedSections(initialData.preview_sections);
       setIsDirty(false);
     }
-  }, [initialData]);
+  }, [initialDataKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track dirty state
   useEffect(() => {
@@ -429,12 +440,30 @@ export function DisplayConfigForm({
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
+  // Track whether we've applied suggested columns for the current workflow
+  // Resets when workflow changes; prevents re-applying after manual edits
+  const [suggestedApplied, setSuggestedApplied] = useState(false);
+
+  // Auto-select suggested columns in create mode when they arrive from API
+  useEffect(() => {
+    if (
+      mode === 'create' &&
+      suggestedColumns.length > 0 &&
+      !suggestedApplied &&
+      selectedColumns.length === 0
+    ) {
+      setSelectedColumns(suggestedColumns);
+      setSuggestedApplied(true);
+    }
+  }, [suggestedColumns, mode, suggestedApplied, selectedColumns.length]);
+
   // Handler for workflow change
   const handleWorkflowChange = (workflowCode: string) => {
     setSelectedWorkflow(workflowCode);
     // Reset columns to EMPTY when changing workflow in create mode
     if (mode === 'create') {
       setSelectedColumns([]);
+      setSuggestedApplied(false); // Allow new suggestions for new workflow
     }
     // Reset filters when changing workflow
     setFilterIsMinor(undefined);
@@ -523,6 +552,9 @@ export function DisplayConfigForm({
   }, []);
 
   const handleSubmit = async () => {
+    if (!selectedWorkflow || selectedColumns.length === 0) {
+      return;
+    }
     await onSubmit({
       workflow_code: selectedWorkflow,
       list_columns: selectedColumns,
