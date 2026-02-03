@@ -360,23 +360,6 @@ export const FALLBACK_SYSTEM_COLUMNS = [
 ] as const;
 
 /**
- * @deprecated Alias for backwards compatibility
- */
-export const AVAILABLE_COLUMNS = FALLBACK_SYSTEM_COLUMNS;
-
-/**
- * Default pre-selected columns for new display configurations
- */
-export const DEFAULT_SELECTED_COLUMNS = [
-  'reference',
-  'fullName',
-  'solicitudType',
-  'createdAt',
-  'status',
-  'priority',
-] as const;
-
-/**
  * Available sections for preview panel
  */
 export const AVAILABLE_SECTIONS = [
