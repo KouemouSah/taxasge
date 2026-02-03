@@ -398,23 +398,44 @@ class DisplayConfigRepository:
         # 2. Get ALL document requirements (unfiltered) to determine available_filters
         all_docs = []
         if isinstance(workflow, PredefinedWorkflow):
-            # v2 workflows: call with a default solicitud_type to get base docs
-            # We call multiple times to collect all possible documents
+            # v2 workflows: iterate all solicitud_types AND motivos to collect every
+            # possible document requirement. For RENOVACION, each motivo can add
+            # different documents (e.g., pasaporte_antiguo for VENCIMIENTO/DETERIORO,
+            # denuncia_policial for PERDIDA/ROBO).
             from app.modules.service_requests.models.enums import SolicitudType
+            from app.modules.service_requests.workflows.workflow_interface import RenovacionMotivo
             seen_codes = set()
             for sol_type in workflow.allowed_solicitud_types:
-                try:
-                    docs = workflow.get_document_requirements(
-                        solicitud_type=sol_type,
-                        motivo=None,
-                        context=None,
-                    )
-                    for doc in docs:
-                        if doc.document_code not in seen_codes:
-                            seen_codes.add(doc.document_code)
-                            all_docs.append(doc)
-                except Exception as e:
-                    logger.debug(f"Error getting docs for {workflow_code}/{sol_type}: {e}")
+                if sol_type == SolicitudType.RENOVACION:
+                    # Iterate all motivos to capture motivo-conditional documents
+                    for motivo_val in RenovacionMotivo:
+                        try:
+                            docs = workflow.get_document_requirements(
+                                solicitud_type=sol_type,
+                                motivo=motivo_val,
+                                context=None,
+                            )
+                            for doc in docs:
+                                if doc.document_code not in seen_codes:
+                                    seen_codes.add(doc.document_code)
+                                    all_docs.append(doc)
+                        except Exception as e:
+                            logger.debug(
+                                f"Error getting docs for {workflow_code}/{sol_type}/{motivo_val}: {e}"
+                            )
+                else:
+                    try:
+                        docs = workflow.get_document_requirements(
+                            solicitud_type=sol_type,
+                            motivo=None,
+                            context=None,
+                        )
+                        for doc in docs:
+                            if doc.document_code not in seen_codes:
+                                seen_codes.add(doc.document_code)
+                                all_docs.append(doc)
+                    except Exception as e:
+                        logger.debug(f"Error getting docs for {workflow_code}/{sol_type}: {e}")
         elif isinstance(workflow, BaseWorkflow):
             # v1 workflows: call with empty sub_type for default docs
             try:
