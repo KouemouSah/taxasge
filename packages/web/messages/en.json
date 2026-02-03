@@ -1118,6 +1118,8 @@
         "noColumnsSelected": "No columns selected",
         "loadingColumns": "Loading columns...",
         "preview": "Preview",
+        "previewDescription": "Agent panel preview",
+        "noExtractedColumnsSelected": "No extracted columns selected",
         "moreColumns": "more columns",
         "unsavedChanges": "Unsaved changes",
         "actions": {

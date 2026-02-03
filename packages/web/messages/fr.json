@@ -1065,6 +1065,8 @@
         "noColumnsSelected": "Aucune colonne sélectionnée",
         "loadingColumns": "Chargement des colonnes...",
         "preview": "Aperçu",
+        "previewDescription": "Aperçu du panneau agent",
+        "noExtractedColumnsSelected": "Aucune colonne extraite sélectionnée",
         "moreColumns": "colonnes de plus",
         "unsavedChanges": "Modifications non sauvegardées",
         "actions": {

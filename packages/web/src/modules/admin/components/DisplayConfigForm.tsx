@@ -1091,7 +1091,7 @@ export function DisplayConfigForm({
                 </p>
               ) : (
                 <div className="divide-y">
-                  {/* Info Section Preview — fixed fields + selected system columns */}
+                  {/* Info Section Preview — ALWAYS shows 6 fixed baseline fields */}
                   {selectedSections.includes('info') && (
                     <div className="p-3">
                       <div className="flex items-center gap-2 mb-2">
@@ -1099,41 +1099,42 @@ export function DisplayConfigForm({
                         <span className="text-sm font-medium">
                           {t('sections.info' as Parameters<typeof t>[0], { defaultValue: 'Información General' })}
                         </span>
-                        {infoGeneralSelectedColumns.length > 0 && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            {infoGeneralSelectedColumns.length}
-                          </Badge>
-                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        {/* Dynamic: show ALL selected Info General columns */}
-                        {infoGeneralSelectedColumns.map((col) => {
-                          const value = getSampleValue(sampleRequest, col);
-                          return (
-                            <div key={col}>
-                              <span className="text-muted-foreground">{getColumnLabel(col)}:</span>
-                              <span className="ml-1 font-medium">
-                                {value || '—'}
-                              </span>
-                            </div>
-                          );
-                        })}
-                        {/* Fallback when no system columns selected */}
-                        {infoGeneralSelectedColumns.length === 0 && (
-                          <>
-                            <div>
-                              <span className="text-muted-foreground">Référence:</span>
-                              <span className="ml-1 font-medium">
-                                {sampleRequest?.reference || 'REF-XXXX-XXXXX'}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Statut:</span>
-                              <span className="ml-1">{sampleRequest?.status || '—'}</span>
-                            </div>
-                          </>
-                        )}
-                        {/* Always show workflow */}
+                        {/* Fixed field: Referencia */}
+                        <div>
+                          <span className="text-muted-foreground">Referencia:</span>
+                          <span className="ml-1 font-medium">
+                            {sampleRequest?.reference || 'REF-XXXX-XXXXX'}
+                          </span>
+                        </div>
+                        {/* Fixed field: Fecha de Creación */}
+                        <div>
+                          <span className="text-muted-foreground">Fecha de Creación:</span>
+                          <span className="ml-1">
+                            {sampleRequest?.created_at
+                              ? new Date(sampleRequest.created_at).toLocaleDateString('es')
+                              : '—'}
+                          </span>
+                        </div>
+                        {/* Fixed field: Tipo de Solicitud */}
+                        <div>
+                          <span className="text-muted-foreground">Tipo de Solicitud:</span>
+                          <span className="ml-1">
+                            {(sampleRequest?.form_data as Record<string, unknown>)?.solicitud_type as string || '—'}
+                          </span>
+                        </div>
+                        {/* Fixed field: Prioridad */}
+                        <div>
+                          <span className="text-muted-foreground">Prioridad:</span>
+                          <span className="ml-1">{sampleRequest?.priority || '—'}</span>
+                        </div>
+                        {/* Fixed field: Estado */}
+                        <div>
+                          <span className="text-muted-foreground">Estado:</span>
+                          <span className="ml-1">{sampleRequest?.status || '—'}</span>
+                        </div>
+                        {/* Fixed field: Workflow */}
                         <div>
                           <span className="text-muted-foreground">Workflow:</span>
                           <span className="ml-1 text-xs font-mono">

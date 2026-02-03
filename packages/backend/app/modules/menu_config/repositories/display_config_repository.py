@@ -454,24 +454,25 @@ class DisplayConfigRepository:
                   AND parent.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
             )
             SELECT
-                col_key,
-                COUNT(*) AS sample_count,
+                grouped.col_key,
+                grouped.sample_count,
                 CASE
-                    WHEN jsonb_typeof(first_val) = 'number' THEN 'number'
-                    WHEN jsonb_typeof(first_val) = 'boolean' THEN 'boolean'
-                    WHEN first_val::text ~ '"[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' THEN 'date'
+                    WHEN jsonb_typeof(grouped.first_val) = 'number' THEN 'number'
+                    WHEN jsonb_typeof(grouped.first_val) = 'boolean' THEN 'boolean'
+                    WHEN grouped.first_val::text ~ '"[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' THEN 'date'
                     ELSE 'string'
                 END AS data_type
             FROM (
                 SELECT
                     col_key,
+                    COUNT(*) AS sample_count,
                     (array_agg(col_value ORDER BY col_value::text DESC)
                         FILTER (WHERE col_value IS NOT NULL AND jsonb_typeof(col_value) != 'null')
                     )[1] AS first_val
                 FROM flat_keys
                 GROUP BY col_key
             ) grouped
-            ORDER BY sample_count DESC, col_key
+            ORDER BY grouped.sample_count DESC, grouped.col_key
         """, *params)
 
         extracted_columns = []

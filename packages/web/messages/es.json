@@ -1065,6 +1065,8 @@
         "noColumnsSelected": "No hay columnas seleccionadas",
         "loadingColumns": "Cargando columnas...",
         "preview": "Vista Previa",
+        "previewDescription": "Vista previa del panel del agente",
+        "noExtractedColumnsSelected": "Ninguna columna extraída seleccionada",
         "moreColumns": "columnas más",
         "unsavedChanges": "Cambios sin guardar",
         "actions": {
