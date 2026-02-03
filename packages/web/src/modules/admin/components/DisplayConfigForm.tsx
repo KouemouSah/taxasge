@@ -147,15 +147,14 @@ function humanizeColumnId(id: string): string {
 }
 
 /**
- * Group extracted columns by source prefix
- * e.g., "dip.natural_de" → group "dip", "cert.nombre" → group "cert"
- * Columns without prefix go into "root" group
+ * Group extracted columns by document_code
+ * Uses the document_code field from the API response (source of truth: workflow requirements)
+ * Columns without document_code go into "_root" group
  */
-function groupColumnsBySource(columns: AvailableColumn[]): Record<string, AvailableColumn[]> {
+function groupColumnsByDocument(columns: AvailableColumn[]): Record<string, AvailableColumn[]> {
   const groups: Record<string, AvailableColumn[]> = {};
   for (const col of columns) {
-    const dotIdx = col.id.indexOf('.');
-    const group = dotIdx > 0 ? col.id.substring(0, dotIdx) : '_root';
+    const group = col.document_code || '_root';
     if (!groups[group]) groups[group] = [];
     groups[group].push(col);
   }
@@ -343,20 +342,15 @@ export function DisplayConfigForm({
 
   // Sub-workflow filters
   const [filterIsMinor, setFilterIsMinor] = useState<boolean | undefined>(undefined);
-  const [filterSolicitudType, setFilterSolicitudType] = useState<string | undefined>(undefined);
-  const [filterMotivo, setFilterMotivo] = useState<string | undefined>(undefined);
 
   // Collapsible state for column groups
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   // Build filters object for API
   const columnFilters = useMemo<AvailableColumnsFilters | undefined>(() => {
-    const f: AvailableColumnsFilters = {};
-    if (filterIsMinor !== undefined) f.is_minor = filterIsMinor;
-    if (filterSolicitudType) f.solicitud_type = filterSolicitudType;
-    if (filterMotivo) f.motivo = filterMotivo;
-    return Object.keys(f).length > 0 ? f : undefined;
-  }, [filterIsMinor, filterSolicitudType, filterMotivo]);
+    if (filterIsMinor !== undefined) return { is_minor: filterIsMinor };
+    return undefined;
+  }, [filterIsMinor]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -387,15 +381,14 @@ export function DisplayConfigForm({
   const {
     systemColumns,
     extractedColumns,
-    suggestedColumns,
     availableFilters,
-    totalRequests,
+    documentCount,
     isLoading: isLoadingColumns,
   } = useAllAvailableColumns(selectedWorkflow, columnFilters, shouldFetchColumns);
 
-  // Group extracted columns by source prefix
+  // Group extracted columns by document_code
   const extractedGroups = useMemo(
-    () => groupColumnsBySource(extractedColumns),
+    () => groupColumnsByDocument(extractedColumns),
     [extractedColumns]
   );
   const extractedGroupNames = useMemo(
@@ -456,46 +449,20 @@ export function DisplayConfigForm({
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  // Track whether we've applied suggested columns for the current workflow
-  // Resets when workflow changes; prevents re-applying after manual edits
-  const [suggestedApplied, setSuggestedApplied] = useState(false);
-
-  // Auto-select suggested extracted columns in create mode when they arrive from API
-  // Appends to existing default system columns (does not replace)
-  useEffect(() => {
-    if (
-      mode === 'create' &&
-      suggestedColumns.length > 0 &&
-      !suggestedApplied
-    ) {
-      setSelectedColumns((prev) => {
-        // Merge: keep existing system defaults + add suggested extracted columns
-        const merged = [...prev];
-        for (const col of suggestedColumns) {
-          if (!merged.includes(col)) merged.push(col);
-        }
-        return merged;
-      });
-      setSuggestedApplied(true);
-    }
-  }, [suggestedColumns, mode, suggestedApplied]);
-
   // Handler for workflow change
   const handleWorkflowChange = (workflowCode: string) => {
     setSelectedWorkflow(workflowCode);
     if (mode === 'create') {
       // Reset to default system columns (not empty)
       setSelectedColumns([...DEFAULT_SYSTEM_COLUMNS]);
-      setSuggestedApplied(false); // Allow new suggestions for new workflow
     }
     // Reset filters when changing workflow
     setFilterIsMinor(undefined);
-    setFilterSolicitudType(undefined);
-    setFilterMotivo(undefined);
   };
 
-  // Resolve column label: dot-notation keys use humanized label, simple keys use translation
-  const resolveColumnLabel = useCallback((colId: string): string => {
+  // Resolve column label: use schema label if available, otherwise i18n or humanized fallback
+  const resolveColumnLabel = useCallback((colId: string, schemaLabel?: string): string => {
+    if (schemaLabel) return schemaLabel;
     if (colId.includes('.')) {
       return humanizeColumnId(colId);
     }
@@ -512,6 +479,7 @@ export function DisplayConfigForm({
     const cols = systemColumns.length > 0 ? systemColumns : FALLBACK_SYSTEM_COLUMNS.map((c) => ({
       id: c.id,
       label_key: `columns.${c.id}`,
+      label: '',
       source: 'system' as const,
       data_type: 'string' as const,
       sample_count: 0,
@@ -520,13 +488,13 @@ export function DisplayConfigForm({
     if (!columnSearch) return cols;
 
     return cols.filter((col) => {
-      const label = resolveColumnLabel(col.id);
+      const label = resolveColumnLabel(col.id, col.label);
       return (
         col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
         label.toLowerCase().includes(columnSearch.toLowerCase())
       );
     });
-  }, [systemColumns, columnSearch, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [systemColumns, columnSearch, resolveColumnLabel]);
 
   const filteredExtractedGroups = useMemo(() => {
     if (!columnSearch) return extractedGroups;
@@ -534,7 +502,7 @@ export function DisplayConfigForm({
     const filtered: Record<string, AvailableColumn[]> = {};
     for (const [group, cols] of Object.entries(extractedGroups)) {
       const matching = cols.filter((col) => {
-        const label = resolveColumnLabel(col.id);
+        const label = resolveColumnLabel(col.id, col.label);
         return (
           col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
           label.toLowerCase().includes(columnSearch.toLowerCase())
@@ -543,7 +511,7 @@ export function DisplayConfigForm({
       if (matching.length > 0) filtered[group] = matching;
     }
     return filtered;
-  }, [extractedGroups, columnSearch, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [extractedGroups, columnSearch, resolveColumnLabel]);
 
   const hasFilteredExtracted = Object.keys(filteredExtractedGroups).length > 0;
 
@@ -599,7 +567,20 @@ export function DisplayConfigForm({
     onSubmitRef?.(handleSubmit);
   }, [selectedWorkflow, selectedColumns, selectedSections]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const getColumnLabel = resolveColumnLabel;
+  // Build lookup map: column ID → schema label (for extracted columns)
+  const extractedLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const col of extractedColumns) {
+      if (col.label) map.set(col.id, col.label);
+    }
+    return map;
+  }, [extractedColumns]);
+
+  // Wrapper that auto-resolves schema label from the lookup map
+  const getColumnLabel = useCallback((colId: string, explicitLabel?: string): string => {
+    const schemaLabel = explicitLabel || extractedLabelMap.get(colId);
+    return resolveColumnLabel(colId, schemaLabel);
+  }, [resolveColumnLabel, extractedLabelMap]);
 
   const toggleGroup = useCallback((groupName: string) => {
     setOpenGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
@@ -622,14 +603,10 @@ export function DisplayConfigForm({
     if (!availableFilters) return null;
     return {
       isMinor: (availableFilters.is_minor as boolean[] | undefined) ?? null,
-      solicitudType: (availableFilters.solicitud_type as string[] | undefined) ?? null,
-      motivo: (availableFilters.motivo as string[] | undefined) ?? null,
     };
   }, [availableFilters]);
 
-  const hasAnyFilter = filterOptions && (
-    filterOptions.isMinor || filterOptions.solicitudType || filterOptions.motivo
-  );
+  const hasAnyFilter = filterOptions && filterOptions.isMinor;
 
   return (
     <div className="space-y-6">
@@ -686,9 +663,9 @@ export function DisplayConfigForm({
                     </span>
                   ) : (
                     <span>
-                      {totalRequests > 0
-                        ? t('requestsFound', { count: totalRequests, defaultValue: `${totalRequests} demandes trouvées` })
-                        : t('noRequestsFound', { defaultValue: 'Aucune demande existante' })}
+                      {documentCount > 0
+                        ? `${documentCount} documentos con extracción definidos`
+                        : 'Sin documentos con extracción'}
                     </span>
                   )}
                 </div>
@@ -721,9 +698,9 @@ export function DisplayConfigForm({
               <span className="text-sm text-muted-foreground">
                 ({t('readOnly', { defaultValue: 'Lecture seule' })})
               </span>
-              {!isLoadingColumns && totalRequests > 0 && (
+              {!isLoadingColumns && documentCount > 0 && (
                 <span className="text-sm text-muted-foreground ml-auto">
-                  {totalRequests} demandes
+                  {documentCount} docs con extracción
                 </span>
               )}
             </div>
@@ -782,42 +759,6 @@ export function DisplayConfigForm({
                       <SelectItem value="__all__">Menor: Todos</SelectItem>
                       <SelectItem value="true">Menor: Sí</SelectItem>
                       <SelectItem value="false">Menor: No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-                {filterOptions?.solicitudType && (
-                  <Select
-                    value={filterSolicitudType ?? '__all__'}
-                    onValueChange={(v) => setFilterSolicitudType(v === '__all__' ? undefined : v)}
-                  >
-                    <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Tipo: Todos</SelectItem>
-                      {filterOptions.solicitudType.map((val) => (
-                        <SelectItem key={val} value={val}>
-                          {val}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {filterOptions?.motivo && (
-                  <Select
-                    value={filterMotivo ?? '__all__'}
-                    onValueChange={(v) => setFilterMotivo(v === '__all__' ? undefined : v)}
-                  >
-                    <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
-                      <SelectValue placeholder="Motivo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">Motivo: Todos</SelectItem>
-                      {filterOptions.motivo.map((val) => (
-                        <SelectItem key={val} value={val}>
-                          {val}
-                        </SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -889,7 +830,7 @@ export function DisplayConfigForm({
                                 <span className="text-xs font-medium">
                                   {groupName === '_root'
                                     ? 'Datos del Formulario'
-                                    : `${groupName.toUpperCase()} (datos del documento)`}
+                                    : groupCols[0]?.document_name_es || groupName.toUpperCase()}
                                 </span>
                                 <Badge variant="outline" className="text-[10px] px-1 ml-1">
                                   {groupCols.length}
@@ -906,12 +847,9 @@ export function DisplayConfigForm({
                                       />
                                       <label
                                         htmlFor={`col-${col.id}`}
-                                        className="text-sm cursor-pointer truncate flex items-center gap-1"
+                                        className="text-sm cursor-pointer truncate"
                                       >
-                                        {getColumnLabel(col.id)}
-                                        <Badge variant="outline" className="text-[10px] px-1">
-                                          {col.sample_count}
-                                        </Badge>
+                                        {getColumnLabel(col.id, col.label)}
                                       </label>
                                     </div>
                                   ))}

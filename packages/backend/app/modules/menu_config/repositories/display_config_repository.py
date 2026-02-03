@@ -354,251 +354,152 @@ class DisplayConfigRepository:
         except Exception:
             pass
 
-    # Technical fields excluded from column discovery
-    TECHNICAL_FIELDS = frozenset({
-        'sub_type', 'is_minor', 'solicitud_type', 'motivo',
-    })
-
-    # Nested objects with no useful data (always empty or non-relevant)
-    EXCLUDED_NESTED_OBJECTS = frozenset({
-        'photo_carnet',
-    })
-
     async def get_available_columns_for_workflow(
         self,
         workflow_code: str,
         is_minor: Optional[bool] = None,
-        solicitud_type: Optional[str] = None,
-        motivo: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Discover available columns for a workflow by introspecting
-        the actual data in service_requests.form_data.
+        Discover available columns from workflow's get_document_requirements()
+        and JSON extraction schemas.
 
-        Flattens nested JSONB objects (e.g., dip.natural_de, cert.nombre)
-        and supports sub-workflow filtering.
+        Source of truth: each workflow class defines its document requirements
+        (with condition_type and schema_key). The schema_loader resolves
+        extraction fields from JSON schema files.
+
+        No longer depends on existing service_requests data.
 
         Args:
             workflow_code: Exact workflow code (e.g., 'PASAPORTE_NUEVO')
             is_minor: Filter by minor status (True/False/None=all)
-            solicitud_type: Filter by solicitud_type (e.g., 'expedicion', 'renovacion')
-            motivo: Filter by motivo (e.g., 'vencimiento', 'perdida')
 
         Returns:
-            Dict with total_requests, extracted_columns, and available_filters
+            Dict with extracted_columns, available_filters, document_count
         """
-        # Build WHERE clause with optional filters
-        where_clauses = [
-            "sr.workflow_code = $1",
-            "sr.form_data IS NOT NULL",
-            "sr.form_data != '{}'::jsonb",
-        ]
-        params: list = [workflow_code]
-        param_idx = 1
+        from app.modules.service_requests.services.workflow_engine import workflow_engine
+        from app.modules.service_requests.workflows.workflow_interface import PredefinedWorkflow
+        from app.modules.service_requests.workflows.base_workflow import BaseWorkflow
+        from app.modules.service_requests.models.enums import DocumentConditionType
+        from app.modules.service_requests.services.schema_loader import schema_loader
 
-        if is_minor is not None:
-            param_idx += 1
-            where_clauses.append(
-                f"(sr.form_data->>'is_minor')::boolean = ${param_idx}"
-            )
-            params.append(is_minor)
+        # 1. Get the workflow instance
+        workflow = workflow_engine.get_workflow_by_string(workflow_code)
+        if not workflow:
+            logger.warning(f"Workflow not found: {workflow_code}")
+            return {
+                "total_requests": 0,
+                "extracted_columns": [],
+                "filters_applied": {"is_minor": is_minor} if is_minor is not None else None,
+                "available_filters": {},
+                "suggested_columns": [],
+                "document_count": 0,
+            }
 
-        if solicitud_type is not None:
-            param_idx += 1
-            where_clauses.append(
-                f"UPPER(sr.form_data->>'solicitud_type') = UPPER(${param_idx})"
-            )
-            params.append(solicitud_type)
+        # 2. Get ALL document requirements (unfiltered) to determine available_filters
+        all_docs = []
+        if isinstance(workflow, PredefinedWorkflow):
+            # v2 workflows: call with a default solicitud_type to get base docs
+            # We call multiple times to collect all possible documents
+            from app.modules.service_requests.models.enums import SolicitudType
+            seen_codes = set()
+            for sol_type in workflow.allowed_solicitud_types:
+                try:
+                    docs = workflow.get_document_requirements(
+                        solicitud_type=sol_type,
+                        motivo=None,
+                        context=None,
+                    )
+                    for doc in docs:
+                        if doc.document_code not in seen_codes:
+                            seen_codes.add(doc.document_code)
+                            all_docs.append(doc)
+                except Exception as e:
+                    logger.debug(f"Error getting docs for {workflow_code}/{sol_type}: {e}")
+        elif isinstance(workflow, BaseWorkflow):
+            # v1 workflows: call with empty sub_type for default docs
+            try:
+                all_docs = workflow.get_document_requirements(sub_type="")
+            except Exception as e:
+                logger.debug(f"Error getting docs for {workflow_code}: {e}")
 
-        if motivo is not None:
-            param_idx += 1
-            where_clauses.append(
-                f"UPPER(sr.form_data->>'motivo') = UPPER(${param_idx})"
-            )
-            params.append(motivo)
+        # 3. Determine available_filters from condition_types present
+        all_condition_types = set()
+        for doc in all_docs:
+            ct = doc.condition_type
+            if isinstance(ct, DocumentConditionType):
+                all_condition_types.add(ct.value)
+            elif isinstance(ct, str):
+                all_condition_types.add(ct)
 
-        where_sql = " AND ".join(where_clauses)
+        available_filters: Dict[str, Any] = {}
+        if 'is_minor' in all_condition_types or 'is_adult' in all_condition_types:
+            available_filters["is_minor"] = [False, True]
 
-        # Count total matching requests
-        total = await self.db.fetchval(
-            f"SELECT COUNT(*) FROM service_requests sr WHERE {where_sql}",
-            *params,
-        )
+        # 4. Filter documents by is_minor condition
+        filtered_docs = []
+        for doc in all_docs:
+            ct = doc.condition_type
+            ct_val = ct.value if isinstance(ct, DocumentConditionType) else str(ct)
 
-        # Discover columns with flattening of nested objects (2 levels)
-        # Uses a sampled subset (latest 200 requests) for performance.
-        # DEDUPLICATION: nested keys that already exist at root level are excluded
-        # from their nested group (e.g., dip.apellidos is hidden if root apellidos exists).
-        # This ensures each piece of data appears only once in the admin UI.
-        rows = await self.db.fetch(f"""
-            WITH sampled_requests AS (
-                SELECT sr.form_data
-                FROM service_requests sr
-                WHERE {where_sql}
-                ORDER BY sr.created_at DESC
-                LIMIT 200
-            ),
-            -- Collect all root-level scalar keys (for deduplication)
-            root_keys AS (
-                SELECT DISTINCT kv.key AS root_key
-                FROM sampled_requests sr,
-                     jsonb_each(sr.form_data) AS kv(key, value)
-                WHERE jsonb_typeof(kv.value) NOT IN ('object', 'array')
-                  AND kv.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
-            ),
-            flat_keys AS (
-                -- Level 1: root-level scalar fields
-                SELECT
-                    kv.key AS col_key,
-                    kv.value AS col_value
-                FROM sampled_requests sr,
-                     jsonb_each(sr.form_data) AS kv(key, value)
-                WHERE jsonb_typeof(kv.value) NOT IN ('object', 'array')
-                  AND kv.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
+            if is_minor is True:
+                # Show: always, is_minor, is_new, custom, and other non-age conditions
+                if ct_val not in ('is_adult',):
+                    filtered_docs.append(doc)
+            elif is_minor is False:
+                # Show: always, is_adult, is_new, custom, and other non-age conditions
+                if ct_val not in ('is_minor',):
+                    filtered_docs.append(doc)
+            else:
+                # No filter → show all
+                filtered_docs.append(doc)
 
-                UNION ALL
-
-                -- Level 2: nested object fields, EXCLUDING keys already at root
-                SELECT
-                    parent.key || '.' || child.key AS col_key,
-                    child.value AS col_value
-                FROM sampled_requests sr,
-                     jsonb_each(sr.form_data) AS parent(key, value),
-                     jsonb_each(parent.value) AS child(key, value)
-                WHERE jsonb_typeof(parent.value) = 'object'
-                  AND jsonb_typeof(child.value) NOT IN ('object', 'array')
-                  AND parent.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo', 'photo_carnet')
-                  -- DEDUP: skip nested keys that duplicate a root-level key
-                  AND NOT EXISTS (
-                      SELECT 1 FROM root_keys rk WHERE rk.root_key = child.key
-                  )
-            )
-            SELECT
-                grouped.col_key,
-                grouped.sample_count,
-                CASE
-                    WHEN jsonb_typeof(grouped.first_val) = 'number' THEN 'number'
-                    WHEN jsonb_typeof(grouped.first_val) = 'boolean' THEN 'boolean'
-                    WHEN grouped.first_val::text ~ '"[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' THEN 'date'
-                    ELSE 'string'
-                END AS data_type
-            FROM (
-                SELECT
-                    col_key,
-                    COUNT(*) AS sample_count,
-                    (array_agg(col_value ORDER BY col_value::text DESC)
-                        FILTER (WHERE col_value IS NOT NULL AND jsonb_typeof(col_value) != 'null')
-                    )[1] AS first_val
-                FROM flat_keys
-                GROUP BY col_key
-            ) grouped
-            ORDER BY grouped.sample_count DESC, grouped.col_key
-        """, *params)
-
+        # 5. For each document with a schema_key, load extraction fields
         extracted_columns = []
-        for row in rows:
-            col_key = row["col_key"]
-            extracted_columns.append({
-                "id": col_key,
-                "label_key": f"columns.{col_key}",
-                "source": "extracted",
-                "data_type": row["data_type"],
-                "sample_count": row["sample_count"],
-            })
+        doc_with_extraction = 0
+        for doc in filtered_docs:
+            schema_key = doc.schema_key
+            if not schema_key:
+                continue
 
-        # Discover available filter values for this workflow
-        available_filters = await self._get_available_filters(
-            workflow_code
-        )
+            doc_with_extraction += 1
+            doc_code = doc.document_code
+            doc_name = doc.document_name_es or doc_code
 
-        # Build filters_applied dict
+            try:
+                fields = schema_loader.get_extraction_fields(
+                    schema_key=schema_key,
+                    extraction_schema_key=schema_key,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to load schema for {schema_key}: {e}")
+                continue
+
+            for field_name, field_config in fields.items():
+                col_id = f"{doc_code}.{field_name}"
+                extracted_columns.append({
+                    "id": col_id,
+                    "label_key": f"columns.{col_id}",
+                    "label": field_config.get("field_label", field_name),
+                    "source": "extracted",
+                    "data_type": field_config.get("type", "string"),
+                    "sample_count": 0,
+                    "document_code": doc_code,
+                    "document_name_es": doc_name,
+                })
+
+        # 6. Build filters_applied
         filters_applied = {}
         if is_minor is not None:
             filters_applied["is_minor"] = is_minor
-        if solicitud_type is not None:
-            filters_applied["solicitud_type"] = solicitud_type
-        if motivo is not None:
-            filters_applied["motivo"] = motivo
-
-        # Compute suggested columns: extracted columns with >= 50% coverage
-        # (present in at least half of sampled requests), limited to top 10
-        total_count = total or 0
-        sampled_count = min(total_count, 200)  # We sampled at most 200
-        threshold = max(sampled_count * 0.5, 1)  # At least 50% coverage
-        suggested_columns = [
-            col["id"]
-            for col in extracted_columns
-            if col["sample_count"] >= threshold
-        ][:10]  # Cap at 10 suggestions
 
         return {
-            "total_requests": total_count,
+            "total_requests": 0,
             "extracted_columns": extracted_columns,
             "filters_applied": filters_applied if filters_applied else None,
             "available_filters": available_filters,
-            "suggested_columns": suggested_columns,
+            "suggested_columns": [],
+            "document_count": doc_with_extraction,
         }
-
-    async def _get_available_filters(
-        self, workflow_code: str
-    ) -> Dict[str, Any]:
-        """
-        Discover available filter values for a workflow code.
-        Inspects form_data for is_minor, solicitud_type, motivo fields.
-
-        Returns:
-            Dict with available filter values, e.g.:
-            {
-                "is_minor": [true, false],
-                "solicitud_type": ["expedicion", "renovacion"],
-                "motivo": ["vencimiento", "perdida"]
-            }
-        """
-        # Use ->> (text extraction) for consistent Python types
-        # and array_agg(DISTINCT ...) for deduplication
-        row = await self.db.fetchrow("""
-            SELECT
-                array_agg(DISTINCT form_data->>'is_minor')
-                    FILTER (WHERE form_data ? 'is_minor'
-                              AND form_data->>'is_minor' IS NOT NULL
-                              AND form_data->>'is_minor' != '')
-                    AS is_minor_vals,
-                array_agg(DISTINCT form_data->>'solicitud_type')
-                    FILTER (WHERE form_data ? 'solicitud_type'
-                              AND form_data->>'solicitud_type' IS NOT NULL
-                              AND form_data->>'solicitud_type' != '')
-                    AS solicitud_type_vals,
-                array_agg(DISTINCT form_data->>'motivo')
-                    FILTER (WHERE form_data ? 'motivo'
-                              AND form_data->>'motivo' IS NOT NULL
-                              AND form_data->>'motivo' != '')
-                    AS motivo_vals
-            FROM service_requests
-            WHERE workflow_code = $1
-              AND form_data IS NOT NULL
-              AND form_data != '{}'::jsonb
-        """, workflow_code)
-
-        filters: Dict[str, Any] = {}
-        if row:
-            # is_minor: convert text "true"/"false" to Python booleans
-            if row["is_minor_vals"]:
-                filters["is_minor"] = sorted(
-                    {v.lower() == 'true' for v in row["is_minor_vals"] if v},
-                    key=lambda x: str(x),
-                )
-            # solicitud_type: already text strings
-            if row["solicitud_type_vals"]:
-                filters["solicitud_type"] = sorted(
-                    v for v in row["solicitud_type_vals"] if v
-                )
-            # motivo: already text strings
-            if row["motivo_vals"]:
-                filters["motivo"] = sorted(
-                    v for v in row["motivo_vals"] if v
-                )
-
-        return filters
 
     async def get_sample_request(
         self,

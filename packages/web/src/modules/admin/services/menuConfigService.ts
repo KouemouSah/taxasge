@@ -108,13 +108,16 @@ export interface DisplayConfigUpdateRequest {
   is_active?: boolean;
 }
 
-// Available Columns types (dynamic discovery from DB)
+// Available Columns types (from workflow document requirements + JSON schemas)
 export interface AvailableColumn {
   id: string;
   label_key: string;
+  label: string;
   source: 'system' | 'extracted';
   data_type: 'string' | 'number' | 'date' | 'boolean';
   sample_count: number;
+  document_code?: string;
+  document_name_es?: string;
 }
 
 export interface AvailableColumnsResponse {
@@ -124,15 +127,13 @@ export interface AvailableColumnsResponse {
   extracted_columns: AvailableColumn[];
   filters_applied: Record<string, unknown> | null;
   available_filters: Record<string, unknown[]> | null;
-  /** Suggested extracted column IDs for pre-selection (top columns by frequency, >= 50% coverage) */
   suggested_columns: string[];
+  document_count: number;
 }
 
 /** Filters for available columns discovery */
 export interface AvailableColumnsFilters {
   is_minor?: boolean;
-  solicitud_type?: string;
-  motivo?: string;
 }
 
 // Sample Request types (for real data preview)
@@ -346,8 +347,7 @@ export const menuConfigApi = {
 
   /**
    * Discover available columns for a workflow code
-   * Introspects actual data in service_requests.form_data
-   * Supports sub-workflow filtering (is_minor, solicitud_type, motivo)
+   * Uses workflow document requirements + JSON extraction schemas
    * BACKEND: GET /api/v1/menu-config/display-configs/available-columns/{workflow_code}
    * PERMISSION: menu.view_mappings
    */
@@ -358,12 +358,6 @@ export const menuConfigApi = {
     const searchParams = new URLSearchParams();
     if (filters?.is_minor !== undefined) {
       searchParams.set('is_minor', String(filters.is_minor));
-    }
-    if (filters?.solicitud_type) {
-      searchParams.set('solicitud_type', filters.solicitud_type);
-    }
-    if (filters?.motivo) {
-      searchParams.set('motivo', filters.motivo);
     }
     const query = searchParams.toString();
     const base = `${MENU_CONFIG_BASE}/display-configs/available-columns/${encodeURIComponent(workflowCode)}`;

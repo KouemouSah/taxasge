@@ -611,34 +611,34 @@ SYSTEM_COLUMNS = [
     response_model=AvailableColumnsResponse,
     summary="Discover available columns for a workflow",
     description="""
-    Dynamically discovers available columns for an exact workflow code by introspecting
-    actual data in service_requests.form_data.
+    Discovers available columns for a workflow code from the workflow's
+    document requirements and JSON extraction schemas.
 
-    Supports sub-workflow filtering:
+    Source of truth: each workflow class defines its document requirements
+    (with condition_type and schema_key). No longer depends on existing
+    service_requests data.
+
+    Supports filtering:
     - is_minor: Filter by minor status (true/false)
-    - solicitud_type: Filter by solicitud type (expedicion, renovacion)
-    - motivo: Filter by motivo (vencimiento, perdida, deterioro, etc.)
 
     Returns:
     - system_columns: Fixed columns from the service_requests table
-    - extracted_columns: Dynamic columns discovered from form_data JSONB (flattened with dot notation)
+    - extracted_columns: Columns from document extraction schemas
     - available_filters: Possible filter values for this workflow
     - filters_applied: Currently active filters
+    - document_count: Number of documents with extraction schemas
 
-    Uses exact workflow_code matching (not patterns).
     Requires menu.view_mappings permission.
     """
 )
 async def get_available_columns(
     workflow_code: str,
     is_minor: Optional[bool] = Query(None, description="Filter by minor status"),
-    solicitud_type: Optional[str] = Query(None, description="Filter by solicitud type"),
-    motivo: Optional[str] = Query(None, description="Filter by motivo"),
     current_user: UserResponse = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_database),
     permission_service: PermissionService = Depends(get_permission_service),
 ):
-    """Discover available columns for an exact workflow code from actual DB data"""
+    """Discover available columns for a workflow from document requirements + schemas"""
 
     # Check permission
     await permission_service.check_permission(
@@ -648,34 +648,35 @@ async def get_available_columns(
     repo = DisplayConfigRepository(db)
 
     try:
-        # Get extracted columns from actual data (with flattening + filters)
         result = await repo.get_available_columns_for_workflow(
             workflow_code,
             is_minor=is_minor,
-            solicitud_type=solicitud_type,
-            motivo=motivo,
         )
 
-        # Build extracted columns list
+        # Build extracted columns list with new fields
         extracted_columns = [
             AvailableColumn(
                 id=col["id"],
                 label_key=col["label_key"],
+                label=col.get("label", ""),
                 source="extracted",
                 data_type=col["data_type"],
-                sample_count=col["sample_count"]
+                sample_count=col.get("sample_count", 0),
+                document_code=col.get("document_code"),
+                document_name_es=col.get("document_name_es"),
             )
             for col in result["extracted_columns"]
         ]
 
         return AvailableColumnsResponse(
             workflow_code=workflow_code,
-            total_requests=result["total_requests"],
+            total_requests=result.get("total_requests", 0),
             system_columns=SYSTEM_COLUMNS,
             extracted_columns=extracted_columns,
             filters_applied=result.get("filters_applied"),
             available_filters=result.get("available_filters"),
             suggested_columns=result.get("suggested_columns", []),
+            document_count=result.get("document_count", 0),
         )
 
     except Exception as e:

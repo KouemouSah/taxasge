@@ -307,6 +307,7 @@ export function useAllAvailableColumns(
     availableFilters: data?.available_filters ?? null,
     filtersApplied: data?.filters_applied ?? null,
     totalRequests: data?.total_requests ?? 0,
+    documentCount: data?.document_count ?? 0,
     isLoading,
     isError,
     error,

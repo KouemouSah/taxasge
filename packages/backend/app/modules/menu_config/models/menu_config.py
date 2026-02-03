@@ -285,10 +285,11 @@ class WorkflowDisplayConfigListResponse(BaseModel):
 
 class AvailableColumn(BaseModel):
     """A column available for display configuration"""
-    id: str = Field(..., description="Column identifier (e.g., 'numero_dip', 'apellidos')")
+    id: str = Field(..., description="Column identifier (e.g., 'dip.numero_dip', 'certificado_nacimiento.nombre')")
     label_key: str = Field(..., description="i18n key for column label")
+    label: str = Field(default="", description="Human-readable label from extraction schema (field_label)")
     source: Literal["system", "extracted"] = Field(
-        ..., description="'system' for table columns, 'extracted' for form_data fields"
+        ..., description="'system' for table columns, 'extracted' for document extraction fields"
     )
     data_type: str = Field(
         default="string",
@@ -296,7 +297,15 @@ class AvailableColumn(BaseModel):
     )
     sample_count: int = Field(
         default=0,
-        description="Number of requests with this field populated"
+        description="Kept for backwards compatibility, always 0 with schema-based discovery"
+    )
+    document_code: Optional[str] = Field(
+        default=None,
+        description="Source document code (e.g., 'dip', 'certificado_nacimiento')"
+    )
+    document_name_es: Optional[str] = Field(
+        default=None,
+        description="Spanish name of the source document"
     )
 
 
@@ -305,7 +314,7 @@ class AvailableColumnsResponse(BaseModel):
     workflow_code: str = Field(..., description="The exact workflow code queried")
     total_requests: int = Field(
         default=0,
-        description="Total requests with this workflow code (for context)"
+        description="Kept for backwards compatibility, always 0 with schema-based discovery"
     )
     system_columns: List[AvailableColumn] = Field(
         default_factory=list,
@@ -313,11 +322,11 @@ class AvailableColumnsResponse(BaseModel):
     )
     extracted_columns: List[AvailableColumn] = Field(
         default_factory=list,
-        description="Dynamic columns from extracted/form data (flattened with dot notation)"
+        description="Columns from document extraction schemas (grouped by document_code)"
     )
     filters_applied: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Filters currently applied (is_minor, solicitud_type, motivo)"
+        description="Filters currently applied (is_minor)"
     )
     available_filters: Optional[Dict[str, Any]] = Field(
         default=None,
@@ -325,7 +334,11 @@ class AvailableColumnsResponse(BaseModel):
     )
     suggested_columns: List[str] = Field(
         default_factory=list,
-        description="Suggested extracted column IDs for pre-selection (top columns by frequency, >= 50% coverage)"
+        description="Kept for backwards compatibility, always empty with schema-based discovery"
+    )
+    document_count: int = Field(
+        default=0,
+        description="Number of documents with extraction schemas defined"
     )
 
 
