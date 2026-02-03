@@ -356,7 +356,12 @@ class DisplayConfigRepository:
 
     # Technical fields excluded from column discovery
     TECHNICAL_FIELDS = frozenset({
-        'sub_type', 'is_minor', 'solicitud_type', 'motivo'
+        'sub_type', 'is_minor', 'solicitud_type', 'motivo',
+    })
+
+    # Nested objects with no useful data (always empty or non-relevant)
+    EXCLUDED_NESTED_OBJECTS = frozenset({
+        'photo_carnet',
     })
 
     async def get_available_columns_for_workflow(
@@ -401,13 +406,15 @@ class DisplayConfigRepository:
         if solicitud_type is not None:
             param_idx += 1
             where_clauses.append(
-                f"sr.form_data->>'solicitud_type' = ${param_idx}"
+                f"UPPER(sr.form_data->>'solicitud_type') = UPPER(${param_idx})"
             )
             params.append(solicitud_type)
 
         if motivo is not None:
             param_idx += 1
-            where_clauses.append(f"sr.form_data->>'motivo' = ${param_idx}")
+            where_clauses.append(
+                f"UPPER(sr.form_data->>'motivo') = UPPER(${param_idx})"
+            )
             params.append(motivo)
 
         where_sql = " AND ".join(where_clauses)
@@ -420,15 +427,24 @@ class DisplayConfigRepository:
 
         # Discover columns with flattening of nested objects (2 levels)
         # Uses a sampled subset (latest 200 requests) for performance.
-        # NOTE: Ensure index exists: CREATE INDEX idx_sr_workflow_code ON service_requests(workflow_code)
+        # DEDUPLICATION: nested keys that already exist at root level are excluded
+        # from their nested group (e.g., dip.apellidos is hidden if root apellidos exists).
+        # This ensures each piece of data appears only once in the admin UI.
         rows = await self.db.fetch(f"""
             WITH sampled_requests AS (
-                -- Sample latest 200 requests for column discovery (avoid full scan)
                 SELECT sr.form_data
                 FROM service_requests sr
                 WHERE {where_sql}
                 ORDER BY sr.created_at DESC
                 LIMIT 200
+            ),
+            -- Collect all root-level scalar keys (for deduplication)
+            root_keys AS (
+                SELECT DISTINCT kv.key AS root_key
+                FROM sampled_requests sr,
+                     jsonb_each(sr.form_data) AS kv(key, value)
+                WHERE jsonb_typeof(kv.value) NOT IN ('object', 'array')
+                  AND kv.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
             ),
             flat_keys AS (
                 -- Level 1: root-level scalar fields
@@ -442,7 +458,7 @@ class DisplayConfigRepository:
 
                 UNION ALL
 
-                -- Level 2: nested object fields (dip.*, pasaporte_antiguo.*, cert.*, etc.)
+                -- Level 2: nested object fields, EXCLUDING keys already at root
                 SELECT
                     parent.key || '.' || child.key AS col_key,
                     child.value AS col_value
@@ -451,7 +467,11 @@ class DisplayConfigRepository:
                      jsonb_each(parent.value) AS child(key, value)
                 WHERE jsonb_typeof(parent.value) = 'object'
                   AND jsonb_typeof(child.value) NOT IN ('object', 'array')
-                  AND parent.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo')
+                  AND parent.key NOT IN ('sub_type', 'is_minor', 'solicitud_type', 'motivo', 'photo_carnet')
+                  -- DEDUP: skip nested keys that duplicate a root-level key
+                  AND NOT EXISTS (
+                      SELECT 1 FROM root_keys rk WHERE rk.root_key = child.key
+                  )
             )
             SELECT
                 grouped.col_key,

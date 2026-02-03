@@ -836,10 +836,10 @@ export function DisplayConfigForm({
                   {filteredSystemColumns.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Colonnes Système ({filteredSystemColumns.length})
+                        Columnas del Sistema ({filteredSystemColumns.length})
                       </p>
                       <p className="text-[10px] text-muted-foreground italic">
-                        reference, status, priority, workflow sont déjà dans Información General
+                        reference, status, priority, workflow ya están visibles en Información General
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {filteredSystemColumns.map((col) => (
@@ -865,7 +865,7 @@ export function DisplayConfigForm({
                   {hasFilteredExtracted && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Colonnes Extraites ({extractedColumns.length})
+                        Columnas Extraídas ({extractedColumns.length})
                       </p>
                       <div className="space-y-1">
                         {Object.entries(filteredExtractedGroups)
@@ -887,7 +887,9 @@ export function DisplayConfigForm({
                                   }`}
                                 />
                                 <span className="text-xs font-medium">
-                                  {groupName === '_root' ? 'Datos Personales' : groupName.toUpperCase()}
+                                  {groupName === '_root'
+                                    ? 'Datos del Formulario'
+                                    : `${groupName.toUpperCase()} (datos del documento)`}
                                 </span>
                                 <Badge variant="outline" className="text-[10px] px-1 ml-1">
                                   {groupCols.length}
@@ -1092,7 +1094,7 @@ export function DisplayConfigForm({
             <div className="border rounded-md bg-muted/30 max-h-[350px] overflow-y-auto">
               {selectedSections.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  Sélectionnez des sections à afficher
+                  Seleccione secciones a mostrar
                 </p>
               ) : (
                 <div className="divide-y">
@@ -1196,7 +1198,7 @@ export function DisplayConfigForm({
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Documents requis selon le workflow sélectionné
+                        Documentos requeridos según el workflow seleccionado
                       </p>
                     </div>
                   )}
@@ -1287,7 +1289,7 @@ export function DisplayConfigForm({
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Historial de la solicitud
+                        Línea temporal de la solicitud
                       </div>
                     </div>
                   )}
@@ -1302,7 +1304,7 @@ export function DisplayConfigForm({
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Acciones realizadas
+                        Historial de acciones realizadas
                       </div>
                     </div>
                   )}
