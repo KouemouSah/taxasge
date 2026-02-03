@@ -1067,12 +1067,6 @@
         "preview": "Aperçu",
         "moreColumns": "colonnes de plus",
         "unsavedChanges": "Modifications non sauvegardées",
-        "noExtractedColumnsSelected": "Aucune colonne extraite sélectionnée",
-        "previewDescription": "Aperçu du panneau agent",
-        "noDataForWorkflow": "Aucune donnée extraite pour ce workflow. Les colonnes extraites apparaîtront lorsque des demandes avec données existeront.",
-        "systemColumnsTitle": "Colonnes Système",
-        "extractedColumnsTitle": "Colonnes Extraites",
-        "nestedColumnsTitle": "Colonnes Imbriquées (DIP, Passeport)",
         "actions": {
           "cancel": "Annuler",
           "save": "Enregistrer",
