@@ -494,6 +494,19 @@ export function DisplayConfigForm({
     setFilterMotivo(undefined);
   };
 
+  // Resolve column label: dot-notation keys use humanized label, simple keys use translation
+  const resolveColumnLabel = useCallback((colId: string): string => {
+    if (colId.includes('.')) {
+      return humanizeColumnId(colId);
+    }
+    const key = `columns.${colId}` as Parameters<typeof t>[0];
+    const translated = t(key);
+    if (translated.startsWith('admin.') || translated === key) {
+      return humanizeColumnId(colId);
+    }
+    return translated;
+  }, [t]);
+
   // Filter columns by search
   const filteredSystemColumns = useMemo(() => {
     const cols = systemColumns.length > 0 ? systemColumns : FALLBACK_SYSTEM_COLUMNS.map((c) => ({
@@ -507,15 +520,13 @@ export function DisplayConfigForm({
     if (!columnSearch) return cols;
 
     return cols.filter((col) => {
-      const label = t(`columns.${col.id}` as Parameters<typeof t>[0], {
-        defaultValue: humanizeColumnId(col.id),
-      });
+      const label = resolveColumnLabel(col.id);
       return (
         col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
         label.toLowerCase().includes(columnSearch.toLowerCase())
       );
     });
-  }, [systemColumns, columnSearch, t]);
+  }, [systemColumns, columnSearch, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredExtractedGroups = useMemo(() => {
     if (!columnSearch) return extractedGroups;
@@ -523,9 +534,7 @@ export function DisplayConfigForm({
     const filtered: Record<string, AvailableColumn[]> = {};
     for (const [group, cols] of Object.entries(extractedGroups)) {
       const matching = cols.filter((col) => {
-        const label = t(`columns.${col.id}` as Parameters<typeof t>[0], {
-          defaultValue: humanizeColumnId(col.id),
-        });
+        const label = resolveColumnLabel(col.id);
         return (
           col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
           label.toLowerCase().includes(columnSearch.toLowerCase())
@@ -534,7 +543,7 @@ export function DisplayConfigForm({
       if (matching.length > 0) filtered[group] = matching;
     }
     return filtered;
-  }, [extractedGroups, columnSearch, t]);
+  }, [extractedGroups, columnSearch, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasFilteredExtracted = Object.keys(filteredExtractedGroups).length > 0;
 
@@ -590,11 +599,7 @@ export function DisplayConfigForm({
     onSubmitRef?.(handleSubmit);
   }, [selectedWorkflow, selectedColumns, selectedSections]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const getColumnLabel = useCallback((colId: string) => {
-    return t(`columns.${colId}` as Parameters<typeof t>[0], {
-      defaultValue: humanizeColumnId(colId),
-    });
-  }, [t]);
+  const getColumnLabel = resolveColumnLabel;
 
   const toggleGroup = useCallback((groupName: string) => {
     setOpenGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
