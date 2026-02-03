@@ -1,29 +1,19 @@
 /**
  * ExtractedDataSection - Display extracted form data
  *
- * Renders fields based on workflow_display_config.list_columns.
- *
- * Logic:
- * 1. Takes columns from display_config (admin-controlled)
- * 2. Filters to only show columns that have actual values in the data
- * 3. This solves the "irrelevant columns" problem:
- *    - Config can list ALL possible columns (adulte + mineur + renovation)
- *    - Backend returns only relevant data based on is_minor/solicitud_type
- *    - Frontend shows only configured columns that have values
- *
- * Examples:
- * - PASAPORTE_NUEVO adulte: shows nombres, apellidos, numeroDip (not pasaporteAntiguo)
- * - PASAPORTE_NUEVO mineur: shows nombres, apellidos, rep1Nombre, certNombre
- * - PASAPORTE_RENOVACION: shows nombres, apellidos, numeroPasaporteAntiguo
+ * Dynamically renders fields based on display_config columns.
+ * - Labels from translations (columns.*)
+ * - Date formatting auto-detected
+ * - No hardcoded workflow-specific logic
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
- * @updated 2026-02-02 - Filter configured columns by actual values
+ * @updated 2026-02-02 - Fully dynamic, no hardcoding
  */
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User } from 'lucide-react';
@@ -96,9 +86,8 @@ export function ExtractedDataSection({
   };
 
   // Get value from data, auto-format dates
-  // Note: data is now Record<string, unknown> for flexibility
   const getValue = (columnId: string): string => {
-    const value = data[columnId];
+    const value = data[columnId as keyof RequestPreviewExtractedData];
 
     if (value === null || value === undefined || value === '') {
       return '-';
@@ -122,19 +111,7 @@ export function ExtractedDataSection({
     </div>
   );
 
-  // Filter configured columns to only those with actual values in the data
-  // This solves the problem of showing irrelevant columns (e.g., "pasaporte_antiguo" for primera expedicion)
-  // The backend now returns ALL form_data columns with non-null values,
-  // and frontend filters based on workflow_display_config
-  const visibleColumns = useMemo(() => {
-    // Filter to only columns that have actual values
-    return columns.filter((col) => {
-      const value = data[col];
-      return value !== null && value !== undefined && value !== '';
-    });
-  }, [columns, data]);
-
-  // If no columns configured in display_config, show admin message
+  // If no columns configured, show message
   if (columns.length === 0) {
     return (
       <Card>
@@ -146,26 +123,7 @@ export function ExtractedDataSection({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Configuración de columnas no definida para este workflow.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // If columns configured but none have values, show appropriate message
-  if (visibleColumns.length === 0) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            {t('sections.extractedData')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No hay datos extraídos para esta solicitud.
+            No hay campos configurados para este workflow.
           </p>
         </CardContent>
       </Card>
@@ -182,7 +140,7 @@ export function ExtractedDataSection({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {visibleColumns.map((columnId) => (
+          {columns.map((columnId) => (
             <Field key={columnId} columnId={columnId} />
           ))}
         </div>
