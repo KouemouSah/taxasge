@@ -180,6 +180,8 @@ export interface DisplayConfigFormProps {
   initialData?: DisplayConfigFormData;
   onSubmit: (data: DisplayConfigFormData) => Promise<void>;
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Callback to expose the form's submit function to the parent */
+  onSubmitRef?: (submitFn: () => Promise<void>) => void;
   isSubmitting?: boolean;
   mode?: 'create' | 'edit';
 }
@@ -288,6 +290,7 @@ export function DisplayConfigForm({
   initialData,
   onSubmit,
   onDirtyChange,
+  onSubmitRef,
   isSubmitting = false,
   mode = 'create',
 }: DisplayConfigFormProps) {
@@ -460,6 +463,11 @@ export function DisplayConfigForm({
       preview_sections: selectedSections,
     });
   };
+
+  // Expose submit function to parent via callback
+  useEffect(() => {
+    onSubmitRef?.(handleSubmit);
+  }, [selectedWorkflow, selectedColumns, selectedSections]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getColumnLabel = (colId: string) => {
     return t(`columns.${colId}` as Parameters<typeof t>[0], {
