@@ -306,10 +306,6 @@ export function DisplayConfigForm({
   const [columnSearch, setColumnSearch] = useState('');
   const [isDirty, setIsDirty] = useState(false);
 
-  // Filters for sub-type column discovery
-  const [filterIsMinor, setFilterIsMinor] = useState<boolean | undefined>(undefined);
-  const [filterMotivo, setFilterMotivo] = useState<string | undefined>(undefined);
-
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -337,22 +333,13 @@ export function DisplayConfigForm({
   } = useSampleRequest(selectedWorkflow || undefined);
 
   // Fetch available columns dynamically when workflow is selected
-  // Pass filters for sub-type column discovery (is_minor, motivo)
   const shouldFetchColumns = !!selectedWorkflow && selectedWorkflow.length > 0;
-  const columnFilters = {
-    isMinor: filterIsMinor,
-    motivo: filterMotivo,
-  };
   const {
     systemColumns,
     extractedColumns,
-    nestedColumns,
     totalRequests,
     isLoading: isLoadingColumns,
-  } = useAllAvailableColumns(selectedWorkflow, shouldFetchColumns, columnFilters);
-
-  // State for collapsible nested columns section
-  const [isNestedExpanded, setIsNestedExpanded] = useState(false);
+  } = useAllAvailableColumns(selectedWorkflow, shouldFetchColumns);
 
   // Reset state when initialData changes (for edit mode)
   useEffect(() => {
@@ -390,22 +377,6 @@ export function DisplayConfigForm({
     if (mode === 'create') {
       setSelectedColumns([...DEFAULT_SELECTED_COLUMNS]);
     }
-
-    // Auto-select motivo based on workflow code pattern
-    const upperCode = workflowCode.toUpperCase();
-    if (upperCode.includes('PERDIDA')) {
-      setFilterMotivo('perdida');
-    } else if (upperCode.includes('ROBO')) {
-      setFilterMotivo('robo');
-    } else if (upperCode.includes('DETERIORO')) {
-      setFilterMotivo('deterioro');
-    } else if (upperCode.includes('RENOVACION') || upperCode.includes('VENCIMIENTO')) {
-      setFilterMotivo('vencimiento');
-    } else {
-      setFilterMotivo(undefined);
-    }
-    // Reset isMinor filter on workflow change
-    setFilterIsMinor(undefined);
   };
 
   // Filter columns by search
@@ -444,20 +415,6 @@ export function DisplayConfigForm({
       );
     });
   }, [extractedColumns, columnSearch, t]);
-
-  const filteredNestedColumns = useMemo(() => {
-    if (!columnSearch) return nestedColumns;
-
-    return nestedColumns.filter((col) => {
-      const label = t(`columns.${col.id}` as Parameters<typeof t>[0], {
-        defaultValue: humanizeColumnId(col.id),
-      });
-      return (
-        col.id.toLowerCase().includes(columnSearch.toLowerCase()) ||
-        label.toLowerCase().includes(columnSearch.toLowerCase())
-      );
-    });
-  }, [nestedColumns, columnSearch, t]);
 
   // Handlers
   const toggleColumn = (columnId: string) => {
@@ -582,81 +539,6 @@ export function DisplayConfigForm({
               )}
             </div>
 
-            {/* Sub-type filters - Only show for passport workflows */}
-            {selectedWorkflow && selectedWorkflow.toUpperCase().includes('PASAPORTE') && (
-              <div className="flex flex-wrap items-center gap-4 pt-3 mt-3 border-t">
-                <span className="text-xs font-medium text-muted-foreground uppercase">
-                  {t('filters.title')}:
-                </span>
-
-                {/* is_minor filter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{t('filters.type')}:</span>
-                  <Select
-                    value={filterIsMinor === undefined ? 'all' : filterIsMinor ? 'minor' : 'adult'}
-                    onValueChange={(value) => {
-                      if (value === 'all') setFilterIsMinor(undefined);
-                      else if (value === 'minor') setFilterIsMinor(true);
-                      else setFilterIsMinor(false);
-                    }}
-                  >
-                    <SelectTrigger className="w-[140px] h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('filters.all')}</SelectItem>
-                      <SelectItem value="adult">{t('filters.adult')}</SelectItem>
-                      <SelectItem value="minor">{t('filters.minor')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* motivo filter - Only for renovation workflows */}
-                {(selectedWorkflow.toUpperCase().includes('RENOVACION') ||
-                  selectedWorkflow.toUpperCase().includes('PERDIDA') ||
-                  selectedWorkflow.toUpperCase().includes('ROBO') ||
-                  selectedWorkflow.toUpperCase().includes('DETERIORO')) && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{t('filters.reason')}:</span>
-                    <Select
-                      value={filterMotivo ?? 'all'}
-                      onValueChange={(value) => {
-                        setFilterMotivo(value === 'all' ? undefined : value);
-                      }}
-                    >
-                      <SelectTrigger className="w-[140px] h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t('filters.all')}</SelectItem>
-                        <SelectItem value="vencimiento">{t('filters.expiration')}</SelectItem>
-                        <SelectItem value="perdida">{t('filters.lost')}</SelectItem>
-                        <SelectItem value="robo">{t('filters.theft')}</SelectItem>
-                        <SelectItem value="deterioro">{t('filters.deterioration')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Clear filters button */}
-                {(filterIsMinor !== undefined || filterMotivo !== undefined) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => {
-                      setFilterIsMinor(undefined);
-                      setFilterMotivo(undefined);
-                    }}
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    {t('filters.clear')}
-                  </Button>
-                )}
-              </div>
-            )}
-
             {/* Error message if workflow loading fails */}
             {workflowsError && (
               <p className="text-sm text-destructive mt-2">
@@ -691,81 +573,6 @@ export function DisplayConfigForm({
                 </span>
               )}
             </div>
-
-            {/* Sub-type filters in edit mode */}
-            {initialData.workflow_code.toUpperCase().includes('PASAPORTE') && (
-              <div className="flex flex-wrap items-center gap-4 pt-3 mt-3 border-t">
-                <span className="text-xs font-medium text-muted-foreground uppercase">
-                  {t('filters.title')}:
-                </span>
-
-                {/* is_minor filter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{t('filters.type')}:</span>
-                  <Select
-                    value={filterIsMinor === undefined ? 'all' : filterIsMinor ? 'minor' : 'adult'}
-                    onValueChange={(value) => {
-                      if (value === 'all') setFilterIsMinor(undefined);
-                      else if (value === 'minor') setFilterIsMinor(true);
-                      else setFilterIsMinor(false);
-                    }}
-                  >
-                    <SelectTrigger className="w-[140px] h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('filters.all')}</SelectItem>
-                      <SelectItem value="adult">{t('filters.adult')}</SelectItem>
-                      <SelectItem value="minor">{t('filters.minor')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* motivo filter */}
-                {(initialData.workflow_code.toUpperCase().includes('RENOVACION') ||
-                  initialData.workflow_code.toUpperCase().includes('PERDIDA') ||
-                  initialData.workflow_code.toUpperCase().includes('ROBO') ||
-                  initialData.workflow_code.toUpperCase().includes('DETERIORO')) && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{t('filters.reason')}:</span>
-                    <Select
-                      value={filterMotivo ?? 'all'}
-                      onValueChange={(value) => {
-                        setFilterMotivo(value === 'all' ? undefined : value);
-                      }}
-                    >
-                      <SelectTrigger className="w-[140px] h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">{t('filters.all')}</SelectItem>
-                        <SelectItem value="vencimiento">{t('filters.expiration')}</SelectItem>
-                        <SelectItem value="perdida">{t('filters.lost')}</SelectItem>
-                        <SelectItem value="robo">{t('filters.theft')}</SelectItem>
-                        <SelectItem value="deterioro">{t('filters.deterioration')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Clear filters */}
-                {(filterIsMinor !== undefined || filterMotivo !== undefined) && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => {
-                      setFilterIsMinor(undefined);
-                      setFilterMotivo(undefined);
-                    }}
-                  >
-                    <X className="h-3 w-3 mr-1" />
-                    {t('filters.clear')}
-                  </Button>
-                )}
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
@@ -789,7 +596,6 @@ export function DisplayConfigForm({
                 <>
                   {filteredSystemColumns.length} système
                   {extractedColumns.length > 0 && ` + ${extractedColumns.length} extraites`}
-                  {nestedColumns.length > 0 && ` + ${nestedColumns.length} imbriquées`}
                 </>
               )}
             </CardDescription>
@@ -840,7 +646,7 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
-                  {/* Extracted Columns (top-level form_data fields) */}
+                  {/* Extracted Columns */}
                   {filteredExtractedColumns.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -869,49 +675,6 @@ export function DisplayConfigForm({
                     </div>
                   )}
 
-                  {/* Nested Object Columns (dip.*, pasaporte_antiguo.* - collapsible) */}
-                  {filteredNestedColumns.length > 0 && (
-                    <div className="space-y-2 border-t pt-3 mt-3">
-                      <button
-                        type="button"
-                        onClick={() => setIsNestedExpanded(!isNestedExpanded)}
-                        className="flex items-center gap-2 w-full text-left text-xs font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
-                      >
-                        {isNestedExpanded ? (
-                          <ChevronDown className="h-3 w-3" />
-                        ) : (
-                          <ChevronUp className="h-3 w-3 rotate-90" />
-                        )}
-                        Colonnes Imbriquées (DIP, Pasaporte)
-                        <Badge variant="outline" className="text-[10px] px-1 ml-auto">
-                          {filteredNestedColumns.length}
-                        </Badge>
-                      </button>
-                      {isNestedExpanded && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-5 animate-in fade-in-50 duration-200">
-                          {filteredNestedColumns.map((col) => (
-                            <div key={col.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`col-${col.id}`}
-                                checked={selectedColumns.includes(col.id)}
-                                onCheckedChange={() => toggleColumn(col.id)}
-                              />
-                              <label
-                                htmlFor={`col-${col.id}`}
-                                className="text-sm cursor-pointer truncate flex items-center gap-1"
-                              >
-                                {getColumnLabel(col.id)}
-                                <Badge variant="outline" className="text-[10px] px-1">
-                                  {col.sample_count}
-                                </Badge>
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* No workflow selected message */}
                   {!selectedWorkflow && (
                     <p className="text-sm text-muted-foreground text-center py-4">
@@ -920,7 +683,7 @@ export function DisplayConfigForm({
                   )}
 
                   {/* No results */}
-                  {selectedWorkflow && filteredSystemColumns.length === 0 && filteredExtractedColumns.length === 0 && filteredNestedColumns.length === 0 && (
+                  {selectedWorkflow && filteredSystemColumns.length === 0 && filteredExtractedColumns.length === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       {t('noColumnsMatchSearch', { defaultValue: 'Aucune colonne ne correspond à la recherche' })}
                     </p>

@@ -42,7 +42,6 @@ export {
   DEFAULT_SELECTED_COLUMNS,
   AVAILABLE_SECTIONS,
 } from './useDisplayConfigs';
-export type { ColumnDiscoveryFilters } from './useDisplayConfigs';
 export type {
   DisplayConfig,
   AvailableColumn,
