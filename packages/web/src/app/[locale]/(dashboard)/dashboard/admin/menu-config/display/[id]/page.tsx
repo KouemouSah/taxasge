@@ -8,7 +8,7 @@
  * @date 2026-02-01
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
@@ -36,6 +36,9 @@ export default function DisplayConfigEditPage() {
 
   // Track dirty state from form
   const [isDirty, setIsDirty] = useState(false);
+
+  // Ref to form's submit function
+  const formSubmitRef = useRef<(() => Promise<void>) | null>(null);
 
   const handleDirtyChange = useCallback((dirty: boolean) => {
     setIsDirty(dirty);
@@ -116,8 +119,7 @@ export default function DisplayConfigEditPage() {
           </Button>
           <Button
             onClick={() => {
-              // Trigger form submit via ref or state
-              // For now, the submit button is inside the form
+              formSubmitRef.current?.();
             }}
             disabled={!isDirty || updateMutation.isPending}
           >
@@ -137,6 +139,7 @@ export default function DisplayConfigEditPage() {
         }}
         onSubmit={handleSubmit}
         onDirtyChange={handleDirtyChange}
+        onSubmitRef={(fn) => { formSubmitRef.current = fn; }}
         isSubmitting={updateMutation.isPending}
         mode="edit"
       />

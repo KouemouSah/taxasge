@@ -1067,6 +1067,12 @@
         "preview": "Vista Previa",
         "moreColumns": "columnas más",
         "unsavedChanges": "Cambios sin guardar",
+        "noExtractedColumnsSelected": "No hay columnas extraídas seleccionadas",
+        "previewDescription": "Vista previa del panel del agente",
+        "noDataForWorkflow": "No hay datos extraídos para este workflow. Las columnas extraídas aparecerán cuando existan solicitudes con datos.",
+        "systemColumnsTitle": "Columnas del Sistema",
+        "extractedColumnsTitle": "Columnas Extraídas",
+        "nestedColumnsTitle": "Columnas Anidadas (DIP, Pasaporte)",
         "actions": {
           "cancel": "Cancelar",
           "save": "Guardar",

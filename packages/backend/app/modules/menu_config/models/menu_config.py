@@ -287,8 +287,8 @@ class AvailableColumn(BaseModel):
     """A column available for display configuration"""
     id: str = Field(..., description="Column identifier (e.g., 'numero_dip', 'apellidos')")
     label_key: str = Field(..., description="i18n key for column label")
-    source: Literal["system", "extracted"] = Field(
-        ..., description="'system' for table columns, 'extracted' for form_data fields"
+    source: Literal["system", "extracted", "extracted_nested"] = Field(
+        ..., description="'system' for table columns, 'extracted' for top-level form_data fields, 'extracted_nested' for flattened nested objects (dip_*, pasaporte_antiguo_*)"
     )
     data_type: str = Field(
         default="string",

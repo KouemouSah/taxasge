@@ -1120,6 +1120,12 @@
         "preview": "Preview",
         "moreColumns": "more columns",
         "unsavedChanges": "Unsaved changes",
+        "noExtractedColumnsSelected": "No extracted columns selected",
+        "previewDescription": "Agent panel preview",
+        "noDataForWorkflow": "No extracted data for this workflow. Extracted columns will appear when requests with data exist.",
+        "systemColumnsTitle": "System Columns",
+        "extractedColumnsTitle": "Extracted Columns",
+        "nestedColumnsTitle": "Nested Columns (DIP, Passport)",
         "actions": {
           "cancel": "Cancel",
           "save": "Save",

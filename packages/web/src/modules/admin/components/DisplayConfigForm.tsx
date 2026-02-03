@@ -180,6 +180,8 @@ export interface DisplayConfigFormProps {
   initialData?: DisplayConfigFormData;
   onSubmit: (data: DisplayConfigFormData) => Promise<void>;
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Callback to receive the form's submit function (allows parent to trigger submit) */
+  onSubmitRef?: (submitFn: () => Promise<void>) => void;
   isSubmitting?: boolean;
   mode?: 'create' | 'edit';
 }
@@ -288,6 +290,7 @@ export function DisplayConfigForm({
   initialData,
   onSubmit,
   onDirtyChange,
+  onSubmitRef,
   isSubmitting = false,
   mode = 'create',
 }: DisplayConfigFormProps) {
@@ -354,6 +357,23 @@ export function DisplayConfigForm({
   // State for collapsible nested columns section
   const [isNestedExpanded, setIsNestedExpanded] = useState(false);
 
+  // Auto-select motivo based on workflow code pattern
+  const applyAutoFilters = (workflowCode: string) => {
+    const upperCode = workflowCode.toUpperCase();
+    if (upperCode.includes('PERDIDA')) {
+      setFilterMotivo('perdida');
+    } else if (upperCode.includes('ROBO')) {
+      setFilterMotivo('robo');
+    } else if (upperCode.includes('DETERIORO')) {
+      setFilterMotivo('deterioro');
+    } else if (upperCode.includes('RENOVACION') || upperCode.includes('VENCIMIENTO')) {
+      setFilterMotivo('vencimiento');
+    } else {
+      setFilterMotivo(undefined);
+    }
+    setFilterIsMinor(undefined);
+  };
+
   // Reset state when initialData changes (for edit mode)
   useEffect(() => {
     if (initialData) {
@@ -361,6 +381,8 @@ export function DisplayConfigForm({
       setSelectedColumns(initialData.list_columns);
       setSelectedSections(initialData.preview_sections);
       setIsDirty(false);
+      // Apply auto-filters based on workflow code
+      applyAutoFilters(initialData.workflow_code);
     }
   }, [initialData]);
 
@@ -390,22 +412,7 @@ export function DisplayConfigForm({
     if (mode === 'create') {
       setSelectedColumns([...DEFAULT_SELECTED_COLUMNS]);
     }
-
-    // Auto-select motivo based on workflow code pattern
-    const upperCode = workflowCode.toUpperCase();
-    if (upperCode.includes('PERDIDA')) {
-      setFilterMotivo('perdida');
-    } else if (upperCode.includes('ROBO')) {
-      setFilterMotivo('robo');
-    } else if (upperCode.includes('DETERIORO')) {
-      setFilterMotivo('deterioro');
-    } else if (upperCode.includes('RENOVACION') || upperCode.includes('VENCIMIENTO')) {
-      setFilterMotivo('vencimiento');
-    } else {
-      setFilterMotivo(undefined);
-    }
-    // Reset isMinor filter on workflow change
-    setFilterIsMinor(undefined);
+    applyAutoFilters(workflowCode);
   };
 
   // Filter columns by search
@@ -517,6 +524,11 @@ export function DisplayConfigForm({
   );
 
   const isValid = selectedWorkflow.length > 0 && selectedColumns.length > 0;
+
+  // Expose submit function to parent via callback
+  useEffect(() => {
+    onSubmitRef?.(handleSubmit);
+  }, [selectedWorkflow, selectedColumns, selectedSections]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">
@@ -818,7 +830,7 @@ export function DisplayConfigForm({
                   {filteredSystemColumns.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Colonnes Système
+                        {t('systemColumnsTitle')}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {filteredSystemColumns.map((col) => (
@@ -844,7 +856,7 @@ export function DisplayConfigForm({
                   {filteredExtractedColumns.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Colonnes Extraites ({totalRequests} demandes)
+                        {t('extractedColumnsTitle')} ({t('requestsFound', { count: totalRequests })})
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {filteredExtractedColumns.map((col) => (
@@ -882,7 +894,7 @@ export function DisplayConfigForm({
                         ) : (
                           <ChevronUp className="h-3 w-3 rotate-90" />
                         )}
-                        Colonnes Imbriquées (DIP, Pasaporte)
+                        {t('nestedColumnsTitle')}
                         <Badge variant="outline" className="text-[10px] px-1 ml-auto">
                           {filteredNestedColumns.length}
                         </Badge>
@@ -915,8 +927,15 @@ export function DisplayConfigForm({
                   {/* No workflow selected message */}
                   {!selectedWorkflow && (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      {t('selectWorkflowFirst', { defaultValue: 'Sélectionnez un workflow pour voir les colonnes extraites' })}
+                      {t('selectWorkflowFirst')}
                     </p>
+                  )}
+
+                  {/* No extracted data exists for this workflow */}
+                  {selectedWorkflow && !isLoadingColumns && totalRequests === 0 && extractedColumns.length === 0 && nestedColumns.length === 0 && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      {t('noDataForWorkflow')}
+                    </div>
                   )}
 
                   {/* No results */}
