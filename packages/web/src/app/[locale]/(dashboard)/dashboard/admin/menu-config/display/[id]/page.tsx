@@ -8,7 +8,7 @@
  * @date 2026-02-01
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
@@ -58,6 +58,15 @@ export default function DisplayConfigEditPage() {
   const handleCancel = () => {
     router.push(`/${locale}/dashboard/admin/menu-config/display`);
   };
+
+  // Memoize initialData to prevent useEffect reset loop in the form:
+  // Without this, every parent re-render creates a new object reference,
+  // which triggers the form's useEffect([initialData]) and resets all selections.
+  const formInitialData = useMemo(() => config ? {
+    workflow_code: config.workflow_code,
+    list_columns: config.list_columns,
+    preview_sections: config.preview_sections,
+  } : undefined, [config]);
 
   // Loading state
   if (isLoading) {
@@ -128,13 +137,9 @@ export default function DisplayConfigEditPage() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* Form - initialData must be memoized to avoid resetting form state on parent re-render */}
       <DisplayConfigForm
-        initialData={{
-          workflow_code: config.workflow_code,
-          list_columns: config.list_columns,
-          preview_sections: config.preview_sections,
-        }}
+        initialData={formInitialData}
         onSubmit={handleSubmit}
         onDirtyChange={handleDirtyChange}
         onSubmitRef={(fn) => { formSubmitRef.current = fn; }}
