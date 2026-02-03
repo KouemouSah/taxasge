@@ -78,11 +78,19 @@ export class DashboardErrorBoundary extends Component<
   }
 
   handleGoHome = (): void => {
-    // Extract locale from current URL path
+    // Navigate to the dashboard section the user was in (admin, agent, supervisor, etc.)
     if (typeof window !== 'undefined') {
       const pathParts = window.location.pathname.split('/')
       const locale = pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1]) ? pathParts[1] : 'es'
-      window.location.href = `/${locale}/dashboard`
+      // pathParts: ['', locale, 'dashboard', section?, ...]
+      // If user was in /es/dashboard/admin/..., go back to /es/dashboard/admin
+      const section = pathParts[3] || ''
+      const dashboardSections = ['admin', 'agent', 'supervisor', 'treasury']
+      if (section && dashboardSections.includes(section)) {
+        window.location.href = `/${locale}/dashboard/${section}`
+      } else {
+        window.location.href = `/${locale}/dashboard`
+      }
     }
   }
 
