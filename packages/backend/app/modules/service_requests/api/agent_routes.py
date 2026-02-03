@@ -1630,35 +1630,9 @@ class ServiceRequestListResponse(BaseModel):
 # PREVIEW MODELS FOR SPLIT VIEW
 # ═══════════════════════════════════════════════════════════════
 
-class RequestPreviewExtractedData(BaseModel):
-    """Extracted data for preview - dynamically populated from form_data"""
-    # Common fields (adults)
-    apellidos: Optional[str] = None
-    nombres: Optional[str] = None
-    fecha_nacimiento: Optional[str] = None
-    sexo: Optional[str] = None
-    lugar_nacimiento: Optional[str] = None
-    natural_de: Optional[str] = None
-    numero_dip: Optional[str] = None
-    domicilio: Optional[str] = None
-    nacionalidad: Optional[str] = None
-    estado_civil: Optional[str] = None
-    profesion: Optional[str] = None
-    # Renovation fields
-    numero_pasaporte_antiguo: Optional[str] = None
-    fecha_expedicion_antiguo: Optional[str] = None
-    fecha_expiracion_antiguo: Optional[str] = None
-    # Minor fields (from certificado_nacimiento)
-    cert_nombre: Optional[str] = None
-    cert_primer_apellido: Optional[str] = None
-    cert_segundo_apellido: Optional[str] = None
-    cert_fecha_nacimiento: Optional[str] = None
-    cert_lugar_nacimiento: Optional[str] = None
-    # Parent representative (for minors)
-    rep1_nombre: Optional[str] = None
-    rep1_documento_numero: Optional[str] = None
-    nombre_padre: Optional[str] = None
-    nombre_madre: Optional[str] = None
+# NOTE: RequestPreviewExtractedData (22 hardcoded fields) was removed.
+# extracted_data is now a dynamic Dict[str, Any] driven by workflow_display_config.
+# See _extract_preview_data_dynamic() below.
 
 
 class RequestPreviewDocument(BaseModel):
@@ -1694,8 +1668,11 @@ class ServiceRequestPreview(BaseModel):
     sla_deadline: Optional[str] = None
     sla_remaining_hours: Optional[float] = None
     sla_status: str = "on_track"  # on_track, warning, breached
-    # Extracted data
-    extracted_data: RequestPreviewExtractedData
+    # Extracted data (dynamic dict based on workflow_display_config)
+    extracted_data: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Dynamic extracted data based on display_config.list_columns"
+    )
     # Documents (max 4 for preview)
     documents: List[RequestPreviewDocument] = []
     documents_count: int = 0
@@ -1941,52 +1918,74 @@ async def get_entity_service_requests(
 # REQUEST PREVIEW FOR SPLIT VIEW
 # ═══════════════════════════════════════════════════════════════
 
-def _extract_preview_data(form_data: dict) -> RequestPreviewExtractedData:
-    """Extract preview data from form_data based on request type."""
+def _flatten_form_data(form_data: dict) -> dict:
+    """
+    Flatten nested objects in form_data with dot notation prefix.
+    e.g., {"dip": {"natural_de": "Malabo"}} → {"dip.natural_de": "Malabo"}
+
+    Skips technical fields (sub_type, is_minor, solicitud_type, motivo).
+    Skips arrays and deeply nested objects.
+    """
+    TECHNICAL_FIELDS = {'sub_type', 'is_minor', 'solicitud_type', 'motivo'}
+    flat: Dict[str, Any] = {}
+
+    for key, value in form_data.items():
+        if key in TECHNICAL_FIELDS:
+            continue
+        if isinstance(value, dict):
+            # Flatten nested object with dot notation
+            for sub_key, sub_value in value.items():
+                if not isinstance(sub_value, (dict, list)):
+                    flat[f"{key}.{sub_key}"] = sub_value
+        elif isinstance(value, list):
+            continue  # Skip arrays
+        else:
+            flat[key] = value
+
+    return flat
+
+
+async def _extract_preview_data_dynamic(
+    form_data: dict,
+    workflow_code: str,
+    db: asyncpg.Connection,
+) -> Dict[str, Any]:
+    """
+    Extract preview data dynamically based on workflow_display_config.
+
+    Only returns fields that are configured in display_config.list_columns.
+    If no display_config exists, returns empty dict.
+    """
     if not form_data:
-        return RequestPreviewExtractedData()
+        return {}
 
-    is_minor = form_data.get('is_minor', False)
-    solicitud_type = form_data.get('solicitud_type', '').upper()
-
-    # Get nested DIP data if available (natural_de is inside dip object)
-    dip_data = form_data.get('dip', {}) if isinstance(form_data.get('dip'), dict) else {}
-
-    data = RequestPreviewExtractedData(
-        # Common fields
-        apellidos=form_data.get('apellidos'),
-        nombres=form_data.get('nombres'),
-        fecha_nacimiento=form_data.get('fecha_nacimiento'),
-        sexo=form_data.get('sexo'),
-        lugar_nacimiento=form_data.get('lugar_nacimiento'),
-        natural_de=dip_data.get('natural_de'),  # Nested in dip object
-        numero_dip=form_data.get('numero_dip'),
-        domicilio=form_data.get('domicilio'),
-        nacionalidad=form_data.get('nacionalidad'),
-        estado_civil=form_data.get('estado_civil'),
-        profesion=form_data.get('profesion'),
-        # Parents
-        nombre_padre=form_data.get('nombre_padre'),
-        nombre_madre=form_data.get('nombre_madre'),
+    # Import here to avoid circular imports
+    from app.modules.menu_config.repositories.display_config_repository import (
+        DisplayConfigRepository,
     )
 
-    # Renovation fields
-    if solicitud_type == 'RENOVACION':
-        data.numero_pasaporte_antiguo = form_data.get('numero_pasaporte_antiguo')
-        data.fecha_expedicion_antiguo = form_data.get('fecha_expedicion_antiguo')
-        data.fecha_expiracion_antiguo = form_data.get('fecha_expiracion_antiguo')
+    repo = DisplayConfigRepository(db)
+    config = await repo.find_config_for_workflow(workflow_code)
 
-    # Minor fields
-    if is_minor:
-        data.cert_nombre = form_data.get('cert_nombre')
-        data.cert_primer_apellido = form_data.get('cert_primer_apellido')
-        data.cert_segundo_apellido = form_data.get('cert_segundo_apellido')
-        data.cert_fecha_nacimiento = form_data.get('cert_fecha_nacimiento')
-        data.cert_lugar_nacimiento = form_data.get('cert_lugar_nacimiento')
-        data.rep1_nombre = form_data.get('rep1_nombre')
-        data.rep1_documento_numero = form_data.get('rep1_documento_numero')
+    if not config:
+        return {}  # No config = no extracted data
 
-    return data
+    configured_columns = config.get('list_columns', [])
+    if not configured_columns:
+        return {}
+
+    # Flatten form_data (same logic as column discovery)
+    flat_data = _flatten_form_data(form_data)
+
+    # Return only configured columns
+    result: Dict[str, Any] = {}
+    for col_id in configured_columns:
+        if col_id in flat_data:
+            result[col_id] = flat_data[col_id]
+        else:
+            result[col_id] = None
+
+    return result
 
 
 @router.get(
@@ -2119,8 +2118,10 @@ async def get_request_preview(
     # Build contact name
     contact_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
 
-    # Extract preview data from form_data
-    extracted_data = _extract_preview_data(form_data)
+    # Extract preview data dynamically from display_config
+    extracted_data = await _extract_preview_data_dynamic(
+        form_data, row['workflow_code'], db
+    )
 
     return ServiceRequestPreview(
         id=str(row['id']),

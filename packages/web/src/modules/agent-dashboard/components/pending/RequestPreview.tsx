@@ -52,27 +52,9 @@ import type { EntityCode } from '../../types';
 
 const DEFAULT_PREVIEW_SECTIONS = ['info', 'extractedData', 'documents', 'contact', 'appointment'];
 
-// =============================================================================
-// SYSTEM COLUMNS (not extracted from form_data)
-// =============================================================================
-
-const SYSTEM_COLUMNS = [
-  'reference',
-  'fullName',
-  'citizenName',
-  'status',
-  'priority',
-  'createdAt',
-  'submittedAt',
-  'slaDeadline',
-  'slaStatus',
-  'solicitudType',
-  'motivo',
-  'workflowCode',
-  'workflowLabel',
-  'assignedTo',
-  'entityCode',
-];
+// NOTE: System columns filtering removed.
+// The backend _extract_preview_data_dynamic() already returns only the configured
+// extracted columns. list_columns are passed directly to ExtractedDataSection.
 
 // =============================================================================
 // PREDEFINED REJECTION REASONS
@@ -142,11 +124,10 @@ export function RequestPreview({
   const previewSections = displayConfig?.preview_sections ?? DEFAULT_PREVIEW_SECTIONS;
   const shouldShowSection = (sectionId: string) => previewSections.includes(sectionId);
 
-  // Extract only the extracted columns (not system columns) from list_columns
-  // These will be displayed in the ExtractedDataSection
+  // Pass configured columns directly — backend already returns only extracted data
+  // for these columns in the dynamic extracted_data dict
   const extractedColumns = useMemo(() => {
-    const configColumns = displayConfig?.list_columns ?? [];
-    return configColumns.filter((col) => !SYSTEM_COLUMNS.includes(col));
+    return displayConfig?.list_columns ?? [];
   }, [displayConfig?.list_columns]);
 
   const [isApproving, setIsApproving] = useState(false);

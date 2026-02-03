@@ -115,34 +115,12 @@ export interface VerificationResponse {
 // PREVIEW TYPES FOR SPLIT VIEW
 // =============================================================================
 
-export interface RequestPreviewExtractedData {
-  apellidos?: string | null;
-  nombres?: string | null;
-  fechaNacimiento?: string | null;
-  sexo?: string | null;
-  lugarNacimiento?: string | null;
-  naturalDe?: string | null;
-  numeroDip?: string | null;
-  domicilio?: string | null;
-  nacionalidad?: string | null;
-  estadoCivil?: string | null;
-  profesion?: string | null;
-  // Renovation
-  numeroPasaporteAntiguo?: string | null;
-  fechaExpedicionAntiguo?: string | null;
-  fechaExpiracionAntiguo?: string | null;
-  // Minor
-  certNombre?: string | null;
-  certPrimerApellido?: string | null;
-  certSegundoApellido?: string | null;
-  certFechaNacimiento?: string | null;
-  certLugarNacimiento?: string | null;
-  // Representatives
-  rep1Nombre?: string | null;
-  rep1DocumentoNumero?: string | null;
-  nombrePadre?: string | null;
-  nombreMadre?: string | null;
-}
+/**
+ * Extracted data is now dynamic — driven by workflow_display_config.list_columns.
+ * The backend returns only the columns configured for the workflow,
+ * with dot-notation keys for nested objects (e.g., "dip.natural_de").
+ */
+export type RequestPreviewExtractedData = Record<string, unknown>;
 
 export interface RequestPreviewDocument {
   id: string;
@@ -219,32 +197,8 @@ interface BackendServiceRequestListResponse {
   total_pages: number;
 }
 
-// Backend preview types (snake_case)
-interface BackendRequestPreviewExtractedData {
-  apellidos?: string | null;
-  nombres?: string | null;
-  fecha_nacimiento?: string | null;
-  sexo?: string | null;
-  lugar_nacimiento?: string | null;
-  natural_de?: string | null;
-  numero_dip?: string | null;
-  domicilio?: string | null;
-  nacionalidad?: string | null;
-  estado_civil?: string | null;
-  profesion?: string | null;
-  numero_pasaporte_antiguo?: string | null;
-  fecha_expedicion_antiguo?: string | null;
-  fecha_expiracion_antiguo?: string | null;
-  cert_nombre?: string | null;
-  cert_primer_apellido?: string | null;
-  cert_segundo_apellido?: string | null;
-  cert_fecha_nacimiento?: string | null;
-  cert_lugar_nacimiento?: string | null;
-  rep1_nombre?: string | null;
-  rep1_documento_numero?: string | null;
-  nombre_padre?: string | null;
-  nombre_madre?: string | null;
-}
+// Backend preview extracted_data is now a dynamic dict (snake_case keys with dot notation)
+type BackendRequestPreviewExtractedData = Record<string, unknown>;
 
 interface BackendRequestPreviewDocument {
   id: string;
@@ -325,31 +279,8 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     slaDeadline: data.sla_deadline,
     slaRemainingHours: data.sla_remaining_hours,
     slaStatus: (data.sla_status || 'on_track') as 'on_track' | 'warning' | 'breached',
-    extractedData: {
-      apellidos: data.extracted_data?.apellidos,
-      nombres: data.extracted_data?.nombres,
-      fechaNacimiento: data.extracted_data?.fecha_nacimiento,
-      sexo: data.extracted_data?.sexo,
-      lugarNacimiento: data.extracted_data?.lugar_nacimiento,
-      naturalDe: data.extracted_data?.natural_de,
-      numeroDip: data.extracted_data?.numero_dip,
-      domicilio: data.extracted_data?.domicilio,
-      nacionalidad: data.extracted_data?.nacionalidad,
-      estadoCivil: data.extracted_data?.estado_civil,
-      profesion: data.extracted_data?.profesion,
-      numeroPasaporteAntiguo: data.extracted_data?.numero_pasaporte_antiguo,
-      fechaExpedicionAntiguo: data.extracted_data?.fecha_expedicion_antiguo,
-      fechaExpiracionAntiguo: data.extracted_data?.fecha_expiracion_antiguo,
-      certNombre: data.extracted_data?.cert_nombre,
-      certPrimerApellido: data.extracted_data?.cert_primer_apellido,
-      certSegundoApellido: data.extracted_data?.cert_segundo_apellido,
-      certFechaNacimiento: data.extracted_data?.cert_fecha_nacimiento,
-      certLugarNacimiento: data.extracted_data?.cert_lugar_nacimiento,
-      rep1Nombre: data.extracted_data?.rep1_nombre,
-      rep1DocumentoNumero: data.extracted_data?.rep1_documento_numero,
-      nombrePadre: data.extracted_data?.nombre_padre,
-      nombreMadre: data.extracted_data?.nombre_madre,
-    },
+    // Dynamic pass-through: backend already returns only configured columns
+    extractedData: data.extracted_data ?? {},
     documents: data.documents.map(doc => ({
       id: doc.id,
       code: doc.code,

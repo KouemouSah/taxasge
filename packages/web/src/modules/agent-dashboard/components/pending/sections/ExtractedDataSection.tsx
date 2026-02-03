@@ -17,14 +17,13 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User } from 'lucide-react';
-import type { RequestPreviewExtractedData } from '../../../services/agent-requests-api';
-
 // =============================================================================
 // PROPS
 // =============================================================================
 
 interface ExtractedDataSectionProps {
-  data: RequestPreviewExtractedData;
+  /** Dynamic extracted data dict (keys may use dot-notation, e.g. "dip.natural_de") */
+  data: Record<string, unknown>;
   /** Extracted columns to display (from display_config.list_columns) */
   columns: string[];
 }
@@ -57,11 +56,23 @@ function formatDate(dateStr: string): string {
 }
 
 /**
- * Humanize column ID: camelCase → Title Case
- * Example: certFechaNacimiento → Cert Fecha Nacimiento
+ * Humanize column ID to display label.
+ * Handles dot-notation: "dip.natural_de" → "Natural De (DIP)"
+ * Handles snake_case: "fecha_nacimiento" → "Fecha Nacimiento"
+ * Handles camelCase: "fechaNacimiento" → "Fecha Nacimiento"
  */
 function humanizeColumnId(columnId: string): string {
+  const parts = columnId.split('.');
+  if (parts.length > 1) {
+    const source = parts[0].toUpperCase();
+    const field = parts[1]
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/^./, (str) => str.toUpperCase());
+    return `${field} (${source})`;
+  }
   return columnId
+    .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/^./, (str) => str.toUpperCase());
 }
@@ -87,7 +98,8 @@ export function ExtractedDataSection({
 
   // Get value from data, auto-format dates
   const getValue = (columnId: string): string => {
-    const value = data[columnId as keyof RequestPreviewExtractedData];
+    // Direct key access — backend returns flat keys including dot-notation
+    const value = data[columnId];
 
     if (value === null || value === undefined || value === '') {
       return '-';
