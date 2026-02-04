@@ -202,12 +202,19 @@
       }
     },
     "filiacion": {
-      "description": "Informations de filiation",
+      "description": "Informations de filiation (bloc HIJO DE sur verso)",
       "fields": {
+        "nombre_padre": {
+          "type": "string",
+          "required": false,
+          "description": "Nombre completo del padre (1ra linea bloc HIJO DE, verso)",
+          "source": "verso",
+          "pii": true
+        },
         "nombre_madre": {
           "type": "string",
           "required": false,
-          "description": "Nombre completo de la madre (2da linea face verso)",
+          "description": "Nombre completo de la madre (2da linea bloc HIJO DE, verso)",
           "source": "verso",
           "pii": true
         }
@@ -287,7 +294,7 @@
         "Zone inferieure: N° D.I.P. (9 chiffres), Firma del titular"
       ],
       "verso": [
-        "Zone superieure gauche: Nom complet titulaire (1ere ligne) + Nom mere (2eme ligne)",
+        "Zone superieure gauche: Bloc HIJO DE - Nom pere (1ere ligne) + Nom mere (2eme ligne)",
         "Zone superieure droite: N° REGISTRO, ESTADO CIVIL, PROFESIÓN",
         "Zone centrale gauche: LUGAR DE NACIMIENTO, NATURAL DE, DISTRITO Y PROVINCIA, GRUPO SANGUÍNEO",
         "Zone centrale: Photo (repetee)",

@@ -1176,6 +1176,7 @@ export default function PassportWizardPage() {
           isSaving={isSavingFormData}
           saveError={formSaveError}
           isMinor={wizardState.isMinor || false}
+          solicitudType={wizardState.solicitudType}
           onFieldEdit={handleFormFieldEdit}
           onSave={() => handleSaveFormReview(currentStep.id)}
           onNext={async () => {
@@ -1893,6 +1894,7 @@ interface FormReviewStepEditableProps {
   isSaving: boolean
   saveError: string | null
   isMinor?: boolean
+  solicitudType?: PassportSolicitudType | null
   onFieldEdit: (field: string, value: unknown) => void
   onSave: () => Promise<boolean>
   onNext: () => Promise<void>
@@ -1909,6 +1911,7 @@ function FormReviewStepEditable({
   isSaving,
   saveError,
   isMinor = false,
+  solicitudType,
   onFieldEdit,
   onNext,
   onBack,
@@ -1933,14 +1936,31 @@ function FormReviewStepEditable({
     { key: 'domicilio', type: 'text', required: true },
     { key: 'ciudad', type: 'text', required: false },
   ]
+
+  // Step 2 fields - CONDITIONAL based on solicitudType and isMinor
+  // Filiation (nombre_padre, nombre_madre, profesion_*):
+  //   - Show for EXPEDICION (first passport needs full filiation from certificado)
+  //   - Show for minors (always have certificado_nacimiento with filiation)
+  //   - For RENOVACION adults: these come from DIP which has nombre_padre and nombre_madre
+  // Pasaporte Anterior (numero, fechas):
+  //   - Show ONLY for RENOVACION (all motivos require old passport info)
+  const showFiliationFields = solicitudType === 'EXPEDICION' || isMinor
+  const showPasaporteAnteriorFields = solicitudType === 'RENOVACION'
+
   const step2Fields = [
-    { key: 'nombre_padre', type: 'text', required: false },
-    { key: 'profesion_padre', type: 'text', required: false },
-    { key: 'nombre_madre', type: 'text', required: false },
-    { key: 'profesion_madre', type: 'text', required: false },
-    { key: 'numero_pasaporte_antiguo', type: 'text', required: false },
-    { key: 'fecha_expedicion_antiguo', type: 'date', required: false },
-    { key: 'fecha_expiracion_antiguo', type: 'date', required: false },
+    // Filiation section - conditional
+    ...(showFiliationFields ? [
+      { key: 'nombre_padre', type: 'text', required: false },
+      { key: 'profesion_padre', type: 'text', required: false },
+      { key: 'nombre_madre', type: 'text', required: false },
+      { key: 'profesion_madre', type: 'text', required: false },
+    ] : []),
+    // Pasaporte anterior section - conditional (RENOVACION only)
+    ...(showPasaporteAnteriorFields ? [
+      { key: 'numero_pasaporte_antiguo', type: 'text', required: true },
+      { key: 'fecha_expedicion_antiguo', type: 'date', required: true },
+      { key: 'fecha_expiracion_antiguo', type: 'date', required: true },
+    ] : []),
   ]
 
   const fieldsToShow = isStep1 ? step1Fields : step2Fields
