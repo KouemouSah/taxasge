@@ -598,18 +598,17 @@ class PasaporteWorkflow(PredefinedWorkflow):
         ALIGNED WITH workflow_interface.py signature.
 
         Common to all types:
-        - DIP (always required)
+        - DIP (adults only)
         - Photos (always required)
 
         Type-specific:
         - EXPEDICION: + Certificado de Nacimiento
-        - RENOVACION/VENCIMIENTO: + Pasaporte antiguo
-        - RENOVACION/DETERIORO: + Pasaporte danado
-        - RENOVACION/PERDIDA: + Denuncia policial
-        - RENOVACION/ROBO: + Denuncia policial
+        - RENOVACION (all motivos): + Pasaporte antiguo (references always needed)
+        - RENOVACION/PERDIDA: + Denuncia policial (in addition to pasaporte antiguo)
+        - RENOVACION/ROBO: + Denuncia policial (in addition to pasaporte antiguo)
 
         Conditional (for minors):
-        - Minor (<18): + Autorizacion Parental + DIP del padre/madre/tutor
+        - Minor (<18): + Certificado de Nacimiento + Autorizacion Parental + DIP representante(s)
         """
         requirements = []
 
@@ -664,35 +663,41 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 instructions_es="Certificacion literal de nacimiento del menor (original o copia certificada)"
             ))
 
-        # === RENOVACION motivo-specific documents (applies to adults AND minors) ===
-        if solicitud_type == SolicitudType.RENOVACION and motivo:
-            if motivo in [RenovacionMotivo.VENCIMIENTO, RenovacionMotivo.DETERIORO]:
-                # Need old passport
-                doc_name = "Pasaporte Danado" if motivo == RenovacionMotivo.DETERIORO else "Pasaporte Antiguo"
-                instructions = (
-                    "Presente el pasaporte danado para verificacion"
-                    if motivo == RenovacionMotivo.DETERIORO
-                    else "Escanee la pagina de datos de su pasaporte vencido o por vencer"
-                )
-                requirements.append(DocumentRequirement(
-                    document_code="pasaporte_antiguo",
-                    document_name_es=doc_name,
-                    schema_key="PASAPORTE_GQ_V1",
-                    is_required=True,
-                    display_order=2,
-                    condition_type=DocumentConditionType.CUSTOM,
-                    condition_value={"motivos": ["VENCIMIENTO", "DETERIORO"]},
-                    instructions_es=instructions
-                ))
+        # === RENOVACION documents (applies to adults AND minors) ===
+        if solicitud_type == SolicitudType.RENOVACION:
+            # Pasaporte Antiguo: required for ALL renovation motivos
+            # Even for PERDIDA/ROBO, the old passport references are needed
+            if motivo == RenovacionMotivo.DETERIORO:
+                doc_name = "Pasaporte Danado"
+                instructions = "Presente el pasaporte danado para verificacion"
+            elif motivo == RenovacionMotivo.PERDIDA:
+                doc_name = "Pasaporte Antiguo (Perdido)"
+                instructions = "Indique las referencias de su pasaporte perdido (numero, fecha de expedicion)"
+            elif motivo == RenovacionMotivo.ROBO:
+                doc_name = "Pasaporte Antiguo (Robado)"
+                instructions = "Indique las referencias de su pasaporte robado (numero, fecha de expedicion)"
+            else:
+                doc_name = "Pasaporte Antiguo"
+                instructions = "Escanee la pagina de datos de su pasaporte vencido o por vencer"
 
-            elif motivo in [RenovacionMotivo.PERDIDA, RenovacionMotivo.ROBO]:
-                # Need police report
+            requirements.append(DocumentRequirement(
+                document_code="pasaporte_antiguo",
+                document_name_es=doc_name,
+                schema_key="PASAPORTE_GQ_V1",
+                is_required=True,
+                display_order=2,
+                condition_type=DocumentConditionType.ALWAYS,
+                instructions_es=instructions
+            ))
+
+            # Denuncia Policial: additionally required for PERDIDA and ROBO
+            if motivo in [RenovacionMotivo.PERDIDA, RenovacionMotivo.ROBO]:
                 reason = "robo" if motivo == RenovacionMotivo.ROBO else "perdida"
                 requirements.append(DocumentRequirement(
                     document_code="denuncia_policial",
                     document_name_es="Denuncia Policial",
                     is_required=True,
-                    display_order=2,
+                    display_order=3,
                     condition_type=DocumentConditionType.CUSTOM,
                     condition_value={"motivos": ["PERDIDA", "ROBO"]},
                     instructions_es=f"Denuncia de {reason} emitida por la Policia Nacional (maximo 30 dias)"
