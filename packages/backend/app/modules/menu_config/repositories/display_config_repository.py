@@ -460,17 +460,28 @@ class DisplayConfigRepository:
             available_filters["is_minor"] = [False, True]
 
         # 4. Filter documents by is_minor condition
+        #    Also check condition_value for CUSTOM conditions that embed is_minor
         filtered_docs = []
         for doc in all_docs:
             ct = doc.condition_type
             ct_val = ct.value if isinstance(ct, DocumentConditionType) else str(ct)
 
+            # Check CUSTOM conditions that embed is_minor in condition_value
+            cv = getattr(doc, 'condition_value', None) or {}
+            cv_is_minor = cv.get('is_minor') if isinstance(cv, dict) else None
+
             if is_minor is True:
-                if ct_val not in ('is_adult',):
-                    filtered_docs.append(doc)
+                if ct_val == 'is_adult':
+                    continue
+                if ct_val == 'custom' and cv_is_minor is False:
+                    continue
+                filtered_docs.append(doc)
             elif is_minor is False:
-                if ct_val not in ('is_minor',):
-                    filtered_docs.append(doc)
+                if ct_val == 'is_minor':
+                    continue
+                if ct_val == 'custom' and cv_is_minor is True:
+                    continue
+                filtered_docs.append(doc)
             else:
                 filtered_docs.append(doc)
 
