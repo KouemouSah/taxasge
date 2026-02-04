@@ -23,6 +23,33 @@ logger = logging.getLogger(__name__)
 DISPLAY_CONFIG_CACHE_TTL = 300  # 5 minutes
 
 
+_BILINGUAL_EN_PREFIXES = frozenset({
+    "type", "code", "passport no.", "date of issue", "date of expiry",
+    "authority", "surname", "given names", "sex", "nationality",
+    "date of birth", "place of birth", "profession", "personal no.",
+    "residence",
+})
+
+
+def _extract_es_label(field_label: str) -> str:
+    """Extract the Spanish part from bilingual field labels.
+
+    Only pasaporte_gq.json uses bilingual "English/Español" format
+    (e.g. "Type/Tipo", "Passport No./No. Pasaporte").
+    Other schemas use "/" in Spanish labels (e.g. "DON/DOÑA", "DIP/NIE")
+    which must NOT be split.
+
+    Detects bilingual format by checking if the part before "/" is a
+    known English prefix.
+    """
+    if "/" not in field_label:
+        return field_label
+    left, right = field_label.rsplit("/", 1)
+    if left.strip().lower() in _BILINGUAL_EN_PREFIXES:
+        return right.strip()
+    return field_label
+
+
 def _row_to_dict(record: asyncpg.Record) -> Optional[Dict[str, Any]]:
     """Convert asyncpg Record to dict, handling JSONB fields."""
     if record is None:
@@ -519,7 +546,7 @@ class DisplayConfigRepository:
                 extracted_columns.append({
                     "id": col_id,
                     "label_key": f"columns.{col_id}",
-                    "label": field_config.get("field_label", field_name),
+                    "label": _extract_es_label(field_config.get("field_label", field_name)),
                     "source": "extracted",
                     "data_type": field_config.get("type", "string"),
                     "sample_count": 0,
@@ -745,7 +772,7 @@ class DisplayConfigRepository:
                 extracted_columns.append({
                     "id": col_id,
                     "label_key": f"columns.{col_id}",
-                    "label": field_config.get("field_label", field_name),
+                    "label": _extract_es_label(field_config.get("field_label", field_name)),
                     "source": "extracted",
                     "data_type": field_config.get("type", "string"),
                     "sample_count": 0,
