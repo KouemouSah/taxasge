@@ -367,90 +367,85 @@ class DisplayConfigRepository:
         (with condition_type and schema_key). The schema_loader resolves
         extraction fields from JSON schema files.
 
-        No longer depends on existing service_requests data.
+        Handles three workflow resolution scenarios:
+        1. Direct match: workflow_code is a registered parent code
+        2. Variant resolution: workflow_code is a variant (e.g., VEHICULO_RENOVACION_CUVE)
+           resolved to parent workflow + specific sub_type
+        3. DB fallback: workflow has no registered class, uses workflow_document_requirements
 
         Args:
-            workflow_code: Exact workflow code (e.g., 'PASAPORTE_NUEVO')
+            workflow_code: Exact workflow code (e.g., 'PASAPORTE_NUEVO', 'VEHICULO_RENOVACION_CUVE')
             is_minor: Filter by minor status (True/False/None=all)
 
         Returns:
             Dict with extracted_columns, available_filters, document_count
         """
         from app.modules.service_requests.services.workflow_engine import workflow_engine
-        from app.modules.service_requests.workflows.workflow_interface import PredefinedWorkflow
+        from app.modules.service_requests.workflows.workflow_interface import (
+            PredefinedWorkflow, WorkflowContext, RenovacionMotivo,
+        )
         from app.modules.service_requests.workflows.base_workflow import BaseWorkflow
-        from app.modules.service_requests.models.enums import DocumentConditionType
+        from app.modules.service_requests.models.enums import (
+            DocumentConditionType, SolicitudType, WorkflowCode as WFCode,
+        )
         from app.modules.service_requests.services.schema_loader import schema_loader
+        from uuid import uuid4
 
-        # 1. Get the workflow instance
+        empty_result = {
+            "total_requests": 0,
+            "extracted_columns": [],
+            "filters_applied": {"is_minor": is_minor} if is_minor is not None else None,
+            "available_filters": {},
+            "suggested_columns": [],
+            "document_count": 0,
+        }
+
+        # 1. Resolve workflow: direct lookup, then variant→parent, then DB fallback
         workflow = workflow_engine.get_workflow_by_string(workflow_code)
-        if not workflow:
-            logger.warning(f"Workflow not found: {workflow_code}")
-            return {
-                "total_requests": 0,
-                "extracted_columns": [],
-                "filters_applied": {"is_minor": is_minor} if is_minor is not None else None,
-                "available_filters": {},
-                "suggested_columns": [],
-                "document_count": 0,
-            }
+        resolved_sub_type = None
 
-        # 2. Get ALL document requirements (unfiltered) to determine available_filters
+        if workflow is None:
+            # Try resolving variant code (e.g., VEHICULO_RENOVACION_CUVE → VehiculoWorkflow)
+            workflow, resolved_sub_type = self._resolve_variant_workflow(
+                workflow_code, workflow_engine
+            )
+
+        if workflow is None:
+            # DB fallback: use workflow_document_requirements table
+            logger.info(f"No workflow class for {workflow_code}, trying DB fallback")
+            return await self._get_columns_from_db(
+                workflow_code, is_minor, schema_loader
+            )
+
+        # 2. Collect ALL document requirements (all variants, both minor/adult)
         all_docs = []
+        seen_codes: set = set()
+
+        def _add_docs(docs):
+            for doc in docs:
+                if doc.document_code not in seen_codes:
+                    seen_codes.add(doc.document_code)
+                    all_docs.append(doc)
+
         if isinstance(workflow, PredefinedWorkflow):
-            # v2 workflows: iterate all solicitud_types AND motivos to collect every
-            # possible document requirement. For RENOVACION, each motivo can add
-            # different documents (e.g., pasaporte_antiguo for VENCIMIENTO/DETERIORO,
-            # denuncia_policial for PERDIDA/ROBO).
-            from app.modules.service_requests.models.enums import SolicitudType
-            from app.modules.service_requests.workflows.workflow_interface import RenovacionMotivo
-            seen_codes = set()
-            for sol_type in workflow.allowed_solicitud_types:
-                if sol_type == SolicitudType.RENOVACION:
-                    # Iterate all motivos to capture motivo-conditional documents
-                    for motivo_val in RenovacionMotivo:
-                        try:
-                            docs = workflow.get_document_requirements(
-                                solicitud_type=sol_type,
-                                motivo=motivo_val,
-                                context=None,
-                            )
-                            for doc in docs:
-                                if doc.document_code not in seen_codes:
-                                    seen_codes.add(doc.document_code)
-                                    all_docs.append(doc)
-                        except Exception as e:
-                            logger.debug(
-                                f"Error getting docs for {workflow_code}/{sol_type}/{motivo_val}: {e}"
-                            )
-                else:
-                    try:
-                        docs = workflow.get_document_requirements(
-                            solicitud_type=sol_type,
-                            motivo=None,
-                            context=None,
-                        )
-                        for doc in docs:
-                            if doc.document_code not in seen_codes:
-                                seen_codes.add(doc.document_code)
-                                all_docs.append(doc)
-                    except Exception as e:
-                        logger.debug(f"Error getting docs for {workflow_code}/{sol_type}: {e}")
+            self._collect_v2_documents(
+                workflow, workflow_code, resolved_sub_type, _add_docs
+            )
         elif isinstance(workflow, BaseWorkflow):
-            # v1 workflows: call with empty sub_type for default docs
-            try:
-                all_docs = workflow.get_document_requirements(sub_type="")
-            except Exception as e:
-                logger.debug(f"Error getting docs for {workflow_code}: {e}")
+            self._collect_v1_documents(
+                workflow, workflow_code, resolved_sub_type, _add_docs
+            )
+
+        if not all_docs:
+            logger.info(f"No documents found for {workflow_code}")
+            return empty_result
 
         # 3. Determine available_filters from condition_types present
         all_condition_types = set()
         for doc in all_docs:
             ct = doc.condition_type
-            if isinstance(ct, DocumentConditionType):
-                all_condition_types.add(ct.value)
-            elif isinstance(ct, str):
-                all_condition_types.add(ct)
+            ct_val = ct.value if isinstance(ct, DocumentConditionType) else str(ct)
+            all_condition_types.add(ct_val)
 
         available_filters: Dict[str, Any] = {}
         if 'is_minor' in all_condition_types or 'is_adult' in all_condition_types:
@@ -463,15 +458,12 @@ class DisplayConfigRepository:
             ct_val = ct.value if isinstance(ct, DocumentConditionType) else str(ct)
 
             if is_minor is True:
-                # Show: always, is_minor, is_new, custom, and other non-age conditions
                 if ct_val not in ('is_adult',):
                     filtered_docs.append(doc)
             elif is_minor is False:
-                # Show: always, is_adult, is_new, custom, and other non-age conditions
                 if ct_val not in ('is_minor',):
                     filtered_docs.append(doc)
             else:
-                # No filter → show all
                 filtered_docs.append(doc)
 
         # 5. For each document with a schema_key, load extraction fields
@@ -508,7 +500,232 @@ class DisplayConfigRepository:
                     "document_name_es": doc_name,
                 })
 
-        # 6. Build filters_applied
+        # 6. Build response
+        filters_applied = {}
+        if is_minor is not None:
+            filters_applied["is_minor"] = is_minor
+
+        return {
+            "total_requests": 0,
+            "extracted_columns": extracted_columns,
+            "filters_applied": filters_applied if filters_applied else None,
+            "available_filters": available_filters,
+            "suggested_columns": [],
+            "document_count": doc_with_extraction,
+        }
+
+    # =========================================================================
+    # Private helpers for column discovery
+    # =========================================================================
+
+    @staticmethod
+    def _resolve_variant_workflow(workflow_code_str, workflow_engine):
+        """
+        Resolve a variant workflow code to its parent workflow + sub_type.
+
+        E.g., VEHICULO_RENOVACION_CUVE → (VehiculoWorkflow, "RENOVACION_CUVE")
+              RESIDENCIA_RENOVACION → (ResidenciaWorkflow, "RENOVACION")
+              PASAPORTE_ROBO → (PasaporteWorkflow, "ROBO")
+        """
+        from app.modules.service_requests.models.enums import WorkflowCode as WFCode
+
+        try:
+            target_code = WFCode(workflow_code_str)
+        except ValueError:
+            return None, None
+
+        for _wf_code, wf in workflow_engine._workflows.items():
+            if hasattr(wf, 'get_workflow_code_for_subtype') and hasattr(wf, 'allowed_sub_types'):
+                for sub in wf.allowed_sub_types:
+                    try:
+                        if wf.get_workflow_code_for_subtype(sub) == target_code:
+                            return wf, sub
+                    except Exception:
+                        continue
+
+        return None, None
+
+    @staticmethod
+    def _collect_v2_documents(workflow, workflow_code, resolved_sub_type, add_docs_fn):
+        """
+        Collect documents from a v2 PredefinedWorkflow.
+
+        For parent codes: iterates all solicitud_types × motivos × is_minor contexts.
+        For variant codes: uses specific (solicitud_type, motivo) from SUBTYPE_TO_SOLICITUD_MOTIVO.
+        Always calls with both is_minor=True and is_minor=False contexts to capture
+        all possible documents (adult-only AND minor-only).
+        """
+        from app.modules.service_requests.workflows.workflow_interface import (
+            PredefinedWorkflow, WorkflowContext, RenovacionMotivo,
+        )
+        from app.modules.service_requests.models.enums import (
+            SolicitudType, WorkflowCode as WFCode,
+        )
+        from uuid import uuid4
+
+        try:
+            wf_code_enum = WFCode(workflow_code)
+        except ValueError:
+            wf_code_enum = workflow.workflow_code
+
+        # Determine which (solicitud_type, motivo) combinations to call with
+        sol_motivo_combos = []
+        if resolved_sub_type and hasattr(workflow, 'SUBTYPE_TO_SOLICITUD_MOTIVO'):
+            specific = workflow.SUBTYPE_TO_SOLICITUD_MOTIVO.get(resolved_sub_type)
+            if specific:
+                sol_motivo_combos.append(specific)
+        if not sol_motivo_combos:
+            # Parent code or unknown sub_type: iterate all combinations
+            for sol_type in workflow.allowed_solicitud_types:
+                if sol_type == SolicitudType.RENOVACION:
+                    for motivo_val in RenovacionMotivo:
+                        sol_motivo_combos.append((sol_type, motivo_val))
+                else:
+                    sol_motivo_combos.append((sol_type, None))
+
+        # Call with both is_minor=True and is_minor=False contexts to capture all docs
+        for sol_type, motivo in sol_motivo_combos:
+            for minor_flag in [False, True]:
+                try:
+                    ctx = WorkflowContext(
+                        service_request_id=uuid4(),
+                        user_id=uuid4(),
+                        workflow_code=wf_code_enum,
+                        solicitud_type=sol_type,
+                        form_data={"is_minor": minor_flag},
+                    )
+                    docs = workflow.get_document_requirements(
+                        solicitud_type=sol_type,
+                        motivo=motivo,
+                        context=ctx,
+                    )
+                    add_docs_fn(docs)
+                except Exception as e:
+                    logger.debug(
+                        f"Error getting docs for {workflow_code}/"
+                        f"{sol_type}/{motivo}/minor={minor_flag}: {e}"
+                    )
+
+    @staticmethod
+    def _collect_v1_documents(workflow, workflow_code, resolved_sub_type, add_docs_fn):
+        """
+        Collect documents from a v1 BaseWorkflow.
+
+        Resolves the correct sub_type for the workflow code and calls
+        get_document_requirements with it (not empty string).
+        """
+        from app.modules.service_requests.models.enums import WorkflowCode as WFCode
+
+        # Determine the correct sub_type
+        sub_type = resolved_sub_type
+        if sub_type is None:
+            # Parent code: find the matching sub_type via reverse lookup
+            try:
+                target_code = WFCode(workflow_code)
+                for sub in workflow.allowed_sub_types:
+                    try:
+                        if workflow.get_workflow_code_for_subtype(sub) == target_code:
+                            sub_type = sub
+                            break
+                    except Exception:
+                        continue
+            except ValueError:
+                pass
+            # Last resort: use first allowed sub_type
+            if sub_type is None and workflow.allowed_sub_types:
+                sub_type = workflow.allowed_sub_types[0]
+
+        try:
+            docs = workflow.get_document_requirements(sub_type=sub_type or "")
+            add_docs_fn(docs)
+        except Exception as e:
+            logger.debug(f"Error getting docs for {workflow_code}/{sub_type}: {e}")
+
+    async def _get_columns_from_db(
+        self,
+        workflow_code: str,
+        is_minor: Optional[bool],
+        schema_loader,
+    ) -> Dict[str, Any]:
+        """
+        DB fallback: discover columns from workflow_document_requirements table.
+        Used for workflows without a registered Python class (e.g., generic workflows).
+        """
+        from app.modules.service_requests.models.enums import DocumentConditionType
+
+        rows = await self.db.fetch("""
+            SELECT document_code, document_name_es, condition_type,
+                   condition_value, extraction_schema_key
+            FROM workflow_document_requirements
+            WHERE workflow_code = $1
+              AND is_active = true
+            ORDER BY display_order, document_code
+        """, workflow_code)
+
+        if not rows:
+            logger.info(f"No DB document requirements for {workflow_code}")
+            return {
+                "total_requests": 0,
+                "extracted_columns": [],
+                "filters_applied": {"is_minor": is_minor} if is_minor is not None else None,
+                "available_filters": {},
+                "suggested_columns": [],
+                "document_count": 0,
+            }
+
+        # Determine available_filters
+        all_condition_types = {r['condition_type'] for r in rows}
+        available_filters: Dict[str, Any] = {}
+        if 'is_minor' in all_condition_types or 'is_adult' in all_condition_types:
+            available_filters["is_minor"] = [False, True]
+
+        # Filter by is_minor
+        filtered_rows = []
+        for row in rows:
+            ct = row['condition_type']
+            if is_minor is True:
+                if ct not in ('is_adult',):
+                    filtered_rows.append(row)
+            elif is_minor is False:
+                if ct not in ('is_minor',):
+                    filtered_rows.append(row)
+            else:
+                filtered_rows.append(row)
+
+        # Load extraction fields
+        extracted_columns = []
+        doc_with_extraction = 0
+        for row in filtered_rows:
+            schema_key = row['extraction_schema_key']
+            if not schema_key:
+                continue
+
+            doc_with_extraction += 1
+            doc_code = row['document_code']
+            doc_name = row['document_name_es'] or doc_code
+
+            try:
+                fields = schema_loader.get_extraction_fields(
+                    schema_key=schema_key,
+                    extraction_schema_key=schema_key,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to load schema for {schema_key}: {e}")
+                continue
+
+            for field_name, field_config in fields.items():
+                col_id = f"{doc_code}.{field_name}"
+                extracted_columns.append({
+                    "id": col_id,
+                    "label_key": f"columns.{col_id}",
+                    "label": field_config.get("field_label", field_name),
+                    "source": "extracted",
+                    "data_type": field_config.get("type", "string"),
+                    "sample_count": 0,
+                    "document_code": doc_code,
+                    "document_name_es": doc_name,
+                })
+
         filters_applied = {}
         if is_minor is not None:
             filters_applied["is_minor"] = is_minor
