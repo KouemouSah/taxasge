@@ -404,6 +404,14 @@ class DisplayConfigRepository:
         workflow = workflow_engine.get_workflow_by_string(workflow_code)
         resolved_sub_type = None
 
+        if workflow is not None:
+            # Direct match — but we still need to resolve the sub_type
+            # so _collect_v2_documents uses only the correct combo.
+            # E.g., PASAPORTE_NUEVO → sub_type="NUEVO" → (EXPEDICION, None) only
+            _, resolved_sub_type = self._resolve_variant_workflow(
+                workflow_code, workflow_engine
+            )
+
         if workflow is None:
             # Try resolving variant code (e.g., VEHICULO_RENOVACION_CUVE → VehiculoWorkflow)
             workflow, resolved_sub_type = self._resolve_variant_workflow(
@@ -467,10 +475,18 @@ class DisplayConfigRepository:
                 filtered_docs.append(doc)
 
         # 5. For each document with a schema_key, load extraction fields
+        #    Also check config.accepted_schemas for multi-schema documents
+        #    (e.g., documento_representante accepts DIP, NIE, or PASAPORTE)
         extracted_columns = []
         doc_with_extraction = 0
         for doc in filtered_docs:
             schema_key = doc.schema_key
+            # Fallback: check config.accepted_schemas (first value)
+            if not schema_key and hasattr(doc, 'config') and doc.config:
+                accepted = doc.config.get('accepted_schemas')
+                if isinstance(accepted, dict) and accepted:
+                    # Use first accepted schema (most common document type)
+                    schema_key = next(iter(accepted.values()))
             if not schema_key:
                 continue
 
