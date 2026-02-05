@@ -1974,7 +1974,9 @@ function FormReviewStepEditable({
   const handleNextWithValidation = useCallback(() => {
     if (FEATURE_DYNAMIC_FORM_RENDERER && dynamicFormConfig) {
       const loc = locale as 'es' | 'fr' | 'en'
-      const errors = validateFormConfig(dynamicFormConfig, editedData, loc)
+      // Merge extracted data with user edits for validation
+      const mergedValues = { ...formData?.formData, ...editedData }
+      const errors = validateFormConfig(dynamicFormConfig, mergedValues, loc)
 
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors)
@@ -1991,7 +1993,7 @@ function FormReviewStepEditable({
       setValidationErrors({})
     }
     onNext()
-  }, [dynamicFormConfig, editedData, locale, onNext])
+  }, [dynamicFormConfig, editedData, formData, locale, onNext])
 
   // Clear validation errors when field is edited
   const handleFieldEditWithClear = useCallback((key: string, value: unknown) => {
@@ -2103,7 +2105,7 @@ function FormReviewStepEditable({
           {/* Dynamic Form */}
           <DynamicFormRenderer
             config={dynamicFormConfig}
-            values={editedData}
+            values={{ ...formData?.formData, ...editedData }}
             onChange={handleFieldEditWithClear}
             locale={locale as 'es' | 'fr' | 'en'}
             disabled={isSaving}
