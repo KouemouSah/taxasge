@@ -16,3 +16,7 @@ export type { IdentityMismatch, IdentityMismatchBlockerProps } from './IdentityM
 // Dynamic Form Components
 export { DynamicField } from './DynamicField'
 export { DynamicFormRenderer } from './DynamicFormRenderer'
+
+// Cache-First Wizard Components
+export { SessionTimer } from './SessionTimer'
+export type { SessionTimerProps } from './SessionTimer'

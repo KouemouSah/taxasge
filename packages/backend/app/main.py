@@ -965,19 +965,22 @@ try:
     from app.modules.service_requests.api import router as service_requests_router
     from app.modules.service_requests.api import agent_router as service_requests_agent_router
     from app.modules.service_requests.api import admin_router as service_requests_admin_router
+    from app.modules.service_requests.api import wizard_session_router as service_requests_wizard_router
     from app.modules.service_requests.api.appointment_routes import router as service_requests_appointment_router
     from app.modules.service_requests.api.cron_routes import router as service_requests_cron_router
     app.include_router(service_requests_router, prefix="/api/v1", tags=["service-requests"])
     app.include_router(service_requests_agent_router, prefix="/api/v1", tags=["service-requests-agent"])
     app.include_router(service_requests_admin_router, prefix="/api/v1", tags=["service-requests-admin"])
+    app.include_router(service_requests_wizard_router, prefix="/api/v1", tags=["wizard-sessions"])
     app.include_router(service_requests_appointment_router, prefix="/api/v1", tags=["service-requests-appointments"])
     app.include_router(service_requests_cron_router, prefix="/api/v1/internal", tags=["cron-jobs"])
     routers_loaded.append("service_requests")
     routers_loaded.append("service_requests_agent")
     routers_loaded.append("service_requests_admin")
+    routers_loaded.append("wizard_sessions")
     routers_loaded.append("service_requests_appointments")
     routers_loaded.append("service_requests_cron")
-    logger.info("✅ Service Requests router loaded (citizen, agent, admin, appointments, cron)")
+    logger.info("✅ Service Requests router loaded (citizen, agent, admin, wizard, appointments, cron)")
 except Exception as e:
     logger.error(f"❌ Service Requests router failed: {e}")
     logger.error(traceback.format_exc())

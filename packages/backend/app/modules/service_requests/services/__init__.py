@@ -14,6 +14,17 @@ from .summary_pdf_service import summary_pdf_service, SummaryPDFService
 from .treasury_export_service import treasury_export_service, TreasuryExportService
 from .treasury_anomaly_service import treasury_anomaly_service, TreasuryAnomalyService
 
+# Wizard Session (Cache-First Architecture)
+from .wizard_session_service import (
+    wizard_session_service,
+    WizardSessionService,
+    WizardSessionError,
+    WizardSessionExpiredError,
+    WizardSessionNotFoundError,
+    WizardDocumentValidationError,
+    WizardPersistError
+)
+
 # Validations (re-export for convenience)
 from ..validations import cross_document_validator, CrossDocumentValidator
 
@@ -41,4 +52,12 @@ __all__ = [
     "TreasuryExportService",
     "treasury_anomaly_service",
     "TreasuryAnomalyService",
+    # Wizard Session (Cache-First)
+    "wizard_session_service",
+    "WizardSessionService",
+    "WizardSessionError",
+    "WizardSessionExpiredError",
+    "WizardSessionNotFoundError",
+    "WizardDocumentValidationError",
+    "WizardPersistError",
 ]

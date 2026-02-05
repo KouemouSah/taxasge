@@ -33,3 +33,7 @@ export {
   usePrefetchFormConfig,
   formConfigQueryKeys,
 } from './useFormConfig'
+
+// Cache-First Wizard Session hook
+export { useWizardSession } from './useWizardSession'
+export type { UseWizardSessionReturn } from './useWizardSession'

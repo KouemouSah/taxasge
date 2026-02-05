@@ -36,6 +36,18 @@ from .form_config import (
     FormSectionResponse,
     FormConfigResponse
 )
+from .wizard_session import (
+    WizardSessionStatus,
+    SessionDocumentData,
+    WizardSessionData,
+    WizardSessionCreate,
+    WizardSessionResponse,
+    WizardDocumentPreviewResponse,
+    WizardDocumentConfirmRequest,
+    WizardFormDataSaveRequest,
+    WizardPreparePaymentResponse,
+    WizardPersistResult
+)
 
 __all__ = [
     # DB-mapped enums
@@ -70,5 +82,16 @@ __all__ = [
     # Pydantic models - Form Config (Dynamic Wizard)
     "FormFieldResponse",
     "FormSectionResponse",
-    "FormConfigResponse"
+    "FormConfigResponse",
+    # Pydantic models - Wizard Session (Cache-First)
+    "WizardSessionStatus",
+    "SessionDocumentData",
+    "WizardSessionData",
+    "WizardSessionCreate",
+    "WizardSessionResponse",
+    "WizardDocumentPreviewResponse",
+    "WizardDocumentConfirmRequest",
+    "WizardFormDataSaveRequest",
+    "WizardPreparePaymentResponse",
+    "WizardPersistResult"
 ]

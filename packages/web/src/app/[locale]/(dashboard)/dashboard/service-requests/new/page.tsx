@@ -47,8 +47,9 @@ import {
   CheckCircle,
   BadgeCheck,
 } from 'lucide-react'
-import { useServiceRequests } from '@/modules/service-requests'
+import { useServiceRequests, wizardSessionApi } from '@/modules/service-requests'
 import type { WorkflowConfig } from '@/modules/service-requests'
+import { FEATURE_CACHE_FIRST_WIZARD } from '@/core/config/features'
 
 // Category icons, labels and descriptions
 const CATEGORY_CONFIG: Record<
@@ -287,6 +288,19 @@ export default function NewServiceRequestPage() {
   const startNewRequest = async (workflowCode: string, subType: string) => {
     setIsStarting(true)
     try {
+      // Cache-first wizard: create session in Redis, no DB writes
+      if (FEATURE_CACHE_FIRST_WIZARD) {
+        const session = await wizardSessionApi.createSession({
+          workflow_code: workflowCode,
+          solicitud_type: subType,
+        })
+        if (session) {
+          router.push(`/${locale}/dashboard/service-requests/wizard/session/${session.sessionId}`)
+        }
+        return
+      }
+
+      // Legacy flow: create DB record, then redirect
       const request = await startWorkflow({
         workflowCode,
         subType,
@@ -294,7 +308,6 @@ export default function NewServiceRequestPage() {
 
       if (request) {
         // Workflows with dedicated wizard go directly to wizard page
-        // Check prefix to match all variants (PASAPORTE_NUEVO, PASAPORTE_RENOVACION, etc.)
         const workflowPrefixesWithWizard = ['PASAPORTE']
         const hasWizard = workflowPrefixesWithWizard.some(prefix => workflowCode.startsWith(prefix))
 

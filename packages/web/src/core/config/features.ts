@@ -48,6 +48,19 @@ export const FEATURE_DYNAMIC_WIDGETS =
 export const FEATURE_DYNAMIC_FORM_RENDERER =
   process.env.NEXT_PUBLIC_FEATURE_DYNAMIC_FORM !== 'false';
 
+/**
+ * Enable cache-first wizard (persist-only-on-payment architecture).
+ * When enabled: All wizard data stays in Redis cache until payment is initiated.
+ *               No DB/Firebase writes until user confirms payment.
+ * When disabled: Current behavior - DB record created at wizard start.
+ *
+ * Default: true (enabled) - set NEXT_PUBLIC_FEATURE_CACHE_FIRST_WIZARD=false to disable
+ * @since v2.0 - Cache-first wizard migration
+ * @see .claude/plans/CACHE_FIRST_WIZARD_MIGRATION_PLAN.md
+ */
+export const FEATURE_CACHE_FIRST_WIZARD =
+  process.env.NEXT_PUBLIC_FEATURE_CACHE_FIRST_WIZARD !== 'false';
+
 // =============================================================================
 // OTHER FEATURES
 // =============================================================================
@@ -69,6 +82,7 @@ export const FEATURES = {
   DYNAMIC_WIDGETS: FEATURE_DYNAMIC_WIDGETS,
   DYNAMIC_FORM_RENDERER: FEATURE_DYNAMIC_FORM_RENDERER,
   REDIS_CACHE: FEATURE_REDIS_CACHE,
+  CACHE_FIRST_WIZARD: FEATURE_CACHE_FIRST_WIZARD,
 } as const;
 
 // =============================================================================
