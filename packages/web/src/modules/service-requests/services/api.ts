@@ -499,8 +499,16 @@ class ServiceRequestsApiClient {
           if (typeof errorData.detail === 'string') {
             errorMessage = errorData.detail
           } else if (typeof errorData.detail === 'object') {
-            // FastAPI can return detail as object: {"message": "...", "code": "..."}
-            errorMessage = errorData.detail.message || errorData.detail.msg || JSON.stringify(errorData.detail)
+            // FastAPI can return detail as object with localized messages
+            // Priority: message_es/message_fr/message_en > message > msg > JSON
+            const locale = typeof window !== 'undefined' ? (document.documentElement.lang || 'es') : 'es'
+            errorMessage =
+              (locale === 'es' ? errorData.detail.message_es :
+               locale === 'fr' ? errorData.detail.message_fr :
+               errorData.detail.message_en) ||
+              errorData.detail.message ||
+              errorData.detail.msg ||
+              JSON.stringify(errorData.detail)
           }
         }
         console.error(`[ServiceRequests] Error: ${errorMessage}`)
@@ -544,7 +552,15 @@ class ServiceRequestsApiClient {
         if (typeof errorData.detail === 'string') {
           errorMessage = errorData.detail
         } else if (typeof errorData.detail === 'object') {
-          errorMessage = errorData.detail.message || errorData.detail.msg || JSON.stringify(errorData.detail)
+          // FastAPI can return detail as object with localized messages
+          const locale = typeof window !== 'undefined' ? (document.documentElement.lang || 'es') : 'es'
+          errorMessage =
+            (locale === 'es' ? errorData.detail.message_es :
+             locale === 'fr' ? errorData.detail.message_fr :
+             errorData.detail.message_en) ||
+            errorData.detail.message ||
+            errorData.detail.msg ||
+            JSON.stringify(errorData.detail)
         }
       }
       throw new Error(errorMessage)
