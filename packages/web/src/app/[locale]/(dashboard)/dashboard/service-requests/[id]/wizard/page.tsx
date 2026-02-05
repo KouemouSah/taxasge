@@ -1205,15 +1205,19 @@ export default function PassportWizardPage() {
               // Minors go through form_review_representantes BEFORE this step
               if (currentStep.id === 'form_review_2') {
                 console.log('[Wizard] Form review complete, preparing for payment...')
-                const prepared = await prepareForPayment()
-                if (!prepared) {
-                  console.error('[Wizard] Failed to prepare for payment')
+                const result = await prepareForPayment()
+                if (!result.success) {
+                  console.error('[Wizard] Failed to prepare for payment:', result.errorMessage)
+                  // Use the actual error message from the backend (contains list of missing docs)
+                  // Fallback to generic message only if no specific error
                   setFormSaveError(
-                    locale === 'es'
-                      ? 'Error al preparar el pago. Verifique que todos los documentos estén validados.'
-                      : locale === 'fr'
-                        ? 'Erreur lors de la préparation du paiement. Vérifiez que tous les documents sont validés.'
-                        : 'Error preparing payment. Verify all documents are validated.'
+                    result.errorMessage || (
+                      locale === 'es'
+                        ? 'Error al preparar el pago. Verifique que todos los documentos estén validados.'
+                        : locale === 'fr'
+                          ? 'Erreur lors de la préparation du paiement. Vérifiez que tous les documents sont validés.'
+                          : 'Error preparing payment. Verify all documents are validated.'
+                    )
                   )
                   return
                 }

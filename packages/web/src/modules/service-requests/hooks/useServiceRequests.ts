@@ -86,7 +86,7 @@ export interface UseServiceRequestsReturn {
 
   // Submission
   submitRequest: () => Promise<boolean>
-  prepareForPayment: () => Promise<boolean>
+  prepareForPayment: () => Promise<{ success: boolean; errorMessage?: string }>
   getPaymentMethods: () => Promise<PaymentMethodsResponse | null>
   initiatePayment: (method: string, phone?: string) => Promise<PaymentInitiateResult | null>
   checkPaymentStatus: () => Promise<{ status: string; paid: boolean } | null>
@@ -599,18 +599,19 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     }
   }, [currentRequest, handleError])
 
-  const prepareForPayment = useCallback(async (): Promise<boolean> => {
-    if (!currentRequest) return false
+  const prepareForPayment = useCallback(async (): Promise<{ success: boolean; errorMessage?: string }> => {
+    if (!currentRequest) return { success: false, errorMessage: 'No request loaded' }
 
     try {
       setIsSaving(true)
       setError(null)
       const request = await serviceRequestsApi.prepareForPayment(currentRequest.id)
       setCurrentRequest(request)
-      return true
+      return { success: true }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred'
       handleError(err)
-      return false
+      return { success: false, errorMessage }
     } finally {
       setIsSaving(false)
     }
