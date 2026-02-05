@@ -2254,6 +2254,32 @@ class GeminiDocumentProcessor:
 
             fields_text = "\n".join(fields_description)
 
+            # Build visual zones guidance if present
+            visual_zones = hints.get("visual_zones", {})
+            visual_zones_text = ""
+            if visual_zones:
+                vz_lines = [
+                    "\n═══════════════════════════════════════════════════════════════════════════════",
+                    "📍 ZONAS VISUALES DEL DOCUMENTO - DÓNDE BUSCAR CADA CAMPO:",
+                    "═══════════════════════════════════════════════════════════════════════════════"
+                ]
+                for face, zones in visual_zones.items():
+                    face_label = "CARA FRONTAL (RECTO)" if face == "recto" else "CARA TRASERA (VERSO)"
+                    vz_lines.append(f"\n{face_label}:")
+                    for zone in zones:
+                        vz_lines.append(f"  • {zone}")
+                vz_lines.append("")
+
+                # Add OCR challenges if present
+                ocr_challenges = hints.get("ocr_challenges", [])
+                if ocr_challenges:
+                    vz_lines.append("⚠️ DESAFÍOS COMUNES DE LECTURA:")
+                    for challenge in ocr_challenges:
+                        vz_lines.append(f"  - {challenge}")
+                    vz_lines.append("")
+
+                visual_zones_text = "\n".join(vz_lines)
+
             # Build critical field separation warnings if present
             critical_sep = hints.get("critical_field_separation", {})
             if critical_sep:
@@ -2284,6 +2310,8 @@ class GeminiDocumentProcessor:
             doc_description = document_code
             language = "es"
             fields_text = "- Extrae todos los campos visibles del documento"
+            visual_zones_text = ""
+            critical_separation_text = ""
 
         prompt = f"""Eres un experto en análisis de documentos oficiales. Analiza este documento para:
 1. EXTRACCIÓN de datos
@@ -2297,6 +2325,7 @@ IDIOMA DEL DOCUMENTO: {language}
 
 CAMPOS A EXTRAER:
 {fields_text}
+{visual_zones_text}
 {critical_separation_text}
 ═══════════════════════════════════════════════════════════════════════════════
 ANÁLISIS DE RIESGO Y FRAUDE - DETECTAR:
