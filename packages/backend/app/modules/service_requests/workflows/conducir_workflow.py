@@ -25,9 +25,10 @@ License Classes:
 Note: Class AM (minors 16+) is deferred to Phase 2.
 Note: COPIA_ADICIONAL excluded - managed by Comisaría Policía, not DGT.
 
-@version 2.0
+@version 2.1
 @date 2026-02-05
 @migration Option C - Dynamic Form Review Architecture
+@changelog v2.1: Corrections post-analyse critique (6 points alignement avec Pasaporte)
 """
 from typing import List, Dict, Any, Optional
 from enum import Enum
@@ -51,6 +52,9 @@ from ..models.enums import (
     SolicitudType,
     DocumentConditionType
 )
+
+# Import PaymentMethod from payments module (for API parity with PasaporteWorkflow)
+from ...payments.models.payment import PaymentMethod
 
 
 class LicenseClass(str, Enum):
@@ -95,6 +99,13 @@ class ConducirWorkflow(PredefinedWorkflow):
     - Cross-validation for foreign license name matching
     - Medical certificate only for NUEVO and EXTENSION
     - NIE holders can request NUEVO (first license in GQ)
+
+    Condition Key Convention:
+    - This workflow uses "sub_type" as the primary condition key
+      (e.g., {"sub_type": "CANJE"}, {"sub_type": "DUPLICADO"})
+    - The ConditionEvaluator is fully dynamic and supports any key name
+    - Frontend must pass "sub_type" in context for condition evaluation
+    - This differs from PasaporteWorkflow which uses "solicitud_type"
     """
 
     # Allowed DuplicadoMotivo values
@@ -104,14 +115,28 @@ class ConducirWorkflow(PredefinedWorkflow):
         DuplicadoMotivo.DETERIORO,
     ]
 
-    # Legacy sub_type mapping for backwards compatibility
-    SUBTYPE_MAPPING = {
-        "NUEVO": SolicitudType.EXPEDICION,
-        "CANJE": "CANJE",  # Special case - conversion
-        "RENOVACION": SolicitudType.RENOVACION,
-        "DUPLICADO": SolicitudType.DUPLICADO,
-        "EXTENSION": "EXTENSION",  # Special case - class extension
+    # Sub_type to (SolicitudType, DuplicadoMotivo) mapping
+    # ALIGNED WITH PasaporteWorkflow.SUBTYPE_TO_SOLICITUD_MOTIVO pattern
+    SUBTYPE_TO_SOLICITUD_MOTIVO = {
+        "NUEVO": (SolicitudType.EXPEDICION, None),
+        "CANJE": (SolicitudType.EXPEDICION, None),  # Treat as new GQ license
+        "RENOVACION": (SolicitudType.RENOVACION, None),
+        "DUPLICADO": (SolicitudType.DUPLICADO, None),  # Motivo set separately
+        "EXTENSION": (SolicitudType.RENOVACION, None),  # Extension of existing
     }
+
+    # Reverse mapping: (SolicitudType, DuplicadoMotivo) -> sub_type
+    SOLICITUD_MOTIVO_TO_SUBTYPE = {
+        (SolicitudType.EXPEDICION, None): "NUEVO",
+        (SolicitudType.RENOVACION, None): "RENOVACION",
+        (SolicitudType.DUPLICADO, None): "DUPLICADO",
+        (SolicitudType.DUPLICADO, DuplicadoMotivo.PERDIDA): "DUPLICADO",
+        (SolicitudType.DUPLICADO, DuplicadoMotivo.ROBO): "DUPLICADO",
+        (SolicitudType.DUPLICADO, DuplicadoMotivo.DETERIORO): "DUPLICADO",
+    }
+
+    # Legacy alias for backwards compatibility
+    SUBTYPE_MAPPING = SUBTYPE_TO_SOLICITUD_MOTIVO
 
     # Fixed tariffs (XAF)
     TARIFFS = {
@@ -137,7 +162,7 @@ class ConducirWorkflow(PredefinedWorkflow):
     @property
     def allowed_sub_types(self) -> List[str]:
         """Legacy: list of sub_type strings."""
-        return list(self.SUBTYPE_MAPPING.keys())
+        return list(self.SUBTYPE_TO_SOLICITUD_MOTIVO.keys())
 
     # === Configuration (PredefinedWorkflow required properties) ===
 
@@ -848,6 +873,33 @@ class ConducirWorkflow(PredefinedWorkflow):
 
         return requirements
 
+    def get_document_requirements_legacy(
+        self,
+        sub_type: str,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
+        """
+        Legacy method for backwards compatibility.
+        Converts sub_type string to SolicitudType + DuplicadoMotivo.
+
+        ALIGNED WITH PasaporteWorkflow.get_document_requirements_legacy pattern.
+        """
+        solicitud_motivo = self.SUBTYPE_TO_SOLICITUD_MOTIVO.get(sub_type)
+        if solicitud_motivo:
+            solicitud_type, _ = solicitud_motivo
+            # For DUPLICADO, get motivo from context
+            motivo = None
+            if sub_type == "DUPLICADO" and context and context.form_data:
+                motivo_str = context.form_data.get("motivo")
+                if motivo_str:
+                    try:
+                        motivo = RenovacionMotivo(motivo_str)
+                    except ValueError:
+                        pass
+            return self.get_document_requirements(solicitud_type, motivo, context)
+        # Default to EXPEDICION if unknown sub_type
+        return self.get_document_requirements(SolicitudType.EXPEDICION, None, context)
+
     # === Cross-Document Validation Rules ===
 
     def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
@@ -1110,15 +1162,33 @@ class ConducirWorkflow(PredefinedWorkflow):
         except (ValueError, TypeError):
             return [{"error": "Invalid birth date", "classes": requested_classes}]
 
-        # Check each class
+        # Check each class and build suggestions
+        eligible_classes = []
+        for class_id, min_class_age in self.MIN_AGE.items():
+            if age >= min_class_age:
+                eligible_classes.append(class_id)
+
         for cls in requested_classes:
             min_age = self.MIN_AGE.get(cls, 18)
             if age < min_age:
+                # Build suggestion message
+                years_to_wait = min_age - age
+                suggestion = ""
+                if eligible_classes:
+                    available = [c for c in eligible_classes if c not in requested_classes]
+                    if available:
+                        suggestion = f" Puede solicitar las clases: {', '.join(sorted(available))}."
+                    else:
+                        suggestion = f" Las clases {', '.join(sorted(eligible_classes))} están disponibles para su edad."
+
                 errors.append({
                     "class": cls,
                     "min_age": min_age,
                     "current_age": age,
-                    "error_es": f"Debe tener al menos {min_age} años para la clase {cls}."
+                    "years_to_wait": years_to_wait,
+                    "eligible_classes": eligible_classes,
+                    "error_es": f"Debe tener al menos {min_age} años para la clase {cls}. Usted tiene {age} años.{suggestion}",
+                    "suggestion_es": f"Espere {years_to_wait} año(s) o seleccione otra clase." if years_to_wait > 0 else None
                 })
 
         return errors
@@ -1140,6 +1210,101 @@ class ConducirWorkflow(PredefinedWorkflow):
             return len(nuevas_clases) * self.TARIFFS["EXTENSION"]
 
         return base
+
+    # === Step Validation Override ===
+
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """
+        Validate a specific step with age eligibility checks.
+
+        Overrides PredefinedWorkflow.validate_step to add:
+        - Age validation for requested license classes
+        - Blocking errors if applicant is too young
+
+        Called by workflow_engine._execute_validation_step().
+        """
+        # Call parent validation first
+        results = super().validate_step(step_number, context)
+
+        # Add age validation after form_review_1 (when we have birth date)
+        # or on select_classes step
+        step = self.get_step(step_number)
+        if not step:
+            return results
+
+        # Validate age eligibility when:
+        # - After form_review_1 (step 5) - we have extracted birth date
+        # - On form_review_2 (step 6) - before payment
+        # - On select_classes (step 2) if birth date already known
+        if step.step_id in ["form_review_1", "form_review_2", "select_classes"]:
+            age_errors = self._validate_age_eligibility(context)
+            results.extend(age_errors)
+
+        return results
+
+    def _validate_age_eligibility(
+        self,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """
+        Validate age eligibility for requested license classes.
+
+        Extracts birth date from form_data (populated by document extraction)
+        and validates against MIN_AGE requirements for each requested class.
+
+        Returns list of ValidationResult with blocking errors if age < minimum.
+        """
+        results = []
+
+        if not context.form_data:
+            return results
+
+        # Get birth date from extracted data
+        fecha_nacimiento = context.form_data.get("fecha_nacimiento")
+        if not fecha_nacimiento:
+            # No birth date yet - skip validation (will be validated later)
+            return results
+
+        # Get requested classes
+        clases_solicitadas = context.form_data.get("clases_solicitadas", [])
+        if not clases_solicitadas:
+            # Also check in step data for select_classes
+            clases_solicitadas = context.form_data.get("selected_classes", [])
+
+        if not clases_solicitadas:
+            return results
+
+        # Convert to list if string
+        if isinstance(clases_solicitadas, str):
+            clases_solicitadas = [c.strip() for c in clases_solicitadas.split(",")]
+
+        # Call existing validation method
+        age_errors = self.validate_class_eligibility(clases_solicitadas, fecha_nacimiento)
+
+        # Convert to ValidationResult format
+        for error in age_errors:
+            if "error" in error and error["error"] == "Invalid birth date":
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id="invalid_birth_date",
+                    severity="error",
+                    message_es="La fecha de nacimiento no es válida.",
+                    field_name="fecha_nacimiento"
+                ))
+            else:
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id=f"edad_minima_clase_{error.get('class', 'unknown')}",
+                    severity="error",
+                    message_es=error.get("error_es", f"No cumple con la edad mínima requerida."),
+                    field_name="clases_solicitadas"
+                ))
+
+        return results
 
 
 # =============================================================================

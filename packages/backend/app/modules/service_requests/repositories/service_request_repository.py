@@ -3,6 +3,7 @@ Repository for service_requests table.
 Data access layer following 3-tier architecture.
 """
 import asyncpg
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID
 import json
@@ -362,6 +363,45 @@ class ServiceRequestRepository:
     # =========================================================================
     # HISTORY METHODS
     # =========================================================================
+
+    async def log_validation_failure(
+        self,
+        db: asyncpg.Connection,
+        request_id: UUID,
+        validation_type: str,
+        errors: List[Dict[str, Any]],
+        step_id: Optional[str] = None,
+        user_id: Optional[UUID] = None
+    ) -> None:
+        """
+        Log a validation failure to the audit trail.
+
+        Used for tracking:
+        - Age eligibility failures
+        - Document validation failures
+        - Cross-document validation failures
+
+        Args:
+            db: Database connection
+            request_id: Service request UUID
+            validation_type: Type of validation (age_eligibility, document, cross_document)
+            errors: List of error details
+            step_id: Workflow step where validation failed
+            user_id: User who triggered the validation
+        """
+        await db.execute(
+            """INSERT INTO service_request_history
+               (service_request_id, action, performed_by, details)
+               VALUES ($1, 'validation_failed', $2, $3)""",
+            request_id,
+            user_id,
+            json.dumps({
+                "validation_type": validation_type,
+                "step_id": step_id,
+                "errors": errors,
+                "timestamp": datetime.now().isoformat()
+            })
+        )
 
     async def get_request_history(
         self,

@@ -48,6 +48,10 @@ from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
 from .tariff_service import tariff_service
 from .tariff_calculator import tariff_calculator
+from ..repositories.service_request_repository import ServiceRequestRepository
+
+# Repository instance for audit logging
+_service_request_repo = ServiceRequestRepository()
 from app.core.events import EventBus, EventType
 
 logger = logging.getLogger(__name__)
@@ -358,7 +362,7 @@ class WorkflowEngine:
                 result.update(await self._execute_document_step(db, workflow, context, step, step_data))
 
             elif step.step_type == StepType.FORM_REVIEW:
-                result.update(await self._execute_form_review_step(workflow, context, step, step_data))
+                result.update(await self._execute_form_review_step(db, workflow, context, step, step_data))
 
             elif step.step_type == StepType.VALIDATION:
                 result.update(await self._execute_validation_step(workflow, context, step))
@@ -371,7 +375,7 @@ class WorkflowEngine:
 
             else:
                 # Custom step - delegate to workflow
-                result.update(await self._execute_custom_step(workflow, context, step, step_data))
+                result.update(await self._execute_custom_step(db, workflow, context, step, step_data))
 
             # Update context step if successful
             if result.get("success", False):
@@ -532,6 +536,7 @@ class WorkflowEngine:
 
     async def _execute_form_review_step(
         self,
+        db: asyncpg.Connection,
         workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
@@ -560,15 +565,134 @@ class WorkflowEngine:
                 logger.warning(f"Error applying form mapping: {e}, returning raw data")
                 final_form_data = context.form_data
 
+            # === VALIDATION IMMÉDIATE après auto-fill ===
+            # Valide l'éligibilité (âge, etc.) AVANT que l'utilisateur puisse continuer
+            # Update context with final_form_data for validation
+            context.form_data = final_form_data
+
+            validation_results = workflow.validate_step(step.step_number, context)
+            errors = [r for r in validation_results if r.is_error]
+            warnings = [r for r in validation_results if r.is_warning]
+
+            if errors:
+                # Retourne les erreurs bloquantes - l'utilisateur ne peut pas continuer
+                logger.warning(
+                    f"Validation errors on form_review step {step.step_number}: "
+                    f"{[e.rule_id for e in errors]}"
+                )
+
+                # === AUDIT TRAIL: Log validation failure ===
+                try:
+                    await _service_request_repo.log_validation_failure(
+                        db=db,
+                        request_id=context.request_id,
+                        validation_type="form_review_eligibility",
+                        errors=[
+                            {
+                                "rule_id": e.rule_id,
+                                "message_es": e.message_es,
+                                "field_name": e.field_name
+                            }
+                            for e in errors
+                        ],
+                        step_id=step.step_id,
+                        user_id=context.user_id if hasattr(context, 'user_id') else None
+                    )
+                except Exception as audit_error:
+                    logger.error(f"Failed to log validation failure to audit trail: {audit_error}")
+
+                return {
+                    "form_data": final_form_data,
+                    "extracted_data": context.extracted_data,
+                    "requires_review": True,
+                    "validation_blocked": True,
+                    "can_continue": False,
+                    "errors": [
+                        {
+                            "rule_id": e.rule_id,
+                            "message_es": e.message_es,
+                            "field_name": e.field_name,
+                            "severity": "error"
+                        }
+                        for e in errors
+                    ],
+                    "warnings": [
+                        {
+                            "rule_id": w.rule_id,
+                            "message_es": w.message_es,
+                            "field_name": w.field_name,
+                            "severity": "warning"
+                        }
+                        for w in warnings
+                    ]
+                }
+
+            # Pas d'erreurs bloquantes - l'utilisateur peut continuer
             return {
                 "form_data": final_form_data,
                 "extracted_data": context.extracted_data,
-                "requires_review": True
+                "requires_review": True,
+                "can_continue": True,
+                "warnings": [
+                    {
+                        "rule_id": w.rule_id,
+                        "message_es": w.message_es,
+                        "field_name": w.field_name,
+                        "severity": "warning"
+                    }
+                    for w in warnings
+                ] if warnings else []
             }
 
         # User has confirmed/corrected data
         if "confirmed_data" in step_data:
             context.form_data.update(step_data["confirmed_data"])
+
+            # Run step validation after data confirmation
+            # This catches age eligibility errors, etc.
+            validation_results = workflow.validate_step(step.step_number, context)
+            errors = [r for r in validation_results if r.is_error]
+            warnings = [r for r in validation_results if r.is_warning]
+
+            if errors:
+                # Return errors to block progression
+                return {
+                    "form_data_updated": True,
+                    "validation_failed": True,
+                    "has_errors": True,
+                    "errors": [
+                        {
+                            "rule_id": e.rule_id,
+                            "message_es": e.message_es,
+                            "field_name": e.field_name
+                        }
+                        for e in errors
+                    ],
+                    "warnings": [
+                        {
+                            "rule_id": w.rule_id,
+                            "message_es": w.message_es,
+                            "field_name": w.field_name
+                        }
+                        for w in warnings
+                    ],
+                    "success": False
+                }
+
+            # Validation passed
+            return {
+                "form_data_updated": True,
+                "validation_passed": True,
+                "warnings": [
+                    {
+                        "rule_id": w.rule_id,
+                        "message_es": w.message_es,
+                        "field_name": w.field_name
+                    }
+                    for w in warnings
+                ] if warnings else [],
+                "success": True
+            }
 
         return {
             "form_data_updated": True
@@ -743,17 +867,130 @@ class WorkflowEngine:
 
     async def _execute_custom_step(
         self,
+        db: asyncpg.Connection,
         workflow: AnyWorkflow,
         context: WorkflowContext,
         step: WorkflowStep,
         step_data: Optional[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        """Execute a custom workflow-specific step."""
-        # Custom steps are handled by workflow-specific logic
-        # This is a placeholder for workflow extensions
+        """
+        Execute a custom workflow-specific step.
+
+        Handles special step types like:
+        - select_classes: Multi-selection with age validation (Conducir)
+        """
+        # === Handle select_classes step (Conducir workflow) ===
+        if step.step_id == "select_classes":
+            return await self._execute_select_classes_step(db, workflow, context, step, step_data)
+
+        # Default: placeholder for other custom steps
         return {
             "custom_step": True,
             "step_id": step.step_id
+        }
+
+    async def _execute_select_classes_step(
+        self,
+        db: asyncpg.Connection,
+        workflow: AnyWorkflow,
+        context: WorkflowContext,
+        step: WorkflowStep,
+        step_data: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Execute the select_classes step for Conducir workflow.
+
+        Features:
+        - Returns available options with min_age info
+        - Validates age eligibility if birth date is known
+        - Blocks selection if age requirements not met
+        - Logs validation failures to audit trail
+        """
+        config = step.config or {}
+        options = config.get("options", [])
+
+        if not step_data or "selected_classes" not in step_data:
+            # Return available options with age requirements
+            # Frontend can grey out options if user's birth date is known
+            return {
+                "requires_selection": True,
+                "options": options,
+                "max_selection": config.get("max_selection", 3),
+                "user_birth_date": context.form_data.get("fecha_nacimiento") if context.form_data else None
+            }
+
+        # User has selected classes
+        selected_classes = step_data["selected_classes"]
+
+        # Validate selection
+        valid_class_ids = [opt["id"] for opt in options]
+        invalid_classes = [c for c in selected_classes if c not in valid_class_ids]
+        if invalid_classes:
+            return {
+                "success": False,
+                "error": f"Clases inválidas: {', '.join(invalid_classes)}",
+                "options": options
+            }
+
+        # Store in context
+        if not context.form_data:
+            context.form_data = {}
+        context.form_data["clases_solicitadas"] = selected_classes
+
+        # === Validate age if birth date is known ===
+        fecha_nacimiento = context.form_data.get("fecha_nacimiento")
+        if fecha_nacimiento:
+            # Call workflow validation
+            validation_results = workflow.validate_step(step.step_number, context)
+            errors = [r for r in validation_results if r.is_error]
+
+            if errors:
+                logger.warning(
+                    f"Age validation failed on select_classes: {[e.rule_id for e in errors]}"
+                )
+
+                # === AUDIT TRAIL: Log validation failure ===
+                try:
+                    await _service_request_repo.log_validation_failure(
+                        db=db,
+                        request_id=context.request_id,
+                        validation_type="age_eligibility",
+                        errors=[
+                            {
+                                "rule_id": e.rule_id,
+                                "message_es": e.message_es,
+                                "field_name": e.field_name,
+                                "selected_classes": selected_classes
+                            }
+                            for e in errors
+                        ],
+                        step_id=step.step_id,
+                        user_id=context.user_id if hasattr(context, 'user_id') else None
+                    )
+                except Exception as audit_error:
+                    logger.error(f"Failed to log validation failure to audit trail: {audit_error}")
+
+                return {
+                    "success": False,
+                    "validation_blocked": True,
+                    "can_continue": False,
+                    "selected_classes": selected_classes,
+                    "errors": [
+                        {
+                            "rule_id": e.rule_id,
+                            "message_es": e.message_es,
+                            "field_name": e.field_name,
+                            "severity": "error"
+                        }
+                        for e in errors
+                    ]
+                }
+
+        # Selection valid
+        return {
+            "success": True,
+            "selected_classes": selected_classes,
+            "can_continue": True
         }
 
     # === Status Transitions ===

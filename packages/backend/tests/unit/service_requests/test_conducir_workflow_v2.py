@@ -448,6 +448,61 @@ class TestAgeValidation:
         assert len(errors) == 0
 
 
+class TestValidateStepAgeBlocking:
+    """Test validate_step integration with age validation."""
+
+    def test_validate_step_blocks_underage_for_class_c(self):
+        """validate_step should return errors for underage applicant requesting class C."""
+        from packages.backend.app.modules.service_requests.workflows.workflow_interface import WorkflowContext
+
+        workflow = ConducirWorkflow()
+
+        # Create context with underage person (20 years old) requesting class C (21+)
+        birth_20_years_ago = (date.today() - timedelta(days=20*365)).strftime("%Y-%m-%d")
+        context = WorkflowContext(
+            request_id="test-123",
+            user_id="user-456",
+            workflow_code="CONDUCIR_NUEVO",
+            form_data={
+                "fecha_nacimiento": birth_20_years_ago,
+                "clases_solicitadas": ["C", "D"]
+            }
+        )
+
+        # Validate form_review_1 step (step 5)
+        results = workflow.validate_step(5, context)
+
+        # Should have blocking errors
+        errors = [r for r in results if r.is_error]
+        assert len(errors) >= 1
+        assert any("edad_minima" in e.rule_id for e in errors)
+
+    def test_validate_step_allows_eligible_age(self):
+        """validate_step should pass for eligible age."""
+        from packages.backend.app.modules.service_requests.workflows.workflow_interface import WorkflowContext
+
+        workflow = ConducirWorkflow()
+
+        # Create context with 25-year-old requesting class B (18+)
+        birth_25_years_ago = (date.today() - timedelta(days=25*365)).strftime("%Y-%m-%d")
+        context = WorkflowContext(
+            request_id="test-123",
+            user_id="user-456",
+            workflow_code="CONDUCIR_NUEVO",
+            form_data={
+                "fecha_nacimiento": birth_25_years_ago,
+                "clases_solicitadas": ["B"]
+            }
+        )
+
+        # Validate form_review_1 step
+        results = workflow.validate_step(5, context)
+
+        # Should have no age-related errors
+        age_errors = [r for r in results if r.is_error and "edad_minima" in r.rule_id]
+        assert len(age_errors) == 0
+
+
 class TestSingleton:
     """Test singleton pattern."""
 

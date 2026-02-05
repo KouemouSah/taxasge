@@ -146,6 +146,10 @@ class RiskFactorCode(str, Enum):
     AUTHORIZATION_DUAL_REQUIRES_BOTH = "AUTHORIZATION_DUAL_REQUIRES_BOTH"
     AUTHORIZATION_MINOR_NAME_MISMATCH = "AUTHORIZATION_MINOR_NAME_MISMATCH"
 
+    # License/Permit Age Requirements (for Conducir workflow)
+    MIN_AGE_FOR_LICENSE = "MIN_AGE_FOR_LICENSE"
+    UNDERAGE_FOR_CLASS = "UNDERAGE_FOR_CLASS"
+
 
 # Risk factor severity mapping
 RISK_FACTOR_SEVERITY: Dict[RiskFactorCode, str] = {
@@ -197,6 +201,10 @@ RISK_FACTOR_SEVERITY: Dict[RiskFactorCode, str] = {
     RiskFactorCode.AUTHORIZATION_PARENT_ID_MISMATCH: "critical",  # BLOCKING
     RiskFactorCode.AUTHORIZATION_DUAL_REQUIRES_BOTH: "high",
     RiskFactorCode.AUTHORIZATION_MINOR_NAME_MISMATCH: "medium",  # Warning only
+
+    # License/Permit Age Requirements (Conducir)
+    RiskFactorCode.MIN_AGE_FOR_LICENSE: "high",  # BLOCKING - requires manual override
+    RiskFactorCode.UNDERAGE_FOR_CLASS: "critical",  # BLOCKING - cannot proceed
 }
 
 # Document type mapping (expected document code -> acceptable detected types)
@@ -1405,6 +1413,61 @@ class RiskAnalyzer:
                                 "fecha_expiracion": fecha_expiracion.isoformat(),
                                 "meses_hasta_expiracion": int(months_until_expiry),
                                 "requisito": "Debe expirar en menos de 12 meses para renovación"
+                            },
+                            "action": "warn"
+                        })
+
+        # ══════════════════════════════════════════════════════════════════════════
+        # 4. CONDUCIR WORKFLOW: Minimum Age for License Classes
+        # ══════════════════════════════════════════════════════════════════════════
+        if "CONDUCIR" in workflow_upper:
+            # Define minimum ages for license classes
+            license_min_ages = {
+                "A": 18, "B": 18, "B+": 18, "F": 18,  # Standard classes
+                "C": 21, "D": 21, "E": 21  # Heavy/passenger vehicles
+            }
+
+            # Extract birth date from DIP or Permiso Residencia
+            if document_code in ["dip", "dip_gq", "permiso_residencia"]:
+                birthdate = None
+                # Try various paths for birth date
+                if "titular" in extraction and isinstance(extraction["titular"], dict):
+                    birthdate = self._parse_date(extraction["titular"].get("fecha_nacimiento"))
+                if not birthdate:
+                    birthdate = self._parse_date(extraction.get("fecha_nacimiento"))
+
+                if birthdate:
+                    age = (today - birthdate).days // 365
+
+                    # Minimum age for ANY license is 18
+                    if age < 18:
+                        risks.append({
+                            "code": RiskFactorCode.MIN_AGE_FOR_LICENSE.value,
+                            "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.MIN_AGE_FOR_LICENSE],
+                            "message": f"Edad insuficiente para obtener certificado de conducir. Debe tener al menos 18 años.",
+                            "detail": {
+                                "fecha_nacimiento": birthdate.isoformat(),
+                                "edad_actual": age,
+                                "edad_minima_requerida": 18,
+                                "clases_elegibles": []
+                            },
+                            "action": "reject"
+                        })
+                    elif age < 21:
+                        # Can get A, B, B+, F but not C, D, E
+                        eligible_classes = [c for c, min_age in license_min_ages.items() if age >= min_age]
+                        restricted_classes = [c for c, min_age in license_min_ages.items() if age < min_age]
+
+                        risks.append({
+                            "code": RiskFactorCode.UNDERAGE_FOR_CLASS.value,
+                            "severity": "warning",  # Warning, not blocking - user can choose eligible classes
+                            "message": f"Con {age} años, solo puede solicitar las clases: {', '.join(sorted(eligible_classes))}",
+                            "detail": {
+                                "fecha_nacimiento": birthdate.isoformat(),
+                                "edad_actual": age,
+                                "clases_elegibles": eligible_classes,
+                                "clases_restringidas": restricted_classes,
+                                "mensaje_sugerencia": f"Para las clases {', '.join(sorted(restricted_classes))} debe tener 21 años."
                             },
                             "action": "warn"
                         })

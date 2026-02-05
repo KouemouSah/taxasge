@@ -56,6 +56,10 @@ class HistoryActionType(str, Enum):
     # Communication
     COMMENT_ADDED = "comment_added"
 
+    # Validation (for audit trail)
+    VALIDATION_FAILED = "validation_failed"
+    VALIDATION_BLOCKED = "validation_blocked"
+
 
 class HistoryEntrySource(str, Enum):
     """
