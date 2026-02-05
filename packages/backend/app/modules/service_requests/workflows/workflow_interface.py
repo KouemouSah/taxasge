@@ -1089,11 +1089,16 @@ class PredefinedWorkflow(ABC):
 
             # Evaluate condition (None/empty = always show)
             if evaluate_condition(condition, eval_context):
-                # Convert fields
+                # Convert fields, filtering by field-level conditions
                 fields = [
                     FormField.from_dict(f)
                     for f in section_data.get("fields", [])
+                    if evaluate_condition(f.get("condition"), eval_context)
                 ]
+
+                # Skip section if all fields were filtered out
+                if not fields:
+                    continue
 
                 filtered_sections.append(FormSection(
                     id=section_data["id"],

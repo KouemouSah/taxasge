@@ -425,9 +425,12 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "title_es": "Filiacion",
                         "fields": [
                             {"key": "nombre_padre", "label_es": "Nombre del Padre", "required": True},
-                            {"key": "profesion_padre", "label_es": "Profesion del Padre", "required": False},
+                            # Profesion only available from certificado_nacimiento (EXPEDICION or minors)
+                            {"key": "profesion_padre", "label_es": "Profesion del Padre", "required": False,
+                             "condition": {"OR": [{"solicitud_type": SolicitudType.EXPEDICION.value}, {"is_minor": True}]}},
                             {"key": "nombre_madre", "label_es": "Nombre de la Madre", "required": True},
-                            {"key": "profesion_madre", "label_es": "Profesion de la Madre", "required": False}
+                            {"key": "profesion_madre", "label_es": "Profesion de la Madre", "required": False,
+                             "condition": {"OR": [{"solicitud_type": SolicitudType.EXPEDICION.value}, {"is_minor": True}]}}
                         ]
                     },
                     {
@@ -595,20 +598,21 @@ class PasaporteWorkflow(PredefinedWorkflow):
         """
         Get document requirements based on SolicitudType and RenovacionMotivo.
 
-        ALIGNED WITH workflow_interface.py signature.
+        ALIGNED WITH workflow_interface.py signat ure.
 
         Common to all types:
-        - DIP (adults only)
+        - DIP (always required)
         - Photos (always required)
 
         Type-specific:
         - EXPEDICION: + Certificado de Nacimiento
-        - RENOVACION (all motivos): + Pasaporte antiguo (references always needed)
-        - RENOVACION/PERDIDA: + Denuncia policial (in addition to pasaporte antiguo)
-        - RENOVACION/ROBO: + Denuncia policial (in addition to pasaporte antiguo)
+        - RENOVACION/VENCIMIENTO: + Pasaporte antiguo
+        - RENOVACION/DETERIORO: + Pasaporte danado
+        - RENOVACION/PERDIDA: + Denuncia policial
+        - RENOVACION/ROBO: + Denuncia policial
 
         Conditional (for minors):
-        - Minor (<18): + Certificado de Nacimiento + Autorizacion Parental + DIP representante(s)
+        - Minor (<18): + Autorizacion Parental + DIP del padre/madre/tutor
         """
         requirements = []
 
@@ -663,41 +667,35 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 instructions_es="Certificacion literal de nacimiento del menor (original o copia certificada)"
             ))
 
-        # === RENOVACION documents (applies to adults AND minors) ===
-        if solicitud_type == SolicitudType.RENOVACION:
-            # Pasaporte Antiguo: required for ALL renovation motivos
-            # Even for PERDIDA/ROBO, the old passport references are needed
-            if motivo == RenovacionMotivo.DETERIORO:
-                doc_name = "Pasaporte Danado"
-                instructions = "Presente el pasaporte danado para verificacion"
-            elif motivo == RenovacionMotivo.PERDIDA:
-                doc_name = "Pasaporte Antiguo (Perdido)"
-                instructions = "Indique las referencias de su pasaporte perdido (numero, fecha de expedicion)"
-            elif motivo == RenovacionMotivo.ROBO:
-                doc_name = "Pasaporte Antiguo (Robado)"
-                instructions = "Indique las referencias de su pasaporte robado (numero, fecha de expedicion)"
-            else:
-                doc_name = "Pasaporte Antiguo"
-                instructions = "Escanee la pagina de datos de su pasaporte vencido o por vencer"
+        # === RENOVACION motivo-specific documents (applies to adults AND minors) ===
+        if solicitud_type == SolicitudType.RENOVACION and motivo:
+            if motivo in [RenovacionMotivo.VENCIMIENTO, RenovacionMotivo.DETERIORO]:
+                # Need old passport
+                doc_name = "Pasaporte Danado" if motivo == RenovacionMotivo.DETERIORO else "Pasaporte Antiguo"
+                instructions = (
+                    "Presente el pasaporte danado para verificacion"
+                    if motivo == RenovacionMotivo.DETERIORO
+                    else "Escanee la pagina de datos de su pasaporte vencido o por vencer"
+                )
+                requirements.append(DocumentRequirement(
+                    document_code="pasaporte_antiguo",
+                    document_name_es=doc_name,
+                    schema_key="PASAPORTE_GQ_V1",
+                    is_required=True,
+                    display_order=2,
+                    condition_type=DocumentConditionType.CUSTOM,
+                    condition_value={"motivos": ["VENCIMIENTO", "DETERIORO"]},
+                    instructions_es=instructions
+                ))
 
-            requirements.append(DocumentRequirement(
-                document_code="pasaporte_antiguo",
-                document_name_es=doc_name,
-                schema_key="PASAPORTE_GQ_V1",
-                is_required=True,
-                display_order=2,
-                condition_type=DocumentConditionType.ALWAYS,
-                instructions_es=instructions
-            ))
-
-            # Denuncia Policial: additionally required for PERDIDA and ROBO
-            if motivo in [RenovacionMotivo.PERDIDA, RenovacionMotivo.ROBO]:
+            elif motivo in [RenovacionMotivo.PERDIDA, RenovacionMotivo.ROBO]:
+                # Need police report
                 reason = "robo" if motivo == RenovacionMotivo.ROBO else "perdida"
                 requirements.append(DocumentRequirement(
                     document_code="denuncia_policial",
                     document_name_es="Denuncia Policial",
                     is_required=True,
-                    display_order=3,
+                    display_order=2,
                     condition_type=DocumentConditionType.CUSTOM,
                     condition_value={"motivos": ["PERDIDA", "ROBO"]},
                     instructions_es=f"Denuncia de {reason} emitida por la Policia Nacional (maximo 30 dias)"
