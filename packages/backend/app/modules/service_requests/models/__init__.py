@@ -31,6 +31,11 @@ from .history import (
     HistorySummaryItem,
     HistoryListSummaryResponse
 )
+from .form_config import (
+    FormFieldResponse,
+    FormSectionResponse,
+    FormConfigResponse
+)
 
 __all__ = [
     # DB-mapped enums
@@ -61,5 +66,9 @@ __all__ = [
     "HistoryFilters",
     "HistoryListResponse",
     "HistorySummaryItem",
-    "HistoryListSummaryResponse"
+    "HistoryListSummaryResponse",
+    # Pydantic models - Form Config (Dynamic Wizard)
+    "FormFieldResponse",
+    "FormSectionResponse",
+    "FormConfigResponse"
 ]

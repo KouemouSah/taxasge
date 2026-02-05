@@ -3,7 +3,7 @@ API Routes for Service Requests.
 RESTful endpoints following FastAPI conventions.
 """
 from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Body
-from typing import List, Optional
+from typing import List, Optional, Any
 from uuid import UUID
 from datetime import datetime
 import asyncpg
@@ -30,6 +30,7 @@ from ..models.service_request import (
     PaymentInitiateRequest,
     PaymentInitiateResponse,
 )
+from ..models.form_config import FormConfigResponse
 from ..models.enums import ServiceRequestStatus
 from fastapi import HTTPException, status
 from ..services.service_request_service import service_request_service
@@ -1572,4 +1573,181 @@ async def download_citizen_summary_pdf(
             "Content-Disposition": f"attachment; filename={filename}"
         }
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# DYNAMIC FORM CONFIG (Generic Wizard)
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/{request_id}/form-config/{step_id}",
+    response_model=FormConfigResponse,
+    summary="Get dynamic form configuration for a step",
+    description="""
+    Returns the form configuration for a specific workflow step.
+
+    The configuration includes:
+    - Sections filtered by conditions (solicitud_type, motivo, is_minor, etc.)
+    - Fields with pre-filled values from document extraction
+    - Validation rules and field metadata
+
+    This endpoint enables the frontend to render forms dynamically
+    instead of hardcoding field definitions.
+
+    **Condition evaluation**: Sections with conditions are evaluated
+    against the current request context. Only matching sections are returned.
+
+    **Value pre-filling**: Field values are resolved using:
+    1. form_data (user edits) - highest priority
+    2. extracted_data (OCR results) - fallback
+    """,
+)
+async def get_form_config(
+    request_id: UUID = Path(..., description="The service request ID"),
+    step_id: str = Path(..., description="The workflow step ID (e.g., 'form_review_1', 'form_review_2')"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user)
+) -> FormConfigResponse:
+    """Get dynamic form configuration with pre-filled values."""
+    from ..repositories.service_request_repository import service_request_repository
+    from ..services.workflow_engine import workflow_engine
+    from ..models.form_config import FormConfigResponse, FormFieldResponse, FormSectionResponse
+
+    # 1. Load request from DB
+    request = await service_request_repository.find_by_id(db, request_id)
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Service request not found: {request_id}"
+        )
+
+    # 2. Authorization check: owner or assigned agent
+    is_owner = str(request["user_id"]) == str(current_user.id)
+    is_assigned = request.get("assigned_to") and str(request["assigned_to"]) == str(current_user.id)
+
+    if not is_owner and not is_assigned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: you are not the owner or assigned agent"
+        )
+
+    # 3. Load full context (includes extracted_data, form_data, etc.)
+    context = await workflow_engine.load_context_from_db(db, request_id)
+    if not context:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load workflow context"
+        )
+
+    # 4. Get the workflow
+    workflow = workflow_engine.get_workflow(context.workflow_code)
+    if not workflow:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Workflow not found: {context.workflow_code}"
+        )
+
+    # 5. Get form configuration (sections filtered by conditions)
+    try:
+        form_config = workflow.get_form_config(step_id, context)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    # 6. Get form mapping to resolve values
+    form_mapping = workflow.get_form_mapping(context)
+
+    # 7. Build response with pre-filled values
+    sections_response = []
+    for section in form_config.sections:
+        fields_response = []
+        for field in section.fields:
+            # Resolve current value from form_data or extracted_data
+            current_value = _resolve_field_value(
+                field.key,
+                form_mapping,
+                context.form_data,
+                context.extracted_data
+            )
+
+            fields_response.append(FormFieldResponse(
+                key=field.key,
+                label_es=field.label_es,
+                type=field.type,
+                required=field.required,
+                options=field.options,
+                readonly=field.readonly,
+                placeholder_es=field.placeholder_es,
+                validation=field.validation,
+                current_value=current_value
+            ))
+
+        sections_response.append(FormSectionResponse(
+            id=section.id,
+            title_es=section.title_es,
+            fields=fields_response,
+            source_document=section.source_document,
+            description_es=section.description_es
+        ))
+
+    return FormConfigResponse(
+        step_id=form_config.step_id,
+        title_es=form_config.title_es,
+        description_es=form_config.description_es,
+        sections=sections_response
+    )
+
+
+def _resolve_field_value(
+    field_key: str,
+    form_mapping: dict,
+    form_data: dict,
+    extracted_data: dict
+) -> Optional[Any]:
+    """
+    Resolve a field value from form_data or extracted_data.
+
+    Priority:
+    1. form_data[field_key] - user edits (highest priority)
+    2. extracted_data via form_mapping path
+
+    Args:
+        field_key: The field key (e.g., "apellidos")
+        form_mapping: Mapping from field keys to extraction paths
+        form_data: User-edited form data
+        extracted_data: Extracted data by document code
+
+    Returns:
+        The resolved value or None
+    """
+    # Priority 1: Check form_data for user edits
+    if field_key in form_data:
+        return form_data[field_key]
+
+    # Priority 2: Resolve from extracted_data using mapping
+    extraction_path = form_mapping.get(field_key)
+    if not extraction_path:
+        return None
+
+    # Parse path like "dip.titular.apellidos"
+    parts = extraction_path.split(".")
+    if len(parts) < 2:
+        return None
+
+    # First part is document code
+    doc_code = parts[0]
+    if doc_code not in extracted_data:
+        return None
+
+    # Navigate the rest of the path
+    value = extracted_data[doc_code]
+    for part in parts[1:]:
+        if isinstance(value, dict) and part in value:
+            value = value[part]
+        else:
+            return None
+
+    return value
 

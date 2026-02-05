@@ -25,3 +25,11 @@ export {
   workflowQueryKeys,
   serviceRequestQueryKeys,
 } from './useWorkflowQueries'
+
+// Dynamic Form Config hooks
+export {
+  useFormConfig,
+  useInvalidateFormConfig,
+  usePrefetchFormConfig,
+  formConfigQueryKeys,
+} from './useFormConfig'

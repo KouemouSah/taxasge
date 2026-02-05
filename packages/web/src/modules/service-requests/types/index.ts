@@ -1321,3 +1321,9 @@ export function getHistoryActionLabel(
   }
   return labels[action]?.[locale] || action
 }
+
+// ============================================================================
+// FORM CONFIG RE-EXPORTS (Dynamic Wizard)
+// ============================================================================
+
+export * from './form-config'

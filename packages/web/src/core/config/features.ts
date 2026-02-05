@@ -34,6 +34,21 @@ export const FEATURE_DYNAMIC_WIDGETS =
   process.env.NEXT_PUBLIC_FEATURE_DYNAMIC_WIDGETS === 'true';
 
 // =============================================================================
+// WIZARD FEATURES
+// =============================================================================
+
+/**
+ * Enable dynamic form rendering in service request wizard.
+ * When enabled (true/undefined): Uses DynamicFormRenderer with backend config
+ * When disabled (false): Uses hardcoded step2Fields/step1Fields (legacy)
+ *
+ * Default: true (enabled) - set NEXT_PUBLIC_FEATURE_DYNAMIC_FORM=false to disable
+ * @since v1.7 - Dynamic form_review with N steps support
+ */
+export const FEATURE_DYNAMIC_FORM_RENDERER =
+  process.env.NEXT_PUBLIC_FEATURE_DYNAMIC_FORM !== 'false';
+
+// =============================================================================
 // OTHER FEATURES
 // =============================================================================
 
@@ -52,6 +67,7 @@ export const FEATURE_REDIS_CACHE =
 export const FEATURES = {
   DYNAMIC_MENUS: FEATURE_DYNAMIC_MENUS,
   DYNAMIC_WIDGETS: FEATURE_DYNAMIC_WIDGETS,
+  DYNAMIC_FORM_RENDERER: FEATURE_DYNAMIC_FORM_RENDERER,
   REDIS_CACHE: FEATURE_REDIS_CACHE,
 } as const;
 

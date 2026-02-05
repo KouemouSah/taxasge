@@ -12,3 +12,7 @@ export { RequestDetail } from './RequestDetail'
 export { AppointmentSelection } from './AppointmentSelection'
 export { IdentityMismatchBlocker } from './IdentityMismatchBlocker'
 export type { IdentityMismatch, IdentityMismatchBlockerProps } from './IdentityMismatchBlocker'
+
+// Dynamic Form Components
+export { DynamicField } from './DynamicField'
+export { DynamicFormRenderer } from './DynamicFormRenderer'

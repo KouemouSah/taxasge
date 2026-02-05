@@ -64,7 +64,13 @@ import {
   CitizenSummaryForm,
   notificationService,
   IdentityMismatchBlocker,
+  DynamicFormRenderer,
+  useFormConfig,
+  usePrefetchFormConfig,
+  useInvalidateFormConfig,
+  validateFormConfig,
 } from '@/modules/service-requests'
+import { FEATURE_DYNAMIC_FORM_RENDERER } from '@/core/config/features'
 import type { IdentityMismatch } from '@/modules/service-requests'
 import type {
   DocumentRequirement,
@@ -209,6 +215,9 @@ export default function PassportWizardPage() {
   // Identity mismatch state - for blocking when documents don't match
   const [identityMismatches, setIdentityMismatches] = useState<IdentityMismatch[]>([])
   const [showMismatchBlocker, setShowMismatchBlocker] = useState(false)
+
+  // Form config cache invalidation (for dynamic form feature)
+  const { invalidateRequest: invalidateFormConfigCache } = useInvalidateFormConfig()
 
   // Load request on mount
   useEffect(() => {
@@ -631,6 +640,13 @@ export default function PassportWizardPage() {
 
       // Save form data to service request
       await saveStepData(stepId, dataToSave)
+
+      // Invalidate form config cache after successful save
+      // This ensures the next step gets fresh data with updated values
+      if (FEATURE_DYNAMIC_FORM_RENDERER && requestId) {
+        invalidateFormConfigCache(requestId)
+      }
+
       return true
     } catch (err) {
       console.error('Failed to save form data:', err)
@@ -801,7 +817,7 @@ export default function PassportWizardPage() {
 
   // Load form data when entering form review steps
   useEffect(() => {
-    const isFormReviewStep = currentStep.id === 'form_review_1' || currentStep.id === 'form_review_2'
+    const isFormReviewStep = currentStep.id.startsWith('form_review')
     console.log('[Wizard] Form review effect:', { stepId: currentStep.id, isFormReviewStep, hasFormData: !!formData })
 
     if (isFormReviewStep && !formData) {
@@ -1166,10 +1182,11 @@ export default function PassportWizardPage() {
         />
       )}
 
-      {(currentStep.id === 'form_review_1' || currentStep.id === 'form_review_2') && (
+      {currentStep.id.startsWith('form_review') && (
         <FormReviewStepEditable
           locale={locale}
           step={currentStep.id}
+          requestId={requestId}
           formData={formData}
           editedData={editedFormData}
           isLoading={isLoadingFormData}
@@ -1888,6 +1905,7 @@ function DocumentsStepImproved({
 interface FormReviewStepEditableProps {
   locale: string
   step: string
+  requestId: string
   formData: FormDataResponse | null
   editedData: Record<string, unknown>
   isLoading: boolean
@@ -1905,6 +1923,7 @@ interface FormReviewStepEditableProps {
 function FormReviewStepEditable({
   locale,
   step,
+  requestId,
   formData,
   editedData,
   isLoading,
@@ -1919,6 +1938,211 @@ function FormReviewStepEditable({
 }: FormReviewStepEditableProps) {
   const isStep1 = step === 'form_review_1'
 
+  // === DYNAMIC FORM RENDERING (Feature Flag) ===
+  // When enabled, fetch form config from backend and use DynamicFormRenderer
+  const {
+    data: dynamicFormConfig,
+    isLoading: isLoadingDynamicConfig,
+    error: dynamicConfigError,
+  } = useFormConfig(
+    FEATURE_DYNAMIC_FORM_RENDERER ? requestId : null,
+    FEATURE_DYNAMIC_FORM_RENDERER ? step : null
+  )
+
+  // Prefetch next form_review step's config (dynamic)
+  const { prefetch } = usePrefetchFormConfig()
+  useEffect(() => {
+    if (FEATURE_DYNAMIC_FORM_RENDERER && requestId && step.startsWith('form_review_')) {
+      // Extract current step number and prefetch next one
+      // e.g., form_review_1 → form_review_2, form_review_2 → form_review_3
+      const match = step.match(/form_review_(\d+)/)
+      if (match) {
+        const currentNum = parseInt(match[1], 10)
+        const nextStepId = `form_review_${currentNum + 1}`
+        // Prefetch silently - if step doesn't exist, it will just fail gracefully
+        prefetch(requestId, nextStepId).catch(() => {
+          // Next form_review step doesn't exist - that's fine
+        })
+      }
+    }
+  }, [step, requestId, prefetch])
+
+  // Validation state for dynamic form
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+
+  // Handle next with validation
+  const handleNextWithValidation = useCallback(() => {
+    if (FEATURE_DYNAMIC_FORM_RENDERER && dynamicFormConfig) {
+      const loc = locale as 'es' | 'fr' | 'en'
+      const errors = validateFormConfig(dynamicFormConfig, editedData, loc)
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors)
+        // Scroll to first error
+        const firstErrorKey = Object.keys(errors)[0]
+        const errorElement = document.getElementById(`field-${firstErrorKey}`)
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+        return
+      }
+
+      // Clear validation errors and proceed
+      setValidationErrors({})
+    }
+    onNext()
+  }, [dynamicFormConfig, editedData, locale, onNext])
+
+  // Clear validation errors when field is edited
+  const handleFieldEditWithClear = useCallback((key: string, value: unknown) => {
+    if (validationErrors[key]) {
+      setValidationErrors(prev => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    }
+    onFieldEdit(key, value)
+  }, [validationErrors, onFieldEdit])
+
+  // If feature flag is ON and we have config, use DynamicFormRenderer
+  if (FEATURE_DYNAMIC_FORM_RENDERER) {
+    // Loading state for dynamic form
+    if (isLoadingDynamicConfig || isLoading) {
+      return (
+        <Card>
+          <CardContent className="py-12">
+            <DynamicFormRenderer.Skeleton />
+          </CardContent>
+        </Card>
+      )
+    }
+
+    // Error state for dynamic form - i18n messages
+    const errorMessages = {
+      title: { es: 'Error al cargar formulario', fr: 'Erreur de chargement', en: 'Error loading form' },
+      description: { es: 'No se pudo cargar la configuración del formulario.', fr: 'Impossible de charger la configuration du formulaire.', en: 'Could not load form configuration.' },
+      retry: { es: 'Reintentar', fr: 'Réessayer', en: 'Retry' },
+      back: { es: 'Volver', fr: 'Retour', en: 'Back' },
+    }
+    const loc = locale as 'es' | 'fr' | 'en'
+
+    if (dynamicConfigError || !dynamicFormConfig) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {errorMessages.title[loc] || errorMessages.title.es}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {dynamicConfigError?.message || errorMessages.description[loc] || errorMessages.description.es}
+              </AlertDescription>
+            </Alert>
+            {onRetry && (
+              <Button variant="outline" onClick={onRetry} className="w-full">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {errorMessages.retry[loc] || errorMessages.retry.es}
+              </Button>
+            )}
+            <Button variant="outline" onClick={onBack} className="w-full">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {errorMessages.back[loc] || errorMessages.back.es}
+            </Button>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    // Form titles - i18n messages (dynamic step number)
+    const stepMatch = step.match(/form_review_(\d+)/)
+    const stepNum = stepMatch ? parseInt(stepMatch[1], 10) : 1
+    const formTitles = {
+      title: {
+        es: `Verificar y Editar Datos (${stepNum})`,
+        fr: `Vérifier et modifier (${stepNum})`,
+        en: `Verify & Edit Data (${stepNum})`,
+      },
+      description: {
+        es: 'Los datos fueron extraídos automáticamente. Verifique y corrija si es necesario.',
+        fr: 'Les données ont été extraites automatiquement. Vérifiez et corrigez si nécessaire.',
+        en: 'Data was extracted automatically. Verify and correct if needed.',
+      },
+      completed: { es: 'Datos completados', fr: 'Données complétées', en: 'Data completed' },
+    }
+
+    // Render dynamic form
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {formTitles.title[loc] || formTitles.title.es}
+          </CardTitle>
+          <CardDescription>
+            {formTitles.description[loc] || formTitles.description.es}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Completion Progress */}
+          {formData && (
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <FileCheck className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">
+                  {formTitles.completed[loc] || formTitles.completed.es}
+                </p>
+                <Progress value={formData.completionPercentage} className="h-2 mt-1" />
+              </div>
+              <span className="text-sm font-semibold">{formData.completionPercentage}%</span>
+            </div>
+          )}
+
+          {/* Dynamic Form */}
+          <DynamicFormRenderer
+            config={dynamicFormConfig}
+            values={editedData}
+            onChange={handleFieldEditWithClear}
+            locale={locale as 'es' | 'fr' | 'en'}
+            disabled={isSaving}
+            errors={validationErrors}
+          />
+
+          {/* Save Error Display */}
+          {saveError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{saveError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex justify-between pt-4">
+            <Button variant="outline" onClick={onBack} disabled={isSaving}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {loc === 'es' ? 'Anterior' : loc === 'fr' ? 'Précédent' : 'Back'}
+            </Button>
+            <Button onClick={handleNextWithValidation} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {loc === 'es' ? 'Guardando...' : loc === 'fr' ? 'Enregistrement...' : 'Saving...'}
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {loc === 'es' ? 'Guardar y Continuar' : loc === 'fr' ? 'Enregistrer et continuer' : 'Save & Continue'}
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // === LEGACY FORM RENDERING (Feature Flag OFF) ===
   // Fields for each step with their types
   // Note: For minors, numero_dip is not shown (they use certificado_nacimiento instead)
   const step1Fields = [

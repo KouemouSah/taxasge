@@ -31,6 +31,9 @@ from ..models.enums import (
     DocumentConditionType
 )
 
+# Import form config dataclasses (lazy import to avoid circular dependency)
+# These are imported at runtime in get_form_config()
+
 logger = logging.getLogger(__name__)
 
 
@@ -1009,3 +1012,145 @@ class PredefinedWorkflow(ABC):
                 for s in self.get_steps()
             ]
         }
+
+    # === Dynamic Form Config ===
+
+    def get_form_config(self, step_id: str, context: "WorkflowContext") -> "FormConfig":
+        """
+        Get form configuration for a step with sections filtered by conditions.
+
+        This method reads the step's config["sections"] (or sections_adult/sections_minor)
+        and returns only the sections that match the current context.
+
+        Args:
+            step_id: ID of the step (e.g., "form_review_1", "form_review_2")
+            context: Workflow context with solicitud_type, motivo, form_data, etc.
+
+        Returns:
+            FormConfig with filtered sections based on context conditions.
+
+        Raises:
+            ValueError: If step not found or not a FORM_REVIEW step.
+
+        Example:
+            context = WorkflowContext(solicitud_type=SolicitudType.RENOVACION, ...)
+            config = workflow.get_form_config("form_review_2", context)
+            # Returns: FormConfig with filiacion + pasaporte_anterior sections
+        """
+        # Lazy imports to avoid circular dependencies
+        from .form_config import FormConfig, FormSection, FormField
+        from ..services.condition_evaluator import evaluate_condition
+
+        # Get the step
+        step = self.get_step_by_id(step_id)
+        if not step:
+            # Get list of valid form review step IDs for helpful error message
+            form_review_steps = [
+                s.step_id for s in self.get_steps()
+                if s.step_type == StepType.FORM_REVIEW
+            ]
+            valid_ids = ", ".join(form_review_steps) if form_review_steps else "none"
+            raise ValueError(
+                f"Step '{step_id}' not found in workflow {self.workflow_code.value}. "
+                f"Valid form_review steps: [{valid_ids}]"
+            )
+
+        if step.step_type != StepType.FORM_REVIEW:
+            # Get list of valid form review step IDs for helpful error message
+            form_review_steps = [
+                s.step_id for s in self.get_steps()
+                if s.step_type == StepType.FORM_REVIEW
+            ]
+            valid_ids = ", ".join(form_review_steps) if form_review_steps else "none"
+            raise ValueError(
+                f"Step '{step_id}' is not a FORM_REVIEW step (type: {step.step_type.value}). "
+                f"Valid form_review steps: [{valid_ids}]"
+            )
+
+        config = step.config or {}
+
+        # Build evaluation context from WorkflowContext
+        eval_context = self._build_eval_context(context)
+
+        # Choose sections based on is_minor (if variants exist)
+        is_minor = eval_context.get("is_minor", False)
+
+        if is_minor and "sections_minor" in config:
+            raw_sections = config["sections_minor"]
+        elif not is_minor and "sections_adult" in config:
+            raw_sections = config["sections_adult"]
+        else:
+            raw_sections = config.get("sections", [])
+
+        # Filter sections by evaluating conditions
+        filtered_sections = []
+        for section_data in raw_sections:
+            condition = section_data.get("condition")
+
+            # Evaluate condition (None/empty = always show)
+            if evaluate_condition(condition, eval_context):
+                # Convert fields
+                fields = [
+                    FormField.from_dict(f)
+                    for f in section_data.get("fields", [])
+                ]
+
+                filtered_sections.append(FormSection(
+                    id=section_data["id"],
+                    title_es=section_data.get("title_es", section_data["id"]),
+                    fields=fields,
+                    condition=condition,
+                    source_document=section_data.get("source_document"),
+                    description_es=section_data.get("description_es")
+                ))
+
+        return FormConfig(
+            step_id=step_id,
+            title_es=step.title_es,
+            sections=filtered_sections,
+            description_es=step.description_es
+        )
+
+    def _build_eval_context(self, context: "WorkflowContext") -> Dict[str, Any]:
+        """
+        Build a flat dict context for condition evaluation.
+
+        Extracts relevant values from WorkflowContext into a simple dict
+        that the ConditionEvaluator can use.
+
+        Args:
+            context: WorkflowContext with all request data
+
+        Returns:
+            Dict with keys like solicitud_type, motivo, is_minor, etc.
+        """
+        # Determine is_minor from form_data or calculated age
+        is_minor = context.form_data.get("is_minor", False)
+        if not is_minor:
+            age = context.get_user_age()
+            if age is not None:
+                is_minor = age < 18
+
+        eval_context = {
+            # Core workflow values
+            "solicitud_type": context.solicitud_type.value if context.solicitud_type else None,
+            "motivo": context.motivo.value if context.motivo else None,
+            "sub_type": context.sub_type,
+
+            # Calculated values
+            "is_minor": is_minor,
+
+            # User age (for age-based conditions like conducir)
+            "age": context.get_user_age(),
+
+            # Common form_data fields (any workflow can use these)
+            "representante_unico": context.form_data.get("representante_unico", False),
+        }
+
+        # Add all form_data keys to context (for fully dynamic conditions)
+        # This allows any workflow to define conditions based on their specific form fields
+        for key, value in context.form_data.items():
+            if key not in eval_context:  # Don't override core keys
+                eval_context[key] = value
+
+        return eval_context
