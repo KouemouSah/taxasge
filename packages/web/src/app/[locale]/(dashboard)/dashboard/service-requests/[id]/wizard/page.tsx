@@ -137,6 +137,14 @@ export default function PassportWizardPage() {
     return getVisiblePassportSteps(wizardState.solicitudType ?? undefined, wizardState.isMinor)
   }, [wizardState.solicitudType, wizardState.isMinor])
 
+  // Dynamically compute the LAST form_review step (not hardcoded to form_review_2)
+  // This handles cases where form_review_2 sections are all filtered out
+  const lastFormReviewStepId = useMemo(() => {
+    const formReviewSteps = visibleSteps.filter(s => s.id.startsWith('form_review_'))
+    if (formReviewSteps.length === 0) return null
+    return formReviewSteps[formReviewSteps.length - 1].id
+  }, [visibleSteps])
+
   // Service requests hook
   const {
     currentRequest,
@@ -548,9 +556,9 @@ export default function PassportWizardPage() {
       }
 
       // Step 2 of 2-step flow: Validate and save each document preview to DB
-      // Only do this on form_review_2 (the LAST form review step for both adults and minors)
+      // Only do this on the LAST form_review step (dynamically detected, not hardcoded)
       // CRITICAL: If any document fails to save, the entire operation fails
-      if (stepId === 'form_review_2' && Object.keys(documentPreviews).length > 0) {
+      if (stepId === lastFormReviewStepId && Object.keys(documentPreviews).length > 0) {
         console.log('[Wizard] Validating and saving documents to DB...')
         const failedDocuments: { code: string; error?: string }[] = []
 
@@ -1201,10 +1209,10 @@ export default function PassportWizardPage() {
           onNext={async () => {
             const success = await handleSaveFormReview(currentStep.id)
             if (success) {
-              // form_review_2 is the LAST form review step for EVERYONE (adults and minors)
+              // Check if this is the LAST form_review step (dynamically detected)
               // Minors go through form_review_representantes BEFORE this step
-              if (currentStep.id === 'form_review_2') {
-                console.log('[Wizard] Form review complete, preparing for payment...')
+              if (currentStep.id === lastFormReviewStepId) {
+                console.log(`[Wizard] Last form review step (${lastFormReviewStepId}) complete, preparing for payment...`)
                 const result = await prepareForPayment()
                 if (!result.success) {
                   console.error('[Wizard] Failed to prepare for payment:', result.errorMessage)
@@ -1232,7 +1240,7 @@ export default function PassportWizardPage() {
       )}
 
       {/* Step for minors: Review legal representatives data + cross-validation results */}
-      {/* This is BEFORE form_review_2 - no persistence here, just validation display */}
+      {/* This is BEFORE the last form_review step - no persistence here, just validation display */}
       {currentStep.id === 'form_review_representantes' && (
         <FormReviewRepresentantesStep
           locale={locale}
@@ -1241,7 +1249,7 @@ export default function PassportWizardPage() {
           isSaving={false}
           saveError={null}
           onNext={() => {
-            console.log('[Wizard] Form review representantes complete, advancing to form_review_2...')
+            console.log('[Wizard] Form review representantes complete, advancing to next step...')
             setCurrentStepIndex(prev => prev + 1)
           }}
           onBack={handleBack}
