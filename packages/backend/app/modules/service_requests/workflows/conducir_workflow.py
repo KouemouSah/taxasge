@@ -38,6 +38,7 @@ from .workflow_interface import (
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
+    SupplementDefinition,
     ValidationResult,
     StepType,
     RenovacionMotivo,
@@ -676,18 +677,35 @@ class ConducirWorkflow(PredefinedWorkflow):
         """
         Setup tariff configuration.
 
-        Tariffs (XAF):
+        Base Tariffs (XAF):
         - NUEVO: 30,000 (includes exam fees)
         - CANJE: 35,000 (foreign license conversion)
         - RENOVACION: 25,000 (standard renewal)
         - DUPLICADO: 20,000 (replacement)
         - EXTENSION: 15,000 (per additional class)
+
+        Supplements: None currently defined for Conducir workflow.
+        Future supplements could include:
+        - TIMBRE_FISCAL: Timbre fiscal pour certificat
+        - PLASTIFICACION: Frais de plastification
         """
+        # Define supplements (currently empty, ready for future additions)
+        supplements: list[SupplementDefinition] = [
+            # Example for future use:
+            # SupplementDefinition(
+            #     code="TIMBRE_FISCAL",
+            #     name_es="Timbre Fiscal",
+            #     unit_price=500,
+            #     quantity=1,
+            #     is_required=True
+            # ),
+        ]
+
         self.set_tariff_config(TariffConfig(
             tariff_type=TariffType.FIXED,
             fixed_amounts=self.TARIFFS,
             currency="XAF",
-            supplements=[]
+            supplements=supplements
         ))
 
     # === Document Requirements ===
