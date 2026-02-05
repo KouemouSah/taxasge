@@ -24,6 +24,15 @@ from .pasaporte_workflow_v2 import (
     get_pasaporte_workflow
 )
 
+# Conducir workflow v2 (autonomous) - Migrated 2026-02-05
+from .conducir_workflow import (
+    ConducirWorkflow,
+    LicenseClass,
+    ApplicantType,
+    DuplicadoMotivo,
+    get_conducir_workflow
+)
+
 # =============================================================================
 # LEGACY (v1) - For backward compatibility
 # =============================================================================
@@ -45,11 +54,7 @@ from .vehiculo_workflow import (
     VehicleType,
     VehicleService
 )
-from .conducir_workflow import (
-    ConducirWorkflow,
-    LicenseClass,
-    ApplicantType
-)
+# Conducir workflow moved to v2 section above
 
 # FuncionPublica workflows
 from .funcion_publica import (
@@ -86,6 +91,12 @@ __all__ = [
     # Pasaporte v2
     "PasaporteWorkflow",
     "get_pasaporte_workflow",
+    # Conducir v2
+    "ConducirWorkflow",
+    "LicenseClass",
+    "ApplicantType",
+    "DuplicadoMotivo",
+    "get_conducir_workflow",
 
     # === LEGACY (v1) ===
     "BaseWorkflow",
@@ -100,10 +111,6 @@ __all__ = [
     "VehiculoWorkflow",
     "VehicleType",
     "VehicleService",
-    # Conducir workflow (exam)
-    "ConducirWorkflow",
-    "LicenseClass",
-    "ApplicantType",
     # FuncionPublica workflows (MINFP)
     "VerificacionFuncionarioWorkflow",
     "CarnetFuncionarioWorkflow",

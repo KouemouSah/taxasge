@@ -1,11 +1,12 @@
 """
-ConducirWorkflow - Workflow for driving certificate requests.
+ConducirWorkflow v2 - Autonomous driving certificate workflow.
 
-Implements the driving certificate workflow based on WORKFLOW_CONDUCIR_CITOYEN.md.
+This is a PREDEFINED workflow with complete business logic.
+ALIGNED WITH workflow_interface.py using PredefinedWorkflow architecture.
 
 Types:
-- NUEVO: First request (includes exam)
-- CANJE: Foreign license conversion
+- NUEVO: First request (includes exam) - Available for CITIZEN_GQ and RESIDENT
+- CANJE: Foreign license conversion - Only for RESIDENT
 - RENOVACION: Certificate renewal
 - DUPLICADO: Duplicate (loss, theft, damage)
 - EXTENSION: Class extension
@@ -20,23 +21,33 @@ License Classes:
 - D: Passenger transport (21+)
 - E: Articulated vehicles (21+)
 - F: Special vehicles (18+)
+
+Note: Class AM (minors 16+) is deferred to Phase 2.
+Note: COPIA_ADICIONAL excluded - managed by Comisaría Policía, not DGT.
+
+@version 2.0
+@date 2026-02-05
+@migration Option C - Dynamic Form Review Architecture
 """
 from typing import List, Dict, Any, Optional
 from enum import Enum
 
-from .base_workflow import (
-    BaseWorkflow,
+from .workflow_interface import (
+    PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
-    StepType
+    ValidationResult,
+    StepType,
+    RenovacionMotivo,
 )
 from ..models.enums import (
     WorkflowCode,
     WorkflowCategory,
     EntityCode,
     TariffType,
+    SolicitudType,
     DocumentConditionType
 )
 
@@ -58,42 +69,48 @@ class ApplicantType(str, Enum):
     RESIDENT = "RESIDENT"        # Foreigner with NIE
 
 
-class ConducirWorkflow(BaseWorkflow):
+class DuplicadoMotivo(str, Enum):
+    """Reason for DUPLICADO request."""
+    PERDIDA = "PERDIDA"      # Lost
+    ROBO = "ROBO"            # Stolen
+    DETERIORO = "DETERIORO"  # Damaged
+
+
+class ConducirWorkflow(PredefinedWorkflow):
     """
     Driving certificate request workflow (DGT).
 
-    Sub-types:
-    - NUEVO: First certificate (requires exam)
-    - CANJE: Foreign license conversion
-    - RENOVACION: Certificate renewal
-    - DUPLICADO: Duplicate request
-    - EXTENSION: Add new license class
+    AUTONOMOUS: Defines ALL logic internally, no BaseWorkflow inheritance.
 
-    Key features:
-    - For NUEVO: Theoretical + practical exam required
-    - Medical certificate required for NUEVO, CANJE, RENOVACION
-    - Age validation based on license class
-    - Citizens use DIP, foreigners use Permiso de Residencia
+    ALIGNED WITH PredefinedWorkflow architecture (v2):
+    - SolicitudType.EXPEDICION: First certificate ever (NUEVO)
+    - SolicitudType.RENOVACION: Certificate renewal
+    - SolicitudType.DUPLICADO: Duplicate (with motivo)
+    - Sub-types: CANJE, EXTENSION via allowed_sub_types
+
+    Key features v2:
+    - form_review_1: Personal data (from DIP/NIE)
+    - form_review_2: Request-specific data with conditional sections
+    - Cross-validation for foreign license name matching
+    - Medical certificate only for NUEVO and EXTENSION
+    - NIE holders can request NUEVO (first license in GQ)
     """
 
-    # Class attributes
-    workflow_code = WorkflowCode.CONDUCIR_NUEVO  # Default
-    category = WorkflowCategory.CONDUCCION
-    entity_code = EntityCode.DGT
-
-    service_name_es = "Solicitud de Certificado para Conducir"
-
-    requires_nota_ingreso = False
-    requires_appointment = True  # For exam (NUEVO)
-    requires_agent_review = True
-
-    allowed_sub_types = [
-        "NUEVO",
-        "CANJE",
-        "RENOVACION",
-        "DUPLICADO",
-        "EXTENSION"
+    # Allowed DuplicadoMotivo values
+    ALLOWED_DUPLICADO_MOTIVOS = [
+        DuplicadoMotivo.PERDIDA,
+        DuplicadoMotivo.ROBO,
+        DuplicadoMotivo.DETERIORO,
     ]
+
+    # Legacy sub_type mapping for backwards compatibility
+    SUBTYPE_MAPPING = {
+        "NUEVO": SolicitudType.EXPEDICION,
+        "CANJE": "CANJE",  # Special case - conversion
+        "RENOVACION": SolicitudType.RENOVACION,
+        "DUPLICADO": SolicitudType.DUPLICADO,
+        "EXTENSION": "EXTENSION",  # Special case - class extension
+    }
 
     # Fixed tariffs (XAF)
     TARIFFS = {
@@ -115,17 +132,152 @@ class ConducirWorkflow(BaseWorkflow):
         "F": 18
     }
 
-    def _setup_specific_steps(self) -> None:
-        """Setup driving certificate-specific workflow steps."""
+    # For backwards compatibility with existing code
+    @property
+    def allowed_sub_types(self) -> List[str]:
+        """Legacy: list of sub_type strings."""
+        return list(self.SUBTYPE_MAPPING.keys())
 
-        # Step 5: License Class Selection
+    # === Configuration (PredefinedWorkflow required properties) ===
+
+    @property
+    def workflow_code(self) -> WorkflowCode:
+        return WorkflowCode.CONDUCIR_NUEVO  # Base code, variant determined by sub_type
+
+    @property
+    def category(self) -> WorkflowCategory:
+        return WorkflowCategory.CONDUCCION
+
+    @property
+    def entity_code(self) -> EntityCode:
+        return EntityCode.DGT
+
+    @property
+    def service_name_es(self) -> str:
+        return "Solicitud de Certificado para Conducir"
+
+    @property
+    def allowed_solicitud_types(self) -> List[SolicitudType]:
+        return [
+            SolicitudType.EXPEDICION,   # NUEVO
+            SolicitudType.RENOVACION,   # RENOVACION
+            SolicitudType.DUPLICADO,    # DUPLICADO
+        ]
+
+    @property
+    def requires_appointment(self) -> bool:
+        return True  # For exam (NUEVO) or document retrieval
+
+    @property
+    def requires_agent_review(self) -> bool:
+        return True
+
+    @property
+    def requires_nota_ingreso(self) -> bool:
+        return False  # Direct payment via Mobile Money
+
+    # === Workflow Setup ===
+
+    def _setup_workflow(self) -> None:
+        """
+        Setup complete driving certificate workflow.
+
+        Steps:
+        0. select_type - Type selection (NUEVO/CANJE/RENOVACION/DUPLICADO/EXTENSION)
+        1. select_applicant_type - Applicant type (CITIZEN_GQ/RESIDENT)
+        2. select_classes - License class selection
+        3. select_motivo - Motivo for DUPLICADO (conditional)
+        4. upload_documents - All documents on one page
+        5. form_review_1 - Personal data verification (datos personales)
+        6. form_review_2 - Request-specific data (solicitud + conditional sections)
+        7. payment - Mobile Money payment
+        8. appointment - Exam scheduling (for NUEVO) or pickup
+        9. confirmation - Final summary
+        """
+
+        # === Step 0: Type Selection ===
         self.add_step(WorkflowStep(
-            step_number=5,
+            step_number=0,
+            step_id="select_type",
+            step_type=StepType.SELECTION,
+            title_es="Tipo de Solicitud",
+            description_es="Seleccione el tipo de trámite de certificado para conducir",
+            config={
+                "selection_type": "sub_type",
+                "options": [
+                    {
+                        "value": "NUEVO",
+                        "label_es": "Primer Certificado",
+                        "description_es": "Solicito mi primer certificado para conducir (requiere examen)",
+                        "tariff": 30000,
+                        "icon": "license-new"
+                    },
+                    {
+                        "value": "CANJE",
+                        "label_es": "Canje de Permiso Extranjero",
+                        "description_es": "Convierto mi permiso de conducir extranjero",
+                        "tariff": 35000,
+                        "icon": "exchange",
+                        "condition": {"applicant_type": "RESIDENT"}
+                    },
+                    {
+                        "value": "RENOVACION",
+                        "label_es": "Renovación",
+                        "description_es": "Renuevo mi certificado vencido o por vencer",
+                        "tariff": 25000,
+                        "icon": "refresh"
+                    },
+                    {
+                        "value": "DUPLICADO",
+                        "label_es": "Duplicado",
+                        "description_es": "Solicito un duplicado (pérdida, robo o deterioro)",
+                        "tariff": 20000,
+                        "icon": "copy"
+                    },
+                    {
+                        "value": "EXTENSION",
+                        "label_es": "Extensión de Clases",
+                        "description_es": "Añado nuevas clases a mi certificado actual",
+                        "tariff": 15000,
+                        "icon": "plus-circle"
+                    }
+                ]
+            }
+        ))
+
+        # === Step 1: Applicant Type Selection ===
+        self.add_step(WorkflowStep(
+            step_number=1,
+            step_id="select_applicant_type",
+            step_type=StepType.SELECTION,
+            title_es="Tipo de Solicitante",
+            description_es="Indique su tipo de documento de identidad",
+            config={
+                "selection_type": "applicant_type",
+                "options": [
+                    {
+                        "value": ApplicantType.CITIZEN_GQ.value,
+                        "label_es": "Ciudadano Ecuatoguineano (DIP)",
+                        "description_es": "Tengo Documento de Identidad Personal (DIP)",
+                        "icon": "id-card"
+                    },
+                    {
+                        "value": ApplicantType.RESIDENT.value,
+                        "label_es": "Residente Extranjero (NIE)",
+                        "description_es": "Tengo Permiso de Residencia (NIE)",
+                        "icon": "passport"
+                    }
+                ]
+            }
+        ))
+
+        # === Step 2: License Class Selection ===
+        self.add_step(WorkflowStep(
+            step_number=2,
             step_id="select_classes",
             step_type=StepType.CUSTOM,
             title_es="Clase(s) de Permiso",
             description_es="Seleccione las clases de permiso que desea obtener",
-            is_inherited=False,
             config={
                 "type": "multi_selection",
                 "max_selection": 3,
@@ -141,96 +293,353 @@ class ConducirWorkflow(BaseWorkflow):
             }
         ))
 
-        # Step 6: Specific Documents (conditional)
+        # === Step 3: Motivo Selection (only for DUPLICADO) ===
+        self.add_step(WorkflowStep(
+            step_number=3,
+            step_id="select_motivo",
+            step_type=StepType.SELECTION,
+            title_es="Motivo del Duplicado",
+            description_es="Indique el motivo por el que necesita un duplicado",
+            config={
+                "selection_type": "motivo",
+                "condition": {"sub_type": "DUPLICADO"},
+                "options": [
+                    {
+                        "value": DuplicadoMotivo.PERDIDA.value,
+                        "label_es": "Pérdida",
+                        "description_es": "Perdí mi certificado (requiere denuncia policial)",
+                        "icon": "search-x"
+                    },
+                    {
+                        "value": DuplicadoMotivo.ROBO.value,
+                        "label_es": "Robo",
+                        "description_es": "Me robaron mi certificado (requiere denuncia policial)",
+                        "icon": "shield-alert"
+                    },
+                    {
+                        "value": DuplicadoMotivo.DETERIORO.value,
+                        "label_es": "Deterioro",
+                        "description_es": "Mi certificado está dañado",
+                        "icon": "file-warning"
+                    }
+                ]
+            }
+        ))
+
+        # === Step 4: Document Upload (ALL documents on ONE page) ===
+        self.add_step(WorkflowStep(
+            step_number=4,
+            step_id="upload_documents",
+            step_type=StepType.DOCUMENT_UPLOAD,
+            title_es="Documentos Requeridos",
+            description_es="Cargue todos los documentos necesarios para su solicitud",
+            config={
+                "dynamic_documents": True,  # Frontend calls get_document_requirements
+                "single_page": True,  # All documents on one page
+                "includes_photo": True  # Photo is part of this step
+            }
+        ))
+
+        # === Step 5: Form Review 1 - Datos Personales ===
+        self.add_step(WorkflowStep(
+            step_number=5,
+            step_id="form_review_1",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos (1/2)",
+            description_es="Verifique sus datos personales extraídos del documento de identidad",
+            config={
+                "form_page": 1,
+                "max_sections": 2,
+                "sections": [
+                    {
+                        "id": "identificacion",
+                        "title_es": "Identificación",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "tipo_identificacion",
+                                "label_es": "Tipo de Identificación",
+                                "type": "select",
+                                "options": ["DIP", "NIE"],
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "numero_identificacion",
+                                "label_es": "Número de Identificación",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            }
+                        ]
+                    },
+                    {
+                        "id": "datos_personales",
+                        "title_es": "Datos Personales",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "apellidos",
+                                "label_es": "Apellidos",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "nombres",
+                                "label_es": "Nombres",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "fecha_nacimiento",
+                                "label_es": "Fecha de Nacimiento",
+                                "type": "date",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "nacionalidad",
+                                "label_es": "Nacionalidad",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "domicilio",
+                                "label_es": "Domicilio",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            }
+                        ]
+                    }
+                ]
+            }
+        ))
+
+        # === Step 6: Form Review 2 - Datos de la Solicitud ===
         self.add_step(WorkflowStep(
             step_number=6,
-            step_id="specific_documents",
-            step_type=StepType.DOCUMENT_UPLOAD,
-            title_es="Documentos Específicos",
-            description_es="Documentos adicionales según su tipo de solicitud",
-            is_inherited=False,
+            step_id="form_review_2",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos (2/2)",
+            description_es="Verifique los datos específicos de su solicitud",
             config={
-                "conditional": True,
-                "show_if": {
-                    "CANJE": ["permiso_extranjero"],
-                    "RENOVACION": ["certificado_actual"],
-                    "EXTENSION": ["certificado_actual"],
-                    "DUPLICADO": ["denuncia"]
-                }
+                "form_page": 2,
+                "max_sections": 4,
+                "sections": [
+                    # Section 1: Request data (always visible)
+                    {
+                        "id": "solicitud",
+                        "title_es": "Datos de la Solicitud",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "tipo_solicitud",
+                                "label_es": "Tipo de Solicitud",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "clases_solicitadas",
+                                "label_es": "Clase(s) de Permiso Solicitadas",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "motivo_duplicado",
+                                "label_es": "Motivo del Duplicado",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True,
+                                "condition": {"sub_type": "DUPLICADO"}
+                            }
+                        ]
+                    },
+                    # Section 2: Current certificate (RENOVACION/EXTENSION only)
+                    {
+                        "id": "certificado_actual",
+                        "title_es": "Certificado para Conducir Actual",
+                        "condition": {
+                            "OR": [
+                                {"sub_type": "RENOVACION"},
+                                {"sub_type": "EXTENSION"}
+                            ]
+                        },
+                        "fields": [
+                            {
+                                "key": "cert_reg_numero",
+                                "label_es": "Número de Registro",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "cert_clases_actuales",
+                                "label_es": "Clases Actuales",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "cert_fecha_expedicion",
+                                "label_es": "Fecha de Expedición",
+                                "type": "date",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "cert_valido_hasta",
+                                "label_es": "Válido Hasta",
+                                "type": "date",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "cert_antiguedad_desde",
+                                "label_es": "Antigüedad Desde",
+                                "type": "date",
+                                "required": False,
+                                "readonly": True
+                            }
+                        ]
+                    },
+                    # Section 3: Foreign license (CANJE only)
+                    {
+                        "id": "permiso_extranjero",
+                        "title_es": "Permiso de Conducir Extranjero",
+                        "condition": {"sub_type": "CANJE"},
+                        "fields": [
+                            {
+                                "key": "perm_ext_pais_emision",
+                                "label_es": "País de Emisión",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False,
+                                "placeholder_es": "Ej: España, Francia, Camerún..."
+                            },
+                            {
+                                "key": "perm_ext_numero",
+                                "label_es": "Número de Permiso",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "perm_ext_apellidos",
+                                "label_es": "Apellidos (según permiso)",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "perm_ext_nombres",
+                                "label_es": "Nombres (según permiso)",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "perm_ext_clases",
+                                "label_es": "Clases del Permiso",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False,
+                                "placeholder_es": "Ej: B, A+B, C..."
+                            },
+                            {
+                                "key": "perm_ext_fecha_expedicion",
+                                "label_es": "Fecha de Expedición",
+                                "type": "date",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "perm_ext_fecha_expiracion",
+                                "label_es": "Fecha de Expiración",
+                                "type": "date",
+                                "required": True,
+                                "readonly": False
+                            }
+                        ]
+                    },
+                    # Section 4: Medical fitness (NUEVO/EXTENSION only)
+                    {
+                        "id": "aptitud_medica",
+                        "title_es": "Aptitud Médica",
+                        "condition": {
+                            "OR": [
+                                {"sub_type": "NUEVO"},
+                                {"sub_type": "EXTENSION"}
+                            ]
+                        },
+                        "fields": [
+                            {
+                                "key": "certificado_medico_fecha",
+                                "label_es": "Fecha del Certificado Médico",
+                                "type": "date",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "entidad_medica_nombre",
+                                "label_es": "Nombre del Centro Médico",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False,
+                                "placeholder_es": "Ej: Hospital General de Malabo, Clínica Santa Isabel..."
+                            },
+                            {
+                                "key": "medico_nombre",
+                                "label_es": "Nombre del Médico (opcional)",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "medico_numero_colegiado",
+                                "label_es": "Número de Colegiado (opcional)",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            }
+                        ]
+                    }
+                ]
             }
         ))
 
-        # Step 7: Medical Certificate
+        # === Step 7: Payment ===
         self.add_step(WorkflowStep(
             step_number=7,
-            step_id="certificado_medico",
-            step_type=StepType.DOCUMENT_UPLOAD,
-            title_es="Certificado Médico",
-            description_es="Certificado médico de aptitud para conducir (menos de 3 meses)",
-            is_inherited=False,
-            documents=[
-                DocumentRequirement(
-                    document_code="certificado_medico",
-                    document_name_es="Certificado Médico de Aptitud",
-                    is_required=True,
-                    display_order=1,
-                    condition_type=DocumentConditionType.CUSTOM,
-                    condition_value={"types": ["NUEVO", "CANJE", "RENOVACION"]},
-                    instructions_es="Certificado médico que acredite aptitud visual, auditiva, física y psicomotriz. Máximo 3 meses de antigüedad."
-                )
-            ],
-            config={
-                "max_age_days": 90,
-                "required_aptitudes": ["visual", "auditiva", "fisica", "psicomotriz"]
-            }
-        ))
-
-        # Step 8: Photos
-        self.add_step(WorkflowStep(
-            step_number=8,
-            step_id="photos",
-            step_type=StepType.DOCUMENT_UPLOAD,
-            title_es="Fotografías tipo carnet",
-            description_es="2 fotografías tipo carnet con fondo blanco",
-            is_inherited=False,
-            documents=[
-                DocumentRequirement(
-                    document_code="photo_carnet",
-                    document_name_es="Fotografías tipo carnet (x2)",
-                    is_required=True,
-                    display_order=1,
-                    condition_type=DocumentConditionType.ALWAYS,
-                    instructions_es="2 fotos de 35x45mm, fondo blanco, rostro visible, menos de 6 meses",
-                    accepted_formats=["jpg", "jpeg", "png"]
-                )
-            ],
-            config={"quantity": 2}
-        ))
-
-        # Step 9: Payment
-        self.add_step(WorkflowStep(
-            step_number=9,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
             description_es="Realice el pago mediante Mobile Money",
-            is_inherited=False,
             config={
-                "currency": "XAF"
+                "currency": "XAF",
+                "show_breakdown": True,
+                "dynamic_tariff": True  # Tariff based on sub_type
             }
         ))
 
-        # Step 10: Confirmation
+        # === Step 8: Appointment ===
         self.add_step(WorkflowStep(
-            step_number=10,
-            step_id="confirmation",
-            step_type=StepType.CONFIRMATION,
-            title_es="Confirmación",
-            description_es="Verifique sus datos y envíe su solicitud",
-            is_inherited=False,
+            step_number=8,
+            step_id="appointment",
+            step_type=StepType.APPOINTMENT,
+            title_es="Programar Cita",
+            description_es="Seleccione una cita en la oficina DGT",
             config={
-                "show_summary": True,
-                "show_appointment_info": True,  # For NUEVO exam
+                "entity_code": EntityCode.DGT.value,
+                "entity_via_request": True,
+                "hold_duration_minutes": 15,
+                "show_payment_confirmation": True,
+                "use_appointment_module": True,
                 "exam_scheduling": {
                     "applies_to": ["NUEVO"],
                     "delay_min_days": 7,
@@ -240,60 +649,120 @@ class ConducirWorkflow(BaseWorkflow):
             }
         ))
 
+        # === Step 9: Confirmation ===
+        self.add_step(WorkflowStep(
+            step_number=9,
+            step_id="confirmation",
+            step_type=StepType.CONFIRMATION,
+            title_es="Confirmación",
+            description_es="Su solicitud ha sido completada",
+            config={
+                "show_summary": True,
+                "show_appointment": True,
+                "show_payment": True,
+                "allow_download_receipt": True,
+                "next_steps_es": [
+                    "Preséntese en la oficina DGT en la fecha y hora indicadas",
+                    "Lleve los documentos originales para verificación",
+                    "Para NUEVO: el examen teórico se realizará en la cita programada"
+                ]
+            }
+        ))
+
+        # === Setup Tariffs ===
+        self._setup_tariffs()
+
     def _setup_tariffs(self) -> None:
-        """Setup tariff configuration for driving certificate."""
-        self._tariff_config = TariffConfig(
+        """
+        Setup tariff configuration.
+
+        Tariffs (XAF):
+        - NUEVO: 30,000 (includes exam fees)
+        - CANJE: 35,000 (foreign license conversion)
+        - RENOVACION: 25,000 (standard renewal)
+        - DUPLICADO: 20,000 (replacement)
+        - EXTENSION: 15,000 (per additional class)
+        """
+        self.set_tariff_config(TariffConfig(
             tariff_type=TariffType.FIXED,
             fixed_amounts=self.TARIFFS,
-            currency="XAF"
-        )
+            currency="XAF",
+            supplements=[]
+        ))
 
-    def calculate_tariff(self, context: WorkflowContext, value: float = None) -> int:
+    # === Document Requirements ===
+
+    def get_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
         """
-        Calculate tariff based on request type.
+        Get document requirements based on request type and applicant type.
 
-        For EXTENSION: 15,000 XAF per new class.
+        ALIGNED WITH PredefinedWorkflow signature.
+
+        Document Matrix:
+        | Document              | NUEVO | CANJE | RENOVACION | DUPLICADO | EXTENSION |
+        |-----------------------|-------|-------|------------|-----------|-----------|
+        | DIP (CITIZEN_GQ)      | ✅    | -     | ✅         | ✅        | ✅        |
+        | NIE (RESIDENT)        | ✅    | ✅    | ✅         | ✅        | ✅        |
+        | Certificado Actual    | -     | -     | ✅         | -         | ✅        |
+        | Permiso Extranjero    | -     | ✅    | -          | -         | -         |
+        | Denuncia              | -     | -     | -          | ⚠️*       | -         |
+        | Certificado Médico    | ✅    | ❌    | ❌         | ❌        | ✅        |
+        | Foto Carnet           | ✅    | ✅    | ✅         | ✅        | ✅        |
+
+        *Denuncia required only if motivo = PERDIDA or ROBO
         """
-        sub_type = context.sub_type
-        base = self.TARIFFS.get(sub_type, 30000)
-
-        if sub_type == "EXTENSION":
-            # Calculate based on number of new classes
-            clases_solicitadas = context.form_data.get("clases_solicitadas", [])
-            clases_actuales = context.form_data.get("clases_actuales", [])
-            nuevas_clases = set(clases_solicitadas) - set(clases_actuales)
-            return len(nuevas_clases) * self.TARIFFS["EXTENSION"]
-
-        return base
-
-    def get_document_requirements(self, sub_type: str) -> List[DocumentRequirement]:
-        """Get document requirements for driving certificate request."""
         requirements = []
 
-        # Identity document - based on applicant type
+        # Get sub_type and applicant_type from context
+        sub_type = None
+        applicant_type = None
+        duplicado_motivo = None
+
+        if context and context.form_data:
+            sub_type = context.sub_type or context.form_data.get("sub_type")
+            applicant_type = context.form_data.get("applicant_type")
+            duplicado_motivo = context.form_data.get("motivo")
+
+        # Map solicitud_type to sub_type if not provided
+        if not sub_type:
+            if solicitud_type == SolicitudType.EXPEDICION:
+                sub_type = "NUEVO"
+            elif solicitud_type == SolicitudType.RENOVACION:
+                sub_type = "RENOVACION"
+            elif solicitud_type == SolicitudType.DUPLICADO:
+                sub_type = "DUPLICADO"
+
+        # === Identity Document - based on applicant type ===
+        # DIP for citizens
         requirements.append(DocumentRequirement(
             document_code="dip",
             document_name_es="DIP (Ciudadanos GQ)",
             schema_key="DIP_GQ_V2",
             is_required=True,
             display_order=1,
-            condition_type=DocumentConditionType.CUSTOM,
-            condition_value={"applicant_type": "CITIZEN_GQ"},
+            condition_type=DocumentConditionType.IS_NATIONAL,
             instructions_es="Escanee ambas caras de su DIP vigente",
             faces_required=["recto", "verso"]
         ))
 
+        # Permiso Residencia for foreigners
         requirements.append(DocumentRequirement(
             document_code="permiso_residencia",
             document_name_es="Permiso de Residencia (Extranjeros)",
             schema_key="PERMISO_RESIDENCIA_GQ_V1",
             is_required=True,
             display_order=1,
-            condition_type=DocumentConditionType.CUSTOM,
-            condition_value={"applicant_type": "RESIDENT"},
+            condition_type=DocumentConditionType.IS_FOREIGN,
             instructions_es="Escanee su Permiso de Residencia vigente",
             faces_required=["recto", "verso"]
         ))
+
+        # === Type-specific documents ===
 
         # Current certificate for RENOVACION/EXTENSION
         if sub_type in ["RENOVACION", "EXTENSION"]:
@@ -303,7 +772,8 @@ class ConducirWorkflow(BaseWorkflow):
                 schema_key="CERTIFICADO_CONDUCIR_GQ_V1",
                 is_required=True,
                 display_order=2,
-                condition_type=DocumentConditionType.IS_RENEWAL,
+                condition_type=DocumentConditionType.CUSTOM,
+                condition_value={"types": ["RENOVACION", "EXTENSION"]},
                 instructions_es="Escanee su certificado para conducir actual"
             ))
 
@@ -318,50 +788,61 @@ class ConducirWorkflow(BaseWorkflow):
                 condition_value={"types": ["CANJE"]},
                 instructions_es="Escanee ambas caras de su permiso de conducir extranjero vigente",
                 faces_required=["recto", "verso"],
-                config={"extraction": False}  # Variable format
+                config={"extraction": False}  # Variable format, manual input
             ))
 
-        # Police report for DUPLICADO (loss/theft)
-        if sub_type == "DUPLICADO":
+        # Police report for DUPLICADO (loss/theft only)
+        if sub_type == "DUPLICADO" and duplicado_motivo in ["PERDIDA", "ROBO"]:
             requirements.append(DocumentRequirement(
                 document_code="denuncia",
-                document_name_es="Denuncia Policial (si pérdida o robo)",
+                document_name_es="Denuncia Policial",
                 is_required=True,
                 display_order=3,
                 condition_type=DocumentConditionType.CUSTOM,
-                condition_value={"motivo": ["PERDIDA", "ROBO"]},
+                condition_value={"motivo_in": ["PERDIDA", "ROBO"]},
                 instructions_es="Denuncia de pérdida o robo ante la Policía Nacional"
             ))
 
-        # Medical certificate for NUEVO, CANJE, RENOVACION
-        if sub_type in ["NUEVO", "CANJE", "RENOVACION"]:
+        # Medical certificate - ONLY for NUEVO and EXTENSION
+        # NOT required for CANJE, RENOVACION, DUPLICADO
+        if sub_type in ["NUEVO", "EXTENSION"]:
             requirements.append(DocumentRequirement(
                 document_code="certificado_medico",
                 document_name_es="Certificado Médico de Aptitud",
                 is_required=True,
                 display_order=4,
                 condition_type=DocumentConditionType.CUSTOM,
-                condition_value={"types": ["NUEVO", "CANJE", "RENOVACION"]},
+                condition_value={"types": ["NUEVO", "EXTENSION"]},
                 instructions_es="Certificado médico reciente (menos de 3 meses) que acredite aptitud para conducir"
             ))
 
-        # Photos always required
+        # Photo always required (x1)
         requirements.append(DocumentRequirement(
             document_code="photo_carnet",
-            document_name_es="Fotografías tipo carnet (x2)",
+            document_name_es="Fotografía tipo carnet",
             is_required=True,
             display_order=10,
             condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="2 fotos de 35x45mm, fondo blanco, rostro visible",
-            accepted_formats=["jpg", "jpeg", "png"]
+            instructions_es="1 foto de 35x45mm, fondo blanco, rostro visible",
+            accepted_formats=["jpg", "jpeg", "png"],
+            config={"quantity": 1}
         ))
 
         return requirements
 
+    # === Cross-Document Validation Rules ===
+
     def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """Get cross-document validation rules for driving certificate."""
+        """
+        Get cross-document validation rules.
+
+        Includes new validations for v2:
+        - Foreign license name matching (CANJE)
+        - Foreign license not expired (CANJE)
+        - Medical certificate recent (NUEVO/EXTENSION)
+        """
         return [
-            # Identity document not expired
+            # === Identity document validations ===
             {
                 "id": "identidad_no_expirada",
                 "document": "dip | permiso_residencia",
@@ -369,18 +850,19 @@ class ConducirWorkflow(BaseWorkflow):
                 "error_es": "Su documento de identidad está expirado.",
                 "severity": "error"
             },
-            # Certificate expiring for RENOVACION
+
+            # === Certificate validations (RENOVACION/EXTENSION) ===
             {
                 "id": "certificado_renovable",
-                "condition": "tipo == 'RENOVACION'",
+                "condition": "sub_type == 'RENOVACION'",
                 "document": "certificado_actual",
                 "rule": "documento.valido_hasta < TODAY + 90 DAYS",
                 "error_es": "Solo puede renovar si el certificado vence en menos de 90 días o ya ha vencido.",
                 "severity": "warning"
             },
-            # Certificate must be authentic
             {
                 "id": "certificado_autentico",
+                "condition": "sub_type IN ['RENOVACION', 'EXTENSION']",
                 "document": "certificado_actual",
                 "rule": """
                     autenticacion.tiene_qr_code == true AND
@@ -390,10 +872,9 @@ class ConducirWorkflow(BaseWorkflow):
                 "error_es": "El certificado actual no parece auténtico (falta QR, sello o firma).",
                 "severity": "error"
             },
-            # Identity matches between documents
             {
                 "id": "identidad_coherente_certificado",
-                "condition": "tipo IN ['RENOVACION', 'EXTENSION']",
+                "condition": "sub_type IN ['RENOVACION', 'EXTENSION']",
                 "rule": """
                     normalize(DIP.titular.apellidos) == normalize(CERTIFICADO.titular.apellidos)
                     AND normalize(DIP.titular.nombres) == normalize(CERTIFICADO.titular.nombre)
@@ -401,15 +882,47 @@ class ConducirWorkflow(BaseWorkflow):
                 "error_es": "El nombre en su DIP no coincide con el certificado actual.",
                 "severity": "error"
             },
-            # DIP number matches certificate
             {
                 "id": "numero_identificacion_coherente",
-                "condition": "tipo IN ['RENOVACION', 'EXTENSION']",
+                "condition": "sub_type IN ['RENOVACION', 'EXTENSION']",
                 "rule": "DIP.documento.numero_dip == CERTIFICADO.titular.numero_identificacion",
                 "error_es": "El número de DIP no coincide con el del certificado actual.",
                 "severity": "error"
             },
-            # Age requirement for classes C, D, E (21+)
+
+            # === Foreign license validations (CANJE) - NEW in v2 ===
+            {
+                "id": "permiso_extranjero_apellidos_match",
+                "condition": "sub_type == 'CANJE'",
+                "rule": "normalize(perm_ext_apellidos) == normalize(apellidos)",
+                "error_es": "Los apellidos del permiso extranjero no coinciden con su documento de identidad.",
+                "severity": "error"
+            },
+            {
+                "id": "permiso_extranjero_nombres_match",
+                "condition": "sub_type == 'CANJE'",
+                "rule": "normalize(perm_ext_nombres) == normalize(nombres)",
+                "error_es": "Los nombres del permiso extranjero no coinciden con su documento de identidad.",
+                "severity": "error"
+            },
+            {
+                "id": "permiso_extranjero_vigente",
+                "condition": "sub_type == 'CANJE'",
+                "rule": "perm_ext_fecha_expiracion > TODAY",
+                "error_es": "El permiso de conducir extranjero está expirado.",
+                "severity": "error"
+            },
+
+            # === Medical certificate validation (NUEVO/EXTENSION) ===
+            {
+                "id": "certificado_medico_reciente",
+                "condition": "sub_type IN ['NUEVO', 'EXTENSION']",
+                "rule": "certificado_medico_fecha > TODAY - 90 DAYS",
+                "error_es": "El certificado médico debe tener menos de 3 meses de antigüedad.",
+                "severity": "error"
+            },
+
+            # === Age requirements ===
             {
                 "id": "edad_minima_clase_c_d_e",
                 "rule": """
@@ -419,7 +932,6 @@ class ConducirWorkflow(BaseWorkflow):
                 "error_es": "Debe tener al menos 21 años para las clases C, D o E.",
                 "severity": "error"
             },
-            # Age requirement for classes A, B, F (18+)
             {
                 "id": "edad_minima_clase_a_b_f",
                 "rule": """
@@ -429,30 +941,39 @@ class ConducirWorkflow(BaseWorkflow):
                 "error_es": "Debe tener al menos 18 años para obtener un certificado de conducir.",
                 "severity": "error"
             },
-            # Extension: new class must not already exist
+
+            # === Extension validation ===
             {
                 "id": "extension_clase_nueva",
-                "condition": "tipo == 'EXTENSION'",
+                "condition": "sub_type == 'EXTENSION'",
                 "rule": "clases_solicitadas NOT IN CERTIFICADO.permiso.clases_permiso",
                 "error_es": "Ya tiene esta(s) clase(s) en su certificado actual.",
-                "severity": "error"
-            },
-            # Medical certificate is recent
-            {
-                "id": "certificado_medico_reciente",
-                "condition": "tipo IN ['NUEVO', 'CANJE', 'RENOVACION']",
-                "document": "certificado_medico",
-                "rule": "documento.fecha_emision > TODAY - 90 DAYS",
-                "error_es": "El certificado médico debe tener menos de 3 meses.",
                 "severity": "error"
             }
         ]
 
-    def get_form_mapping(self) -> Dict[str, str]:
-        """Get mapping from extracted data to form fields."""
-        return {
-            # From DIP (citizens)
-            "tipo_identificacion": "DIP.documento.tipo",  # "DIP"
+    # === Form Field Mapping ===
+
+    def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
+        """
+        Map extracted data fields to form fields.
+
+        ALIGNED WITH JSON SCHEMAS:
+        - dip_gq.json: documento.numero_dip, titular.domiciliacion
+        - permiso_residencia_gq.json: documento.numero_nie, titular.direccion_gq
+        - certificado_conducir_gq.json: documento.reg_numero, permiso.clases_permiso
+        """
+        # Determine applicant type from context
+        applicant_type = None
+        if context and context.form_data:
+            applicant_type = context.form_data.get("applicant_type")
+
+        # Base mapping - common fields
+        mapping = {
+            # === Identification ===
+            "tipo_identificacion": "auto_detect",  # DIP or NIE based on uploaded doc
+
+            # === From DIP (CITIZEN_GQ) ===
             "numero_identificacion": "dip.documento.numero_dip",
             "apellidos": "dip.titular.apellidos",
             "nombres": "dip.titular.nombres",
@@ -460,19 +981,36 @@ class ConducirWorkflow(BaseWorkflow):
             "nacionalidad": "dip.titular.nacionalidad",
             "domicilio": "dip.titular.domiciliacion",
 
-            # From Permiso Residencia (foreigners)
-            "nie": "permiso_residencia.documento.nie",
+            # === Request data (from context) ===
+            "tipo_solicitud": "context.sub_type",
+            "clases_solicitadas": "context.clases_solicitadas",
+            "motivo_duplicado": "context.motivo",
 
-            # From current certificate (RENOVACION/EXTENSION)
-            "reg_numero": "certificado_actual.documento.reg_numero",
-            "clases_actuales": "certificado_actual.permiso.clases_permiso",
-            "fecha_expedicion_actual": "certificado_actual.documento.fecha_expedicion",
-            "valido_hasta_actual": "certificado_actual.documento.valido_hasta",
-            "antiguedad_desde": "certificado_actual.permiso.antiguedad_desde"
+            # === From current certificate (RENOVACION/EXTENSION) ===
+            "cert_reg_numero": "certificado_actual.documento.reg_numero",
+            "cert_clases_actuales": "certificado_actual.permiso.clases_permiso",
+            "cert_fecha_expedicion": "certificado_actual.documento.fecha_expedicion",
+            "cert_valido_hasta": "certificado_actual.documento.valido_hasta",
+            "cert_antiguedad_desde": "certificado_actual.permiso.antiguedad_desde",
         }
 
+        # If RESIDENT, override with permiso_residencia mappings
+        if applicant_type == ApplicantType.RESIDENT.value:
+            mapping.update({
+                "numero_identificacion": "permiso_residencia.documento.numero_nie",
+                "apellidos": "permiso_residencia.titular.apellidos",
+                "nombres": "permiso_residencia.titular.nombres",
+                "fecha_nacimiento": "permiso_residencia.titular.fecha_nacimiento",
+                "nacionalidad": "permiso_residencia.titular.nacionalidad",
+                "domicilio": "permiso_residencia.titular.direccion_gq",
+            })
+
+        return mapping
+
+    # === Workflow Code Resolution ===
+
     def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """Get the specific workflow code for a sub-type."""
+        """Get the specific WorkflowCode for a sub_type."""
         mapping = {
             "NUEVO": WorkflowCode.CONDUCIR_NUEVO,
             "CANJE": WorkflowCode.CONDUCIR_CANJE,
@@ -481,6 +1019,8 @@ class ConducirWorkflow(BaseWorkflow):
             "EXTENSION": WorkflowCode.CONDUCIR_EXTENSION
         }
         return mapping.get(sub_type, WorkflowCode.CONDUCIR_NUEVO)
+
+    # === Utility Methods ===
 
     def requires_exam(self, sub_type: str) -> bool:
         """Check if this request type requires an exam."""
@@ -509,6 +1049,22 @@ class ConducirWorkflow(BaseWorkflow):
                 "locations": ["DGT Malabo", "DGT Bata"]
             }
         }
+
+    def validate_request_type_eligibility(
+        self,
+        sub_type: str,
+        applicant_type: str
+    ) -> bool:
+        """
+        Validate if applicant type can request this sub_type.
+
+        Rules:
+        - CANJE is only for foreigners (RESIDENT) - they have a foreign license to convert
+        - All other types available to both CITIZEN_GQ and RESIDENT
+        """
+        if sub_type == "CANJE" and applicant_type == ApplicantType.CITIZEN_GQ.value:
+            return False
+        return True
 
     def validate_class_eligibility(
         self,
@@ -548,3 +1104,45 @@ class ConducirWorkflow(BaseWorkflow):
                 })
 
         return errors
+
+    def calculate_tariff(self, context: WorkflowContext, value: float = None) -> int:
+        """
+        Calculate tariff based on request type.
+
+        For EXTENSION: 15,000 XAF per new class.
+        """
+        sub_type = context.sub_type
+        base = self.TARIFFS.get(sub_type, 30000)
+
+        if sub_type == "EXTENSION":
+            # Calculate based on number of new classes
+            clases_solicitadas = context.form_data.get("clases_solicitadas", [])
+            clases_actuales = context.form_data.get("clases_actuales", [])
+            nuevas_clases = set(clases_solicitadas) - set(clases_actuales)
+            return len(nuevas_clases) * self.TARIFFS["EXTENSION"]
+
+        return base
+
+
+# =============================================================================
+# REGISTRATION
+# =============================================================================
+
+def register_conducir_workflow():
+    """Register the driving certificate workflow with the workflow engine."""
+    from ..services.workflow_engine import workflow_engine
+
+    workflow = ConducirWorkflow()
+    workflow_engine.register_workflow(workflow)
+
+
+# Singleton instance
+_conducir_workflow: Optional[ConducirWorkflow] = None
+
+
+def get_conducir_workflow() -> ConducirWorkflow:
+    """Get the singleton ConducirWorkflow instance."""
+    global _conducir_workflow
+    if _conducir_workflow is None:
+        _conducir_workflow = ConducirWorkflow()
+    return _conducir_workflow
