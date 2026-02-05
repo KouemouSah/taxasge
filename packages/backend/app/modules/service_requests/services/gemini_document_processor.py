@@ -2260,12 +2260,17 @@ class GeminiDocumentProcessor:
             if visual_zones:
                 vz_lines = [
                     "\n═══════════════════════════════════════════════════════════════════════════════",
-                    "📍 ZONAS VISUALES DEL DOCUMENTO - DÓNDE BUSCAR CADA CAMPO:",
-                    "═══════════════════════════════════════════════════════════════════════════════"
+                    "📍 GUÍA DE ZONAS (REFERENCIA, NO RESTRICCIÓN):",
+                    "═══════════════════════════════════════════════════════════════════════════════",
+                    "IMPORTANTE: Estas zonas son indicativas del formato TÍPICO.",
+                    "→ PRIORIZA siempre las ETIQUETAS visibles (ej: 'HIJO DE', 'NATURAL DE')",
+                    "→ Si un campo no está en la zona indicada, BÚSCALO en todo el documento",
+                    "→ Extrae los datos según su CONTEXTO SEMÁNTICO, no solo por posición",
+                    ""
                 ]
                 for face, zones in visual_zones.items():
                     face_label = "CARA FRONTAL (RECTO)" if face == "recto" else "CARA TRASERA (VERSO)"
-                    vz_lines.append(f"\n{face_label}:")
+                    vz_lines.append(f"\n{face_label} (ubicación típica):")
                     for zone in zones:
                         vz_lines.append(f"  • {zone}")
                 vz_lines.append("")
@@ -2322,6 +2327,13 @@ class GeminiDocumentProcessor:
 TIPO DE DOCUMENTO ESPERADO: {doc_description}
 IDIOMA DEL DOCUMENTO: {language}
 ═══════════════════════════════════════════════════════════════════════════════
+
+🎯 ESTRATEGIA DE EXTRACCIÓN (PRIORIDAD):
+1. BUSCA las ETIQUETAS/LABELS visibles en el documento (ej: "HIJO DE", "APELLIDOS")
+2. EXTRAE el valor asociado a cada etiqueta encontrada
+3. Si una etiqueta está parcialmente oculta pero el VALOR es visible, extráelo
+4. Las zonas visuales son GUÍAS, no restricciones - busca en TODO el documento
+5. Usa el CONTEXTO para inferir campos si las etiquetas no son claras
 
 CAMPOS A EXTRAER:
 {fields_text}
