@@ -928,6 +928,11 @@ class PasaporteWorkflow(PredefinedWorkflow):
             "domicilio": "dip.titular.domiciliacion",
             "grupo_sanguineo": "dip.titular.grupo_sanguineo",
 
+            # === DIP Filiation (bloc HIJO DE on verso) ===
+            # For adults RENOVACION: filiation comes from DIP, not certificado_nacimiento
+            "nombre_padre": "dip.filiacion.nombre_padre",
+            "nombre_madre": "dip.filiacion.nombre_madre",
+
             # === DIP document metadata (fecha_EMISION per schema) ===
             "dip_fecha_emision": "dip.documento.fecha_emision",
             "dip_fecha_expiracion": "dip.documento.fecha_expiracion",

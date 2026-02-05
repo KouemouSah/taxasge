@@ -726,6 +726,8 @@ export default function PassportWizardPage() {
       { formField: 'sexo', possibleKeys: ['titular.sexo', 'sexo'] },
       { formField: 'fecha_nacimiento', possibleKeys: ['titular.fecha_nacimiento', 'fecha_nacimiento'] },
       { formField: 'lugar_nacimiento', possibleKeys: ['titular.lugar_nacimiento', 'lugar_nacimiento'] },
+      { formField: 'natural_de', possibleKeys: ['titular.natural_de', 'natural_de'] },
+      { formField: 'distrito_provincia', possibleKeys: ['titular.distrito_provincia', 'distrito_provincia'] },
       { formField: 'nacionalidad', possibleKeys: ['titular.nacionalidad', 'nacionalidad'] },
       { formField: 'estado_civil', possibleKeys: ['titular.estado_civil', 'estado_civil'] },
       { formField: 'profesion', possibleKeys: ['titular.profesion', 'profesion'] },
