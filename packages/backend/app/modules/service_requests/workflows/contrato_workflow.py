@@ -24,7 +24,7 @@ Entity: ONRC (Oficina Nacional de Registro de Contratos)
 Tariff: 0.5% of contract value in XAF (percentage-based).
 Late penalty: 10%/month after 30 days (controlled by PENALTY_MULTIPLIER).
 Minimum tariff: 50,000 XAF (controlled by MINIMUM_TARIFF_MULTIPLIER).
-Supplement: TIMBRE_FISCAL 500 XAF/page (quantity from contract page count).
+Supplements: TIMBRE_FISCAL 500 XAF/page + CEDULA_REGISTRO 5,000 XAF (quantity=0).
 
 Payment flow: Standard (citizen pays → then agent reviews).
 Agent can set monto_validado_por_agente during review.
@@ -718,17 +718,26 @@ class ContratoWorkflow(PredefinedWorkflow):
 
         Base: 0.5% of contract value in XAF.
 
-        Supplements (aligned with tariff_supplements table in DB):
+        Supplements:
         - TIMBRE_FISCAL: 500 XAF per page of contract (Ley de Tasas Fiscales)
-          quantity is set to 1 by default, updated dynamically via
-          get_tariff_breakdown() based on actual number of contract pages.
+          quantity=1 by default, updated dynamically via get_tariff_breakdown()
+          based on actual number of contract pages.
+        - CEDULA_REGISTRO: 5,000 XAF fixed fee per registration (quantity=0,
+          set quantity=1 to activate).
         """
         supplements = [
             SupplementDefinition(
                 code="TIMBRE_FISCAL",
                 name_es="Timbre Fiscal",
-                unit_price=500,     # 500 XAF (aligned with tariff_supplements.amount)
-                quantity=1,         # Default 1, updated dynamically per contract pages
+                unit_price=500,
+                quantity=1,         # Updated dynamically per contract pages
+                is_required=True
+            ),
+            SupplementDefinition(
+                code="CEDULA_REGISTRO",
+                name_es="Cédula de Registro",
+                unit_price=5000,
+                quantity=0,         # Set to 1 to activate
                 is_required=True
             ),
         ]
