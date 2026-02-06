@@ -225,6 +225,29 @@
     }
   },
 
+  "mrz_parsing": {
+    "line_1": {
+      "document_type": {"start": 0, "end": 2, "expected": "AR"},
+      "country_code": {"start": 2, "end": 5, "expected": "GNQ"},
+      "document_number": {"start": 5, "end": 14},
+      "check_digit_1": {"start": 14, "end": 15},
+      "optional_data_1": {"start": 15, "end": 30}
+    },
+    "line_2": {
+      "birth_date": {"start": 0, "end": 6, "format": "YYMMDD"},
+      "check_digit_2": {"start": 6, "end": 7},
+      "sex": {"start": 7, "end": 8, "values": ["M", "F", "<"]},
+      "expiry_date": {"start": 8, "end": 14, "format": "YYMMDD"},
+      "check_digit_3": {"start": 14, "end": 15},
+      "nationality": {"start": 15, "end": 18, "description": "Code ISO 3 lettres pays d'origine"},
+      "optional_data_2": {"start": 18, "end": 29},
+      "composite_check": {"start": 29, "end": 30}
+    },
+    "line_3": {
+      "names": {"start": 0, "end": 30, "separator": "<<", "description": "APELLIDO<<NOMBRES"}
+    }
+  },
+
   "validations": [
     {
       "id": "permiso_not_expired",
@@ -266,6 +289,13 @@
       "rule": "titular.sexo == mrz.linea_2[7]",
       "error_es": "Sexo no coincide con MRZ",
       "error_fr": "Sexe ne correspond pas au MRZ",
+      "severity": "error"
+    },
+    {
+      "id": "mrz_checksum_valid",
+      "rule": "validate_mrz_checksums(mrz)",
+      "error_es": "Checksum MRZ invalido",
+      "error_fr": "Checksum MRZ invalide",
       "severity": "error"
     }
   ],

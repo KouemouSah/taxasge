@@ -251,6 +251,30 @@
       }
     }
   },
+
+  "mrz_parsing": {
+    "line_1": {
+      "document_type": {"start": 0, "end": 2, "expected": "ID"},
+      "country_code": {"start": 2, "end": 5, "expected": "GNQ"},
+      "document_number": {"start": 5, "end": 14},
+      "check_digit_1": {"start": 14, "end": 15},
+      "optional_data_1": {"start": 15, "end": 30}
+    },
+    "line_2": {
+      "birth_date": {"start": 0, "end": 6, "format": "YYMMDD"},
+      "check_digit_2": {"start": 6, "end": 7},
+      "sex": {"start": 7, "end": 8, "values": ["M", "F", "<"]},
+      "expiry_date": {"start": 8, "end": 14, "format": "YYMMDD"},
+      "check_digit_3": {"start": 14, "end": 15},
+      "nationality": {"start": 15, "end": 18, "expected": "GNQ"},
+      "optional_data_2": {"start": 18, "end": 29},
+      "composite_check": {"start": 29, "end": 30}
+    },
+    "line_3": {
+      "names": {"start": 0, "end": 30, "separator": "<<", "description": "APELLIDO<<NOMBRES"}
+    }
+  },
+
   "validations": [
     {
       "id": "dip_not_expired",
@@ -279,6 +303,13 @@
       "error_es": "El titular debe ser mayor de edad para DIP adulto",
       "error_fr": "Le titulaire doit etre majeur pour un DIP adulte",
       "severity": "warning"
+    },
+    {
+      "id": "mrz_checksum_valid",
+      "rule": "validate_mrz_checksums(mrz)",
+      "error_es": "Checksum MRZ invalido",
+      "error_fr": "Checksum MRZ invalide",
+      "severity": "error"
     }
   ],
   "gemini_hints": {

@@ -19,6 +19,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from loguru import logger
 
 from .schema_loader import schema_loader
+from .mrz_validator import mrz_validator
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -60,8 +61,10 @@ class ValidationResult:
 # Order is CRITICAL: specific patterns BEFORE generic ones.
 # AND/OR must be LAST (they split recursively).
 RULE_PATTERNS: List[Tuple[str, str]] = [
+    # MRZ checksums: delegate to MRZValidator (not SKIP)
+    (r'.*validate_mrz_checksums\((\w+)\)', 'MRZ_CHECKSUMS'),
     # Skip patterns (function calls, NLP) - use .* prefix since re.match anchors at start
-    (r'.*(?:validate_mrz_checksums|VALIDATE_AMOUNT_TEXT)', 'SKIP'),
+    (r'.*VALIDATE_AMOUNT_TEXT', 'SKIP'),
     (r'.*monto_letras\s+(?:EXISTS|MATCHES)\s+monto', 'SKIP'),
 
     # Date comparisons (specific before generic)
@@ -167,6 +170,14 @@ class SchemaValidationEngine:
 
                 # Skip unparseable or explicitly skipped rules
                 if rule_type is None or rule_type == "SKIP":
+                    continue
+
+                # MRZ Checksums: delegate to MRZValidator
+                if rule_type == "MRZ_CHECKSUMS":
+                    mrz_results = mrz_validator.validate(
+                        extraction, document_code, schema
+                    )
+                    results.extend(mrz_results)
                     continue
 
                 passed = self._evaluate_rule(extraction, rule_type, params)
