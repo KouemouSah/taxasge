@@ -1,9 +1,16 @@
 """
-ContratoWorkflow - Workflow for contract registration (ONRC).
+ContratoWorkflow v2 - Contract registration workflow (ONRC).
 
-Implements the contract registration workflow based on WORKFLOW_CONTRATO_CITOYEN.md.
+Migrated to PredefinedWorkflow architecture (Option C - Dynamic Form Review).
 
-Types:
+Solicitud Types:
+- REGISTRO_NUEVO: First registration of a commercial contract
+- ADENDA: Amendment to a registered contract (value/scope change)
+- PRORROGA: Extension of contract duration
+- CESION: Transfer of contract to another party
+- RESCISION: Early termination/cancellation registration
+
+Contract Types (for REGISTRO_NUEVO):
 - OBRA: Construction/Infrastructure contracts
 - SERVICIO: Service contracts
 - SUMINISTRO: Supply contracts
@@ -13,170 +20,792 @@ Types:
 - OTRO: Other contracts
 
 Entity: ONRC (Oficina Nacional de Registro de Contratos)
-Tariff: 0.5% of contract value
-"""
-from typing import List, Dict, Any
 
-from .base_workflow import (
-    BaseWorkflow,
+Tariff: 0.5% of contract value in XAF (percentage-based).
+Late penalty: 10%/month after 30 days (currently ×0 - inactive).
+Minimum tariff: 50,000 XAF (currently ×0 - inactive).
+Supplements: Timbre fiscal per page + Timbre de registro (currently ×0).
+
+Payment flow: Standard (citizen pays → then agent reviews).
+Agent can set monto_validado_por_agente during review.
+
+Document philosophy: All documents listed, most non-mandatory.
+When regulations evolve, flip is_required=True without code change.
+
+@version 2.0
+@date 2026-02-06
+@migration Option C - Dynamic Form Review Architecture
+"""
+from typing import List, Dict, Any, Optional
+from enum import Enum
+
+from .workflow_interface import (
+    PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
-    StepType
+    SupplementDefinition,
+    ValidationResult,
+    StepType,
+    RenovacionMotivo,
 )
 from ..models.enums import (
     WorkflowCode,
     WorkflowCategory,
     EntityCode,
     TariffType,
+    SolicitudType,
     DocumentConditionType
 )
 
+# Import PaymentMethod for API parity with other workflows
+from ...payments.models.payment import PaymentMethod
 
-class ContratoWorkflow(BaseWorkflow):
+
+class ContratoSolicitudType(str, Enum):
+    """Type of contract registration request."""
+    REGISTRO_NUEVO = "REGISTRO_NUEVO"   # First registration
+    ADENDA = "ADENDA"                   # Amendment
+    PRORROGA = "PRORROGA"               # Duration extension
+    CESION = "CESION"                   # Transfer to third party
+    RESCISION = "RESCISION"             # Early termination
+
+
+class ContratoType(str, Enum):
+    """Type of commercial contract."""
+    OBRA = "OBRA"                       # Construction
+    SERVICIO = "SERVICIO"               # Services
+    SUMINISTRO = "SUMINISTRO"           # Supply
+    CONCESION = "CONCESION"             # Concession
+    JOINT_VENTURE = "JOINT_VENTURE"     # Partnership
+    ARRENDAMIENTO = "ARRENDAMIENTO"     # Lease
+    OTRO = "OTRO"                       # Other
+
+
+class ContratoWorkflow(PredefinedWorkflow):
     """
     Contract registration workflow (ONRC).
 
-    Sub-types:
-    - OBRA: Construction contracts
-    - SERVICIO: Service contracts
-    - SUMINISTRO: Supply contracts
-    - CONCESION: Concession contracts
-    - JOINT_VENTURE: Partnership contracts
-    - ARRENDAMIENTO: Lease contracts
-    - OTRO: Other contract types
+    AUTONOMOUS: Defines ALL logic internally, no BaseWorkflow inheritance.
+
+    ALIGNED WITH PredefinedWorkflow architecture (v2):
+    - SolicitudType.EXPEDICION: New contract registration (REGISTRO_NUEVO)
+    - SolicitudType.RENOVACION: Modifications (ADENDA, PRORROGA, CESION, RESCISION)
+    - Sub-types via allowed_sub_types
+
+    Key features v2:
+    - form_review_1: Contractor identification (NIF + DIP extraction)
+    - form_review_2: Contract details + Contratante + Vigencia
+    - form_review_3: Financial data (monto from extraction, editable)
+    - Penalty rules at ×0 (ready for activation)
+    - Supplements at ×0 (timbre fiscal)
+    - Most documents non-mandatory (progressive enforcement)
+    - Standard payment flow (pay first, agent reviews after)
+
+    Condition Key Convention:
+    - Uses "sub_type" as primary condition key
+    - Uses "contract_type" for contract-type-specific conditions
     """
 
-    # Class attributes
-    workflow_code = WorkflowCode.CONTRATO_OBRA  # Default, varies by sub_type
-    category = WorkflowCategory.CONTRATOS
-    entity_code = EntityCode.ONRC
+    # Sub_type to (SolicitudType, Motivo) mapping
+    SUBTYPE_TO_SOLICITUD_MOTIVO = {
+        "REGISTRO_NUEVO": (SolicitudType.EXPEDICION, None),
+        "ADENDA": (SolicitudType.RENOVACION, None),
+        "PRORROGA": (SolicitudType.RENOVACION, None),
+        "CESION": (SolicitudType.RENOVACION, None),
+        "RESCISION": (SolicitudType.RENOVACION, None),
+    }
 
-    service_name_es = "Registro de Contrato Comercial"
+    # Tariff: 0.5% of contract value
+    TARIFF_PERCENTAGE = 0.005  # 0.5%
 
-    requires_nota_ingreso = False
-    requires_appointment = False  # No appointment needed
-    requires_agent_review = True
+    # Late registration penalty (×0 = INACTIVE until decision)
+    # Rule: After 30 days from signature, 10%/month penalty, max 100%
+    PENALTY_MULTIPLIER = 0              # ×0 = inactive
+    PENALTY_RATE_PER_MONTH = 0.10       # 10% per month when active
+    PENALTY_MAX_RATE = 1.0              # 100% max when active
+    REGISTRATION_DELAY_DAYS = 30        # Grace period
 
-    allowed_sub_types = [
-        "OBRA",
-        "SERVICIO",
-        "SUMINISTRO",
-        "CONCESION",
-        "JOINT_VENTURE",
-        "ARRENDAMIENTO",
-        "OTRO"
-    ]
+    # Minimum tariff (×0 = INACTIVE until decision)
+    MINIMUM_TARIFF_MULTIPLIER = 0       # ×0 = inactive
+    MINIMUM_TARIFF_XAF = 50000          # 50,000 XAF when active
 
-    def _setup_specific_steps(self) -> None:
-        """Setup contract-specific workflow steps.
+    # Exchange rates (official BEAC rates)
+    EXCHANGE_RATES = {
+        "XAF": 1,
+        "EUR": 655.957,     # 1 EUR = 655.957 XAF (fixed parity)
+        "USD": 600,          # 1 USD ≈ 600 XAF (approximate)
+    }
 
-        IMPORTANT: Le paiement est BLOQUÉ jusqu'à l'approbation par l'agent ONRC.
-        Flux: Submit → Agent valide → Payment → Certificat
+    # Legacy alias
+    SUBTYPE_MAPPING = SUBTYPE_TO_SOLICITUD_MOTIVO
+
+    # === Configuration (PredefinedWorkflow required properties) ===
+
+    @property
+    def workflow_code(self) -> WorkflowCode:
+        return WorkflowCode.CONTRATO_OBRA  # Base code, variant by contract_type
+
+    @property
+    def category(self) -> WorkflowCategory:
+        return WorkflowCategory.CONTRATOS
+
+    @property
+    def entity_code(self) -> EntityCode:
+        return EntityCode.ONRC
+
+    @property
+    def service_name_es(self) -> str:
+        return "Registro de Contrato Comercial"
+
+    @property
+    def allowed_solicitud_types(self) -> List[SolicitudType]:
+        return [SolicitudType.EXPEDICION, SolicitudType.RENOVACION]
+
+    @property
+    def requires_appointment(self) -> bool:
+        return False  # No appointment needed for contract registration
+
+    @property
+    def requires_agent_review(self) -> bool:
+        return True
+
+    @property
+    def requires_nota_ingreso(self) -> bool:
+        return False  # Direct payment via Mobile Money
+
+    @property
+    def allowed_sub_types(self) -> List[str]:
+        """Legacy: list of sub_type strings."""
+        return list(self.SUBTYPE_TO_SOLICITUD_MOTIVO.keys())
+
+    # === Workflow Setup ===
+
+    def _setup_workflow(self) -> None:
+        """
+        Setup complete contract registration workflow.
+
+        Steps:
+        0. select_type - Solicitud type (REGISTRO_NUEVO/ADENDA/PRORROGA/CESION/RESCISION)
+        1. select_contract_type - Contract type (conditional: REGISTRO_NUEVO only)
+        2. upload_documents - All documents on one page
+        3. form_review_1 - Contractor identification (1/3)
+        4. form_review_2 - Contract details + Contratante + Vigencia (2/3)
+        5. form_review_3 - Financial data (3/3)
+        6. payment - Mobile Money payment (0.5% of contract value)
+        7. confirmation - Final summary
         """
 
-        # Step 5: Contract Value Declaration + Tariff Preview
+        # === Step 0: Solicitud Type Selection ===
+        self.add_step(WorkflowStep(
+            step_number=0,
+            step_id="select_type",
+            step_type=StepType.SELECTION,
+            title_es="Tipo de Solicitud",
+            description_es="Seleccione el tipo de trámite de registro de contrato",
+            config={
+                "selection_type": "sub_type",
+                "options": [
+                    {
+                        "value": "REGISTRO_NUEVO",
+                        "label_es": "Registro de Nuevo Contrato",
+                        "description_es": "Registrar un nuevo contrato comercial ante la ONRC",
+                        "icon": "file-plus"
+                    },
+                    {
+                        "value": "ADENDA",
+                        "label_es": "Adenda / Modificación",
+                        "description_es": "Registrar una modificación o avenant a un contrato ya registrado",
+                        "icon": "file-edit"
+                    },
+                    {
+                        "value": "PRORROGA",
+                        "label_es": "Prórroga",
+                        "description_es": "Registrar la extensión de duración de un contrato existente",
+                        "icon": "calendar-plus"
+                    },
+                    {
+                        "value": "CESION",
+                        "label_es": "Cesión de Contrato",
+                        "description_es": "Registrar la transferencia de un contrato a un tercero",
+                        "icon": "arrow-right-left"
+                    },
+                    {
+                        "value": "RESCISION",
+                        "label_es": "Rescisión / Resolución",
+                        "description_es": "Registrar la terminación anticipada de un contrato",
+                        "icon": "file-x"
+                    }
+                ]
+            }
+        ))
+
+        # === Step 1: Contract Type Selection (REGISTRO_NUEVO only) ===
+        self.add_step(WorkflowStep(
+            step_number=1,
+            step_id="select_contract_type",
+            step_type=StepType.SELECTION,
+            title_es="Tipo de Contrato",
+            description_es="Seleccione el tipo de contrato comercial",
+            config={
+                "selection_type": "contract_type",
+                "condition": {"sub_type": "REGISTRO_NUEVO"},
+                "options": [
+                    {
+                        "value": "OBRA",
+                        "label_es": "Contrato de Obra",
+                        "description_es": "Construcción, infraestructura, obras públicas",
+                        "icon": "building"
+                    },
+                    {
+                        "value": "SERVICIO",
+                        "label_es": "Contrato de Servicio",
+                        "description_es": "Prestación de servicios profesionales o técnicos",
+                        "icon": "briefcase"
+                    },
+                    {
+                        "value": "SUMINISTRO",
+                        "label_es": "Contrato de Suministro",
+                        "description_es": "Provisión de bienes, equipos o materiales",
+                        "icon": "package"
+                    },
+                    {
+                        "value": "CONCESION",
+                        "label_es": "Contrato de Concesión",
+                        "description_es": "Concesión de explotación de recursos o servicios públicos",
+                        "icon": "landmark"
+                    },
+                    {
+                        "value": "JOINT_VENTURE",
+                        "label_es": "Joint-Venture / Asociación",
+                        "description_es": "Acuerdo de asociación empresarial o consorcio",
+                        "icon": "handshake"
+                    },
+                    {
+                        "value": "ARRENDAMIENTO",
+                        "label_es": "Contrato de Arrendamiento",
+                        "description_es": "Arrendamiento de bienes inmuebles o equipos",
+                        "icon": "key"
+                    },
+                    {
+                        "value": "OTRO",
+                        "label_es": "Otro Tipo",
+                        "description_es": "Otro tipo de contrato comercial",
+                        "icon": "file-text"
+                    }
+                ]
+            }
+        ))
+
+        # === Step 2: Document Upload ===
+        self.add_step(WorkflowStep(
+            step_number=2,
+            step_id="upload_documents",
+            step_type=StepType.DOCUMENT_UPLOAD,
+            title_es="Documentos Requeridos",
+            description_es="Cargue los documentos necesarios para el registro del contrato",
+            config={
+                "dynamic_documents": True,
+                "single_page": True,
+                "includes_photo": False
+            }
+        ))
+
+        # === Step 3: Form Review 1 - Identification Contratiste (1/3) ===
+        self.add_step(WorkflowStep(
+            step_number=3,
+            step_id="form_review_1",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos (1/3)",
+            description_es="Verifique los datos del contratista extraídos de los documentos",
+            config={
+                "form_page": 1,
+                "max_sections": 1,
+                "sections": [
+                    {
+                        "id": "identificacion_contratista",
+                        "title_es": "Identificación del Contratista",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "nif_contratista",
+                                "label_es": "NIF del Contratista",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True,
+                                "placeholder_es": "Ej: 12345AB-01"
+                            },
+                            {
+                                "key": "denominacion_social",
+                                "label_es": "Denominación Social",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "autorizacion_tipo",
+                                "label_es": "Tipo de Autorización NIF",
+                                "type": "text",
+                                "required": False,
+                                "readonly": True
+                            },
+                            {
+                                "key": "representante_legal",
+                                "label_es": "Representante Legal",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "dip_representante_numero",
+                                "label_es": "Nº DIP del Representante",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "apellidos_representante",
+                                "label_es": "Apellidos del Representante",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "nombres_representante",
+                                "label_es": "Nombres del Representante",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "domicilio_social",
+                                "label_es": "Domicilio Social",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "telefono_contratista",
+                                "label_es": "Teléfono de Contacto",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "email_contratista",
+                                "label_es": "Email de Contacto",
+                                "type": "email",
+                                "required": False,
+                                "readonly": False
+                            }
+                        ]
+                    }
+                ]
+            }
+        ))
+
+        # === Step 4: Form Review 2 - Contract Details + Contratante (2/3) ===
+        self.add_step(WorkflowStep(
+            step_number=4,
+            step_id="form_review_2",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos (2/3)",
+            description_es="Verifique los datos del contrato y de la parte contratante",
+            config={
+                "form_page": 2,
+                "max_sections": 4,
+                "sections": [
+                    # Section 1: Contract metadata
+                    {
+                        "id": "datos_contrato",
+                        "title_es": "Datos del Contrato",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "tipo_solicitud",
+                                "label_es": "Tipo de Solicitud",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True
+                            },
+                            {
+                                "key": "tipo_contrato",
+                                "label_es": "Tipo de Contrato",
+                                "type": "select",
+                                "options": [t.value for t in ContratoType],
+                                "required": True,
+                                "readonly": False,
+                                "condition": {"sub_type": "REGISTRO_NUEVO"}
+                            },
+                            {
+                                "key": "numero_contrato",
+                                "label_es": "Número / Referencia del Contrato",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "titulo_contrato",
+                                "label_es": "Título del Contrato",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "numero_registro_original",
+                                "label_es": "Nº de Registro ONRC del Contrato Original",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False,
+                                "condition": {
+                                    "OR": [
+                                        {"sub_type": "ADENDA"},
+                                        {"sub_type": "PRORROGA"},
+                                        {"sub_type": "CESION"},
+                                        {"sub_type": "RESCISION"}
+                                    ]
+                                },
+                                "placeholder_es": "Nº de registro del contrato original"
+                            },
+                            {
+                                "key": "fecha_firma",
+                                "label_es": "Fecha de Firma",
+                                "type": "date",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "lugar_firma",
+                                "label_es": "Lugar de Firma",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "objeto_contrato",
+                                "label_es": "Objeto del Contrato",
+                                "type": "textarea",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "sector",
+                                "label_es": "Sector Económico",
+                                "type": "select",
+                                "options": [
+                                    "PETROLEO_GAS", "CONSTRUCCION", "TELECOMUNICACIONES",
+                                    "SERVICIOS_IT", "SERVICIOS_PROFESIONALES", "COMERCIO",
+                                    "AGRICULTURA", "TURISMO", "TRANSPORTE", "ENERGIA",
+                                    "MINERIA", "SALUD", "EDUCACION", "OTRO"
+                                ],
+                                "required": False,
+                                "readonly": False
+                            }
+                        ]
+                    },
+                    # Section 2: Contratante (contracting party / client)
+                    {
+                        "id": "contratante",
+                        "title_es": "Parte Contratante",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "tipo_entidad_contratante",
+                                "label_es": "Tipo de Entidad",
+                                "type": "select",
+                                "options": [
+                                    "GOBIERNO", "MINISTERIO", "EMPRESA_PUBLICA",
+                                    "EMPRESA_PRIVADA", "PERSONA_FISICA",
+                                    "ORGANISMO_INTERNACIONAL"
+                                ],
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "nombre_contratante",
+                                "label_es": "Nombre / Razón Social",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "representante_contratante",
+                                "label_es": "Representante",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "cargo_representante_contratante",
+                                "label_es": "Cargo del Representante",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False,
+                                "placeholder_es": "Ej: Ministro, Director General..."
+                            },
+                            {
+                                "key": "nif_contratante",
+                                "label_es": "NIF de la Entidad Contratante",
+                                "type": "text",
+                                "required": False,
+                                "readonly": False
+                            }
+                        ]
+                    },
+                    # Section 3: Vigencia (validity/duration)
+                    {
+                        "id": "vigencia",
+                        "title_es": "Vigencia del Contrato",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "fecha_inicio",
+                                "label_es": "Fecha de Inicio",
+                                "type": "date",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "fecha_fin",
+                                "label_es": "Fecha de Finalización",
+                                "type": "date",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "duracion_meses",
+                                "label_es": "Duración (meses)",
+                                "type": "number",
+                                "required": False,
+                                "readonly": False
+                            },
+                            {
+                                "key": "renovable",
+                                "label_es": "¿Renovable?",
+                                "type": "select",
+                                "options": ["SI", "NO"],
+                                "required": False,
+                                "readonly": False
+                            }
+                        ]
+                    },
+                    # Section 4: Cesion details (CESION only)
+                    {
+                        "id": "cesion",
+                        "title_es": "Datos de la Cesión",
+                        "condition": {"sub_type": "CESION"},
+                        "fields": [
+                            {
+                                "key": "cesionario_nombre",
+                                "label_es": "Nombre del Cesionario (nuevo titular)",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "cesionario_nif",
+                                "label_es": "NIF del Cesionario",
+                                "type": "text",
+                                "required": True,
+                                "readonly": False,
+                                "placeholder_es": "Ej: 12345AB-01"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ))
+
+        # === Step 5: Form Review 3 - Financial Data (3/3) ===
         self.add_step(WorkflowStep(
             step_number=5,
-            step_id="contract_value",
-            step_type=StepType.CUSTOM,
-            title_es="Valor del Contrato",
-            description_es="Confirme el valor del contrato para el cálculo de tasas",
-            is_inherited=False,
+            step_id="form_review_3",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos (3/3)",
+            description_es="Verifique el valor del contrato (extraído del documento)",
             config={
-                "requires_value_confirmation": True,
-                "currency_options": ["XAF", "EUR", "USD"],
-                "exchange_rates": {
-                    "EUR": 655.957,  # 1 EUR = 655.957 XAF (official rate)
-                    "USD": 600       # 1 USD = ~600 XAF (approximate)
-                },
-                "show_tariff_preview": True,
-                "tariff_note": "0.5% del valor del contrato"
+                "form_page": 3,
+                "max_sections": 1,
+                "sections": [
+                    {
+                        "id": "valor_contrato",
+                        "title_es": "Valor del Contrato",
+                        "condition": None,  # Always visible
+                        "fields": [
+                            {
+                                "key": "monto_total",
+                                "label_es": "Monto Total del Contrato",
+                                "type": "number",
+                                "required": True,
+                                "readonly": False,
+                                "help_es": "Valor extraído del contrato. Verifique y corrija si es necesario."
+                            },
+                            {
+                                "key": "moneda",
+                                "label_es": "Moneda",
+                                "type": "select",
+                                "options": ["XAF", "EUR", "USD"],
+                                "required": True,
+                                "readonly": False
+                            },
+                            {
+                                "key": "monto_en_letras",
+                                "label_es": "Monto en Letras (verificación)",
+                                "type": "text",
+                                "required": False,
+                                "readonly": True,
+                                "help_es": "Extraído del contrato para verificación cruzada"
+                            },
+                            {
+                                "key": "incluye_iva",
+                                "label_es": "¿Incluye IVA?",
+                                "type": "select",
+                                "options": ["SI", "NO", "NO_APLICA"],
+                                "required": False,
+                                "readonly": False
+                            }
+                        ]
+                    }
+                ]
             }
         ))
 
-        # Step 6: Confirmation and Submit for Validation
-        # NOTE: Citizen submits, then waits for ONRC agent approval
+        # === Step 6: Payment ===
         self.add_step(WorkflowStep(
             step_number=6,
-            step_id="confirmation",
-            step_type=StepType.CONFIRMATION,
-            title_es="Confirmación y Envío para Validación",
-            description_es="Verifique todos los datos y envíe su solicitud para validación por ONRC",
-            is_inherited=False,
-            config={
-                "show_summary": True,
-                "show_tariff_calculation": True,
-                "submit_for_validation": True,
-                "info_message_es": "Su dossier será examinado por un agente de la ONRC. El pago será posible ÚNICAMENTE después de la aprobación.",
-                "next_status": "SUBMITTED"
-            }
-        ))
-
-        # Step 7: Payment (BLOCKED until ONRC agent approval)
-        # This step is only accessible after agent sets status to DOSSIER_VALIDE
-        self.add_step(WorkflowStep(
-            step_number=7,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas de Registro",
-            description_es="Tasa de registro: 0.5% del valor del contrato (validado por ONRC)",
-            is_inherited=False,
+            description_es="Tasa de registro: 0.5% del valor del contrato",
             config={
-                                "currency": "XAF",
-                "calculation_note": "0.5% del valor del contrato",
-                "requires_status": "DOSSIER_VALIDE",  # CRITICAL: Payment blocked until validated
-                "blocked_message_es": "El pago está bloqueado hasta que un agente ONRC valide su dossier."
+                "currency": "XAF",
+                "show_breakdown": True,
+                "dynamic_tariff": True,
+                "tariff_note_es": "Tarifa de registro ONRC: 0.5% del valor del contrato en XAF"
             }
         ))
 
+        # === Step 7: Confirmation ===
+        self.add_step(WorkflowStep(
+            step_number=7,
+            step_id="confirmation",
+            step_type=StepType.CONFIRMATION,
+            title_es="Confirmación",
+            description_es="Su solicitud de registro ha sido completada",
+            config={
+                "show_summary": True,
+                "show_payment": True,
+                "allow_download_receipt": True,
+                "next_steps_es": [
+                    "Su dossier será examinado por un agente de la ONRC",
+                    "El agente verificará el contrato y los documentos originales",
+                    "Recibirá una notificación cuando el registro esté completo",
+                    "En caso de observaciones, el agente le contactará para correcciones"
+                ]
+            }
+        ))
+
+        # === Setup Tariffs ===
+        self._setup_tariffs()
+
     def _setup_tariffs(self) -> None:
-        """Setup tariff configuration for contract registration."""
-        self._tariff_config = TariffConfig(
+        """
+        Setup tariff configuration for contract registration.
+
+        Base: 0.5% of contract value in XAF.
+
+        Supplements (currently ×0 - inactive, ready for activation):
+        - TIMBRE_FISCAL_PAGE: Stamp duty per page of contract
+        - TIMBRE_REGISTRO: Fixed registration stamp duty
+        """
+        supplements = [
+            SupplementDefinition(
+                code="TIMBRE_FISCAL_PAGE",
+                name_es="Timbre Fiscal por Página",
+                unit_price=0,       # ×0 - to be defined (ex: 1,000 XAF/page)
+                quantity=1,
+                is_required=True
+            ),
+            SupplementDefinition(
+                code="TIMBRE_REGISTRO",
+                name_es="Timbre de Registro",
+                unit_price=0,       # ×0 - to be defined (ex: 5,000 XAF)
+                quantity=1,
+                is_required=True
+            ),
+        ]
+
+        self.set_tariff_config(TariffConfig(
             tariff_type=TariffType.PERCENTAGE,
-            percentage=0.5,  # 0.5% of contract value
-            currency="XAF"
-        )
+            percentage=0.5,     # 0.5% of contract value
+            currency="XAF",
+            supplements=supplements
+        ))
 
-    def calculate_tariff(self, context: WorkflowContext, value: float = None) -> int:
+    # === Document Requirements ===
+
+    def get_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
         """
-        Calculate tariff based on contract value.
+        Get document requirements for contract registration.
 
-        Tariff = 0.5% of contract value in XAF
-        No minimum - pure percentage calculation.
+        Philosophy: All documents listed, most non-mandatory.
+        When regulations evolve, flip is_required=True.
+
+        Document Matrix:
+        | Document                    | REGISTRO | ADENDA | PRORROGA | CESION | RESCISION | Required |
+        |-----------------------------|----------|--------|----------|--------|-----------|----------|
+        | Contrato                    | ✅       | ✅     | ✅       | ✅     | ✅        | YES      |
+        | Certificado NIF             | ✅       | ✅     | ✅       | ✅     | ✅        | YES      |
+        | DIP Representante           | ✅       | ✅     | ✅       | ✅     | ✅        | YES      |
+        | Escritura Constitución      | ✅       | ✅     | ✅       | ✅     | ✅        | no*      |
+        | Certificado Registro VUE    | ✅       | ✅     | ✅       | ✅     | ✅        | no*      |
+        | Poder Notarial              | ✅       | ✅     | ✅       | ✅     | ✅        | no*      |
+        | Licencia Comercio Municipal | ✅       | -      | -        | -      | -         | no*      |
+        | Permiso Construcción        | OBRA     | -      | -        | -      | -         | YES      |
+        | Autorizacion Gubernativa    | CONC     | -      | -        | -      | -         | YES      |
+        | Acuerdo Joint-Venture       | JV       | -      | -        | -      | -         | no*      |
+        | Certificado Registro ONRC   | -        | ✅     | ✅       | ✅     | ✅        | YES      |
+        | Acta Adjudicación (GOB)     | GOB      | GOB    | -        | -      | -         | no*      |
+        | Visa Control Financiero     | GOB      | GOB    | -        | -      | -         | no*      |
+
+        *no = listed but non-mandatory (progressive enforcement)
         """
-        if not value:
-            # Try to get from form_data
-            value = context.form_data.get("monto_total", 0)
-            currency = context.form_data.get("moneda", "XAF")
-
-            # Convert to XAF if needed
-            if currency == "EUR":
-                value = value * 655.957  # EUR to XAF (official rate)
-            elif currency == "USD":
-                value = value * 600  # USD to XAF (approximate)
-
-        # Calculate 0.5% - no minimum, pure percentage
-        return int(value * 0.005)
-
-    def get_document_requirements(self, sub_type: str) -> List[DocumentRequirement]:
-        """Get document requirements for contract registration."""
         requirements = []
+        sub_type = None
+        contract_type = None
 
-        # Contract document - always required
+        if context and context.form_data:
+            sub_type = context.sub_type or context.form_data.get("sub_type")
+            contract_type = context.form_data.get("contract_type")
+
+        if not sub_type:
+            sub_type = "REGISTRO_NUEVO" if solicitud_type == SolicitudType.EXPEDICION else "ADENDA"
+
+        is_modification = sub_type in ["ADENDA", "PRORROGA", "CESION", "RESCISION"]
+
+        # === 1. Contract document - ALWAYS REQUIRED ===
+        instructions = "Escanee todas las páginas del contrato firmado por ambas partes"
+        if is_modification:
+            instructions = f"Escanee el documento de {sub_type.lower()} firmado por ambas partes"
+
         requirements.append(DocumentRequirement(
             document_code="contrato",
-            document_name_es="Contrato Comercial",
+            document_name_es="Contrato Comercial" if not is_modification else f"Documento de {sub_type.title()}",
             schema_key="CONTRATO_ONRC_GQ_V1",
             is_required=True,
             display_order=1,
             condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="Escanee todas las páginas del contrato firmado",
-            accepted_formats=["pdf"]
+            instructions_es=instructions,
+            accepted_formats=["pdf", "jpg", "jpeg", "png"]
         ))
 
-        # NIF Certificate of contractor - always required
+        # === 2. NIF Certificate - ALWAYS REQUIRED ===
         requirements.append(DocumentRequirement(
             document_code="certificado_nif",
             document_name_es="Certificado NIF del Contratista",
@@ -184,10 +813,10 @@ class ContratoWorkflow(BaseWorkflow):
             is_required=True,
             display_order=2,
             condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="Certificado NIF vigente con autorización DEFINITIVA"
+            instructions_es="Certificado NIF vigente de la empresa contratista"
         ))
 
-        # DIP of legal representative - always required
+        # === 3. DIP of legal representative - ALWAYS REQUIRED ===
         requirements.append(DocumentRequirement(
             document_code="dip_representante",
             document_name_es="DIP del Representante Legal",
@@ -195,95 +824,190 @@ class ContratoWorkflow(BaseWorkflow):
             is_required=True,
             display_order=3,
             condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="DIP del representante legal de la empresa contratista",
+            instructions_es="DIP vigente del representante legal de la empresa contratista",
             faces_required=["recto", "verso"]
         ))
 
-        # Additional documents for specific contract types
-        if sub_type == "CONCESION":
+        # === 4. Escritura de Constitución - LISTED, NOT REQUIRED ===
+        requirements.append(DocumentRequirement(
+            document_code="escritura_constitucion",
+            document_name_es="Escritura de Constitución",
+            schema_key="ESCRITURA_CONSTITUCION_GQ_V1",
+            is_required=False,
+            display_order=4,
+            condition_type=DocumentConditionType.ALWAYS,
+            instructions_es="Escritura de constitución de la empresa (si disponible)"
+        ))
+
+        # === 5. Certificado Registro VUE - LISTED, NOT REQUIRED ===
+        requirements.append(DocumentRequirement(
+            document_code="certificado_registro_vue",
+            document_name_es="Certificado de Registro VUE",
+            schema_key="CERTIFICADO_REGISTRO_VUE_GQ_V1",
+            is_required=False,
+            display_order=5,
+            condition_type=DocumentConditionType.ALWAYS,
+            instructions_es="Certificado de registro en la Ventanilla Única Empresarial (si disponible)"
+        ))
+
+        # === 6. Poder Notarial - LISTED, NOT REQUIRED ===
+        requirements.append(DocumentRequirement(
+            document_code="poder_notarial",
+            document_name_es="Poder Notarial",
+            is_required=False,
+            display_order=6,
+            condition_type=DocumentConditionType.ALWAYS,
+            instructions_es="Poder notarial si el firmante no es el representante legal inscrito",
+            config={"best_effort_extraction": True}
+        ))
+
+        # === 7. Licencia Comercio Municipal - LISTED, NOT REQUIRED (REGISTRO_NUEVO) ===
+        if not is_modification:
             requirements.append(DocumentRequirement(
-                document_code="acta_autorizacion",
-                document_name_es="Acta de Autorización Gubernamental",
-                is_required=True,
-                display_order=4,
+                document_code="licencia_comercio",
+                document_name_es="Licencia de Comercio Municipal",
+                schema_key="LICENCIA_COMERCIO_MUNICIPAL_GQ_V1",
+                is_required=False,
+                display_order=7,
                 condition_type=DocumentConditionType.CUSTOM,
-                condition_value={"types": ["CONCESION"]},
-                instructions_es="Resolución o decreto autorizando la concesión"
+                condition_value={"types": ["REGISTRO_NUEVO"]},
+                instructions_es="Licencia municipal de comercio vigente (si disponible)"
             ))
 
-        if sub_type == "JOINT_VENTURE":
+        # === Conditional documents by contract type (REGISTRO_NUEVO) ===
+
+        # Permiso Construcción - REQUIRED for OBRA
+        if not is_modification and contract_type == "OBRA":
+            requirements.append(DocumentRequirement(
+                document_code="permiso_construccion",
+                document_name_es="Permiso de Construcción",
+                is_required=True,
+                display_order=8,
+                condition_type=DocumentConditionType.CUSTOM,
+                condition_value={"contract_types": ["OBRA"]},
+                instructions_es="Permiso de construcción vigente emitido por la autoridad competente",
+                config={"best_effort_extraction": True}
+            ))
+
+        # Autorización Gubernativa - REQUIRED for CONCESION
+        if not is_modification and contract_type == "CONCESION":
+            requirements.append(DocumentRequirement(
+                document_code="autorizacion_gubernativa",
+                document_name_es="Autorización Gubernativa de Concesión",
+                schema_key="AUTORIZACION_GUBERNATIVA_GQ_V1",
+                is_required=True,
+                display_order=8,
+                condition_type=DocumentConditionType.CUSTOM,
+                condition_value={"contract_types": ["CONCESION"]},
+                instructions_es="Autorización gubernativa que otorga la concesión"
+            ))
+
+        # Acuerdo JV - LISTED, NOT REQUIRED for JOINT_VENTURE
+        if not is_modification and contract_type == "JOINT_VENTURE":
             requirements.append(DocumentRequirement(
                 document_code="acuerdo_jv",
                 document_name_es="Acuerdo de Joint-Venture",
-                is_required=True,
-                display_order=4,
+                is_required=False,
+                display_order=8,
                 condition_type=DocumentConditionType.CUSTOM,
-                condition_value={"types": ["JOINT_VENTURE"]},
-                instructions_es="Acuerdo constitutivo del joint-venture"
+                condition_value={"contract_types": ["JOINT_VENTURE"]},
+                instructions_es="Acuerdo constitutivo del joint-venture (si disponible)",
+                config={"best_effort_extraction": True}
             ))
+
+        # === Certificado de Registro ONRC original (modifications) ===
+        if is_modification:
+            requirements.append(DocumentRequirement(
+                document_code="certificado_registro_onrc",
+                document_name_es="Certificado de Registro ONRC del Contrato Original",
+                is_required=True,
+                display_order=8,
+                condition_type=DocumentConditionType.CUSTOM,
+                condition_value={"types": ["ADENDA", "PRORROGA", "CESION", "RESCISION"]},
+                instructions_es="Certificado de registro ONRC del contrato original que se modifica",
+                config={"best_effort_extraction": True}
+            ))
+
+        # === Government-specific documents (non-mandatory, non-blocking) ===
+        # Listed for GOBIERNO/MINISTERIO/EMPRESA_PUBLICA as contratante
+        requirements.append(DocumentRequirement(
+            document_code="acta_adjudicacion",
+            document_name_es="Acta de Adjudicación / Resolución",
+            is_required=False,
+            display_order=20,
+            condition_type=DocumentConditionType.CUSTOM,
+            condition_value={"contratante_types": ["GOBIERNO", "MINISTERIO", "EMPRESA_PUBLICA"]},
+            instructions_es="Resolución o acta de adjudicación del contrato público (si contratante es entidad gubernamental)",
+            config={"best_effort_extraction": True}
+        ))
+
+        requirements.append(DocumentRequirement(
+            document_code="visa_control_financiero",
+            document_name_es="Visa de Control Financiero",
+            is_required=False,
+            display_order=21,
+            condition_type=DocumentConditionType.CUSTOM,
+            condition_value={"contratante_types": ["GOBIERNO", "MINISTERIO", "EMPRESA_PUBLICA"]},
+            instructions_es="Visa del control financiero del presupuesto (si contratante es entidad gubernamental)",
+            config={"best_effort_extraction": True}
+        ))
 
         return requirements
 
+    # === Cross-Document Validation Rules ===
+
     def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """Get cross-document validation rules for contract registration."""
+        """
+        Cross-document validation rules for contract registration.
+
+        Includes:
+        - Signature/authentication validations
+        - NIF coherence checks
+        - Representative identity matching
+        - Late registration detection
+        - Duplicate contract detection
+        - Government contract specific checks
+        """
         return [
-            # Contract must have both signatures
+            # === Contract authentication ===
             {
-                "id": "contract_signatures",
+                "id": "contrato_firmas_ambas_partes",
                 "document": "contrato",
                 "rule": "firmas.firma_contratante_presente AND firmas.firma_contratista_presente",
                 "error_es": "El contrato debe estar firmado por ambas partes.",
                 "severity": "error"
             },
-            # NIF must be definitive
             {
-                "id": "nif_definitive",
-                "document": "certificado_nif",
-                "rule": "empresa.autorizacion == 'DEFINITIVA'",
-                "error_es": "El NIF debe tener autorización DEFINITIVA, no provisional.",
-                "severity": "error"
-            },
-            # NIF must match contractor NIF in contract
-            {
-                "id": "nif_matches_contract",
-                "rule": "certificado_nif.empresa.nif == contrato.parte_contratista.nif_contratista",
-                "error_es": "El NIF del certificado no coincide con el NIF del contratista en el contrato.",
-                "severity": "error"
-            },
-            # DIP must not be expired
-            {
-                "id": "dip_not_expired",
-                "document": "dip_representante",
-                "rule": "documento.fecha_expiracion > TODAY",
-                "error_es": "El DIP del representante legal está expirado.",
-                "severity": "error"
-            },
-            # Representative name should match
-            {
-                "id": "representative_matches",
-                "rule": "normalize(contrato.parte_contratista.representante_legal) CONTAINS normalize(dip_representante.titular.apellidos)",
-                "error_es": "El nombre del representante legal no coincide con el DIP.",
-                "severity": "warning"
-            },
-            # Contract value must be positive
-            {
-                "id": "contract_value_positive",
+                "id": "contrato_valor_positivo",
                 "document": "contrato",
                 "rule": "valor_contrato.monto_total > 0",
                 "error_es": "El valor del contrato debe ser mayor que cero.",
                 "severity": "error"
             },
-            # NIF format validation
+
+            # === NIF validations ===
             {
-                "id": "nif_format",
+                "id": "nif_format_valido",
                 "document": "certificado_nif",
                 "rule": "empresa.nif MATCHES '^[0-9]{5}[A-Z]{2}-[0-9]{2}$'",
                 "error_es": "El formato del NIF es incorrecto. Debe ser: 12345AB-01",
                 "severity": "error"
             },
-            # NIF certificate must have all required stamps/signatures
             {
-                "id": "nif_authenticated",
+                "id": "nif_autorizacion_definitiva",
+                "document": "certificado_nif",
+                "rule": "empresa.autorizacion == 'DEFINITIVA'",
+                "error_es": "El NIF debe tener autorización DEFINITIVA, no provisional.",
+                "severity": "warning"
+            },
+            {
+                "id": "nif_coherente_contrato",
+                "rule": "certificado_nif.empresa.nif == contrato.parte_contratista.nif_contratista",
+                "error_es": "El NIF del certificado no coincide con el NIF del contratista en el contrato.",
+                "severity": "error"
+            },
+            {
+                "id": "nif_autenticacion_completa",
                 "document": "certificado_nif",
                 "rule": """
                     autenticacion.tiene_firma_jefe_hacienda AND
@@ -293,51 +1017,136 @@ class ContratoWorkflow(BaseWorkflow):
                 """,
                 "error_es": "El certificado NIF no tiene todas las firmas y sellos requeridos.",
                 "severity": "error"
-            }
+            },
+
+            # === DIP validations ===
+            {
+                "id": "dip_no_expirado",
+                "document": "dip_representante",
+                "rule": "documento.fecha_expiracion > TODAY",
+                "error_es": "El DIP del representante legal está expirado.",
+                "severity": "error"
+            },
+            {
+                "id": "representante_coherente_contrato",
+                "rule": "normalize(contrato.parte_contratista.representante_legal) CONTAINS normalize(dip_representante.titular.apellidos)",
+                "error_es": "El nombre del representante legal no coincide entre el contrato y el DIP.",
+                "severity": "warning"
+            },
+
+            # === Coherence chiffres/lettres ===
+            {
+                "id": "coherencia_monto_letras",
+                "document": "contrato",
+                "rule": "valor_contrato.monto_en_letras IS NULL OR VALIDATE_AMOUNT_TEXT(valor_contrato.monto_total, valor_contrato.monto_en_letras)",
+                "error_es": "El monto en cifras no coincide con el monto en letras.",
+                "severity": "warning"
+            },
+
+            # === Late registration detection ===
+            {
+                "id": "registro_tardio",
+                "document": "contrato",
+                "rule": "documento.fecha_firma >= TODAY - 30 DAYS",
+                "error_es": "El contrato fue firmado hace más de 30 días. Puede aplicarse una penalidad por registro tardío.",
+                "severity": "warning"
+            },
+
+            # === Duplicate detection ===
+            {
+                "id": "contrato_duplicado",
+                "rule": "NOT EXISTS(SELECT 1 FROM service_requests WHERE nif_contratista = contrato.parte_contratista.nif_contratista AND monto_total = contrato.valor_contrato.monto_total AND fecha_firma = contrato.documento.fecha_firma AND status != 'REJECTED')",
+                "error_es": "Un contrato con el mismo NIF, monto y fecha de firma ya fue registrado.",
+                "severity": "warning"
+            },
+
+            # === Escritura coherence (when available) ===
+            {
+                "id": "escritura_denominacion_coherente",
+                "condition": "HAS_DOCUMENT('escritura_constitucion')",
+                "rule": "normalize(escritura_constitucion.empresa.denominacion_social) == normalize(certificado_nif.empresa.denominacion_social)",
+                "error_es": "La denominación social de la escritura no coincide con el certificado NIF.",
+                "severity": "warning"
+            },
+
+            # === Date coherence ===
+            {
+                "id": "fecha_firma_no_futura",
+                "document": "contrato",
+                "rule": "documento.fecha_firma <= TODAY",
+                "error_es": "La fecha de firma del contrato no puede ser futura.",
+                "severity": "error"
+            },
+            {
+                "id": "fecha_fin_posterior_inicio",
+                "document": "contrato",
+                "rule": "vigencia.fecha_fin IS NULL OR vigencia.fecha_fin > vigencia.fecha_inicio",
+                "error_es": "La fecha de finalización debe ser posterior a la fecha de inicio.",
+                "severity": "warning"
+            },
         ]
 
-    def get_form_mapping(self) -> Dict[str, str]:
-        """Get mapping from extracted data to form fields."""
+    # === Form Field Mapping ===
+
+    def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
+        """
+        Map extracted document data fields to form fields.
+
+        Sources:
+        - contrato (CONTRATO_ONRC_GQ_V1): contract details, value, parties
+        - certificado_nif (CERTIFICADO_NIF_GQ_V1): NIF, denomination, authorization
+        - dip_representante (DIP_GQ_V2): representative identity
+        """
         return {
-            # Contract info
+            # === From NIF Certificate ===
+            "nif_contratista": "certificado_nif.empresa.nif",
+            "denominacion_social": "certificado_nif.empresa.denominacion_social",
+            "autorizacion_tipo": "certificado_nif.empresa.autorizacion",
+
+            # === From DIP ===
+            "dip_representante_numero": "dip_representante.documento.numero_dip",
+            "apellidos_representante": "dip_representante.titular.apellidos",
+            "nombres_representante": "dip_representante.titular.nombres",
+
+            # === From Contract - Contratista ===
+            "representante_legal": "contrato.parte_contratista.representante_legal",
+            "domicilio_social": "contrato.parte_contratista.domicilio_social",
+            "telefono_contratista": "contrato.parte_contratista.telefono",
+            "email_contratista": "contrato.parte_contratista.email",
+
+            # === From Contract - Metadata ===
+            "tipo_solicitud": "context.sub_type",
             "tipo_contrato": "contrato.documento.tipo_contrato",
-            "fecha_firma": "contrato.documento.fecha_firma",
             "numero_contrato": "contrato.documento.numero_contrato",
             "titulo_contrato": "contrato.documento.titulo_contrato",
+            "fecha_firma": "contrato.documento.fecha_firma",
+            "lugar_firma": "contrato.documento.lugar_firma",
+            "objeto_contrato": "contrato.objeto_contrato.descripcion",
+            "sector": "contrato.objeto_contrato.sector",
 
-            # Value
-            "monto_total": "contrato.valor_contrato.monto_total",
-            "moneda": "contrato.valor_contrato.moneda",
+            # === From Contract - Contratante ===
+            "tipo_entidad_contratante": "contrato.parte_contratante.tipo_entidad",
+            "nombre_contratante": "contrato.parte_contratante.nombre_entidad",
+            "representante_contratante": "contrato.parte_contratante.representante",
+            "cargo_representante_contratante": "contrato.parte_contratante.cargo_representante",
+            "nif_contratante": "contrato.parte_contratante.nif_contratante",
 
-            # Validity
+            # === From Contract - Vigencia ===
             "fecha_inicio": "contrato.vigencia.fecha_inicio",
             "fecha_fin": "contrato.vigencia.fecha_fin",
             "duracion_meses": "contrato.vigencia.duracion_meses",
 
-            # Contracting party
-            "tipo_contratante": "contrato.parte_contratante.tipo_entidad",
-            "nombre_contratante": "contrato.parte_contratante.nombre_entidad",
-            "representante_contratante": "contrato.parte_contratante.representante",
-
-            # Contractor
-            "tipo_contratista": "contrato.parte_contratista.tipo_entidad",
-            "nombre_contratista": "contrato.parte_contratista.nombre_empresa",
-            "nif_contratista": "contrato.parte_contratista.nif_contratista",
-            "representante_contratista": "contrato.parte_contratista.representante_legal",
-
-            # From NIF certificate
-            "nif_certificado": "certificado_nif.empresa.nif",
-            "denominacion_social": "certificado_nif.empresa.denominacion_social",
-            "autorizacion_tipo": "certificado_nif.empresa.autorizacion",
-
-            # From representative DIP
-            "dip_representante": "dip_representante.documento.numero_dip",
-            "apellidos_representante": "dip_representante.titular.apellidos",
-            "nombres_representante": "dip_representante.titular.nombres"
+            # === From Contract - Financial ===
+            "monto_total": "contrato.valor_contrato.monto_total",
+            "moneda": "contrato.valor_contrato.moneda",
+            "monto_en_letras": "contrato.valor_contrato.monto_en_letras",
+            "incluye_iva": "contrato.valor_contrato.incluye_iva",
         }
 
+    # === Workflow Code Resolution ===
+
     def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """Get the specific workflow code for a sub-type."""
+        """Get the specific WorkflowCode for a contract type (not sub_type)."""
         mapping = {
             "OBRA": WorkflowCode.CONTRATO_OBRA,
             "SERVICIO": WorkflowCode.CONTRATO_SERVICIO,
@@ -345,6 +1154,204 @@ class ContratoWorkflow(BaseWorkflow):
             "CONCESION": WorkflowCode.CONTRATO_CONCESION,
             "JOINT_VENTURE": WorkflowCode.CONTRATO_JOINT_VENTURE,
             "ARRENDAMIENTO": WorkflowCode.CONTRATO_ARRENDAMIENTO,
-            "OTRO": WorkflowCode.CONTRATO_OTRO
+            "OTRO": WorkflowCode.CONTRATO_OTRO,
         }
         return mapping.get(sub_type, WorkflowCode.CONTRATO_OTRO)
+
+    # === Tariff Calculation ===
+
+    def calculate_tariff(self, context: WorkflowContext, value: float = None) -> int:
+        """
+        Calculate tariff based on contract value.
+
+        Formula: monto_xaf × 0.5% + penalties(×0) + supplements(×0)
+        - Minimum tariff: 50,000 XAF (×0 = inactive)
+        - Late penalty: 10%/month after 30 days (×0 = inactive)
+        - Supplements: Timbre fiscal (×0 = inactive)
+
+        The value is extracted from the contract by Gemini (not declared by citizen).
+        The agent can later set monto_validado_por_agente during review.
+        """
+        if not value and context.form_data:
+            value = context.form_data.get("monto_total", 0)
+            currency = context.form_data.get("moneda", "XAF")
+
+            # Convert to XAF if needed
+            rate = self.EXCHANGE_RATES.get(currency, 1)
+            if currency != "XAF":
+                value = value * rate
+
+        if not value:
+            return 0
+
+        # Base tariff: 0.5%
+        base = int(value * self.TARIFF_PERCENTAGE)
+
+        # Minimum tariff (×0 = inactive)
+        minimum = int(self.MINIMUM_TARIFF_XAF * self.MINIMUM_TARIFF_MULTIPLIER)
+        if minimum > 0 and base < minimum:
+            base = minimum
+
+        # Late registration penalty (×0 = inactive)
+        penalty = self._calculate_late_penalty(context, base)
+
+        return base + penalty
+
+    def _calculate_late_penalty(self, context: WorkflowContext, base_tariff: int) -> int:
+        """
+        Calculate late registration penalty.
+
+        Rule: If contract signed > 30 days ago, apply 10%/month (max 100%).
+        Currently ×0 (inactive). When activated, just set PENALTY_MULTIPLIER = 1.
+
+        Args:
+            context: Workflow context with form_data containing fecha_firma
+            base_tariff: Base tariff amount in XAF
+
+        Returns:
+            Penalty amount in XAF (0 if inactive or within grace period)
+        """
+        if self.PENALTY_MULTIPLIER == 0:
+            return 0
+
+        from datetime import datetime, date
+
+        fecha_firma_str = context.form_data.get("fecha_firma") if context.form_data else None
+        if not fecha_firma_str:
+            return 0
+
+        try:
+            if isinstance(fecha_firma_str, str):
+                fecha_firma = datetime.strptime(fecha_firma_str, "%Y-%m-%d").date()
+            else:
+                fecha_firma = fecha_firma_str
+
+            today = date.today()
+            days_since = (today - fecha_firma).days
+
+            if days_since <= self.REGISTRATION_DELAY_DAYS:
+                return 0
+
+            # Calculate months of delay (rounded up)
+            months_late = max(1, (days_since - self.REGISTRATION_DELAY_DAYS + 29) // 30)
+
+            # Penalty rate: 10% per month, max 100%
+            penalty_rate = min(
+                months_late * self.PENALTY_RATE_PER_MONTH,
+                self.PENALTY_MAX_RATE
+            )
+
+            return int(base_tariff * penalty_rate * self.PENALTY_MULTIPLIER)
+
+        except (ValueError, TypeError):
+            return 0
+
+    def get_tariff_breakdown(
+        self,
+        context: WorkflowContext,
+        value: float = None
+    ) -> Dict[str, Any]:
+        """
+        Get detailed tariff breakdown for payment display.
+
+        Returns breakdown with:
+        - base_tariff: 0.5% of contract value
+        - penalty: Late registration penalty (×0)
+        - supplements: Timbre fiscal (×0)
+        - total: Sum of all
+        """
+        monto = value
+        currency = "XAF"
+
+        if not monto and context.form_data:
+            monto = context.form_data.get("monto_total", 0)
+            currency = context.form_data.get("moneda", "XAF")
+            rate = self.EXCHANGE_RATES.get(currency, 1)
+            if currency != "XAF":
+                monto = monto * rate
+
+        if not monto:
+            monto = 0
+
+        base = int(monto * self.TARIFF_PERCENTAGE)
+        minimum = int(self.MINIMUM_TARIFF_XAF * self.MINIMUM_TARIFF_MULTIPLIER)
+        if minimum > 0 and base < minimum:
+            base = minimum
+
+        penalty = self._calculate_late_penalty(context, base)
+
+        # Supplements (×0 for now)
+        timbre_page = self.tariff_config.supplements[0].unit_price if self.tariff_config and self.tariff_config.supplements else 0
+        timbre_registro = self.tariff_config.supplements[1].unit_price if self.tariff_config and len(self.tariff_config.supplements) > 1 else 0
+
+        total = base + penalty + timbre_page + timbre_registro
+
+        return {
+            "monto_contrato_xaf": int(monto),
+            "moneda_original": currency,
+            "tasa_porcentaje": "0.5%",
+            "base_tariff": base,
+            "minimum_applied": minimum > 0 and base == minimum,
+            "penalty": {
+                "amount": penalty,
+                "active": self.PENALTY_MULTIPLIER > 0,
+                "description_es": "Penalidad por registro tardío (más de 30 días)" if penalty > 0 else None
+            },
+            "supplements": [
+                {
+                    "code": "TIMBRE_FISCAL_PAGE",
+                    "name_es": "Timbre Fiscal por Página",
+                    "amount": timbre_page,
+                    "active": timbre_page > 0
+                },
+                {
+                    "code": "TIMBRE_REGISTRO",
+                    "name_es": "Timbre de Registro",
+                    "amount": timbre_registro,
+                    "active": timbre_registro > 0
+                }
+            ],
+            "total": total,
+            "currency": "XAF"
+        }
+
+    # === Legacy Compatibility ===
+
+    def get_document_requirements_legacy(
+        self,
+        sub_type: str,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
+        """
+        Legacy method for backwards compatibility.
+        Converts sub_type string to SolicitudType.
+        """
+        solicitud_motivo = self.SUBTYPE_TO_SOLICITUD_MOTIVO.get(sub_type)
+        if solicitud_motivo:
+            solicitud_type, _ = solicitud_motivo
+            return self.get_document_requirements(solicitud_type, None, context)
+        return self.get_document_requirements(SolicitudType.EXPEDICION, None, context)
+
+
+# =============================================================================
+# REGISTRATION
+# =============================================================================
+
+def register_contrato_workflow():
+    """Register the contract workflow with the workflow engine."""
+    from ..services.workflow_engine import workflow_engine
+
+    workflow = ContratoWorkflow()
+    workflow_engine.register_workflow(workflow)
+
+
+# Singleton instance
+_contrato_workflow: Optional[ContratoWorkflow] = None
+
+
+def get_contrato_workflow() -> ContratoWorkflow:
+    """Get the singleton ContratoWorkflow instance."""
+    global _contrato_workflow
+    if _contrato_workflow is None:
+        _contrato_workflow = ContratoWorkflow()
+    return _contrato_workflow
