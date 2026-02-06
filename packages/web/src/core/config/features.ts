@@ -54,12 +54,12 @@ export const FEATURE_DYNAMIC_FORM_RENDERER =
  *               No DB/Firebase writes until user confirms payment.
  * When disabled: Current behavior - DB record created at wizard start.
  *
- * Default: true (enabled) - set NEXT_PUBLIC_FEATURE_CACHE_FIRST_WIZARD=false to disable
+ * Default: false (disabled) - set NEXT_PUBLIC_FEATURE_CACHE_FIRST_WIZARD=true to enable
  * @since v2.0 - Cache-first wizard migration
  * @see .claude/plans/CACHE_FIRST_WIZARD_MIGRATION_PLAN.md
  */
 export const FEATURE_CACHE_FIRST_WIZARD =
-  process.env.NEXT_PUBLIC_FEATURE_CACHE_FIRST_WIZARD !== 'false';
+  process.env.NEXT_PUBLIC_FEATURE_CACHE_FIRST_WIZARD === 'true';
 
 // =============================================================================
 // OTHER FEATURES
