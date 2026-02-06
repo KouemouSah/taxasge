@@ -25,9 +25,6 @@ from .wizard_session_service import (
     WizardPersistError
 )
 
-# Validations (re-export for convenience)
-from ..validations import cross_document_validator, CrossDocumentValidator
-
 __all__ = [
     "schema_loader",
     "tariff_service",
@@ -45,8 +42,6 @@ __all__ = [
     "AgentQueueService",
     "summary_pdf_service",
     "SummaryPDFService",
-    "cross_document_validator",
-    "CrossDocumentValidator",
     # Treasury
     "treasury_export_service",
     "TreasuryExportService",

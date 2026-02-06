@@ -144,6 +144,20 @@ PERMISSIONS = [
         "Extender fecha límite de asignación",
         False
     ),
+    (
+        "assignment.update_notes",
+        "assignment",
+        "update_notes",
+        "Actualizar notas de asignación",
+        False
+    ),
+    (
+        "assignment.view_stats",
+        "assignment",
+        "view_stats",
+        "Ver estadísticas de asignaciones",
+        False
+    ),
 
     # =========================================================================
     # WORKLOAD MANAGEMENT
@@ -294,6 +308,8 @@ ROLE_PERMISSIONS = {
         "assignment.cancel",
         "assignment.update_priority",
         "assignment.extend_deadline",
+        "assignment.update_notes",
+        "assignment.view_stats",
         # All queue permissions
         "queue.view",
         "queue.add",
@@ -314,6 +330,7 @@ ROLE_PERMISSIONS = {
         "assignment.list",
         "assignment.start",
         "assignment.complete",
+        "assignment.update_notes",
         "queue.view",
         "queue.complete",
     ],

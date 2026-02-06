@@ -1,14 +1,3 @@
 # Validations exports
-from .cross_document_validator import (
-    CrossDocumentValidator,
-    cross_document_validator,
-    ValidationRule,
-    ValidationContext
-)
-
-__all__ = [
-    "CrossDocumentValidator",
-    "cross_document_validator",
-    "ValidationRule",
-    "ValidationContext"
-]
+# CrossDocumentValidator removed (2026-02-06) - dead code, never called in production.
+# Validation logic is handled by SchemaValidationEngine + MRZValidator in gemini_document_processor.
