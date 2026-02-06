@@ -28,6 +28,7 @@ import hashlib
 import json
 import re
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, date
@@ -480,8 +481,48 @@ def get_identity_config_for_workflow(workflow_code: Optional[str] = None) -> Wor
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# DOCUMENT HASH REGISTRY (In-Memory for now, can be moved to Redis/DB)
 # ═══════════════════════════════════════════════════════════════════════════════
+# NAME MATCHING UTILITIES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def normalize_name(name: str) -> str:
+    """Normalize a name for comparison: uppercase, remove accents, remove prefixes."""
+    if not name:
+        return ""
+    name = name.upper()
+    # Remove accents (é→E, ñ→N, etc.)
+    name = "".join(
+        c for c in unicodedata.normalize("NFKD", name)
+        if not unicodedata.combining(c)
+    )
+    name = " ".join(name.split())
+    # Remove common Spanish name prefixes
+    for prefix in ("DE LOS ", "DE LAS ", "DE LA ", "DEL ", "DE "):
+        if name.startswith(prefix):
+            name = name[len(prefix):]
+    return name.strip()
+
+
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """Calculate Levenshtein edit distance between two strings."""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+
+LEVENSHTEIN_THRESHOLD = 0.85  # 1-2 char errors tolerated on typical GQ names
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # RISK ANALYZER
@@ -862,7 +903,9 @@ class RiskAnalyzer:
             1. Exact match → True
             2. One value contains the other → True (handles extraction adding extra data)
             3. All words of shorter value are in longer value → True
-            4. Otherwise → False
+            4. Normalized match → True (accents, prefixes DE/DEL removed)
+            5. Levenshtein similarity >= 0.85 → True (OCR typos)
+            6. Otherwise → False
             """
             if value1 == value2:
                 return True
@@ -876,21 +919,39 @@ class RiskAnalyzer:
             v1 = " ".join(value1.split()).upper()
             v2 = " ".join(value2.split()).upper()
 
-            # Check if one contains the other
+            # Step 2: Check if one contains the other
             if v1 in v2 or v2 in v1:
                 logger.info(f"Fuzzy name match: '{v1}' ≈ '{v2}' (containment)")
                 return True
 
-            # Check if all words of shorter value are in longer value
+            # Step 3: Check if all words of shorter value are in longer value
             words1 = set(v1.split())
             words2 = set(v2.split())
             shorter = words1 if len(words1) <= len(words2) else words2
             longer = words2 if len(words1) <= len(words2) else words1
 
-            # If all words from shorter are in longer, consider it a match
             if shorter.issubset(longer):
                 logger.info(f"Fuzzy name match: '{v1}' ≈ '{v2}' (word subset)")
                 return True
+
+            # Step 4: Normalize (remove accents + prefixes) and re-check
+            n1 = normalize_name(value1)
+            n2 = normalize_name(value2)
+            if n1 == n2:
+                logger.info(f"Fuzzy name match: '{v1}' ≈ '{v2}' (normalized exact)")
+                return True
+
+            # Step 5: Levenshtein similarity for OCR typos
+            if n1 and n2:
+                max_len = max(len(n1), len(n2))
+                dist = levenshtein_distance(n1, n2)
+                similarity = 1 - (dist / max_len)
+                if similarity >= LEVENSHTEIN_THRESHOLD:
+                    logger.info(
+                        f"Fuzzy name match: '{n1}' ≈ '{n2}' "
+                        f"(levenshtein: {similarity:.2f})"
+                    )
+                    return True
 
             return False
 
