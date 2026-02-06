@@ -55,6 +55,10 @@ export interface BackendWizardSessionResponse {
   ttl_seconds: number
 
   required_documents: BackendRequiredDocument[]
+
+  // Workflow capabilities
+  requires_appointment: boolean
+  entity_code: string | null
 }
 
 export interface BackendRequiredDocument {
@@ -142,6 +146,10 @@ export interface WizardSession {
   ttlSeconds: number
 
   requiredDocuments: RequiredDocument[]
+
+  // Workflow capabilities
+  requiresAppointment: boolean
+  entityCode: string | null
 }
 
 export interface RequiredDocument {
@@ -270,6 +278,8 @@ export function transformSession(
     expiresAt: backend.expires_at,
     ttlSeconds: backend.ttl_seconds,
     requiredDocuments: (backend.required_documents || []).map(transformRequiredDocument),
+    requiresAppointment: backend.requires_appointment ?? false,
+    entityCode: backend.entity_code ?? null,
   }
 }
 

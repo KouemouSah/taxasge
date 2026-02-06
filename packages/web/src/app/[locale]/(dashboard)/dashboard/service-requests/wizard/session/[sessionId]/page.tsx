@@ -39,6 +39,7 @@ import {
   Upload,
   FileText,
   CreditCard,
+  Calendar,
   RefreshCw,
 } from 'lucide-react'
 import {
@@ -46,13 +47,19 @@ import {
   SessionTimer,
   DocumentPreviewDialog,
   IdentityMismatchBlocker,
+  DocumentUploader,
+  AppointmentSelection,
   DynamicFormRenderer,
   useSessionFormConfig,
   usePrefetchSessionFormConfig,
   validateFormConfig,
+  ExtractionStatus,
+  serviceRequestsApi,
 } from '@/modules/service-requests'
 import type {
   DocumentExtractionPreview,
+  DocumentRequirement,
+  ServiceRequestDocument,
 } from '@/modules/service-requests'
 import type { IdentityMismatch } from '@/modules/service-requests/components/IdentityMismatchBlocker'
 import type {
@@ -90,12 +97,63 @@ const STEP_PAYMENT: WizardStepDef = {
   icon: CreditCard,
 }
 
+const STEP_APPOINTMENT: WizardStepDef = {
+  id: 'appointment',
+  titleEs: 'Cita',
+  titleFr: 'Rendez-vous',
+  titleEn: 'Appointment',
+  icon: Calendar,
+}
+
 const STEP_CONFIRMATION: WizardStepDef = {
   id: 'confirmation',
   titleEs: 'Confirmacion',
   titleFr: 'Confirmation',
   titleEn: 'Confirmation',
   icon: CheckCircle,
+}
+
+// ============================================================================
+// ADAPTER FUNCTIONS: Session types → Legacy types (for DocumentUploader)
+// ============================================================================
+
+function toDocumentRequirement(doc: RequiredDocument): DocumentRequirement {
+  return {
+    documentCode: doc.code,
+    documentNameEs: doc.nameEs,
+    isRequired: doc.isRequired,
+    displayOrder: 0,
+    conditionType: 'always' as DocumentRequirement['conditionType'],
+    acceptedFormats: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+  }
+}
+
+function toServiceRequestDocument(
+  doc: RequiredDocument,
+  preview: DocumentPreview
+): ServiceRequestDocument {
+  const ext = preview.fileName.split('.').pop()?.toLowerCase() || ''
+  const mimeMap: Record<string, string> = {
+    pdf: 'application/pdf',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+  }
+  return {
+    id: `cache-${preview.documentCode}`,
+    requestId: preview.sessionId,
+    documentCode: preview.documentCode,
+    documentNameEs: doc.nameEs,
+    fileName: preview.fileName,
+    fileUrl: '', // Not available in cache-first mode
+    fileSize: preview.fileSize,
+    mimeType: mimeMap[ext] || 'application/octet-stream',
+    extractionStatus: ExtractionStatus.COMPLETED,
+    extractedData: preview.extraction,
+    extractionConfidence: preview.confidence,
+    uploadedAt: new Date().toISOString(),
+  }
 }
 
 // ============================================================================
@@ -138,6 +196,7 @@ export default function SessionWizardPage() {
   const [paymentResult, setPaymentResult] =
     useState<PreparePaymentResult | null>(null)
   const [isPersisting, setIsPersisting] = useState(false)
+  const [persistedRequestId, setPersistedRequestId] = useState<string | null>(null)
 
   // Document preview dialog state
   const [currentPreview, setCurrentPreview] = useState<DocumentExtractionPreview | null>(null)
@@ -168,7 +227,7 @@ export default function SessionWizardPage() {
     }
   }, [session?.formData])
 
-  // Compute visible steps: upload → form_review_1..N → payment → confirmation
+  // Compute visible steps: upload → form_review_1..N → payment → confirmation → [appointment]
   const steps = useMemo((): WizardStepDef[] => {
     const result: WizardStepDef[] = [STEP_UPLOAD]
 
@@ -192,8 +251,14 @@ export default function SessionWizardPage() {
 
     result.push(STEP_PAYMENT)
     result.push(STEP_CONFIRMATION)
+
+    // Add appointment step AFTER confirmation for workflows that require it
+    if (session?.requiresAppointment) {
+      result.push(STEP_APPOINTMENT)
+    }
+
     return result
-  }, [])
+  }, [session?.requiresAppointment])
 
   const currentStep = steps[currentStepIndex]
   const progressPercent =
@@ -219,6 +284,15 @@ export default function SessionWizardPage() {
       case 'upload_documents': {
         // Block if identity mismatches are blocking
         if (hasBlockingMismatches) return false
+        // Block if minor cross-validation failed
+        if (session.isMinor) {
+          const crossValFailed = Object.values(documentPreviews).some((p) => {
+            const ra = p.riskAnalysis as Record<string, unknown> | null
+            const crossVal = (ra?.parental_authorization_validation || ra?.parentalAuthorizationValidation) as Record<string, unknown> | undefined
+            return crossVal && (crossVal.cross_validation_passed === false || crossVal.crossValidationPassed === false)
+          })
+          if (crossValFailed) return false
+        }
         // All required documents must be uploaded
         const required = session.requiredDocuments.filter((d) => d.isRequired)
         return required.every((d) => d.uploaded)
@@ -379,12 +453,11 @@ export default function SessionWizardPage() {
   }, [])
 
   // Handle re-upload from mismatch blocker
-  const handleReuploadFromBlocker = useCallback((documentCode: string) => {
+  const handleReuploadFromBlocker = useCallback((_documentCode: string) => {
     setShowMismatchBlocker(false)
     setIdentityMismatches([])
     setHasBlockingMismatches(false)
-    // Trigger file input click for the specified document
-    document.getElementById(`file-${documentCode}`)?.click()
+    // User will re-upload via DocumentUploader card (drag-drop or click)
   }, [])
 
   // ========================================================================
@@ -396,15 +469,21 @@ export default function SessionWizardPage() {
     try {
       const result = await persistAndPay()
       if (result?.success && result.serviceRequestId) {
-        // Redirect to the created request's detail page
-        router.push(
-          `/${locale}/dashboard/service-requests/${result.serviceRequestId}`
-        )
+        setPersistedRequestId(result.serviceRequestId)
+        // If workflow requires appointment, advance to appointment step
+        if (session?.requiresAppointment) {
+          setCurrentStepIndex((prev) => prev + 1)
+        } else {
+          // Redirect to the created request's detail page
+          router.push(
+            `/${locale}/dashboard/service-requests/${result.serviceRequestId}`
+          )
+        }
       }
     } finally {
       setIsPersisting(false)
     }
-  }, [persistAndPay, router, locale])
+  }, [persistAndPay, router, locale, session?.requiresAppointment])
 
   // ========================================================================
   // FORM CHANGE HANDLER
@@ -636,6 +715,70 @@ export default function SessionWizardPage() {
                     : 'Upload the required documents for your application.'}
               </p>
 
+              {/* Minor flow: parental authorization notice */}
+              {session.isMinor && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {locale === 'es'
+                      ? 'Tramite para menor de edad. Se requiere autorizacion parental o tutela legal.'
+                      : locale === 'fr'
+                        ? 'Demarche pour mineur. Une autorisation parentale ou tutelle legale est requise.'
+                        : 'Minor application. Parental authorization or legal guardianship is required.'}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Minor flow: cross-validation results from parental authorization */}
+              {session.isMinor && (() => {
+                // Find cross-validation results from uploaded representative document
+                const crossValDoc = Object.values(documentPreviews).find((p) => {
+                  const ra = p.riskAnalysis as Record<string, unknown> | null
+                  return ra?.parental_authorization_validation || ra?.parentalAuthorizationValidation
+                })
+                if (!crossValDoc) return null
+                const ra = crossValDoc.riskAnalysis as Record<string, unknown>
+                const crossVal = (ra.parental_authorization_validation || ra.parentalAuthorizationValidation) as Record<string, unknown> | undefined
+                if (!crossVal) return null
+                const passed = crossVal.cross_validation_passed ?? crossVal.crossValidationPassed
+                if (passed === true) {
+                  return (
+                    <Alert>
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <AlertDescription className="text-green-700">
+                        {locale === 'es'
+                          ? 'Validacion de autorizacion parental exitosa.'
+                          : locale === 'fr'
+                            ? 'Validation de l\'autorisation parentale reussie.'
+                            : 'Parental authorization validation successful.'}
+                      </AlertDescription>
+                    </Alert>
+                  )
+                }
+                if (passed === false) {
+                  return (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        {locale === 'es'
+                          ? 'Error en validacion de autorizacion parental. Verifique los documentos del representante.'
+                          : locale === 'fr'
+                            ? 'Erreur de validation de l\'autorisation parentale. Verifiez les documents du representant.'
+                            : 'Parental authorization validation failed. Check representative documents.'}
+                        {Array.isArray(crossVal.errors) && crossVal.errors.length > 0 && (
+                          <ul className="list-disc pl-4 mt-1">
+                            {(crossVal.errors as string[]).map((err: string, i: number) => (
+                              <li key={i}>{String(err)}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )
+                }
+                return null
+              })()}
+
               {/* Non-blocking identity warnings */}
               {identityMismatches.length > 0 && !hasBlockingMismatches && (
                 <Alert>
@@ -652,113 +795,34 @@ export default function SessionWizardPage() {
 
               {session.requiredDocuments.map((doc: RequiredDocument) => {
                 const docPreview = documentPreviews[doc.code]
-                const lowConfidence = docPreview && docPreview.confidence < 0.7
-                return (
-                <div
-                  key={doc.code}
-                  className={`flex items-center justify-between p-4 border rounded-lg ${
-                    lowConfidence ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    {doc.uploaded ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <Upload className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <div>
-                      <p className="font-medium">{doc.nameEs}</p>
-                      <div className="flex gap-2">
-                        {doc.isRequired && (
-                          <Badge variant="outline" className="text-xs">
-                            {locale === 'es'
-                              ? 'Obligatorio'
-                              : locale === 'fr'
-                                ? 'Obligatoire'
-                                : 'Required'}
-                          </Badge>
-                        )}
-                        {doc.uploaded && (
-                          <Badge
-                            variant="secondary"
-                            className="text-xs text-green-700"
-                          >
-                            {locale === 'es'
-                              ? 'Subido'
-                              : locale === 'fr'
-                                ? 'Telecharge'
-                                : 'Uploaded'}
-                          </Badge>
-                        )}
-                        {/* Confidence badge for uploaded documents */}
-                        {doc.uploaded && documentPreviews[doc.code] && (
-                          <Badge
-                            variant={
-                              documentPreviews[doc.code].confidence >= 0.9
-                                ? 'default'
-                                : documentPreviews[doc.code].confidence >= 0.7
-                                  ? 'secondary'
-                                  : 'destructive'
-                            }
-                            className="text-xs"
-                          >
-                            {Math.round(documentPreviews[doc.code].confidence * 100)}%
-                          </Badge>
-                        )}
-                        {/* Processor badge */}
-                        {doc.uploaded && documentPreviews[doc.code]?.processor === 'gemini' && (
-                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
-                            {locale === 'es'
-                              ? 'Extraido con IA'
-                              : locale === 'fr'
-                                ? 'Extrait par IA'
-                                : 'AI Extracted'}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                const uploadedDoc =
+                  doc.uploaded && docPreview
+                    ? toServiceRequestDocument(doc, docPreview)
+                    : undefined
 
-                  <div>
-                    <input
-                      type="file"
-                      id={`file-${doc.code}`}
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          await handleDocumentUpload(doc.code, file)
-                        }
-                        e.target.value = ''
-                      }}
-                    />
-                    <Button
-                      variant={doc.uploaded ? 'outline' : 'default'}
-                      size="sm"
+                return (
+                  <div key={doc.code} className="space-y-1">
+                    <DocumentUploader
+                      requirement={toDocumentRequirement(doc)}
+                      uploadedDocument={uploadedDoc}
+                      locale={locale as 'es' | 'fr' | 'en'}
+                      onUpload={(file) => handleDocumentUpload(doc.code, file)}
+                      maxSizeMB={doc.code === 'photo_carnet' ? 2 : 5}
                       disabled={isSaving}
-                      onClick={() =>
-                        document.getElementById(`file-${doc.code}`)?.click()
-                      }
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : doc.uploaded ? (
-                        locale === 'es'
-                          ? 'Reemplazar'
-                          : locale === 'fr'
-                            ? 'Remplacer'
-                            : 'Replace'
-                      ) : (
-                        locale === 'es'
-                          ? 'Subir'
-                          : locale === 'fr'
-                            ? 'Telecharger'
-                            : 'Upload'
-                      )}
-                    </Button>
+                    />
+                    {/* Processor badge for AI-extracted documents */}
+                    {doc.uploaded && docPreview?.processor === 'gemini' && (
+                      <div className="flex justify-end">
+                        <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                          {locale === 'es'
+                            ? 'Extraido con IA'
+                            : locale === 'fr'
+                              ? 'Extrait par IA'
+                              : 'AI Extracted'}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                </div>
                 )
               })}
             </div>
@@ -978,10 +1042,59 @@ export default function SessionWizardPage() {
               </Button>
             </div>
           )}
+
+          {/* ============================================================ */}
+          {/* STEP: Appointment (after persist, uses real requestId)       */}
+          {/* ============================================================ */}
+          {currentStep.id === 'appointment' && persistedRequestId && (
+            <AppointmentSelection
+              requestId={persistedRequestId}
+              onComplete={(data) => {
+                // Navigate to the service request detail page
+                router.push(
+                  `/${locale}/dashboard/service-requests/${persistedRequestId}`
+                )
+              }}
+              onBack={() => {
+                // Can't go back from appointment after persist - redirect to detail
+                router.push(
+                  `/${locale}/dashboard/service-requests/${persistedRequestId}`
+                )
+              }}
+              locale={locale as 'es' | 'fr' | 'en'}
+              getLocations={(requestId) =>
+                serviceRequestsApi.getAppointmentLocations(requestId)
+              }
+              getSlots={(requestId, entityLocationId, fromDate, limit) =>
+                serviceRequestsApi.getAppointmentSlots(
+                  requestId,
+                  entityLocationId,
+                  fromDate,
+                  limit
+                )
+              }
+              holdSlot={(requestId, data) =>
+                serviceRequestsApi.holdAppointmentSlot(requestId, data)
+              }
+              getHoldStatus={(requestId) =>
+                serviceRequestsApi.getHoldStatus(requestId)
+              }
+              releaseHold={(requestId) =>
+                serviceRequestsApi.releaseHold(requestId)
+              }
+              submitWithoutAppointment={(requestId, entityLocationId) =>
+                serviceRequestsApi.submitWithoutAppointment(
+                  requestId,
+                  entityLocationId
+                )
+              }
+            />
+          )}
         </CardContent>
       </Card>
 
-      {/* Navigation buttons */}
+      {/* Navigation buttons (hidden on appointment step - it has its own nav) */}
+      {currentStep.id !== 'appointment' && (
       <div className="flex justify-between">
         <Button
           variant="outline"
@@ -1013,6 +1126,7 @@ export default function SessionWizardPage() {
           </Button>
         )}
       </div>
+      )}
 
       {/* Document Preview Dialog - shown after upload for user validation */}
       <DocumentPreviewDialog

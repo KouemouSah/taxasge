@@ -190,6 +190,10 @@ class WizardSessionResponse(BaseModel):
     # Required documents for this workflow/solicitud_type
     required_documents: List[Dict[str, Any]] = Field(default_factory=list)
 
+    # Workflow capabilities
+    requires_appointment: bool = False
+    entity_code: Optional[str] = None
+
     class Config:
         use_enum_values = True
         json_schema_extra = {

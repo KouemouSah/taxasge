@@ -246,6 +246,15 @@ class WizardSessionService:
             except (ValueError, TypeError):
                 pass
 
+        # Determine workflow capabilities
+        requires_appointment = False
+        entity_code = session.get("entity_code")
+        if workflow:
+            try:
+                requires_appointment = getattr(workflow, "requires_appointment", False)
+            except Exception:
+                pass
+
         return WizardSessionResponse(
             session_id=session["session_id"],
             workflow_code=session["workflow_code"],
@@ -266,6 +275,8 @@ class WizardSessionService:
             expires_at=datetime.fromisoformat(session["expires_at"].replace("Z", "+00:00")),
             ttl_seconds=ttl_seconds,
             required_documents=required_documents,
+            requires_appointment=requires_appointment,
+            entity_code=entity_code,
         )
 
     # =========================================================================
@@ -1008,8 +1019,11 @@ class WizardSessionService:
                         source="cache_first_wizard"
                     )
 
-                    # Update extraction data
+                    # Update extraction data (include risk_analysis for agent review)
                     extraction_data = doc_data.get("user_corrections") or doc_data.get("extraction", {})
+                    risk_analysis = doc_data.get("risk_analysis")
+                    if risk_analysis:
+                        extraction_data["_risk_analysis"] = risk_analysis
                     await document_repository.update_extraction(
                         db=db,
                         document_id=doc_record["id"],
