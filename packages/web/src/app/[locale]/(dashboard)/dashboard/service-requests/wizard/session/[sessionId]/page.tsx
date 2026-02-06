@@ -184,7 +184,6 @@ export default function SessionWizardPage() {
     preparePayment,
     persistAndPay,
     clearError,
-    reset,
   } = useWizardSession()
 
   // Local state
@@ -1049,7 +1048,7 @@ export default function SessionWizardPage() {
           {currentStep.id === 'appointment' && persistedRequestId && (
             <AppointmentSelection
               requestId={persistedRequestId}
-              onComplete={(data) => {
+              onComplete={(_data) => {
                 // Navigate to the service request detail page
                 router.push(
                   `/${locale}/dashboard/service-requests/${persistedRequestId}`
