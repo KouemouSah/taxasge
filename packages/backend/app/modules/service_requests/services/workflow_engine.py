@@ -1149,18 +1149,20 @@ def register_all_workflows() -> None:
     It registers all workflow classes so they can be retrieved via
     workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
     
-    Note: PasaporteWorkflow uses v2 architecture (autonomous, no inheritance).
-    Other workflows still use v1 (BaseWorkflow) - to be migrated gradually.
+    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato
+    v1 (BaseWorkflow): Residencia, Vehiculo, FuncionPublica (5 workflows)
     """
-    # v2 workflows (autonomous)
-    from ..workflows import PasaporteWorkflow  # v2 autonomous
-    
-    # v1 workflows (legacy - to be migrated)
+    # v2 workflows (PredefinedWorkflow - autonomous)
+    from ..workflows import (
+        PasaporteWorkflow,
+        ConducirWorkflow,
+        ContratoWorkflow,
+    )
+
+    # v1 workflows (BaseWorkflow - legacy, to be migrated)
     from ..workflows import (
         ResidenciaWorkflow,
         VehiculoWorkflow,
-        ContratoWorkflow,
-        ConducirWorkflow,
         VerificacionFuncionarioWorkflow,
         CarnetFuncionarioWorkflow,
         PromocionAdministrativaWorkflow,
@@ -1168,29 +1170,26 @@ def register_all_workflows() -> None:
         CertificadoAdministrativoWorkflow
     )
 
-    workflows_to_register: List[Type[AnyWorkflow]] = [
-        # === v2 (autonomous) ===
+    v2_workflows = [
         PasaporteWorkflow,
-        
-        # === v1 (legacy - to migrate) ===
-        # Extranjeria
-        ResidenciaWorkflow,
-        # Vehiculos
-        VehiculoWorkflow,
-        # Contratos
-        ContratoWorkflow,
-        # Conduccion
         ConducirWorkflow,
-        # Funcion Publica
+        ContratoWorkflow,
+    ]
+
+    v1_workflows = [
+        ResidenciaWorkflow,
+        VehiculoWorkflow,
         VerificacionFuncionarioWorkflow,
         CarnetFuncionarioWorkflow,
         PromocionAdministrativaWorkflow,
         PermisoExtraordinarioWorkflow,
-        CertificadoAdministrativoWorkflow
+        CertificadoAdministrativoWorkflow,
     ]
 
+    workflows_to_register: List[Type[AnyWorkflow]] = v2_workflows + v1_workflows
+
     workflow_engine.register_many(workflows_to_register)
-    logger.info(f"Registered {len(workflows_to_register)} workflows (v2: 1, v1: {len(workflows_to_register) - 1})")
+    logger.info(f"Registered {len(workflows_to_register)} workflows (v2: {len(v2_workflows)}, v1: {len(v1_workflows)})")
 
 
 # Auto-register workflows on module import

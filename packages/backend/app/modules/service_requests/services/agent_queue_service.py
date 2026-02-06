@@ -4,7 +4,7 @@ Agent Queue Service for Service Requests.
 Integrates service_requests with the agent_work_queue system.
 Enables agents to receive, process, and manage service requests.
 """
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from uuid import UUID
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -12,6 +12,9 @@ import asyncpg
 from loguru import logger
 
 from ..workflows.base_workflow import BaseWorkflow
+from ..workflows.workflow_interface import PredefinedWorkflow
+
+AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
 from app.modules.agents.models import (
     AgentWorkQueueCreate,
     AssignmentCreate,
@@ -62,7 +65,7 @@ class AgentQueueService:
         service_request_id: UUID,
         workflow_code: str,
         entity_code: str,
-        workflow_instance: Optional[BaseWorkflow] = None,
+        workflow_instance: Optional[AnyWorkflow] = None,
         priority_boost: int = 0
     ) -> Dict[str, Any]:
         """
@@ -161,7 +164,7 @@ class AgentQueueService:
         self,
         db: asyncpg.Connection,
         workflow_code: str,
-        workflow_instance: Optional[BaseWorkflow],
+        workflow_instance: Optional[AnyWorkflow],
         priority_boost: int
     ) -> Decimal:
         """Calculate priority score for the queue item."""
@@ -206,7 +209,7 @@ class AgentQueueService:
         self,
         db: asyncpg.Connection,
         workflow_code: str,
-        workflow_instance: Optional[BaseWorkflow]
+        workflow_instance: Optional[AnyWorkflow]
     ) -> datetime:
         """Calculate SLA deadline for the service request."""
 

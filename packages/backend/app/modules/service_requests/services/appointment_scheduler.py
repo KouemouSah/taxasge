@@ -5,13 +5,16 @@ Automatically calculates and schedules appointments (CITA) for service requests.
 Respects hardcoded workflow settings and applies automatic rules only when not defined.
 """
 from datetime import date, time, datetime, timedelta
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Union
 from uuid import UUID
 from dataclasses import dataclass
 from enum import Enum
 import asyncpg
 
 from ..workflows.base_workflow import BaseWorkflow
+from ..workflows.workflow_interface import PredefinedWorkflow
+
+AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
 
 
 class DayOfWeek(int, Enum):
@@ -70,7 +73,7 @@ class AppointmentSchedulerService:
         workflow_code: str,
         validation_date: date,
         entity_code: Optional[str] = None,
-        workflow_instance: Optional[BaseWorkflow] = None
+        workflow_instance: Optional[AnyWorkflow] = None
     ) -> Tuple[date, time, str]:
         """
         Calculate the next available appointment date and time.
@@ -122,7 +125,7 @@ class AppointmentSchedulerService:
         db: asyncpg.Connection,
         workflow_code: str,
         entity_code: Optional[str],
-        workflow_instance: Optional[BaseWorkflow]
+        workflow_instance: Optional[AnyWorkflow]
     ) -> int:
         """Get delay days from multiple sources with priority."""
 
@@ -169,7 +172,7 @@ class AppointmentSchedulerService:
         db: asyncpg.Connection,
         workflow_code: str,
         entity_code: Optional[str],
-        workflow_instance: Optional[BaseWorkflow]
+        workflow_instance: Optional[AnyWorkflow]
     ) -> str:
         """Get the entity responsible for appointments."""
 
@@ -400,7 +403,7 @@ class AppointmentSchedulerService:
         service_request_id: UUID,
         workflow_code: str,
         validation_date: date,
-        workflow_instance: Optional[BaseWorkflow] = None
+        workflow_instance: Optional[AnyWorkflow] = None
     ) -> AppointmentReservation:
         """
         Reserve an appointment slot for a service request.

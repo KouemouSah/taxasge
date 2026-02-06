@@ -2,12 +2,13 @@
 # Handles fiscal service requests with document processing pipeline
 
 from .api.routes import router
-from .workflows import BaseWorkflow, WorkflowStep, WorkflowContext, ValidationResult
+from .workflows import BaseWorkflow, PredefinedWorkflow, WorkflowStep, WorkflowContext, ValidationResult
 
 __all__ = [
     "router",
     # Workflow classes
     "BaseWorkflow",
+    "PredefinedWorkflow",
     "WorkflowStep",
     "WorkflowContext",
     "ValidationResult"

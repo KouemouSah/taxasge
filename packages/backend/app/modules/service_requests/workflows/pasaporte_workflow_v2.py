@@ -346,7 +346,6 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "title_es": "Domicilio",
                         "fields": [
                             {"key": "domicilio", "label_es": "Direccion", "required": True},
-                            {"key": "ciudad", "label_es": "Ciudad", "required": True},
                             {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True}
                         ]
                     }
@@ -401,7 +400,6 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "title_es": "Domicilio",
                         "fields": [
                             {"key": "domicilio", "label_es": "Direccion", "required": True},
-                            {"key": "ciudad", "label_es": "Ciudad", "required": True},
                             {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True}
                         ]
                     }

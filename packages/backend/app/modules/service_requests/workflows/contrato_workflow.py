@@ -49,7 +49,6 @@ from .workflow_interface import (
     ValidationResult,
     StepType,
     RenovacionMotivo,
-    SolicitudType,
 )
 from ..models.enums import (
     WorkflowCode,

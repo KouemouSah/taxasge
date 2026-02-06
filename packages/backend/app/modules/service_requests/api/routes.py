@@ -1648,6 +1648,12 @@ async def get_form_config(
         )
 
     # 5. Get form configuration (sections filtered by conditions)
+    # Only PredefinedWorkflow (v2) supports dynamic form config
+    if not hasattr(workflow, 'get_form_config'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Workflow {context.workflow_code} does not support dynamic form configuration"
+        )
     try:
         form_config = workflow.get_form_config(step_id, context)
     except ValueError as e:

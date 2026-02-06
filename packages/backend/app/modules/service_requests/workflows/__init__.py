@@ -33,17 +33,15 @@ from .conducir_workflow import (
     get_conducir_workflow
 )
 
+# Contrato workflow v2 (autonomous) - Migrated 2026-02-06
+from .contrato_workflow import ContratoWorkflow
+
 # =============================================================================
 # LEGACY (v1) - For backward compatibility
 # =============================================================================
 
 # Legacy BaseWorkflow (still used by some workflows)
 from .base_workflow import BaseWorkflow
-
-# Legacy pasaporte workflow removed - now using v2 exclusively
-
-# Other legacy workflows (to be migrated to v2)
-from .contrato_workflow import ContratoWorkflow
 from .residencia_workflow import (
     ResidenciaWorkflow,
     ResidenciaPhase,
@@ -98,11 +96,11 @@ __all__ = [
     "DuplicadoMotivo",
     "get_conducir_workflow",
 
+    # Contrato v2
+    "ContratoWorkflow",
+
     # === LEGACY (v1) ===
     "BaseWorkflow",
-
-    # Contrato workflow
-    "ContratoWorkflow",
     # Residencia workflow (3 phases)
     "ResidenciaWorkflow",
     "ResidenciaPhase",

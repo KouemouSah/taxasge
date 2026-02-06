@@ -643,13 +643,6 @@ class ConducirWorkflow(PredefinedWorkflow):
                                 "type": "text",
                                 "required": False,
                                 "readonly": False
-                            },
-                            {
-                                "key": "medico_numero_colegiado",
-                                "label_es": "Número de Colegiado (opcional)",
-                                "type": "text",
-                                "required": False,
-                                "readonly": False
                             }
                         ]
                     }
