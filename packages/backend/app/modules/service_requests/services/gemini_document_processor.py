@@ -483,83 +483,6 @@ def get_identity_config_for_workflow(workflow_code: Optional[str] = None) -> Wor
 # DOCUMENT HASH REGISTRY (In-Memory for now, can be moved to Redis/DB)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-class DocumentHashRegistry:
-    """
-    Registry for tracking document hashes to detect duplicates.
-
-    In production, this should be backed by Redis or PostgreSQL for persistence
-    and scalability across multiple instances.
-    """
-
-    def __init__(self):
-        # Structure: {hash: {"request_id": uuid, "document_code": str, "timestamp": datetime}}
-        self._hashes: Dict[str, Dict[str, Any]] = {}
-        # Structure: {request_id: {document_code: hash}}
-        self._request_documents: Dict[str, Dict[str, str]] = {}
-
-    def compute_hash(self, content: bytes) -> str:
-        """Compute SHA-256 hash of document content"""
-        return hashlib.sha256(content).hexdigest()
-
-    def register_document(
-        self,
-        content: bytes,
-        request_id: str,
-        document_code: str,
-        user_id: str
-    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        """
-        Register a document hash and check for duplicates.
-
-        Returns:
-            Tuple of (is_duplicate, duplicate_info)
-        """
-        doc_hash = self.compute_hash(content)
-
-        # Check for exact duplicate
-        if doc_hash in self._hashes:
-            existing = self._hashes[doc_hash]
-            return True, {
-                "original_request_id": existing["request_id"],
-                "original_document_code": existing["document_code"],
-                "original_timestamp": existing["timestamp"],
-                "original_user_id": existing.get("user_id"),
-                "is_same_request": existing["request_id"] == request_id,
-                "is_same_user": existing.get("user_id") == user_id
-            }
-
-        # Register new hash
-        self._hashes[doc_hash] = {
-            "request_id": request_id,
-            "document_code": document_code,
-            "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-
-        # Track by request
-        if request_id not in self._request_documents:
-            self._request_documents[request_id] = {}
-        self._request_documents[request_id][document_code] = doc_hash
-
-        return False, None
-
-    def get_request_documents(self, request_id: str) -> Dict[str, str]:
-        """Get all document hashes for a request"""
-        return self._request_documents.get(request_id, {})
-
-    def clear_request(self, request_id: str):
-        """Clear all documents for a request (e.g., on rejection)"""
-        if request_id in self._request_documents:
-            for doc_hash in self._request_documents[request_id].values():
-                if doc_hash in self._hashes:
-                    del self._hashes[doc_hash]
-            del self._request_documents[request_id]
-
-
-# Global registry instance
-_document_hash_registry = DocumentHashRegistry()
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # RISK ANALYZER
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -577,9 +500,6 @@ class RiskAnalyzer:
     - Duplication detection
     """
 
-    def __init__(self):
-        self.hash_registry = _document_hash_registry
-
     def analyze(
         self,
         extraction: Dict[str, Any],
@@ -591,7 +511,8 @@ class RiskAnalyzer:
         existing_documents: Optional[Dict[str, Dict[str, Any]]] = None,
         form_data: Optional[Dict[str, Any]] = None,
         gemini_risk_hints: Optional[Dict[str, Any]] = None,
-        workflow_code: Optional[str] = None
+        workflow_code: Optional[str] = None,
+        hash_matches: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Perform comprehensive risk analysis.
@@ -607,6 +528,7 @@ class RiskAnalyzer:
             form_data: User-submitted form data
             gemini_risk_hints: Risk hints from Gemini analysis
             workflow_code: Workflow code for identity verification config (e.g., "PASAPORTE_NUEVO")
+            hash_matches: Pre-fetched DB matches for document hash (from process())
 
         Returns:
             Complete risk analysis result including identity_mismatches
@@ -618,8 +540,10 @@ class RiskAnalyzer:
         if type_risk:
             risk_factors.append(type_risk)
 
-        # 2. Duplication Detection
-        dup_risk = self._check_duplication(content, request_id, document_code, user_id)
+        # 2. Duplication Detection (using pre-fetched DB results)
+        dup_risk = self._check_duplication(
+            request_id, document_code, user_id, hash_matches
+        )
         if dup_risk:
             risk_factors.append(dup_risk)
 
@@ -766,49 +690,57 @@ class RiskAnalyzer:
 
     def _check_duplication(
         self,
-        content: bytes,
         request_id: str,
         document_code: str,
-        user_id: str
+        user_id: str,
+        hash_matches: Optional[List[Dict[str, Any]]] = None
     ) -> Optional[Dict[str, Any]]:
-        """Check for document duplication"""
-        is_duplicate, dup_info = self.hash_registry.register_document(
-            content, request_id, document_code, user_id
+        """Check for document duplication using pre-fetched PostgreSQL results.
+
+        hash_matches contains documents from OTHER requests that have the same
+        SHA-256 hash (pre-fetched in process() via document_repository.find_by_hash).
+        """
+        if not hash_matches:
+            return None
+
+        # First match = oldest duplicate
+        first_match = hash_matches[0]
+        match_user_id = str(first_match.get("user_id", ""))
+        match_request_id = str(first_match.get("service_request_id", ""))
+        match_date = first_match.get("created_at")
+        match_date_str = (
+            match_date.isoformat() if hasattr(match_date, "isoformat")
+            else str(match_date or "")
         )
 
-        if is_duplicate:
-            if dup_info["is_same_request"]:
-                # Same document uploaded twice for same requirement
-                return {
-                    "code": RiskFactorCode.DUPLICATE_DOCUMENT.value,
-                    "severity": "medium",
-                    "message": "Same document uploaded again for this requirement",
-                    "detail": dup_info,
-                    "action": "warn"
-                }
-            elif dup_info["is_same_user"]:
-                # Same document used in different request by same user
-                return {
-                    "code": RiskFactorCode.REUSED_ACROSS_REQUESTS.value,
-                    "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.REUSED_ACROSS_REQUESTS],
-                    "message": "Same document was used in a different service request",
-                    "detail": dup_info,
-                    "action": "review"
-                }
-            else:
-                # Document used by different user - potential fraud
-                return {
-                    "code": RiskFactorCode.DUPLICATE_DOCUMENT.value,
-                    "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.DUPLICATE_DOCUMENT],
-                    "message": "This document was previously submitted by another user",
-                    "detail": {
-                        "original_request": dup_info["original_request_id"],
-                        "original_date": dup_info["original_timestamp"]
-                    },
-                    "action": "reject"
-                }
+        if match_user_id == user_id:
+            # Same user, different request - document reuse
+            return {
+                "code": RiskFactorCode.REUSED_ACROSS_REQUESTS.value,
+                "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.REUSED_ACROSS_REQUESTS],
+                "message": "Same document was used in a different service request",
+                "detail": {
+                    "original_request": match_request_id,
+                    "original_date": match_date_str,
+                    "original_document_code": first_match.get("document_code", ""),
+                    "match_count": len(hash_matches)
+                },
+                "action": "review"
+            }
+        else:
+            # Different user - potential fraud
+            return {
+                "code": RiskFactorCode.DUPLICATE_DOCUMENT.value,
+                "severity": RISK_FACTOR_SEVERITY[RiskFactorCode.DUPLICATE_DOCUMENT],
+                "message": "This document was previously submitted by another user",
+                "detail": {
+                    "original_request": match_request_id,
+                    "original_date": match_date_str,
+                    "match_count": len(hash_matches)
+                },
+                "action": "reject"
+            }
 
-        return None
 
     def _check_document_validity(
         self,
@@ -2081,6 +2013,20 @@ class GeminiDocumentProcessor:
         )
 
         # ═══════════════════════════════════════════════════════════════════
+        # DUPLICATION PRE-CHECK (async DB lookup before sync analyze)
+        # ═══════════════════════════════════════════════════════════════════
+        doc_hash = hashlib.sha256(content).hexdigest()
+        hash_matches: List[Dict[str, Any]] = []
+        if DB_POOL_AVAILABLE:
+            try:
+                from .document_repository_helper import find_documents_by_hash
+                hash_matches = await find_documents_by_hash(
+                    doc_hash, request_id  # request_id can be "" (wizard preview)
+                )
+            except Exception as e:
+                logger.warning(f"Hash duplicate lookup failed (non-blocking): {e}")
+
+        # ═══════════════════════════════════════════════════════════════════
         # RISK ANALYSIS
         # ═══════════════════════════════════════════════════════════════════
         risk_analysis = self.risk_analyzer.analyze(
@@ -2093,8 +2039,12 @@ class GeminiDocumentProcessor:
             existing_documents=existing_documents,
             form_data=form_data,
             gemini_risk_hints=gemini_risk_hints,
-            workflow_code=workflow_code
+            workflow_code=workflow_code,
+            hash_matches=hash_matches
         )
+
+        # Attach doc_hash to result for storage during persist
+        extraction_result["doc_hash"] = doc_hash
 
         # Update status based on risk analysis
         if risk_analysis["requires_rejection"]:

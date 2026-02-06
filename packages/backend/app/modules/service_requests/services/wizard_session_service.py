@@ -464,6 +464,7 @@ class WizardSessionService:
                 content=file_content,
                 mime_type=mime_type,
                 document_code=document_code,
+                user_id=str(user_id),
                 existing_documents=existing_documents,
                 extraction_schema_key=extraction_schema_key,
                 workflow_code=session["workflow_code"],
@@ -488,6 +489,7 @@ class WizardSessionService:
             "processor": extraction_result.get("processor", "unknown"),
             "extraction_status": extraction_result.get("status", "pending"),
             "risk_analysis": extraction_result.get("risk_analysis"),
+            "doc_hash": extraction_result.get("doc_hash"),
             "previewed_at": now.isoformat(),
             "confirmed_at": None,
             "user_corrections": None,
@@ -1016,7 +1018,8 @@ class WizardSessionService:
                         file_size=doc_data["file_size"],
                         mime_type=doc_data["mime_type"],
                         uploaded_by=user_id_uuid,
-                        source="cache_first_wizard"
+                        source="cache_first_wizard",
+                        file_hash=doc_data.get("doc_hash")
                     )
 
                     # Update extraction data (include risk_analysis for agent review)

@@ -22,7 +22,8 @@ class DocumentRepository:
         file_size: int,
         mime_type: str,
         uploaded_by: UUID,
-        source: str = "user_upload"
+        source: str = "user_upload",
+        file_hash: Optional[str] = None
     ) -> Dict:
         """
         Add a document to a service request.
@@ -32,15 +33,16 @@ class DocumentRepository:
             INSERT INTO service_request_documents (
                 service_request_id, document_code, document_name,
                 file_path, file_name, file_size, mime_type,
-                uploaded_by, source
+                uploaded_by, source, file_hash
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (service_request_id, document_code)
             DO UPDATE SET
                 file_path = EXCLUDED.file_path,
                 file_name = EXCLUDED.file_name,
                 file_size = EXCLUDED.file_size,
                 mime_type = EXCLUDED.mime_type,
+                file_hash = EXCLUDED.file_hash,
                 extraction_status = 'pending',
                 extraction_data = '{}',
                 extraction_confidence = NULL,
@@ -53,7 +55,7 @@ class DocumentRepository:
             query,
             service_request_id, document_code, document_name,
             file_path, file_name, file_size, mime_type,
-            uploaded_by, source
+            uploaded_by, source, file_hash
         )
         return self._row_to_dict(row)
 
@@ -105,6 +107,42 @@ class DocumentRepository:
             json.dumps(validation_errors),
             validated_by
         )
+
+    async def find_by_hash(
+        self,
+        db: asyncpg.Connection,
+        file_hash: str,
+        exclude_request_id: Optional[UUID] = None
+    ) -> List[Dict]:
+        """Find documents with matching file hash for duplicate detection.
+
+        Returns up to 5 matching documents from OTHER requests,
+        joined with service_requests to get user_id.
+        """
+        if exclude_request_id:
+            query = """
+                SELECT srd.id, srd.service_request_id, srd.document_code,
+                       srd.created_at, sr.user_id
+                FROM service_request_documents srd
+                JOIN service_requests sr ON sr.id = srd.service_request_id
+                WHERE srd.file_hash = $1
+                  AND srd.service_request_id != $2
+                ORDER BY srd.created_at ASC
+                LIMIT 5
+            """
+            rows = await db.fetch(query, file_hash, exclude_request_id)
+        else:
+            query = """
+                SELECT srd.id, srd.service_request_id, srd.document_code,
+                       srd.created_at, sr.user_id
+                FROM service_request_documents srd
+                JOIN service_requests sr ON sr.id = srd.service_request_id
+                WHERE srd.file_hash = $1
+                ORDER BY srd.created_at ASC
+                LIMIT 5
+            """
+            rows = await db.fetch(query, file_hash)
+        return [dict(row) for row in rows]
 
     async def find_by_id(
         self,
