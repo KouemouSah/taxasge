@@ -359,7 +359,7 @@
     },
     {
       "id": "itv_expiring_soon",
-      "rule": "valedero_hasta < TODAY + 30 DAYS",
+      "rule": "valedero_hasta > TODAY + 30 DAYS",
       "error_es": "La ITV expira en menos de 30 dias",
       "error_fr": "L'ITV expire dans moins de 30 jours",
       "severity": "warning"

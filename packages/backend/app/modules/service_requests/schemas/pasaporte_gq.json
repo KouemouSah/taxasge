@@ -206,7 +206,7 @@
     },
     {
       "id": "pasaporte_expiring_soon",
-      "rule": "fecha_expiracion < TODAY + 6 MONTHS",
+      "rule": "fecha_expiracion > TODAY + 6 MONTHS",
       "error_es": "Pasaporte expira en menos de 6 meses",
       "error_fr": "Passeport expire dans moins de 6 mois",
       "severity": "warning"

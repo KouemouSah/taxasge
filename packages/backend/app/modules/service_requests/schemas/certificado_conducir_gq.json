@@ -239,7 +239,7 @@
     },
     {
       "id": "certificado_expiring_soon",
-      "rule": "valido_hasta < TODAY + 30 DAYS",
+      "rule": "valido_hasta > TODAY + 30 DAYS",
       "error_es": "El certificado expira en menos de 30 dias",
       "error_fr": "Le certificat expire dans moins de 30 jours",
       "severity": "warning"

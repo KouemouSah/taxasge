@@ -235,7 +235,7 @@
     },
     {
       "id": "permiso_expiring_soon",
-      "rule": "fecha_expiracion < TODAY + 3 MONTHS",
+      "rule": "fecha_expiracion > TODAY + 3 MONTHS",
       "error_es": "Permiso de residencia expira en menos de 3 meses",
       "error_fr": "Permis de residence expire dans moins de 3 mois",
       "severity": "warning"

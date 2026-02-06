@@ -273,14 +273,8 @@ class ServiceRequestService:
             extraction_status=processing_result["status"]
         )
 
-        # Log to gemini_processing_logs
-        await self._log_processing(
-            db=db,
-            service_request_id=request_id,
-            document_id=doc["id"],
-            user_id=user_id,
-            result=processing_result
-        )
+        # NOTE: Gemini processing is now logged centrally in
+        # gemini_document_processor.process() via _log_to_audit()
 
         # Check if all documents are now provided
         await self._check_completion(db, request_id, user_id)
@@ -677,20 +671,8 @@ class ServiceRequestService:
                 validated_by=user_id
             )
 
-            # Log to gemini_processing_logs
-            await self._log_processing(
-                db=db,
-                service_request_id=request_id,
-                document_id=doc["id"],
-                user_id=user_id,
-                result={
-                    "processor": preview["processor"],
-                    "confidence": preview["confidence"],
-                    "extraction": validation.confirmed_data,
-                    "document_type": preview["document_code"],
-                    "user_validated": True
-                }
-            )
+            # NOTE: Gemini processing is now logged centrally in
+            # gemini_document_processor.process() via _log_to_audit()
 
             # Check if all documents are now provided (within transaction)
             await self._check_completion(db, request_id, user_id)
@@ -1761,36 +1743,6 @@ class ServiceRequestService:
                     ))
 
         return indicators
-
-    async def _log_processing(
-        self,
-        db: asyncpg.Connection,
-        service_request_id: UUID,
-        document_id: UUID,
-        user_id: UUID,
-        result: Dict
-    ) -> None:
-        """Log to gemini_processing_logs table"""
-        try:
-            await db.execute(
-                """INSERT INTO gemini_processing_logs (
-                    service_request_id, document_id, user_id,
-                    processor, document_type_detected,
-                    classification_confidence, extraction_result,
-                    processing_time_ms, has_error
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
-                service_request_id,
-                document_id,
-                user_id,
-                result.get("processor", "pending"),
-                result.get("document_type"),
-                result.get("confidence", 0.0),
-                result.get("extraction", {}),
-                result.get("processing_time_ms", 0),
-                result.get("has_error", False)
-            )
-        except Exception as e:
-            logger.error(f"Failed to log processing: {e}")
 
     async def _check_completion(
         self,

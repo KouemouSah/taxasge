@@ -49,8 +49,18 @@ except ImportError:
     VERTEX_AI_AVAILABLE = False
     logger.warning("Vertex AI SDK not installed - Gemini extraction disabled")
 
+from uuid import UUID
 from app.config import settings
 from .schema_loader import schema_loader
+from .schema_validation_engine import SchemaValidationEngine
+
+# Database pool for audit logging (fire-and-forget)
+try:
+    from app.database.connection import get_db_pool
+    DB_POOL_AVAILABLE = True
+except ImportError:
+    DB_POOL_AVAILABLE = False
+    logger.warning("Database pool not available - Gemini audit logging disabled")
 
 # Import OCR service for Tesseract fallback
 try:
@@ -73,6 +83,29 @@ TESSERACT_CONFIDENCE_THRESHOLD = 0.60  # 60% - Accept Tesseract extraction
 RISK_SCORE_LOW = 30
 RISK_SCORE_MEDIUM = 60
 RISK_SCORE_HIGH = 80
+
+# Document category mapping for audit logs
+DOCUMENT_CATEGORY_MAP: Dict[str, str] = {
+    "dip": "identity", "pasaporte": "identity", "pasaporte_antiguo": "identity",
+    "pasaporte_danado": "identity", "permiso_residencia": "identity",
+    "certificado_nacimiento": "identity", "certificacion_nacimiento": "identity",
+    "declaracion_nacimiento": "identity", "nie": "identity",
+    "carnet_funcionario": "identity", "nombramiento": "identity",
+    "certificado_conducir": "license", "licencia_conducir": "license",
+    "permiso_conducir": "license",
+    "contrato_compraventa": "contract", "contrato_trabajo": "contract",
+    "contrato_onrc": "contract", "contrato_funcionario": "contract",
+    "escritura_constitucion": "contract",
+    "itv": "vehicle", "cuve": "vehicle", "permiso_circulacion": "vehicle",
+    "certificado_registro_vue": "vehicle",
+    "autorizacion_parental": "authorization",
+    "denuncia_policial": "legal",
+    "certificado_medico": "medical",
+    "photo_carnet": "photo", "foto_carnet": "photo",
+    "certificado_nif": "fiscal", "certificado_registro_comercio": "fiscal",
+    "certificado_registro_empresarial": "fiscal", "certificado_conciso_mercantil": "fiscal",
+    "nota_ingreso": "fiscal",
+}
 
 
 class RiskLevel(str, Enum):
@@ -149,6 +182,9 @@ class RiskFactorCode(str, Enum):
     # License/Permit Age Requirements (for Conducir workflow)
     MIN_AGE_FOR_LICENSE = "MIN_AGE_FOR_LICENSE"
     UNDERAGE_FOR_CLASS = "UNDERAGE_FOR_CLASS"
+
+    # Schema Validation (validations[] from JSON schemas)
+    SCHEMA_VALIDATION_FAILED = "SCHEMA_VALIDATION_FAILED"
 
 
 # Risk factor severity mapping
@@ -645,6 +681,16 @@ class RiskAnalyzer:
             if not parental_auth_validation.get("cross_validation_passed", True):
                 has_blocking_mismatches = True
                 logger.warning("Parental authorization cross-validation FAILED - blocking submission")
+
+        # 11. Schema-defined validations (non-blocking)
+        try:
+            schema_engine = SchemaValidationEngine()
+            schema_results = schema_engine.validate(extraction, document_code)
+            for result in schema_results:
+                if not result.passed:
+                    risk_factors.append(result.to_risk_factor())
+        except Exception as e:
+            logger.warning(f"Schema validation check failed: {e}")
 
         # Calculate overall risk score and level
         risk_score, risk_level = self._calculate_risk_score(risk_factors)
@@ -1946,14 +1992,25 @@ class GeminiDocumentProcessor:
         extraction_result = None
         gemini_risk_hints = None
 
+        # Audit tracking variables
+        gemini_latency_ms: Optional[int] = None
+        used_fallback = False
+        fallback_reason: Optional[str] = None
+        input_tokens: Optional[int] = None
+        output_tokens: Optional[int] = None
+
         # Try Gemini first
         if self.enabled:
             try:
+                gemini_start = time.time()
                 gemini_result = await self._process_with_gemini(
                     content, mime_type, document_code, schema
                 )
+                gemini_latency_ms = int((time.time() - gemini_start) * 1000)
 
                 gemini_risk_hints = gemini_result.get("risk_hints", {})
+                input_tokens = gemini_result.get("input_tokens")
+                output_tokens = gemini_result.get("output_tokens")
 
                 if gemini_result["confidence"] >= GEMINI_CONFIDENCE_THRESHOLD:
                     extraction_result = gemini_result
@@ -1963,12 +2020,16 @@ class GeminiDocumentProcessor:
                         f"(confidence: {gemini_result['confidence']:.2%})"
                     )
                 else:
+                    used_fallback = True
+                    fallback_reason = "gemini_low_confidence"
                     logger.info(
                         f"Gemini confidence too low ({gemini_result['confidence']:.2%}), "
                         f"falling back to Tesseract"
                     )
 
             except Exception as e:
+                used_fallback = True
+                fallback_reason = "gemini_error"
                 logger.error(f"Gemini extraction failed: {e}")
 
         # Tesseract fallback
@@ -1998,6 +2059,9 @@ class GeminiDocumentProcessor:
 
         # If both failed
         if not extraction_result:
+            used_fallback = True
+            if not fallback_reason:
+                fallback_reason = "both_failed"
             extraction_result = {
                 "extraction": {},
                 "confidence": 0.0,
@@ -2041,6 +2105,26 @@ class GeminiDocumentProcessor:
         # Add processing time and risk analysis
         extraction_result["processing_time_ms"] = int((time.time() - start_time) * 1000)
         extraction_result["risk_analysis"] = risk_analysis
+
+        # ═══════════════════════════════════════════════════════════════════
+        # AUDIT LOGGING (fire-and-forget)
+        # ═══════════════════════════════════════════════════════════════════
+        await self._log_to_audit(
+            request_id=request_id,
+            user_id=user_id,
+            document_code=document_code,
+            mime_type=mime_type,
+            file_size=len(content),
+            result=extraction_result,
+            risk_analysis=risk_analysis,
+            schema=schema,
+            workflow_code=workflow_code,
+            gemini_latency_ms=gemini_latency_ms,
+            used_fallback=used_fallback,
+            fallback_reason=fallback_reason,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
 
         return extraction_result
 
@@ -2167,6 +2251,162 @@ class GeminiDocumentProcessor:
 
         return result
 
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # AUDIT LOGGING
+    # ═══════════════════════════════════════════════════════════════════════════════
+
+    async def _log_to_audit(
+        self,
+        request_id: str,
+        user_id: str,
+        document_code: str,
+        mime_type: str,
+        file_size: int,
+        result: Dict[str, Any],
+        risk_analysis: Dict[str, Any],
+        schema: Optional[Dict],
+        workflow_code: Optional[str],
+        gemini_latency_ms: Optional[int],
+        used_fallback: bool,
+        fallback_reason: Optional[str],
+        input_tokens: Optional[int],
+        output_tokens: Optional[int],
+    ) -> None:
+        """
+        Log processing result to gemini_processing_logs via SQL function.
+
+        Fire-and-forget: NEVER raises exceptions, NEVER blocks the caller.
+        Uses the existing log_gemini_processing() SQL function (migration 026).
+        """
+        if not DB_POOL_AVAILABLE:
+            return
+
+        try:
+            pool = await get_db_pool()
+            async with pool.acquire() as conn:
+                # Convert string IDs to UUID or None
+                sr_id = None
+                if request_id:
+                    try:
+                        sr_id = UUID(request_id)
+                    except (ValueError, AttributeError):
+                        pass
+
+                uid = None
+                if user_id:
+                    try:
+                        uid = UUID(user_id)
+                    except (ValueError, AttributeError):
+                        pass
+
+                # Count extracted fields
+                extraction = result.get("extraction", {})
+                fields_extracted = sum(
+                    1 for k, v in extraction.items()
+                    if v is not None and v != "" and not k.startswith("_")
+                )
+
+                # Count total fields from schema
+                total_fields = 0
+                if schema:
+                    for section in schema.get("extraction", {}).values():
+                        total_fields += len(section.get("fields", {}))
+                fields_missing = max(0, total_fields - fields_extracted)
+
+                # Derive document category
+                doc_base = document_code.lower().split("_gq")[0].split("_v")[0]
+                category = DOCUMENT_CATEGORY_MAP.get(doc_base, "other")
+
+                # Normalize risk_score to 0.0-1.0
+                risk_score = risk_analysis.get("risk_score", 0)
+                risk_score_normalized = min(1.0, max(0.0, risk_score / 100.0))
+
+                # Derive recommendation
+                if risk_analysis.get("requires_rejection"):
+                    recommendation = "reject"
+                elif risk_analysis.get("requires_review"):
+                    recommendation = "manual_review"
+                elif risk_analysis.get("risk_level") in ("high", "critical"):
+                    recommendation = "manual_review"
+                else:
+                    recommendation = "auto_approve"
+
+                # Check coherence validity (no coherence-related risk factors)
+                coherence_codes = {
+                    RiskFactorCode.LOGICAL_INCONSISTENCY.value,
+                    RiskFactorCode.CROSS_FIELD_MISMATCH.value,
+                    RiskFactorCode.TEMPORAL_ANOMALY.value,
+                }
+                coherence_valid = not any(
+                    rf.get("code") in coherence_codes
+                    for rf in risk_analysis.get("risk_factors", [])
+                )
+
+                # Document type match
+                is_match = (
+                    result.get("document_type", "").lower() == document_code.lower()
+                )
+
+                # Error details
+                error_type = None
+                error_message = result.get("error_message")
+                if result.get("has_error"):
+                    error_type = "extraction_error"
+
+                await conn.fetchval(
+                    "SELECT log_gemini_processing("
+                    "$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,"
+                    "$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,"
+                    "$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31"
+                    ")",
+                    sr_id,                                          # p_service_request_id
+                    None,                                           # p_document_id
+                    uid,                                            # p_user_id
+                    document_code,                                  # p_document_code
+                    mime_type,                                      # p_mime_type
+                    file_size,                                      # p_file_size
+                    result.get("processor", "unknown"),             # p_processor
+                    settings.GEMINI_PRO_MODEL if self.enabled else None,  # p_gemini_model
+                    result.get("document_type"),                    # p_document_type
+                    category,                                       # p_document_category
+                    result.get("confidence", 0.0),                  # p_classification_confidence
+                    json.dumps(extraction),                         # p_extraction_result
+                    result.get("confidence", 0.0),                  # p_extraction_confidence
+                    fields_extracted,                               # p_fields_extracted
+                    fields_missing,                                 # p_fields_missing
+                    risk_score_normalized,                          # p_risk_score
+                    risk_analysis.get("risk_level", "low"),         # p_risk_level
+                    json.dumps(risk_analysis.get("risk_factors", [])),  # p_risk_factors
+                    coherence_valid,                                # p_coherence_valid
+                    recommendation,                                 # p_recommendation
+                    is_match,                                       # p_is_match
+                    result.get("processing_time_ms", 0),            # p_processing_time_ms
+                    gemini_latency_ms,                              # p_gemini_latency_ms
+                    used_fallback,                                  # p_used_fallback
+                    fallback_reason,                                # p_fallback_reason
+                    result.get("has_error", False),                 # p_has_error
+                    error_type,                                     # p_error_type
+                    error_message,                                  # p_error_message
+                    workflow_code,                                  # p_workflow_code
+                    input_tokens,                                   # p_input_tokens
+                    output_tokens,                                  # p_output_tokens
+                )
+
+                logger.debug(
+                    f"[GeminiAudit] Logged {document_code} "
+                    f"(processor={result.get('processor')}, "
+                    f"risk={risk_analysis.get('risk_level')}, "
+                    f"rec={recommendation})"
+                )
+
+        except Exception as e:
+            # Fire-and-forget: NEVER propagate logging errors
+            logger.warning(f"[GeminiAudit] Failed to log processing: {e}")
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # GEMINI / TESSERACT PROCESSING METHODS
+    # ═══════════════════════════════════════════════════════════════════════════════
+
     async def _process_with_gemini(
         self,
         content: bytes,
@@ -2198,6 +2438,13 @@ class GeminiDocumentProcessor:
             )
         )
 
+        # Capture token usage from Vertex AI response
+        input_tokens = None
+        output_tokens = None
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            input_tokens = getattr(response.usage_metadata, 'prompt_token_count', None)
+            output_tokens = getattr(response.usage_metadata, 'candidates_token_count', None)
+
         # Parse response
         response_text = response.text if response.text else ""
 
@@ -2214,7 +2461,9 @@ class GeminiDocumentProcessor:
             "document_type": detected_type,
             "has_error": False,
             "risk_hints": risk_hints,
-            "raw_response": response_text[:500]
+            "raw_response": response_text[:500],
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
         }
 
     def _build_gemini_prompt(

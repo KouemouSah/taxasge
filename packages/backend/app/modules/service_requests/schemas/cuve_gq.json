@@ -388,7 +388,7 @@
     },
     {
       "id": "cuve_expiring_soon",
-      "rule": "fecha_validez < TODAY + 30 DAYS",
+      "rule": "fecha_validez > TODAY + 30 DAYS",
       "error_es": "La CUVE expira en menos de 30 dias",
       "error_fr": "La CUVE expire dans moins de 30 jours",
       "severity": "warning"
