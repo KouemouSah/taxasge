@@ -22,9 +22,9 @@ Contract Types (for REGISTRO_NUEVO):
 Entity: ONRC (Oficina Nacional de Registro de Contratos)
 
 Tariff: 0.5% of contract value in XAF (percentage-based).
-Late penalty: 10%/month after 30 days (currently ×0 - inactive).
-Minimum tariff: 50,000 XAF (currently ×0 - inactive).
-Supplements: Timbre fiscal per page + Timbre de registro (currently ×0).
+Late penalty: 10%/month after 30 days (controlled by PENALTY_MULTIPLIER).
+Minimum tariff: 50,000 XAF (controlled by MINIMUM_TARIFF_MULTIPLIER).
+Supplement: TIMBRE_FISCAL 500 XAF/page (quantity from contract page count).
 
 Payment flow: Standard (citizen pays → then agent reviews).
 Agent can set monto_validado_por_agente during review.
@@ -99,8 +99,8 @@ class ContratoWorkflow(PredefinedWorkflow):
     - form_review_1: Contractor identification (NIF + DIP extraction)
     - form_review_2: Contract details + Contratante + Vigencia
     - form_review_3: Financial data (monto from extraction, editable)
-    - Penalty rules at ×0 (ready for activation)
-    - Supplements at ×0 (timbre fiscal)
+    - Late registration penalty: 10%/month after 30 days (PENALTY_MULTIPLIER controls activation)
+    - Supplement: TIMBRE_FISCAL 500 XAF/page (quantity dynamic from contract pages)
     - Most documents non-mandatory (progressive enforcement)
     - Standard payment flow (pay first, agent reviews after)
 
@@ -121,16 +121,18 @@ class ContratoWorkflow(PredefinedWorkflow):
     # Tariff: 0.5% of contract value
     TARIFF_PERCENTAGE = 0.005  # 0.5%
 
-    # Late registration penalty (×0 = INACTIVE until decision)
+    # Late registration penalty
     # Rule: After 30 days from signature, 10%/month penalty, max 100%
-    PENALTY_MULTIPLIER = 0              # ×0 = inactive
-    PENALTY_RATE_PER_MONTH = 0.10       # 10% per month when active
-    PENALTY_MAX_RATE = 1.0              # 100% max when active
-    REGISTRATION_DELAY_DAYS = 30        # Grace period
+    # Set PENALTY_MULTIPLIER = 1 to activate
+    PENALTY_MULTIPLIER = 0
+    PENALTY_RATE_PER_MONTH = 0.10       # 10% per month
+    PENALTY_MAX_RATE = 1.0              # 100% max
+    REGISTRATION_DELAY_DAYS = 30        # Grace period in days
 
-    # Minimum tariff (×0 = INACTIVE until decision)
-    MINIMUM_TARIFF_MULTIPLIER = 0       # ×0 = inactive
-    MINIMUM_TARIFF_XAF = 50000          # 50,000 XAF when active
+    # Minimum tariff: 50,000 XAF
+    # Set MINIMUM_TARIFF_MULTIPLIER = 1 to activate
+    MINIMUM_TARIFF_MULTIPLIER = 0
+    MINIMUM_TARIFF_XAF = 50000
 
     # Exchange rates (official BEAC rates)
     EXCHANGE_RATES = {
@@ -716,23 +718,17 @@ class ContratoWorkflow(PredefinedWorkflow):
 
         Base: 0.5% of contract value in XAF.
 
-        Supplements (currently ×0 - inactive, ready for activation):
-        - TIMBRE_FISCAL_PAGE: Stamp duty per page of contract
-        - TIMBRE_REGISTRO: Fixed registration stamp duty
+        Supplements (aligned with tariff_supplements table in DB):
+        - TIMBRE_FISCAL: 500 XAF per page of contract (Ley de Tasas Fiscales)
+          quantity is set to 1 by default, updated dynamically via
+          get_tariff_breakdown() based on actual number of contract pages.
         """
         supplements = [
             SupplementDefinition(
-                code="TIMBRE_FISCAL_PAGE",
-                name_es="Timbre Fiscal por Página",
-                unit_price=0,       # ×0 - to be defined (ex: 1,000 XAF/page)
-                quantity=1,
-                is_required=True
-            ),
-            SupplementDefinition(
-                code="TIMBRE_REGISTRO",
-                name_es="Timbre de Registro",
-                unit_price=0,       # ×0 - to be defined (ex: 5,000 XAF)
-                quantity=1,
+                code="TIMBRE_FISCAL",
+                name_es="Timbre Fiscal",
+                unit_price=500,     # 500 XAF (aligned with tariff_supplements.amount)
+                quantity=1,         # Default 1, updated dynamically per contract pages
                 is_required=True
             ),
         ]
@@ -1143,6 +1139,9 @@ class ContratoWorkflow(PredefinedWorkflow):
             "moneda": "contrato.valor_contrato.moneda",
             "monto_en_letras": "contrato.valor_contrato.monto_en_letras",
             "incluye_iva": "contrato.valor_contrato.incluye_iva",
+
+            # === From Contract - Metadata (for tariff calculation) ===
+            "numero_paginas": "contrato.metadatos_documento.numero_paginas",
         }
 
     # === Workflow Code Resolution ===
@@ -1166,10 +1165,9 @@ class ContratoWorkflow(PredefinedWorkflow):
         """
         Calculate tariff based on contract value.
 
-        Formula: monto_xaf × 0.5% + penalties(×0) + supplements(×0)
-        - Minimum tariff: 50,000 XAF (×0 = inactive)
-        - Late penalty: 10%/month after 30 days (×0 = inactive)
-        - Supplements: Timbre fiscal (×0 = inactive)
+        Formula: monto_xaf × 0.5% + penalties + supplements
+        - Minimum tariff: 50,000 XAF (controlled by MINIMUM_TARIFF_MULTIPLIER)
+        - Late penalty: 10%/month after 30 days (controlled by PENALTY_MULTIPLIER)
 
         The value is extracted from the contract by Gemini (not declared by citizen).
         The agent can later set monto_validado_por_agente during review.
@@ -1189,12 +1187,12 @@ class ContratoWorkflow(PredefinedWorkflow):
         # Base tariff: 0.5%
         base = int(value * self.TARIFF_PERCENTAGE)
 
-        # Minimum tariff (×0 = inactive)
+        # Minimum tariff
         minimum = int(self.MINIMUM_TARIFF_XAF * self.MINIMUM_TARIFF_MULTIPLIER)
         if minimum > 0 and base < minimum:
             base = minimum
 
-        # Late registration penalty (×0 = inactive)
+        # Late registration penalty
         penalty = self._calculate_late_penalty(context, base)
 
         return base + penalty
@@ -1204,14 +1202,14 @@ class ContratoWorkflow(PredefinedWorkflow):
         Calculate late registration penalty.
 
         Rule: If contract signed > 30 days ago, apply 10%/month (max 100%).
-        Currently ×0 (inactive). When activated, just set PENALTY_MULTIPLIER = 1.
+        Controlled by PENALTY_MULTIPLIER (0 = off, 1 = on).
 
         Args:
             context: Workflow context with form_data containing fecha_firma
             base_tariff: Base tariff amount in XAF
 
         Returns:
-            Penalty amount in XAF (0 if inactive or within grace period)
+            Penalty amount in XAF (0 if multiplier is 0 or within grace period)
         """
         if self.PENALTY_MULTIPLIER == 0:
             return 0
@@ -1259,16 +1257,15 @@ class ContratoWorkflow(PredefinedWorkflow):
         Get detailed tariff breakdown for payment display.
 
         Overrides PredefinedWorkflow.get_tariff_breakdown with contract-specific
-        logic: percentage-based tariff + penalties + supplements.
+        logic: percentage-based tariff + late penalties + timbre fiscal per page.
 
-        Returns breakdown with:
-        - base_tariff: 0.5% of contract value
-        - penalty: Late registration penalty (×0)
-        - supplements: Timbre fiscal (×0)
-        - total: Sum of all
+        The number of contract pages (numero_paginas) is extracted from the
+        uploaded contract document and stored in form_data. The TIMBRE_FISCAL
+        quantity is dynamically set based on this value.
         """
         monto = 0.0
         currency = "XAF"
+        numero_paginas = 1
 
         if context and context.form_data:
             monto = context.form_data.get("monto_total", 0) or 0
@@ -1276,6 +1273,8 @@ class ContratoWorkflow(PredefinedWorkflow):
             rate = self.EXCHANGE_RATES.get(currency, 1)
             if currency != "XAF":
                 monto = monto * rate
+            # Number of pages for timbre fiscal calculation
+            numero_paginas = max(1, int(context.form_data.get("numero_paginas", 1) or 1))
 
         base_amount = int(monto * self.TARIFF_PERCENTAGE)
         minimum = int(self.MINIMUM_TARIFF_XAF * self.MINIMUM_TARIFF_MULTIPLIER)
@@ -1284,20 +1283,20 @@ class ContratoWorkflow(PredefinedWorkflow):
 
         penalties_amount = self._calculate_late_penalty(context, base_amount) if context else 0
 
-        # Supplements from TariffConfig (×0 for now)
+        # Build supplements with dynamic quantity for TIMBRE_FISCAL
         tariff_cfg = self.get_tariff_config()
         supplements_defs = tariff_cfg.supplements if tariff_cfg else []
-        supplements = [
-            {
+        supplements = []
+        for s in supplements_defs:
+            quantity = numero_paginas if s.code == "TIMBRE_FISCAL" else s.quantity
+            supplements.append({
                 "code": s.code,
                 "name_es": s.name_es,
                 "unit_price": s.unit_price,
-                "quantity": s.quantity,
-                "subtotal": s.subtotal,
+                "quantity": quantity,
+                "subtotal": s.unit_price * quantity,
                 "is_required": s.is_required
-            }
-            for s in supplements_defs
-        ]
+            })
         supplements_total = sum(s["subtotal"] for s in supplements)
 
         total_amount = base_amount + penalties_amount + supplements_total
@@ -1319,6 +1318,7 @@ class ContratoWorkflow(PredefinedWorkflow):
             "moneda_original": currency,
             "tasa_porcentaje": "0.5%",
             "minimum_applied": minimum > 0 and base_amount == minimum,
+            "numero_paginas": numero_paginas,
         }
 
     # === Legacy Compatibility ===
