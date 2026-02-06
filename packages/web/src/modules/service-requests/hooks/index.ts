@@ -32,6 +32,11 @@ export {
   useInvalidateFormConfig,
   usePrefetchFormConfig,
   formConfigQueryKeys,
+  // Session-based form config hooks (cache-first wizard)
+  useSessionFormConfig,
+  usePrefetchSessionFormConfig,
+  useInvalidateSessionFormConfig,
+  sessionFormConfigQueryKeys,
 } from './useFormConfig'
 
 // Cache-First Wizard Session hook

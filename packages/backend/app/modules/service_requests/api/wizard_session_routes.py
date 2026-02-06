@@ -26,6 +26,7 @@ from ..models.wizard_session import (
     WizardPreparePaymentResponse,
     WizardPersistResult,
 )
+from ..models.form_config import FormConfigResponse
 from ..services.wizard_session_service import (
     wizard_session_service,
     WizardSessionError,
@@ -325,6 +326,56 @@ async def save_form_data(
         logger.info(
             f"[WizardAPI] Form data saved: session={session_id}, "
             f"step={data.step_id}"
+        )
+
+        return result
+
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+
+# =============================================================================
+# FORM CONFIG (Dynamic form rendering)
+# =============================================================================
+
+@router.get(
+    "/{session_id}/form-config/{step_id}",
+    response_model=FormConfigResponse,
+    summary="Get dynamic form configuration for a session step",
+    description="""
+    Returns the form configuration for a specific workflow step.
+
+    The configuration includes:
+    - Sections filtered by conditions (solicitud_type, motivo, is_minor, etc.)
+    - Fields with pre-filled values from document extraction + form edits
+    - Validation rules and field metadata
+
+    This enables the frontend to render forms dynamically using DynamicFormRenderer.
+
+    **Condition evaluation**: Sections with conditions are evaluated
+    against the session context. Only matching sections are returned.
+
+    **Value pre-filling**: Field values are resolved using:
+    1. form_data (user edits) - highest priority
+    2. extracted_data (OCR results via form_mapping) - fallback
+    """,
+)
+async def get_session_form_config(
+    session_id: str = Path(..., description="The wizard session ID"),
+    step_id: str = Path(..., description="The workflow step ID (e.g., 'form_review_1')"),
+    current_user=Depends(get_current_user),
+) -> FormConfigResponse:
+    """Get dynamic form configuration with pre-filled values for a session."""
+    try:
+        result = await wizard_session_service.get_form_config(
+            session_id=session_id,
+            user_id=current_user.id,
+            step_id=step_id,
+        )
+
+        logger.info(
+            f"[WizardAPI] Form config: session={session_id}, "
+            f"step={step_id}, sections={len(result.sections)}"
         )
 
         return result

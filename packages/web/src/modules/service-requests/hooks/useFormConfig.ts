@@ -1,8 +1,12 @@
 /**
- * React Query hook for fetching dynamic form configuration
+ * React Query hooks for fetching dynamic form configuration
  *
- * Fetches form config from the backend API endpoint:
- * GET /service-requests/{request_id}/form-config/{step_id}
+ * Two variants:
+ * 1. useFormConfig - For legacy wizard (uses requestId)
+ *    GET /service-requests/{request_id}/form-config/{step_id}
+ *
+ * 2. useSessionFormConfig - For cache-first wizard (uses sessionId)
+ *    GET /wizard-sessions/{session_id}/form-config/{step_id}
  *
  * The backend evaluates conditions and returns only the relevant
  * sections based on the request context (solicitud_type, motivo, is_minor, etc.)
@@ -20,6 +24,7 @@ import type {
   FormConfigResponse,
 } from '../types/form-config'
 import { parseFormConfigResponse } from '../types/form-config'
+import { wizardSessionApi } from '../services/wizard-session-api'
 
 // =============================================================================
 // CONSTANTS
@@ -188,6 +193,90 @@ export function usePrefetchFormConfig() {
         queryKey: formConfigQueryKeys.byStep(requestId, stepId),
         queryFn: () => fetchFormConfig(requestId, stepId),
         staleTime: CACHE_CONFIG.staleTime,
+      })
+    },
+  }
+}
+
+// =============================================================================
+// SESSION-BASED HOOKS (Cache-First Wizard)
+// =============================================================================
+
+export const sessionFormConfigQueryKeys = {
+  all: ['form-config', 'session'] as const,
+  bySession: (sessionId: string) =>
+    [...sessionFormConfigQueryKeys.all, sessionId] as const,
+  byStep: (sessionId: string, stepId: string) =>
+    [...sessionFormConfigQueryKeys.bySession(sessionId), 'step', stepId] as const,
+}
+
+/**
+ * Fetch session form config from the wizard-sessions API
+ */
+async function fetchSessionFormConfig(
+  sessionId: string,
+  stepId: string
+): Promise<FormConfig> {
+  const data = await wizardSessionApi.getFormConfig(sessionId, stepId)
+  return parseFormConfigResponse(data)
+}
+
+/**
+ * Hook to fetch dynamic form configuration for a session wizard step
+ *
+ * @param sessionId - Wizard session ID
+ * @param stepId - Workflow step ID (e.g., 'form_review_1')
+ */
+export function useSessionFormConfig(
+  sessionId: string | undefined | null,
+  stepId: string | undefined | null,
+  options?: {
+    enabled?: boolean
+  }
+) {
+  return useQuery({
+    queryKey: sessionFormConfigQueryKeys.byStep(sessionId || '', stepId || ''),
+    queryFn: () => fetchSessionFormConfig(sessionId!, stepId!),
+    enabled: !!sessionId && !!stepId && (options?.enabled !== false),
+    staleTime: CACHE_CONFIG.staleTime,
+    gcTime: CACHE_CONFIG.gcTime,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+  })
+}
+
+/**
+ * Hook to prefetch session form config for the next step
+ */
+export function usePrefetchSessionFormConfig() {
+  const queryClient = useQueryClient()
+
+  return {
+    prefetch: async (sessionId: string, stepId: string) => {
+      await queryClient.prefetchQuery({
+        queryKey: sessionFormConfigQueryKeys.byStep(sessionId, stepId),
+        queryFn: () => fetchSessionFormConfig(sessionId, stepId),
+        staleTime: CACHE_CONFIG.staleTime,
+      })
+    },
+  }
+}
+
+/**
+ * Hook to invalidate session form config cache
+ */
+export function useInvalidateSessionFormConfig() {
+  const queryClient = useQueryClient()
+
+  return {
+    invalidateSession: (sessionId: string) => {
+      return queryClient.invalidateQueries({
+        queryKey: sessionFormConfigQueryKeys.bySession(sessionId),
+      })
+    },
+    invalidateStep: (sessionId: string, stepId: string) => {
+      return queryClient.invalidateQueries({
+        queryKey: sessionFormConfigQueryKeys.byStep(sessionId, stepId),
       })
     },
   }

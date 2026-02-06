@@ -628,6 +628,141 @@ class WizardSessionService:
         workflow = workflow_engine.get_workflow_by_string(session["workflow_code"])
         return self._session_to_response(session, workflow)
 
+    async def get_form_config(
+        self,
+        session_id: str,
+        user_id: UUID,
+        step_id: str,
+    ):
+        """
+        Get dynamic form configuration for a session step.
+
+        Builds a WorkflowContext from the session cache and calls
+        workflow.get_form_config() to get sections filtered by conditions.
+        Values are pre-filled from extracted_data + form_data.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for authorization
+            step_id: The form_review step ID (e.g., 'form_review_1')
+
+        Returns:
+            FormConfigResponse with sections, fields, and pre-filled values
+        """
+        from ..models.form_config import FormConfigResponse, FormFieldResponse, FormSectionResponse
+        from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
+
+        logger.info(f"[WizardSession] Get form config: session={session_id}, step={step_id}")
+
+        session = await self._get_session(session_id, user_id)
+
+        workflow = workflow_engine.get_workflow_by_string(session["workflow_code"])
+        if not workflow:
+            raise WizardSessionError(f"Workflow not found: {session['workflow_code']}")
+
+        # Build context from session cache
+        context = WorkflowContext(
+            service_request_id=uuid4(),  # Placeholder
+            user_id=UUID(session["user_id"]),
+            workflow_code=WorkflowCode(session["workflow_code"]),
+            solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
+            sub_type=session.get("sub_type"),
+            is_minor=session.get("is_minor", False),
+            form_data=session.get("form_data", {}),
+            extracted_data=session.get("extracted_data", {}),
+        )
+
+        # Set motivo if present
+        if session.get("motivo"):
+            try:
+                context.motivo = RenovacionMotivo(session["motivo"])
+            except ValueError:
+                pass
+
+        # Get form configuration (sections filtered by conditions)
+        try:
+            form_config = workflow.get_form_config(step_id, context)
+        except ValueError as e:
+            raise WizardSessionError(str(e))
+
+        # Get form mapping to resolve values
+        form_mapping = workflow.get_form_mapping(context)
+
+        form_data = session.get("form_data", {})
+        extracted_data = session.get("extracted_data", {})
+
+        # Build response with pre-filled values
+        sections_response = []
+        for section in form_config.sections:
+            fields_response = []
+            for field in section.fields:
+                # Resolve current value from form_data or extracted_data
+                current_value = self._resolve_field_value(
+                    field.key, form_mapping, form_data, extracted_data
+                )
+                fields_response.append(FormFieldResponse(
+                    key=field.key,
+                    label_es=field.label_es,
+                    type=field.type,
+                    required=field.required,
+                    options=field.options,
+                    readonly=field.readonly,
+                    placeholder_es=field.placeholder_es,
+                    validation=field.validation,
+                    current_value=current_value,
+                ))
+            sections_response.append(FormSectionResponse(
+                id=section.id,
+                title_es=section.title_es,
+                fields=fields_response,
+                source_document=section.source_document,
+                description_es=section.description_es,
+            ))
+
+        return FormConfigResponse(
+            step_id=form_config.step_id,
+            title_es=form_config.title_es,
+            description_es=form_config.description_es,
+            sections=sections_response,
+        )
+
+    @staticmethod
+    def _resolve_field_value(
+        field_key: str,
+        form_mapping: dict,
+        form_data: dict,
+        extracted_data: dict,
+    ):
+        """Resolve a field value from form_data or extracted_data."""
+        # Priority 1: Check form_data for user edits
+        if field_key in form_data:
+            return form_data[field_key]
+
+        # Priority 2: Resolve from extracted_data using mapping
+        extraction_path = form_mapping.get(field_key)
+        if not extraction_path:
+            return None
+
+        # Parse path like "dip.titular.apellidos"
+        parts = extraction_path.split(".")
+        if len(parts) < 2:
+            return None
+
+        # First part is document code
+        doc_code = parts[0]
+        if doc_code not in extracted_data:
+            return None
+
+        # Navigate the rest of the path
+        value = extracted_data[doc_code]
+        for part in parts[1:]:
+            if isinstance(value, dict) and part in value:
+                value = value[part]
+            else:
+                return None
+
+        return value
+
     async def prepare_for_payment(
         self,
         session_id: str,
@@ -703,6 +838,29 @@ class WizardSessionService:
                         "message_es": result.message_es,
                         "field": getattr(result, 'field', None),
                     })
+
+        # Validate required form fields across all form_review steps
+        form_data = session.get("form_data", {})
+        if hasattr(workflow, 'get_form_config'):
+            # Check each form_review step
+            step_num = 1
+            while True:
+                step_id = f"form_review_{step_num}"
+                try:
+                    form_config = workflow.get_form_config(step_id, context)
+                    for section in form_config.sections:
+                        for field in section.fields:
+                            if field.required:
+                                value = form_data.get(field.key)
+                                if value is None or value == "" or value == []:
+                                    errors.append({
+                                        "rule_id": f"required_field_{field.key}",
+                                        "message_es": f"Campo obligatorio: {field.label_es}",
+                                        "field": field.key,
+                                    })
+                    step_num += 1
+                except (ValueError, AttributeError):
+                    break  # No more form_review steps
 
         # Calculate tariff
         tariff = await tariff_calculator.calculate(db, workflow, context)

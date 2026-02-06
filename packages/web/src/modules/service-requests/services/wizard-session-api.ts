@@ -22,6 +22,7 @@ import type {
   DocumentConfirmRequest,
   FormDataSaveRequest,
 } from '../types/wizard-session'
+import type { FormConfigResponse } from '../types/form-config'
 import {
   transformSession,
   transformDocumentPreview,
@@ -258,6 +259,23 @@ class WizardSessionApiClient {
       }
     )
     return transformSession(raw)
+  }
+
+  // ==========================================================================
+  // FORM CONFIG (Dynamic rendering)
+  // ==========================================================================
+
+  /**
+   * Get dynamic form configuration for a session step.
+   * GET /wizard-sessions/{sessionId}/form-config/{stepId}
+   */
+  async getFormConfig(
+    sessionId: string,
+    stepId: string
+  ): Promise<FormConfigResponse> {
+    return this.request<FormConfigResponse>(
+      `/${sessionId}/form-config/${encodeURIComponent(stepId)}`
+    )
   }
 
   // ==========================================================================

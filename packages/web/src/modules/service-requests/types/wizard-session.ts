@@ -336,6 +336,126 @@ export function transformPersistResult(
 }
 
 // ============================================================================
+// CROSS-TYPE TRANSFORMS (Session ↔ Legacy)
+// ============================================================================
+
+/**
+ * Transform a session DocumentPreview to the legacy DocumentExtractionPreview
+ * format used by DocumentPreviewDialog.
+ *
+ * This adapter allows reusing the existing DocumentPreviewDialog component
+ * with the cache-first wizard's preview response.
+ */
+export function transformPreviewToExtractionPreview(
+  preview: DocumentPreview
+): {
+  previewId: string
+  documentCode: string
+  documentName: string
+  fileName: string
+  fileSize: number
+  mimeType: string
+  extraction: Record<string, unknown>
+  confidence: number
+  processor: 'gemini' | 'tesseract' | 'hybrid'
+  fieldIndicators: Array<{
+    fieldName: string
+    value?: unknown
+    confidence: number
+    status: 'ok' | 'warning' | 'error' | 'missing'
+    riskLevel?: 'low' | 'medium' | 'high' | 'critical'
+    riskMessage?: string
+    requiresAttention: boolean
+    suggestion?: string
+  }>
+  riskAnalysis?: {
+    riskLevel: string
+    riskScore: number
+    riskFactors: Array<{ type: string; severity: string; description: string }>
+    recommendations: string[]
+    requiresRejection: boolean
+    requiresReview: boolean
+    factorsCount: Record<string, number>
+    identityMismatches?: Array<{
+      field_name: string
+      field_label: { es: string; fr: string; en: string }
+      is_blocking: boolean
+      source_document: { code: string; value: string }
+      compared_document: { code: string; value: string }
+      risk_code: string
+      severity: string
+    }>
+    hasBlockingMismatches?: boolean
+  }
+  extractionStatus: string
+  needsCorrection: boolean
+  detectedDocumentType?: string
+  documentTypeMatch: boolean
+  expectedFields: Array<{ key: string; label: string; type: string; required: boolean }>
+  expiresAt: string
+  processingTimeMs?: number
+} {
+  // Parse risk analysis from generic Record to typed structure
+  const ra = preview.riskAnalysis as Record<string, unknown> | null
+  const riskAnalysis = ra ? {
+    riskLevel: (ra.risk_level as string) || (ra.riskLevel as string) || 'low',
+    riskScore: (ra.risk_score as number) || (ra.riskScore as number) || 0,
+    riskFactors: (ra.risk_factors as Array<{ type: string; severity: string; description: string }>) ||
+      (ra.riskFactors as Array<{ type: string; severity: string; description: string }>) || [],
+    recommendations: (ra.recommendations as string[]) || [],
+    requiresRejection: (ra.requires_rejection as boolean) || (ra.requiresRejection as boolean) || false,
+    requiresReview: (ra.requires_review as boolean) || (ra.requiresReview as boolean) || false,
+    factorsCount: (ra.factors_count as Record<string, number>) || (ra.factorsCount as Record<string, number>) || {},
+    identityMismatches: (ra.identity_mismatches as Array<{
+      field_name: string
+      field_label: { es: string; fr: string; en: string }
+      is_blocking: boolean
+      source_document: { code: string; value: string }
+      compared_document: { code: string; value: string }
+      risk_code: string
+      severity: string
+    }>) || (ra.identityMismatches as unknown as Array<{
+      field_name: string
+      field_label: { es: string; fr: string; en: string }
+      is_blocking: boolean
+      source_document: { code: string; value: string }
+      compared_document: { code: string; value: string }
+      risk_code: string
+      severity: string
+    }>) || undefined,
+    hasBlockingMismatches: (ra.has_blocking_mismatches as boolean) || (ra.hasBlockingMismatches as boolean) || false,
+  } : undefined
+
+  // Build field indicators from extraction data
+  const fieldIndicators = Object.entries(preview.extraction).map(([key, value]) => ({
+    fieldName: key,
+    value,
+    confidence: preview.confidence,
+    status: (preview.confidence >= 0.7 ? 'ok' : 'warning') as 'ok' | 'warning' | 'error' | 'missing',
+    requiresAttention: preview.confidence < 0.7,
+  }))
+
+  return {
+    previewId: `${preview.sessionId}-${preview.documentCode}`,
+    documentCode: preview.documentCode,
+    documentName: preview.documentName || preview.documentCode,
+    fileName: preview.fileName,
+    fileSize: preview.fileSize,
+    mimeType: 'application/octet-stream', // Not available from session preview
+    extraction: preview.extraction,
+    confidence: preview.confidence,
+    processor: preview.processor as 'gemini' | 'tesseract' | 'hybrid',
+    fieldIndicators,
+    riskAnalysis,
+    extractionStatus: preview.extractionStatus,
+    needsCorrection: preview.needsCorrection,
+    documentTypeMatch: true, // Default - session preview doesn't have this
+    expectedFields: [], // Not available from session preview
+    expiresAt: preview.expiresAt,
+  }
+}
+
+// ============================================================================
 // UI HELPERS
 // ============================================================================
 

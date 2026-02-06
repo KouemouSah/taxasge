@@ -43,21 +43,24 @@ import {
 } from 'lucide-react'
 import {
   useWizardSession,
-  DocumentUploader,
   SessionTimer,
+  DocumentPreviewDialog,
+  IdentityMismatchBlocker,
   DynamicFormRenderer,
-  useFormConfig,
+  useSessionFormConfig,
+  usePrefetchSessionFormConfig,
+  validateFormConfig,
 } from '@/modules/service-requests'
 import type {
-  DocumentRequirement,
   DocumentExtractionPreview,
 } from '@/modules/service-requests'
+import type { IdentityMismatch } from '@/modules/service-requests/components/IdentityMismatchBlocker'
 import type {
-  WizardSession,
+  DocumentPreview,
   PreparePaymentResult,
   RequiredDocument,
 } from '@/modules/service-requests/types/wizard-session'
-import { WizardSessionStatus } from '@/modules/service-requests/types/wizard-session'
+import { transformPreviewToExtractionPreview } from '@/modules/service-requests/types/wizard-session'
 
 // ============================================================================
 // WIZARD STEPS (computed from session state)
@@ -129,12 +132,27 @@ export default function SessionWizardPage() {
   // Local state
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [documentPreviews, setDocumentPreviews] = useState<
-    Record<string, DocumentExtractionPreview>
+    Record<string, DocumentPreview>
   >({})
   const [formValues, setFormValues] = useState<Record<string, unknown>>({})
   const [paymentResult, setPaymentResult] =
     useState<PreparePaymentResult | null>(null)
   const [isPersisting, setIsPersisting] = useState(false)
+
+  // Document preview dialog state
+  const [currentPreview, setCurrentPreview] = useState<DocumentExtractionPreview | null>(null)
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
+  const [isConfirmingPreview, setIsConfirmingPreview] = useState(false)
+  const [pendingDocumentCode, setPendingDocumentCode] = useState<string | null>(null)
+
+  // Identity mismatch blocker state
+  const [identityMismatches, setIdentityMismatches] = useState<IdentityMismatch[]>([])
+  const [showMismatchBlocker, setShowMismatchBlocker] = useState(false)
+  const [hasBlockingMismatches, setHasBlockingMismatches] = useState(false)
+
+  // Form validation state
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [currentFormConfig, setCurrentFormConfig] = useState<import('@/modules/service-requests').FormConfig | null>(null)
 
   // Load session on mount
   useEffect(() => {
@@ -199,6 +217,8 @@ export default function SessionWizardPage() {
 
     switch (currentStep.id) {
       case 'upload_documents': {
+        // Block if identity mismatches are blocking
+        if (hasBlockingMismatches) return false
         // All required documents must be uploaded
         const required = session.requiredDocuments.filter((d) => d.isRequired)
         return required.every((d) => d.uploaded)
@@ -211,13 +231,27 @@ export default function SessionWizardPage() {
       default:
         return true
     }
-  }, [session, currentStep, paymentResult])
+  }, [session, currentStep, paymentResult, hasBlockingMismatches])
 
   const handleNext = useCallback(async () => {
     if (!session || !currentStep) return
 
-    // Save form data before advancing from form review steps
+    // Validate and save form data before advancing from form review steps
     if (currentStep.id.startsWith('form_review_')) {
+      // Validate required fields if form config is loaded
+      if (currentFormConfig) {
+        const errors = validateFormConfig(
+          currentFormConfig,
+          formValues,
+          locale as 'es' | 'fr' | 'en'
+        )
+        if (Object.keys(errors).length > 0) {
+          setFormErrors(errors)
+          return
+        }
+        setFormErrors({})
+      }
+
       const success = await saveFormData({
         form_data: formValues,
         step_id: currentStep.id,
@@ -276,21 +310,82 @@ export default function SessionWizardPage() {
     async (documentCode: string, file: File) => {
       const preview = await previewDocument(documentCode, file)
       if (preview) {
+        // Store raw preview
         setDocumentPreviews((prev) => ({
           ...prev,
-          [documentCode]: preview as unknown as DocumentExtractionPreview,
+          [documentCode]: preview,
         }))
-        // Auto-confirm for high confidence
-        if (preview.confidence >= 0.8) {
-          await confirmDocument({
-            document_code: documentCode,
-            confirmed_data: preview.extraction,
-          })
+
+        // Check for identity mismatches in risk analysis
+        const ra = preview.riskAnalysis as Record<string, unknown> | null
+        if (ra) {
+          const mismatches = (ra.identity_mismatches || ra.identityMismatches) as IdentityMismatch[] | undefined
+          if (mismatches && mismatches.length > 0) {
+            setIdentityMismatches(mismatches)
+            const blocking = (ra.has_blocking_mismatches as boolean) ||
+              (ra.hasBlockingMismatches as boolean) ||
+              mismatches.some(m => m.is_blocking)
+            setHasBlockingMismatches(blocking)
+            if (blocking) {
+              setShowMismatchBlocker(true)
+              return // Don't open preview dialog - show blocker instead
+            }
+          }
         }
+
+        // Transform to legacy format and show preview dialog
+        const legacyPreview = transformPreviewToExtractionPreview(preview)
+        setCurrentPreview(legacyPreview as unknown as DocumentExtractionPreview)
+        setPendingDocumentCode(documentCode)
+        setShowPreviewDialog(true)
       }
     },
-    [previewDocument, confirmDocument]
+    [previewDocument]
   )
+
+  // Handle confirm from DocumentPreviewDialog
+  const handleConfirmPreview = useCallback(
+    async (confirmedData: Record<string, unknown>, userNotes?: string) => {
+      if (!pendingDocumentCode) return
+      setIsConfirmingPreview(true)
+      try {
+        await confirmDocument({
+          document_code: pendingDocumentCode,
+          confirmed_data: confirmedData,
+          user_notes: userNotes || null,
+        })
+        setShowPreviewDialog(false)
+        setCurrentPreview(null)
+        setPendingDocumentCode(null)
+      } finally {
+        setIsConfirmingPreview(false)
+      }
+    },
+    [pendingDocumentCode, confirmDocument]
+  )
+
+  // Handle close preview dialog
+  const handleClosePreviewDialog = useCallback(() => {
+    setShowPreviewDialog(false)
+    setCurrentPreview(null)
+    setPendingDocumentCode(null)
+  }, [])
+
+  // Handle go back from mismatch blocker
+  const handleMismatchBlockerBack = useCallback(() => {
+    setShowMismatchBlocker(false)
+    setIdentityMismatches([])
+    setHasBlockingMismatches(false)
+  }, [])
+
+  // Handle re-upload from mismatch blocker
+  const handleReuploadFromBlocker = useCallback((documentCode: string) => {
+    setShowMismatchBlocker(false)
+    setIdentityMismatches([])
+    setHasBlockingMismatches(false)
+    // Trigger file input click for the specified document
+    document.getElementById(`file-${documentCode}`)?.click()
+  }, [])
 
   // ========================================================================
   // PERSIST & PAY
@@ -484,21 +579,37 @@ export default function SessionWizardPage() {
         </div>
       </div>
 
-      {/* Error banner */}
+      {/* Error banner with retry */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error}
-            <Button
-              variant="link"
-              size="sm"
-              onClick={clearError}
-              className="ml-2"
-            >
-              {t('close')}
-            </Button>
-          </AlertDescription>
+        <Alert variant="destructive" className="flex items-start justify-between">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 mt-0.5" />
+            <AlertDescription>
+              <p>{error}</p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    clearError()
+                    loadSession(sessionId)
+                  }}
+                  className="h-7 text-xs"
+                >
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  {locale === 'es' ? 'Reintentar' : locale === 'fr' ? 'Reessayer' : 'Retry'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearError}
+                  className="h-7 text-xs"
+                >
+                  {locale === 'es' ? 'Cerrar' : locale === 'fr' ? 'Fermer' : 'Close'}
+                </Button>
+              </div>
+            </AlertDescription>
+          </div>
         </Alert>
       )}
 
@@ -508,7 +619,7 @@ export default function SessionWizardPage() {
           {/* ============================================================ */}
           {/* STEP: Upload Documents                                       */}
           {/* ============================================================ */}
-          {currentStep.id === 'upload_documents' && (
+          {currentStep.id === 'upload_documents' && !showMismatchBlocker && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">
                 {locale === 'es'
@@ -525,10 +636,29 @@ export default function SessionWizardPage() {
                     : 'Upload the required documents for your application.'}
               </p>
 
-              {session.requiredDocuments.map((doc: RequiredDocument) => (
+              {/* Non-blocking identity warnings */}
+              {identityMismatches.length > 0 && !hasBlockingMismatches && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {locale === 'es'
+                      ? 'Se detectaron diferencias menores entre documentos. Puede continuar, pero verifique los datos.'
+                      : locale === 'fr'
+                        ? 'Des differences mineures ont ete detectees entre les documents. Vous pouvez continuer, mais verifiez les donnees.'
+                        : 'Minor differences were detected between documents. You can continue, but verify the data.'}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {session.requiredDocuments.map((doc: RequiredDocument) => {
+                const docPreview = documentPreviews[doc.code]
+                const lowConfidence = docPreview && docPreview.confidence < 0.7
+                return (
                 <div
                   key={doc.code}
-                  className="flex items-center justify-between p-4 border rounded-lg"
+                  className={`flex items-center justify-between p-4 border rounded-lg ${
+                    lowConfidence ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800' : ''
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     {doc.uploaded ? (
@@ -558,6 +688,31 @@ export default function SessionWizardPage() {
                               : locale === 'fr'
                                 ? 'Telecharge'
                                 : 'Uploaded'}
+                          </Badge>
+                        )}
+                        {/* Confidence badge for uploaded documents */}
+                        {doc.uploaded && documentPreviews[doc.code] && (
+                          <Badge
+                            variant={
+                              documentPreviews[doc.code].confidence >= 0.9
+                                ? 'default'
+                                : documentPreviews[doc.code].confidence >= 0.7
+                                  ? 'secondary'
+                                  : 'destructive'
+                            }
+                            className="text-xs"
+                          >
+                            {Math.round(documentPreviews[doc.code].confidence * 100)}%
+                          </Badge>
+                        )}
+                        {/* Processor badge */}
+                        {doc.uploaded && documentPreviews[doc.code]?.processor === 'gemini' && (
+                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                            {locale === 'es'
+                              ? 'Extraido con IA'
+                              : locale === 'fr'
+                                ? 'Extrait par IA'
+                                : 'AI Extracted'}
                           </Badge>
                         )}
                       </div>
@@ -604,43 +759,43 @@ export default function SessionWizardPage() {
                     </Button>
                   </div>
                 </div>
-              ))}
-
-              {/* Document preview info for recently uploaded */}
-              {Object.entries(documentPreviews).map(([code, preview]) => (
-                <div
-                  key={code}
-                  className="p-3 bg-muted/50 rounded-lg text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="font-medium">{code}</span>
-                    <Badge
-                      variant={
-                        preview.confidence >= 0.8
-                          ? 'default'
-                          : 'secondary'
-                      }
-                      className="text-xs"
-                    >
-                      {Math.round(preview.confidence * 100)}%
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
+          {/* Identity Mismatch Blocker - shown when documents have conflicting identity data */}
+          {currentStep.id === 'upload_documents' && showMismatchBlocker && (
+            <IdentityMismatchBlocker
+              mismatches={identityMismatches}
+              hasBlockingMismatches={hasBlockingMismatches}
+              onGoBack={handleMismatchBlockerBack}
+              onReuploadDocument={handleReuploadFromBlocker}
+            />
+          )}
+
           {/* ============================================================ */}
-          {/* STEP: Form Review (Dynamic)                                  */}
+          {/* STEP: Form Review (Dynamic via DynamicFormRenderer)          */}
           {/* ============================================================ */}
           {currentStep.id.startsWith('form_review_') && (
-            <SessionFormReviewStep
-              session={session}
+            <SessionDynamicFormReview
+              sessionId={sessionId}
               stepId={currentStep.id}
               values={formValues}
-              onChange={handleFormChange}
+              onChange={(key, value) => {
+                handleFormChange(key, value)
+                // Clear error for the field being edited
+                if (formErrors[key]) {
+                  setFormErrors((prev) => {
+                    const next = { ...prev }
+                    delete next[key]
+                    return next
+                  })
+                }
+              }}
               locale={locale as 'es' | 'fr' | 'en'}
+              errors={formErrors}
+              onConfigLoaded={setCurrentFormConfig}
             />
           )}
 
@@ -858,93 +1013,104 @@ export default function SessionWizardPage() {
           </Button>
         )}
       </div>
+
+      {/* Document Preview Dialog - shown after upload for user validation */}
+      <DocumentPreviewDialog
+        preview={currentPreview}
+        isOpen={showPreviewDialog}
+        onClose={handleClosePreviewDialog}
+        onConfirm={handleConfirmPreview}
+        isConfirming={isConfirmingPreview}
+        locale={locale as 'es' | 'fr' | 'en'}
+      />
     </div>
   )
 }
 
 // ============================================================================
-// SUB-COMPONENT: Form Review Step (uses DynamicFormRenderer)
+// SUB-COMPONENT: Dynamic Form Review Step (uses DynamicFormRenderer)
 // ============================================================================
 
-function SessionFormReviewStep({
-  session,
+function SessionDynamicFormReview({
+  sessionId,
   stepId,
   values,
   onChange,
   locale,
+  errors,
+  onConfigLoaded,
 }: {
-  session: WizardSession
+  sessionId: string
   stepId: string
   values: Record<string, unknown>
   onChange: (key: string, value: unknown) => void
   locale: 'es' | 'fr' | 'en'
+  errors?: Record<string, string>
+  onConfigLoaded?: (config: import('@/modules/service-requests').FormConfig) => void
 }) {
-  // Note: useFormConfig currently expects a requestId. For cache-first,
-  // the backend form-config endpoint can also accept a session_id parameter.
-  // For now, we pass a placeholder and let the backend return config based
-  // on workflow_code and solicitud_type from the session.
-  //
-  // TODO: Add /wizard-sessions/{sessionId}/form-config/{stepId} endpoint
-  // For now, render a simple form based on extracted data.
-  const mergedValues = useMemo(() => {
-    // Merge extracted data (from documents) with user-edited values
-    const extracted = session.extractedData || {}
-    const flat: Record<string, unknown> = {}
-    // Flatten extracted data from all documents
-    Object.values(extracted).forEach((docData) => {
-      if (typeof docData === 'object' && docData !== null) {
-        Object.assign(flat, docData)
+  const { data: formConfig, isLoading, error } = useSessionFormConfig(sessionId, stepId)
+
+  // Initialize form values from config's current_value when config loads
+  useEffect(() => {
+    if (formConfig) {
+      // Notify parent of loaded config for validation
+      onConfigLoaded?.(formConfig)
+
+      for (const section of formConfig.sections) {
+        for (const field of section.fields) {
+          if (
+            field.current_value !== undefined &&
+            field.current_value !== null &&
+            values[field.key] === undefined
+          ) {
+            onChange(field.key, field.current_value)
+          }
+        }
       }
-    })
-    return { ...flat, ...values }
-  }, [session.extractedData, values])
+    }
+    // Only run when formConfig changes, not values
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formConfig])
+
+  // Prefetch next form_review step
+  const { prefetch } = usePrefetchSessionFormConfig()
+  useEffect(() => {
+    const stepNum = parseInt(stepId.replace('form_review_', ''), 10)
+    if (!isNaN(stepNum)) {
+      prefetch(sessionId, `form_review_${stepNum + 1}`)
+    }
+  }, [sessionId, stepId, prefetch])
+
+  if (isLoading) {
+    return <DynamicFormRenderer.Skeleton />
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {locale === 'es'
+            ? 'Error al cargar la configuracion del formulario.'
+            : locale === 'fr'
+              ? 'Erreur lors du chargement de la configuration du formulaire.'
+              : 'Error loading form configuration.'}
+          <br />
+          <span className="text-xs">{(error as Error).message}</span>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!formConfig) return null
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">
-        {locale === 'es'
-          ? `Revision de datos - Pagina ${stepId.replace('form_review_', '')}`
-          : locale === 'fr'
-            ? `Revision des donnees - Page ${stepId.replace('form_review_', '')}`
-            : `Data Review - Page ${stepId.replace('form_review_', '')}`}
-      </h2>
-      <p className="text-sm text-muted-foreground">
-        {locale === 'es'
-          ? 'Verifica y corrige los datos extraidos de tus documentos.'
-          : locale === 'fr'
-            ? 'Verifiez et corrigez les donnees extraites de vos documents.'
-            : 'Verify and correct the data extracted from your documents.'}
-      </p>
-
-      {/* Display extracted fields as editable inputs */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {Object.entries(mergedValues).map(([key, value]) => (
-          <div key={key} className="space-y-1.5">
-            <label className="text-sm font-medium text-muted-foreground">
-              {key.replace(/_/g, ' ')}
-            </label>
-            <input
-              type="text"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={String(value ?? '')}
-              onChange={(e) => onChange(key, e.target.value)}
-            />
-          </div>
-        ))}
-      </div>
-
-      {Object.keys(mergedValues).length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>
-            {locale === 'es'
-              ? 'No hay datos extraidos. Sube tus documentos primero.'
-              : locale === 'fr'
-                ? "Aucune donnee extraite. Telechargez vos documents d'abord."
-                : 'No extracted data. Upload your documents first.'}
-          </p>
-        </div>
-      )}
-    </div>
+    <DynamicFormRenderer
+      config={formConfig}
+      values={values}
+      onChange={onChange}
+      locale={locale}
+      errors={errors}
+    />
   )
 }
