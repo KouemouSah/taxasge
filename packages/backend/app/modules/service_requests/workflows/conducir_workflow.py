@@ -127,6 +127,8 @@ class ConducirWorkflow(PredefinedWorkflow):
     }
 
     # Reverse mapping: (SolicitudType, DuplicadoMotivo) -> sub_type
+    # Note: EXPEDICION → NUEVO (default), CANJE requires applicant_type=RESIDENT context
+    # Note: RENOVACION → RENOVACION (default), EXTENSION requires context.sub_type
     SOLICITUD_MOTIVO_TO_SUBTYPE = {
         (SolicitudType.EXPEDICION, None): "NUEVO",
         (SolicitudType.RENOVACION, None): "RENOVACION",
@@ -686,7 +688,7 @@ class ConducirWorkflow(PredefinedWorkflow):
                     "applies_to": ["NUEVO"],
                     "delay_min_days": 7,
                     "notification_before_days": 3,
-                    "locations": ["DGT Malabo", "DGT Bata"]
+                    "locations_from": "entity_locations"
                 }
             }
         ))
@@ -724,29 +726,12 @@ class ConducirWorkflow(PredefinedWorkflow):
         - RENOVACION: 25,000 (standard renewal)
         - DUPLICADO: 20,000 (replacement)
         - EXTENSION: 15,000 (per additional class)
-
-        Supplements: None currently defined for Conducir workflow.
-        Future supplements could include:
-        - TIMBRE_FISCAL: Timbre fiscal pour certificat
-        - PLASTIFICACION: Frais de plastification
         """
-        # Define supplements (currently empty, ready for future additions)
-        supplements: list[SupplementDefinition] = [
-            # Example for future use:
-            # SupplementDefinition(
-            #     code="TIMBRE_FISCAL",
-            #     name_es="Timbre Fiscal",
-            #     unit_price=500,
-            #     quantity=1,
-            #     is_required=True
-            # ),
-        ]
-
         self.set_tariff_config(TariffConfig(
             tariff_type=TariffType.FIXED,
             fixed_amounts=self.TARIFFS,
             currency="XAF",
-            supplements=supplements
+            supplements=[]
         ))
 
     # === Document Requirements ===
@@ -1090,9 +1075,11 @@ class ConducirWorkflow(PredefinedWorkflow):
             "medico_nombre": "certificado_medico.medico_principal.nombre_medico",
 
             # === From foreign license (CANJE) - best-effort OCR extraction ===
+            "perm_ext_pais_emision": "permiso_extranjero.documento.pais_emision",
             "perm_ext_apellidos": "permiso_extranjero.titular.apellidos",
             "perm_ext_nombres": "permiso_extranjero.titular.nombres",
             "perm_ext_numero": "permiso_extranjero.documento.numero",
+            "perm_ext_clases": "permiso_extranjero.permiso.clases_permiso",
             "perm_ext_fecha_expedicion": "permiso_extranjero.documento.fecha_expedicion",
             "perm_ext_fecha_expiracion": "permiso_extranjero.documento.fecha_expiracion",
         }
@@ -1109,6 +1096,61 @@ class ConducirWorkflow(PredefinedWorkflow):
             })
 
         return mapping
+
+    # === Tariff Resolution (overrides parent) ===
+
+    def _resolve_sub_type(
+        self,
+        solicitud_type: SolicitudType,
+        context: Optional[WorkflowContext] = None
+    ) -> str:
+        """
+        Resolve sub_type from context or solicitud_type.
+
+        Priority: context.sub_type > context.form_data["sub_type"] > solicitud_type fallback.
+        """
+        if context and context.form_data:
+            sub_type = context.sub_type or context.form_data.get("sub_type")
+            if sub_type and sub_type in self.SUBTYPE_TO_SOLICITUD_MOTIVO:
+                return sub_type
+
+        # Fallback: solicitud_type → default sub_type
+        fallback = {
+            SolicitudType.EXPEDICION: "NUEVO",
+            SolicitudType.RENOVACION: "RENOVACION",
+            SolicitudType.DUPLICADO: "DUPLICADO",
+        }
+        return fallback.get(solicitud_type, "NUEVO")
+
+    def get_tariff(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> int:
+        """
+        Get tariff amount by resolving sub_type from context.
+
+        Overrides parent because TARIFFS uses sub_type keys (NUEVO, CANJE, etc.)
+        while parent's get_tariff uses solicitud_type keys (EXPEDICION, etc.).
+
+        For EXTENSION: 15,000 XAF × number of new classes requested.
+        """
+        sub_type = self._resolve_sub_type(solicitud_type, context)
+
+        # EXTENSION: price per new class
+        if sub_type == "EXTENSION" and context and context.form_data:
+            clases_solicitadas = context.form_data.get("clases_solicitadas", [])
+            clases_actuales = context.form_data.get("clases_actuales", [])
+            if isinstance(clases_solicitadas, str):
+                clases_solicitadas = [c.strip() for c in clases_solicitadas.split(",")]
+            if isinstance(clases_actuales, str):
+                clases_actuales = [c.strip() for c in clases_actuales.split(",")]
+            nuevas_clases = set(clases_solicitadas) - set(clases_actuales)
+            if nuevas_clases:
+                return len(nuevas_clases) * self.TARIFFS["EXTENSION"]
+
+        return self.TARIFFS.get(sub_type, 30000)
 
     # === Workflow Code Resolution ===
 
@@ -1142,14 +1184,14 @@ class ConducirWorkflow(PredefinedWorkflow):
                 },
                 "practico": {
                     "duration_minutes": 30,
-                    "location": "Circuito DGT",
                     "prerequisite": "Examen teórico aprobado"
                 }
             },
             "scheduling": {
                 "delay_min_days": 7,
                 "notification_days_before": 3,
-                "locations": ["DGT Malabo", "DGT Bata"]
+                "locations_from": "entity_locations",
+                "entity_code": EntityCode.DGT.value
             }
         }
 
@@ -1228,21 +1270,14 @@ class ConducirWorkflow(PredefinedWorkflow):
 
     def calculate_tariff(self, context: WorkflowContext, value: float = None) -> int:
         """
-        Calculate tariff based on request type.
+        Calculate tariff based on request type. Delegates to get_tariff().
 
         For EXTENSION: 15,000 XAF per new class.
         """
-        sub_type = context.sub_type
-        base = self.TARIFFS.get(sub_type, 30000)
-
-        if sub_type == "EXTENSION":
-            # Calculate based on number of new classes
-            clases_solicitadas = context.form_data.get("clases_solicitadas", [])
-            clases_actuales = context.form_data.get("clases_actuales", [])
-            nuevas_clases = set(clases_solicitadas) - set(clases_actuales)
-            return len(nuevas_clases) * self.TARIFFS["EXTENSION"]
-
-        return base
+        solicitud_type, _ = self.SUBTYPE_TO_SOLICITUD_MOTIVO.get(
+            context.sub_type, (SolicitudType.EXPEDICION, None)
+        )
+        return self.get_tariff(solicitud_type, context=context)
 
     # === Step Validation Override ===
 
