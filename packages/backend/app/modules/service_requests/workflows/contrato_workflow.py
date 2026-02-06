@@ -49,6 +49,7 @@ from .workflow_interface import (
     ValidationResult,
     StepType,
     RenovacionMotivo,
+    SolicitudType,
 )
 from ..models.enums import (
     WorkflowCode,
@@ -1135,6 +1136,7 @@ class ContratoWorkflow(PredefinedWorkflow):
             "fecha_inicio": "contrato.vigencia.fecha_inicio",
             "fecha_fin": "contrato.vigencia.fecha_fin",
             "duracion_meses": "contrato.vigencia.duracion_meses",
+            "renovable": "contrato.vigencia.renovable",
 
             # === From Contract - Financial ===
             "monto_total": "contrato.valor_contrato.monto_total",
@@ -1248,11 +1250,16 @@ class ContratoWorkflow(PredefinedWorkflow):
 
     def get_tariff_breakdown(
         self,
-        context: WorkflowContext,
-        value: float = None
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None,
+        base_description: str = ""
     ) -> Dict[str, Any]:
         """
         Get detailed tariff breakdown for payment display.
+
+        Overrides PredefinedWorkflow.get_tariff_breakdown with contract-specific
+        logic: percentage-based tariff + penalties + supplements.
 
         Returns breakdown with:
         - base_tariff: 0.5% of contract value
@@ -1260,59 +1267,58 @@ class ContratoWorkflow(PredefinedWorkflow):
         - supplements: Timbre fiscal (×0)
         - total: Sum of all
         """
-        monto = value
+        monto = 0.0
         currency = "XAF"
 
-        if not monto and context.form_data:
-            monto = context.form_data.get("monto_total", 0)
+        if context and context.form_data:
+            monto = context.form_data.get("monto_total", 0) or 0
             currency = context.form_data.get("moneda", "XAF")
             rate = self.EXCHANGE_RATES.get(currency, 1)
             if currency != "XAF":
                 monto = monto * rate
 
-        if not monto:
-            monto = 0
-
-        base = int(monto * self.TARIFF_PERCENTAGE)
+        base_amount = int(monto * self.TARIFF_PERCENTAGE)
         minimum = int(self.MINIMUM_TARIFF_XAF * self.MINIMUM_TARIFF_MULTIPLIER)
-        if minimum > 0 and base < minimum:
-            base = minimum
+        if minimum > 0 and base_amount < minimum:
+            base_amount = minimum
 
-        penalty = self._calculate_late_penalty(context, base)
+        penalties_amount = self._calculate_late_penalty(context, base_amount) if context else 0
 
-        # Supplements (×0 for now)
-        timbre_page = self.tariff_config.supplements[0].unit_price if self.tariff_config and self.tariff_config.supplements else 0
-        timbre_registro = self.tariff_config.supplements[1].unit_price if self.tariff_config and len(self.tariff_config.supplements) > 1 else 0
+        # Supplements from TariffConfig (×0 for now)
+        tariff_cfg = self.get_tariff_config()
+        supplements_defs = tariff_cfg.supplements if tariff_cfg else []
+        supplements = [
+            {
+                "code": s.code,
+                "name_es": s.name_es,
+                "unit_price": s.unit_price,
+                "quantity": s.quantity,
+                "subtotal": s.subtotal,
+                "is_required": s.is_required
+            }
+            for s in supplements_defs
+        ]
+        supplements_total = sum(s["subtotal"] for s in supplements)
 
-        total = base + penalty + timbre_page + timbre_registro
+        total_amount = base_amount + penalties_amount + supplements_total
 
         return {
+            "base_amount": base_amount,
+            "base_description": base_description or f"Tasa de registro de contrato ({solicitud_type})",
+            "supplements": supplements,
+            "supplements_total": supplements_total,
+            "penalties_amount": penalties_amount,
+            "penalty_reason": "Registro tardío (más de 30 días)" if penalties_amount > 0 else None,
+            "total_amount": total_amount,
+            "currency": tariff_cfg.currency if tariff_cfg else "XAF",
+            "tariff_type": tariff_cfg.tariff_type.value if tariff_cfg else "percentage_based",
+            "workflow_code": self.workflow_code.value,
+            "solicitud_type": solicitud_type.value if hasattr(solicitud_type, 'value') else str(solicitud_type),
+            # Contract-specific extras
             "monto_contrato_xaf": int(monto),
             "moneda_original": currency,
             "tasa_porcentaje": "0.5%",
-            "base_tariff": base,
-            "minimum_applied": minimum > 0 and base == minimum,
-            "penalty": {
-                "amount": penalty,
-                "active": self.PENALTY_MULTIPLIER > 0,
-                "description_es": "Penalidad por registro tardío (más de 30 días)" if penalty > 0 else None
-            },
-            "supplements": [
-                {
-                    "code": "TIMBRE_FISCAL_PAGE",
-                    "name_es": "Timbre Fiscal por Página",
-                    "amount": timbre_page,
-                    "active": timbre_page > 0
-                },
-                {
-                    "code": "TIMBRE_REGISTRO",
-                    "name_es": "Timbre de Registro",
-                    "amount": timbre_registro,
-                    "active": timbre_registro > 0
-                }
-            ],
-            "total": total,
-            "currency": "XAF"
+            "minimum_applied": minimum > 0 and base_amount == minimum,
         }
 
     # === Legacy Compatibility ===
