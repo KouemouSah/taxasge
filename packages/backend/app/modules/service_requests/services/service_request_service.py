@@ -241,6 +241,7 @@ class ServiceRequestService:
             if req_doc.document_code == document_code:
                 doc_name = req_doc.document_name
                 extraction_schema_key = req_doc.extraction_schema_key
+                # Note: document_constraints not needed here (validate path has no full risk analysis)
                 break
 
         # Save document record
@@ -362,15 +363,21 @@ class ServiceRequestService:
                 detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
             )
 
-        # Get document name and extraction_schema_key from requirements
+        # Get document name, extraction_schema_key, and workflow constraints from requirements
         params = self._extract_workflow_params(request)
         required_docs = await self._get_required_documents(db, request["workflow_code"], **params)
         doc_name = document_code
         extraction_schema_key = None
+        document_constraints = None
         for req_doc in required_docs:
             if req_doc.document_code == document_code:
                 doc_name = req_doc.document_name
                 extraction_schema_key = req_doc.extraction_schema_key
+                # Extract workflow-specific constraints from config (e.g., required_tipo_certificado)
+                if req_doc.config:
+                    constraint_keys = [k for k in req_doc.config if k.startswith("required_")]
+                    if constraint_keys:
+                        document_constraints = {k: req_doc.config[k] for k in constraint_keys}
                 break
 
         # Get existing documents for identity consistency checks
@@ -406,6 +413,7 @@ class ServiceRequestService:
         # Process document with Gemini/Tesseract + Risk Analysis (NO Firebase upload yet)
         # Pass extraction_schema_key for proper schema lookup
         # Pass workflow_code for identity verification config
+        # Pass document_constraints for workflow-specific field requirements
         processing_result = await self._process_document(
             content=content,
             mime_type=file.content_type,
@@ -415,7 +423,8 @@ class ServiceRequestService:
             existing_documents=existing_documents if existing_documents else None,
             form_data=form_data if form_data else None,
             extraction_schema_key=extraction_schema_key,
-            workflow_code=workflow_code
+            workflow_code=workflow_code,
+            document_constraints=document_constraints
         )
 
         # Generate preview ID (unique for this extraction session)
@@ -1532,7 +1541,8 @@ class ServiceRequestService:
         existing_documents: Optional[Dict[str, Dict]] = None,
         form_data: Optional[Dict] = None,
         extraction_schema_key: Optional[str] = None,
-        workflow_code: Optional[str] = None
+        workflow_code: Optional[str] = None,
+        document_constraints: Optional[Dict[str, Any]] = None
     ) -> Dict:
         """
         Process document for extraction + risk analysis using Gemini + Tesseract fallback.
@@ -1553,6 +1563,8 @@ class ServiceRequestService:
             form_data: User form data for consistency checks
             extraction_schema_key: Database key for schema lookup (e.g., 'DIP_GQ_V1')
             workflow_code: Workflow code for identity verification config (e.g., 'PASAPORTE_NUEVO')
+            document_constraints: Workflow-specific constraints from DocumentRequirement.config
+                (e.g., {"required_tipo_certificado": "APTITUD", "required_resultado": ["SANO", "APTO"]})
 
         Returns:
             Dict with extraction, confidence, processor, status, risk_analysis including identity_mismatches
@@ -1568,7 +1580,8 @@ class ServiceRequestService:
                 existing_documents=existing_documents,
                 form_data=form_data,
                 extraction_schema_key=extraction_schema_key,
-                workflow_code=workflow_code
+                workflow_code=workflow_code,
+                document_constraints=document_constraints
             )
 
             # Log summary

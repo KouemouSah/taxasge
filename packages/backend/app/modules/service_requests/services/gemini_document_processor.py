@@ -553,7 +553,8 @@ class RiskAnalyzer:
         form_data: Optional[Dict[str, Any]] = None,
         gemini_risk_hints: Optional[Dict[str, Any]] = None,
         workflow_code: Optional[str] = None,
-        hash_matches: Optional[List[Dict[str, Any]]] = None
+        hash_matches: Optional[List[Dict[str, Any]]] = None,
+        document_constraints: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Perform comprehensive risk analysis.
@@ -570,6 +571,8 @@ class RiskAnalyzer:
             gemini_risk_hints: Risk hints from Gemini analysis
             workflow_code: Workflow code for identity verification config (e.g., "PASAPORTE_NUEVO")
             hash_matches: Pre-fetched DB matches for document hash (from process())
+            document_constraints: Workflow-specific constraints from DocumentRequirement.config
+                (e.g., {"required_tipo_certificado": "APTITUD", "required_resultado": ["SANO", "APTO"]})
 
         Returns:
             Complete risk analysis result including identity_mismatches
@@ -656,6 +659,11 @@ class RiskAnalyzer:
                     risk_factors.append(result.to_risk_factor())
         except Exception as e:
             logger.warning(f"Schema validation check failed: {e}")
+
+        # 12. Workflow-specific document constraints (from DocumentRequirement.config)
+        if document_constraints:
+            constraint_risks = self._check_document_constraints(extraction, document_constraints)
+            risk_factors.extend(constraint_risks)
 
         # Calculate overall risk score and level
         risk_score, risk_level = self._calculate_risk_score(risk_factors)
@@ -1304,6 +1312,91 @@ class RiskAnalyzer:
 
         return risks
 
+    def _check_document_constraints(
+        self,
+        extraction: Dict[str, Any],
+        constraints: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        Validate extracted data against workflow-specific constraints from DocumentRequirement.config.
+
+        Supports constraint keys:
+        - required_{field_name}: str  → extraction[field_name] must equal value
+        - required_{field_name}: list → extraction[field_name] must be in list
+
+        Example constraints:
+            {"required_tipo_certificado": "APTITUD", "required_resultado": ["SANO", "APTO"]}
+        """
+        risks = []
+
+        for constraint_key, expected_value in constraints.items():
+            if not constraint_key.startswith("required_"):
+                continue
+
+            # Extract field name: "required_tipo_certificado" → "tipo_certificado"
+            field_name = constraint_key[len("required_"):]
+            actual_value = extraction.get(field_name)
+
+            if actual_value is None:
+                # Field not extracted - warning (might be OCR miss)
+                risks.append({
+                    "code": "WORKFLOW_CONSTRAINT_MISSING_FIELD",
+                    "severity": "medium",
+                    "message": f"Required field '{field_name}' not found in extraction",
+                    "detail": {
+                        "field": field_name,
+                        "expected": expected_value
+                    },
+                    "action": "review"
+                })
+                continue
+
+            # Normalize for comparison
+            actual_normalized = str(actual_value).strip().upper()
+
+            if isinstance(expected_value, list):
+                expected_normalized = [str(v).strip().upper() for v in expected_value]
+                if actual_normalized not in expected_normalized:
+                    risks.append({
+                        "code": "WORKFLOW_CONSTRAINT_VIOLATION",
+                        "severity": "high",
+                        "message": (
+                            f"Document field '{field_name}' has value '{actual_value}' "
+                            f"but workflow requires one of: {expected_value}"
+                        ),
+                        "detail": {
+                            "field": field_name,
+                            "actual": actual_value,
+                            "expected_values": expected_value
+                        },
+                        "action": "reject"
+                    })
+            else:
+                expected_normalized = str(expected_value).strip().upper()
+                if actual_normalized != expected_normalized:
+                    risks.append({
+                        "code": "WORKFLOW_CONSTRAINT_VIOLATION",
+                        "severity": "high",
+                        "message": (
+                            f"Document field '{field_name}' has value '{actual_value}' "
+                            f"but workflow requires '{expected_value}'"
+                        ),
+                        "detail": {
+                            "field": field_name,
+                            "actual": actual_value,
+                            "expected": expected_value
+                        },
+                        "action": "reject"
+                    })
+
+        if risks:
+            logger.warning(
+                f"Document constraint violations: {len(risks)} "
+                f"(constraints: {list(constraints.keys())})"
+            )
+
+        return risks
+
     def _check_data_validation(
         self,
         extraction: Dict[str, Any],
@@ -1947,7 +2040,8 @@ class GeminiDocumentProcessor:
         existing_documents: Optional[Dict[str, Dict[str, Any]]] = None,
         form_data: Optional[Dict[str, Any]] = None,
         extraction_schema_key: Optional[str] = None,
-        workflow_code: Optional[str] = None
+        workflow_code: Optional[str] = None,
+        document_constraints: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Process document for classification, extraction, and RISK ANALYSIS.
@@ -1962,6 +2056,8 @@ class GeminiDocumentProcessor:
             form_data: User form data for consistency checks
             extraction_schema_key: Database key for schema lookup (e.g., 'DIP_GQ_V1')
             workflow_code: Workflow code for identity verification config (e.g., 'PASAPORTE_NUEVO')
+            document_constraints: Workflow-specific constraints from DocumentRequirement.config
+                (e.g., {"required_tipo_certificado": "APTITUD", "required_resultado": ["SANO", "APTO"]})
 
         Returns:
             Dict with:
@@ -2101,7 +2197,8 @@ class GeminiDocumentProcessor:
             form_data=form_data,
             gemini_risk_hints=gemini_risk_hints,
             workflow_code=workflow_code,
-            hash_matches=hash_matches
+            hash_matches=hash_matches,
+            document_constraints=document_constraints
         )
 
         # Attach doc_hash to result for storage during persist

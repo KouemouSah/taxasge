@@ -95,7 +95,8 @@ class ConducirWorkflow(PredefinedWorkflow):
 
     Key features v2:
     - form_review_1: Personal data (from DIP/NIE)
-    - form_review_2: Request-specific data with conditional sections
+    - form_review_2: Request summary data (tipo, clases, motivo)
+    - form_review_3: Document verification (conditional sections)
     - Cross-validation for foreign license name matching
     - Medical certificate only for NUEVO and EXTENSION
     - NIE holders can request NUEVO (first license in GQ)
@@ -215,10 +216,11 @@ class ConducirWorkflow(PredefinedWorkflow):
         3. select_motivo - Motivo for DUPLICADO (conditional)
         4. upload_documents - All documents on one page
         5. form_review_1 - Personal data verification (datos personales)
-        6. form_review_2 - Request-specific data (solicitud + conditional sections)
-        7. payment - Mobile Money payment
-        8. appointment - Exam scheduling (for NUEVO) or pickup
-        9. confirmation - Final summary
+        6. form_review_2 - Request summary (tipo solicitud, clases, motivo)
+        7. form_review_3 - Document verification (certificado actual, permiso extranjero, aptitud)
+        8. payment - Mobile Money payment
+        9. appointment - Exam scheduling (for NUEVO) or pickup
+        10. confirmation - Final summary
         """
 
         # === Step 0: Type Selection ===
@@ -371,7 +373,7 @@ class ConducirWorkflow(PredefinedWorkflow):
             step_number=5,
             step_id="form_review_1",
             step_type=StepType.FORM_REVIEW,
-            title_es="Verificar Datos (1/2)",
+            title_es="Verificar Datos (1/3)",
             description_es="Verifique sus datos personales extraídos del documento de identidad",
             config={
                 "form_page": 1,
@@ -445,18 +447,17 @@ class ConducirWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 6: Form Review 2 - Datos de la Solicitud ===
+        # === Step 6: Form Review 2 - Resumen Solicitud ===
         self.add_step(WorkflowStep(
             step_number=6,
             step_id="form_review_2",
             step_type=StepType.FORM_REVIEW,
-            title_es="Verificar Datos (2/2)",
-            description_es="Verifique los datos específicos de su solicitud",
+            title_es="Verificar Datos (2/3)",
+            description_es="Verifique los datos de su solicitud",
             config={
                 "form_page": 2,
-                "max_sections": 4,
+                "max_sections": 1,
                 "sections": [
-                    # Section 1: Request data (always visible)
                     {
                         "id": "solicitud",
                         "title_es": "Datos de la Solicitud",
@@ -485,8 +486,23 @@ class ConducirWorkflow(PredefinedWorkflow):
                                 "condition": {"sub_type": "DUPLICADO"}
                             }
                         ]
-                    },
-                    # Section 2: Current certificate (RENOVACION/EXTENSION only)
+                    }
+                ]
+            }
+        ))
+
+        # === Step 7: Form Review 3 - Verificación de Documentos ===
+        self.add_step(WorkflowStep(
+            step_number=7,
+            step_id="form_review_3",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos (3/3)",
+            description_es="Verifique los datos extraídos de sus documentos",
+            config={
+                "form_page": 3,
+                "max_sections": 3,
+                "sections": [
+                    # Section 1: Current certificate (RENOVACION/EXTENSION only)
                     {
                         "id": "certificado_actual",
                         "title_es": "Certificado para Conducir Actual",
@@ -534,7 +550,7 @@ class ConducirWorkflow(PredefinedWorkflow):
                             }
                         ]
                     },
-                    # Section 3: Foreign license (CANJE only)
+                    # Section 2: Foreign license (CANJE only)
                     {
                         "id": "permiso_extranjero",
                         "title_es": "Permiso de Conducir Extranjero",
@@ -593,7 +609,7 @@ class ConducirWorkflow(PredefinedWorkflow):
                             }
                         ]
                     },
-                    # Section 4: Medical fitness (NUEVO/EXTENSION only)
+                    # Section 3: Medical fitness (NUEVO/EXTENSION only)
                     {
                         "id": "aptitud_medica",
                         "title_es": "Aptitud Médica",
@@ -639,9 +655,9 @@ class ConducirWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 7: Payment ===
+        # === Step 8: Payment ===
         self.add_step(WorkflowStep(
-            step_number=7,
+            step_number=8,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
@@ -653,9 +669,9 @@ class ConducirWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 8: Appointment ===
+        # === Step 9: Appointment ===
         self.add_step(WorkflowStep(
-            step_number=8,
+            step_number=9,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
             title_es="Programar Cita",
@@ -675,9 +691,9 @@ class ConducirWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 9: Confirmation ===
+        # === Step 10: Confirmation ===
         self.add_step(WorkflowStep(
-            step_number=9,
+            step_number=10,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación",
@@ -831,7 +847,7 @@ class ConducirWorkflow(PredefinedWorkflow):
                 condition_value={"types": ["CANJE"]},
                 instructions_es="Escanee ambas caras de su permiso de conducir extranjero vigente",
                 faces_required=["recto", "verso"],
-                config={"extraction": False}  # Variable format, manual input
+                config={"best_effort_extraction": True}  # Gemini multilingual extraction, fields editable
             ))
 
         # Police report for DUPLICADO (loss/theft only)
@@ -852,11 +868,16 @@ class ConducirWorkflow(PredefinedWorkflow):
             requirements.append(DocumentRequirement(
                 document_code="certificado_medico",
                 document_name_es="Certificado Médico de Aptitud",
+                schema_key="CERTIFICADO_MEDICO_GQ_V1",
                 is_required=True,
                 display_order=4,
                 condition_type=DocumentConditionType.CUSTOM,
                 condition_value={"types": ["NUEVO", "EXTENSION"]},
-                instructions_es="Certificado médico reciente (menos de 3 meses) que acredite aptitud para conducir"
+                instructions_es="Certificado médico reciente (menos de 3 meses) que acredite aptitud para conducir",
+                config={
+                    "required_tipo_certificado": "APTITUD",
+                    "required_resultado": ["SANO", "APTO"]
+                }
             ))
 
         # Photo always required (x1)
@@ -1062,6 +1083,18 @@ class ConducirWorkflow(PredefinedWorkflow):
             "cert_fecha_expedicion": "certificado_actual.documento.fecha_expedicion",
             "cert_valido_hasta": "certificado_actual.documento.valido_hasta",
             "cert_antiguedad_desde": "certificado_actual.permiso.antiguedad_desde",
+
+            # === From medical certificate (NUEVO/EXTENSION) ===
+            "certificado_medico_fecha": "certificado_medico.autenticacion.fecha_certificado",
+            "entidad_medica_nombre": "certificado_medico.centro_medico.nombre_centro",
+            "medico_nombre": "certificado_medico.medico_principal.nombre_medico",
+
+            # === From foreign license (CANJE) - best-effort OCR extraction ===
+            "perm_ext_apellidos": "permiso_extranjero.titular.apellidos",
+            "perm_ext_nombres": "permiso_extranjero.titular.nombres",
+            "perm_ext_numero": "permiso_extranjero.documento.numero",
+            "perm_ext_fecha_expedicion": "permiso_extranjero.documento.fecha_expedicion",
+            "perm_ext_fecha_expiracion": "permiso_extranjero.documento.fecha_expiracion",
         }
 
         # If RESIDENT, override with permiso_residencia mappings
@@ -1240,7 +1273,7 @@ class ConducirWorkflow(PredefinedWorkflow):
         # - After form_review_1 (step 5) - we have extracted birth date
         # - On form_review_2 (step 6) - before payment
         # - On select_classes (step 2) if birth date already known
-        if step.step_id in ["form_review_1", "form_review_2", "select_classes"]:
+        if step.step_id in ["form_review_1", "form_review_2", "form_review_3", "select_classes"]:
             age_errors = self._validate_age_eligibility(context)
             results.extend(age_errors)
 
