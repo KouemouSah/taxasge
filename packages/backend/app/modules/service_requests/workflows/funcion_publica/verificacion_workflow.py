@@ -138,7 +138,7 @@ class VerificacionFuncionarioWorkflow(PredefinedWorkflow):
                                 "type": "text",
                                 "required": True,
                                 "readonly": False,
-                                "pattern": r"^[A-Z]{1,3}-?\d{4,10}$",
+                                "pattern": r"^[A-Z]{0,3}-?\d{4,10}$",
                                 "placeholder_es": "FP-12345",
                                 "help_text_es": "Formato: letras-números (ej: FP-12345)"
                             }
@@ -323,7 +323,7 @@ class VerificacionFuncionarioWorkflow(PredefinedWorkflow):
             # Matricula format validation
             {
                 "id": "matricula_formato",
-                "rule": "matricula MATCHES '^[A-Z]{1,3}-?[0-9]{4,10}$'",
+                "rule": "matricula MATCHES '^[A-Z]{0,3}-?[0-9]{4,10}$'",
                 "error_es": "El formato de la matrícula es inválido. Ejemplo: FP-12345",
                 "severity": "error",
             },

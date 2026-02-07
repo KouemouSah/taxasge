@@ -633,6 +633,11 @@ class PredefinedWorkflow(ABC):
         """Override if workflow requires Nota de Ingreso."""
         return False
 
+    @property
+    def allowed_sub_types(self) -> List[str]:
+        """Override if workflow has sub-types (e.g., certificate types, leave reasons)."""
+        return []
+
     @abstractmethod
     def _setup_workflow(self) -> None:
         """

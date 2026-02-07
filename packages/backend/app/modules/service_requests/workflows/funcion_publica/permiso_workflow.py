@@ -42,6 +42,7 @@ from ..workflow_interface import (
     PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
+    ValidationResult,
     DocumentRequirement,
     TariffConfig,
     StepType,
@@ -133,6 +134,10 @@ class PermisoExtraordinarioWorkflow(PredefinedWorkflow):
     @property
     def requires_nota_ingreso(self) -> bool:
         return False
+
+    @property
+    def allowed_sub_types(self) -> List[str]:
+        return [m.value for m in PermisoMotivo]
 
     # === Workflow Setup ===
 
@@ -326,6 +331,36 @@ class PermisoExtraordinarioWorkflow(PredefinedWorkflow):
                     "Si procede, se generará la resolución de permiso.\n\n"
                     "Recibirá una notificación por email una vez procesada."
                 ),
+                "agent_checklist": [
+                    {
+                        "id": "matricula_verified",
+                        "label_es": "He verificado la matrícula en SIGEF",
+                        "required": True,
+                    },
+                    {
+                        "id": "fechas_verificadas",
+                        "label_es": "He verificado que las fechas solicitadas son correctas y dentro del límite",
+                        "required": True,
+                    },
+                    {
+                        "id": "justificacion_revisada",
+                        "label_es": "He revisado la justificación y los documentos adjuntos",
+                        "required": True,
+                    },
+                    {
+                        "id": "disponibilidad_verificada",
+                        "label_es": "He verificado que el funcionario no tiene otro permiso pendiente",
+                        "required": False,
+                    },
+                ],
+                "rejection_reasons": [
+                    {"id": "matricula_not_found", "label_es": "Matrícula no existe en SIGEF"},
+                    {"id": "fechas_invalidas", "label_es": "Fechas solicitadas inválidas o fuera de límite"},
+                    {"id": "justificacion_insuficiente", "label_es": "Justificación insuficiente"},
+                    {"id": "documentos_invalidos", "label_es": "Documentos justificativos inválidos o ilegibles"},
+                    {"id": "permiso_pendiente", "label_es": "Ya existe un permiso pendiente para este funcionario"},
+                    {"id": "other", "label_es": "Otro (especificar)"},
+                ],
             }
         ))
 
@@ -456,6 +491,101 @@ class PermisoExtraordinarioWorkflow(PredefinedWorkflow):
             "direccion_general": "carnet_funcionario.puesto.direccion_general",
         }
 
+    # === Step Validation ===
+
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext,
+    ) -> List[ValidationResult]:
+        """Validate step with leave-specific rules."""
+        results = super().validate_step(step_number, context)
+
+        step = self.get_step(step_number)
+        if not step:
+            return results
+
+        # Validate dates + duration on form_review_1
+        if step.step_id == "form_review_1":
+            results.extend(self._validate_leave_dates(context))
+
+        return results
+
+    def _validate_leave_dates(
+        self,
+        context: WorkflowContext,
+    ) -> List[ValidationResult]:
+        """Validate leave dates: future, coherent, within MAX_DAYS."""
+        from datetime import datetime, date
+
+        results: List[ValidationResult] = []
+        form_data = context.form_data or {}
+
+        fecha_inicio_str = form_data.get("fecha_inicio")
+        fecha_fin_str = form_data.get("fecha_fin")
+
+        if not fecha_inicio_str or not fecha_fin_str:
+            return results  # Required field validation handles missing dates
+
+        try:
+            fecha_inicio = datetime.strptime(str(fecha_inicio_str), "%Y-%m-%d").date()
+            fecha_fin = datetime.strptime(str(fecha_fin_str), "%Y-%m-%d").date()
+            today = date.today()
+
+            # Start date must be today or future
+            if fecha_inicio < today:
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id="fecha_inicio_futura",
+                    severity="error",
+                    message_es="La fecha de inicio debe ser hoy o posterior.",
+                    field_name="fecha_inicio",
+                ))
+
+            # End date >= start date
+            if fecha_fin < fecha_inicio:
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id="fechas_coherentes",
+                    severity="error",
+                    message_es="La fecha de fin debe ser igual o posterior a la fecha de inicio.",
+                    field_name="fecha_fin",
+                ))
+
+            # Duration within MAX_DAYS for this motivo
+            if fecha_fin >= fecha_inicio:
+                duration = (fecha_fin - fecha_inicio).days + 1
+                motivo = context.sub_type
+                max_days = self.get_max_days(motivo) if motivo else 3
+                if duration > max_days:
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="duracion_permitida",
+                        severity="error",
+                        message_es=(
+                            f"La duración del permiso ({duration} días) excede "
+                            f"el máximo permitido ({max_days} días) para este motivo."
+                        ),
+                        field_name="fecha_fin",
+                    ))
+
+            # 3-day advance notice (except MEDICO)
+            if context.sub_type != PermisoMotivo.MEDICO.value:
+                from datetime import timedelta
+                if fecha_inicio < today + timedelta(days=3):
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="solicitud_anticipada",
+                        severity="warning",
+                        message_es="Debe solicitar el permiso con al menos 3 días de antelación.",
+                        field_name="fecha_inicio",
+                    ))
+
+        except (ValueError, TypeError):
+            pass  # Date parsing failed - skip validation
+
+        return results
+
     # === Cross-Validation Rules ===
 
     def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
@@ -491,9 +621,10 @@ class PermisoExtraordinarioWorkflow(PredefinedWorkflow):
                 "severity": "error",
             },
             # Must request at least 3 days in advance (except MEDICO)
+            # NOTE: Actually enforced in validate_step() → _validate_leave_dates()
             {
                 "id": "solicitud_anticipada",
-                "condition": {"NOT": {"sub_type": "MEDICO"}},
+                "condition": "sub_type != 'MEDICO'",
                 "rule": "fecha_inicio >= TODAY + 3 DAYS",
                 "error_es": "Debe solicitar el permiso con al menos 3 días de antelación.",
                 "severity": "warning",

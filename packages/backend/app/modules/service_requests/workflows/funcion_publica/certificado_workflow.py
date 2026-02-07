@@ -42,6 +42,7 @@ from ..workflow_interface import (
     PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
+    ValidationResult,
     DocumentRequirement,
     TariffConfig,
     StepType,
@@ -148,6 +149,10 @@ class CertificadoAdministrativoWorkflow(PredefinedWorkflow):
     @property
     def requires_nota_ingreso(self) -> bool:
         return False
+
+    @property
+    def allowed_sub_types(self) -> List[str]:
+        return [t.value for t in CertificadoTipo]
 
     # === Workflow Setup ===
 
@@ -389,6 +394,25 @@ class CertificadoAdministrativoWorkflow(PredefinedWorkflow):
                     "su certificado.\n\n"
                     "Recibirá una notificación por email una vez listo."
                 ),
+                "agent_checklist": [
+                    {
+                        "id": "matricula_verified",
+                        "label_es": "He verificado la matrícula en SIGEF",
+                        "required": True,
+                    },
+                    {
+                        "id": "datos_actualizados",
+                        "label_es": "He verificado que los datos están actualizados en el sistema",
+                        "required": True,
+                    },
+                ],
+                "rejection_reasons": [
+                    {"id": "matricula_not_found", "label_es": "Matrícula no existe en SIGEF"},
+                    {"id": "datos_incorrectos", "label_es": "Datos del funcionario incorrectos o desactualizados"},
+                    {"id": "documentos_invalidos", "label_es": "Documentos inválidos o ilegibles"},
+                    {"id": "expediente_disciplinario", "label_es": "Expediente disciplinario pendiente (Buena Conducta)"},
+                    {"id": "other", "label_es": "Otro (especificar)"},
+                ],
             }
         ))
 
@@ -412,19 +436,96 @@ class CertificadoAdministrativoWorkflow(PredefinedWorkflow):
         motivo: Optional[RenovacionMotivo] = None,
         context: Optional[WorkflowContext] = None,
     ) -> int:
-        """Get tariff by certificate type (sub_type), not solicitud_type.
+        """Get tariff by certificate type including copies and urgency surcharge.
 
         All certificate types map to EXPEDICION, but each has a different price.
         The sub_type (CertificadoTipo) is the actual tariff key.
+        Additional copies (+50% base each) and urgent (+50% total) are factored in.
         """
         config = self.get_tariff_config()
 
-        # Use sub_type from context as key (CertificadoTipo value)
-        if context and context.sub_type:
-            return config.get_amount(context.sub_type)
+        cert_type = context.sub_type if context else None
+        if not cert_type:
+            return config.get_amount("BUENA_CONDUCTA")
 
-        # Fallback: default to cheapest type
-        return config.get_amount("BUENA_CONDUCTA")
+        # Read copies and urgency from form_data
+        num_copias = 1
+        urgente = False
+        if context and context.form_data:
+            try:
+                num_copias = int(context.form_data.get("num_copias", 1))
+            except (ValueError, TypeError):
+                num_copias = 1
+            urgente = bool(context.form_data.get("urgente", False))
+
+        return self.calculate_total_tariff(cert_type, num_copias, urgente)
+
+    def get_tariff_breakdown(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None,
+        base_description: str = "",
+    ) -> Dict[str, Any]:
+        """Get itemized tariff breakdown with copies and urgency surcharges."""
+        config = self.get_tariff_config()
+
+        cert_type = context.sub_type if context else None
+        base_tariff = config.get_amount(cert_type) if cert_type else config.get_amount("BUENA_CONDUCTA")
+
+        num_copias = 1
+        urgente = False
+        if context and context.form_data:
+            try:
+                num_copias = int(context.form_data.get("num_copias", 1))
+            except (ValueError, TypeError):
+                num_copias = 1
+            urgente = bool(context.form_data.get("urgente", False))
+
+        supplements = []
+
+        # Additional copies at 50% of base each
+        if num_copias > 1:
+            copy_price = int(base_tariff * 0.5)
+            supplements.append({
+                "code": "COPIAS_ADICIONALES",
+                "name_es": f"Copias adicionales ({num_copias - 1})",
+                "unit_price": copy_price,
+                "quantity": num_copias - 1,
+                "subtotal": copy_price * (num_copias - 1),
+                "is_required": True,
+            })
+
+        subtotal = base_tariff + sum(s["subtotal"] for s in supplements)
+
+        # Urgent surcharge: +50% on subtotal
+        if urgente:
+            urgency_surcharge = int(subtotal * 0.5)
+            supplements.append({
+                "code": "RECARGO_URGENTE",
+                "name_es": "Recargo trámite urgente (+50%)",
+                "unit_price": urgency_surcharge,
+                "quantity": 1,
+                "subtotal": urgency_surcharge,
+                "is_required": False,
+            })
+
+        supplements_total = sum(s["subtotal"] for s in supplements)
+        total_amount = base_tariff + supplements_total
+
+        return {
+            "base_amount": base_tariff,
+            "base_description": base_description or self.service_name_es,
+            "supplements": supplements,
+            "supplements_total": supplements_total,
+            "penalties_amount": 0,
+            "penalty_reason": None,
+            "total_amount": total_amount,
+            "currency": config.currency,
+            "tariff_type": config.tariff_type.value,
+            "workflow_code": self.workflow_code.value,
+            "solicitud_type": solicitud_type.value,
+        }
 
     # === Document Requirements ===
 
@@ -536,6 +637,57 @@ class CertificadoAdministrativoWorkflow(PredefinedWorkflow):
             "direccion_general": "carnet_funcionario.puesto.direccion_general",
             "numero_dip": "dip.documento.numero_dip",
         }
+
+    # === Step Validation ===
+
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext,
+    ) -> List[ValidationResult]:
+        """Validate step with certificate-specific rules."""
+        results = super().validate_step(step_number, context)
+
+        step = self.get_step(step_number)
+        if not step:
+            return results
+
+        # Validate certificate options on form_review_1
+        if step.step_id == "form_review_1":
+            results.extend(self._validate_certificate_options(context))
+
+        return results
+
+    def _validate_certificate_options(
+        self,
+        context: WorkflowContext,
+    ) -> List[ValidationResult]:
+        """Validate number of copies is within limits."""
+        results: List[ValidationResult] = []
+        form_data = context.form_data or {}
+
+        num_copias = form_data.get("num_copias")
+        if num_copias is not None:
+            try:
+                n = int(num_copias)
+                if n < 1 or n > 5:
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="copias_limite",
+                        severity="error",
+                        message_es="El número de copias debe estar entre 1 y 5.",
+                        field_name="num_copias",
+                    ))
+            except (ValueError, TypeError):
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id="copias_invalidas",
+                    severity="error",
+                    message_es="El número de copias debe ser un número válido.",
+                    field_name="num_copias",
+                ))
+
+        return results
 
     # === Cross-Validation Rules ===
 
