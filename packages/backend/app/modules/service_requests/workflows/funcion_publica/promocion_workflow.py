@@ -28,8 +28,6 @@ from ..workflow_interface import (
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
-    SupplementDefinition,
-    ValidationResult,
     StepType,
     RenovacionMotivo,
 )
@@ -439,7 +437,7 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
 
         # === 1. DIP - Always required ===
         requirements.append(DocumentRequirement(
-            document_code="documento_identidad",
+            document_code="dip",
             document_name_es="Documento de Identidad Personal (DIP)",
             schema_key="DIP_GQ_V2",
             is_required=True,
@@ -449,15 +447,16 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
             faces_required=["recto", "verso"]
         ))
 
-        # === 2. Carnet de Funcionario - Always required ===
+        # === 2. Carnet de Funcionario - Always required (has schema) ===
         requirements.append(DocumentRequirement(
             document_code="carnet_funcionario",
             document_name_es="Carnet de Funcionario",
+            schema_key="CARNET_FUNCIONARIO_GQ_V1",
             is_required=True,
             display_order=2,
             condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="Carnet de funcionario vigente",
-            config={"best_effort_extraction": True}
+            instructions_es="Carnet de funcionario vigente (recto y verso)",
+            faces_required=["recto", "verso"]
         ))
 
         # === 3. Última Resolución - Always required ===
@@ -526,28 +525,28 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
             {
                 "id": "carnet_vigente",
                 "document": "carnet_funcionario",
-                "rule": "documento.fecha_caducidad > TODAY",
+                "rule": "carnet_funcionario.carnet.fecha_expiracion > TODAY",
                 "error_es": "El carnet de funcionario debe estar vigente.",
                 "severity": "error"
             },
             {
                 "id": "dip_no_expirado",
-                "document": "documento_identidad",
-                "rule": "documento.fecha_expiracion > TODAY",
+                "document": "dip",
+                "rule": "dip.documento.fecha_expiracion > TODAY",
                 "error_es": "El DIP debe estar vigente.",
                 "severity": "error"
             },
             {
                 "id": "trienio_elegible",
-                "condition": "sub_type == 'TRIENIOS'",
+                "condition": {"sub_type": "TRIENIOS"},
                 "rule": "ultima_fecha_trienio IS NULL OR ultima_fecha_trienio + 3 YEARS <= TODAY",
                 "error_es": "Debe haber transcurrido al menos 3 años desde el último trienio reconocido.",
                 "severity": "error"
             },
             {
                 "id": "titulo_superior",
-                "condition": "sub_type == 'ESCALA'",
-                "rule": "titulo_academico.nivel > carnet_funcionario.categoria",
+                "condition": {"sub_type": "ESCALA"},
+                "rule": "titulo_academico.nivel > carnet_funcionario.puesto.categoria",
                 "error_es": "El nuevo título debe corresponder a una categoría superior.",
                 "severity": "warning"
             }
@@ -559,40 +558,30 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
         """
         Map extracted document data fields to form fields.
 
-        Sources:
-        - documento_identidad (DIP_GQ_V2): DIP number, names
-        - carnet_funcionario: matricula, categoria, ministerio (best-effort, no schema yet)
-        - ultima_resolucion: nivel (best-effort, no schema yet)
-        - titulo_academico: titulo (best-effort, ESCALA only, no schema yet)
-
-        Note: carnet_funcionario, ultima_resolucion and titulo_academico do not have
-        dedicated OCR schemas yet. Gemini will perform best-effort extraction.
-        Schema creation is planned for a future phase.
+        Sources verified against real OCR schemas:
+        - dip (DIP_GQ_V2): DIP number, names - paths verified
+        - carnet_funcionario (CARNET_FUNCIONARIO_GQ_V1): matricula, categoria, ministerio - paths verified
+        - ultima_resolucion: nivel (best-effort, no schema)
+        - titulo_academico: titulo (best-effort, ESCALA only, no schema)
         """
         return {
-            # === From DIP ===
-            "numero_dip": "documento_identidad.documento.numero_dip",
-            "apellidos": "documento_identidad.titular.apellidos",
-            "nombres": "documento_identidad.titular.nombres",
+            # === From DIP (schema DIP_GQ_V2) ===
+            "numero_dip": "dip.documento.numero_dip",
+            "apellidos": "dip.titular.apellidos",
+            "nombres": "dip.titular.nombres",
 
-            # === From Carnet de Funcionario (best-effort) ===
-            "matricula": "carnet_funcionario.datos_carnet.numero_carnet",
-            "categoria_actual": "carnet_funcionario.datos_carnet.categoria",
-            "ministerio": "carnet_funcionario.datos_carnet.ministerio",
-            "fecha_ingreso": "carnet_funcionario.datos_carnet.fecha_emision",
+            # === From Carnet de Funcionario (schema CARNET_FUNCIONARIO_GQ_V1) ===
+            "matricula": "carnet_funcionario.titular.matricula",
+            "categoria_actual": "carnet_funcionario.puesto.categoria",
+            "ministerio": "carnet_funcionario.puesto.ministerio",
+            "fecha_ingreso": "carnet_funcionario.carnet.fecha_emision",
 
-            # === From Última Resolución (best-effort) ===
+            # === From Última Resolución (best-effort, no schema) ===
             "nivel_actual": "ultima_resolucion.nivel",
 
-            # === From Título Académico (best-effort, ESCALA only) ===
+            # === From Título Académico (best-effort, ESCALA only, no schema) ===
             "nuevo_titulo": "titulo_academico.titulo",
         }
-
-    # === Workflow Code Resolution ===
-
-    def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """Get the specific workflow code (same for all promotion types)."""
-        return WorkflowCode.FP_PROMOCION_ADMINISTRATIVA
 
 
 # =============================================================================

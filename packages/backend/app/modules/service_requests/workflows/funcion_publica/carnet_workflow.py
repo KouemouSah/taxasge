@@ -45,7 +45,6 @@ from ..workflow_interface import (
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
-    SupplementDefinition,
     StepType,
     RenovacionMotivo,
 )
@@ -65,13 +64,6 @@ from ...models.enums import (
 
 # Fixed tariff for all types
 TARIFF_CARNET = 3500  # XAF
-
-# Legacy sub_type to SolicitudType mapping
-SUBTYPE_TO_SOLICITUD_MOTIVO = {
-    "expedicion": SolicitudType.EXPEDICION,
-    "renovacion": SolicitudType.RENOVACION,
-    "duplicado": SolicitudType.DUPLICADO,
-}
 
 
 class CarnetFuncionarioWorkflow(PredefinedWorkflow):
@@ -138,13 +130,16 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
         """Define workflow steps."""
 
         # -----------------------------------------------------------------
-        # Step 1: Selection type
+        # Step 0: Selection type
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
+            step_number=0,
             step_id="select_type",
             step_type=StepType.SELECTION,
+            title_es="Tipo de Solicitud",
+            description_es="Seleccione el tipo de solicitud de carnet de funcionario",
             config={
-                "field": "solicitud_type",
+                "selection_type": "solicitud_type",
                 "options": [
                     {
                         "value": "EXPEDICION",
@@ -166,20 +161,26 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
         ))
 
         # -----------------------------------------------------------------
-        # Step 2: Upload documents (conditional by type)
+        # Step 1: Upload documents (conditional by type)
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
+            step_number=1,
             step_id="upload_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
+            title_es="Documentos Justificativos",
+            description_es="Cargue los documentos requeridos según el tipo de solicitud",
             config={"dynamic_documents": True}
         ))
 
         # -----------------------------------------------------------------
-        # Step 3: Form review 1 - Datos Personales (from DIP)
+        # Step 2: Form review 1 - Datos Personales (from DIP)
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
+            step_number=2,
             step_id="form_review_1",
             step_type=StepType.FORM_REVIEW,
+            title_es="Datos Personales",
+            description_es="Verifique los datos personales extraídos de su DIP",
             config={
                 "sections": [
                     {
@@ -310,11 +311,14 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
         ))
 
         # -----------------------------------------------------------------
-        # Step 4: Form review 2 - Datos Administrativos y Contacto
+        # Step 3: Form review 2 - Datos Administrativos y Contacto
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
+            step_number=3,
             step_id="form_review_2",
             step_type=StepType.FORM_REVIEW,
+            title_es="Datos Administrativos y Contacto",
+            description_es="Complete los datos del nombramiento y de contacto",
             config={
                 "sections": [
                     # --- Datos del Nombramiento (always) ---
@@ -481,32 +485,40 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
         ))
 
         # -----------------------------------------------------------------
-        # Step 5: Payment
+        # Step 4: Payment
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
+            step_number=4,
             step_id="payment",
             step_type=StepType.PAYMENT,
+            title_es="Pago de Tasas",
+            description_es="Tasa de emisión de Carnet de Funcionario: 3.500 XAF",
             config={"dynamic_tariff": True}
         ))
 
         # -----------------------------------------------------------------
-        # Step 6: Appointment (biometric capture)
+        # Step 5: Appointment (biometric capture)
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
+            step_number=5,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
+            title_es="Cita para Captura Biométrica",
+            description_es="Seleccione el centro para la captura biométrica",
             config={
                 "locations_from": "entity_locations",
-                "description_es": "Seleccione el centro para la captura biométrica",
             }
         ))
 
         # -----------------------------------------------------------------
-        # Step 7: Confirmation
+        # Step 6: Confirmation
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
+            step_number=6,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
+            title_es="Confirmación y Envío",
+            description_es="Verifique todos los datos y envíe su solicitud",
             config={
                 "show_summary": True,
                 "consent_text_es": (
@@ -789,6 +801,3 @@ def get_carnet_funcionario_workflow() -> CarnetFuncionarioWorkflow:
     return _workflow
 
 
-def register_carnet_funcionario_workflow():
-    """Register workflow in the engine."""
-    return get_carnet_funcionario_workflow()
