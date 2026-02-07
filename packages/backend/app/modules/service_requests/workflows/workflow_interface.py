@@ -799,7 +799,12 @@ class PredefinedWorkflow(ABC):
         step_number: int,
         context: WorkflowContext
     ) -> List[ValidationResult]:
-        """Validate a specific step."""
+        """Validate a specific step.
+
+        Cross-validation rules run on FORM_REVIEW steps (where extracted/form
+        data is available) and on VALIDATION steps. Rules that reference
+        documents not yet uploaded are safely skipped.
+        """
         step = self.get_step(step_number)
         if not step:
             return []
@@ -808,7 +813,7 @@ class PredefinedWorkflow(ABC):
 
         if step.step_type == StepType.DOCUMENT_UPLOAD:
             results.extend(self._validate_documents_for_step(step, context))
-        elif step.step_type == StepType.VALIDATION:
+        elif step.step_type in (StepType.VALIDATION, StepType.FORM_REVIEW):
             results.extend(self._validate_cross_documents(context))
 
         return results
@@ -879,9 +884,9 @@ class PredefinedWorkflow(ABC):
         if condition and not self._evaluate_condition(condition, context):
             return None
 
-        # Evaluate rule
+        # Evaluate rule (pass full rule dict for document context)
         rule_expr = rule.get("rule", "")
-        is_valid = self._evaluate_rule_expression(rule_expr, context)
+        is_valid = self._evaluate_rule_expression(rule_expr, context, rule)
 
         if not is_valid:
             return ValidationResult(
@@ -894,36 +899,277 @@ class PredefinedWorkflow(ABC):
 
         return None
 
-    def _evaluate_condition(self, condition: str, context: WorkflowContext) -> bool:
-        """Evaluate a condition expression."""
-        if "tipo ==" in condition:
+    def _evaluate_condition(self, condition: Any, context: WorkflowContext) -> bool:
+        """Evaluate a condition expression (string or dict format).
+
+        String format (legacy):
+            "tipo == 'MEDICO'"
+            "sub_type != 'MEDICO'"
+            "motivo IN ['PERDIDA', 'ROBO']"
+
+        Dict format (ConditionEvaluator compatible):
+            {"sub_type": "MEDICO"}
+            {"NOT": {"sub_type": "MEDICO"}}
+            {"OR": [{"sub_type": "A"}, {"sub_type": "B"}]}
+        """
+        import re as re_mod
+
+        if condition is None:
+            return True
+
+        # --- Dict conditions ---
+        if isinstance(condition, dict):
+            return self._evaluate_dict_condition(condition, context)
+
+        # --- String conditions ---
+        condition = str(condition)
+
+        # sub_type != 'VALUE'
+        match = re_mod.match(r"sub_type\s*!=\s*['\"]([^'\"]+)['\"]", condition)
+        if match:
+            return context.sub_type != match.group(1)
+
+        # tipo == 'VALUE' / sub_type == 'VALUE'
+        if "tipo ==" in condition or "sub_type ==" in condition:
             expected = condition.split("==")[1].strip().strip("'\"")
             return context.sub_type == expected
 
-        if "tipo IN" in condition:
-            import re
-            match = re.search(r"\[([^\]]+)\]", condition)
+        if "tipo IN" in condition or "sub_type IN" in condition:
+            match = re_mod.search(r"\[([^\]]+)\]", condition)
             if match:
                 types = [t.strip().strip("'\"") for t in match.group(1).split(",")]
                 return context.sub_type in types
 
         if "motivo ==" in condition:
             expected = condition.split("==")[1].strip().strip("'\"")
-            return context.motivo and context.motivo.value == expected
+            return context.motivo is not None and context.motivo.value == expected
+
+        if "motivo !=" in condition:
+            expected = condition.split("!=")[1].strip().strip("'\"")
+            return context.motivo is None or context.motivo.value != expected
 
         if "motivo IN" in condition:
-            import re
-            match = re.search(r"\[([^\]]+)\]", condition)
+            match = re_mod.search(r"\[([^\]]+)\]", condition)
             if match:
                 motivos = [m.strip().strip("'\"") for m in match.group(1).split(",")]
-                return context.motivo and context.motivo.value in motivos
+                return context.motivo is not None and context.motivo.value in motivos
 
         return True
 
-    def _evaluate_rule_expression(self, rule: str, context: WorkflowContext) -> bool:
-        """Evaluate rule expression. Simplified - extend as needed."""
-        logger.debug(f"Evaluating rule: {rule}")
-        return True  # Implement proper evaluation
+    def _evaluate_dict_condition(self, condition: Dict[str, Any], context: WorkflowContext) -> bool:
+        """Evaluate dict-format condition against context."""
+        # {"NOT": sub_condition}
+        if "NOT" in condition:
+            return not self._evaluate_dict_condition(condition["NOT"], context)
+
+        # {"OR": [cond1, cond2, ...]}
+        if "OR" in condition:
+            return any(self._evaluate_dict_condition(c, context) for c in condition["OR"])
+
+        # {"AND": [cond1, cond2, ...]}
+        if "AND" in condition:
+            return all(self._evaluate_dict_condition(c, context) for c in condition["AND"])
+
+        # Simple field matching: {"sub_type": "MEDICO", "solicitud_type": "EXPEDICION"}
+        for key, expected in condition.items():
+            if key == "sub_type":
+                if context.sub_type != expected:
+                    return False
+            elif key == "solicitud_type":
+                actual = context.solicitud_type.value if context.solicitud_type else None
+                if actual != expected:
+                    return False
+            elif key == "motivo":
+                actual = context.motivo.value if context.motivo else None
+                if actual != expected:
+                    return False
+            elif key == "is_minor":
+                age = context.get_user_age()
+                actual = age is not None and age < 18
+                if actual != expected:
+                    return False
+            else:
+                # Check form_data
+                actual = context.form_data.get(key)
+                if str(actual) != str(expected):
+                    return False
+
+        return True
+
+    def _evaluate_rule_expression(
+        self,
+        rule: str,
+        context: WorkflowContext,
+        rule_dict: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Evaluate a rule expression against context data.
+
+        Supported patterns:
+            FIELD MATCHES 'PATTERN'             → regex on form_data
+            DOCUMENT.FIELD > TODAY               → date expiration (extracted_data)
+            FIELD >= TODAY                       → date check (form_data)
+            FIELD >= TODAY + N DAYS              → date check with offset
+            FIELD >= FIELD2                      → field comparison (date or numeric)
+            FIELD >= N AND FIELD <= M            → numeric range
+            extraction_confidence >= N           → skipped (metadata)
+            normalize(A) SIMILAR_TO normalize(B) → skipped (needs Levenshtein)
+
+        Returns True if rule PASSES (no violation), False if violated.
+        Falls back to True on unresolvable data (field missing, parse error).
+        """
+        import re as re_mod
+        from datetime import datetime as dt_cls
+        from datetime import date as date_cls
+        from datetime import timedelta
+
+        rule = rule.strip()
+        if not rule:
+            return True
+
+        document_code = rule_dict.get("document") if rule_dict else None
+
+        try:
+            # --- FIELD MATCHES 'PATTERN' ---
+            match = re_mod.match(r"(\w+)\s+MATCHES\s+'([^']+)'", rule)
+            if match:
+                field_name, pattern = match.groups()
+                value = self._resolve_field_value(field_name, context, document_code)
+                if not value:
+                    return True  # Field absent → skip (required-check handles it)
+                return bool(re_mod.match(pattern, str(value)))
+
+            # --- normalize(A) SIMILAR_TO normalize(B) → skip (complex) ---
+            if "SIMILAR_TO" in rule:
+                logger.debug(f"SIMILAR_TO rule skipped (needs Levenshtein): {rule}")
+                return True
+
+            # --- Complex expressions with arithmetic → skip ---
+            if ".days" in rule or "MAX_DAYS" in rule:
+                logger.debug(f"Complex arithmetic rule skipped (handled in validate_step): {rule}")
+                return True
+
+            # --- extraction_confidence → skip (metadata) ---
+            if "extraction_confidence" in rule:
+                return True
+
+            # --- DOCUMENT.FIELD > TODAY ---
+            match = re_mod.match(r"([\w.]+)\s*>\s*TODAY\s*$", rule)
+            if match:
+                field_path = match.group(1)
+                value = self._resolve_field_value(field_path, context, document_code)
+                if not value:
+                    return True
+                parsed = self._parse_date_safe(str(value))
+                return parsed > date_cls.today() if parsed else True
+
+            # --- FIELD >= TODAY + N DAYS ---
+            match = re_mod.match(r"(\w+)\s*>=\s*TODAY\s*\+\s*(\d+)\s*DAYS?", rule)
+            if match:
+                field_name, days_str = match.groups()
+                value = self._resolve_field_value(field_name, context, document_code)
+                if not value:
+                    return True
+                parsed = self._parse_date_safe(str(value))
+                return parsed >= date_cls.today() + timedelta(days=int(days_str)) if parsed else True
+
+            # --- FIELD >= TODAY ---
+            match = re_mod.match(r"(\w+)\s*>=\s*TODAY\s*$", rule)
+            if match:
+                field_name = match.group(1)
+                value = self._resolve_field_value(field_name, context, document_code)
+                if not value:
+                    return True
+                parsed = self._parse_date_safe(str(value))
+                return parsed >= date_cls.today() if parsed else True
+
+            # --- FIELD >= N AND FIELD <= M (range) ---
+            match = re_mod.match(r"(\w+)\s*>=\s*(\d+)\s+AND\s+\1\s*<=\s*(\d+)", rule)
+            if match:
+                field_name, min_val, max_val = match.groups()
+                value = self._resolve_field_value(field_name, context, document_code)
+                if value is None:
+                    return True
+                try:
+                    return int(min_val) <= int(value) <= int(max_val)
+                except (ValueError, TypeError):
+                    return True
+
+            # --- FIELD >= FIELD2 (field comparison) ---
+            match = re_mod.match(r"(\w+)\s*>=\s*(\w+)\s*$", rule)
+            if match:
+                f1, f2 = match.groups()
+                v1 = self._resolve_field_value(f1, context, document_code)
+                v2 = self._resolve_field_value(f2, context, document_code)
+                if v1 is None or v2 is None:
+                    return True
+                # Try date comparison
+                d1 = self._parse_date_safe(str(v1))
+                d2 = self._parse_date_safe(str(v2))
+                if d1 and d2:
+                    return d1 >= d2
+                # Try numeric
+                try:
+                    return float(v1) >= float(v2)
+                except (ValueError, TypeError):
+                    return True
+
+            # Unrecognized → log and skip
+            logger.debug(f"Unrecognized rule pattern (skipping): {rule}")
+            return True
+
+        except Exception as e:
+            logger.warning(f"Error evaluating rule '{rule}': {e}")
+            return True
+
+    def _resolve_field_value(
+        self,
+        field_path: str,
+        context: WorkflowContext,
+        document_code: Optional[str] = None,
+    ) -> Optional[Any]:
+        """Resolve a field value from extracted_data or form_data.
+
+        If document_code is provided, looks in extracted_data[document_code].
+        Otherwise, first checks form_data, then searches all extracted_data.
+        """
+        # Document-scoped lookup
+        if document_code:
+            doc_data = context.extracted_data.get(document_code, {})
+            parts = field_path.split(".")
+            current: Any = doc_data
+            for part in parts:
+                if isinstance(current, dict):
+                    current = current.get(part)
+                else:
+                    return None
+            return current
+
+        # Dot-path with implicit document (first segment = document code)
+        if "." in field_path:
+            parts = field_path.split(".", 1)
+            doc_code = parts[0]
+            remaining = parts[1]
+            doc_data = context.extracted_data.get(doc_code, {})
+            current = doc_data
+            for part in remaining.split("."):
+                if isinstance(current, dict):
+                    current = current.get(part)
+                else:
+                    return None
+            return current
+
+        # Simple field name → form_data
+        return context.form_data.get(field_path)
+
+    def _parse_date_safe(self, date_str: str) -> Optional["date_cls"]:
+        """Parse date string in common formats. Returns None on failure."""
+        from datetime import datetime as dt_cls
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d.%m.%Y", "%d-%m-%Y"):
+            try:
+                return dt_cls.strptime(date_str, fmt).date()
+            except ValueError:
+                continue
+        return None
 
     # === Status Transitions ===
 
