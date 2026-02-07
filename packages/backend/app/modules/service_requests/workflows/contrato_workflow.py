@@ -1148,6 +1148,9 @@ class ContratoWorkflow(PredefinedWorkflow):
             "monto_en_letras": "contrato.valor_contrato.monto_en_letras",
             "incluye_iva": "contrato.valor_contrato.incluye_iva",
 
+            # === From Certificate of Registration (for modifications) ===
+            "numero_registro_original": "certificado_registro_onrc.numero_registro",
+
             # === From Contract - Metadata (for tariff calculation) ===
             "numero_paginas": "contrato.metadatos_documento.numero_paginas",
         }

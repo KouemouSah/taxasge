@@ -138,14 +138,6 @@
           "field_label": "Personal No./No. D.I.P.",
           "source": "data_page",
           "pii": true
-        },
-        "domicilio": {
-          "type": "string",
-          "required": false,
-          "description": "Residence / Domicilio",
-          "field_label": "Residence/Domicilio",
-          "source": "data_page",
-          "pii": true
         }
       }
     },
