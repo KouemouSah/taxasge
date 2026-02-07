@@ -689,43 +689,6 @@ class CertificadoAdministrativoWorkflow(PredefinedWorkflow):
 
         return results
 
-    # === Cross-Validation Rules ===
-
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """Get validation rules for certificate request."""
-        return [
-            # Carnet must be valid (not expired)
-            {
-                "id": "carnet_vigente",
-                "document": "carnet_funcionario",
-                "rule": "carnet.fecha_expiracion > TODAY",
-                "error_es": "El carnet de funcionario debe estar vigente.",
-                "severity": "error",
-            },
-            # DIP must be valid (not expired)
-            {
-                "id": "dip_vigente",
-                "document": "dip",
-                "rule": "documento.fecha_expiracion > TODAY",
-                "error_es": "El DIP debe estar vigente.",
-                "severity": "error",
-            },
-            # Name coherence between DIP and carnet
-            {
-                "id": "identidad_coherente",
-                "rule": "normalize(dip.titular.apellidos) SIMILAR_TO normalize(carnet_funcionario.titular.apellidos)",
-                "error_es": "El nombre en el DIP no coincide con el del carnet de funcionario.",
-                "severity": "error",
-            },
-            # Number of copies within limit
-            {
-                "id": "copias_limite",
-                "rule": "num_copias >= 1 AND num_copias <= 5",
-                "error_es": "El número de copias debe estar entre 1 y 5.",
-                "severity": "error",
-            },
-        ]
-
     # === Business Logic ===
 
     def calculate_total_tariff(

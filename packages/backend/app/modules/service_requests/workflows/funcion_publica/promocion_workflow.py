@@ -28,6 +28,7 @@ from ..workflow_interface import (
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
+    ValidationResult,
     StepType,
     RenovacionMotivo,
 )
@@ -510,47 +511,80 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
 
         return requirements
 
-    # === Cross-Document Validation Rules ===
+    # === Step Validation ===
 
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """
-        Cross-document validation rules for administrative promotion.
+    # Category hierarchy for administrative level comparison
+    CATEGORY_RANK = {"D": 1, "C2": 2, "C1": 3, "B2": 4, "B1": 5, "A2": 6, "A1": 7}
 
-        Includes:
-        - Carnet validity
-        - Trienio eligibility (3 years since last)
-        - Escala title level check
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Validate promotion-specific business rules on form review.
+
+        Unique rules:
+        - trienio_elegible: 3 years since last trienio (TRIENIOS only)
+        - titulo_superior: new title must be higher category (ESCALA only)
         """
-        return [
-            {
-                "id": "carnet_vigente",
-                "document": "carnet_funcionario",
-                "rule": "carnet_funcionario.carnet.fecha_expiracion > TODAY",
-                "error_es": "El carnet de funcionario debe estar vigente.",
-                "severity": "error"
-            },
-            {
-                "id": "dip_no_expirado",
-                "document": "dip",
-                "rule": "dip.documento.fecha_expiracion > TODAY",
-                "error_es": "El DIP debe estar vigente.",
-                "severity": "error"
-            },
-            {
-                "id": "trienio_elegible",
-                "condition": {"sub_type": "TRIENIOS"},
-                "rule": "ultima_fecha_trienio IS NULL OR ultima_fecha_trienio + 3 YEARS <= TODAY",
-                "error_es": "Debe haber transcurrido al menos 3 años desde el último trienio reconocido.",
-                "severity": "error"
-            },
-            {
-                "id": "titulo_superior",
-                "condition": {"sub_type": "ESCALA"},
-                "rule": "titulo_academico.nivel > carnet_funcionario.puesto.categoria",
-                "error_es": "El nuevo título debe corresponder a una categoría superior.",
-                "severity": "warning"
-            }
-        ]
+        from datetime import date, timedelta
+
+        results = super().validate_step(step_number, context)
+
+        step = self.get_step(step_number)
+        if not step or step.step_type != StepType.FORM_REVIEW:
+            return results
+
+        # --- TRIENIOS: 3 years since last trienio ---
+        if context.sub_type == "TRIENIOS":
+            ultima_fecha = context.form_data.get("ultima_fecha_trienio")
+            if ultima_fecha:
+                try:
+                    from datetime import datetime as dt_cls
+                    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+                        try:
+                            parsed = dt_cls.strptime(str(ultima_fecha), fmt).date()
+                            break
+                        except ValueError:
+                            continue
+                    else:
+                        parsed = None
+                    if parsed and parsed + timedelta(days=1095) > date.today():
+                        results.append(ValidationResult(
+                            is_valid=False,
+                            rule_id="trienio_elegible",
+                            severity="error",
+                            message_es=(
+                                "Debe haber transcurrido al menos 3 años "
+                                "desde el último trienio reconocido."
+                            ),
+                            field_name="ultima_fecha_trienio"
+                        ))
+                except (ValueError, TypeError):
+                    pass
+
+        # --- ESCALA: new title must be higher category ---
+        if context.sub_type == "ESCALA":
+            nuevo_nivel = context.form_data.get("titulo_nivel")
+            cat_actual = context.get_extracted_field(
+                "carnet_funcionario", "puesto.categoria"
+            )
+            if nuevo_nivel and cat_actual:
+                rank_nuevo = self.CATEGORY_RANK.get(str(nuevo_nivel).upper(), 0)
+                rank_actual = self.CATEGORY_RANK.get(str(cat_actual).upper(), 0)
+                if rank_nuevo > 0 and rank_actual > 0 and rank_nuevo <= rank_actual:
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="titulo_superior",
+                        severity="warning",
+                        message_es=(
+                            "El nuevo título debe corresponder a una "
+                            "categoría superior a la actual."
+                        ),
+                        field_name="titulo_nivel"
+                    ))
+
+        return results
 
     # === Form Field Mapping ===
 

@@ -307,28 +307,6 @@ class TestDocumentRequirements:
         assert "certificado_actual" in doc_codes
 
 
-class TestCrossValidationRules:
-    """Test cross-validation rules."""
-
-    def test_has_foreign_license_validations(self):
-        """Should have validations for foreign license name matching."""
-        workflow = ConducirWorkflow()
-        rules = workflow.get_cross_validation_rules()
-        rule_ids = [r["id"] for r in rules]
-
-        assert "permiso_extranjero_apellidos_match" in rule_ids
-        assert "permiso_extranjero_nombres_match" in rule_ids
-        assert "permiso_extranjero_vigente" in rule_ids
-
-    def test_has_medical_certificate_validation(self):
-        """Should have validation for recent medical certificate."""
-        workflow = ConducirWorkflow()
-        rules = workflow.get_cross_validation_rules()
-        rule_ids = [r["id"] for r in rules]
-
-        assert "certificado_medico_reciente" in rule_ids
-
-
 class TestTariffCalculation:
     """Test tariff calculation."""
 

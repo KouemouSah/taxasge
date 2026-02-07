@@ -45,6 +45,7 @@ from ..workflow_interface import (
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
+    ValidationResult,
     StepType,
     RenovacionMotivo,
 )
@@ -698,92 +699,96 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
             "fecha_expiracion_anterior": "carnet_expirado.carnet.fecha_expiracion",
         }
 
-    # === Cross-Document Validation ===
+    # === Step Validation ===
 
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
+    VALID_CATEGORIES = {"A1", "A2", "B1", "B2", "C1", "C2", "D"}
+
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Validate carnet-specific business rules on form review.
+
+        Unique rules:
+        - toma_posesion_posterior_nombramiento: toma >= nombramiento date (EXPEDICION)
+        - certificado_perdida_reciente: < 30 days (DUPLICADO)
+        - categoria_administrativa_valida: valid category code
         """
-        Get cross-document validation rules for carnet workflow.
+        from datetime import date, timedelta, datetime as dt_cls
+        from typing import List as TList
 
-        Rules verify:
-        1. Identity coherence between DIP and nombramiento
-        2. Temporal validity of documents
-        3. Type-specific constraints (expedicion/renovacion/duplicado)
-        """
-        return [
-            # --- Always ---
-            {
-                "id": "coherencia_identidad_dip_nombramiento",
-                "rule": (
-                    "normalize(dip.titular.apellidos + ' ' + dip.titular.nombres) "
-                    "SIMILAR_TO normalize(nombramiento.funcionario.nombre_completo)"
+        results = super().validate_step(step_number, context)
+
+        step = self.get_step(step_number)
+        if not step or step.step_type != StepType.FORM_REVIEW:
+            return results
+
+        def parse_date(val: str) -> date | None:
+            for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+                try:
+                    return dt_cls.strptime(str(val), fmt).date()
+                except ValueError:
+                    continue
+            return None
+
+        # --- EXPEDICION: toma de posesion >= fecha nombramiento ---
+        if context.solicitud_type and context.solicitud_type.value == "EXPEDICION":
+            fecha_tp = context.form_data.get("fecha_toma_posesion")
+            fecha_nom = context.get_extracted_field(
+                "nombramiento", "datos_administrativos.fecha_nombramiento"
+            )
+            if fecha_tp and fecha_nom:
+                d_tp = parse_date(str(fecha_tp))
+                d_nom = parse_date(str(fecha_nom))
+                if d_tp and d_nom and d_tp < d_nom:
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="toma_posesion_posterior_nombramiento",
+                        severity="error",
+                        message_es=(
+                            "La toma de posesión debe ser posterior "
+                            "al nombramiento."
+                        ),
+                        field_name="fecha_toma_posesion"
+                    ))
+
+        # --- DUPLICADO: certificado de pérdida < 30 días ---
+        if context.solicitud_type and context.solicitud_type.value == "DUPLICADO":
+            fecha_perdida = context.get_extracted_field(
+                "certificado_perdida", "fecha_emision"
+            )
+            if fecha_perdida:
+                d_perdida = parse_date(str(fecha_perdida))
+                if d_perdida and d_perdida < date.today() - timedelta(days=30):
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="certificado_perdida_reciente",
+                        severity="error",
+                        message_es=(
+                            "El certificado de pérdida debe tener "
+                            "menos de 30 días."
+                        ),
+                        document_code="certificado_perdida"
+                    ))
+
+        # --- Categoria administrativa valida ---
+        categoria = context.get_extracted_field(
+            "nombramiento", "datos_administrativos.categoria"
+        )
+        if categoria and str(categoria).upper() not in self.VALID_CATEGORIES:
+            results.append(ValidationResult(
+                is_valid=False,
+                rule_id="categoria_administrativa_valida",
+                severity="warning",
+                message_es=(
+                    f"La categoría administrativa '{categoria}' no es válida. "
+                    f"Valores aceptados: {', '.join(sorted(self.VALID_CATEGORIES))}."
                 ),
-                "error_es": "El nombre en el DIP no coincide con el del Nombramiento.",
-                "severity": "warning",
-            },
-            {
-                "id": "fecha_nombramiento_valida",
-                "document": "nombramiento",
-                "rule": "nombramiento.datos_administrativos.fecha_nombramiento < TODAY",
-                "error_es": "La fecha del nombramiento debe ser anterior a hoy.",
-                "severity": "blocking",
-            },
-            {
-                "id": "dip_vigente",
-                "document": "dip",
-                "rule": "dip.documento.fecha_expiracion > TODAY",
-                "error_es": "El DIP está expirado. Debe presentar un DIP en vigor.",
-                "severity": "blocking",
-            },
-            {
-                "id": "categoria_administrativa_valida",
-                "document": "nombramiento",
-                "rule": "nombramiento.datos_administrativos.categoria IN ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D']",
-                "error_es": "La categoría administrativa no es válida.",
-                "severity": "warning",
-            },
+                field_name="categoria"
+            ))
 
-            # --- EXPEDICION specific ---
-            {
-                "id": "toma_posesion_posterior_nombramiento",
-                "condition": {"solicitud_type": "EXPEDICION"},
-                "rule": "toma_posesion.fecha >= nombramiento.datos_administrativos.fecha_nombramiento",
-                "error_es": "La toma de posesión debe ser posterior al nombramiento.",
-                "severity": "blocking",
-            },
-
-            # --- RENOVACION specific ---
-            {
-                "id": "carnet_expirado_o_proximo",
-                "condition": {"solicitud_type": "RENOVACION"},
-                "document": "carnet_expirado",
-                "rule": "carnet_expirado.carnet.fecha_expiracion < TODAY + 90 DAYS",
-                "error_es": (
-                    "Solo puede renovar si el carnet expira en menos de 3 meses "
-                    "o ya ha expirado."
-                ),
-                "severity": "warning",
-            },
-            {
-                "id": "coherencia_carnet_dip",
-                "condition": {"solicitud_type": "RENOVACION"},
-                "rule": (
-                    "normalize(dip.titular.apellidos + ' ' + dip.titular.nombres) "
-                    "SIMILAR_TO normalize(carnet_expirado.titular.nombre_completo)"
-                ),
-                "error_es": "El nombre en el DIP no coincide con el del carnet anterior.",
-                "severity": "warning",
-            },
-
-            # --- DUPLICADO specific ---
-            {
-                "id": "certificado_perdida_reciente",
-                "condition": {"solicitud_type": "DUPLICADO"},
-                "document": "certificado_perdida",
-                "rule": "certificado_perdida.fecha_emision > TODAY - 30 DAYS",
-                "error_es": "El certificado de pérdida debe tener menos de 30 días.",
-                "severity": "blocking",
-            },
-        ]
+        return results
 
 
 # =============================================================================

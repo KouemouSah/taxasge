@@ -41,6 +41,7 @@ from ..workflow_interface import (
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
+    ValidationResult,
     StepType,
     RenovacionMotivo,
 )
@@ -315,34 +316,33 @@ class VerificacionFuncionarioWorkflow(PredefinedWorkflow):
             "fecha_nacimiento": "dip.titular.fecha_nacimiento",
         }
 
-    # === Cross-Validation Rules ===
+    # === Step Validation ===
 
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """Get validation rules for verification."""
-        return [
-            # Matricula format validation
-            {
-                "id": "matricula_formato",
-                "rule": "matricula MATCHES '^[A-Z]{0,3}-?[0-9]{4,10}$'",
-                "error_es": "El formato de la matrícula es inválido. Ejemplo: FP-12345",
-                "severity": "error",
-            },
-            # Identity document not expired
-            {
-                "id": "documento_no_expirado",
-                "document": "dip",
-                "rule": "documento.fecha_expiracion > TODAY",
-                "error_es": "El documento de identidad está expirado.",
-                "severity": "error",
-            },
-            # Extraction confidence
-            {
-                "id": "extraccion_confiable",
-                "rule": "extraction_confidence >= 0.70",
-                "error_es": "El documento no es legible. Por favor, suba una imagen más clara.",
-                "severity": "warning",
-            },
-        ]
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Validate matricula format on form_review_1 (manual input)."""
+        import re
+
+        results = super().validate_step(step_number, context)
+
+        step = self.get_step(step_number)
+        if not step or step.step_id != "form_review_1":
+            return results
+
+        matricula = context.form_data.get("matricula", "")
+        if matricula and not re.match(r'^[A-Z]{0,3}-?\d{4,10}$', str(matricula)):
+            results.append(ValidationResult(
+                is_valid=False,
+                rule_id="matricula_formato",
+                severity="error",
+                message_es="El formato de la matrícula es inválido. Ejemplo: FP-12345",
+                field_name="matricula"
+            ))
+
+        return results
 
 
 # =============================================================================

@@ -959,137 +959,91 @@ class ContratoWorkflow(PredefinedWorkflow):
 
         return requirements
 
-    # === Cross-Document Validation Rules ===
+    # === Step Validation ===
 
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
+    def validate_step(
+        self,
+        step_number: int,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Validate form review steps with contract-specific business rules.
+
+        Unique rules (not covered by SchemaValidationEngine or RiskAnalyzer):
+        - nif_coherente_contrato: NIF on certificado_nif == NIF on contrato
+        - registro_tardio: contract signed > 30 days ago (warning)
+        - escritura_denominacion_coherente: denominacion social matches
         """
-        Cross-document validation rules for contract registration.
+        from datetime import date, timedelta
 
-        Includes:
-        - Signature/authentication validations
-        - NIF coherence checks
-        - Representative identity matching
-        - Late registration detection
-        - Duplicate contract detection
-        - Government contract specific checks
-        """
-        return [
-            # === Contract authentication ===
-            {
-                "id": "contrato_firmas_ambas_partes",
-                "document": "contrato",
-                "rule": "firmas.firma_contratante_presente AND firmas.firma_contratista_presente",
-                "error_es": "El contrato debe estar firmado por ambas partes.",
-                "severity": "error"
-            },
-            {
-                "id": "contrato_valor_positivo",
-                "document": "contrato",
-                "rule": "valor_contrato.monto_total > 0",
-                "error_es": "El valor del contrato debe ser mayor que cero.",
-                "severity": "error"
-            },
+        results = super().validate_step(step_number, context)
 
-            # === NIF validations ===
-            {
-                "id": "nif_format_valido",
-                "document": "certificado_nif",
-                "rule": "empresa.nif MATCHES '^[0-9]{5}[A-Z]{2}-[0-9]{2}$'",
-                "error_es": "El formato del NIF es incorrecto. Debe ser: 12345AB-01",
-                "severity": "error"
-            },
-            {
-                "id": "nif_autorizacion_definitiva",
-                "document": "certificado_nif",
-                "rule": "empresa.autorizacion == 'DEFINITIVA'",
-                "error_es": "El NIF debe tener autorización DEFINITIVA, no provisional.",
-                "severity": "warning"
-            },
-            {
-                "id": "nif_coherente_contrato",
-                "rule": "certificado_nif.empresa.nif == contrato.parte_contratista.nif_contratista",
-                "error_es": "El NIF del certificado no coincide con el NIF del contratista en el contrato.",
-                "severity": "error"
-            },
-            {
-                "id": "nif_autenticacion_completa",
-                "document": "certificado_nif",
-                "rule": """
-                    autenticacion.tiene_firma_jefe_hacienda AND
-                    autenticacion.tiene_firma_coordinador AND
-                    autenticacion.tiene_sello_hacienda AND
-                    autenticacion.tiene_sello_vue
-                """,
-                "error_es": "El certificado NIF no tiene todas las firmas y sellos requeridos.",
-                "severity": "error"
-            },
+        step = self.get_step(step_number)
+        if not step or step.step_type != StepType.FORM_REVIEW:
+            return results
 
-            # === DIP validations ===
-            {
-                "id": "dip_no_expirado",
-                "document": "dip_representante",
-                "rule": "documento.fecha_expiracion > TODAY",
-                "error_es": "El DIP del representante legal está expirado.",
-                "severity": "error"
-            },
-            {
-                "id": "representante_coherente_contrato",
-                "rule": "normalize(contrato.parte_contratista.representante_legal) CONTAINS normalize(dip_representante.titular.apellidos)",
-                "error_es": "El nombre del representante legal no coincide entre el contrato y el DIP.",
-                "severity": "warning"
-            },
+        # --- NIF coherence: certificado_nif.nif == contrato.nif_contratista ---
+        nif_cert = context.get_extracted_field("certificado_nif", "empresa.nif")
+        nif_contrato = context.get_extracted_field("contrato", "parte_contratista.nif_contratista")
+        if nif_cert and nif_contrato and nif_cert != nif_contrato:
+            results.append(ValidationResult(
+                is_valid=False,
+                rule_id="nif_coherente_contrato",
+                severity="error",
+                message_es=(
+                    f"El NIF del certificado ({nif_cert}) no coincide "
+                    f"con el NIF del contratista ({nif_contrato})."
+                ),
+            ))
 
-            # === Coherence chiffres/lettres ===
-            {
-                "id": "coherencia_monto_letras",
-                "document": "contrato",
-                "rule": "valor_contrato.monto_en_letras IS NULL OR VALIDATE_AMOUNT_TEXT(valor_contrato.monto_total, valor_contrato.monto_en_letras)",
-                "error_es": "El monto en cifras no coincide con el monto en letras.",
-                "severity": "warning"
-            },
+        # --- Late registration: contract signed > 30 days ago ---
+        fecha_firma_str = context.get_extracted_field("contrato", "documento.fecha_firma")
+        if fecha_firma_str:
+            try:
+                from datetime import datetime as dt_cls
+                for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+                    try:
+                        fecha_firma = dt_cls.strptime(str(fecha_firma_str), fmt).date()
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    fecha_firma = None
+                if fecha_firma and fecha_firma < date.today() - timedelta(days=30):
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="registro_tardio",
+                        severity="warning",
+                        message_es=(
+                            "El contrato fue firmado hace más de 30 días. "
+                            "Puede aplicarse una penalidad por registro tardío."
+                        ),
+                    ))
+            except (ValueError, TypeError):
+                pass
 
-            # === Late registration detection ===
-            {
-                "id": "registro_tardio",
-                "document": "contrato",
-                "rule": "documento.fecha_firma >= TODAY - 30 DAYS",
-                "error_es": "El contrato fue firmado hace más de 30 días. Puede aplicarse una penalidad por registro tardío.",
-                "severity": "warning"
-            },
+        # --- Escritura denomination coherence (cross-document) ---
+        denom_escritura = context.get_extracted_field(
+            "escritura_constitucion", "empresa.denominacion_social"
+        )
+        denom_nif = context.get_extracted_field(
+            "certificado_nif", "empresa.denominacion_social"
+        )
+        if denom_escritura and denom_nif:
+            # Normalize: uppercase, strip whitespace
+            norm_esc = " ".join(denom_escritura.upper().split())
+            norm_nif = " ".join(denom_nif.upper().split())
+            if norm_esc != norm_nif:
+                results.append(ValidationResult(
+                    is_valid=False,
+                    rule_id="escritura_denominacion_coherente",
+                    severity="warning",
+                    message_es=(
+                        "La denominación social de la escritura no coincide "
+                        "con el certificado NIF."
+                    ),
+                ))
 
-            # === Duplicate detection ===
-            {
-                "id": "contrato_duplicado",
-                "rule": "NOT EXISTS(SELECT 1 FROM service_requests WHERE nif_contratista = contrato.parte_contratista.nif_contratista AND monto_total = contrato.valor_contrato.monto_total AND fecha_firma = contrato.documento.fecha_firma AND status != 'REJECTED')",
-                "error_es": "Un contrato con el mismo NIF, monto y fecha de firma ya fue registrado.",
-                "severity": "warning"
-            },
-
-            # === Escritura coherence (when available) ===
-            {
-                "id": "escritura_denominacion_coherente",
-                "condition": "HAS_DOCUMENT('escritura_constitucion')",
-                "rule": "normalize(escritura_constitucion.empresa.denominacion_social) == normalize(certificado_nif.empresa.denominacion_social)",
-                "error_es": "La denominación social de la escritura no coincide con el certificado NIF.",
-                "severity": "warning"
-            },
-
-            # === Date coherence ===
-            {
-                "id": "fecha_firma_no_futura",
-                "document": "contrato",
-                "rule": "documento.fecha_firma <= TODAY",
-                "error_es": "La fecha de firma del contrato no puede ser futura.",
-                "severity": "error"
-            },
-            {
-                "id": "fecha_fin_posterior_inicio",
-                "document": "contrato",
-                "rule": "vigencia.fecha_fin IS NULL OR vigencia.fecha_fin > vigencia.fecha_inicio",
-                "error_es": "La fecha de finalización debe ser posterior a la fecha de inicio.",
-                "severity": "warning"
-            },
-        ]
+        return results
 
     # === Form Field Mapping ===
 

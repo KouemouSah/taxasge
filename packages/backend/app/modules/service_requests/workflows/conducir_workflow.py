@@ -899,128 +899,6 @@ class ConducirWorkflow(PredefinedWorkflow):
         # Default to EXPEDICION if unknown sub_type
         return self.get_document_requirements(SolicitudType.EXPEDICION, None, context)
 
-    # === Cross-Document Validation Rules ===
-
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """
-        Get cross-document validation rules.
-
-        Includes new validations for v2:
-        - Foreign license name matching (CANJE)
-        - Foreign license not expired (CANJE)
-        - Medical certificate recent (NUEVO/EXTENSION)
-        """
-        return [
-            # === Identity document validations ===
-            {
-                "id": "identidad_no_expirada",
-                "document": "dip | permiso_residencia",
-                "rule": "documento.fecha_expiracion > TODAY",
-                "error_es": "Su documento de identidad está expirado.",
-                "severity": "error"
-            },
-
-            # === Certificate validations (RENOVACION/EXTENSION) ===
-            {
-                "id": "certificado_renovable",
-                "condition": "sub_type == 'RENOVACION'",
-                "document": "certificado_actual",
-                "rule": "documento.valido_hasta < TODAY + 90 DAYS",
-                "error_es": "Solo puede renovar si el certificado vence en menos de 90 días o ya ha vencido.",
-                "severity": "warning"
-            },
-            {
-                "id": "certificado_autentico",
-                "condition": "sub_type IN ['RENOVACION', 'EXTENSION']",
-                "document": "certificado_actual",
-                "rule": """
-                    autenticacion.tiene_qr_code == true AND
-                    autenticacion.tiene_sello_dgt == true AND
-                    autenticacion.tiene_firma == true
-                """,
-                "error_es": "El certificado actual no parece auténtico (falta QR, sello o firma).",
-                "severity": "error"
-            },
-            {
-                "id": "identidad_coherente_certificado",
-                "condition": "sub_type IN ['RENOVACION', 'EXTENSION']",
-                "rule": """
-                    normalize(DIP.titular.apellidos) == normalize(CERTIFICADO.titular.apellidos)
-                    AND normalize(DIP.titular.nombres) == normalize(CERTIFICADO.titular.nombre)
-                """,
-                "error_es": "El nombre en su DIP no coincide con el certificado actual.",
-                "severity": "error"
-            },
-            {
-                "id": "numero_identificacion_coherente",
-                "condition": "sub_type IN ['RENOVACION', 'EXTENSION']",
-                "rule": "DIP.documento.numero_dip == CERTIFICADO.titular.numero_identificacion",
-                "error_es": "El número de DIP no coincide con el del certificado actual.",
-                "severity": "error"
-            },
-
-            # === Foreign license validations (CANJE) - NEW in v2 ===
-            {
-                "id": "permiso_extranjero_apellidos_match",
-                "condition": "sub_type == 'CANJE'",
-                "rule": "normalize(perm_ext_apellidos) == normalize(apellidos)",
-                "error_es": "Los apellidos del permiso extranjero no coinciden con su documento de identidad.",
-                "severity": "error"
-            },
-            {
-                "id": "permiso_extranjero_nombres_match",
-                "condition": "sub_type == 'CANJE'",
-                "rule": "normalize(perm_ext_nombres) == normalize(nombres)",
-                "error_es": "Los nombres del permiso extranjero no coinciden con su documento de identidad.",
-                "severity": "error"
-            },
-            {
-                "id": "permiso_extranjero_vigente",
-                "condition": "sub_type == 'CANJE'",
-                "rule": "perm_ext_fecha_expiracion > TODAY",
-                "error_es": "El permiso de conducir extranjero está expirado.",
-                "severity": "error"
-            },
-
-            # === Medical certificate validation (NUEVO/EXTENSION) ===
-            {
-                "id": "certificado_medico_reciente",
-                "condition": "sub_type IN ['NUEVO', 'EXTENSION']",
-                "rule": "certificado_medico_fecha > TODAY - 90 DAYS",
-                "error_es": "El certificado médico debe tener menos de 3 meses de antigüedad.",
-                "severity": "error"
-            },
-
-            # === Age requirements ===
-            {
-                "id": "edad_minima_clase_c_d_e",
-                "rule": """
-                    IF clases_solicitadas CONTAINS ['C', 'D', 'E']
-                    THEN calculate_age(titular.fecha_nacimiento) >= 21
-                """,
-                "error_es": "Debe tener al menos 21 años para las clases C, D o E.",
-                "severity": "error"
-            },
-            {
-                "id": "edad_minima_clase_a_b_f",
-                "rule": """
-                    IF clases_solicitadas CONTAINS ['A', 'B', 'B+', 'F']
-                    THEN calculate_age(titular.fecha_nacimiento) >= 18
-                """,
-                "error_es": "Debe tener al menos 18 años para obtener un certificado de conducir.",
-                "severity": "error"
-            },
-
-            # === Extension validation ===
-            {
-                "id": "extension_clase_nueva",
-                "condition": "sub_type == 'EXTENSION'",
-                "rule": "clases_solicitadas NOT IN CERTIFICADO.permiso.clases_permiso",
-                "error_es": "Ya tiene esta(s) clase(s) en su certificado actual.",
-                "severity": "error"
-            }
-        ]
-
     # === Form Field Mapping ===
 
     def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
@@ -1305,6 +1183,43 @@ class ConducirWorkflow(PredefinedWorkflow):
             age_errors = self._validate_age_eligibility(context)
             results.extend(age_errors)
 
+            # EXTENSION: verify requested classes are not already on current certificate
+            if context.sub_type == "EXTENSION":
+                results.extend(self._validate_extension_new_class(context))
+
+        return results
+
+    def _validate_extension_new_class(
+        self,
+        context: WorkflowContext
+    ) -> List[ValidationResult]:
+        """Verify that requested classes are not already on the current certificate."""
+        results = []
+        clases_solicitadas = context.form_data.get("clases_solicitadas", [])
+        if isinstance(clases_solicitadas, str):
+            clases_solicitadas = [c.strip() for c in clases_solicitadas.split(",")]
+        if not clases_solicitadas:
+            return results
+
+        # Get existing classes from extracted certificate data
+        cert_data = context.extracted_data.get("certificado_actual", {})
+        clases_existentes = cert_data.get("permiso", {}).get("clases_permiso", [])
+        if not clases_existentes:
+            return results
+
+        # Check for duplicates
+        duplicadas = [c for c in clases_solicitadas if c in clases_existentes]
+        if duplicadas:
+            results.append(ValidationResult(
+                is_valid=False,
+                rule_id="extension_clase_nueva",
+                severity="error",
+                message_es=(
+                    f"Ya tiene la(s) clase(s) {', '.join(duplicadas)} "
+                    f"en su certificado actual."
+                ),
+                field_name="clases_solicitadas"
+            ))
         return results
 
     def _validate_age_eligibility(

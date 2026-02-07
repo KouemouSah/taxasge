@@ -586,51 +586,6 @@ class PermisoExtraordinarioWorkflow(PredefinedWorkflow):
 
         return results
 
-    # === Cross-Validation Rules ===
-
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """Get validation rules for leave request."""
-        return [
-            # Carnet must be valid (not expired)
-            {
-                "id": "carnet_vigente",
-                "document": "carnet_funcionario",
-                "rule": "carnet.fecha_expiracion > TODAY",
-                "error_es": "El carnet de funcionario debe estar vigente.",
-                "severity": "error",
-            },
-            # Start date must be today or future
-            {
-                "id": "fecha_inicio_futura",
-                "rule": "fecha_inicio >= TODAY",
-                "error_es": "La fecha de inicio debe ser hoy o posterior.",
-                "severity": "error",
-            },
-            # End date must be >= start date
-            {
-                "id": "fechas_coherentes",
-                "rule": "fecha_fin >= fecha_inicio",
-                "error_es": "La fecha de fin debe ser igual o posterior a la fecha de inicio.",
-                "severity": "error",
-            },
-            # Duration within allowed limits per motivo
-            {
-                "id": "duracion_permitida",
-                "rule": "(fecha_fin - fecha_inicio).days + 1 <= MAX_DAYS[motivo]",
-                "error_es": "La duración del permiso excede el máximo permitido para este motivo.",
-                "severity": "error",
-            },
-            # Must request at least 3 days in advance (except MEDICO)
-            # NOTE: Actually enforced in validate_step() → _validate_leave_dates()
-            {
-                "id": "solicitud_anticipada",
-                "condition": "sub_type != 'MEDICO'",
-                "rule": "fecha_inicio >= TODAY + 3 DAYS",
-                "error_es": "Debe solicitar el permiso con al menos 3 días de antelación.",
-                "severity": "warning",
-            },
-        ]
-
     # === Business Logic ===
 
     def get_max_days(self, motivo: str) -> int:
