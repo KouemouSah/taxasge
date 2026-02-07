@@ -155,11 +155,11 @@
 | Verificacion | v1 BaseWorkflow | 🟢 LOW | 1-2j | ⏳ |
 | Certificado Admin | v1 BaseWorkflow | 🟢 LOW | 2-3j | ⏳ |
 | Permiso Extraordinario | v1 BaseWorkflow | 🟢 LOW | 1-2j | ⏳ |
-| Promocion Admin | v1 BaseWorkflow | 🟢 LOW | 1-2j | ⏳ |
+| Promocion Admin | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Generic Standard | v1 BaseWorkflow | N/A | N/A | DB-driven (intentionnel) |
 | Generic DirectPayment | v1 BaseWorkflow | N/A | N/A | DB-driven (intentionnel) |
 
 ---
 
 *Dernière mise à jour : 2026-02-07*
-*Basé sur : pasaporte_workflow_v2.py, conducir_workflow.py, contrato_workflow.py*
+*Basé sur : pasaporte_workflow_v2.py, conducir_workflow.py, contrato_workflow.py, promocion_workflow.py*

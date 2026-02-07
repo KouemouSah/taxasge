@@ -36,6 +36,13 @@ from .conducir_workflow import (
 # Contrato workflow v2 (autonomous) - Migrated 2026-02-06
 from .contrato_workflow import ContratoWorkflow
 
+# PromocionAdministrativa workflow v2 (autonomous) - Migrated 2026-02-07
+from .funcion_publica.promocion_workflow import (
+    PromocionAdministrativaWorkflow,
+    PromocionType,
+    get_promocion_administrativa_workflow,
+)
+
 # =============================================================================
 # LEGACY (v1) - For backward compatibility
 # =============================================================================
@@ -54,11 +61,10 @@ from .vehiculo_workflow import (
 )
 # Conducir workflow moved to v2 section above
 
-# FuncionPublica workflows
+# FuncionPublica workflows (remaining v1)
 from .funcion_publica import (
     VerificacionFuncionarioWorkflow,
     CarnetFuncionarioWorkflow,
-    PromocionAdministrativaWorkflow,
     PermisoExtraordinarioWorkflow,
     CertificadoAdministrativoWorkflow
 )
@@ -98,6 +104,10 @@ __all__ = [
 
     # Contrato v2
     "ContratoWorkflow",
+    # PromocionAdministrativa v2
+    "PromocionAdministrativaWorkflow",
+    "PromocionType",
+    "get_promocion_administrativa_workflow",
 
     # === LEGACY (v1) ===
     "BaseWorkflow",
@@ -109,10 +119,9 @@ __all__ = [
     "VehiculoWorkflow",
     "VehicleType",
     "VehicleService",
-    # FuncionPublica workflows (MINFP)
+    # FuncionPublica workflows (MINFP) - remaining v1
     "VerificacionFuncionarioWorkflow",
     "CarnetFuncionarioWorkflow",
-    "PromocionAdministrativaWorkflow",
     "PermisoExtraordinarioWorkflow",
     "CertificadoAdministrativoWorkflow",
     "PermisoMotivo",
