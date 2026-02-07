@@ -1029,8 +1029,8 @@ class PredefinedWorkflow(ABC):
         document_code = rule_dict.get("document") if rule_dict else None
 
         try:
-            # --- FIELD MATCHES 'PATTERN' ---
-            match = re_mod.match(r"(\w+)\s+MATCHES\s+'([^']+)'", rule)
+            # --- FIELD MATCHES 'PATTERN' (supports dot-paths like documento.numero_dip) ---
+            match = re_mod.match(r"([\w.]+)\s+MATCHES\s+'([^']+)'", rule)
             if match:
                 field_name, pattern = match.groups()
                 value = self._resolve_field_value(field_name, context, document_code)
@@ -1052,35 +1052,46 @@ class PredefinedWorkflow(ABC):
             if "extraction_confidence" in rule:
                 return True
 
-            # --- DOCUMENT.FIELD > TODAY ---
-            match = re_mod.match(r"([\w.]+)\s*>\s*TODAY\s*$", rule)
+            # --- FIELD OP TODAY (>, >=, <, <=) ---
+            match = re_mod.match(r"([\w.]+)\s*(>=|<=|>|<)\s*TODAY\s*$", rule)
             if match:
-                field_path = match.group(1)
+                field_path, op = match.groups()
                 value = self._resolve_field_value(field_path, context, document_code)
                 if not value:
                     return True
                 parsed = self._parse_date_safe(str(value))
-                return parsed > date_cls.today() if parsed else True
+                if not parsed:
+                    return True
+                today = date_cls.today()
+                if op == ">":
+                    return parsed > today
+                elif op == ">=":
+                    return parsed >= today
+                elif op == "<":
+                    return parsed < today
+                else:  # <=
+                    return parsed <= today
 
-            # --- FIELD >= TODAY + N DAYS ---
-            match = re_mod.match(r"(\w+)\s*>=\s*TODAY\s*\+\s*(\d+)\s*DAYS?", rule)
+            # --- FIELD OP TODAY +/- N DAYS ---
+            match = re_mod.match(r"([\w.]+)\s*(>=|<=|>|<)\s*TODAY\s*([+-])\s*(\d+)\s*DAYS?", rule)
             if match:
-                field_name, days_str = match.groups()
-                value = self._resolve_field_value(field_name, context, document_code)
+                field_path, op, sign, days_str = match.groups()
+                value = self._resolve_field_value(field_path, context, document_code)
                 if not value:
                     return True
                 parsed = self._parse_date_safe(str(value))
-                return parsed >= date_cls.today() + timedelta(days=int(days_str)) if parsed else True
-
-            # --- FIELD >= TODAY ---
-            match = re_mod.match(r"(\w+)\s*>=\s*TODAY\s*$", rule)
-            if match:
-                field_name = match.group(1)
-                value = self._resolve_field_value(field_name, context, document_code)
-                if not value:
+                if not parsed:
                     return True
-                parsed = self._parse_date_safe(str(value))
-                return parsed >= date_cls.today() if parsed else True
+                delta = timedelta(days=int(days_str))
+                target = date_cls.today() + delta if sign == "+" else date_cls.today() - delta
+                if op == ">":
+                    return parsed > target
+                elif op == ">=":
+                    return parsed >= target
+                elif op == "<":
+                    return parsed < target
+                else:  # <=
+                    return parsed <= target
 
             # --- FIELD >= N AND FIELD <= M (range) ---
             match = re_mod.match(r"(\w+)\s*>=\s*(\d+)\s+AND\s+\1\s*<=\s*(\d+)", rule)
@@ -1094,24 +1105,33 @@ class PredefinedWorkflow(ABC):
                 except (ValueError, TypeError):
                     return True
 
-            # --- FIELD >= FIELD2 (field comparison) ---
-            match = re_mod.match(r"(\w+)\s*>=\s*(\w+)\s*$", rule)
+            # --- FIELD OP FIELD2 (field comparison, supports dot-paths and all operators) ---
+            match = re_mod.match(r"([\w.]+)\s*(>=|<=|>|<|==|!=)\s*([\w.]+)\s*$", rule)
             if match:
-                f1, f2 = match.groups()
-                v1 = self._resolve_field_value(f1, context, document_code)
-                v2 = self._resolve_field_value(f2, context, document_code)
-                if v1 is None or v2 is None:
-                    return True
-                # Try date comparison
-                d1 = self._parse_date_safe(str(v1))
-                d2 = self._parse_date_safe(str(v2))
-                if d1 and d2:
-                    return d1 >= d2
-                # Try numeric
-                try:
-                    return float(v1) >= float(v2)
-                except (ValueError, TypeError):
-                    return True
+                f1, op, f2 = match.groups()
+                # Skip if f2 is a keyword already handled above
+                if f2 == "TODAY":
+                    pass  # Falls through to unrecognized
+                else:
+                    v1 = self._resolve_field_value(f1, context, document_code)
+                    v2 = self._resolve_field_value(f2, context, document_code)
+                    if v1 is None or v2 is None:
+                        return True
+                    # Try date comparison
+                    d1 = self._parse_date_safe(str(v1))
+                    d2 = self._parse_date_safe(str(v2))
+                    if d1 and d2:
+                        return self._compare(d1, op, d2)
+                    # Try numeric
+                    try:
+                        return self._compare(float(v1), op, float(v2))
+                    except (ValueError, TypeError):
+                        # String equality
+                        if op == "==":
+                            return str(v1) == str(v2)
+                        elif op == "!=":
+                            return str(v1) != str(v2)
+                        return True
 
             # Unrecognized → log and skip
             logger.debug(f"Unrecognized rule pattern (skipping): {rule}")
@@ -1134,15 +1154,29 @@ class PredefinedWorkflow(ABC):
         """
         # Document-scoped lookup
         if document_code:
-            doc_data = context.extracted_data.get(document_code, {})
-            parts = field_path.split(".")
-            current: Any = doc_data
-            for part in parts:
-                if isinstance(current, dict):
-                    current = current.get(part)
-                else:
-                    return None
-            return current
+            # Handle pipe-separated document codes (e.g. "dip | permiso_residencia")
+            doc_codes = [d.strip() for d in document_code.split("|")]
+            for dc in doc_codes:
+                doc_data = context.extracted_data.get(dc, {})
+                if not doc_data:
+                    continue
+                # Strip document name prefix if path starts with it
+                # e.g. document="carnet_funcionario", path="carnet_funcionario.carnet.fecha_expiracion"
+                # → resolve "carnet.fecha_expiracion" within extracted_data["carnet_funcionario"]
+                path = field_path
+                if path.startswith(dc + "."):
+                    path = path[len(dc) + 1:]
+                parts = path.split(".")
+                current: Any = doc_data
+                for part in parts:
+                    if isinstance(current, dict):
+                        current = current.get(part)
+                    else:
+                        current = None
+                        break
+                if current is not None:
+                    return current
+            return None
 
         # Dot-path with implicit document (first segment = document code)
         if "." in field_path:
@@ -1170,6 +1204,23 @@ class PredefinedWorkflow(ABC):
             except ValueError:
                 continue
         return None
+
+    @staticmethod
+    def _compare(a: Any, op: str, b: Any) -> bool:
+        """Generic comparison helper for rule evaluation."""
+        if op == ">":
+            return a > b
+        elif op == ">=":
+            return a >= b
+        elif op == "<":
+            return a < b
+        elif op == "<=":
+            return a <= b
+        elif op == "==":
+            return a == b
+        elif op == "!=":
+            return a != b
+        return True
 
     # === Status Transitions ===
 
