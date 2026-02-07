@@ -43,6 +43,12 @@ from .funcion_publica.promocion_workflow import (
     get_promocion_administrativa_workflow,
 )
 
+# CarnetFuncionario workflow v2 (autonomous) - Migrated 2026-02-07
+from .funcion_publica.carnet_workflow import (
+    CarnetFuncionarioWorkflow,
+    get_carnet_funcionario_workflow,
+)
+
 # =============================================================================
 # LEGACY (v1) - For backward compatibility
 # =============================================================================
@@ -64,7 +70,6 @@ from .vehiculo_workflow import (
 # FuncionPublica workflows (remaining v1)
 from .funcion_publica import (
     VerificacionFuncionarioWorkflow,
-    CarnetFuncionarioWorkflow,
     PermisoExtraordinarioWorkflow,
     CertificadoAdministrativoWorkflow
 )
@@ -108,6 +113,9 @@ __all__ = [
     "PromocionAdministrativaWorkflow",
     "PromocionType",
     "get_promocion_administrativa_workflow",
+    # CarnetFuncionario v2
+    "CarnetFuncionarioWorkflow",
+    "get_carnet_funcionario_workflow",
 
     # === LEGACY (v1) ===
     "BaseWorkflow",
@@ -121,7 +129,6 @@ __all__ = [
     "VehicleService",
     # FuncionPublica workflows (MINFP) - remaining v1
     "VerificacionFuncionarioWorkflow",
-    "CarnetFuncionarioWorkflow",
     "PermisoExtraordinarioWorkflow",
     "CertificadoAdministrativoWorkflow",
     "PermisoMotivo",
