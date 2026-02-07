@@ -1,447 +1,708 @@
 """
-CertificadoAdministrativoWorkflow - Administrative certificate workflow.
+CertificadoAdministrativoWorkflow v2 - Administrative certificate workflow.
+
+Migrated to PredefinedWorkflow architecture (Option C - Dynamic Form Review).
 
 Handles issuance of various administrative certificates for civil servants:
-- Service record
-- Administrative status
-- Salary certificate
-- Time of service
-- Good conduct certificate
+- SERVICIOS_PRESTADOS: Service record (3,000 XAF, ~5 days)
+- SITUACION_ADMINISTRATIVA: Administrative status (2,500 XAF, ~3 days)
+- HABERES: Salary certificate (3,500 XAF, ~3 days)
+- TIEMPO_SERVICIO: Time of service (2,500 XAF, ~3 days)
+- BUENA_CONDUCTA: Good conduct certificate (2,000 XAF, ~5 days)
 
 Entity: MINFP (Ministerio de la Funcion Publica y Reforma Administrativa)
 
-Prerequisite: User must have role 'funcionario' (verified via VerificacionFuncionario)
+Prerequisite: User must have role 'funcionario' (verified via VerificacionFuncionario).
+
+Process:
+1. Select certificate type (CertificadoTipo)
+2. Enter purpose, copies, urgency (form_review)
+3. Upload documents (carnet + DIP + conditional)
+4. Review extracted data (readonly form_review)
+5. Payment (variable by type: 2,000-3,500 XAF)
+6. Confirmation + agent review
+
+Payment: Variable by certificate type (see TARIFFS_BY_TYPE).
+Appointment: NOT required.
+Agent review: REQUIRED (SIGEF verification + certificate generation).
+Nota de Ingreso: NOT required.
+
+OCR schemas:
+- carnet_funcionario_gq.json (CARNET_FUNCIONARIO_GQ_V1) - Civil servant card
+- dip_gq.json (DIP_GQ_V2) - Identity document
+
+@version 2.0
+@date 2026-02-07
+@migration Option C - Dynamic Form Review Architecture
 """
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from enum import Enum
 
-from ..base_workflow import (
-    BaseWorkflow,
+from ..workflow_interface import (
+    PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
     DocumentRequirement,
     TariffConfig,
-    StepType
+    StepType,
+    RenovacionMotivo,
 )
 from ...models.enums import (
     WorkflowCode,
     WorkflowCategory,
     EntityCode,
+    SolicitudType,
     TariffType,
-    DocumentConditionType
+    DocumentConditionType,
 )
 
 
+# =============================================================================
+# Enums
+# =============================================================================
+
 class CertificadoTipo(str, Enum):
     """Types of administrative certificates."""
-    SERVICIOS_PRESTADOS = "SERVICIOS_PRESTADOS"     # Service record
-    SITUACION_ADMINISTRATIVA = "SITUACION_ADMINISTRATIVA"  # Administrative status
-    HABERES = "HABERES"                              # Salary certificate
-    TIEMPO_SERVICIO = "TIEMPO_SERVICIO"              # Time of service
-    BUENA_CONDUCTA = "BUENA_CONDUCTA"                # Good conduct
+    SERVICIOS_PRESTADOS = "SERVICIOS_PRESTADOS"
+    SITUACION_ADMINISTRATIVA = "SITUACION_ADMINISTRATIVA"
+    HABERES = "HABERES"
+    TIEMPO_SERVICIO = "TIEMPO_SERVICIO"
+    BUENA_CONDUCTA = "BUENA_CONDUCTA"
 
 
-class CertificadoAdministrativoWorkflow(BaseWorkflow):
+# =============================================================================
+# Configuration
+# =============================================================================
+
+# Tariffs per certificate type (XAF)
+TARIFFS_BY_TYPE: Dict[str, int] = {
+    "SERVICIOS_PRESTADOS": 3000,
+    "SITUACION_ADMINISTRATIVA": 2500,
+    "HABERES": 3500,
+    "TIEMPO_SERVICIO": 2500,
+    "BUENA_CONDUCTA": 2000,
+}
+
+# Estimated processing time in business days
+PROCESSING_DAYS: Dict[str, int] = {
+    "SERVICIOS_PRESTADOS": 5,
+    "SITUACION_ADMINISTRATIVA": 3,
+    "HABERES": 3,
+    "TIEMPO_SERVICIO": 3,
+    "BUENA_CONDUCTA": 5,
+}
+
+# Certificate generation templates
+CERTIFICATE_TEMPLATES: Dict[str, str] = {
+    "SERVICIOS_PRESTADOS": "CERT_FP_SERVICIOS_V1",
+    "SITUACION_ADMINISTRATIVA": "CERT_FP_SITUACION_V1",
+    "HABERES": "CERT_FP_HABERES_V1",
+    "TIEMPO_SERVICIO": "CERT_FP_TIEMPO_V1",
+    "BUENA_CONDUCTA": "CERT_FP_CONDUCTA_V1",
+}
+
+
+class CertificadoAdministrativoWorkflow(PredefinedWorkflow):
     """
     Administrative certificate workflow (MINFP).
 
-    Sub-types:
-    - SERVICIOS_PRESTADOS: Complete service record history
-    - SITUACION_ADMINISTRATIVA: Current administrative status
-    - HABERES: Salary and benefits certificate
-    - TIEMPO_SERVICIO: Time of service calculation
-    - BUENA_CONDUCTA: Disciplinary record (clean)
-
-    Process:
-    1. Select certificate type
-    2. Upload supporting documents
-    3. Specify purpose (optional)
-    4. Payment
-    5. Agent verification in SIGEF
-    6. Certificate generation
-    7. Digital signature and delivery
+    Steps:
+    0. select_certificate_type: Choose certificate type (CertificadoTipo)
+    1. form_review_1: Purpose, copies, urgency (manual input)
+    2. upload_documents: Carnet + DIP + conditional docs
+    3. form_review_2: Review extracted data (readonly)
+    4. payment: Variable by type (2,000-3,500 XAF)
+    5. confirmation: Summary + submit for agent review
     """
 
-    # Class attributes
-    workflow_code = WorkflowCode.FP_CERTIFICADO_ADMINISTRATIVO
-    category = WorkflowCategory.FUNCION_PUBLICA
-    entity_code = EntityCode.MINFP
+    # === Properties (PredefinedWorkflow interface) ===
 
-    service_name_es = "Certificado Administrativo"
+    @property
+    def workflow_code(self) -> WorkflowCode:
+        return WorkflowCode.FP_CERTIFICADO_ADMINISTRATIVO
 
-    requires_nota_ingreso = False
-    requires_appointment = False
-    requires_agent_review = True
+    @property
+    def category(self) -> WorkflowCategory:
+        return WorkflowCategory.FUNCION_PUBLICA
 
-    allowed_sub_types = [
-        "SERVICIOS_PRESTADOS",
-        "SITUACION_ADMINISTRATIVA",
-        "HABERES",
-        "TIEMPO_SERVICIO",
-        "BUENA_CONDUCTA"
-    ]
+    @property
+    def entity_code(self) -> EntityCode:
+        return EntityCode.MINFP
 
-    # Fixed tariffs per certificate type (XAF)
-    TARIFFS = {
-        "SERVICIOS_PRESTADOS": 3000,
-        "SITUACION_ADMINISTRATIVA": 2500,
-        "HABERES": 3500,
-        "TIEMPO_SERVICIO": 2500,
-        "BUENA_CONDUCTA": 2000
-    }
+    @property
+    def service_name_es(self) -> str:
+        return "Certificado Administrativo"
 
-    # Processing time in business days
-    PROCESSING_DAYS = {
-        "SERVICIOS_PRESTADOS": 5,
-        "SITUACION_ADMINISTRATIVA": 3,
-        "HABERES": 3,
-        "TIEMPO_SERVICIO": 3,
-        "BUENA_CONDUCTA": 5  # Requires disciplinary records check
-    }
+    @property
+    def allowed_solicitud_types(self) -> List[SolicitudType]:
+        return [SolicitudType.EXPEDICION]
 
-    def _setup_specific_steps(self) -> None:
-        """Setup certificate-specific workflow steps."""
+    @property
+    def requires_appointment(self) -> bool:
+        return False
 
-        # Step 5: Select Certificate Type
+    @property
+    def requires_agent_review(self) -> bool:
+        return True
+
+    @property
+    def requires_nota_ingreso(self) -> bool:
+        return False
+
+    # === Workflow Setup ===
+
+    def _setup_workflow(self) -> None:
+        """Setup the complete certificate workflow."""
+        self._setup_steps()
+        self._setup_tariffs()
+
+    def _setup_steps(self) -> None:
+        """Define all workflow steps."""
+
+        # Step 0: Select Certificate Type
         self.add_step(WorkflowStep(
-            step_number=5,
+            step_number=0,
             step_id="select_certificate_type",
-            step_type=StepType.CUSTOM,
+            step_type=StepType.SELECTION,
             title_es="Tipo de Certificado",
             description_es="Seleccione el tipo de certificado que necesita",
-            is_inherited=False,
             config={
-                "type": "selection",
+                "selection_type": "sub_type",
                 "options": [
                     {
-                        "id": "SERVICIOS_PRESTADOS",
+                        "id": CertificadoTipo.SERVICIOS_PRESTADOS.value,
                         "label_es": "Certificado de Servicios Prestados",
-                        "description_es": "Historial completo de servicios en la Administración"
+                        "description_es": "Historial completo de servicios en la Administración",
                     },
                     {
-                        "id": "SITUACION_ADMINISTRATIVA",
+                        "id": CertificadoTipo.SITUACION_ADMINISTRATIVA.value,
                         "label_es": "Certificado de Situación Administrativa",
-                        "description_es": "Estado actual: activo, excedencia, comisión de servicio, etc."
+                        "description_es": "Estado actual: activo, excedencia, comisión de servicio, etc.",
                     },
                     {
-                        "id": "HABERES",
+                        "id": CertificadoTipo.HABERES.value,
                         "label_es": "Certificado de Haberes",
-                        "description_es": "Certificado de salario y complementos"
+                        "description_es": "Certificado de salario y complementos",
                     },
                     {
-                        "id": "TIEMPO_SERVICIO",
+                        "id": CertificadoTipo.TIEMPO_SERVICIO.value,
                         "label_es": "Certificado de Tiempo de Servicio",
-                        "description_es": "Cálculo de años, meses y días de servicio efectivo"
+                        "description_es": "Cálculo de años, meses y días de servicio efectivo",
                     },
                     {
-                        "id": "BUENA_CONDUCTA",
+                        "id": CertificadoTipo.BUENA_CONDUCTA.value,
                         "label_es": "Certificado de Buena Conducta",
-                        "description_es": "Certificado de ausencia de sanciones disciplinarias"
-                    }
-                ]
+                        "description_es": "Certificado de ausencia de sanciones disciplinarias",
+                    },
+                ],
             }
         ))
 
-        # Step 6: Certificate Purpose
+        # Step 1: Certificate Details (manual input)
         self.add_step(WorkflowStep(
-            step_number=6,
-            step_id="certificate_purpose",
-            step_type=StepType.CUSTOM,
-            title_es="Finalidad del Certificado",
-            description_es="Indique para qué necesita este certificado",
-            is_inherited=False,
+            step_number=1,
+            step_id="form_review_1",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Detalles del Certificado",
+            description_es="Indique la finalidad del certificado y opciones adicionales",
             config={
-                "fields": [
+                "sections": [
                     {
-                        "id": "finalidad",
-                        "label_es": "Finalidad",
-                        "type": "select",
-                        "options": [
-                            {"id": "JUBILACION", "label_es": "Trámites de Jubilación"},
-                            {"id": "PROMOCION", "label_es": "Promoción Interna"},
-                            {"id": "CONCURSO", "label_es": "Concurso/Oposición"},
-                            {"id": "BANCARIO", "label_es": "Trámites Bancarios"},
-                            {"id": "VIVIENDA", "label_es": "Solicitud de Vivienda"},
-                            {"id": "BECA", "label_es": "Solicitud de Beca"},
-                            {"id": "OTRO", "label_es": "Otro"}
-                        ],
-                        "required": True
+                        "id": "finalidad_certificado",
+                        "title_es": "Finalidad",
+                        "fields": [
+                            {
+                                "key": "finalidad",
+                                "label_es": "Finalidad del Certificado",
+                                "type": "select",
+                                "required": True,
+                                "readonly": False,
+                                "options": [
+                                    {"value": "JUBILACION", "label_es": "Trámites de Jubilación"},
+                                    {"value": "PROMOCION", "label_es": "Promoción Interna"},
+                                    {"value": "CONCURSO", "label_es": "Concurso/Oposición"},
+                                    {"value": "BANCARIO", "label_es": "Trámites Bancarios"},
+                                    {"value": "VIVIENDA", "label_es": "Solicitud de Vivienda"},
+                                    {"value": "BECA", "label_es": "Solicitud de Beca"},
+                                    {"value": "OTRO", "label_es": "Otro"},
+                                ],
+                            },
+                            {
+                                "key": "finalidad_detalle",
+                                "label_es": "Especifique (si seleccionó 'Otro')",
+                                "type": "textarea",
+                                "required": False,
+                                "readonly": False,
+                                "condition": {"finalidad": "OTRO"},
+                            },
+                        ]
                     },
                     {
-                        "id": "finalidad_detalle",
-                        "label_es": "Especifique (si seleccionó 'Otro')",
-                        "type": "textarea",
-                        "required": False,
-                        "visible_if": {"finalidad": "OTRO"}
-                    },
-                    {
-                        "id": "num_copias",
-                        "label_es": "Número de Copias",
-                        "type": "number",
-                        "min": 1,
-                        "max": 5,
-                        "default": 1,
-                        "required": True
-                    },
-                    {
-                        "id": "urgente",
-                        "label_es": "Trámite Urgente (Recargo del 50%)",
-                        "type": "checkbox",
-                        "required": False,
-                        "info_es": "El certificado se emitirá en 24-48 horas laborables"
+                        "id": "opciones_certificado",
+                        "title_es": "Opciones",
+                        "fields": [
+                            {
+                                "key": "num_copias",
+                                "label_es": "Número de Copias",
+                                "type": "number",
+                                "required": True,
+                                "readonly": False,
+                                "min": 1,
+                                "max": 5,
+                                "default": 1,
+                            },
+                            {
+                                "key": "urgente",
+                                "label_es": "Trámite Urgente (Recargo del 50%)",
+                                "type": "checkbox",
+                                "required": False,
+                                "readonly": False,
+                                "help_text_es": "El certificado se emitirá en 24-48 horas laborables",
+                            },
+                        ]
                     }
                 ]
             }
         ))
 
-        # Step 7: Upload Documents
+        # Step 2: Upload Documents
         self.add_step(WorkflowStep(
-            step_number=7,
-            step_id="documents",
+            step_number=2,
+            step_id="upload_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos",
             description_es="Cargue los documentos requeridos",
-            is_inherited=False,
-            config={"conditional": True}
+            config={
+                "dynamic_documents": True,
+            }
         ))
 
-        # Step 8: Payment
+        # Step 3: Review Extracted Data (readonly)
         self.add_step(WorkflowStep(
-            step_number=8,
+            step_number=3,
+            step_id="form_review_2",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Datos del Funcionario",
+            description_es="Verifique que los datos extraídos son correctos",
+            config={
+                "sections": [
+                    {
+                        "id": "datos_carnet",
+                        "title_es": "Datos del Carnet de Funcionario",
+                        "source_document": "carnet_funcionario",
+                        "fields": [
+                            {
+                                "key": "matricula",
+                                "label_es": "Matrícula",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True,
+                            },
+                            {
+                                "key": "apellidos",
+                                "label_es": "Apellidos",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True,
+                            },
+                            {
+                                "key": "nombre_completo",
+                                "label_es": "Nombre Completo",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True,
+                            },
+                            {
+                                "key": "cargo",
+                                "label_es": "Cargo",
+                                "type": "text",
+                                "required": False,
+                                "readonly": True,
+                            },
+                            {
+                                "key": "categoria",
+                                "label_es": "Categoría",
+                                "type": "text",
+                                "required": False,
+                                "readonly": True,
+                            },
+                            {
+                                "key": "ministerio",
+                                "label_es": "Ministerio",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True,
+                            },
+                            {
+                                "key": "direccion_general",
+                                "label_es": "Dirección General",
+                                "type": "text",
+                                "required": False,
+                                "readonly": True,
+                            },
+                        ]
+                    },
+                    {
+                        "id": "datos_dip",
+                        "title_es": "Datos del DIP",
+                        "source_document": "dip",
+                        "fields": [
+                            {
+                                "key": "numero_dip",
+                                "label_es": "Número de DIP",
+                                "type": "text",
+                                "required": True,
+                                "readonly": True,
+                            },
+                        ]
+                    }
+                ]
+            }
+        ))
+
+        # Step 4: Payment (variable by certificate type)
+        self.add_step(WorkflowStep(
+            step_number=4,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
             description_es="Tasa de emisión del certificado",
-            is_inherited=False,
             config={
-                                "currency": "XAF",
-                "dynamic_amount": True  # Calculated based on type, copies, urgency
+                "dynamic_tariff": True,
             }
         ))
 
-        # Step 9: Confirmation
+        # Step 5: Confirmation
         self.add_step(WorkflowStep(
-            step_number=9,
+            step_number=5,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación y Envío",
             description_es="Verifique todos los datos y envíe su solicitud",
-            is_inherited=False,
             config={
                 "show_summary": True,
-                "show_estimated_time": True
+                "show_estimated_time": True,
+                "info_message_es": (
+                    "Su solicitud será revisada por un agente del "
+                    "Ministerio de la Función Pública.\n"
+                    "Una vez verificados los datos en SIGEF, se generará "
+                    "su certificado.\n\n"
+                    "Recibirá una notificación por email una vez listo."
+                ),
             }
         ))
 
     def _setup_tariffs(self) -> None:
-        """Setup tariffs for different certificate types."""
-        self._tariff_config = TariffConfig(
+        """Setup variable tariffs per certificate type.
+
+        Uses CertificadoTipo values as keys since all map to EXPEDICION.
+        get_tariff() is overridden to use sub_type as lookup key.
+        """
+        self.set_tariff_config(TariffConfig(
             tariff_type=TariffType.FIXED,
-            fixed_amounts=self.TARIFFS,
-            currency="XAF"
-        )
+            fixed_amounts=TARIFFS_BY_TYPE,
+            currency="XAF",
+        ))
 
-    def calculate_total_tariff(
+    # === Tariff Override ===
+
+    def get_tariff(
         self,
-        certificate_type: str,
-        num_copies: int = 1,
-        urgente: bool = False
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None,
     ) -> int:
+        """Get tariff by certificate type (sub_type), not solicitud_type.
+
+        All certificate types map to EXPEDICION, but each has a different price.
+        The sub_type (CertificadoTipo) is the actual tariff key.
         """
-        Calculate total tariff including copies and urgency.
+        config = self.get_tariff_config()
 
-        Args:
-            certificate_type: Type of certificate
-            num_copies: Number of copies (1-5)
-            urgente: Whether urgent processing is requested
+        # Use sub_type from context as key (CertificadoTipo value)
+        if context and context.sub_type:
+            return config.get_amount(context.sub_type)
 
-        Returns:
-            Total amount in XAF
+        # Fallback: default to cheapest type
+        return config.get_amount("BUENA_CONDUCTA")
+
+    # === Document Requirements ===
+
+    def get_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None,
+    ) -> List[DocumentRequirement]:
+        """Get document requirements for certificate request.
+
+        Always: Carnet de Funcionario + DIP.
+        Conditional by certificate type: nombramiento, nomina, declaracion jurada.
         """
-        base_tariff = self.TARIFFS.get(certificate_type, 2500)
+        requirements = [
+            # Carnet de Funcionario - always required
+            DocumentRequirement(
+                document_code="carnet_funcionario",
+                document_name_es="Carnet de Funcionario",
+                schema_key="CARNET_FUNCIONARIO_GQ_V1",
+                is_required=True,
+                display_order=1,
+                condition_type=DocumentConditionType.ALWAYS,
+                faces_required=["recto", "verso"],
+                instructions_es="Carnet de funcionario vigente (ambas caras)",
+                accepted_formats=["pdf", "jpg", "jpeg", "png"],
+            ),
+            # DIP - always required
+            DocumentRequirement(
+                document_code="dip",
+                document_name_es="Documento de Identidad Personal (DIP)",
+                schema_key="DIP_GQ_V2",
+                is_required=True,
+                display_order=2,
+                condition_type=DocumentConditionType.ALWAYS,
+                faces_required=["recto", "verso"],
+                instructions_es="DIP en vigor (ambas caras)",
+                accepted_formats=["pdf", "jpg", "jpeg", "png"],
+            ),
+        ]
 
-        # Additional copies cost 50% of base
-        additional_copies_cost = (num_copies - 1) * (base_tariff * 0.5)
+        # Conditional documents by certificate type
 
-        total = base_tariff + additional_copies_cost
-
-        # Urgent processing adds 50%
-        if urgente:
-            total *= 1.5
-
-        return int(total)
-
-    def get_document_requirements(self, sub_type: str) -> List[DocumentRequirement]:
-        """Get document requirements for certificate request."""
-        requirements = []
-
-        # Carnet de Funcionario - always required
+        # Nombramiento for SERVICIOS_PRESTADOS
         requirements.append(DocumentRequirement(
-            document_code="carnet_funcionario",
-            document_name_es="Carnet de Funcionario",
+            document_code="nombramiento",
+            document_name_es="Acto de Nombramiento",
             is_required=True,
-            display_order=1,
-            condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="Carnet de funcionario vigente (recto y verso)"
+            display_order=3,
+            condition_type=DocumentConditionType.CUSTOM,
+            condition_value={"types": ["SERVICIOS_PRESTADOS"]},
+            instructions_es="Primer nombramiento o contrato",
+            accepted_formats=["pdf", "jpg", "jpeg", "png"],
         ))
 
-        # Identity document - always required
+        # Last payslip for HABERES (optional)
         requirements.append(DocumentRequirement(
-            document_code="documento_identidad",
-            document_name_es="Documento de Identidad",
-            schema_key="DIP_GQ_V2",
-            is_required=True,
-            display_order=2,
-            condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="DIP en vigor"
+            document_code="nomina_reciente",
+            document_name_es="Última Nómina",
+            is_required=False,
+            display_order=3,
+            condition_type=DocumentConditionType.CUSTOM,
+            condition_value={"types": ["HABERES"]},
+            instructions_es="Nómina del último mes (opcional, para verificación)",
+            accepted_formats=["pdf", "jpg", "jpeg", "png"],
         ))
 
-        # Additional documents for specific certificate types
-        if sub_type == "SERVICIOS_PRESTADOS":
-            requirements.append(DocumentRequirement(
-                document_code="nombramiento",
-                document_name_es="Acto de Nombramiento",
-                is_required=True,
-                display_order=3,
-                condition_type=DocumentConditionType.CUSTOM,
-                condition_value={"types": ["SERVICIOS_PRESTADOS"]},
-                instructions_es="Primer nombramiento o contrato"
-            ))
-
-        if sub_type == "HABERES":
-            requirements.append(DocumentRequirement(
-                document_code="nomina_reciente",
-                document_name_es="Última Nómina",
-                is_required=False,
-                display_order=3,
-                condition_type=DocumentConditionType.CUSTOM,
-                condition_value={"types": ["HABERES"]},
-                instructions_es="Nómina del último mes (opcional, para verificación)"
-            ))
-
-        if sub_type == "BUENA_CONDUCTA":
-            requirements.append(DocumentRequirement(
-                document_code="declaracion_jurada",
-                document_name_es="Declaración Jurada",
-                is_required=True,
-                display_order=3,
-                condition_type=DocumentConditionType.CUSTOM,
-                condition_value={"types": ["BUENA_CONDUCTA"]},
-                instructions_es="Declaración de no tener procedimientos disciplinarios pendientes"
-            ))
+        # Sworn declaration for BUENA_CONDUCTA
+        requirements.append(DocumentRequirement(
+            document_code="declaracion_jurada",
+            document_name_es="Declaración Jurada",
+            is_required=True,
+            display_order=3,
+            condition_type=DocumentConditionType.CUSTOM,
+            condition_value={"types": ["BUENA_CONDUCTA"]},
+            instructions_es="Declaración de no tener procedimientos disciplinarios pendientes",
+            accepted_formats=["pdf", "jpg", "jpeg", "png"],
+        ))
 
         return requirements
+
+    # === Form Mapping ===
+
+    def get_form_mapping(
+        self,
+        context: Optional[WorkflowContext] = None,
+    ) -> Dict[str, str]:
+        """Get mapping from extracted data to form fields.
+
+        Paths verified against schemas:
+        CARNET_FUNCIONARIO_GQ_V1:
+        - carnet_funcionario.titular.matricula ✓
+        - carnet_funcionario.titular.apellidos ✓
+        - carnet_funcionario.titular.nombre_completo ✓
+        - carnet_funcionario.puesto.cargo ✓
+        - carnet_funcionario.puesto.categoria ✓
+        - carnet_funcionario.puesto.ministerio ✓
+        - carnet_funcionario.puesto.direccion_general ✓
+        DIP_GQ_V2:
+        - dip.documento.numero_dip ✓
+        """
+        return {
+            "matricula": "carnet_funcionario.titular.matricula",
+            "apellidos": "carnet_funcionario.titular.apellidos",
+            "nombre_completo": "carnet_funcionario.titular.nombre_completo",
+            "cargo": "carnet_funcionario.puesto.cargo",
+            "categoria": "carnet_funcionario.puesto.categoria",
+            "ministerio": "carnet_funcionario.puesto.ministerio",
+            "direccion_general": "carnet_funcionario.puesto.direccion_general",
+            "numero_dip": "dip.documento.numero_dip",
+        }
+
+    # === Cross-Validation Rules ===
 
     def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
         """Get validation rules for certificate request."""
         return [
-            # Carnet must be valid
+            # Carnet must be valid (not expired)
             {
                 "id": "carnet_vigente",
                 "document": "carnet_funcionario",
-                "rule": "documento.fecha_caducidad > TODAY",
+                "rule": "carnet.fecha_expiracion > TODAY",
                 "error_es": "El carnet de funcionario debe estar vigente.",
-                "severity": "error"
+                "severity": "error",
             },
-            # Identity document must match carnet
+            # DIP must be valid (not expired)
+            {
+                "id": "dip_vigente",
+                "document": "dip",
+                "rule": "documento.fecha_expiracion > TODAY",
+                "error_es": "El DIP debe estar vigente.",
+                "severity": "error",
+            },
+            # Name coherence between DIP and carnet
             {
                 "id": "identidad_coherente",
-                "rule": "normalize(documento_identidad.titular.apellidos) SIMILAR_TO normalize(carnet_funcionario.datos_carnet.apellidos)",
+                "rule": "normalize(dip.titular.apellidos) SIMILAR_TO normalize(carnet_funcionario.titular.apellidos)",
                 "error_es": "El nombre en el DIP no coincide con el del carnet de funcionario.",
-                "severity": "error"
+                "severity": "error",
             },
             # Number of copies within limit
             {
                 "id": "copias_limite",
                 "rule": "num_copias >= 1 AND num_copias <= 5",
                 "error_es": "El número de copias debe estar entre 1 y 5.",
-                "severity": "error"
-            }
+                "severity": "error",
+            },
         ]
 
-    def get_form_mapping(self) -> Dict[str, str]:
-        """Get mapping from extracted data to form fields."""
-        return {
-            "matricula": "carnet_funcionario.datos_carnet.numero_carnet",
-            "apellidos": "carnet_funcionario.datos_carnet.apellidos",
-            "nombre": "carnet_funcionario.datos_carnet.nombre",
-            "categoria": "carnet_funcionario.datos_carnet.categoria",
-            "nivel": "carnet_funcionario.datos_carnet.nivel",
-            "ministerio": "carnet_funcionario.datos_carnet.ministerio",
-            "unidad": "carnet_funcionario.datos_carnet.unidad_organica",
-            "numero_dip": "documento_identidad.documento.numero_dip"
-        }
+    # === Business Logic ===
 
-    def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """Get the specific workflow code."""
-        return WorkflowCode.FP_CERTIFICADO_ADMINISTRATIVO
+    def calculate_total_tariff(
+        self,
+        certificate_type: str,
+        num_copies: int = 1,
+        urgente: bool = False,
+    ) -> int:
+        """Calculate total tariff including copies and urgency surcharge.
 
-    def get_estimated_processing_days(self, sub_type: str, urgente: bool = False) -> int:
-        """
-        Get estimated processing time in business days.
+        Business rules:
+        - Additional copies: 50% of base price each
+        - Urgent processing: +50% surcharge on total
 
         Args:
-            sub_type: Type of certificate
+            certificate_type: CertificadoTipo value
+            num_copies: Number of copies (1-5)
             urgente: Whether urgent processing is requested
 
         Returns:
-            Estimated days for processing
+            Total amount in XAF
         """
-        base_days = self.PROCESSING_DAYS.get(sub_type, 3)
-        if urgente:
-            return 1  # 24-48 hours = 1 business day
-        return base_days
+        base_tariff = TARIFFS_BY_TYPE.get(certificate_type, 2500)
 
-    def get_agent_verification_items(self, sub_type: str) -> List[Dict[str, str]]:
-        """Get verification checklist items for agent."""
-        items = [
+        # Additional copies at 50% of base
+        additional_copies_cost = (num_copies - 1) * int(base_tariff * 0.5)
+        total = base_tariff + additional_copies_cost
+
+        # Urgent surcharge: +50%
+        if urgente:
+            total = int(total * 1.5)
+
+        return total
+
+    def get_estimated_processing_days(
+        self,
+        certificate_type: str,
+        urgente: bool = False,
+    ) -> int:
+        """Get estimated processing time in business days.
+
+        Args:
+            certificate_type: CertificadoTipo value
+            urgente: Whether urgent processing is requested
+
+        Returns:
+            Estimated business days
+        """
+        if urgente:
+            return 1  # 24-48 hours
+        return PROCESSING_DAYS.get(certificate_type, 3)
+
+    def get_certificate_template(self, certificate_type: str) -> str:
+        """Get template identifier for certificate generation.
+
+        Args:
+            certificate_type: CertificadoTipo value
+
+        Returns:
+            Template ID string (e.g., "CERT_FP_SERVICIOS_V1")
+        """
+        return CERTIFICATE_TEMPLATES.get(certificate_type, "CERT_FP_GENERICO_V1")
+
+    def get_agent_verification_items(
+        self,
+        certificate_type: str,
+    ) -> List[Dict[str, Any]]:
+        """Get verification checklist for agent review.
+
+        Args:
+            certificate_type: CertificadoTipo value
+
+        Returns:
+            List of checklist items with id, label_es, required
+        """
+        items: List[Dict[str, Any]] = [
             {
                 "id": "matricula_verified",
                 "label_es": "He verificado la matrícula en SIGEF",
-                "required": True
+                "required": True,
             },
             {
                 "id": "datos_actualizados",
                 "label_es": "He verificado que los datos están actualizados en el sistema",
-                "required": True
-            }
+                "required": True,
+            },
         ]
 
-        if sub_type == "SERVICIOS_PRESTADOS":
+        if certificate_type == "SERVICIOS_PRESTADOS":
             items.append({
                 "id": "historial_completo",
                 "label_es": "He generado el historial completo de servicios",
-                "required": True
+                "required": True,
             })
 
-        if sub_type == "HABERES":
+        if certificate_type == "HABERES":
             items.append({
                 "id": "nomina_verificada",
                 "label_es": "He verificado la nómina vigente en el sistema de haberes",
-                "required": True
+                "required": True,
             })
 
-        if sub_type == "BUENA_CONDUCTA":
-            items.append({
-                "id": "expedientes_revisados",
-                "label_es": "He revisado la existencia de expedientes disciplinarios",
-                "required": True
-            })
-            items.append({
-                "id": "sin_sanciones",
-                "label_es": "Confirmo ausencia de sanciones no canceladas",
-                "required": True
-            })
+        if certificate_type == "BUENA_CONDUCTA":
+            items.extend([
+                {
+                    "id": "expedientes_revisados",
+                    "label_es": "He revisado la existencia de expedientes disciplinarios",
+                    "required": True,
+                },
+                {
+                    "id": "sin_sanciones",
+                    "label_es": "Confirmo ausencia de sanciones no canceladas",
+                    "required": True,
+                },
+            ])
 
         return items
 
-    def get_certificate_template(self, sub_type: str) -> str:
-        """Get template identifier for certificate generation."""
-        templates = {
-            "SERVICIOS_PRESTADOS": "CERT_FP_SERVICIOS_V1",
-            "SITUACION_ADMINISTRATIVA": "CERT_FP_SITUACION_V1",
-            "HABERES": "CERT_FP_HABERES_V1",
-            "TIEMPO_SERVICIO": "CERT_FP_TIEMPO_V1",
-            "BUENA_CONDUCTA": "CERT_FP_CONDUCTA_V1"
-        }
-        return templates.get(sub_type, "CERT_FP_GENERICO_V1")
+
+# =============================================================================
+# Singleton & Registration
+# =============================================================================
+
+_workflow: Optional[CertificadoAdministrativoWorkflow] = None
+
+
+def get_certificado_administrativo_workflow() -> CertificadoAdministrativoWorkflow:
+    """Get or create the singleton CertificadoAdministrativo workflow instance."""
+    global _workflow
+    if _workflow is None:
+        _workflow = CertificadoAdministrativoWorkflow()
+    return _workflow

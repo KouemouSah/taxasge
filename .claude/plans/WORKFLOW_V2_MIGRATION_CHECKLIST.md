@@ -153,7 +153,7 @@
 | Vehiculo | v1 BaseWorkflow | 🟡 MEDIUM | 5-7j | ⏳ |
 | Carnet Funcionario | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Verificacion | v2 PredefinedWorkflow | - | - | ✅ Migré |
-| Certificado Admin | v1 BaseWorkflow | 🟢 LOW | 2-3j | ⏳ |
+| Certificado Admin | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Permiso Extraordinario | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Promocion Admin | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Generic Standard | v1 BaseWorkflow | N/A | N/A | DB-driven (intentionnel) |
