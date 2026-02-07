@@ -81,18 +81,28 @@ class WorkflowEngine:
         """
         Register a workflow class.
 
+        Supports multi-code workflows: if the workflow has get_all_workflow_codes(),
+        registers the same instance under each code.
+
         Args:
             workflow_class: The workflow class to register
         """
         workflow = workflow_class()
-        code = workflow.workflow_code
 
-        if code in self._workflows:
-            logger.warning(f"Workflow {code.value} already registered, replacing")
+        # Multi-code registration: one workflow instance → N workflow codes
+        codes: List[WorkflowCode] = []
+        if hasattr(workflow, 'get_all_workflow_codes'):
+            codes = workflow.get_all_workflow_codes()
+        else:
+            codes = [workflow.workflow_code]
 
-        self._workflows[code] = workflow
-        self._workflow_classes[code] = workflow_class
-        logger.info(f"Registered workflow: {code.value}")
+        for code in codes:
+            if code in self._workflows:
+                logger.warning(f"Workflow {code.value} already registered, replacing")
+            self._workflows[code] = workflow
+            self._workflow_classes[code] = workflow_class
+
+        logger.info(f"Registered workflow: {workflow.workflow_code.value} ({len(codes)} codes)")
 
     def register_many(self, workflow_classes: List[Type[AnyWorkflow]]) -> None:
         """Register multiple workflow classes."""
@@ -1149,8 +1159,8 @@ def register_all_workflows() -> None:
     It registers all workflow classes so they can be retrieved via
     workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
     
-    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario, VerificacionFuncionario, PermisoExtraordinario, CertificadoAdministrativo
-    v1 (BaseWorkflow): Residencia, Vehiculo
+    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario, VerificacionFuncionario, PermisoExtraordinario, CertificadoAdministrativo, Matriculacion, Inspeccion, Duplicado
+    v1 (BaseWorkflow): Residencia
     """
     # v2 workflows (PredefinedWorkflow - autonomous)
     from ..workflows import (
@@ -1162,12 +1172,15 @@ def register_all_workflows() -> None:
         VerificacionFuncionarioWorkflow,
         PermisoExtraordinarioWorkflow,
         CertificadoAdministrativoWorkflow,
+        # Vehiculo v2 (3 workflows by domain) - Migrated 2026-02-07
+        MatriculacionTransferenciaWorkflow,
+        InspeccionVehiculoWorkflow,
+        DuplicadoVehiculoWorkflow,
     )
 
     # v1 workflows (BaseWorkflow - legacy, to be migrated)
     from ..workflows import (
         ResidenciaWorkflow,
-        VehiculoWorkflow,
     )
 
     v2_workflows = [
@@ -1179,11 +1192,14 @@ def register_all_workflows() -> None:
         VerificacionFuncionarioWorkflow,
         PermisoExtraordinarioWorkflow,
         CertificadoAdministrativoWorkflow,
+        # Vehiculo v2 (7 WorkflowCodes via get_all_workflow_codes())
+        MatriculacionTransferenciaWorkflow,
+        InspeccionVehiculoWorkflow,
+        DuplicadoVehiculoWorkflow,
     ]
 
     v1_workflows = [
         ResidenciaWorkflow,
-        VehiculoWorkflow,
     ]
 
     workflows_to_register: List[Type[AnyWorkflow]] = v2_workflows + v1_workflows

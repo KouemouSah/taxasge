@@ -83,24 +83,34 @@ function FormSectionCard({
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2">
-          {section.fields.map((field) => (
-            <div
-              key={field.key}
-              className={cn(
-                // Full width for textarea
-                field.type === 'textarea' && 'sm:col-span-2'
-              )}
-            >
-              <DynamicField
-                field={field}
-                value={values[field.key] ?? field.current_value}
-                onChange={(value) => onChange(field.key, value)}
-                locale={locale}
-                disabled={disabled}
-                error={errors?.[field.key]}
-              />
-            </div>
-          ))}
+          {section.fields.map((field) => {
+            // Conditional visibility: hide field when show_when condition is not met
+            if (field.show_when) {
+              const watchValue = String(values[field.show_when.field] ?? '')
+              if (watchValue !== field.show_when.value) {
+                return null
+              }
+            }
+
+            return (
+              <div
+                key={field.key}
+                className={cn(
+                  // Full width for textarea
+                  field.type === 'textarea' && 'sm:col-span-2'
+                )}
+              >
+                <DynamicField
+                  field={field}
+                  value={values[field.key] ?? field.current_value}
+                  onChange={(value) => onChange(field.key, value)}
+                  locale={locale}
+                  disabled={disabled}
+                  error={errors?.[field.key]}
+                />
+              </div>
+            )
+          })}
         </div>
       </CardContent>
     </Card>

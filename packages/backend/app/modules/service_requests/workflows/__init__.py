@@ -69,6 +69,20 @@ from .funcion_publica.certificado_workflow import (
     get_certificado_administrativo_workflow,
 )
 
+# Vehiculo workflows v2 (autonomous, split by domain) - Migrated 2026-02-07
+from .vehiculos.matriculacion_workflow import (
+    MatriculacionTransferenciaWorkflow,
+    get_matriculacion_transferencia_workflow,
+)
+from .vehiculos.inspeccion_workflow import (
+    InspeccionVehiculoWorkflow,
+    get_inspeccion_vehiculo_workflow,
+)
+from .vehiculos.duplicado_workflow import (
+    DuplicadoVehiculoWorkflow,
+    get_duplicado_vehiculo_workflow,
+)
+
 # =============================================================================
 # LEGACY (v1) - For backward compatibility
 # =============================================================================
@@ -79,11 +93,6 @@ from .residencia_workflow import (
     ResidenciaWorkflow,
     ResidenciaPhase,
     ResidenciaCategory
-)
-from .vehiculo_workflow import (
-    VehiculoWorkflow,
-    VehicleType,
-    VehicleService
 )
 
 # Generic workflows (data-driven from database)
@@ -138,16 +147,20 @@ __all__ = [
     "CertificadoTipo",
     "get_certificado_administrativo_workflow",
 
+    # Vehiculo v2 (3 workflows by domain)
+    "MatriculacionTransferenciaWorkflow",
+    "get_matriculacion_transferencia_workflow",
+    "InspeccionVehiculoWorkflow",
+    "get_inspeccion_vehiculo_workflow",
+    "DuplicadoVehiculoWorkflow",
+    "get_duplicado_vehiculo_workflow",
+
     # === LEGACY (v1) ===
     "BaseWorkflow",
     # Residencia workflow (3 phases)
     "ResidenciaWorkflow",
     "ResidenciaPhase",
     "ResidenciaCategory",
-    # Vehiculo workflow (RBC)
-    "VehiculoWorkflow",
-    "VehicleType",
-    "VehicleService",
     # Generic workflows (data-driven)
     "GenericWorkflowStandard",
     "GenericWorkflowDirectPayment",
