@@ -468,7 +468,7 @@ class StepExecutionResponse(BaseModel):
     success: bool
 
     # Step-specific results
-    options: Optional[List[str]] = None
+    options: Optional[List[Any]] = None
     selection: Optional[str] = None
     documents_required: Optional[List[Dict[str, Any]]] = None
     missing_documents: Optional[List[Dict[str, Any]]] = None
