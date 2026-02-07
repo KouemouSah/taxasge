@@ -8,7 +8,7 @@ Usage:
     workflow.get_form_config("form_review_1", context) -> FormConfig
 """
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 
 @dataclass
@@ -21,10 +21,12 @@ class FormField:
         label_es: Spanish label for display
         type: Field type (text, date, select, radio, checkbox, textarea)
         required: Whether field is mandatory
-        options: Options for select/radio fields
+        options: Options for select/radio fields (str or {"value": str, "label_es": str})
         readonly: Whether field is read-only
         placeholder_es: Placeholder text in Spanish
         validation: Validation rules (e.g., {"min_length": 2, "pattern": "^[A-Z]+"})
+        help_text_es: Helper text displayed below the field
+        show_when: Conditional visibility ({"field": "key", "value": "val"})
 
     Note:
         extraction_path is NOT included here - use workflow.get_form_mapping()
@@ -34,10 +36,12 @@ class FormField:
     label_es: str
     type: str = "text"
     required: bool = False
-    options: Optional[List[str]] = None
+    options: Optional[List[Union[str, Dict[str, str]]]] = None
     readonly: bool = False
     placeholder_es: Optional[str] = None
     validation: Optional[Dict[str, Any]] = None
+    help_text_es: Optional[str] = None
+    show_when: Optional[Dict[str, str]] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FormField":
@@ -50,7 +54,9 @@ class FormField:
             options=data.get("options"),
             readonly=data.get("readonly", False),
             placeholder_es=data.get("placeholder_es"),
-            validation=data.get("validation")
+            validation=data.get("validation"),
+            help_text_es=data.get("help_text_es"),
+            show_when=data.get("show_when"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -68,6 +74,10 @@ class FormField:
             result["placeholder_es"] = self.placeholder_es
         if self.validation:
             result["validation"] = self.validation
+        if self.help_text_es:
+            result["help_text_es"] = self.help_text_es
+        if self.show_when:
+            result["show_when"] = self.show_when
         return result
 
 

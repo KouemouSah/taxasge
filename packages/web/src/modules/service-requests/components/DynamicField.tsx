@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import type { DynamicFieldProps, FormField } from '../types/form-config'
+import type { DynamicFieldProps, FormField, FormFieldOption } from '../types/form-config'
 
 /**
  * Get the appropriate label for the current locale
@@ -55,6 +55,18 @@ const UNKNOWN_TYPE_WARNINGS: Record<string, string> = {
   es: 'Tipo de campo desconocido, usando texto por defecto',
   fr: 'Type de champ inconnu, utilisation du texte par défaut',
   en: 'Unknown field type, falling back to text',
+}
+
+/**
+ * Normalize option to extract value and display label.
+ * Handles both string options ("M") and object options ({value: "TURISMO", label_es: "Turismo"}).
+ */
+function getOptionValue(option: string | FormFieldOption): string {
+  return typeof option === 'string' ? option : option.value
+}
+
+function getOptionLabel(option: string | FormFieldOption): string {
+  return typeof option === 'string' ? option : option.label_es
 }
 
 /**
@@ -92,6 +104,12 @@ export function DynamicField({
       <p className="text-sm text-red-500 mt-1">{error}</p>
     ) : null
 
+  // Help text component
+  const HelpText = () =>
+    field.help_text_es && !error ? (
+      <p className="text-xs text-muted-foreground mt-1">{field.help_text_es}</p>
+    ) : null
+
   // Render based on field type
   switch (field.type) {
     case 'text':
@@ -117,6 +135,7 @@ export function DynamicField({
             aria-describedby={error ? `${fieldId}-error` : undefined}
           />
           <ErrorMessage />
+          <HelpText />
         </div>
       )
 
@@ -138,6 +157,7 @@ export function DynamicField({
             aria-invalid={!!error}
           />
           <ErrorMessage />
+          <HelpText />
         </div>
       )
 
@@ -160,6 +180,7 @@ export function DynamicField({
             aria-invalid={!!error}
           />
           <ErrorMessage />
+          <HelpText />
         </div>
       )
 
@@ -183,14 +204,19 @@ export function DynamicField({
               <SelectValue placeholder={placeholder || 'Seleccione...'} />
             </SelectTrigger>
             <SelectContent>
-              {field.options?.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
+              {field.options?.map((option) => {
+                const val = getOptionValue(option)
+                const label = getOptionLabel(option)
+                return (
+                  <SelectItem key={val} value={val}>
+                    {label}
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
           <ErrorMessage />
+          <HelpText />
         </div>
       )
 
@@ -204,26 +230,31 @@ export function DynamicField({
             disabled={isReadonly}
             className="flex flex-col space-y-2"
           >
-            {field.options?.map((option) => (
-              <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem
-                  value={option}
-                  id={`${fieldId}-${option}`}
-                  disabled={isReadonly}
-                />
-                <Label
-                  htmlFor={`${fieldId}-${option}`}
-                  className={cn(
-                    'text-sm font-normal',
-                    isReadonly && 'cursor-not-allowed text-muted-foreground'
-                  )}
-                >
-                  {option}
-                </Label>
-              </div>
-            ))}
+            {field.options?.map((option) => {
+              const val = getOptionValue(option)
+              const label = getOptionLabel(option)
+              return (
+                <div key={val} className="flex items-center space-x-2">
+                  <RadioGroupItem
+                    value={val}
+                    id={`${fieldId}-${val}`}
+                    disabled={isReadonly}
+                  />
+                  <Label
+                    htmlFor={`${fieldId}-${val}`}
+                    className={cn(
+                      'text-sm font-normal',
+                      isReadonly && 'cursor-not-allowed text-muted-foreground'
+                    )}
+                  >
+                    {label}
+                  </Label>
+                </div>
+              )
+            })}
           </RadioGroup>
           <ErrorMessage />
+          <HelpText />
         </div>
       )
 
@@ -249,6 +280,7 @@ export function DynamicField({
               {label}
             </Label>
             <ErrorMessage />
+            <HelpText />
           </div>
         </div>
       )
@@ -273,6 +305,7 @@ export function DynamicField({
             )}
           />
           <ErrorMessage />
+          <HelpText />
         </div>
       )
   }

@@ -5,7 +5,13 @@ These models are used for the GET /requests/{request_id}/form-config/{step_id} e
 that returns form configuration with pre-filled values.
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
+
+
+class FormFieldOptionResponse(BaseModel):
+    """Option with value and display label for select/radio fields."""
+    value: str
+    label_es: str
 
 
 class FormFieldResponse(BaseModel):
@@ -19,10 +25,12 @@ class FormFieldResponse(BaseModel):
     label_es: str = Field(..., description="Spanish label for display")
     type: str = Field(default="text", description="Field type: text, date, select, radio, checkbox, textarea")
     required: bool = Field(default=False, description="Whether field is mandatory")
-    options: Optional[List[str]] = Field(default=None, description="Options for select/radio fields")
+    options: Optional[List[Union[str, FormFieldOptionResponse]]] = Field(default=None, description="Options for select/radio fields (string or {value, label_es})")
     readonly: bool = Field(default=False, description="Whether field is read-only")
     placeholder_es: Optional[str] = Field(default=None, description="Placeholder text in Spanish")
     validation: Optional[Dict[str, Any]] = Field(default=None, description="Validation rules")
+    help_text_es: Optional[str] = Field(default=None, description="Helper text displayed below the field")
+    show_when: Optional[Dict[str, str]] = Field(default=None, description="Conditional visibility: {field: key, value: val}")
     current_value: Optional[Any] = Field(default=None, description="Pre-filled value from extraction")
 
     class Config:
@@ -117,6 +125,8 @@ class FormConfigResponse(BaseModel):
                     readonly=f.readonly,
                     placeholder_es=f.placeholder_es,
                     validation=f.validation,
+                    help_text_es=f.help_text_es,
+                    show_when=f.show_when,
                     current_value=None  # Will be filled by API endpoint
                 )
                 for f in section.fields

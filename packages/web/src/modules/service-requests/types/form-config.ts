@@ -16,6 +16,14 @@
 // =============================================================================
 
 /**
+ * Option for select/radio fields - can be a plain string or an object with value + label
+ */
+export interface FormFieldOption {
+  value: string
+  label_es: string
+}
+
+/**
  * Supported field types for dynamic forms
  */
 export type FormFieldType =
@@ -24,6 +32,7 @@ export type FormFieldType =
   | 'select'
   | 'radio'
   | 'checkbox'
+  | 'boolean'
   | 'textarea'
   | 'number'
   | 'email'
@@ -47,6 +56,13 @@ export interface FormFieldValidation {
  * Note: extraction_path is NOT included - the backend resolves values
  * via workflow.get_form_mapping() and sends them in currentValue.
  */
+export interface FormFieldShowWhen {
+  /** Field key to watch */
+  field: string
+  /** Value that triggers visibility */
+  value: string
+}
+
 export interface FormField {
   /** Unique field identifier (e.g., 'numero_dip', 'apellidos') */
   key: string
@@ -56,16 +72,20 @@ export interface FormField {
   type: FormFieldType
   /** Whether field is mandatory */
   required: boolean
-  /** Options for select/radio fields */
-  options?: string[]
+  /** Options for select/radio fields (string or {value, label_es}) */
+  options?: (string | FormFieldOption)[]
   /** Whether field is read-only */
   readonly?: boolean
   /** Placeholder text in Spanish */
   placeholder_es?: string
   /** Validation rules */
   validation?: FormFieldValidation
+  /** Helper text displayed below the field */
+  help_text_es?: string
   /** Pre-filled value from extraction (already resolved by backend) */
   current_value?: unknown
+  /** Conditional visibility: show field only when another field has a specific value */
+  show_when?: FormFieldShowWhen
 }
 
 // =============================================================================
@@ -124,11 +144,13 @@ export interface FormFieldResponse {
   label_es: string
   type: string
   required: boolean
-  options?: string[]
+  options?: (string | FormFieldOption)[]
   readonly?: boolean
   placeholder_es?: string
   validation?: Record<string, unknown>
+  help_text_es?: string
   current_value?: unknown
+  show_when?: { field: string; value: string }
 }
 
 /**
@@ -208,7 +230,9 @@ export function parseFormConfigResponse(response: FormConfigResponse): FormConfi
         readonly: field.readonly,
         placeholder_es: field.placeholder_es,
         validation: field.validation as FormFieldValidation | undefined,
+        help_text_es: field.help_text_es,
         current_value: field.current_value,
+        show_when: field.show_when,
       })),
     })),
   }
@@ -298,6 +322,14 @@ export function validateFormConfig(
 
   for (const section of config.sections) {
     for (const field of section.fields) {
+      // Skip validation for conditionally hidden fields
+      if (field.show_when) {
+        const watchValue = values[field.show_when.field]
+        if (String(watchValue ?? '') !== field.show_when.value) {
+          continue
+        }
+      }
+
       const value = values[field.key]
 
       // Required validation

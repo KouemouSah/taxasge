@@ -1687,6 +1687,8 @@ async def get_form_config(
                 readonly=field.readonly,
                 placeholder_es=field.placeholder_es,
                 validation=field.validation,
+                help_text_es=field.help_text_es,
+                show_when=field.show_when,
                 current_value=current_value
             ))
 
