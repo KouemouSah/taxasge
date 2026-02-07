@@ -152,7 +152,7 @@
 | Residencia | v1 BaseWorkflow | 🔴 HIGH | 5-7j | ⏳ |
 | Vehiculo | v1 BaseWorkflow | 🟡 MEDIUM | 5-7j | ⏳ |
 | Carnet Funcionario | v2 PredefinedWorkflow | - | - | ✅ Migré |
-| Verificacion | v1 BaseWorkflow | 🟢 LOW | 1-2j | ⏳ |
+| Verificacion | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Certificado Admin | v1 BaseWorkflow | 🟢 LOW | 2-3j | ⏳ |
 | Permiso Extraordinario | v1 BaseWorkflow | 🟢 LOW | 1-2j | ⏳ |
 | Promocion Admin | v2 PredefinedWorkflow | - | - | ✅ Migré |
@@ -162,4 +162,4 @@
 ---
 
 *Dernière mise à jour : 2026-02-07*
-*Basé sur : pasaporte_workflow_v2.py, conducir_workflow.py, contrato_workflow.py, promocion_workflow.py, carnet_workflow.py*
+*Basé sur : pasaporte_workflow_v2.py, conducir_workflow.py, contrato_workflow.py, promocion_workflow.py, carnet_workflow.py, verificacion_workflow.py*

@@ -1149,8 +1149,8 @@ def register_all_workflows() -> None:
     It registers all workflow classes so they can be retrieved via
     workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
     
-    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario
-    v1 (BaseWorkflow): Residencia, Vehiculo, FuncionPublica (3 workflows)
+    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario, VerificacionFuncionario
+    v1 (BaseWorkflow): Residencia, Vehiculo, FuncionPublica (2 workflows: Permiso, Certificado)
     """
     # v2 workflows (PredefinedWorkflow - autonomous)
     from ..workflows import (
@@ -1159,13 +1159,13 @@ def register_all_workflows() -> None:
         ContratoWorkflow,
         PromocionAdministrativaWorkflow,
         CarnetFuncionarioWorkflow,
+        VerificacionFuncionarioWorkflow,
     )
 
     # v1 workflows (BaseWorkflow - legacy, to be migrated)
     from ..workflows import (
         ResidenciaWorkflow,
         VehiculoWorkflow,
-        VerificacionFuncionarioWorkflow,
         PermisoExtraordinarioWorkflow,
         CertificadoAdministrativoWorkflow
     )
@@ -1176,12 +1176,12 @@ def register_all_workflows() -> None:
         ContratoWorkflow,
         PromocionAdministrativaWorkflow,
         CarnetFuncionarioWorkflow,
+        VerificacionFuncionarioWorkflow,
     ]
 
     v1_workflows = [
         ResidenciaWorkflow,
         VehiculoWorkflow,
-        VerificacionFuncionarioWorkflow,
         PermisoExtraordinarioWorkflow,
         CertificadoAdministrativoWorkflow,
     ]
