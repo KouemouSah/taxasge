@@ -55,6 +55,13 @@ from .funcion_publica.verificacion_workflow import (
     get_verificacion_funcionario_workflow,
 )
 
+# PermisoExtraordinario workflow v2 (autonomous) - Migrated 2026-02-07
+from .funcion_publica.permiso_workflow import (
+    PermisoExtraordinarioWorkflow,
+    PermisoMotivo,
+    get_permiso_extraordinario_workflow,
+)
+
 # =============================================================================
 # LEGACY (v1) - For backward compatibility
 # =============================================================================
@@ -75,10 +82,8 @@ from .vehiculo_workflow import (
 
 # FuncionPublica workflows (remaining v1)
 from .funcion_publica import (
-    PermisoExtraordinarioWorkflow,
     CertificadoAdministrativoWorkflow
 )
-from .funcion_publica.permiso_workflow import PermisoMotivo
 from .funcion_publica.certificado_workflow import CertificadoTipo
 
 # Generic workflows (data-driven from database)
@@ -124,6 +129,10 @@ __all__ = [
     # VerificacionFuncionario v2
     "VerificacionFuncionarioWorkflow",
     "get_verificacion_funcionario_workflow",
+    # PermisoExtraordinario v2
+    "PermisoExtraordinarioWorkflow",
+    "PermisoMotivo",
+    "get_permiso_extraordinario_workflow",
 
     # === LEGACY (v1) ===
     "BaseWorkflow",
@@ -136,9 +145,7 @@ __all__ = [
     "VehicleType",
     "VehicleService",
     # FuncionPublica workflows (MINFP) - remaining v1
-    "PermisoExtraordinarioWorkflow",
     "CertificadoAdministrativoWorkflow",
-    "PermisoMotivo",
     "CertificadoTipo",
     # Generic workflows (data-driven)
     "GenericWorkflowStandard",

@@ -154,7 +154,7 @@
 | Carnet Funcionario | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Verificacion | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Certificado Admin | v1 BaseWorkflow | 🟢 LOW | 2-3j | ⏳ |
-| Permiso Extraordinario | v1 BaseWorkflow | 🟢 LOW | 1-2j | ⏳ |
+| Permiso Extraordinario | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Promocion Admin | v2 PredefinedWorkflow | - | - | ✅ Migré |
 | Generic Standard | v1 BaseWorkflow | N/A | N/A | DB-driven (intentionnel) |
 | Generic DirectPayment | v1 BaseWorkflow | N/A | N/A | DB-driven (intentionnel) |
