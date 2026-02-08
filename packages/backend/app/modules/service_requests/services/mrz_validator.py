@@ -18,7 +18,7 @@ from typing import Dict, Any, List, Optional
 
 from loguru import logger
 
-from .schema_validation_engine import ValidationResult
+from .validation_types import ValidationResult
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
