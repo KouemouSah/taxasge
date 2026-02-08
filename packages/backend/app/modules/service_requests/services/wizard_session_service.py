@@ -213,44 +213,57 @@ class WizardSessionService:
             logger.error(f"[WizardSession] Cache error saving session {session_id}: {e}")
             return False
 
-    def _get_doc_requirements(
-        self,
-        workflow,
-        session: Dict[str, Any],
-        context=None,
-    ) -> List:
+    def _build_context(self, session: Dict[str, Any]) -> "WorkflowContext":
         """
-        Get document requirements from workflow, handling V1/V2 signature differences.
+        Build WorkflowContext from session data (V2 architecture).
+
+        All context parameters (solicitud_type, motivo, is_minor) are set
+        as explicit fields — NOT injected into form_data.
+        """
+        from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
+
+        # Coerce is_minor from session (RadioGroup stores strings)
+        is_minor_raw = session.get("is_minor", False)
+        is_minor = is_minor_raw is True or is_minor_raw == "true"
+
+        # Parse motivo
+        motivo = None
+        if session.get("motivo"):
+            try:
+                motivo = RenovacionMotivo(session["motivo"])
+            except ValueError:
+                pass
+
+        return WorkflowContext(
+            service_request_id=uuid4(),
+            user_id=UUID(session["user_id"]),
+            workflow_code=WorkflowCode(session["workflow_code"]),
+            solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
+            sub_type=session.get("sub_type"),
+            motivo=motivo,
+            is_minor=is_minor,
+            form_data=session.get("form_data", {}),
+            extracted_data=session.get("extracted_data", {}),
+        )
+
+    def _get_doc_requirements(self, workflow, context) -> List:
+        """
+        Get document requirements using V2 architecture.
 
         V2 (PredefinedWorkflow): get_document_requirements(solicitud_type, motivo, context)
-        V1 (BaseWorkflow):       get_document_requirements(sub_type)
-
-        Uses get_document_requirements_legacy() when available (Pasaporte, Conducir, Contrato)
-        to convert sub_type → (solicitud_type, motivo).
+        V1 (BaseWorkflow):       get_document_requirements(sub_type) — legacy only
         """
         if not hasattr(workflow, "get_document_requirements"):
             return []
 
-        # V2 workflows with legacy adapter (handles sub_type → solicitud_type+motivo)
-        if hasattr(workflow, "get_document_requirements_legacy"):
-            return workflow.get_document_requirements_legacy(
-                session.get("sub_type"), context
+        from ..workflows.workflow_interface import PredefinedWorkflow
+        if isinstance(workflow, PredefinedWorkflow):
+            return workflow.get_document_requirements(
+                context.solicitud_type, context.motivo, context
             )
 
-        # V2 workflows (PredefinedWorkflow) without legacy adapter
-        from ..workflows.workflow_interface import PredefinedWorkflow, RenovacionMotivo
-        if isinstance(workflow, PredefinedWorkflow):
-            motivo = None
-            if session.get("motivo"):
-                try:
-                    motivo = RenovacionMotivo(session["motivo"])
-                except ValueError:
-                    pass
-            solicitud_type = SolicitudType(session.get("solicitud_type", "expedicion"))
-            return workflow.get_document_requirements(solicitud_type, motivo, context)
-
-        # V1 workflows (BaseWorkflow) — takes sub_type string
-        return workflow.get_document_requirements(session.get("sub_type"))
+        # V1 fallback (GenericWorkflow only)
+        return workflow.get_document_requirements(context.sub_type)
 
     def _session_to_response(self, session: Dict[str, Any], workflow=None) -> WizardSessionResponse:
         """Convert session dict to response model."""
@@ -260,20 +273,8 @@ class WizardSessionService:
         required_documents = []
         if workflow:
             try:
-                # Build a minimal context for document requirements
-                from ..workflows.workflow_interface import WorkflowContext
-                ctx_form_data = dict(session.get("form_data", {}))
-                if session.get("is_minor") is not None and "is_minor" not in ctx_form_data:
-                    ctx_form_data["is_minor"] = session["is_minor"]
-                context = WorkflowContext(
-                    service_request_id=uuid4(),  # Placeholder
-                    user_id=UUID(session["user_id"]),
-                    workflow_code=WorkflowCode(session["workflow_code"]),
-                    solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
-                    sub_type=session.get("sub_type"),
-                    form_data=ctx_form_data,
-                )
-                doc_reqs = self._get_doc_requirements(workflow, session, context)
+                context = self._build_context(session)
+                doc_reqs = self._get_doc_requirements(workflow, context)
                 if doc_reqs:
                     for doc in doc_reqs:
                         if doc.should_show(context):
@@ -499,7 +500,8 @@ class WizardSessionService:
 
         # Get extraction schema key for this document
         extraction_schema_key = None
-        doc_reqs = self._get_doc_requirements(workflow, session)
+        context = self._build_context(session)
+        doc_reqs = self._get_doc_requirements(workflow, context)
         for doc_req in doc_reqs:
             if doc_req.document_code == document_code:
                 extraction_schema_key = doc_req.schema_key
@@ -713,7 +715,6 @@ class WizardSessionService:
             FormConfigResponse with sections, fields, and pre-filled values
         """
         from ..models.form_config import FormConfigResponse, FormFieldResponse, FormSectionResponse
-        from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
 
         logger.info(f"[WizardSession] Get form config: session={session_id}, step={step_id}")
 
@@ -723,29 +724,7 @@ class WizardSessionService:
         if not workflow:
             raise WizardSessionError(f"Workflow not found: {session['workflow_code']}")
 
-        # Build context from session cache
-        # Inject top-level session keys into form_data for condition evaluation
-        # (is_minor is stored at session level, _build_eval_context reads from form_data)
-        form_data = dict(session.get("form_data", {}))
-        if session.get("is_minor") is not None and "is_minor" not in form_data:
-            form_data["is_minor"] = session["is_minor"]
-
-        context = WorkflowContext(
-            service_request_id=uuid4(),  # Placeholder
-            user_id=UUID(session["user_id"]),
-            workflow_code=WorkflowCode(session["workflow_code"]),
-            solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
-            sub_type=session.get("sub_type"),
-            form_data=form_data,
-            extracted_data=session.get("extracted_data", {}),
-        )
-
-        # Set motivo if present
-        if session.get("motivo"):
-            try:
-                context.motivo = RenovacionMotivo(session["motivo"])
-            except ValueError:
-                pass
+        context = self._build_context(session)
 
         # Get form configuration (sections filtered by conditions)
         try:
@@ -860,30 +839,11 @@ class WizardSessionService:
             raise WizardSessionError(f"Workflow not found: {session['workflow_code']}")
 
         # Build context for validation and tariff
-        from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
-        form_data = dict(session.get("form_data", {}))
-        if session.get("is_minor") is not None and "is_minor" not in form_data:
-            form_data["is_minor"] = session["is_minor"]
-        context = WorkflowContext(
-            service_request_id=uuid4(),  # Placeholder
-            user_id=UUID(session["user_id"]),
-            workflow_code=WorkflowCode(session["workflow_code"]),
-            solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
-            sub_type=session.get("sub_type"),
-            form_data=form_data,
-            extracted_data=session.get("extracted_data", {}),
-        )
-
-        # Set motivo if present
-        if session.get("motivo"):
-            try:
-                context.motivo = RenovacionMotivo(session["motivo"])
-            except ValueError:
-                pass
+        context = self._build_context(session)
 
         # Check required documents
         missing_documents = []
-        doc_reqs = self._get_doc_requirements(workflow, session, context)
+        doc_reqs = self._get_doc_requirements(workflow, context)
         for doc_req in doc_reqs:
             if doc_req.should_show(context) and doc_req.is_required:
                 if doc_req.document_code not in session.get("documents", {}):

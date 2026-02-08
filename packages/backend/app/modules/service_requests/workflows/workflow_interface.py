@@ -142,23 +142,10 @@ class DocumentRequirement:
             return context.solicitud_type == SolicitudType.DUPLICADO
 
         if self.condition_type == DocumentConditionType.IS_MINOR:
-            age = context.get_user_age()
-            if age is not None:
-                return age < 18
-            # Fallback: check form_data flag (available before DIP upload)
-            is_minor_flag = context.form_data.get("is_minor")
-            return is_minor_flag is True or is_minor_flag == "true"
+            return context.is_minor
 
         if self.condition_type == DocumentConditionType.IS_ADULT:
-            age = context.get_user_age()
-            if age is not None:
-                return age >= 18
-            # Fallback: check form_data flag (available before DIP upload)
-            is_minor_flag = context.form_data.get("is_minor")
-            if is_minor_flag is True or is_minor_flag == "true":
-                return False
-            # If no age AND no is_minor flag, default to adult (most common case)
-            return True
+            return not context.is_minor
 
         if self.condition_type == DocumentConditionType.AGE_LESS_THAN:
             threshold = self.condition_value.get("age", 18)
@@ -232,7 +219,8 @@ class WorkflowContext:
     workflow_code: WorkflowCode
     solicitud_type: SolicitudType
     sub_type: Optional[str] = None  # Legacy: NUEVO, RENOVACION, etc.
-    motivo: Optional[RenovacionMotivo] = None  # NEW: For RENOVACION type
+    motivo: Optional[RenovacionMotivo] = None  # For RENOVACION type
+    is_minor: bool = False  # Set at SELECTION step (user declaration)
     current_step: int = 1
     status: ServiceRequestStatus = ServiceRequestStatus.DRAFT
 
@@ -1075,21 +1063,14 @@ class PredefinedWorkflow(ABC):
         Returns:
             Dict with keys like solicitud_type, motivo, is_minor, etc.
         """
-        # Determine is_minor from form_data or calculated age
-        is_minor = context.form_data.get("is_minor", False)
-        if not is_minor:
-            age = context.get_user_age()
-            if age is not None:
-                is_minor = age < 18
-
         eval_context = {
             # Core workflow values
             "solicitud_type": context.solicitud_type.value if context.solicitud_type else None,
             "motivo": context.motivo.value if context.motivo else None,
             "sub_type": context.sub_type,
 
-            # Calculated values
-            "is_minor": is_minor,
+            # Context parameters (set at SELECTION step)
+            "is_minor": str(context.is_minor).lower(),
 
             # User age (for age-based conditions like conducir)
             "age": context.get_user_age(),

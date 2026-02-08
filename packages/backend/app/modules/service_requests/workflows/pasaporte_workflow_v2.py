@@ -649,16 +649,8 @@ class PasaporteWorkflow(PredefinedWorkflow):
         """
         requirements = []
 
-        # Check if user is minor (from context if available)
-        is_minor = False
-        if context and context.form_data:
-            fecha_nacimiento = context.form_data.get("fecha_nacimiento")
-            if fecha_nacimiento:
-                is_minor = self._is_minor(fecha_nacimiento)
-            # Also check explicit is_minor flag in form_data (RadioGroup stores strings)
-            is_minor_flag = context.form_data.get("is_minor")
-            if is_minor_flag is True or is_minor_flag == "true":
-                is_minor = True
+        # is_minor from context (set at SELECTION step)
+        is_minor = context.is_minor if context else False
 
         # === DIP - Required for ADULTS only (minors use certificado_nacimiento) ===
         if not is_minor:
