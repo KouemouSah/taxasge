@@ -4,17 +4,17 @@ Agent Queue Service for Service Requests.
 Integrates service_requests with the agent_work_queue system.
 Enables agents to receive, process, and manage service requests.
 """
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List
 from uuid import UUID
 from datetime import datetime, timedelta
 from decimal import Decimal
 import asyncpg
 from loguru import logger
 
-from ..workflows.base_workflow import BaseWorkflow
 from ..workflows.workflow_interface import PredefinedWorkflow
 
-AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
+# All workflows are now v2 (PredefinedWorkflow)
+AnyWorkflow = PredefinedWorkflow
 from app.modules.agents.models import (
     AgentWorkQueueCreate,
     AssignmentCreate,

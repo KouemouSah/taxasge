@@ -9,7 +9,7 @@ Responsibilities:
 """
 import asyncio
 import json
-from typing import Dict, List, Optional, Type, Any, Union
+from typing import Dict, List, Optional, Type, Any
 from uuid import UUID
 from datetime import datetime
 import logging
@@ -22,16 +22,6 @@ from ..models.enums import (
     ServiceRequestStatus,
     SolicitudType
 )
-# v1 (legacy) - BaseWorkflow
-from ..workflows.base_workflow import (
-    BaseWorkflow,
-    WorkflowStep as BaseWorkflowStep,
-    WorkflowContext as BaseWorkflowContext,
-    ValidationResult as BaseValidationResult,
-    DocumentRequirement as BaseDocumentRequirement,
-    StepType
-)
-# v2 (new) - PredefinedWorkflow (autonomous)
 from ..workflows.workflow_interface import (
     WorkflowInterface,
     PredefinedWorkflow,
@@ -40,10 +30,11 @@ from ..workflows.workflow_interface import (
     ValidationResult,
     DocumentRequirement,
     RenovacionMotivo,
+    StepType,
 )
 
-# Type alias for any workflow (v1 or v2)
-AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
+# All workflows are now v2 (PredefinedWorkflow)
+AnyWorkflow = PredefinedWorkflow
 from .schema_loader import schema_loader
 from .gemini_document_processor import gemini_document_processor
 from .tariff_service import tariff_service
@@ -439,8 +430,11 @@ class WorkflowEngine:
 
         context.sub_type = selection
 
-        # Get documents required for this sub-type
-        docs = workflow.get_document_requirements(selection)
+        # Get documents required for this selection (V2 signature)
+        docs = workflow.get_document_requirements(
+            solicitud_type=SolicitudType.EXPEDICION,
+            context=context
+        )
 
         return {
             "selection": selection,
@@ -1204,12 +1198,8 @@ def register_all_workflows() -> None:
         TramitesVisadoWorkflow,
     ]
 
-    v1_workflows: list = []
-
-    workflows_to_register: List[Type[AnyWorkflow]] = v2_workflows + v1_workflows
-
-    workflow_engine.register_many(workflows_to_register)
-    logger.info(f"Registered {len(workflows_to_register)} workflows (v2: {len(v2_workflows)}, v1: {len(v1_workflows)})")
+    workflow_engine.register_many(v2_workflows)
+    logger.info(f"Registered {len(v2_workflows)} workflows (all v2)")
 
 
 # Auto-register workflows on module import

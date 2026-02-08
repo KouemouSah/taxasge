@@ -13,7 +13,7 @@ that have tariffs defined in code rather than database.
 """
 
 import asyncpg
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 import logging
 
 from ..workflows.workflow_interface import (
@@ -21,14 +21,13 @@ from ..workflows.workflow_interface import (
     WorkflowContext,
     RenovacionMotivo,
 )
-from ..workflows.base_workflow import BaseWorkflow
 from ..models.enums import SolicitudType
 from .tariff_service import tariff_service
 
 logger = logging.getLogger(__name__)
 
-# Type alias for any workflow
-AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
+# All workflows are now v2 (PredefinedWorkflow)
+AnyWorkflow = PredefinedWorkflow
 
 
 class TariffCalculator:
@@ -76,12 +75,13 @@ class TariffCalculator:
             }
         """
         # Determine workflow type and calculate accordingly
-        if isinstance(workflow, PredefinedWorkflow):
-            breakdown = self._calculate_from_predefined(workflow, context)
-            breakdown["source"] = "predefined"
-        else:
+        # GenericWorkflow (DB-driven) sets is_generic=True; all others use hardcoded tariffs
+        if getattr(workflow, 'is_generic', False):
             breakdown = await self._calculate_from_database(db, workflow, context)
             breakdown["source"] = "database"
+        else:
+            breakdown = self._calculate_from_predefined(workflow, context)
+            breakdown["source"] = "predefined"
 
         # Add penalties if requested
         if include_penalties and days_late > 0:

@@ -61,7 +61,7 @@ async def list_available_workflows(
 ) -> List[dict]:
     """Return list of available workflows for citizens"""
     if category:
-        from ..workflows.base_workflow import WorkflowCategory
+        from ..models.enums import WorkflowCategory
         try:
             cat = WorkflowCategory(category)
             workflows = workflow_engine.get_workflows_by_category(cat)

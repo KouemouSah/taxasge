@@ -5,16 +5,16 @@ Automatically calculates and schedules appointments (CITA) for service requests.
 Respects hardcoded workflow settings and applies automatic rules only when not defined.
 """
 from datetime import date, time, datetime, timedelta
-from typing import Optional, List, Dict, Any, Tuple, Union
+from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
 from dataclasses import dataclass
 from enum import Enum
 import asyncpg
 
-from ..workflows.base_workflow import BaseWorkflow
 from ..workflows.workflow_interface import PredefinedWorkflow
 
-AnyWorkflow = Union[BaseWorkflow, PredefinedWorkflow]
+# All workflows are now v2 (PredefinedWorkflow)
+AnyWorkflow = PredefinedWorkflow
 
 
 class DayOfWeek(int, Enum):

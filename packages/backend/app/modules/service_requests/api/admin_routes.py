@@ -6318,7 +6318,7 @@ async def sync_predefined_workflows(
     from ..services.workflow_engine import workflow_engine
     from ..models.enums import WorkflowCode, SolicitudType, TariffType
     from ..workflows.workflow_interface import PredefinedWorkflow
-    from ..workflows.base_workflow import BaseWorkflow
+    # BaseWorkflow removed (all workflows are now v2 PredefinedWorkflow)
 
     result = WorkflowSyncResult()
 

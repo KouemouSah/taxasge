@@ -1,12 +1,13 @@
 """
-Generic Workflows - Data-driven workflow implementations.
+Generic Workflows - Data-driven workflow implementations (V2 architecture).
 
 Two types of generic workflows:
 1. GenericWorkflowStandard - Agent validation BEFORE payment (default)
 2. GenericWorkflowDirectPayment - Direct payment WITHOUT agent validation
 
 These workflows load their configuration from the database (workflows table)
-instead of hardcoding it in Python classes.
+instead of hardcoding it in Python classes. They extend PredefinedWorkflow (V2)
+with DB-backed properties.
 
 Usage:
     # Load from database
@@ -22,19 +23,19 @@ Usage:
 """
 import asyncpg
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Type
-from datetime import datetime
+from typing import Dict, List, Any, Optional
 from uuid import UUID
 import logging
 
-from .base_workflow import (
-    BaseWorkflow,
+from .workflow_interface import (
+    PredefinedWorkflow,
     WorkflowStep,
     WorkflowContext,
     TariffConfig,
     DocumentRequirement,
     ValidationResult,
-    StepType
+    StepType,
+    RenovacionMotivo,
 )
 from ..models.enums import (
     WorkflowCode,
@@ -70,7 +71,7 @@ class WorkflowConfig:
     config: Dict[str, Any] = field(default_factory=dict)
 
 
-class GenericWorkflowStandard(BaseWorkflow):
+class GenericWorkflowStandard(PredefinedWorkflow):
     """
     Generic workflow with agent validation BEFORE payment.
 
@@ -87,22 +88,10 @@ class GenericWorkflowStandard(BaseWorkflow):
         ... → PAID → IN_PROGRESS → COMPLETED
     """
 
-    # Override class attributes with defaults
-    workflow_code: WorkflowCode = None  # Set from config
-    category: WorkflowCategory = WorkflowCategory.GENERAL
-    entity_code: EntityCode = EntityCode.GENERAL
-
-    service_name_es: str = "Servicio Genérico"
-    requires_nota_ingreso: bool = False
-    requires_appointment: bool = False
-    requires_agent_review: bool = True
-    allowed_sub_types: List[str] = []
-
     def __init__(
         self,
         config: Optional[Dict[str, Any]] = None,
         workflow_config: Optional[WorkflowConfig] = None,
-        sub_type: Optional[str] = None
     ):
         """
         Initialize generic workflow from configuration.
@@ -110,17 +99,66 @@ class GenericWorkflowStandard(BaseWorkflow):
         Args:
             config: Dict configuration (legacy)
             workflow_config: WorkflowConfig dataclass (preferred)
-            sub_type: Sub-type for the workflow
         """
+        # Set instance attributes BEFORE super().__init__() which calls _setup_workflow()
         self._config = workflow_config or self._parse_config(config or {})
         self._document_requirements: List[DocumentRequirement] = []
         self._tariff_data: Optional[Dict[str, Any]] = None
 
-        # Apply config to class attributes
+        # Set backing attributes for abstract properties
+        self._workflow_code = None
+        self._category = WorkflowCategory.GENERAL
+        self._entity_code = EntityCode.GENERAL
+        self._service_name_es = "Servicio Genérico"
+        self._requires_appointment_flag = False
+        self._requires_agent_review_flag = True
+
+        # Apply config to backing attributes
         self._apply_config()
 
-        # Call parent init (will call _setup_* methods)
-        super().__init__(sub_type=sub_type)
+        # PredefinedWorkflow.__init__ calls _setup_workflow()
+        super().__init__()
+
+    # === Abstract Properties (backed by instance attributes from DB) ===
+
+    @property
+    def workflow_code(self) -> WorkflowCode:
+        return self._workflow_code
+
+    @property
+    def category(self) -> WorkflowCategory:
+        return self._category
+
+    @property
+    def entity_code(self) -> EntityCode:
+        return self._entity_code
+
+    @property
+    def service_name_es(self) -> str:
+        return self._service_name_es
+
+    @property
+    def allowed_solicitud_types(self) -> List[SolicitudType]:
+        return [SolicitudType.EXPEDICION]
+
+    @property
+    def requires_appointment(self) -> bool:
+        return self._requires_appointment_flag
+
+    @property
+    def requires_agent_review(self) -> bool:
+        return self._requires_agent_review_flag
+
+    @property
+    def allowed_sub_types(self) -> List[str]:
+        return []
+
+    @property
+    def is_generic(self) -> bool:
+        """Marker for tariff_calculator: use DB tariffs, not hardcoded."""
+        return True
+
+    # === Config Helpers ===
 
     def _parse_config(self, config: Dict[str, Any]) -> WorkflowConfig:
         """Parse dict config into WorkflowConfig."""
@@ -144,37 +182,33 @@ class GenericWorkflowStandard(BaseWorkflow):
         )
 
     def _apply_config(self) -> None:
-        """Apply configuration to class attributes."""
-        # Map workflow code
+        """Apply configuration to backing attributes."""
         try:
-            self.workflow_code = WorkflowCode(self._config.code)
+            self._workflow_code = WorkflowCode(self._config.code)
         except ValueError:
-            # Code not in enum - use as string
-            self.workflow_code = self._config.code
+            self._workflow_code = self._config.code
 
-        # Map category
         try:
-            self.category = WorkflowCategory(self._config.category)
+            self._category = WorkflowCategory(self._config.category)
         except ValueError:
-            self.category = WorkflowCategory.GENERAL
+            self._category = WorkflowCategory.GENERAL
 
-        # Map entity
         try:
-            self.entity_code = EntityCode(self._config.entity_code)
+            self._entity_code = EntityCode(self._config.entity_code)
         except ValueError:
-            self.entity_code = EntityCode.GENERAL
+            self._entity_code = EntityCode.GENERAL
 
-        # Apply other settings
-        self.service_name_es = self._config.name_es
-        self.requires_appointment = self._config.requires_appointment
-        self.requires_agent_review = self._config.requires_agent_validation
+        self._service_name_es = self._config.name_es
+        self._requires_appointment_flag = self._config.requires_appointment
+        self._requires_agent_review_flag = self._config.requires_agent_validation
+
+    # === Database Loading ===
 
     @classmethod
     async def from_database(
         cls,
         db: asyncpg.Connection,
         workflow_code: str,
-        sub_type: Optional[str] = None
     ) -> "GenericWorkflowStandard":
         """
         Load workflow configuration from database.
@@ -182,12 +216,10 @@ class GenericWorkflowStandard(BaseWorkflow):
         Args:
             db: Database connection
             workflow_code: Workflow code to load
-            sub_type: Optional sub-type
 
         Returns:
             Configured GenericWorkflowStandard instance
         """
-        # Load workflow config
         row = await db.fetchrow(
             """
             SELECT code, name_es, description_es, category, entity_code,
@@ -222,13 +254,10 @@ class GenericWorkflowStandard(BaseWorkflow):
             config=row["config"] or {}
         )
 
-        # Create instance
-        instance = cls(workflow_config=config, sub_type=sub_type)
+        instance = cls(workflow_config=config)
 
-        # Load document requirements
+        # Populate docs and tariffs AFTER construction
         await instance._load_document_requirements(db, workflow_code)
-
-        # Load tariff data
         await instance._load_tariff_data(db, workflow_code)
 
         return instance
@@ -252,7 +281,6 @@ class GenericWorkflowStandard(BaseWorkflow):
 
         self._document_requirements = []
         for row in rows:
-            # Parse condition type
             try:
                 condition_type = DocumentConditionType(row["condition_type"])
             except ValueError:
@@ -290,106 +318,142 @@ class GenericWorkflowStandard(BaseWorkflow):
 
         if row:
             self._tariff_data = dict(row)
+            # Update tariff config with DB data
+            self._setup_tariff_from_data()
 
-    # === Abstract Method Implementations ===
+    def _setup_tariff_from_data(self) -> None:
+        """Update tariff config from loaded DB data."""
+        if not self._tariff_data:
+            return
+        tariff_type_str = self._tariff_data.get("tariff_type", "FIXED")
+        try:
+            tariff_type = TariffType(tariff_type_str)
+        except ValueError:
+            tariff_type = TariffType.FIXED
 
-    def _setup_specific_steps(self) -> None:
+        self._tariff_config = TariffConfig(
+            tariff_type=tariff_type,
+            fixed_amounts={"DEFAULT": int(self._tariff_data.get("amount", 0))},
+            percentage=self._tariff_data.get("percentage_rate"),
+            currency=self._tariff_data.get("currency", "XAF")
+        )
+
+    # === V2 Abstract Method Implementations ===
+
+    def _setup_workflow(self) -> None:
         """
-        Setup workflow-specific steps.
+        Setup ALL steps explicitly (V2 = autonomous, no inherited steps).
 
-        For GenericWorkflowStandard:
-        - Step 5: Agent Review (validation by agent)
-        - Step 6: Payment
-        - Step 7: Appointment (if required)
-        - Step 8: Confirmation
+        Standard flow steps:
+        0: Selection → 1: Upload → 2: Form Review
+        → 3: Agent Review → 4: Payment → (5: Appointment) → N: Confirmation
         """
-        # Step 5: Agent Review
-        self._steps.append(WorkflowStep(
-            step_number=5,
+        # Step 0: Selection
+        self.add_step(WorkflowStep(
+            step_number=0,
+            step_id="select_type",
+            step_type=StepType.SELECTION,
+            title_es="Tipo de Solicitud",
+            description_es="Seleccione el tipo de trámite que desea realizar",
+            requires_previous=False
+        ))
+
+        # Step 1: Document Upload
+        self.add_step(WorkflowStep(
+            step_number=1,
+            step_id="upload_documents",
+            step_type=StepType.DOCUMENT_UPLOAD,
+            title_es="Documentos Requeridos",
+            description_es="Cargue los documentos necesarios para su solicitud",
+        ))
+
+        # Step 2: Form Review
+        self.add_step(WorkflowStep(
+            step_number=2,
+            step_id="form_review_1",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos",
+            description_es="Verifique y corrija los datos extraídos de sus documentos",
+        ))
+
+        # Step 3: Agent Review
+        self.add_step(WorkflowStep(
+            step_number=3,
             step_id="agent_review",
             step_type=StepType.AGENT_REVIEW,
             title_es="Revisión por Agente",
             description_es="Un agente revisará y validará su solicitud",
-            is_inherited=False
         ))
 
-        # Step 6: Payment
-        self._steps.append(WorkflowStep(
-            step_number=6,
+        # Step 4: Payment
+        self.add_step(WorkflowStep(
+            step_number=4,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago",
             description_es="Realice el pago de las tasas correspondientes",
-            is_inherited=False
         ))
 
-        # Step 7: Appointment (if required)
+        step_num = 5
+
+        # Step 5 (optional): Appointment
         if self._config.requires_appointment:
-            self._steps.append(WorkflowStep(
-                step_number=7,
+            self.add_step(WorkflowStep(
+                step_number=step_num,
                 step_id="appointment",
                 step_type=StepType.APPOINTMENT,
                 title_es="Cita",
                 description_es="Se le asignará una cita para completar el trámite",
-                is_inherited=False
             ))
+            step_num += 1
 
         # Final step: Confirmation
-        next_step_num = 8 if self._config.requires_appointment else 7
-        self._steps.append(WorkflowStep(
-            step_number=next_step_num,
+        self.add_step(WorkflowStep(
+            step_number=step_num,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación",
             description_es="Su solicitud ha sido procesada",
-            is_inherited=False
         ))
 
-    def _setup_tariffs(self) -> None:
-        """Setup tariff configuration from loaded data."""
-        if self._tariff_data:
-            tariff_type_str = self._tariff_data.get("tariff_type", "FIXED")
-            try:
-                tariff_type = TariffType(tariff_type_str)
-            except ValueError:
-                tariff_type = TariffType.FIXED
+        # Default tariff (overwritten by from_database → _load_tariff_data)
+        self.set_tariff_config(TariffConfig(
+            tariff_type=TariffType.FIXED,
+            fixed_amounts={"DEFAULT": 0}
+        ))
 
-            self._tariff_config = TariffConfig(
-                tariff_type=tariff_type,
-                fixed_amounts={"DEFAULT": int(self._tariff_data.get("amount", 0))},
-                percentage=self._tariff_data.get("percentage_rate"),
-                currency=self._tariff_data.get("currency", "XAF")
-            )
-        else:
-            # Default tariff
-            self._tariff_config = TariffConfig(
-                tariff_type=TariffType.FIXED,
-                fixed_amounts={"DEFAULT": 0}
-            )
-
-    def get_document_requirements(self, sub_type: str) -> List[DocumentRequirement]:
-        """Get document requirements, filtered by sub-type context."""
-        # Create a minimal context for filtering
-        context = WorkflowContext(
+    def get_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
+        """Get document requirements, filtered by context."""
+        if context:
+            return [
+                doc for doc in self._document_requirements
+                if doc.should_show(context)
+            ]
+        # No context: build minimal one for filtering
+        minimal_context = WorkflowContext(
             service_request_id=UUID("00000000-0000-0000-0000-000000000000"),
             user_id=UUID("00000000-0000-0000-0000-000000000000"),
-            workflow_code=self.workflow_code,
-            solicitud_type=SolicitudType.EXPEDICION,
-            sub_type=sub_type
+            workflow_code=self.workflow_code if isinstance(self.workflow_code, WorkflowCode) else WorkflowCode.GENERIC_STANDARD,
+            solicitud_type=solicitud_type,
+            motivo=motivo,
         )
-
         return [
             doc for doc in self._document_requirements
-            if doc.should_show(context)
+            if doc.should_show(minimal_context)
         ]
 
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """Get cross-document validation rules from config."""
-        return self._config.config.get("validation_rules", [])
+    def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
+        """Generic workflows have no predefined form mappings."""
+        return {}
 
     def _get_status_transitions(self) -> Dict[ServiceRequestStatus, ServiceRequestStatus]:
         """
-        Get status transitions for standard workflow.
+        Status transitions for standard workflow.
 
         Flow: DRAFT → SUBMITTED → UNDER_REVIEW → DOSSIER_VALIDE → PAYMENT_PENDING → PAID
         """
@@ -402,7 +466,6 @@ class GenericWorkflowStandard(BaseWorkflow):
             ServiceRequestStatus.PAYMENT_PROCESSING: ServiceRequestStatus.PAID,
         }
 
-        # Add appointment flow if required
         if self._config.requires_appointment:
             transitions[ServiceRequestStatus.PAID] = ServiceRequestStatus.CITA_SCHEDULED
             transitions[ServiceRequestStatus.CITA_SCHEDULED] = ServiceRequestStatus.IN_PROGRESS
@@ -414,7 +477,7 @@ class GenericWorkflowStandard(BaseWorkflow):
         return transitions
 
 
-class GenericWorkflowDirectPayment(BaseWorkflow):
+class GenericWorkflowDirectPayment(PredefinedWorkflow):
     """
     Generic workflow with direct payment WITHOUT agent validation.
 
@@ -422,30 +485,12 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
     DRAFT → SUBMITTED → PAYMENT_PENDING → PAID → IN_PROGRESS → COMPLETED
 
     No agent review step - payment happens immediately after submission.
-
-    Use cases:
-    - Cedula (ID card)
-    - Copies of documents
-    - Simple certificates
-    - Any workflow where documents are standard and don't need verification
     """
-
-    # Override class attributes
-    workflow_code: WorkflowCode = None
-    category: WorkflowCategory = WorkflowCategory.GENERAL
-    entity_code: EntityCode = EntityCode.GENERAL
-
-    service_name_es: str = "Servicio con Pago Directo"
-    requires_nota_ingreso: bool = False
-    requires_appointment: bool = False
-    requires_agent_review: bool = False  # KEY DIFFERENCE
-    allowed_sub_types: List[str] = []
 
     def __init__(
         self,
         config: Optional[Dict[str, Any]] = None,
         workflow_config: Optional[WorkflowConfig] = None,
-        sub_type: Optional[str] = None
     ):
         """Initialize direct payment workflow."""
         self._config = workflow_config or self._parse_config(config or {})
@@ -455,8 +500,56 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
         # Force no agent validation
         self._config.requires_agent_validation = False
 
+        # Set backing attributes for abstract properties
+        self._workflow_code = None
+        self._category = WorkflowCategory.GENERAL
+        self._entity_code = EntityCode.GENERAL
+        self._service_name_es = "Servicio con Pago Directo"
+        self._requires_appointment_flag = False
+        self._requires_agent_review_flag = False
+
         self._apply_config()
-        super().__init__(sub_type=sub_type)
+        super().__init__()
+
+    # === Abstract Properties ===
+
+    @property
+    def workflow_code(self) -> WorkflowCode:
+        return self._workflow_code
+
+    @property
+    def category(self) -> WorkflowCategory:
+        return self._category
+
+    @property
+    def entity_code(self) -> EntityCode:
+        return self._entity_code
+
+    @property
+    def service_name_es(self) -> str:
+        return self._service_name_es
+
+    @property
+    def allowed_solicitud_types(self) -> List[SolicitudType]:
+        return [SolicitudType.EXPEDICION]
+
+    @property
+    def requires_appointment(self) -> bool:
+        return self._requires_appointment_flag
+
+    @property
+    def requires_agent_review(self) -> bool:
+        return False  # Always false for direct payment
+
+    @property
+    def allowed_sub_types(self) -> List[str]:
+        return []
+
+    @property
+    def is_generic(self) -> bool:
+        return True
+
+    # === Config Helpers ===
 
     def _parse_config(self, config: Dict[str, Any]) -> WorkflowConfig:
         """Parse dict config into WorkflowConfig."""
@@ -466,13 +559,13 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
             description_es=config.get("description_es"),
             category=config.get("category", "general"),
             entity_code=config.get("entity_code", "GENERAL"),
-            workflow_type="direct_payment",  # Always direct payment
-            requires_agent_validation=False,  # Always false
+            workflow_type="direct_payment",
+            requires_agent_validation=False,
             requires_appointment=config.get("requires_appointment", False),
             is_generic=True,
             appointment_delay_days=config.get("appointment_delay_days"),
             appointment_entity_code=config.get("appointment_entity_code"),
-            sla_hours=config.get("sla_hours", 24),  # Faster SLA
+            sla_hours=config.get("sla_hours", 24),
             max_processing_days=config.get("max_processing_days", 7),
             display_order=config.get("display_order", 0),
             is_active=config.get("is_active", True),
@@ -480,32 +573,33 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
         )
 
     def _apply_config(self) -> None:
-        """Apply configuration to class attributes."""
+        """Apply configuration to backing attributes."""
         try:
-            self.workflow_code = WorkflowCode(self._config.code)
+            self._workflow_code = WorkflowCode(self._config.code)
         except ValueError:
-            self.workflow_code = self._config.code
+            self._workflow_code = self._config.code
 
         try:
-            self.category = WorkflowCategory(self._config.category)
+            self._category = WorkflowCategory(self._config.category)
         except ValueError:
-            self.category = WorkflowCategory.GENERAL
+            self._category = WorkflowCategory.GENERAL
 
         try:
-            self.entity_code = EntityCode(self._config.entity_code)
+            self._entity_code = EntityCode(self._config.entity_code)
         except ValueError:
-            self.entity_code = EntityCode.GENERAL
+            self._entity_code = EntityCode.GENERAL
 
-        self.service_name_es = self._config.name_es
-        self.requires_appointment = self._config.requires_appointment
-        self.requires_agent_review = False  # Always false for direct payment
+        self._service_name_es = self._config.name_es
+        self._requires_appointment_flag = self._config.requires_appointment
+        self._requires_agent_review_flag = False
+
+    # === Database Loading ===
 
     @classmethod
     async def from_database(
         cls,
         db: asyncpg.Connection,
         workflow_code: str,
-        sub_type: Optional[str] = None
     ) -> "GenericWorkflowDirectPayment":
         """Load workflow configuration from database."""
         row = await db.fetchrow(
@@ -523,7 +617,6 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
         if not row:
             raise ValueError(f"Workflow not found or inactive: {workflow_code}")
 
-        # Verify it's a direct payment workflow
         if row["workflow_type"] != "direct_payment" and row["requires_agent_validation"]:
             logger.warning(
                 f"Workflow {workflow_code} is not configured as direct_payment, "
@@ -536,8 +629,8 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
             description_es=row["description_es"],
             category=row["category"],
             entity_code=row["entity_code"],
-            workflow_type="direct_payment",  # Force direct payment
-            requires_agent_validation=False,  # Force no validation
+            workflow_type="direct_payment",
+            requires_agent_validation=False,
             requires_appointment=row["requires_appointment"],
             is_generic=row["is_generic"],
             appointment_delay_days=row["appointment_delay_days"],
@@ -549,7 +642,7 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
             config=row["config"] or {}
         )
 
-        instance = cls(workflow_config=config, sub_type=sub_type)
+        instance = cls(workflow_config=config)
         await instance._load_document_requirements(db, workflow_code)
         await instance._load_tariff_data(db, workflow_code)
 
@@ -611,107 +704,142 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
 
         if row:
             self._tariff_data = dict(row)
+            self._setup_tariff_from_data()
 
-    # === Abstract Method Implementations ===
+    def _setup_tariff_from_data(self) -> None:
+        """Update tariff config from loaded DB data."""
+        if not self._tariff_data:
+            return
+        tariff_type_str = self._tariff_data.get("tariff_type", "FIXED")
+        try:
+            tariff_type = TariffType(tariff_type_str)
+        except ValueError:
+            tariff_type = TariffType.FIXED
 
-    def _setup_specific_steps(self) -> None:
+        self._tariff_config = TariffConfig(
+            tariff_type=tariff_type,
+            fixed_amounts={"DEFAULT": int(self._tariff_data.get("amount", 0))},
+            percentage=self._tariff_data.get("percentage_rate"),
+            currency=self._tariff_data.get("currency", "XAF")
+        )
+
+    # === V2 Abstract Method Implementations ===
+
+    def _setup_workflow(self) -> None:
         """
-        Setup workflow-specific steps.
+        Setup ALL steps explicitly (V2 = autonomous).
 
-        For GenericWorkflowDirectPayment:
-        - NO Agent Review step
-        - Step 5: Payment (directly after validation)
-        - Step 6: Appointment (if required)
-        - Step 7: Confirmation
+        Direct payment flow steps:
+        0: Selection → 1: Upload → 2: Form Review
+        → 3: Payment (NO agent review) → (4: Appointment) → N: Confirmation
         """
-        # Step 5: Payment (NO agent review!)
-        self._steps.append(WorkflowStep(
-            step_number=5,
+        # Step 0: Selection
+        self.add_step(WorkflowStep(
+            step_number=0,
+            step_id="select_type",
+            step_type=StepType.SELECTION,
+            title_es="Tipo de Solicitud",
+            description_es="Seleccione el tipo de trámite que desea realizar",
+            requires_previous=False
+        ))
+
+        # Step 1: Document Upload
+        self.add_step(WorkflowStep(
+            step_number=1,
+            step_id="upload_documents",
+            step_type=StepType.DOCUMENT_UPLOAD,
+            title_es="Documentos Requeridos",
+            description_es="Cargue los documentos necesarios para su solicitud",
+        ))
+
+        # Step 2: Form Review
+        self.add_step(WorkflowStep(
+            step_number=2,
+            step_id="form_review_1",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificar Datos",
+            description_es="Verifique y corrija los datos extraídos de sus documentos",
+        ))
+
+        # Step 3: Payment (NO agent review!)
+        self.add_step(WorkflowStep(
+            step_number=3,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago",
             description_es="Realice el pago de las tasas correspondientes",
-            is_inherited=False
         ))
 
-        # Step 6: Appointment (if required)
+        step_num = 4
+
+        # Step 4 (optional): Appointment
         if self._config.requires_appointment:
-            self._steps.append(WorkflowStep(
-                step_number=6,
+            self.add_step(WorkflowStep(
+                step_number=step_num,
                 step_id="appointment",
                 step_type=StepType.APPOINTMENT,
                 title_es="Cita",
                 description_es="Se le asignará una cita para recoger su documento",
-                is_inherited=False
             ))
+            step_num += 1
 
         # Final step: Confirmation
-        next_step_num = 7 if self._config.requires_appointment else 6
-        self._steps.append(WorkflowStep(
-            step_number=next_step_num,
+        self.add_step(WorkflowStep(
+            step_number=step_num,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación",
             description_es="Su solicitud ha sido procesada",
-            is_inherited=False
         ))
 
-    def _setup_tariffs(self) -> None:
-        """Setup tariff configuration."""
-        if self._tariff_data:
-            tariff_type_str = self._tariff_data.get("tariff_type", "FIXED")
-            try:
-                tariff_type = TariffType(tariff_type_str)
-            except ValueError:
-                tariff_type = TariffType.FIXED
+        # Default tariff (overwritten by from_database → _load_tariff_data)
+        self.set_tariff_config(TariffConfig(
+            tariff_type=TariffType.FIXED,
+            fixed_amounts={"DEFAULT": 0}
+        ))
 
-            self._tariff_config = TariffConfig(
-                tariff_type=tariff_type,
-                fixed_amounts={"DEFAULT": int(self._tariff_data.get("amount", 0))},
-                percentage=self._tariff_data.get("percentage_rate"),
-                currency=self._tariff_data.get("currency", "XAF")
-            )
-        else:
-            self._tariff_config = TariffConfig(
-                tariff_type=TariffType.FIXED,
-                fixed_amounts={"DEFAULT": 0}
-            )
-
-    def get_document_requirements(self, sub_type: str) -> List[DocumentRequirement]:
-        """Get document requirements."""
-        context = WorkflowContext(
+    def get_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None
+    ) -> List[DocumentRequirement]:
+        """Get document requirements, filtered by context."""
+        if context:
+            return [
+                doc for doc in self._document_requirements
+                if doc.should_show(context)
+            ]
+        minimal_context = WorkflowContext(
             service_request_id=UUID("00000000-0000-0000-0000-000000000000"),
             user_id=UUID("00000000-0000-0000-0000-000000000000"),
-            workflow_code=self.workflow_code,
-            solicitud_type=SolicitudType.EXPEDICION,
-            sub_type=sub_type
+            workflow_code=self.workflow_code if isinstance(self.workflow_code, WorkflowCode) else WorkflowCode.GENERIC_DIRECT_PAYMENT,
+            solicitud_type=solicitud_type,
+            motivo=motivo,
         )
-
         return [
             doc for doc in self._document_requirements
-            if doc.should_show(context)
+            if doc.should_show(minimal_context)
         ]
 
-    def get_cross_validation_rules(self) -> List[Dict[str, Any]]:
-        """Get cross-document validation rules."""
-        return self._config.config.get("validation_rules", [])
+    def get_form_mapping(self, context: Optional[WorkflowContext] = None) -> Dict[str, str]:
+        """Generic workflows have no predefined form mappings."""
+        return {}
 
     def _get_status_transitions(self) -> Dict[ServiceRequestStatus, ServiceRequestStatus]:
         """
-        Get status transitions for direct payment workflow.
+        Status transitions for direct payment workflow.
 
         Flow: DRAFT → SUBMITTED → PAYMENT_PENDING → PAID → ...
         NO UNDER_REVIEW or DOSSIER_VALIDE states!
         """
         transitions = {
             ServiceRequestStatus.DRAFT: ServiceRequestStatus.SUBMITTED,
-            # Direct to payment - NO agent review!
             ServiceRequestStatus.SUBMITTED: ServiceRequestStatus.PAYMENT_PENDING,
             ServiceRequestStatus.PAYMENT_PENDING: ServiceRequestStatus.PAYMENT_PROCESSING,
             ServiceRequestStatus.PAYMENT_PROCESSING: ServiceRequestStatus.PAID,
         }
 
-        # Add appointment flow if required
         if self._config.requires_appointment:
             transitions[ServiceRequestStatus.PAID] = ServiceRequestStatus.CITA_SCHEDULED
             transitions[ServiceRequestStatus.CITA_SCHEDULED] = ServiceRequestStatus.IN_PROGRESS
@@ -728,8 +856,7 @@ class GenericWorkflowDirectPayment(BaseWorkflow):
 async def load_generic_workflow(
     db: asyncpg.Connection,
     workflow_code: str,
-    sub_type: Optional[str] = None
-) -> BaseWorkflow:
+) -> PredefinedWorkflow:
     """
     Factory function to load the appropriate generic workflow.
 
@@ -739,12 +866,10 @@ async def load_generic_workflow(
     Args:
         db: Database connection
         workflow_code: Workflow code to load
-        sub_type: Optional sub-type
 
     Returns:
-        Appropriate BaseWorkflow subclass instance
+        Appropriate PredefinedWorkflow subclass instance
     """
-    # Check workflow type
     row = await db.fetchrow(
         "SELECT workflow_type, requires_agent_validation FROM workflows WHERE code = $1",
         workflow_code
@@ -753,8 +878,7 @@ async def load_generic_workflow(
     if not row:
         raise ValueError(f"Workflow not found: {workflow_code}")
 
-    # Select appropriate class
     if row["workflow_type"] == "direct_payment" or not row["requires_agent_validation"]:
-        return await GenericWorkflowDirectPayment.from_database(db, workflow_code, sub_type)
+        return await GenericWorkflowDirectPayment.from_database(db, workflow_code)
     else:
-        return await GenericWorkflowStandard.from_database(db, workflow_code, sub_type)
+        return await GenericWorkflowStandard.from_database(db, workflow_code)

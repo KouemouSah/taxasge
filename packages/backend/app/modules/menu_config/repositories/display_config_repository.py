@@ -411,7 +411,7 @@ class DisplayConfigRepository:
         from app.modules.service_requests.workflows.workflow_interface import (
             PredefinedWorkflow, WorkflowContext, RenovacionMotivo,
         )
-        from app.modules.service_requests.workflows.base_workflow import BaseWorkflow
+        # BaseWorkflow removed — all workflows are now v2 (PredefinedWorkflow)
         from app.modules.service_requests.models.enums import (
             DocumentConditionType, SolicitudType, WorkflowCode as WFCode,
         )
@@ -464,10 +464,6 @@ class DisplayConfigRepository:
 
         if isinstance(workflow, PredefinedWorkflow):
             self._collect_v2_documents(
-                workflow, workflow_code, resolved_sub_type, _add_docs
-            )
-        elif isinstance(workflow, BaseWorkflow):
-            self._collect_v1_documents(
                 workflow, workflow_code, resolved_sub_type, _add_docs
             )
 
@@ -659,41 +655,6 @@ class DisplayConfigRepository:
                         f"Error getting docs for {workflow_code}/"
                         f"{sol_type}/{motivo}/minor={minor_flag}: {e}"
                     )
-
-    @staticmethod
-    def _collect_v1_documents(workflow, workflow_code, resolved_sub_type, add_docs_fn):
-        """
-        Collect documents from a v1 BaseWorkflow.
-
-        Resolves the correct sub_type for the workflow code and calls
-        get_document_requirements with it (not empty string).
-        """
-        from app.modules.service_requests.models.enums import WorkflowCode as WFCode
-
-        # Determine the correct sub_type
-        sub_type = resolved_sub_type
-        if sub_type is None:
-            # Parent code: find the matching sub_type via reverse lookup
-            try:
-                target_code = WFCode(workflow_code)
-                for sub in workflow.allowed_sub_types:
-                    try:
-                        if workflow.get_workflow_code_for_subtype(sub) == target_code:
-                            sub_type = sub
-                            break
-                    except Exception:
-                        continue
-            except ValueError:
-                pass
-            # Last resort: use first allowed sub_type
-            if sub_type is None and workflow.allowed_sub_types:
-                sub_type = workflow.allowed_sub_types[0]
-
-        try:
-            docs = workflow.get_document_requirements(sub_type=sub_type or "")
-            add_docs_fn(docs)
-        except Exception as e:
-            logger.debug(f"Error getting docs for {workflow_code}/{sub_type}: {e}")
 
     async def _get_columns_from_db(
         self,

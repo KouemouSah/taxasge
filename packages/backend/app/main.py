@@ -614,11 +614,11 @@ async def debug_service_requests_import():
         import_errors.append({"module": "models.enums", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
 
     try:
-        from app.modules.service_requests.workflows.base_workflow import BaseWorkflow
-        import_success.append("workflows.base_workflow.BaseWorkflow")
+        from app.modules.service_requests.workflows.workflow_interface import PredefinedWorkflow
+        import_success.append("workflows.workflow_interface.PredefinedWorkflow")
     except Exception as e:
         import traceback
-        import_errors.append({"module": "workflows.base_workflow", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
+        import_errors.append({"module": "workflows.workflow_interface", "error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()})
 
     try:
         from app.modules.service_requests.workflows.generic_workflow import GenericWorkflowStandard

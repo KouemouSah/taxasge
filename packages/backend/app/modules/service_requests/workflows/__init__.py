@@ -94,14 +94,7 @@ from .extranjeria import (
     get_prorroga_visado_workflow,
 )
 
-# =============================================================================
-# LEGACY (v1) - For backward compatibility
-# =============================================================================
-
-# Legacy BaseWorkflow (still used by some workflows)
-from .base_workflow import BaseWorkflow
-
-# Generic workflows (data-driven from database)
+# Generic workflows (data-driven from database, now v2)
 from .generic_workflow import (
     GenericWorkflowStandard,
     GenericWorkflowDirectPayment,
@@ -169,9 +162,7 @@ __all__ = [
     "ProrrogaVisadoWorkflow",       # backward compat alias
     "get_prorroga_visado_workflow",  # backward compat alias
 
-    # === LEGACY (v1) ===
-    "BaseWorkflow",
-    # Generic workflows (data-driven)
+    # Generic workflows (data-driven, now v2)
     "GenericWorkflowStandard",
     "GenericWorkflowDirectPayment",
     "load_generic_workflow"
