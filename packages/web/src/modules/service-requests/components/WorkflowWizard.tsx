@@ -19,6 +19,7 @@ import {
   CreditCard,
   User,
   List,
+  ListChecks,
   Calendar,
   Settings,
 } from 'lucide-react'
@@ -33,6 +34,7 @@ import type { WorkflowStep, StepType, ServiceRequestCreate } from '../types'
 
 // Step type icons mapping
 const stepTypeIcons: Record<StepType, React.ComponentType<{ className?: string }>> = {
+  selection: ListChecks,
   identity_verification: User,
   sub_type_selection: List,
   document_upload: Upload,

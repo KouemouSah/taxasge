@@ -634,6 +634,7 @@ export function canUploadDocuments(request: ServiceRequest): boolean {
 
 export function getStepTypeIcon(stepType: StepType): string {
   const icons: Record<StepType, string> = {
+    [StepType.SELECTION]: 'list-checks',
     [StepType.IDENTITY_VERIFICATION]: 'user-check',
     [StepType.SUB_TYPE_SELECTION]: 'list',
     [StepType.DOCUMENT_UPLOAD]: 'upload',
