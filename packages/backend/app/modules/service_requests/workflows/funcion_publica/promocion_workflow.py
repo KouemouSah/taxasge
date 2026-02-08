@@ -401,8 +401,8 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
         look up by sub_type instead.
         """
         sub_type = None
-        if context and context.form_data:
-            sub_type = context.sub_type or context.form_data.get("sub_type")
+        if context:
+            sub_type = context.sub_type
 
         if sub_type and sub_type in self.TARIFFS:
             return self.TARIFFS[sub_type]
@@ -433,8 +433,8 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
         requirements = []
 
         sub_type = None
-        if context and context.form_data:
-            sub_type = context.sub_type or context.form_data.get("sub_type")
+        if context:
+            sub_type = context.sub_type
 
         # === 1. DIP - Always required ===
         requirements.append(DocumentRequirement(

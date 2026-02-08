@@ -97,12 +97,10 @@ class DocumentRequirement:
             return context.solicitud_type == SolicitudType.DUPLICADO
 
         if self.condition_type == DocumentConditionType.IS_MINOR:
-            age = context.get_user_age()
-            return age is not None and age < 18
+            return context.is_minor
 
         if self.condition_type == DocumentConditionType.IS_ADULT:
-            age = context.get_user_age()
-            return age is not None and age >= 18
+            return not context.is_minor
 
         if self.condition_type == DocumentConditionType.AGE_LESS_THAN:
             threshold = self.condition_value.get("age", 18)

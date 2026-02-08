@@ -785,9 +785,9 @@ class ContratoWorkflow(PredefinedWorkflow):
         sub_type = None
         contract_type = None
 
-        if context and context.form_data:
-            sub_type = context.sub_type or context.form_data.get("sub_type")
-            contract_type = context.form_data.get("contract_type")
+        if context:
+            sub_type = context.sub_type
+            contract_type = context.form_data.get("contract_type") if context.form_data else None
 
         if not sub_type:
             sub_type = "REGISTRO_NUEVO" if solicitud_type == SolicitudType.EXPEDICION else "ADENDA"

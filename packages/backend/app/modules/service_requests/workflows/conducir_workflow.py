@@ -760,10 +760,10 @@ class ConducirWorkflow(PredefinedWorkflow):
         applicant_type = None
         duplicado_motivo = None
 
-        if context and context.form_data:
-            sub_type = context.sub_type or context.form_data.get("sub_type")
-            applicant_type = context.form_data.get("applicant_type")
-            duplicado_motivo = context.form_data.get("motivo")
+        if context:
+            sub_type = context.sub_type
+            applicant_type = context.form_data.get("applicant_type") if context.form_data else None
+            duplicado_motivo = context.motivo
 
         # Map solicitud_type to sub_type if not provided
         if not sub_type:
@@ -887,14 +887,7 @@ class ConducirWorkflow(PredefinedWorkflow):
         if solicitud_motivo:
             solicitud_type, _ = solicitud_motivo
             # For DUPLICADO, get motivo from context
-            motivo = None
-            if sub_type == "DUPLICADO" and context and context.form_data:
-                motivo_str = context.form_data.get("motivo")
-                if motivo_str:
-                    try:
-                        motivo = RenovacionMotivo(motivo_str)
-                    except ValueError:
-                        pass
+            motivo = context.motivo if context else None
             return self.get_document_requirements(solicitud_type, motivo, context)
         # Default to EXPEDICION if unknown sub_type
         return self.get_document_requirements(SolicitudType.EXPEDICION, None, context)
@@ -978,10 +971,10 @@ class ConducirWorkflow(PredefinedWorkflow):
         """
         Resolve sub_type from context or solicitud_type.
 
-        Priority: context.sub_type > context.form_data["sub_type"] > solicitud_type fallback.
+        Priority: context.sub_type > solicitud_type fallback.
         """
-        if context and context.form_data:
-            sub_type = context.sub_type or context.form_data.get("sub_type")
+        if context:
+            sub_type = context.sub_type
             if sub_type and sub_type in self.SUBTYPE_TO_SOLICITUD_MOTIVO:
                 return sub_type
 

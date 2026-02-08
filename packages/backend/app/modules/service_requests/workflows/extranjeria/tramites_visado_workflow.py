@@ -794,10 +794,10 @@ class TramitesVisadoWorkflow(PredefinedWorkflow):
         """
         Resolve sub_type from context.
 
-        Priority: context.sub_type > form_data["sub_type"] > fallback "PRORROGA"
+        Priority: context.sub_type > fallback "PRORROGA"
         """
-        if context and context.form_data:
-            sub_type = getattr(context, "sub_type", None) or context.form_data.get("sub_type")
+        if context:
+            sub_type = context.sub_type
             if sub_type and sub_type in self.allowed_sub_types:
                 return sub_type
         return "PRORROGA"
