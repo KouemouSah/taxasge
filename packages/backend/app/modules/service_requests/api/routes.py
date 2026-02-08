@@ -8,7 +8,6 @@ from uuid import UUID
 from datetime import datetime
 import asyncpg
 from loguru import logger
-from pydantic import BaseModel, Field
 
 from ..models.service_request import (
     ServiceRequestCreate,
@@ -153,92 +152,39 @@ async def create_service_request(
 # CANCEL REQUEST
 # ═══════════════════════════════════════════════════════════════
 
-class CancelRequestBody(BaseModel):
-    """Body for cancelling a request"""
-    reason: Optional[str] = Field(None, description="Reason for cancellation")
-
-
 @router.post(
     "/{request_id}/cancel",
+    response_model=ServiceRequestResponse,
     summary="Cancel a service request",
     description="""
-    Cancel a service request. Only allowed in early stages:
-    - DRAFT, DOCUMENTS, REVIEW, PAYMENT_PENDING
+    Cancel a service request.
 
-    Cannot cancel after payment is completed or request is under review by agent.
+    **Allowed from:**
+    - DRAFT
+    - SUBMITTED
+    - DOCUMENTS_REQUIRED
+    - PAYMENT_PENDING
+
+    **Not allowed from:**
+    - UNDER_REVIEW (contact support)
+    - COMPLETED
+    - REJECTED
+    - CANCELLED
     """
 )
 async def cancel_request(
     request_id: UUID = Path(..., description="The service request ID"),
-    body: CancelRequestBody = None,
+    reason: Optional[str] = Body(None, embed=True, description="Cancellation reason"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user)
 ):
     """Cancel a service request owned by the user."""
-    # Get the request
-    request = await db.fetchrow("""
-        SELECT sr.id, sr.user_id, sr.status, sr.reference, sr.workflow_code,
-               u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language
-        FROM service_requests sr
-        JOIN users u ON u.id = sr.user_id
-        WHERE sr.id = $1
-    """, request_id)
-
-    if not request:
-        raise HTTPException(status_code=404, detail="Service request not found")
-
-    # Verify ownership
-    if str(request['user_id']) != str(current_user.id):
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    # Check if can be cancelled (only early stages)
-    cancellable_statuses = ['DRAFT', 'DOCUMENTS', 'REVIEW', 'PAYMENT_PENDING']
-    if request['status'] not in cancellable_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot cancel request in status '{request['status']}'. Cancellation only allowed for: {', '.join(cancellable_statuses)}"
-        )
-
-    # Cancel the request
-    reason = body.reason if body else "User requested cancellation"
-    await db.execute("""
-        UPDATE service_requests
-        SET status = 'CANCELLED',
-            cancellation_reason = $2,
-            cancelled_at = NOW(),
-            updated_at = NOW()
-        WHERE id = $1
-    """, request_id, reason)
-
-    # Release any held appointment
-    await db.execute("""
-        UPDATE appointment_holds
-        SET status = 'released', released_at = NOW()
-        WHERE service_request_id = $1 AND status = 'held'
-    """, request_id)
-
-    # Publish REQUEST_CANCELLED event
-    try:
-        EventBus.publish_nowait(
-            EventType.REQUEST_CANCELLED,
-            {
-                "request_id": str(request_id),
-                "user_id": str(request['user_id']),
-                "user_email": request['email'],
-                "user_phone": request['phone'],
-                "user_name": f"{request['first_name'] or ''} {request['last_name'] or ''}".strip(),
-                "preferred_language": request.get('preferred_language', 'es'),
-                "workflow_code": request['workflow_code'],
-                "reference": request['reference'],
-                "reason": reason,
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
-        logger.info(f"REQUEST_CANCELLED event published for request {request_id}")
-    except Exception as e:
-        logger.error(f"Failed to publish REQUEST_CANCELLED event: {e}")
-
-    return {"message": "Request cancelled successfully", "request_id": str(request_id)}
+    return await service_request_service.cancel_request(
+        db=db,
+        request_id=request_id,
+        user_id=current_user.id,
+        reason=reason
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -517,7 +463,7 @@ async def get_document_url(
     # Check access: owner OR agent with permission
     is_owner = str(request["user_id"]) == str(current_user.id)
     has_view_permission = await permission_service.has_permission(
-        str(current_user.id), "requests.view"
+        str(current_user.id), "service_request.view"
     )
 
     if not is_owner and not has_view_permission:
@@ -783,39 +729,6 @@ async def prepare_for_payment(
         user_id=current_user.id
     )
 
-
-@router.post(
-    "/{request_id}/cancel",
-    response_model=ServiceRequestResponse,
-    summary="Cancel a service request",
-    description="""
-    Cancel a service request.
-
-    **Allowed from:**
-    - DRAFT
-    - SUBMITTED
-    - DOCUMENTS_REQUIRED
-    - PAYMENT_PENDING
-
-    **Not allowed from:**
-    - UNDER_REVIEW (contact support)
-    - COMPLETED
-    - REJECTED
-    - CANCELLED
-    """
-)
-async def cancel_service_request(
-    request_id: UUID = Path(..., description="The service request ID"),
-    reason: Optional[str] = Body(None, embed=True, description="Cancellation reason"),
-    db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user)
-):
-    return await service_request_service.cancel_request(
-        db=db,
-        request_id=request_id,
-        user_id=current_user.id,
-        reason=reason
-    )
 
 # ═══════════════════════════════════════════════════════════════
 # WORKFLOW STEPS EXECUTION

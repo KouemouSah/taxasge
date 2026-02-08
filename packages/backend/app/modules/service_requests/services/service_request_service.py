@@ -1305,7 +1305,8 @@ class ServiceRequestService:
         """
         Cancel a service request.
 
-        Allowed from DRAFT, SUBMITTED, or DOCUMENTS_REQUIRED status.
+        Allowed from DRAFT, SUBMITTED, DOCUMENTS_REQUIRED, or PAYMENT_PENDING status.
+        Releases held appointments and publishes REQUEST_CANCELLED event.
 
         Args:
             db: Database connection
@@ -1342,14 +1343,49 @@ class ServiceRequestService:
                 detail=f"Cannot cancel request in status: {request['status']}"
             )
 
+        cancel_reason = reason or "User cancelled request"
+
         # Update status to CANCELLED
         await service_request_repository.update_status(
             db=db,
             request_id=request_id,
             new_status=ServiceRequestStatus.CANCELLED.value,
             performed_by=user_id,
-            comment=reason or "User cancelled request"
+            comment=cancel_reason
         )
+
+        # Release any held appointment
+        await db.execute("""
+            UPDATE appointment_holds
+            SET status = 'released', released_at = NOW()
+            WHERE service_request_id = $1 AND status = 'held'
+        """, request_id)
+
+        # Publish REQUEST_CANCELLED event for notifications
+        try:
+            from app.core.events import EventBus, EventType
+            user = await db.fetchrow(
+                "SELECT email, phone_number, first_name, last_name, preferred_language FROM users WHERE id = $1",
+                user_id
+            )
+            EventBus.publish_nowait(
+                EventType.REQUEST_CANCELLED,
+                {
+                    "request_id": str(request_id),
+                    "user_id": str(user_id),
+                    "user_email": user["email"] if user else None,
+                    "user_phone": user["phone_number"] if user else None,
+                    "user_name": f"{user['first_name'] or ''} {user['last_name'] or ''}".strip() if user else "",
+                    "preferred_language": user["preferred_language"] if user else "es",
+                    "workflow_code": request["workflow_code"],
+                    "reference": request["reference"],
+                    "reason": cancel_reason,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+            logger.info(f"REQUEST_CANCELLED event published for request {request_id}")
+        except Exception as e:
+            logger.error(f"Failed to publish REQUEST_CANCELLED event: {e}")
 
         # Refresh request data
         updated = await service_request_repository.find_by_id(db, request_id)
