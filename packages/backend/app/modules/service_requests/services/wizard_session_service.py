@@ -121,6 +121,15 @@ class WizardSessionService:
     def __init__(self):
         self.session_ttl = WIZARD_SESSION_TTL_SECONDS
         self.cache = preview_cache
+        # Warn if cache backend is in-memory (sessions won't survive across instances)
+        backend = self.cache._get_backend()
+        from .preview_cache import InMemoryCache
+        if isinstance(backend, InMemoryCache):
+            logger.critical(
+                "[WizardSession] ⚠️ CRITICAL: Using InMemoryCache! "
+                "Wizard sessions will NOT work on multi-instance deployments (Cloud Run). "
+                "Set REDIS_URL environment variable to fix this."
+            )
 
     # =========================================================================
     # SESSION MANAGEMENT (Private)
