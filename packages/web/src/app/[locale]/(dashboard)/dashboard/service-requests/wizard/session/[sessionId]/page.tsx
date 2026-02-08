@@ -41,9 +41,15 @@ import {
   CreditCard,
   Calendar,
   RefreshCw,
+  ListChecks,
+  Stamp,
 } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import {
   useWizardSession,
+  useWorkflow,
   SessionTimer,
   DocumentPreviewDialog,
   IdentityMismatchBlocker,
@@ -75,43 +81,43 @@ import { transformPreviewToExtractionPreview } from '@/modules/service-requests/
 
 interface WizardStepDef {
   id: string
+  type: string
   titleEs: string
   titleFr: string
   titleEn: string
   icon: React.ElementType
 }
 
-const STEP_UPLOAD: WizardStepDef = {
-  id: 'upload_documents',
-  titleEs: 'Documentos',
-  titleFr: 'Documents',
-  titleEn: 'Documents',
-  icon: Upload,
+// Step type → icon mapping
+const STEP_TYPE_ICONS: Record<string, React.ElementType> = {
+  selection: ListChecks,
+  document_upload: Upload,
+  form_review: FileText,
+  payment: CreditCard,
+  appointment: Calendar,
+  confirmation: CheckCircle,
+  validation: FileText,
+  custom: Stamp,
 }
 
-const STEP_PAYMENT: WizardStepDef = {
-  id: 'payment_preparation',
-  titleEs: 'Pago',
-  titleFr: 'Paiement',
-  titleEn: 'Payment',
-  icon: CreditCard,
-}
+// Fallback step definitions when workflow config is not yet loaded
+const FALLBACK_STEPS: WizardStepDef[] = [
+  { id: 'document_upload', type: 'document_upload', titleEs: 'Documentos', titleFr: 'Documents', titleEn: 'Documents', icon: Upload },
+  { id: 'form_review_1', type: 'form_review', titleEs: 'Revision de datos (1)', titleFr: 'Revision des donnees (1)', titleEn: 'Data Review (1)', icon: FileText },
+  { id: 'form_review_2', type: 'form_review', titleEs: 'Revision de datos (2)', titleFr: 'Revision des donnees (2)', titleEn: 'Data Review (2)', icon: FileText },
+  { id: 'payment', type: 'payment', titleEs: 'Pago', titleFr: 'Paiement', titleEn: 'Payment', icon: CreditCard },
+  { id: 'confirmation', type: 'confirmation', titleEs: 'Confirmacion', titleFr: 'Confirmation', titleEn: 'Confirmation', icon: CheckCircle },
+]
 
-const STEP_APPOINTMENT: WizardStepDef = {
-  id: 'appointment',
-  titleEs: 'Cita',
-  titleFr: 'Rendez-vous',
-  titleEn: 'Appointment',
-  icon: Calendar,
-}
-
-const STEP_CONFIRMATION: WizardStepDef = {
-  id: 'confirmation',
-  titleEs: 'Confirmacion',
-  titleFr: 'Confirmation',
-  titleEn: 'Confirmation',
-  icon: CheckCircle,
-}
+/**
+ * Step types that the wizard can render.
+ * Steps with types not in this set are skipped (e.g., stamp_payment
+ * is type "payment" but step_id starts with "stamp" — its cost is
+ * shown in the tariff breakdown of the main payment step).
+ */
+const RENDERABLE_STEP_TYPES = new Set([
+  'selection', 'document_upload', 'form_review', 'payment', 'appointment', 'confirmation', 'custom',
+])
 
 // ============================================================================
 // ADAPTER FUNCTIONS: Session types → Legacy types (for DocumentUploader)
@@ -212,6 +218,11 @@ export default function SessionWizardPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [currentFormConfig, setCurrentFormConfig] = useState<import('@/modules/service-requests').FormConfig | null>(null)
 
+  // Fetch workflow config to get step definitions dynamically
+  const { data: workflowConfig } = useWorkflow(session?.workflowCode || '', {
+    enabled: !!session?.workflowCode,
+  })
+
   // Load session on mount
   useEffect(() => {
     if (sessionId) {
@@ -226,43 +237,59 @@ export default function SessionWizardPage() {
     }
   }, [session?.formData])
 
-  // Compute visible steps: upload → form_review_1..N → payment → confirmation → [appointment]
+  // Build wizard steps dynamically from backend workflow config.
+  // Filter to renderable types, skip stamp_payment, and evaluate step-level conditions.
   const steps = useMemo((): WizardStepDef[] => {
-    const result: WizardStepDef[] = [STEP_UPLOAD]
-
-    // Form review steps will be detected from workflow config
-    // For now, add form_review_1 and form_review_2 as common pattern
-    // The DynamicFormRenderer handles the actual section/field rendering
-    result.push({
-      id: 'form_review_1',
-      titleEs: 'Revision de datos (1)',
-      titleFr: 'Revision des donnees (1)',
-      titleEn: 'Data Review (1)',
-      icon: FileText,
-    })
-    result.push({
-      id: 'form_review_2',
-      titleEs: 'Revision de datos (2)',
-      titleFr: 'Revision des donnees (2)',
-      titleEn: 'Data Review (2)',
-      icon: FileText,
-    })
-
-    result.push(STEP_PAYMENT)
-    result.push(STEP_CONFIRMATION)
-
-    // Add appointment step AFTER confirmation for workflows that require it
-    if (session?.requiresAppointment) {
-      result.push(STEP_APPOINTMENT)
+    if (!workflowConfig?.steps || workflowConfig.steps.length === 0) {
+      // Fallback while workflow config is loading
+      return FALLBACK_STEPS
     }
 
-    return result
-  }, [session?.requiresAppointment])
+    return workflowConfig.steps
+      .filter((s) => {
+        // Only keep steps with renderable types
+        if (!RENDERABLE_STEP_TYPES.has(s.stepType)) return false
+        // Skip stamp_payment — its cost appears in the tariff breakdown
+        if (s.stepId.startsWith('stamp')) return false
 
-  const currentStep = steps[currentStepIndex]
+        // Evaluate step-level condition (config.condition)
+        // If condition is set, ALL condition keys must match current formValues
+        const cfg = s.config as Record<string, unknown> | undefined
+        const condition = cfg?.condition as Record<string, unknown> | undefined
+        if (condition) {
+          for (const [key, expected] of Object.entries(condition)) {
+            const actual = formValues[key]
+            // Compare with type coercion (backend may send boolean, form stores string)
+            if (String(actual ?? '') !== String(expected)) {
+              return false
+            }
+          }
+        }
+
+        return true
+      })
+      .map((s) => ({
+        id: s.stepId,
+        type: s.stepType,
+        titleEs: s.titleEs || s.stepId,
+        titleFr: s.titleEs || s.stepId, // Backend sends ES only; translations via i18n module
+        titleEn: s.titleEs || s.stepId,
+        icon: STEP_TYPE_ICONS[s.stepType] || FileText,
+      }))
+  }, [workflowConfig, formValues])
+
+  // Clamp step index if steps list shrinks (e.g., condition no longer met)
+  const safeStepIndex = Math.min(currentStepIndex, Math.max(0, steps.length - 1))
+  useEffect(() => {
+    if (safeStepIndex !== currentStepIndex) {
+      setCurrentStepIndex(safeStepIndex)
+    }
+  }, [safeStepIndex, currentStepIndex])
+
+  const currentStep = steps[safeStepIndex]
   const progressPercent =
     steps.length > 0
-      ? Math.round(((currentStepIndex + 1) / steps.length) * 100)
+      ? Math.round(((safeStepIndex + 1) / steps.length) * 100)
       : 0
 
   const getStepTitle = (step: WizardStepDef): string =>
@@ -279,38 +306,83 @@ export default function SessionWizardPage() {
   const canGoNext = useCallback((): boolean => {
     if (!session || !currentStep) return false
 
-    switch (currentStep.id) {
-      case 'upload_documents': {
-        // Block if identity mismatches are blocking
-        if (hasBlockingMismatches) return false
-        // Block if minor cross-validation failed
-        if (session.isMinor) {
-          const crossValFailed = Object.values(documentPreviews).some((p) => {
-            const ra = p.riskAnalysis as Record<string, unknown> | null
-            const crossVal = (ra?.parental_authorization_validation || ra?.parentalAuthorizationValidation) as Record<string, unknown> | undefined
-            return crossVal && (crossVal.cross_validation_passed === false || crossVal.crossValidationPassed === false)
-          })
-          if (crossValFailed) return false
-        }
-        // All required documents must be uploaded
-        const required = session.requiredDocuments.filter((d) => d.isRequired)
-        return required.every((d) => d.uploaded)
+    const stepType = currentStep.type
+
+    if (stepType === 'selection') {
+      const stepConfig = workflowConfig?.steps?.find(s => s.stepId === currentStep.id)
+      const cfg = stepConfig?.config as Record<string, unknown> | undefined
+      if (!cfg) return true
+
+      // Format A (Residencia): config.sections[].fields[].key
+      const sections = cfg.sections as Array<{ fields: Array<{ key: string; required?: boolean }> }> | undefined
+      if (sections) {
+        const requiredKeys = sections.flatMap(s => s.fields.filter(f => f.required !== false).map(f => f.key))
+        return requiredKeys.every(key => formValues[key] !== undefined && formValues[key] !== '')
       }
-      case 'form_review_1':
-      case 'form_review_2':
-        return true // Form can always proceed (validation on payment step)
-      case 'payment_preparation':
-        return paymentResult?.readyForPayment === true
-      default:
-        return true
+
+      // Format B (all other workflows): config.selection_type + config.options
+      const selectionType = cfg.selection_type as string | undefined
+      if (selectionType && cfg.options) {
+        const val = formValues[selectionType]
+        return val !== undefined && val !== '' && val !== null
+      }
+
+      return true
     }
-  }, [session, currentStep, paymentResult, hasBlockingMismatches])
+
+    if (stepType === 'custom') {
+      // multi_selection: at least one option must be selected
+      const stepConfig = workflowConfig?.steps?.find(s => s.stepId === currentStep.id)
+      const cfg = stepConfig?.config as Record<string, unknown> | undefined
+      if (cfg?.type === 'multi_selection') {
+        const selected = formValues[currentStep.id] as string[] | undefined
+        return Array.isArray(selected) && selected.length > 0
+      }
+      return true
+    }
+
+    if (stepType === 'document_upload') {
+      // Block if identity mismatches are blocking
+      if (hasBlockingMismatches) return false
+      // Block if minor cross-validation failed
+      if (session.isMinor) {
+        const crossValFailed = Object.values(documentPreviews).some((p) => {
+          const ra = p.riskAnalysis as Record<string, unknown> | null
+          const crossVal = (ra?.parental_authorization_validation || ra?.parentalAuthorizationValidation) as Record<string, unknown> | undefined
+          return crossVal && (crossVal.cross_validation_passed === false || crossVal.crossValidationPassed === false)
+        })
+        if (crossValFailed) return false
+      }
+      // All required documents must be uploaded
+      const required = session.requiredDocuments.filter((d) => d.isRequired)
+      return required.every((d) => d.uploaded)
+    }
+
+    if (stepType === 'form_review') {
+      return true // Form can always proceed (validation on payment step)
+    }
+
+    if (stepType === 'payment') {
+      return paymentResult?.readyForPayment === true
+    }
+
+    return true
+  }, [session, currentStep, paymentResult, hasBlockingMismatches, formValues, workflowConfig, documentPreviews])
 
   const handleNext = useCallback(async () => {
     if (!session || !currentStep) return
 
+    // Save selection/custom data before advancing
+    if (currentStep.type === 'selection' || currentStep.type === 'custom') {
+      const success = await saveFormData({
+        form_data: formValues,
+        step_id: currentStep.id,
+      })
+      if (!success) return
+    }
+
     // Validate and save form data before advancing from form review steps
-    if (currentStep.id.startsWith('form_review_')) {
+    if (currentStep.type === 'form_review') {
       // Validate required fields if form config is loaded
       if (currentFormConfig) {
         const errors = validateFormConfig(
@@ -335,7 +407,7 @@ export default function SessionWizardPage() {
     // Auto-prepare payment when entering payment step
     if (
       currentStepIndex + 1 < steps.length &&
-      steps[currentStepIndex + 1].id === 'payment_preparation'
+      steps[currentStepIndex + 1].type === 'payment'
     ) {
       const result = await preparePayment()
       setPaymentResult(result)
@@ -352,6 +424,8 @@ export default function SessionWizardPage() {
     formValues,
     saveFormData,
     preparePayment,
+    currentFormConfig,
+    locale,
   ])
 
   const handleBack = useCallback(() => {
@@ -695,9 +769,22 @@ export default function SessionWizardPage() {
       <Card>
         <CardContent className="pt-6">
           {/* ============================================================ */}
+          {/* STEP: Selection (persona type, sub_type, etc.)               */}
+          {/* ============================================================ */}
+          {(currentStep.type === 'selection' || currentStep.type === 'custom') && (
+            <SelectionStepRenderer
+              currentStep={currentStep}
+              workflowConfig={workflowConfig}
+              formValues={formValues}
+              onFormChange={handleFormChange}
+              locale={locale}
+            />
+          )}
+
+          {/* ============================================================ */}
           {/* STEP: Upload Documents                                       */}
           {/* ============================================================ */}
-          {currentStep.id === 'upload_documents' && !showMismatchBlocker && (
+          {currentStep.type === 'document_upload' && !showMismatchBlocker && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">
                 {locale === 'es'
@@ -828,7 +915,7 @@ export default function SessionWizardPage() {
           )}
 
           {/* Identity Mismatch Blocker - shown when documents have conflicting identity data */}
-          {currentStep.id === 'upload_documents' && showMismatchBlocker && (
+          {currentStep.type === 'document_upload' && showMismatchBlocker && (
             <IdentityMismatchBlocker
               mismatches={identityMismatches}
               hasBlockingMismatches={hasBlockingMismatches}
@@ -840,7 +927,7 @@ export default function SessionWizardPage() {
           {/* ============================================================ */}
           {/* STEP: Form Review (Dynamic via DynamicFormRenderer)          */}
           {/* ============================================================ */}
-          {currentStep.id.startsWith('form_review_') && (
+          {currentStep.type === 'form_review' && (
             <SessionDynamicFormReview
               sessionId={sessionId}
               stepId={currentStep.id}
@@ -865,7 +952,7 @@ export default function SessionWizardPage() {
           {/* ============================================================ */}
           {/* STEP: Payment Preparation                                    */}
           {/* ============================================================ */}
-          {currentStep.id === 'payment_preparation' && (
+          {currentStep.type === 'payment' && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">
                 {locale === 'es'
@@ -990,7 +1077,7 @@ export default function SessionWizardPage() {
           {/* ============================================================ */}
           {/* STEP: Confirmation                                           */}
           {/* ============================================================ */}
-          {currentStep.id === 'confirmation' && (
+          {currentStep.type === 'confirmation' && (
             <div className="space-y-4 text-center">
               <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
               <h2 className="text-lg font-semibold">
@@ -1045,7 +1132,7 @@ export default function SessionWizardPage() {
           {/* ============================================================ */}
           {/* STEP: Appointment (after persist, uses real requestId)       */}
           {/* ============================================================ */}
-          {currentStep.id === 'appointment' && persistedRequestId && (
+          {currentStep.type === 'appointment' && persistedRequestId && (
             <AppointmentSelection
               requestId={persistedRequestId}
               onComplete={(_data) => {
@@ -1093,7 +1180,7 @@ export default function SessionWizardPage() {
       </Card>
 
       {/* Navigation buttons (hidden on appointment step - it has its own nav) */}
-      {currentStep.id !== 'appointment' && (
+      {currentStep.type !== 'appointment' && (
       <div className="flex justify-between">
         <Button
           variant="outline"
@@ -1108,7 +1195,7 @@ export default function SessionWizardPage() {
               : 'Previous'}
         </Button>
 
-        {currentStep.id !== 'confirmation' && (
+        {currentStep.type !== 'confirmation' && (
           <Button
             onClick={handleNext}
             disabled={!canGoNext() || isSaving || isLoading}
@@ -1136,6 +1223,214 @@ export default function SessionWizardPage() {
         isConfirming={isConfirmingPreview}
         locale={locale as 'es' | 'fr' | 'en'}
       />
+    </div>
+  )
+}
+
+// ============================================================================
+// SUB-COMPONENT: Selection Step Renderer (supports Format A & B)
+// ============================================================================
+
+/**
+ * Renders a SELECTION step. Supports two config formats:
+ *
+ * Format A (Residencia): config.sections[].fields[] — sections with structured fields
+ * Format B (all others): config.selection_type + config.options[] — flat option list
+ */
+function SelectionStepRenderer({
+  currentStep,
+  workflowConfig,
+  formValues,
+  onFormChange,
+  locale,
+}: {
+  currentStep: WizardStepDef
+  workflowConfig: import('@/modules/service-requests').WorkflowConfig | undefined
+  formValues: Record<string, unknown>
+  onFormChange: (key: string, value: unknown) => void
+  locale: string
+}) {
+  const stepConfig = workflowConfig?.steps?.find(s => s.stepId === currentStep.id)
+  const cfg = stepConfig?.config as Record<string, unknown> | undefined
+
+  // Use step title from backend, or fallback
+  const title = stepConfig?.titleEs || (
+    locale === 'es' ? 'Tipo de solicitud'
+      : locale === 'fr' ? 'Type de demande'
+        : 'Request type'
+  )
+
+  // Format A: config.sections[].fields[]
+  const sections = cfg?.sections as Array<{
+    id: string
+    title_es?: string
+    fields: Array<{
+      key: string
+      type: string
+      label_es?: string
+      help_text_es?: string
+      options?: Array<{ value: string; label_es?: string; description_es?: string }>
+      required?: boolean
+    }>
+  }> | undefined
+
+  // Format B: config.selection_type + config.options[]
+  const selectionType = cfg?.selection_type as string | undefined
+  const options = cfg?.options as Array<{
+    value: string | boolean
+    label_es?: string
+    description_es?: string
+    icon?: string
+    tariff?: number
+  }> | undefined
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      {stepConfig?.descriptionEs && (
+        <p className="text-sm text-muted-foreground">{stepConfig.descriptionEs}</p>
+      )}
+
+      {/* Format A: sections with fields */}
+      {sections && sections.map((section) => (
+        <div key={section.id} className="space-y-3">
+          {section.title_es && (
+            <h3 className="text-sm font-medium text-muted-foreground">
+              {section.title_es}
+            </h3>
+          )}
+          {section.fields.map((field) => (
+            <div key={field.key} className="space-y-2">
+              {field.label_es && (
+                <Label className="text-sm font-medium">{field.label_es}</Label>
+              )}
+              {field.help_text_es && (
+                <p className="text-xs text-muted-foreground">{field.help_text_es}</p>
+              )}
+              {field.type === 'select' && field.options ? (
+                <RadioGroup
+                  value={String(formValues[field.key] ?? '')}
+                  onValueChange={(val) => onFormChange(field.key, val)}
+                  className="space-y-2"
+                >
+                  {field.options.map((opt) => (
+                    <div key={opt.value} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                      <RadioGroupItem value={opt.value} id={`${field.key}-${opt.value}`} />
+                      <Label htmlFor={`${field.key}-${opt.value}`} className="cursor-pointer flex-1">
+                        <span>{opt.label_es || opt.value}</span>
+                        {opt.description_es && (
+                          <span className="block text-xs text-muted-foreground font-normal mt-0.5">
+                            {opt.description_es}
+                          </span>
+                        )}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* Format B: flat options list with selection_type key */}
+      {!sections && selectionType && options && (
+        <RadioGroup
+          value={String(formValues[selectionType] ?? '')}
+          onValueChange={(val) => onFormChange(selectionType, val)}
+          className="space-y-2"
+        >
+          {options.map((opt) => {
+            const optValue = String(opt.value)
+            return (
+              <div key={optValue} className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value={optValue} id={`${selectionType}-${optValue}`} />
+                <Label htmlFor={`${selectionType}-${optValue}`} className="cursor-pointer flex-1">
+                  <span className="font-medium">{opt.label_es || optValue}</span>
+                  {opt.description_es && (
+                    <span className="block text-xs text-muted-foreground font-normal mt-0.5">
+                      {opt.description_es}
+                    </span>
+                  )}
+                  {opt.tariff !== undefined && opt.tariff > 0 && (
+                    <span className="block text-xs text-primary font-normal mt-0.5">
+                      {opt.tariff.toLocaleString()} XAF
+                    </span>
+                  )}
+                </Label>
+              </div>
+            )
+          })}
+        </RadioGroup>
+      )}
+
+      {/* Format C: multi_selection (checkboxes, e.g. license classes) */}
+      {!sections && !selectionType && cfg?.type === 'multi_selection' && (
+        (() => {
+          const multiOptions = cfg.options as Array<{ id: string; label_es?: string; min_age?: number }> | undefined
+          const stepId = currentStep.id
+          const selected = (formValues[stepId] as string[] | undefined) || []
+          const maxSelection = (cfg.max_selection as number) || 10
+          if (!multiOptions) return null
+          return (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {locale === 'es'
+                  ? `Seleccione hasta ${maxSelection} opciones`
+                  : locale === 'fr'
+                    ? `Selectionnez jusqu'a ${maxSelection} options`
+                    : `Select up to ${maxSelection} options`}
+              </p>
+              {multiOptions.map((opt) => {
+                const isChecked = selected.includes(opt.id)
+                return (
+                  <div
+                    key={opt.id}
+                    className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50 ${isChecked ? 'border-primary bg-primary/5' : ''}`}
+                    onClick={() => {
+                      const next = isChecked
+                        ? selected.filter(v => v !== opt.id)
+                        : selected.length < maxSelection
+                          ? [...selected, opt.id]
+                          : selected
+                      onFormChange(stepId, next)
+                    }}
+                  >
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={(checked) => {
+                        const next = checked
+                          ? [...selected, opt.id]
+                          : selected.filter(v => v !== opt.id)
+                        onFormChange(stepId, next)
+                      }}
+                      disabled={!isChecked && selected.length >= maxSelection}
+                    />
+                    <Label className="cursor-pointer flex-1">
+                      <span className="font-medium">{opt.label_es || opt.id}</span>
+                      {opt.min_age && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          (min. {opt.min_age} {locale === 'es' ? 'anos' : locale === 'fr' ? 'ans' : 'years'})
+                        </span>
+                      )}
+                    </Label>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()
+      )}
+
+      {/* No config loaded yet */}
+      {!cfg && (
+        <div className="flex items-center gap-2 p-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-muted-foreground">
+            {locale === 'es' ? 'Cargando opciones...' : locale === 'fr' ? 'Chargement...' : 'Loading...'}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

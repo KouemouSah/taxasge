@@ -54,6 +54,7 @@ export enum WorkflowCategory {
 }
 
 export enum StepType {
+  SELECTION = 'selection',
   IDENTITY_VERIFICATION = 'identity_verification',
   SUB_TYPE_SELECTION = 'sub_type_selection',
   DOCUMENT_UPLOAD = 'document_upload',

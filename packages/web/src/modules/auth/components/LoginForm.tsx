@@ -13,11 +13,13 @@ import { loginSchema, type LoginInput } from '@/core/validations/auth';
 import { authApi, type TokenResponse } from '@/core/api/auth';
 import { setAuthData } from '@/core/auth/storage';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { usePrefetchMenuConfig } from '@/modules/agent-dashboard/hooks/useMenuConfig';
 
 export const LoginForm = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { prefetch: prefetchMenuConfig } = usePrefetchMenuConfig();
 
   const {
     register,
@@ -42,7 +44,15 @@ export const LoginForm = () => {
       }
 
       // Store auth data
-      setAuthData(response as TokenResponse);
+      const tokenResponse = response as TokenResponse;
+      setAuthData(tokenResponse);
+
+      // Prefetch menu config for agents (non-blocking)
+      if (tokenResponse.user?.role === 'agent' && tokenResponse.user?.id) {
+        prefetchMenuConfig(tokenResponse.user.id).catch(() => {
+          // Ignore prefetch errors - they're non-critical
+        });
+      }
 
       // Redirect to dashboard
       router.push('/dashboard');
