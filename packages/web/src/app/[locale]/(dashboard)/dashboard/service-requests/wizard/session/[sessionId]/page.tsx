@@ -682,7 +682,7 @@ export default function SessionWizardPage() {
               {session.workflowCode.replace(/_/g, ' ')}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {session.solicitudType}
+              {session.subType || session.solicitudType}
               {session.motivo && ` - ${session.motivo}`}
             </p>
           </div>

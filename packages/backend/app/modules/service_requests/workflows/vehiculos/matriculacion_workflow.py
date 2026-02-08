@@ -144,7 +144,7 @@ class MatriculacionTransferenciaWorkflow(PredefinedWorkflow):
                         "description_es": "Cambio de propietario de un vehículo ya matriculado",
                     },
                 ],
-                "field_key": "sub_type",
+                "selection_type": "sub_type",
             }
         ))
 

@@ -142,7 +142,7 @@ class DuplicadoVehiculoWorkflow(PredefinedWorkflow):
                         "description_es": "Solicitar un duplicado de la Cartilla Única de Vehículos (pérdida, robo o deterioro)",
                     },
                 ],
-                "field_key": "sub_type",
+                "selection_type": "sub_type",
             }
         ))
 

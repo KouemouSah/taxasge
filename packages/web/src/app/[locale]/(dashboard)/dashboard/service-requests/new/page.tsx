@@ -20,16 +20,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
-import {
   ArrowLeft,
   Search,
   FileText,
@@ -44,7 +34,6 @@ import {
   Building,
   Calendar,
   CreditCard,
-  CheckCircle,
   BadgeCheck,
 } from 'lucide-react'
 import { useServiceRequests, wizardSessionApi } from '@/modules/service-requests'
@@ -112,74 +101,8 @@ const CATEGORY_CONFIG: Record<
   },
 }
 
-// Sub-type labels
-// Sub-type labels including passport-specific types (NUEVO, PERDIDA, ROBO, DETERIORO)
-// These must match pasaporte_workflow.py allowed_sub_types
-const SUB_TYPE_LABELS: Record<string, { es: string; fr: string; en: string; desc_es: string; desc_fr: string; desc_en: string }> = {
-  // Generic types (used by SolicitudType enum)
-  expedicion: {
-    es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance',
-    desc_es: 'Primera vez que solicitas este documento',
-    desc_fr: "Premiere demande de ce document",
-    desc_en: 'First time requesting this document'
-  },
-  renovacion: {
-    es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal',
-    desc_es: 'Ya tienes este documento y esta por vencer o vencido',
-    desc_fr: "Vous avez deja ce document qui expire ou est expire",
-    desc_en: 'You already have this document and it is expiring or expired'
-  },
-  duplicado: {
-    es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate',
-    desc_es: 'Necesitas una copia por perdida o deterioro',
-    desc_fr: "Vous avez besoin d'une copie pour perte ou deterioration",
-    desc_en: 'You need a copy due to loss or damage'
-  },
-  // Passport-specific sub-types (from pasaporte_workflow.py)
-  NUEVO: {
-    es: 'Nuevo Pasaporte', fr: 'Nouveau Passeport', en: 'New Passport',
-    desc_es: 'Primera vez que solicitas pasaporte (requiere certificado de nacimiento)',
-    desc_fr: "Premiere demande de passeport (certificat de naissance requis)",
-    desc_en: 'First passport request (birth certificate required)'
-  },
-  RENOVACION: {
-    es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal',
-    desc_es: 'Tu pasaporte esta por vencer o ya vencio',
-    desc_fr: "Votre passeport expire bientot ou est deja expire",
-    desc_en: 'Your passport is expiring or has expired'
-  },
-  PERDIDA: {
-    es: 'Perdida', fr: 'Perte', en: 'Loss',
-    desc_es: 'Perdiste tu pasaporte (requiere denuncia policial)',
-    desc_fr: "Vous avez perdu votre passeport (declaration de perte requise)",
-    desc_en: 'You lost your passport (police report required)'
-  },
-  ROBO: {
-    es: 'Robo', fr: 'Vol', en: 'Theft',
-    desc_es: 'Te robaron tu pasaporte (requiere denuncia policial)',
-    desc_fr: "Votre passeport a ete vole (declaration de vol requise)",
-    desc_en: 'Your passport was stolen (police report required)'
-  },
-  DETERIORO: {
-    es: 'Deterioro', fr: 'Deterioration', en: 'Damage',
-    desc_es: 'Tu pasaporte esta danado (debes presentar el pasaporte danado)',
-    desc_fr: "Votre passeport est endommage (vous devez presenter le passeport endommage)",
-    desc_en: 'Your passport is damaged (you must present the damaged passport)'
-  },
-  // Uppercase generic (for backward compatibility)
-  EXPEDICION: {
-    es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance',
-    desc_es: 'Primera vez que solicitas este documento',
-    desc_fr: "Premiere demande de ce document",
-    desc_en: 'First time requesting this document'
-  },
-  DUPLICADO: {
-    es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate',
-    desc_es: 'Necesitas una copia por perdida o deterioro',
-    desc_fr: "Vous avez besoin d'une copie pour perte ou deterioration",
-    desc_en: 'You need a copy due to loss or damage'
-  },
-}
+// Sub-type labels moved to SELECTION steps in each workflow definition.
+// The wizard SELECTION step renders options with labels and descriptions from backend config.
 
 export default function NewServiceRequestPage() {
   const params = useParams()
@@ -191,9 +114,8 @@ export default function NewServiceRequestPage() {
   const [workflows, setWorkflows] = useState<WorkflowConfig[]>([])
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowConfig | null>(null)
-  const [selectedSubType, setSelectedSubType] = useState<string>('')
-  const [showSubTypeDialog, setShowSubTypeDialog] = useState(false)
+  // Dialog state removed — SELECTION step in wizard handles sub_type choice
+  // Dialog state removed — SELECTION step in wizard handles sub_type choice
   const [isStarting, setIsStarting] = useState(false)
 
   const { loadWorkflows, startWorkflow, isLoading, error, clearError } = useServiceRequests()
@@ -257,42 +179,25 @@ export default function NewServiceRequestPage() {
     return locale === 'es' ? config.descEs : locale === 'fr' ? config.descFr : config.descEn
   }
 
-  // Get sub-type label
-  const getSubTypeLabel = (subType: string): string => {
-    const labels = SUB_TYPE_LABELS[subType]
-    if (!labels) return subType
-    return locale === 'es' ? labels.es : locale === 'fr' ? labels.fr : labels.en
-  }
-
   // Handle category click
   const handleCategoryClick = (category: string) => {
     setExpandedCategory(expandedCategory === category ? null : category)
   }
 
-  // Handle workflow selection
+  // Handle workflow selection — start wizard directly, SELECTION step handles sub_type
   const handleWorkflowSelect = (workflow: WorkflowConfig) => {
-    setSelectedWorkflow(workflow)
-
-    // If workflow has sub-types, show dialog
-    if (workflow.allowedSubTypes && workflow.allowedSubTypes.length > 1) {
-      setSelectedSubType(workflow.allowedSubTypes[0])
-      setShowSubTypeDialog(true)
-    } else {
-      // Start workflow directly with first sub-type
-      const subType = workflow.allowedSubTypes?.[0] || 'expedicion'
-      startNewRequest(workflow.workflowCode, subType)
-    }
+    startNewRequest(workflow.workflowCode)
   }
 
   // Start new request
-  const startNewRequest = async (workflowCode: string, subType: string) => {
+  const startNewRequest = async (workflowCode: string) => {
     setIsStarting(true)
     try {
       // Cache-first wizard: create session in Redis, no DB writes
       if (FEATURE_CACHE_FIRST_WIZARD) {
         const session = await wizardSessionApi.createSession({
           workflow_code: workflowCode,
-          solicitud_type: subType,
+          solicitud_type: 'expedicion',
         })
         if (session) {
           router.push(`/${locale}/dashboard/service-requests/wizard/session/${session.sessionId}`)
@@ -303,7 +208,6 @@ export default function NewServiceRequestPage() {
       // Legacy flow: create DB record, then redirect
       const request = await startWorkflow({
         workflowCode,
-        subType,
       })
 
       if (request) {
@@ -322,14 +226,6 @@ export default function NewServiceRequestPage() {
       console.error('Failed to start workflow:', err)
     } finally {
       setIsStarting(false)
-      setShowSubTypeDialog(false)
-    }
-  }
-
-  // Handle sub-type confirmation
-  const handleSubTypeConfirm = () => {
-    if (selectedWorkflow && selectedSubType) {
-      startNewRequest(selectedWorkflow.workflowCode, selectedSubType)
     }
   }
 
@@ -521,76 +417,8 @@ export default function NewServiceRequestPage() {
         </div>
       )}
 
-      {/* Sub-Type Selection Dialog */}
-      <Dialog open={showSubTypeDialog} onOpenChange={setShowSubTypeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {locale === 'es'
-                ? 'Tipo de Solicitud'
-                : locale === 'fr'
-                  ? 'Type de Demande'
-                  : 'Request Type'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedWorkflow?.serviceNameEs}
-            </DialogDescription>
-          </DialogHeader>
-
-          <RadioGroup value={selectedSubType} onValueChange={setSelectedSubType} className="space-y-3">
-            {selectedWorkflow?.allowedSubTypes?.map((subType) => (
-              <div
-                key={subType}
-                className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
-                  selectedSubType === subType
-                    ? 'border-primary bg-primary/5'
-                    : 'hover:bg-muted/50'
-                }`}
-                onClick={() => setSelectedSubType(subType)}
-              >
-                <RadioGroupItem value={subType} id={subType} />
-                <Label htmlFor={subType} className="cursor-pointer flex-1">
-                  <span className="font-medium">{getSubTypeLabel(subType)}</span>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {SUB_TYPE_LABELS[subType]
-                      ? locale === 'es'
-                        ? SUB_TYPE_LABELS[subType].desc_es
-                        : locale === 'fr'
-                          ? SUB_TYPE_LABELS[subType].desc_fr
-                          : SUB_TYPE_LABELS[subType].desc_en
-                      : subType}
-                  </p>
-                </Label>
-                {selectedSubType === subType && (
-                  <CheckCircle className="h-5 w-5 text-primary" />
-                )}
-              </div>
-            ))}
-          </RadioGroup>
-
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowSubTypeDialog(false)}>
-              {locale === 'es' ? 'Cancelar' : locale === 'fr' ? 'Annuler' : 'Cancel'}
-            </Button>
-            <Button onClick={handleSubTypeConfirm} disabled={!selectedSubType || isStarting}>
-              {isStarting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {locale === 'es' ? 'Iniciando...' : locale === 'fr' ? 'Demarrage...' : 'Starting...'}
-                </>
-              ) : (
-                <>
-                  {locale === 'es' ? 'Continuar' : locale === 'fr' ? 'Continuer' : 'Continue'}
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Starting Loading Overlay */}
-      {isStarting && !showSubTypeDialog && (
+      {isStarting && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />

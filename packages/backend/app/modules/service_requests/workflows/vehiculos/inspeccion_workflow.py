@@ -154,7 +154,7 @@ class InspeccionVehiculoWorkflow(PredefinedWorkflow):
                         "description_es": "Registrar una reforma o modificación del vehículo",
                     },
                 ],
-                "field_key": "sub_type",
+                "selection_type": "sub_type",
             }
         ))
 
