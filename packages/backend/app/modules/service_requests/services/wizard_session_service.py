@@ -223,13 +223,16 @@ class WizardSessionService:
             try:
                 # Build a minimal context for document requirements
                 from ..workflows.workflow_interface import WorkflowContext
+                ctx_form_data = dict(session.get("form_data", {}))
+                if session.get("is_minor") is not None and "is_minor" not in ctx_form_data:
+                    ctx_form_data["is_minor"] = session["is_minor"]
                 context = WorkflowContext(
                     service_request_id=uuid4(),  # Placeholder
                     user_id=UUID(session["user_id"]),
                     workflow_code=WorkflowCode(session["workflow_code"]),
                     solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
                     sub_type=session.get("sub_type"),
-                    is_minor=session.get("is_minor", False),
+                    form_data=ctx_form_data,
                 )
                 if hasattr(workflow, "get_document_requirements"):
                     doc_reqs = workflow.get_document_requirements(context.sub_type)
@@ -683,14 +686,19 @@ class WizardSessionService:
             raise WizardSessionError(f"Workflow not found: {session['workflow_code']}")
 
         # Build context from session cache
+        # Inject top-level session keys into form_data for condition evaluation
+        # (is_minor is stored at session level, _build_eval_context reads from form_data)
+        form_data = dict(session.get("form_data", {}))
+        if session.get("is_minor") is not None and "is_minor" not in form_data:
+            form_data["is_minor"] = session["is_minor"]
+
         context = WorkflowContext(
             service_request_id=uuid4(),  # Placeholder
             user_id=UUID(session["user_id"]),
             workflow_code=WorkflowCode(session["workflow_code"]),
             solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
             sub_type=session.get("sub_type"),
-            is_minor=session.get("is_minor", False),
-            form_data=session.get("form_data", {}),
+            form_data=form_data,
             extracted_data=session.get("extracted_data", {}),
         )
 
@@ -815,14 +823,16 @@ class WizardSessionService:
 
         # Build context for validation and tariff
         from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
+        form_data = dict(session.get("form_data", {}))
+        if session.get("is_minor") is not None and "is_minor" not in form_data:
+            form_data["is_minor"] = session["is_minor"]
         context = WorkflowContext(
             service_request_id=uuid4(),  # Placeholder
             user_id=UUID(session["user_id"]),
             workflow_code=WorkflowCode(session["workflow_code"]),
             solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
             sub_type=session.get("sub_type"),
-            is_minor=session.get("is_minor", False),
-            form_data=session.get("form_data", {}),
+            form_data=form_data,
             extracted_data=session.get("extracted_data", {}),
         )
 
