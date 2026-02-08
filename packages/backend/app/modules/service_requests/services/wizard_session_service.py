@@ -677,6 +677,27 @@ class WizardSessionService:
         existing_form_data = session.get("form_data", {})
         session["form_data"] = {**existing_form_data, **form_data}
 
+        # Promote SELECTION fields to session level when present in form_data.
+        # These fields control document requirements filtering and tariff calculation.
+        # The frontend sends them after SELECTION step completion.
+        selection_promotable = {
+            "solicitud_type": str,
+            "motivo": str,
+            "is_minor": lambda v: v is True or v == "true",
+            "sub_type": str,
+        }
+        for key, coerce in selection_promotable.items():
+            if key in form_data and form_data[key] is not None:
+                if key == "is_minor":
+                    session[key] = coerce(form_data[key])
+                else:
+                    val = form_data[key]
+                    # Normalize to lowercase for solicitud_type (enum expects lowercase)
+                    if key == "solicitud_type" and isinstance(val, str):
+                        val = val.lower()
+                    session[key] = val
+                logger.info(f"[WizardSession] Promoted {key}={session[key]} to session level")
+
         # Update step tracking
         if step_id:
             session["current_step_id"] = step_id

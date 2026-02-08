@@ -177,10 +177,16 @@ class DocumentRequirement:
         if allowed_types and context.sub_type:
             return context.sub_type in allowed_types
 
-        # Check motivo for RENOVACION
+        # Check motivo for RENOVACION — compare as strings (condition_value
+        # stores strings like ["VENCIMIENTO", "DETERIORO"], context.motivo
+        # is a RenovacionMotivo enum)
         allowed_motivos = self.condition_value.get("motivos", [])
+        if not allowed_motivos:
+            # Also check alternative key used by some workflows (e.g. Conducir)
+            allowed_motivos = self.condition_value.get("motivo_in", [])
         if allowed_motivos and context.motivo:
-            return context.motivo in allowed_motivos
+            motivo_str = context.motivo.value if hasattr(context.motivo, 'value') else str(context.motivo)
+            return motivo_str in allowed_motivos
 
         return True
 
@@ -280,10 +286,26 @@ class WorkflowContext:
         return False  # Will check verified_identifiers
 
     def is_foreign_national(self) -> bool:
-        """Check if user is a foreign national."""
+        """Check if user is a foreign national.
+
+        Priority:
+        1. form_data.applicant_type — explicit user declaration at SELECTION step
+        2. extracted_data.dip.titular.nacionalidad — from OCR extraction
+        3. Default: False (assume national if unknown)
+        """
+        # 1. Check explicit user declaration (set at SELECTION step)
+        applicant_type = self.form_data.get("applicant_type", "") if self.form_data else ""
+        if applicant_type:
+            return applicant_type.upper() in ["FOREIGN", "EXTRANJERO", "RESIDENTE", "RESIDENT"]
+
+        # 2. Check OCR-extracted nationality from DIP
         dip_data = self.extracted_data.get("dip", {})
         nacionalidad = dip_data.get("titular", {}).get("nacionalidad", "")
-        return nacionalidad.upper() not in ["GNQ", "GUINEA ECUATORIAL", "ECUATOGUINEANO"]
+        if nacionalidad:
+            return nacionalidad.upper() not in ["GNQ", "GUINEA ECUATORIAL", "ECUATOGUINEANO"]
+
+        # 3. Default: national (most common case in GE)
+        return False
 
     def get_extracted_field(self, document_code: str, field_path: str) -> Optional[Any]:
         """Get a field value from extracted data using dot notation."""
