@@ -118,11 +118,14 @@ class WorkflowEngine:
         return self._workflows.copy()
 
     def get_workflows_by_category(self, category: WorkflowCategory) -> List[AnyWorkflow]:
-        """Get all workflows in a category."""
-        return [
-            w for w in self._workflows.values()
-            if w.category == category
-        ]
+        """Get all workflows in a category (deduplicated)."""
+        seen: set = set()
+        result = []
+        for w in self._workflows.values():
+            if w.category == category and id(w) not in seen:
+                seen.add(id(w))
+                result.append(w)
+        return result
 
     def is_registered(self, code: WorkflowCode) -> bool:
         """Check if a workflow is registered."""
@@ -1123,15 +1126,25 @@ class WorkflowEngine:
 
     # === Workflow Info ===
 
+    def _deduplicated_workflows(self) -> List[AnyWorkflow]:
+        """Return unique workflow instances (multi-code workflows appear once)."""
+        seen: set = set()
+        result = []
+        for w in self._workflows.values():
+            if id(w) not in seen:
+                seen.add(id(w))
+                result.append(w)
+        return result
+
     def get_available_workflows(self) -> List[Dict[str, Any]]:
-        """Get list of all available workflows."""
-        return [w.get_info() for w in self._workflows.values()]
+        """Get list of all available workflows (deduplicated)."""
+        return [w.get_info() for w in self._deduplicated_workflows()]
 
     def get_workflows_for_display(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Get workflows grouped by category for display."""
+        """Get workflows grouped by category for display (deduplicated)."""
         result: Dict[str, List[Dict[str, Any]]] = {}
 
-        for workflow in self._workflows.values():
+        for workflow in self._deduplicated_workflows():
             category = workflow.category.value
             if category not in result:
                 result[category] = []

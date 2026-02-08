@@ -153,6 +153,7 @@ export interface DocumentRequirement {
 
 export interface WorkflowConfig {
   workflowCode: string
+  allWorkflowCodes: string[]  // All codes for multi-code workflows (e.g., Vehiculos, Extranjeria)
   category: WorkflowCategory
   entityCode: string
   serviceNameEs: string  // Traductions fr/en via module translations

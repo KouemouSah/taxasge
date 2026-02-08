@@ -61,12 +61,14 @@ interface BackendWorkflowStep {
 
 interface BackendWorkflow {
   code: string
+  all_workflow_codes?: string[]
   category: string
   entity_code: string
   service_name_es: string
   requires_nota_ingreso: boolean
   requires_appointment: boolean
   requires_agent_review: boolean
+  allowed_solicitud_types?: string[]
   allowed_sub_types: string[]
   total_steps?: number
   steps?: BackendWorkflowStep[]
@@ -235,6 +237,7 @@ function transformStep(backend: BackendWorkflowStep): WorkflowStep {
 function transformWorkflow(backend: BackendWorkflow): WorkflowConfig {
   return {
     workflowCode: backend.code,
+    allWorkflowCodes: backend.all_workflow_codes || [backend.code],
     category: backend.category as WorkflowConfig['category'],
     entityCode: backend.entity_code,
     serviceNameEs: backend.service_name_es,

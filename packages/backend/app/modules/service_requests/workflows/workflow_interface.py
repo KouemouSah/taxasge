@@ -922,8 +922,14 @@ class PredefinedWorkflow(ABC):
 
     def get_info(self) -> Dict[str, Any]:
         """Get workflow info for API."""
+        # For multi-code workflows, include all registered codes
+        all_codes = []
+        if hasattr(self, 'get_all_workflow_codes'):
+            all_codes = [c.value for c in self.get_all_workflow_codes()]
+
         return {
             "code": self.workflow_code.value,
+            "all_workflow_codes": all_codes if all_codes else [self.workflow_code.value],
             "category": self.category.value,
             "entity_code": self.entity_code.value,
             "service_name_es": self.service_name_es,
@@ -931,6 +937,7 @@ class PredefinedWorkflow(ABC):
             "requires_appointment": self.requires_appointment,
             "requires_agent_review": self.requires_agent_review,
             "allowed_solicitud_types": [t.value for t in self.allowed_solicitud_types],
+            "allowed_sub_types": self.allowed_sub_types,
             "total_steps": self.get_total_steps(),
             "steps": [
                 {
