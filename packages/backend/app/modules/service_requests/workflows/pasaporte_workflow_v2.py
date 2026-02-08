@@ -146,19 +146,27 @@ class PasaporteWorkflow(PredefinedWorkflow):
         """
         Setup complete passport workflow.
 
-        ALIGNED WITH PLAN (passport-workflow-frontend-migration.md):
+        12 steps (4 conditional), all step_numbers unique and sequential.
 
         Steps:
-        0. is_minor - Selection mineur/adulte (demandé en premier)
-        1. select_type - EXPEDICION ou RENOVACION
-        1b. select_motivo - Si RENOVACION: choix motivo (dynamique, même step_number)
-        2. upload_documents - Tous documents (photo incluse) sur une seule page
-        3. form_review_1 - Datos Personales + Domicilio (max 2 sections)
-        4. form_review_2 - Filiacion + Pasaporte Anterior (max 2 sections)
-        5. validation - Resultats validation croisée
-        6. payment - Mobile Money (AVANT RDV)
-        7. appointment - Selection RDV (APRES paiement, hold 15min)
-        8. confirmation - Resume final
+        0.  is_minor                  - SELECTION: Adulte ou mineur
+        1.  select_type               - SELECTION: EXPEDICION ou RENOVACION
+        2.  select_motivo             - SELECTION: Motivo RENOVACION [condition: solicitud_type=RENOVACION]
+        3.  representantes_legales    - SELECTION: 1 ou 2 representants [condition: is_minor=True]
+        4.  select_motivo_rep_unico   - SELECTION: Motivo rep. unique [condition: is_minor+representante_unico]
+        5.  upload_documents          - DOCUMENT_UPLOAD: Tous documents sur une page
+        6.  form_review_1             - FORM_REVIEW: Datos Personales + Domicilio
+        7.  form_review_2             - FORM_REVIEW: Filiacion + Pasaporte Anterior
+        8.  form_review_representantes- FORM_REVIEW: Representants legaux [condition: is_minor=True]
+        9.  payment                   - PAYMENT: Mobile Money (AVANT RDV)
+        10. appointment               - APPOINTMENT: Selection RDV (APRES paiement, hold 15min)
+        11. confirmation              - CONFIRMATION: Resume final
+
+        Visible steps by scenario:
+        - Adulte EXPEDICION: 0,1,5,6,7,9,10,11 (8 steps)
+        - Adulte RENOVACION: 0,1,2,5,6,7,9,10,11 (9 steps)
+        - Mineur EXPEDICION (dual): 0,1,3,5,6,7,8,9,10,11 (10 steps)
+        - Mineur RENOVACION (unique): 0,1,2,3,4,5,6,7,8,9,10,11 (12 steps)
         """
 
         # === Step 0: Minor Selection (FIRST) ===
@@ -173,13 +181,13 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 "selection_type": "is_minor",
                 "options": [
                     {
-                        "value": False,
+                        "value": "false",
                         "label_es": "Mayor de Edad",
                         "description_es": "Persona de 18 anos o mas",
                         "icon": "user"
                     },
                     {
-                        "value": True,
+                        "value": "true",
                         "label_es": "Menor de Edad",
                         "description_es": "Persona menor de 18 anos (requiere autorizacion parental)",
                         "icon": "user-child"
@@ -190,7 +198,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
 
         # === Step 1: Type Selection (EXPEDICION/RENOVACION) ===
         self.add_step(WorkflowStep(
-            step_number=1,
+            step_number=1,  # sequential
             step_id="select_type",
             step_type=StepType.SELECTION,
             title_es="Tipo de Solicitud",
@@ -216,10 +224,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 1b: Motivo Selection (only for RENOVACION) ===
-        # Note: Same logical step as 1, but separate UI page
+        # === Step 2: Motivo Selection (only for RENOVACION) ===
         self.add_step(WorkflowStep(
-            step_number=1,  # Same step number, handled by frontend as sub-step
+            step_number=2,  # sequential — condition filters visibility
             step_id="select_motivo",
             step_type=StepType.SELECTION,
             title_es="Motivo de Renovacion",
@@ -260,45 +267,73 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 1c: Representantes Legales (only for MINORS) ===
-        # Determines if single or dual parent/guardian authorization
+        # === Step 3: Representantes Legales (only for MINORS) ===
+        # Format B: simple binary selection — 1 or 2 representatives
         self.add_step(WorkflowStep(
-            step_number=1,  # Same step number, handled by frontend as sub-step
+            step_number=3,  # sequential — condition filters visibility
             step_id="representantes_legales",
             step_type=StepType.SELECTION,
             title_es="Representantes Legales",
-            description_es="Indique los representantes legales del menor",
+            description_es="Indique si uno o ambos padres/tutores realizaran el tramite",
             config={
                 "selection_type": "representante_unico",
-                "condition": {"is_minor": True},  # Only shown for minors
-                "fields": [
+                "condition": {"is_minor": "true"},
+                "options": [
                     {
-                        "field_id": "representante_unico",
-                        "type": "checkbox",
-                        "label_es": "Representante unico",
-                        "description_es": "Marque si solo un padre/tutor realizara el tramite (custodia exclusiva, fallecimiento, etc.)",
-                        "default": False
+                        "value": "false",
+                        "label_es": "Ambos padres/tutores",
+                        "description_es": "Ambos representantes legales realizaran el tramite",
+                        "icon": "users"
                     },
                     {
-                        "field_id": "motivo_representante_unico",
-                        "type": "select",
-                        "label_es": "Motivo",
-                        "condition": {"representante_unico": True},
-                        "required_if": {"representante_unico": True},
-                        "options": [
-                            {"value": "CUSTODIA_EXCLUSIVA", "label_es": "Custodia exclusiva"},
-                            {"value": "FALLECIMIENTO", "label_es": "Fallecimiento del otro progenitor"},
-                            {"value": "PADRE_DESCONOCIDO", "label_es": "Padre/Madre desconocido"},
-                            {"value": "OTRO", "label_es": "Otro motivo"}
-                        ]
+                        "value": "true",
+                        "label_es": "Representante unico",
+                        "description_es": "Solo un padre/tutor realizara el tramite (custodia exclusiva, fallecimiento, etc.)",
+                        "icon": "user"
                     }
                 ]
             }
         ))
 
-        # === Step 2: Document Upload (ALL documents on ONE page) ===
+        # === Step 4: Motivo Representante Unico (only if single representative) ===
+        # Format B: reason for single representative
         self.add_step(WorkflowStep(
-            step_number=2,
+            step_number=4,  # sequential — condition filters visibility
+            step_id="select_motivo_rep_unico",
+            step_type=StepType.SELECTION,
+            title_es="Motivo de Representante Unico",
+            description_es="Indique el motivo por el cual solo un representante realiza el tramite",
+            config={
+                "selection_type": "motivo_representante_unico",
+                "condition": {"is_minor": "true", "representante_unico": "true"},
+                "options": [
+                    {
+                        "value": "CUSTODIA_EXCLUSIVA",
+                        "label_es": "Custodia exclusiva",
+                        "description_es": "Tiene la custodia exclusiva del menor"
+                    },
+                    {
+                        "value": "FALLECIMIENTO",
+                        "label_es": "Fallecimiento del otro progenitor",
+                        "description_es": "El otro padre/madre ha fallecido"
+                    },
+                    {
+                        "value": "PADRE_DESCONOCIDO",
+                        "label_es": "Padre/Madre desconocido",
+                        "description_es": "Uno de los progenitores es desconocido"
+                    },
+                    {
+                        "value": "OTRO",
+                        "label_es": "Otro motivo",
+                        "description_es": "Otro motivo legal documentado"
+                    }
+                ]
+            }
+        ))
+
+        # === Step 5: Document Upload (ALL documents on ONE page) ===
+        self.add_step(WorkflowStep(
+            step_number=5,
             step_id="upload_documents",
             step_type=StepType.DOCUMENT_UPLOAD,
             title_es="Documentos Requeridos",
@@ -310,10 +345,10 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 3: Form Review 1 - Datos Personales + Domicilio ===
+        # === Step 6: Form Review 1 - Datos Personales + Domicilio ===
         # CONDITIONAL: Different fields for adults (DIP) vs minors (certificado_nacimiento)
         self.add_step(WorkflowStep(
-            step_number=3,
+            step_number=6,
             step_id="form_review_1",
             step_type=StepType.FORM_REVIEW,
             title_es="Verificar Datos (1/2)",
@@ -407,9 +442,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 4: Form Review 2 - Filiacion + Pasaporte Anterior ===
+        # === Step 7: Form Review 2 - Filiacion + Pasaporte Anterior ===
         self.add_step(WorkflowStep(
-            step_number=4,
+            step_number=7,
             step_id="form_review_2",
             step_type=StepType.FORM_REVIEW,
             title_es="Verificar Datos (2/2)",
@@ -425,10 +460,10 @@ class PasaporteWorkflow(PredefinedWorkflow):
                             {"key": "nombre_padre", "label_es": "Nombre del Padre", "required": True},
                             # Profesion only available from certificado_nacimiento (EXPEDICION or minors)
                             {"key": "profesion_padre", "label_es": "Profesion del Padre", "required": False,
-                             "condition": {"OR": [{"solicitud_type": SolicitudType.EXPEDICION.value}, {"is_minor": True}]}},
+                             "condition": {"OR": [{"solicitud_type": SolicitudType.EXPEDICION.value}, {"is_minor": "true"}]}},
                             {"key": "nombre_madre", "label_es": "Nombre de la Madre", "required": True},
                             {"key": "profesion_madre", "label_es": "Profesion de la Madre", "required": False,
-                             "condition": {"OR": [{"solicitud_type": SolicitudType.EXPEDICION.value}, {"is_minor": True}]}}
+                             "condition": {"OR": [{"solicitud_type": SolicitudType.EXPEDICION.value}, {"is_minor": "true"}]}}
                         ]
                     },
                     {
@@ -448,17 +483,17 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 5: Form Review Representantes (MINORS ONLY) ===
+        # === Step 8: Form Review Representantes (MINORS ONLY) ===
         # Shows data from autorizacion_parental + cross-validation status
         self.add_step(WorkflowStep(
-            step_number=5,
+            step_number=8,
             step_id="form_review_representantes",
             step_type=StepType.FORM_REVIEW,
             title_es="Verificar Representantes Legales",
             description_es="Verifique los datos de los representantes legales y el estado de validacion",
             config={
                 "form_page": 3,
-                "condition": {"is_minor": True},  # Only shown for minors
+                "condition": {"is_minor": "true"},  # Only shown for minors
                 "max_sections": 3,
                 "source_document": "autorizacion_parental",
                 "sections": [
@@ -476,7 +511,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
                     {
                         "id": "representante_2",
                         "title_es": "Representante 2",
-                        "condition": {"representante_unico": False},  # Only if dual-parent
+                        "condition": {"representante_unico": "false"},  # Only if dual-parent (string: RadioGroup stores strings)
                         "fields": [
                             {"key": "rep2_nombre", "label_es": "Nombre Completo", "required": True},
                             {"key": "rep2_parentesco", "label_es": "Parentesco", "required": False, "type": "select", "options": ["PADRE", "MADRE", "TUTOR_LEGAL", "OTRO"]},
@@ -500,12 +535,12 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 6: Payment (BEFORE Appointment) ===
-        # NOTE: Cross-document validation is now done during extraction (Step 3)
+        # === Step 9: Payment (BEFORE Appointment) ===
+        # NOTE: Cross-document validation is done during extraction
         # by Gemini processor with identity mismatch blocking. No separate validation step needed.
         # Payment methods loaded dynamically via GET /payment/methods endpoint
         self.add_step(WorkflowStep(
-            step_number=6,
+            step_number=9,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
@@ -517,9 +552,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 7: Appointment (AFTER Payment, with 15min hold) ===
+        # === Step 10: Appointment (AFTER Payment, with 15min hold) ===
         self.add_step(WorkflowStep(
-            step_number=7,
+            step_number=10,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
             title_es="Programar Cita",
@@ -533,9 +568,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 8: Confirmation ===
+        # === Step 11: Confirmation ===
         self.add_step(WorkflowStep(
-            step_number=8,
+            step_number=11,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmacion",
@@ -620,8 +655,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             fecha_nacimiento = context.form_data.get("fecha_nacimiento")
             if fecha_nacimiento:
                 is_minor = self._is_minor(fecha_nacimiento)
-            # Also check explicit is_minor flag in form_data
-            if context.form_data.get("is_minor") is True:
+            # Also check explicit is_minor flag in form_data (RadioGroup stores strings)
+            is_minor_flag = context.form_data.get("is_minor")
+            if is_minor_flag is True or is_minor_flag == "true":
                 is_minor = True
 
         # === DIP - Required for ADULTS only (minors use certificado_nacimiento) ===
@@ -717,10 +753,11 @@ class PasaporteWorkflow(PredefinedWorkflow):
 
         # === Minor-specific requirements ===
         if is_minor:
-            # Check if single representative (from context)
+            # Check if single representative (from context — RadioGroup stores strings)
             representante_unico = False
             if context and context.form_data:
-                representante_unico = context.form_data.get("representante_unico", False)
+                rep_flag = context.form_data.get("representante_unico", "false")
+                representante_unico = (rep_flag is True or rep_flag == "true")
 
             # Parental authorization (with OCR schema)
             requirements.append(DocumentRequirement(
@@ -748,7 +785,8 @@ class PasaporteWorkflow(PredefinedWorkflow):
                     "accepted_schemas": {
                         "DIP": "DIP_GQ_V2",
                         "NIE": "PERMISO_RESIDENCIA_GQ_V1",
-                        "PASAPORTE": "PASAPORTE_GQ_V1"
+                        "PASAPORTE_GQ": "PASAPORTE_GQ_V1",
+                        "PASAPORTE_INTERNATIONAL": "PASAPORTE_INTERNATIONAL_V1"
                     }
                 }
             ))
@@ -761,7 +799,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
                     is_required=False,  # Conditional based on representante_unico
                     display_order=7,
                     condition_type=DocumentConditionType.CUSTOM,
-                    condition_value={"is_minor": True, "representante_unico": False},
+                    condition_value={"is_minor": "true", "representante_unico": "false"},
                     instructions_es="DIP, NIE o Pasaporte del segundo padre, madre o tutor",
                     faces_required=["recto", "verso"],
                     config={
@@ -769,7 +807,8 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "accepted_schemas": {
                             "DIP": "DIP_GQ_V2",
                             "NIE": "PERMISO_RESIDENCIA_GQ_V1",
-                            "PASAPORTE": "PASAPORTE_GQ_V1"
+                            "PASAPORTE_GQ": "PASAPORTE_GQ_V1",
+                            "PASAPORTE_INTERNATIONAL": "PASAPORTE_INTERNATIONAL_V1"
                         }
                     }
                 ))
@@ -834,6 +873,10 @@ class PasaporteWorkflow(PredefinedWorkflow):
             fecha_nacimiento = context.form_data.get("fecha_nacimiento")
             if fecha_nacimiento:
                 is_minor = self._is_minor(fecha_nacimiento)
+            # Also check explicit is_minor flag (RadioGroup stores strings)
+            is_minor_flag = context.form_data.get("is_minor")
+            if is_minor_flag is True or is_minor_flag == "true":
+                is_minor = True
 
         mapping = {
             # === DIP Fields (per dip_gq.json schema) ===

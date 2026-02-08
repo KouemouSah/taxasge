@@ -309,7 +309,7 @@ class DuplicadoVehiculoWorkflow(PredefinedWorkflow):
             instructions_es="Escanee ambas caras de su DIP, NIE o Pasaporte en vigor",
             faces_required=["recto", "verso"],
             config={
-                "accepted_schemas": ["DIP_GQ_V2", "PERMISO_RESIDENCIA_GQ_V1", "PASAPORTE_GQ_V1"],
+                "accepted_schemas": ["DIP_GQ_V2", "PERMISO_RESIDENCIA_GQ_V1", "PASAPORTE_GQ_V1", "PASAPORTE_INTERNATIONAL_V1"],
             },
         ))
 

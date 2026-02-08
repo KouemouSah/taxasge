@@ -83,17 +83,20 @@ from .vehiculos.duplicado_workflow import (
     get_duplicado_vehiculo_workflow,
 )
 
+# Extranjeria workflows v2 (autonomous) - Migrated 2026-02-07
+from .extranjeria import (
+    ResidenciaWorkflow,
+    get_residencia_workflow,
+    ProrrogaVisadoWorkflow,
+    get_prorroga_visado_workflow,
+)
+
 # =============================================================================
 # LEGACY (v1) - For backward compatibility
 # =============================================================================
 
 # Legacy BaseWorkflow (still used by some workflows)
 from .base_workflow import BaseWorkflow
-from .residencia_workflow import (
-    ResidenciaWorkflow,
-    ResidenciaPhase,
-    ResidenciaCategory
-)
 
 # Generic workflows (data-driven from database)
 from .generic_workflow import (
@@ -155,12 +158,14 @@ __all__ = [
     "DuplicadoVehiculoWorkflow",
     "get_duplicado_vehiculo_workflow",
 
+    # Extranjeria v2
+    "ResidenciaWorkflow",
+    "get_residencia_workflow",
+    "ProrrogaVisadoWorkflow",
+    "get_prorroga_visado_workflow",
+
     # === LEGACY (v1) ===
     "BaseWorkflow",
-    # Residencia workflow (3 phases)
-    "ResidenciaWorkflow",
-    "ResidenciaPhase",
-    "ResidenciaCategory",
     # Generic workflows (data-driven)
     "GenericWorkflowStandard",
     "GenericWorkflowDirectPayment",

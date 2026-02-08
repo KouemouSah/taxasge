@@ -940,6 +940,9 @@ class PredefinedWorkflow(ABC):
                     "type": s.step_type.value,
                     "title_es": s.title_es,
                     "description_es": s.description_es,
+                    "is_inherited": False,
+                    "is_optional": s.is_optional,
+                    "config": s.config if s.config else None,
                 }
                 for s in self.get_steps()
             ]

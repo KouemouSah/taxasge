@@ -367,6 +367,7 @@ class InspeccionVehiculoWorkflow(PredefinedWorkflow):
                     "DIP_GQ_V2",
                     "PERMISO_RESIDENCIA_GQ_V1",
                     "PASAPORTE_GQ_V1",
+                    "PASAPORTE_INTERNATIONAL_V1",
                 ],
             },
         ))

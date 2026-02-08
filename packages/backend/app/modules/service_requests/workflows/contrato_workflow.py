@@ -360,8 +360,8 @@ class ContratoWorkflow(PredefinedWorkflow):
                                 "readonly": False
                             },
                             {
-                                "key": "dip_representante_numero",
-                                "label_es": "Nº DIP del Representante",
+                                "key": "identidad_representante_numero",
+                                "label_es": "Nº de Identificación del Representante",
                                 "type": "text",
                                 "required": True,
                                 "readonly": True
@@ -821,16 +821,27 @@ class ContratoWorkflow(PredefinedWorkflow):
             instructions_es="Certificado NIF vigente de la empresa contratista"
         ))
 
-        # === 3. DIP of legal representative - ALWAYS REQUIRED ===
+        # === 3. Identity of legal representative - ALWAYS REQUIRED ===
+        # DIP (citizens), NIE/Permiso Residencia (foreign residents), or international passport
         requirements.append(DocumentRequirement(
-            document_code="dip_representante",
-            document_name_es="DIP del Representante Legal",
+            document_code="identidad_representante",
+            document_name_es="Documento de Identidad del Representante Legal",
             schema_key="DIP_GQ_V2",
             is_required=True,
             display_order=3,
             condition_type=DocumentConditionType.ALWAYS,
-            instructions_es="DIP vigente del representante legal de la empresa contratista",
-            faces_required=["recto", "verso"]
+            instructions_es=(
+                "DIP, Permiso de Residencia o Pasaporte en vigor del representante legal "
+                "de la empresa contratista. Escanee ambas caras del documento."
+            ),
+            faces_required=["recto", "verso"],
+            config={
+                "accepted_schemas": [
+                    "DIP_GQ_V2",
+                    "PERMISO_RESIDENCIA_GQ_V1",
+                    "PASAPORTE_INTERNATIONAL_V1",
+                ],
+            },
         ))
 
         # === 4. Escritura de Constitución - LISTED, NOT REQUIRED ===
@@ -1054,7 +1065,7 @@ class ContratoWorkflow(PredefinedWorkflow):
         Sources:
         - contrato (CONTRATO_ONRC_GQ_V1): contract details, value, parties
         - certificado_nif (CERTIFICADO_NIF_GQ_V1): NIF, denomination, authorization
-        - dip_representante (DIP_GQ_V2): representative identity
+        - identidad_representante (DIP_GQ_V2 / PERMISO_RESIDENCIA_GQ_V1 / PASAPORTE_INTERNATIONAL_V1): representative identity
         """
         return {
             # === From NIF Certificate ===
@@ -1062,10 +1073,12 @@ class ContratoWorkflow(PredefinedWorkflow):
             "denominacion_social": "certificado_nif.empresa.denominacion_social",
             "autorizacion_tipo": "certificado_nif.empresa.autorizacion",
 
-            # === From DIP ===
-            "dip_representante_numero": "dip_representante.documento.numero_dip",
-            "apellidos_representante": "dip_representante.titular.apellidos",
-            "nombres_representante": "dip_representante.titular.nombres",
+            # === From Identity Document (DIP/NIE/Pasaporte) ===
+            # numero_dip is the default path; pipeline resolves to numero_nie/numero_pasaporte
+            # based on the actual schema detected during OCR extraction
+            "identidad_representante_numero": "identidad_representante.documento.numero_dip",
+            "apellidos_representante": "identidad_representante.titular.apellidos",
+            "nombres_representante": "identidad_representante.titular.nombres",
 
             # === From Contract - Contratista ===
             "representante_legal": "contrato.parte_contratista.representante_legal",
