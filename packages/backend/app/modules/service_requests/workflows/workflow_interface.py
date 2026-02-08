@@ -8,7 +8,7 @@ This module provides:
 
 Architecture:
 - PredefinedWorkflow: Code-based workflows (pasaporte, residencia, etc.) - AUTONOMOUS
-- ConfigurableWorkflow: Admin dashboard created workflows - Uses BaseWorkflow
+- GenericWorkflow: Database-driven workflows extending PredefinedWorkflow
 
 The key principle: Each workflow is AUTONOMOUS and defines ALL its logic internally.
 No more relying on base class for steps that might conflict.
