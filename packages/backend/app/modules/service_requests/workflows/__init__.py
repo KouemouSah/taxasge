@@ -87,6 +87,9 @@ from .vehiculos.duplicado_workflow import (
 from .extranjeria import (
     ResidenciaWorkflow,
     get_residencia_workflow,
+    TramitesVisadoWorkflow,
+    get_tramites_visado_workflow,
+    # Backward compat aliases
     ProrrogaVisadoWorkflow,
     get_prorroga_visado_workflow,
 )
@@ -161,8 +164,10 @@ __all__ = [
     # Extranjeria v2
     "ResidenciaWorkflow",
     "get_residencia_workflow",
-    "ProrrogaVisadoWorkflow",
-    "get_prorroga_visado_workflow",
+    "TramitesVisadoWorkflow",
+    "get_tramites_visado_workflow",
+    "ProrrogaVisadoWorkflow",       # backward compat alias
+    "get_prorroga_visado_workflow",  # backward compat alias
 
     # === LEGACY (v1) ===
     "BaseWorkflow",

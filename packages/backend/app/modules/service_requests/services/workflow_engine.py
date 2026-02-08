@@ -1159,7 +1159,7 @@ def register_all_workflows() -> None:
     It registers all workflow classes so they can be retrieved via
     workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
     
-    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario, VerificacionFuncionario, PermisoExtraordinario, CertificadoAdministrativo, Matriculacion, Inspeccion, Duplicado, Residencia, ProrrogaVisado
+    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario, VerificacionFuncionario, PermisoExtraordinario, CertificadoAdministrativo, Matriculacion, Inspeccion, Duplicado, Residencia, TramitesVisado (4 codes: Prorroga, Alternativo, Permanencia, Salida)
     v1 (BaseWorkflow): (none)
     """
     # v2 workflows (PredefinedWorkflow - autonomous)
@@ -1176,9 +1176,9 @@ def register_all_workflows() -> None:
         MatriculacionTransferenciaWorkflow,
         InspeccionVehiculoWorkflow,
         DuplicadoVehiculoWorkflow,
-        # Extranjeria v2 - Migrated 2026-02-07
+        # Extranjeria v2 (4 visa codes via get_all_workflow_codes) - Migrated 2026-02-08
         ResidenciaWorkflow,
-        ProrrogaVisadoWorkflow,
+        TramitesVisadoWorkflow,
     )
 
     v2_workflows = [
@@ -1194,9 +1194,9 @@ def register_all_workflows() -> None:
         MatriculacionTransferenciaWorkflow,
         InspeccionVehiculoWorkflow,
         DuplicadoVehiculoWorkflow,
-        # Extranjeria v2
+        # Extranjeria v2 (Residencia + TramitesVisado with 4 codes via get_all_workflow_codes)
         ResidenciaWorkflow,
-        ProrrogaVisadoWorkflow,
+        TramitesVisadoWorkflow,
     ]
 
     v1_workflows: list = []
