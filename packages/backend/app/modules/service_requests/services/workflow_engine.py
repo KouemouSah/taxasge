@@ -230,13 +230,18 @@ class WorkflowEngine:
             except ValueError:
                 logger.warning(f"Invalid motivo value: {motivo_value}")
 
+        # Extract is_minor (stored as string "true"/"false" by RadioGroup)
+        is_minor_raw = form_data.get("is_minor", False)
+        is_minor = is_minor_raw is True or is_minor_raw == "true"
+
         context = WorkflowContext(
             service_request_id=row["id"],
             user_id=row["user_id"],
             workflow_code=workflow_code,
             solicitud_type=SolicitudType(row["solicitud_type"]) if row["solicitud_type"] else SolicitudType.EXPEDICION,
             sub_type=sub_type,
-            motivo=motivo,  # NEW: Pass motivo for tariff calculation
+            motivo=motivo,
+            is_minor=is_minor,
             status=ServiceRequestStatus(row["status"]),
             form_data=form_data,
             entity_code=row["entity_code"],
