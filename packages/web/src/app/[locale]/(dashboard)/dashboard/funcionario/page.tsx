@@ -15,16 +15,6 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
-import {
   BadgeCheck,
   FileText,
   Shield,
@@ -34,54 +24,17 @@ import {
   User,
   Calendar,
   CreditCard,
-  CheckCircle,
   ChevronRight,
   Building,
 } from 'lucide-react'
 import { getAuthData } from '@/core/auth/storage'
-import { useServiceRequests } from '@/modules/service-requests'
+import { useServiceRequests, wizardSessionApi } from '@/modules/service-requests'
 import type { WorkflowConfig } from '@/modules/service-requests'
 import type { User as UserType } from '@/types/auth'
+import { FEATURE_CACHE_FIRST_WIZARD } from '@/core/config/features'
 
-// Sub-type labels
-const SUB_TYPE_LABELS: Record<string, { es: string; fr: string; en: string; desc_es: string; desc_fr: string; desc_en: string }> = {
-  expedicion: {
-    es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance',
-    desc_es: 'Primera vez que solicitas este documento',
-    desc_fr: "Premiere demande de ce document",
-    desc_en: 'First time requesting this document'
-  },
-  renovacion: {
-    es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal',
-    desc_es: 'Ya tienes este documento y esta por vencer o vencido',
-    desc_fr: "Vous avez deja ce document qui expire ou est expire",
-    desc_en: 'You already have this document and it is expiring or expired'
-  },
-  duplicado: {
-    es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate',
-    desc_es: 'Necesitas una copia por perdida o deterioro',
-    desc_fr: "Vous avez besoin d'une copie pour perte ou deterioration",
-    desc_en: 'You need a copy due to loss or damage'
-  },
-  EXPEDICION: {
-    es: 'Nueva Expedicion', fr: 'Nouvelle Emission', en: 'New Issuance',
-    desc_es: 'Primera vez que solicitas este documento',
-    desc_fr: "Premiere demande de ce document",
-    desc_en: 'First time requesting this document'
-  },
-  RENOVACION: {
-    es: 'Renovacion', fr: 'Renouvellement', en: 'Renewal',
-    desc_es: 'Ya tienes este documento y esta por vencer o vencido',
-    desc_fr: "Vous avez deja ce document qui expire ou est expire",
-    desc_en: 'You already have this document and it is expiring or expired'
-  },
-  DUPLICADO: {
-    es: 'Duplicado', fr: 'Duplicata', en: 'Duplicate',
-    desc_es: 'Necesitas una copia por perdida o deterioro',
-    desc_fr: "Vous avez besoin d'une copie pour perte ou deterioration",
-    desc_en: 'You need a copy due to loss or damage'
-  },
-}
+// Sub-type labels moved to SELECTION steps in each workflow definition.
+// The wizard SELECTION step renders options with labels and descriptions from backend config.
 
 export default function FuncionarioDashboardPage() {
   const router = useRouter()
@@ -96,9 +49,6 @@ export default function FuncionarioDashboardPage() {
   // Workflows state
   const [workflows, setWorkflows] = useState<WorkflowConfig[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowConfig | null>(null)
-  const [selectedSubType, setSelectedSubType] = useState<string>('')
-  const [showSubTypeDialog, setShowSubTypeDialog] = useState(false)
   const [isStarting, setIsStarting] = useState(false)
 
   const { loadWorkflows, startWorkflow, isLoading, error, clearError } = useServiceRequests()
@@ -146,60 +96,39 @@ export default function FuncionarioDashboardPage() {
     )
   }, [workflows, searchQuery])
 
-  // Get sub-type label
-  const getSubTypeLabel = (subType: string): string => {
-    const labels = SUB_TYPE_LABELS[subType]
-    if (!labels) return subType
-    return locale === 'es' ? labels.es : locale === 'fr' ? labels.fr : labels.en
-  }
-
-  // Handle workflow selection
+  // Handle workflow selection — start wizard directly, SELECTION step handles sub_type
   const handleWorkflowSelect = (workflow: WorkflowConfig) => {
-    setSelectedWorkflow(workflow)
-
-    // If workflow has sub-types, show dialog
-    if (workflow.allowedSubTypes && workflow.allowedSubTypes.length > 1) {
-      setSelectedSubType(workflow.allowedSubTypes[0])
-      setShowSubTypeDialog(true)
-    } else {
-      // Start workflow directly with first sub-type
-      const subType = workflow.allowedSubTypes?.[0] || 'expedicion'
-      startNewRequest(workflow.workflowCode, subType)
-    }
+    startNewRequest(workflow.workflowCode)
   }
 
   // Start new request
-  const startNewRequest = async (workflowCode: string, subType: string) => {
+  const startNewRequest = async (workflowCode: string) => {
     setIsStarting(true)
     try {
+      // Cache-first wizard: create session in Redis, no DB writes
+      if (FEATURE_CACHE_FIRST_WIZARD) {
+        const session = await wizardSessionApi.createSession({
+          workflow_code: workflowCode,
+          solicitud_type: 'expedicion',
+        })
+        if (session) {
+          router.push(`/${locale}/dashboard/service-requests/wizard/session/${session.sessionId}`)
+        }
+        return
+      }
+
+      // Legacy flow: create DB record, then redirect
       const request = await startWorkflow({
         workflowCode,
-        subType,
       })
 
       if (request) {
-        // Navigate to service-requests detail or wizard
-        const workflowPrefixesWithWizard = ['PASAPORTE', 'CARNET', 'FP_']
-        const hasWizard = workflowPrefixesWithWizard.some(prefix => workflowCode.startsWith(prefix))
-
-        if (hasWizard) {
-          router.push(`/${locale}/dashboard/service-requests/${request.id}/wizard`)
-        } else {
-          router.push(`/${locale}/dashboard/service-requests/${request.id}`)
-        }
+        router.push(`/${locale}/dashboard/service-requests/${request.id}/wizard`)
       }
     } catch (err) {
       console.error('Failed to start workflow:', err)
     } finally {
       setIsStarting(false)
-      setShowSubTypeDialog(false)
-    }
-  }
-
-  // Handle sub-type confirmation
-  const handleSubTypeConfirm = () => {
-    if (selectedWorkflow && selectedSubType) {
-      startNewRequest(selectedWorkflow.workflowCode, selectedSubType)
     }
   }
 
@@ -423,76 +352,8 @@ export default function FuncionarioDashboardPage() {
         <AlertDescription>{t('helpDescription')}</AlertDescription>
       </Alert>
 
-      {/* Sub-Type Selection Dialog */}
-      <Dialog open={showSubTypeDialog} onOpenChange={setShowSubTypeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {locale === 'es'
-                ? 'Tipo de Solicitud'
-                : locale === 'fr'
-                  ? 'Type de Demande'
-                  : 'Request Type'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedWorkflow?.serviceNameEs}
-            </DialogDescription>
-          </DialogHeader>
-
-          <RadioGroup value={selectedSubType} onValueChange={setSelectedSubType} className="space-y-3">
-            {selectedWorkflow?.allowedSubTypes?.map((subType) => (
-              <div
-                key={subType}
-                className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
-                  selectedSubType === subType
-                    ? 'border-primary bg-primary/5'
-                    : 'hover:bg-muted/50'
-                }`}
-                onClick={() => setSelectedSubType(subType)}
-              >
-                <RadioGroupItem value={subType} id={subType} />
-                <Label htmlFor={subType} className="cursor-pointer flex-1">
-                  <span className="font-medium">{getSubTypeLabel(subType)}</span>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {SUB_TYPE_LABELS[subType]
-                      ? locale === 'es'
-                        ? SUB_TYPE_LABELS[subType].desc_es
-                        : locale === 'fr'
-                          ? SUB_TYPE_LABELS[subType].desc_fr
-                          : SUB_TYPE_LABELS[subType].desc_en
-                      : subType}
-                  </p>
-                </Label>
-                {selectedSubType === subType && (
-                  <CheckCircle className="h-5 w-5 text-primary" />
-                )}
-              </div>
-            ))}
-          </RadioGroup>
-
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setShowSubTypeDialog(false)}>
-              {locale === 'es' ? 'Cancelar' : locale === 'fr' ? 'Annuler' : 'Cancel'}
-            </Button>
-            <Button onClick={handleSubTypeConfirm} disabled={!selectedSubType || isStarting}>
-              {isStarting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {locale === 'es' ? 'Iniciando...' : locale === 'fr' ? 'Demarrage...' : 'Starting...'}
-                </>
-              ) : (
-                <>
-                  {locale === 'es' ? 'Continuar' : locale === 'fr' ? 'Continuer' : 'Continue'}
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Starting Loading Overlay */}
-      {isStarting && !showSubTypeDialog && (
+      {isStarting && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />

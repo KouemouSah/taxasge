@@ -1036,7 +1036,9 @@ class PredefinedWorkflow(ABC):
         eval_context = self._build_eval_context(context)
 
         # Choose sections based on is_minor (if variants exist)
-        is_minor = eval_context.get("is_minor", False)
+        # eval_context stores is_minor as STRING ("true"/"false") for ConditionEvaluator,
+        # so we must compare against "true" — NOT use Python truthiness (any non-empty string is truthy).
+        is_minor = eval_context.get("is_minor", "false") == "true"
 
         if is_minor and "sections_minor" in config:
             raw_sections = config["sections_minor"]
@@ -1105,7 +1107,8 @@ class PredefinedWorkflow(ABC):
             "age": context.get_user_age(),
 
             # Common form_data fields (any workflow can use these)
-            "representante_unico": context.form_data.get("representante_unico", False),
+            # Default to string "false" to match ConditionEvaluator string comparison
+            "representante_unico": context.form_data.get("representante_unico", "false"),
         }
 
         # Add all form_data keys to context (for fully dynamic conditions)
