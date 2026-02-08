@@ -213,6 +213,45 @@ class WizardSessionService:
             logger.error(f"[WizardSession] Cache error saving session {session_id}: {e}")
             return False
 
+    def _get_doc_requirements(
+        self,
+        workflow,
+        session: Dict[str, Any],
+        context=None,
+    ) -> List:
+        """
+        Get document requirements from workflow, handling V1/V2 signature differences.
+
+        V2 (PredefinedWorkflow): get_document_requirements(solicitud_type, motivo, context)
+        V1 (BaseWorkflow):       get_document_requirements(sub_type)
+
+        Uses get_document_requirements_legacy() when available (Pasaporte, Conducir, Contrato)
+        to convert sub_type → (solicitud_type, motivo).
+        """
+        if not hasattr(workflow, "get_document_requirements"):
+            return []
+
+        # V2 workflows with legacy adapter (handles sub_type → solicitud_type+motivo)
+        if hasattr(workflow, "get_document_requirements_legacy"):
+            return workflow.get_document_requirements_legacy(
+                session.get("sub_type"), context
+            )
+
+        # V2 workflows (PredefinedWorkflow) without legacy adapter
+        from ..workflows.workflow_interface import PredefinedWorkflow, RenovacionMotivo
+        if isinstance(workflow, PredefinedWorkflow):
+            motivo = None
+            if session.get("motivo"):
+                try:
+                    motivo = RenovacionMotivo(session["motivo"])
+                except ValueError:
+                    pass
+            solicitud_type = SolicitudType(session.get("solicitud_type", "expedicion"))
+            return workflow.get_document_requirements(solicitud_type, motivo, context)
+
+        # V1 workflows (BaseWorkflow) — takes sub_type string
+        return workflow.get_document_requirements(session.get("sub_type"))
+
     def _session_to_response(self, session: Dict[str, Any], workflow=None) -> WizardSessionResponse:
         """Convert session dict to response model."""
         documents = session.get("documents", {})
@@ -234,8 +273,8 @@ class WizardSessionService:
                     sub_type=session.get("sub_type"),
                     form_data=ctx_form_data,
                 )
-                if hasattr(workflow, "get_document_requirements"):
-                    doc_reqs = workflow.get_document_requirements(context.sub_type)
+                doc_reqs = self._get_doc_requirements(workflow, session, context)
+                if doc_reqs:
                     for doc in doc_reqs:
                         if doc.should_show(context):
                             required_documents.append({
@@ -460,12 +499,11 @@ class WizardSessionService:
 
         # Get extraction schema key for this document
         extraction_schema_key = None
-        if hasattr(workflow, 'get_document_requirements'):
-            doc_reqs = workflow.get_document_requirements(session.get("sub_type"))
-            for doc_req in doc_reqs:
-                if doc_req.document_code == document_code:
-                    extraction_schema_key = doc_req.schema_key
-                    break
+        doc_reqs = self._get_doc_requirements(workflow, session)
+        for doc_req in doc_reqs:
+            if doc_req.document_code == document_code:
+                extraction_schema_key = doc_req.schema_key
+                break
 
         # Get existing extractions for cross-validation
         existing_documents = session.get("extracted_data", {})
@@ -845,12 +883,11 @@ class WizardSessionService:
 
         # Check required documents
         missing_documents = []
-        if hasattr(workflow, 'get_document_requirements'):
-            doc_reqs = workflow.get_document_requirements(session.get("sub_type"))
-            for doc_req in doc_reqs:
-                if doc_req.should_show(context) and doc_req.is_required:
-                    if doc_req.document_code not in session.get("documents", {}):
-                        missing_documents.append(doc_req.document_code)
+        doc_reqs = self._get_doc_requirements(workflow, session, context)
+        for doc_req in doc_reqs:
+            if doc_req.should_show(context) and doc_req.is_required:
+                if doc_req.document_code not in session.get("documents", {}):
+                    missing_documents.append(doc_req.document_code)
 
         # Run validation
         errors = []

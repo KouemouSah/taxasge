@@ -143,11 +143,22 @@ class DocumentRequirement:
 
         if self.condition_type == DocumentConditionType.IS_MINOR:
             age = context.get_user_age()
-            return age is not None and age < 18
+            if age is not None:
+                return age < 18
+            # Fallback: check form_data flag (available before DIP upload)
+            is_minor_flag = context.form_data.get("is_minor")
+            return is_minor_flag is True or is_minor_flag == "true"
 
         if self.condition_type == DocumentConditionType.IS_ADULT:
             age = context.get_user_age()
-            return age is not None and age >= 18
+            if age is not None:
+                return age >= 18
+            # Fallback: check form_data flag (available before DIP upload)
+            is_minor_flag = context.form_data.get("is_minor")
+            if is_minor_flag is True or is_minor_flag == "true":
+                return False
+            # If no age AND no is_minor flag, default to adult (most common case)
+            return True
 
         if self.condition_type == DocumentConditionType.AGE_LESS_THAN:
             threshold = self.condition_value.get("age", 18)
