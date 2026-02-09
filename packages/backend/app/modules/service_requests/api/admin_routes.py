@@ -6335,46 +6335,15 @@ def extract_tariff_from_workflow(workflow, sub_type: str) -> tuple:
     return (0, tariff_type)
 
 # Mapping from sub_type to parent family code
+# LEGACY: Used as FALLBACK for codes not auto-derived from workflow classes.
+# Codes found via get_all_workflow_codes() / get_workflow_code_for_subtype()
+# are auto-derived and do NOT need entries here.
+# Only keep entries for PLANNED codes (exist in admin but no Python class yet).
 SUBTYPE_PARENT_MAPPING = {
-    "PASAPORTE_NUEVO": None,  # Base workflow (is_parent=True)
-    "PASAPORTE_RENOVACION": "PASAPORTE_NUEVO",
-    "PASAPORTE_PERDIDA": "PASAPORTE_NUEVO",
-    "PASAPORTE_ROBO": "PASAPORTE_NUEVO",
-    "PASAPORTE_DETERIORO": "PASAPORTE_NUEVO",
-    "RESIDENCIA_PRIMERA_VEZ": None,
-    "RESIDENCIA_RENOVACION": "RESIDENCIA_PRIMERA_VEZ",
+    # PLANNED RESIDENCIA codes (no enum/workflow yet, synced for admin visibility)
     "RESIDENCIA_DUPLICADO": "RESIDENCIA_PRIMERA_VEZ",
     "RESIDENCIA_CAMBIO_DATOS": "RESIDENCIA_PRIMERA_VEZ",
     "RESIDENCIA_REAGRUPACION": "RESIDENCIA_PRIMERA_VEZ",
-    "VEHICULO_PRIMERA_MATRICULACION": None,
-    "VEHICULO_TRANSFERENCIA": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_RENOVACION_CUVE": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_RENOVACION_ITV": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_DUPLICADO_PERMISO": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_DUPLICADO_CUVE": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_CAMBIO_CARACTERISTICAS": "VEHICULO_PRIMERA_MATRICULACION",
-    "CONDUCIR_NUEVO": None,
-    "CONDUCIR_CANJE": "CONDUCIR_NUEVO",
-    "CONDUCIR_RENOVACION": "CONDUCIR_NUEVO",
-    "CONDUCIR_DUPLICADO": "CONDUCIR_NUEVO",
-    "CONDUCIR_EXTENSION": "CONDUCIR_NUEVO",
-    "CONTRATO_OBRA": None,
-    "CONTRATO_SERVICIO": "CONTRATO_OBRA",
-    "CONTRATO_SUMINISTRO": "CONTRATO_OBRA",
-    "CONTRATO_CONCESION": "CONTRATO_OBRA",
-    "CONTRATO_JOINT_VENTURE": "CONTRATO_OBRA",
-    "CONTRATO_ARRENDAMIENTO": "CONTRATO_OBRA",
-    "CONTRATO_OTRO": "CONTRATO_OBRA",
-    "FP_VERIFICACION_FUNCIONARIO": None,
-    "FP_CARNET_FUNCIONARIO": "FP_VERIFICACION_FUNCIONARIO",
-    "FP_PROMOCION_ADMINISTRATIVA": "FP_VERIFICACION_FUNCIONARIO",
-    "FP_PERMISO_EXTRAORDINARIO": "FP_VERIFICACION_FUNCIONARIO",
-    "FP_CERTIFICADO_ADMINISTRATIVO": "FP_VERIFICACION_FUNCIONARIO",
-    # TRAMITES VISADO (4)
-    "PRORROGA_VISADO": None,  # Base workflow (is_parent=True)
-    "VISADO_ALTERNATIVO": "PRORROGA_VISADO",
-    "PERMANENCIA_EXTRANJERIA": "PRORROGA_VISADO",
-    "SALIDA_VISADO_VENCIDO": "PRORROGA_VISADO",
 }
 
 
@@ -6436,6 +6405,46 @@ async def sync_predefined_workflows(
     # Step 2: Get all registered workflows from workflow_engine
     all_workflows = workflow_engine.get_all_workflows()
 
+    # Step 2b: Auto-derive parent/child hierarchy from workflow classes
+    # This eliminates the need to manually update SUBTYPE_PARENT_MAPPING
+    auto_parent_map = {}   # code_str → parent_code_str or None
+    auto_name_map = {}     # code_str → auto-derived name_es
+    seen_wf_instances = set()
+    for _base_code, _wf in all_workflows.items():
+        wf_id = id(_wf)
+        if wf_id in seen_wf_instances:
+            continue
+        seen_wf_instances.add(wf_id)
+
+        # Collect ALL codes this workflow instance produces
+        all_wf_codes = []
+        if hasattr(_wf, 'get_all_workflow_codes'):
+            all_wf_codes = [c.value for c in _wf.get_all_workflow_codes()]
+
+        if _wf.allowed_sub_types and hasattr(_wf, 'get_workflow_code_for_subtype'):
+            for _st in _wf.allowed_sub_types:
+                try:
+                    _wf_code = _wf.get_workflow_code_for_subtype(_st)
+                    if _wf_code.value not in all_wf_codes:
+                        all_wf_codes.append(_wf_code.value)
+                except Exception:
+                    pass
+
+        if not all_wf_codes:
+            all_wf_codes = [_wf.workflow_code.value]
+
+        # First code = parent, rest = children
+        primary = all_wf_codes[0]
+        auto_parent_map[primary] = None
+        base_name = getattr(_wf, 'service_name_es', 'Trámite')
+        auto_name_map[primary] = base_name
+
+        for _child_code in all_wf_codes[1:]:
+            auto_parent_map[_child_code] = primary
+            # Auto-derive child name from service_name_es + code suffix
+            suffix = _child_code.split('_', 1)[-1] if '_' in _child_code else _child_code
+            auto_name_map[_child_code] = f"{base_name} - {suffix.replace('_', ' ').title()}"
+
     # Step 3: Iterate over each workflow class and its sub_types
     for base_code, workflow in all_workflows.items():
         try:
@@ -6467,15 +6476,27 @@ async def sync_predefined_workflows(
                     category = workflow.category.value if hasattr(workflow, 'category') else 'GENERAL'
                     entity_code = workflow.entity_code.value if hasattr(workflow, 'entity_code') else 'GENERAL'
 
-                    # Use SUBTYPE_NAMES_ES for proper Spanish names
-                    name_es = SUBTYPE_NAMES_ES.get(code, code.replace('_', ' ').title())
+                    # Name: SUBTYPE_NAMES_ES override → auto-derived → code fallback
+                    name_es = (
+                        SUBTYPE_NAMES_ES.get(code)
+                        or auto_name_map.get(code)
+                        or code.replace('_', ' ').title()
+                    )
 
                     # Dynamically extract tariff from workflow class (no hardcoding)
                     tariff_amount, tariff_type = extract_tariff_from_workflow(workflow, sub_type)
 
-                    # Get parent workflow code
-                    parent_code = SUBTYPE_PARENT_MAPPING.get(code)
-                    is_parent = parent_code is None
+                    # Parent: auto-derived from workflow class → SUBTYPE_PARENT_MAPPING fallback
+                    if code in auto_parent_map:
+                        parent_code = auto_parent_map[code]
+                        is_parent = parent_code is None
+                    elif code in SUBTYPE_PARENT_MAPPING:
+                        parent_code = SUBTYPE_PARENT_MAPPING[code]
+                        is_parent = parent_code is None
+                    else:
+                        # Unknown code: default to non-parent (visible in admin)
+                        parent_code = None
+                        is_parent = False
 
                     # Build workflow data
                     workflow_data = {
@@ -6666,6 +6687,68 @@ async def sync_predefined_workflows(
 
         except Exception as e:
             result.errors.append(f"Error processing workflow {base_code.value}: {str(e)}")
+
+    # Step 3b: Sync PLANNED codes from SUBTYPE_PARENT_MAPPING (not yet in workflow classes)
+    for planned_code, planned_parent in SUBTYPE_PARENT_MAPPING.items():
+        if any(d.get('workflow_code') == planned_code and d.get('action') == 'synced' for d in result.details):
+            continue  # Already processed by main loop
+
+        try:
+            name_es = SUBTYPE_NAMES_ES.get(planned_code, planned_code.replace('_', ' ').title())
+            is_parent = planned_parent is None
+
+            # Derive category/entity from parent workflow if possible
+            parent_category = 'EXTRANJERIA'
+            parent_entity = 'EXTRANJERIA'
+            if planned_parent:
+                parent_row = await db.fetchrow(
+                    "SELECT category, entity_code FROM workflows WHERE code = $1",
+                    planned_parent
+                )
+                if parent_row:
+                    parent_category = parent_row['category']
+                    parent_entity = parent_row['entity_code']
+
+            if not dry_run:
+                existing = await db.fetchrow(
+                    "SELECT code, is_generic FROM workflows WHERE code = $1",
+                    planned_code
+                )
+                if existing and existing['is_generic']:
+                    continue
+                elif existing:
+                    await db.execute("""
+                        UPDATE workflows SET
+                            name_es = $2, parent_workflow_code = $3, is_parent = $4,
+                            category = $5, entity_code = $6, is_generic = FALSE,
+                            updated_at = NOW()
+                        WHERE code = $1
+                    """, planned_code, name_es, planned_parent, is_parent,
+                        parent_category, parent_entity)
+                    result.workflows_updated += 1
+                else:
+                    await db.execute("""
+                        INSERT INTO workflows (
+                            code, name_es, description_es, category, entity_code,
+                            workflow_type, requires_agent_validation, requires_appointment,
+                            is_generic, sla_hours, is_active, parent_workflow_code, is_parent
+                        ) VALUES ($1, $2, $3, $4, $5, 'standard', true, false, false, 48, true, $6, $7)
+                    """, planned_code, name_es, f"Trámite de {name_es}",
+                        parent_category, parent_entity, planned_parent, is_parent)
+                    result.workflows_created += 1
+
+            result.workflows_synced += 1
+            result.details.append({
+                "action": "synced",
+                "workflow_code": planned_code,
+                "sub_type": "planned",
+                "parent_code": planned_parent,
+                "tariff_amount": 0,
+                "documents_count": 0,
+                "source": "SUBTYPE_PARENT_MAPPING (planned)"
+            })
+        except Exception as e:
+            result.errors.append(f"Error syncing planned code {planned_code}: {str(e)}")
 
     # Step 4: Auto-generate workflow_menu_mapping for new categories
     if not dry_run:
