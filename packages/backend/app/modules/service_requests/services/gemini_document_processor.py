@@ -971,7 +971,13 @@ class RiskAnalyzer:
             if doc_code.lower() == document_code.lower():
                 continue
 
-            existing_extraction = doc_data.get("extraction", {})
+            # Support both formats:
+            # Legacy/DB flow: {"extraction": {"apellidos": ...}, "confidence": ...}
+            # Cache-first wizard: {"apellidos": ...} (flat, no wrapper)
+            existing_extraction = doc_data.get("extraction", None)
+            if existing_extraction is None:
+                # Flat format from wizard session - doc_data IS the extraction
+                existing_extraction = doc_data
             if not existing_extraction:
                 logger.warning(f"No extraction found for {doc_code}")
                 continue
@@ -1100,19 +1106,26 @@ class RiskAnalyzer:
         }
 
         # Get autorizacion_parental extraction
+        # Support both formats: {"extraction": {...}} (legacy) and {...} (wizard flat)
         auth_doc = existing_documents.get("autorizacion_parental", {})
-        auth_extraction = auth_doc.get("extraction", {})
+        auth_extraction = auth_doc.get("extraction", None)
+        if auth_extraction is None:
+            auth_extraction = auth_doc
 
         if not auth_extraction:
             logger.warning("No autorizacion_parental extraction found for cross-validation")
             return result
 
-        # Get parent document extractions
+        # Get parent document extractions (same dual-format support)
         rep1_doc = existing_documents.get("documento_representante_1", {})
-        rep1_extraction = rep1_doc.get("extraction", {})
+        rep1_extraction = rep1_doc.get("extraction", None)
+        if rep1_extraction is None:
+            rep1_extraction = rep1_doc
 
         rep2_doc = existing_documents.get("documento_representante_2", {})
-        rep2_extraction = rep2_doc.get("extraction", {})
+        rep2_extraction = rep2_doc.get("extraction", None)
+        if rep2_extraction is None:
+            rep2_extraction = rep2_doc
 
         # Check if representante_unico (single parent)
         es_representante_unico = auth_extraction.get("documento", {}).get("es_representante_unico", False)
@@ -2088,7 +2101,8 @@ class GeminiDocumentProcessor:
         input_tokens: Optional[int] = None
         output_tokens: Optional[int] = None
 
-        # Try Gemini first
+        # Gemini EXCLUSIVE: Always use Gemini, accept all confidence levels.
+        # Tesseract is ONLY used as emergency fallback if Gemini is unavailable.
         if self.enabled:
             try:
                 gemini_start = time.time()
@@ -2101,56 +2115,44 @@ class GeminiDocumentProcessor:
                 input_tokens = gemini_result.get("input_tokens")
                 output_tokens = gemini_result.get("output_tokens")
 
+                # Accept Gemini result at any confidence (even low confidence
+                # Gemini is better than Tesseract based on production observation)
+                extraction_result = gemini_result
                 if gemini_result["confidence"] >= GEMINI_CONFIDENCE_THRESHOLD:
-                    extraction_result = gemini_result
                     extraction_result["status"] = "success"
-                    logger.info(
-                        f"Gemini extraction successful: {document_code} "
-                        f"(confidence: {gemini_result['confidence']:.2%})"
-                    )
                 else:
-                    used_fallback = True
-                    fallback_reason = "gemini_low_confidence"
-                    logger.info(
-                        f"Gemini confidence too low ({gemini_result['confidence']:.2%}), "
-                        f"falling back to Tesseract"
-                    )
+                    extraction_result["status"] = "low_confidence"
+                logger.info(
+                    f"Gemini extraction: {document_code} "
+                    f"(confidence: {gemini_result['confidence']:.2%}, "
+                    f"status: {extraction_result['status']})"
+                )
 
             except Exception as e:
                 used_fallback = True
                 fallback_reason = "gemini_error"
-                logger.error(f"Gemini extraction failed: {e}")
+                logger.error(f"Gemini extraction failed, trying Tesseract fallback: {e}")
 
-        # Tesseract fallback
+        # Tesseract EMERGENCY fallback - only if Gemini unavailable/errored
         if not extraction_result and OCR_SERVICE_AVAILABLE:
             try:
                 tesseract_result = await self._process_with_tesseract(
                     content, mime_type, document_code, schema
                 )
-
-                if tesseract_result["confidence"] >= TESSERACT_CONFIDENCE_THRESHOLD:
-                    tesseract_result["status"] = "success"
-                    logger.info(
-                        f"Tesseract extraction successful: {document_code} "
-                        f"(confidence: {tesseract_result['confidence']:.2%})"
-                    )
-                else:
-                    tesseract_result["status"] = "low_confidence"
-                    logger.warning(
-                        f"Tesseract confidence too low ({tesseract_result['confidence']:.2%}), "
-                        f"marking for manual review"
-                    )
-
+                tesseract_result["status"] = "success" if tesseract_result["confidence"] >= TESSERACT_CONFIDENCE_THRESHOLD else "low_confidence"
                 extraction_result = tesseract_result
-
+                logger.warning(
+                    f"Tesseract fallback used: {document_code} "
+                    f"(confidence: {tesseract_result['confidence']:.2%})"
+                )
             except Exception as e:
-                logger.error(f"Tesseract extraction failed: {e}")
+                logger.error(f"Tesseract fallback also failed: {e}")
 
-        # If both failed
+        # If all processors failed
         if not extraction_result:
             used_fallback = True
             if not fallback_reason:
-                fallback_reason = "both_failed"
+                fallback_reason = "all_processors_failed"
             extraction_result = {
                 "extraction": {},
                 "confidence": 0.0,
@@ -2158,7 +2160,7 @@ class GeminiDocumentProcessor:
                 "status": "manual_review",
                 "document_type": document_code,
                 "has_error": True,
-                "error_message": "Both Gemini and Tesseract extraction failed"
+                "error_message": "All extraction processors failed"
             }
 
         # ═══════════════════════════════════════════════════════════════════

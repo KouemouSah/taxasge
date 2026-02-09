@@ -51,7 +51,6 @@ import {
   useWizardSession,
   useWorkflow,
   SessionTimer,
-  DocumentPreviewDialog,
   IdentityMismatchBlocker,
   DocumentUploader,
   AppointmentSelection,
@@ -63,7 +62,6 @@ import {
   serviceRequestsApi,
 } from '@/modules/service-requests'
 import type {
-  DocumentExtractionPreview,
   DocumentRequirement,
   ServiceRequestDocument,
 } from '@/modules/service-requests'
@@ -73,7 +71,6 @@ import type {
   PreparePaymentResult,
   RequiredDocument,
 } from '@/modules/service-requests/types/wizard-session'
-import { transformPreviewToExtractionPreview } from '@/modules/service-requests/types/wizard-session'
 
 // ============================================================================
 // WIZARD STEPS (computed from session state)
@@ -177,6 +174,7 @@ export default function SessionWizardPage() {
     cancelSession,
     previewDocument,
     confirmDocument,
+    deleteDocument,
     saveFormData,
     preparePayment,
     persistAndPay,
@@ -193,12 +191,6 @@ export default function SessionWizardPage() {
     useState<PreparePaymentResult | null>(null)
   const [isPersisting, setIsPersisting] = useState(false)
   const [persistedRequestId, setPersistedRequestId] = useState<string | null>(null)
-
-  // Document preview dialog state
-  const [currentPreview, setCurrentPreview] = useState<DocumentExtractionPreview | null>(null)
-  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
-  const [isConfirmingPreview, setIsConfirmingPreview] = useState(false)
-  const [pendingDocumentCode, setPendingDocumentCode] = useState<string | null>(null)
 
   // Identity mismatch blocker state
   const [identityMismatches, setIdentityMismatches] = useState<IdentityMismatch[]>([])
@@ -467,48 +459,37 @@ export default function SessionWizardPage() {
             setHasBlockingMismatches(blocking)
             if (blocking) {
               setShowMismatchBlocker(true)
-              return // Don't open preview dialog - show blocker instead
+              return // Show blocker instead of auto-confirming
             }
           }
         }
 
-        // Transform to legacy format and show preview dialog
-        const legacyPreview = transformPreviewToExtractionPreview(preview)
-        setCurrentPreview(legacyPreview as unknown as DocumentExtractionPreview)
-        setPendingDocumentCode(documentCode)
-        setShowPreviewDialog(true)
-      }
-    },
-    [previewDocument]
-  )
-
-  // Handle confirm from DocumentPreviewDialog
-  const handleConfirmPreview = useCallback(
-    async (confirmedData: Record<string, unknown>, userNotes?: string) => {
-      if (!pendingDocumentCode) return
-      setIsConfirmingPreview(true)
-      try {
+        // Auto-confirm: store extraction data as-is (user edits in form_review step)
         await confirmDocument({
-          document_code: pendingDocumentCode,
-          confirmed_data: confirmedData,
-          user_notes: userNotes || null,
+          document_code: documentCode,
+          confirmed_data: (preview.extraction || {}) as Record<string, unknown>,
+          user_notes: null,
         })
-        setShowPreviewDialog(false)
-        setCurrentPreview(null)
-        setPendingDocumentCode(null)
-      } finally {
-        setIsConfirmingPreview(false)
       }
     },
-    [pendingDocumentCode, confirmDocument]
+    [previewDocument, confirmDocument]
   )
 
-  // Handle close preview dialog
-  const handleClosePreviewDialog = useCallback(() => {
-    setShowPreviewDialog(false)
-    setCurrentPreview(null)
-    setPendingDocumentCode(null)
-  }, [])
+  // Handle delete document
+  const handleDeleteDocument = useCallback(
+    async (documentCode: string) => {
+      const success = await deleteDocument(documentCode)
+      if (success) {
+        // Clear local preview state
+        setDocumentPreviews((prev) => {
+          const next = { ...prev }
+          delete next[documentCode]
+          return next
+        })
+      }
+    },
+    [deleteDocument]
+  )
 
   // Handle go back from mismatch blocker
   const handleMismatchBlockerBack = useCallback(() => {
@@ -927,19 +908,27 @@ export default function SessionWizardPage() {
                       uploadedDocument={uploadedDoc}
                       locale={locale as 'es' | 'fr' | 'en'}
                       onUpload={(file) => handleDocumentUpload(doc.code, file)}
+                      onDelete={doc.uploaded ? () => handleDeleteDocument(doc.code) : undefined}
                       maxSizeMB={doc.code === 'photo_carnet' ? 2 : 5}
                       disabled={isSaving}
                     />
                     {/* Processor badge for AI-extracted documents */}
-                    {doc.uploaded && docPreview?.processor === 'gemini' && (
-                      <div className="flex justify-end">
-                        <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
-                          {locale === 'es'
-                            ? 'Extraido con IA'
-                            : locale === 'fr'
-                              ? 'Extrait par IA'
-                              : 'AI Extracted'}
-                        </Badge>
+                    {doc.uploaded && docPreview && (
+                      <div className="flex justify-end gap-2">
+                        {docPreview.processor === 'gemini' && (
+                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                            {locale === 'es'
+                              ? 'Extraido con IA'
+                              : locale === 'fr'
+                                ? 'Extrait par IA'
+                                : 'AI Extracted'}
+                          </Badge>
+                        )}
+                        {typeof docPreview.confidence === 'number' && docPreview.confidence > 0 && (
+                          <Badge variant="outline" className={`text-xs ${docPreview.confidence >= 0.8 ? 'text-green-600 border-green-200' : docPreview.confidence >= 0.6 ? 'text-yellow-600 border-yellow-200' : 'text-red-600 border-red-200'}`}>
+                            {Math.round(docPreview.confidence * 100)}%
+                          </Badge>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1248,15 +1237,6 @@ export default function SessionWizardPage() {
       </div>
       )}
 
-      {/* Document Preview Dialog - shown after upload for user validation */}
-      <DocumentPreviewDialog
-        preview={currentPreview}
-        isOpen={showPreviewDialog}
-        onClose={handleClosePreviewDialog}
-        onConfirm={handleConfirmPreview}
-        isConfirming={isConfirmingPreview}
-        locale={locale as 'es' | 'fr' | 'en'}
-      />
     </div>
   )
 }

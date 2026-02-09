@@ -58,6 +58,7 @@ export interface UseWizardSessionReturn {
   // Document operations
   previewDocument: (documentCode: string, file: File) => Promise<DocumentPreview | null>
   confirmDocument: (data: DocumentConfirmRequest) => Promise<boolean>
+  deleteDocument: (documentCode: string) => Promise<boolean>
 
   // Form data
   saveFormData: (data: FormDataSaveRequest) => Promise<boolean>
@@ -279,6 +280,31 @@ export function useWizardSession(): UseWizardSessionReturn {
     [session, handleError]
   )
 
+  const deleteDocument = useCallback(
+    async (documentCode: string): Promise<boolean> => {
+      if (!session) {
+        setError('No hay sesión activa')
+        return false
+      }
+      try {
+        setIsSaving(true)
+        setError(null)
+        const updated = await wizardSessionApi.deleteDocument(
+          session.sessionId,
+          documentCode
+        )
+        setSession(updated)
+        return true
+      } catch (err) {
+        handleError(err)
+        return false
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [session, handleError]
+  )
+
   // ==========================================================================
   // FORM DATA
   // ==========================================================================
@@ -426,6 +452,7 @@ export function useWizardSession(): UseWizardSessionReturn {
     // Document operations
     previewDocument,
     confirmDocument,
+    deleteDocument,
 
     // Form data
     saveFormData,

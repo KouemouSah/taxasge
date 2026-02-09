@@ -239,6 +239,21 @@ class WizardSessionApiClient {
     return transformSession(raw)
   }
 
+  /**
+   * Delete a document from wizard session.
+   * DELETE /wizard-sessions/{sessionId}/documents/{documentCode}
+   */
+  async deleteDocument(
+    sessionId: string,
+    documentCode: string
+  ): Promise<WizardSession> {
+    const raw = await this.request<BackendWizardSessionResponse>(
+      `/${sessionId}/documents/${encodeURIComponent(documentCode)}`,
+      { method: 'DELETE' }
+    )
+    return transformSession(raw)
+  }
+
   // ==========================================================================
   // FORM DATA
   // ==========================================================================

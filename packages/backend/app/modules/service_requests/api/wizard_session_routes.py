@@ -290,6 +290,50 @@ async def confirm_document(
 
 
 # =============================================================================
+# DELETE DOCUMENT
+# =============================================================================
+
+@router.delete(
+    "/{session_id}/documents/{document_code}",
+    response_model=WizardSessionResponse,
+    summary="Delete a document from wizard session",
+    description="""
+    Delete a specific document from the wizard session.
+
+    **Effect:**
+    - Document data (content, extraction) is removed from session
+    - Extracted data for that document is cleared
+    - User can re-upload a replacement document
+    - Session TTL is renewed
+
+    **Use case:** User wants to replace a document they already uploaded.
+    """,
+)
+async def delete_wizard_document(
+    session_id: str = Path(..., description="The wizard session ID"),
+    document_code: str = Path(..., description="Document code to delete (e.g., dip, pasaporte_antiguo)"),
+    current_user=Depends(get_current_user),
+):
+    """Delete a document from wizard session."""
+    try:
+        result = await wizard_session_service.delete_document(
+            session_id=session_id,
+            user_id=current_user.id,
+            document_code=document_code,
+        )
+
+        logger.info(
+            f"[WizardAPI] Document deleted: session={session_id}, "
+            f"doc={document_code}"
+        )
+
+        return result
+
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+
+# =============================================================================
 # SAVE FORM DATA
 # =============================================================================
 

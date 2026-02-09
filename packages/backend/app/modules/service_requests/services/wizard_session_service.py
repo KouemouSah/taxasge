@@ -510,23 +510,35 @@ class WizardSessionService:
         # Get existing extractions for cross-validation
         existing_documents = session.get("extracted_data", {})
 
-        # Extract document data using Gemini
-        try:
-            extraction_result = await gemini_document_processor.process(
-                content=file_content,
-                mime_type=mime_type,
-                document_code=document_code,
-                user_id=str(user_id),
-                existing_documents=existing_documents,
-                extraction_schema_key=extraction_schema_key,
-                workflow_code=session["workflow_code"],
-            )
-        except Exception as e:
-            logger.error(f"[WizardSession] Extraction failed: {e}", exc_info=True)
-            raise WizardDocumentValidationError(
-                "Error al procesar el documento. Verifique que sea legible.",
-                "EXTRACTION_FAILED"
-            )
+        # Skip OCR for photo documents (no schema = nothing to extract)
+        is_photo = extraction_schema_key is None and "photo" in document_code.lower()
+        if is_photo:
+            logger.info(f"[WizardSession] Photo document, skipping OCR: {document_code}")
+            extraction_result = {
+                "extraction": {},
+                "confidence": 1.0,
+                "processor": "photo_validation",
+                "status": "success",
+                "document_type": document_code,
+            }
+        else:
+            # Extract document data using Gemini
+            try:
+                extraction_result = await gemini_document_processor.process(
+                    content=file_content,
+                    mime_type=mime_type,
+                    document_code=document_code,
+                    user_id=str(user_id),
+                    existing_documents=existing_documents,
+                    extraction_schema_key=extraction_schema_key,
+                    workflow_code=session["workflow_code"],
+                )
+            except Exception as e:
+                logger.error(f"[WizardSession] Extraction failed: {e}", exc_info=True)
+                raise WizardDocumentValidationError(
+                    "Error al procesar el documento. Verifique que sea legible.",
+                    "EXTRACTION_FAILED"
+                )
 
         # Store document in session (including base64 content)
         now = datetime.utcnow()
@@ -644,6 +656,54 @@ class WizardSessionService:
             raise WizardSessionError("Error al confirmar el documento.")
 
         logger.info(f"[WizardSession] Document confirmed: session={session_id}, doc={document_code}")
+
+        workflow = workflow_engine.get_workflow_by_string(session["workflow_code"])
+        return self._session_to_response(session, workflow)
+
+    async def delete_document(
+        self,
+        session_id: str,
+        user_id: UUID,
+        document_code: str,
+    ) -> WizardSessionResponse:
+        """
+        Delete a document from the wizard session.
+
+        Removes the document data, extraction data and resets the uploaded
+        status so the user can re-upload.
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for authorization
+            document_code: Document code to delete (e.g., 'dip', 'pasaporte_antiguo')
+
+        Returns:
+            Updated WizardSessionResponse
+        """
+        logger.info(f"[WizardSession] Delete document: session={session_id}, doc={document_code}")
+
+        session = await self._get_session(session_id, user_id)
+
+        # Verify document exists in session
+        if document_code not in session.get("documents", {}):
+            raise WizardSessionError(
+                f"Documento no encontrado en sesión: {document_code}",
+                "DOCUMENT_NOT_FOUND"
+            )
+
+        # Remove document data
+        del session["documents"][document_code]
+
+        # Remove extraction data
+        if document_code in session.get("extracted_data", {}):
+            del session["extracted_data"][document_code]
+
+        # Save session
+        success = await self._save_session(session_id, session, renew_ttl=True)
+        if not success:
+            raise WizardSessionError("Error al eliminar el documento.")
+
+        logger.info(f"[WizardSession] Document deleted: session={session_id}, doc={document_code}")
 
         workflow = workflow_engine.get_workflow_by_string(session["workflow_code"])
         return self._session_to_response(session, workflow)
@@ -801,7 +861,12 @@ class WizardSessionService:
         form_data: dict,
         extracted_data: dict,
     ):
-        """Resolve a field value from form_data or extracted_data."""
+        """Resolve a field value from form_data or extracted_data.
+
+        Supports both nested paths ("dip.titular.apellidos") and flat
+        Gemini extraction structures ({"apellidos": "GARCIA"}).
+        Tries nested navigation first, then falls back to flat field lookup.
+        """
         # Priority 1: Check form_data for user edits
         if field_key in form_data:
             return form_data[field_key]
@@ -821,15 +886,28 @@ class WizardSessionService:
         if doc_code not in extracted_data:
             return None
 
-        # Navigate the rest of the path
-        value = extracted_data[doc_code]
+        doc_data = extracted_data[doc_code]
+
+        # Try nested path first: "dip.titular.apellidos" → doc["titular"]["apellidos"]
+        value = doc_data
         for part in parts[1:]:
             if isinstance(value, dict) and part in value:
                 value = value[part]
             else:
-                return None
+                value = None
+                break
 
-        return value
+        if value is not None:
+            return value
+
+        # Fallback: flat field lookup using last segment only
+        # Gemini returns flat extraction {"apellidos": "GARCIA"} not nested
+        # {"titular": {"apellidos": "GARCIA"}}
+        flat_key = parts[-1]
+        if isinstance(doc_data, dict) and flat_key in doc_data:
+            return doc_data[flat_key]
+
+        return None
 
     async def prepare_for_payment(
         self,
