@@ -85,6 +85,9 @@ export function DynamicField({
   const isReadonly = field.readonly || disabled
   const fieldId = `field-${field.key}`
 
+  // Highlight required empty fields with amber border (before validation)
+  const isRequiredEmpty = field.required && !isReadonly && !value && value !== 0 && !error
+
   // Common label component
   const FieldLabel = () => (
     <Label
@@ -129,7 +132,8 @@ export function DynamicField({
             placeholder={placeholder}
             className={cn(
               isReadonly && 'bg-muted cursor-not-allowed',
-              error && 'border-red-500 focus-visible:ring-red-500'
+              error && 'border-red-500 focus-visible:ring-red-500',
+              isRequiredEmpty && 'border-amber-400 bg-amber-50/50'
             )}
             aria-invalid={!!error}
             aria-describedby={error ? `${fieldId}-error` : undefined}
@@ -152,7 +156,8 @@ export function DynamicField({
             disabled={disabled}
             className={cn(
               isReadonly && 'bg-muted cursor-not-allowed',
-              error && 'border-red-500 focus-visible:ring-red-500'
+              error && 'border-red-500 focus-visible:ring-red-500',
+              isRequiredEmpty && 'border-amber-400 bg-amber-50/50'
             )}
             aria-invalid={!!error}
           />
@@ -175,7 +180,8 @@ export function DynamicField({
             rows={3}
             className={cn(
               isReadonly && 'bg-muted cursor-not-allowed',
-              error && 'border-red-500 focus-visible:ring-red-500'
+              error && 'border-red-500 focus-visible:ring-red-500',
+              isRequiredEmpty && 'border-amber-400 bg-amber-50/50'
             )}
             aria-invalid={!!error}
           />
@@ -197,7 +203,8 @@ export function DynamicField({
               id={fieldId}
               className={cn(
                 isReadonly && 'bg-muted cursor-not-allowed',
-                error && 'border-red-500 focus-visible:ring-red-500'
+                error && 'border-red-500 focus-visible:ring-red-500',
+                isRequiredEmpty && 'border-amber-400 bg-amber-50/50'
               )}
               aria-invalid={!!error}
             >
@@ -301,7 +308,8 @@ export function DynamicField({
             placeholder={placeholder}
             className={cn(
               isReadonly && 'bg-muted cursor-not-allowed',
-              error && 'border-red-500 focus-visible:ring-red-500'
+              error && 'border-red-500 focus-visible:ring-red-500',
+              isRequiredEmpty && 'border-amber-400 bg-amber-50/50'
             )}
           />
           <ErrorMessage />

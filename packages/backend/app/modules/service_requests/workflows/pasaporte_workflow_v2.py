@@ -979,14 +979,20 @@ class PasaporteWorkflow(PredefinedWorkflow):
                 "blocking_errors": "form_data.parental_authorization_validation.blocking_errors",
             })
         else:
-            # === For ADULTS: Add parent info from certificado (if NUEVO) ===
-            mapping.update({
-                "registro_civil": "certificado_nacimiento.documento.registro_civil_de",
-                "nombre_padre": "certificado_nacimiento.padre.nombre_completo",
-                "profesion_padre": "certificado_nacimiento.padre.profesion",
-                "nombre_madre": "certificado_nacimiento.madre.nombre_completo",
-                "profesion_madre": "certificado_nacimiento.madre.profesion",
-            })
+            # === For ADULTS: Add parent info from certificado ONLY for NUEVO ===
+            # For RENOVACION/DETERIORO/PERDIDA/ROBO: filiation stays from DIP (lines 887-888)
+            # certificado_nacimiento is not required for these motivos
+            motivo = context.motivo if context else None
+            solicitud = context.solicitud_type if context else None
+            is_nuevo = (solicitud and solicitud.value == "EXPEDICION") or (not motivo)
+            if is_nuevo:
+                mapping.update({
+                    "registro_civil": "certificado_nacimiento.documento.registro_civil_de",
+                    "nombre_padre": "certificado_nacimiento.padre.nombre_completo",
+                    "profesion_padre": "certificado_nacimiento.padre.profesion",
+                    "nombre_madre": "certificado_nacimiento.madre.nombre_completo",
+                    "profesion_madre": "certificado_nacimiento.madre.profesion",
+                })
 
         return mapping
 
