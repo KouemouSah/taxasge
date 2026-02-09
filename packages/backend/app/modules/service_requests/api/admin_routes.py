@@ -6347,37 +6347,29 @@ SUBTYPE_PARENT_MAPPING = {
 }
 
 
-@router.post(
-    "/sync/workflows",
-    response_model=WorkflowSyncResult,
-    summary="Sync predefined workflows to database",
-    description="""
-    Synchronize ALL predefined workflow codes to the database.
-
-    This endpoint reads from the Python workflow classes (source of truth) and:
-    1. Iterates over ALL sub_types for each workflow class
-    2. Creates/updates workflow entries in the `workflows` table for each sub_type
-    3. Creates/updates tariff entries in the `workflow_tariffs` table
-    4. Auto-generates workflow_menu_mapping entries for new workflow categories
-
-    Use this after deploying new workflow code to ensure DB is aligned.
-    Set delete_existing=true to first delete all existing workflows.
+async def perform_workflow_sync(
+    db,
+    dry_run: bool = False,
+    delete_existing: bool = False,
+) -> WorkflowSyncResult:
     """
-)
-async def sync_predefined_workflows(
-    dry_run: bool = Query(False, description="If true, don't commit changes, just report what would change"),
-    delete_existing: bool = Query(False, description="If true, delete all existing workflows before sync"),
-    db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
-    _=Depends(permission_required("admin.manage_workflow"))
-):
-    """Sync ALL predefined workflow codes to database, including auto-generating menu mappings."""
+    Core sync logic: Python workflow classes → database.
+
+    Reusable by both the API endpoint and the startup auto-sync.
+    Reads from workflow_engine (source of truth) and syncs to DB:
+    1. workflows table (parent/child auto-derived from classes)
+    2. workflow_tariffs table
+    3. workflow_document_requirements table
+    4. workflow_menu_mapping table (auto-generated for new categories)
+    """
     from ..services.workflow_engine import workflow_engine
     from ..models.enums import WorkflowCode, SolicitudType, TariffType
     from ..workflows.workflow_interface import PredefinedWorkflow
-    # BaseWorkflow removed (all workflows are now v2 PredefinedWorkflow)
 
     result = WorkflowSyncResult()
+
+    import logging
+    sync_logger = logging.getLogger("workflow_sync")
 
     # Step 1: Optionally delete existing workflows
     if delete_existing and not dry_run:
@@ -6805,3 +6797,31 @@ async def sync_predefined_workflows(
             result.errors.append(f"Error auto-generating menu mappings: {str(e)}")
 
     return result
+
+
+@router.post(
+    "/sync/workflows",
+    response_model=WorkflowSyncResult,
+    summary="Sync predefined workflows to database",
+    description="""
+    Synchronize ALL predefined workflow codes to the database.
+
+    This endpoint reads from the Python workflow classes (source of truth) and:
+    1. Auto-derives parent/child hierarchy from workflow classes
+    2. Creates/updates workflow entries in the `workflows` table
+    3. Creates/updates tariff and document requirement entries
+    4. Auto-generates workflow_menu_mapping entries for new categories
+
+    NOTE: This also runs automatically on app startup.
+    Use this to force a re-sync or to preview changes (dry_run=true).
+    """
+)
+async def sync_predefined_workflows(
+    dry_run: bool = Query(False, description="If true, don't commit changes, just report what would change"),
+    delete_existing: bool = Query(False, description="If true, delete all existing workflows before sync"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin.manage_workflow"))
+):
+    """API endpoint wrapping perform_workflow_sync()."""
+    return await perform_workflow_sync(db, dry_run=dry_run, delete_existing=delete_existing)

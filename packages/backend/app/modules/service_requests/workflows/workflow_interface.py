@@ -595,7 +595,21 @@ class PredefinedWorkflow(ABC):
 
     Use this for complex workflows with specific business logic:
     - Pasaporte, Residencia, Vehiculo, Conducir, Contrato, Funcion Publica
+
+    Auto-discovery: Concrete subclasses are automatically registered in
+    _auto_registry when defined. The workflow_engine uses this for zero-config
+    registration — no manual register() calls needed.
     """
+
+    # Auto-registry: populated by __init_subclass__ when concrete classes are defined
+    _auto_registry: list = []
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Register concrete (non-abstract) subclasses automatically
+        import inspect
+        if not inspect.isabstract(cls):
+            PredefinedWorkflow._auto_registry.append(cls)
 
     def __init__(self):
         """Initialize the workflow. Subclass must set up steps and tariffs."""

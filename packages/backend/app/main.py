@@ -95,6 +95,25 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
 
+        # Auto-sync predefined workflows to database
+        # This ensures the DB is always aligned with Python workflow classes
+        # after every deployment — no manual "Sync" button click needed.
+        try:
+            from app.modules.service_requests.api.admin_routes import perform_workflow_sync
+            async with db_manager.get_connection() as conn:
+                sync_result = await perform_workflow_sync(conn)
+                logger.info(
+                    f"✅ Workflows auto-synced: {sync_result.workflows_synced} total, "
+                    f"{sync_result.workflows_created} new, "
+                    f"{sync_result.workflows_updated} updated, "
+                    f"{sync_result.menu_mappings_created} menu mappings"
+                )
+                if sync_result.errors:
+                    for err in sync_result.errors:
+                        logger.warning(f"⚠️ Workflow sync warning: {err}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to auto-sync workflows (non-blocking): {e}")
+
         # Initialize Event Bus and register handlers
         try:
             from app.core.events import EventBus

@@ -1165,54 +1165,73 @@ workflow_engine = WorkflowEngine()
 
 def register_all_workflows() -> None:
     """
-    Register all available workflows at application startup.
+    Auto-discover and register all PredefinedWorkflow subclasses.
 
-    This function is called automatically when the module is imported.
-    It registers all workflow classes so they can be retrieved via
-    workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
-    
-    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario, VerificacionFuncionario, PermisoExtraordinario, CertificadoAdministrativo, Matriculacion, Inspeccion, Duplicado, Residencia, TramitesVisado (4 codes: Prorroga, Alternativo, Permanencia, Salida)
-    v1 (BaseWorkflow): (none)
+    Zero-config: Scans the workflows/ directory, imports all modules,
+    and registers every concrete PredefinedWorkflow subclass found via
+    the __init_subclass__ auto-registry.
+
+    A developer only needs to:
+    1. Create a .py file in workflows/ with a class inheriting PredefinedWorkflow
+    2. Define the required abstract properties (workflow_code, category, etc.)
+    3. Done — the class is auto-discovered and registered here.
     """
-    # v2 workflows (PredefinedWorkflow - autonomous)
-    from ..workflows import (
-        PasaporteWorkflow,
-        ConducirWorkflow,
-        ContratoWorkflow,
-        PromocionAdministrativaWorkflow,
-        CarnetFuncionarioWorkflow,
-        VerificacionFuncionarioWorkflow,
-        PermisoExtraordinarioWorkflow,
-        CertificadoAdministrativoWorkflow,
-        # Vehiculo v2 (3 workflows by domain) - Migrated 2026-02-07
-        MatriculacionTransferenciaWorkflow,
-        InspeccionVehiculoWorkflow,
-        DuplicadoVehiculoWorkflow,
-        # Extranjeria v2 (4 visa codes via get_all_workflow_codes) - Migrated 2026-02-08
-        ResidenciaWorkflow,
-        TramitesVisadoWorkflow,
-    )
+    import importlib
+    import pkgutil
 
-    v2_workflows = [
-        PasaporteWorkflow,
-        ConducirWorkflow,
-        ContratoWorkflow,
-        PromocionAdministrativaWorkflow,
-        CarnetFuncionarioWorkflow,
-        VerificacionFuncionarioWorkflow,
-        PermisoExtraordinarioWorkflow,
-        CertificadoAdministrativoWorkflow,
-        # Vehiculo v2 (7 WorkflowCodes via get_all_workflow_codes())
-        MatriculacionTransferenciaWorkflow,
-        InspeccionVehiculoWorkflow,
-        DuplicadoVehiculoWorkflow,
-        # Extranjeria v2 (Residencia + TramitesVisado with 4 codes via get_all_workflow_codes)
-        ResidenciaWorkflow,
-        TramitesVisadoWorkflow,
-    ]
+    # Step 1: Import all modules in the workflows/ package to trigger __init_subclass__
+    try:
+        workflows_package = importlib.import_module(
+            'app.modules.service_requests.workflows'
+        )
+        for _importer, modname, _ispkg in pkgutil.iter_modules(workflows_package.__path__):
+            if modname.startswith('_'):
+                continue
+            try:
+                importlib.import_module(
+                    f'app.modules.service_requests.workflows.{modname}'
+                )
+            except Exception as e:
+                logger.error(f"Failed to import workflow module {modname}: {e}")
+    except Exception as e:
+        logger.error(f"Failed to scan workflows package: {e}")
 
-    workflow_engine.register_many(v2_workflows)
-    logger.info(f"Registered {len(v2_workflows)} workflows (all v2)")
+    # Step 2: Register all auto-discovered concrete PredefinedWorkflow subclasses
+    from ..workflows.workflow_interface import PredefinedWorkflow
+    registered_count = 0
+    for wf_class in PredefinedWorkflow._auto_registry:
+        try:
+            workflow_engine.register(wf_class)
+            registered_count += 1
+        except Exception as e:
+            logger.error(f"Failed to register workflow {wf_class.__name__}: {e}")
+
+    logger.info(f"Auto-discovered and registered {registered_count} workflows")
+
+    # Step 3: Validate WorkflowCode enum coverage
+    _validate_workflow_codes()
+
+
+def _validate_workflow_codes() -> None:
+    """
+    Validate that all registered workflow codes exist in WorkflowCode enum.
+    Logs warnings for missing codes — does NOT block startup.
+    """
+    from ..models.enums import WorkflowCode
+
+    enum_values = {e.value for e in WorkflowCode}
+    registered_codes = set()
+
+    for code in workflow_engine.get_all_workflows().keys():
+        registered_codes.add(code.value)
+
+    missing_from_enum = registered_codes - enum_values
+    if missing_from_enum:
+        for code in sorted(missing_from_enum):
+            logger.warning(
+                f"⚠️ Workflow code '{code}' is registered but MISSING from "
+                f"WorkflowCode enum (enums.py). Add: {code} = \"{code}\""
+            )
 
 
 # Auto-register workflows on module import
