@@ -20,6 +20,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Card,
   CardContent,
@@ -298,10 +299,20 @@ export default function SessionWizardPage() {
       const cfg = stepConfig?.config as Record<string, unknown> | undefined
       if (!cfg) return true
 
-      // Format A (Residencia): config.sections[].fields[].key
-      const sections = cfg.sections as Array<{ fields: Array<{ key: string; required?: boolean }> }> | undefined
+      // Format A (Residencia/TramitesVisado): config.sections[].fields[].key
+      // Filter by show_when conditions: only visible sections require their fields
+      const sections = cfg.sections as Array<{
+        fields: Array<{ key: string; required?: boolean }>
+        show_when?: Record<string, string>
+      }> | undefined
       if (sections) {
-        const requiredKeys = sections.flatMap(s => s.fields.filter(f => f.required !== false).map(f => f.key))
+        const visibleSections = sections.filter(s => {
+          if (!s.show_when) return true
+          return Object.entries(s.show_when).every(
+            ([k, v]) => String(formValues[k] ?? '') === String(v)
+          )
+        })
+        const requiredKeys = visibleSections.flatMap(s => s.fields.filter(f => f.required !== false).map(f => f.key))
         return requiredKeys.every(key => formValues[key] !== undefined && formValues[key] !== '')
       }
 
@@ -1275,10 +1286,11 @@ function SelectionStepRenderer({
         : 'Request type'
   )
 
-  // Format A: config.sections[].fields[]
-  const sections = cfg?.sections as Array<{
+  // Format A: config.sections[].fields[] with optional show_when conditions
+  const allSections = cfg?.sections as Array<{
     id: string
     title_es?: string
+    show_when?: Record<string, string>
     fields: Array<{
       key: string
       type: string
@@ -1286,8 +1298,18 @@ function SelectionStepRenderer({
       help_text_es?: string
       options?: Array<{ value: string; label_es?: string; description_es?: string }>
       required?: boolean
+      min?: number
+      max?: number
     }>
   }> | undefined
+
+  // Filter sections by show_when conditions (e.g., duration only when ALTERNATIVO selected)
+  const sections = allSections?.filter(s => {
+    if (!s.show_when) return true
+    return Object.entries(s.show_when).every(
+      ([k, v]) => String(formValues[k] ?? '') === String(v)
+    )
+  })
 
   // Format B: config.selection_type + config.options[]
   const selectionType = cfg?.selection_type as string | undefined
@@ -1342,6 +1364,15 @@ function SelectionStepRenderer({
                     </div>
                   ))}
                 </RadioGroup>
+              ) : field.type === 'number' ? (
+                <Input
+                  type="number"
+                  value={String(formValues[field.key] ?? '')}
+                  onChange={(e) => onFormChange(field.key, e.target.value)}
+                  min={field.min}
+                  max={field.max}
+                  className="max-w-[200px]"
+                />
               ) : null}
             </div>
           ))}
