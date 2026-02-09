@@ -167,6 +167,7 @@ export default function SessionWizardPage() {
     isLoading,
     isSaving,
     error,
+    isDocumentUploading,
     timeRemaining,
     isExpiring,
     isExpired,
@@ -910,7 +911,7 @@ export default function SessionWizardPage() {
                       onUpload={(file) => handleDocumentUpload(doc.code, file)}
                       onDelete={doc.uploaded ? () => handleDeleteDocument(doc.code) : undefined}
                       maxSizeMB={doc.code === 'photo_carnet' ? 2 : 5}
-                      disabled={isSaving}
+                      disabled={isDocumentUploading(doc.code)}
                     />
                     {/* Processor badge for AI-extracted documents */}
                     {doc.uploaded && docPreview && (

@@ -63,13 +63,9 @@ except ImportError:
     DB_POOL_AVAILABLE = False
     logger.warning("Database pool not available - Gemini audit logging disabled")
 
-# Import OCR service for Tesseract fallback
-try:
-    from app.modules.documents.services.ocr_service import ocr_service
-    OCR_SERVICE_AVAILABLE = True
-except ImportError:
-    OCR_SERVICE_AVAILABLE = False
-    logger.warning("OCR service not available - Tesseract fallback disabled")
+# Tesseract OCR service REMOVED - Gemini handles ALL documents exclusively.
+# If Gemini fails, error is propagated to user for retry.
+OCR_SERVICE_AVAILABLE = False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -78,7 +74,7 @@ except ImportError:
 
 # Confidence thresholds
 GEMINI_CONFIDENCE_THRESHOLD = 0.70  # 70% - Accept Gemini extraction
-TESSERACT_CONFIDENCE_THRESHOLD = 0.60  # 60% - Accept Tesseract extraction
+# TESSERACT_CONFIDENCE_THRESHOLD removed - Tesseract no longer used
 
 # Risk thresholds
 RISK_SCORE_LOW = 30
@@ -311,8 +307,8 @@ DEFAULT_IDENTITY_FIELDS = [
     # ══════════════════════════════════════════════════════════════════════════
     IdentityFieldConfig(
         field_name="numero_dip",
-        # DIP: documento.numero_dip | Passport: titular.numero_dip (Personal No.)
-        field_paths=["documento.numero_dip", "titular.numero_dip", "numero_dip"],
+        # DIP: documento.numero_dip | Passport: titular.numero_identidad_nacional (Personal No.)
+        field_paths=["documento.numero_dip", "titular.numero_identidad_nacional", "numero_identidad_nacional", "titular.numero_dip", "numero_dip"],
         is_blocking=True,
         label_es="N° DIP",
         label_fr="N° DIP",
@@ -2131,36 +2127,21 @@ class GeminiDocumentProcessor:
             except Exception as e:
                 used_fallback = True
                 fallback_reason = "gemini_error"
-                logger.error(f"Gemini extraction failed, trying Tesseract fallback: {e}")
+                logger.error(f"Gemini extraction failed: {e}")
 
-        # Tesseract EMERGENCY fallback - only if Gemini unavailable/errored
-        if not extraction_result and OCR_SERVICE_AVAILABLE:
-            try:
-                tesseract_result = await self._process_with_tesseract(
-                    content, mime_type, document_code, schema
-                )
-                tesseract_result["status"] = "success" if tesseract_result["confidence"] >= TESSERACT_CONFIDENCE_THRESHOLD else "low_confidence"
-                extraction_result = tesseract_result
-                logger.warning(
-                    f"Tesseract fallback used: {document_code} "
-                    f"(confidence: {tesseract_result['confidence']:.2%})"
-                )
-            except Exception as e:
-                logger.error(f"Tesseract fallback also failed: {e}")
-
-        # If all processors failed
+        # If Gemini failed or is unavailable, return error (NO Tesseract fallback)
         if not extraction_result:
             used_fallback = True
             if not fallback_reason:
-                fallback_reason = "all_processors_failed"
+                fallback_reason = "gemini_unavailable"
             extraction_result = {
                 "extraction": {},
                 "confidence": 0.0,
                 "processor": "none",
-                "status": "manual_review",
+                "status": "error",
                 "document_type": document_code,
                 "has_error": True,
-                "error_message": "All extraction processors failed"
+                "error_message": "Gemini extraction failed. Please retry or upload a clearer document."
             }
 
         # ═══════════════════════════════════════════════════════════════════

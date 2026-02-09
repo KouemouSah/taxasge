@@ -380,7 +380,8 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "id": "domicilio",
                         "title_es": "Domicilio",
                         "fields": [
-                            {"key": "domicilio", "label_es": "Direccion", "required": True},
+                            {"key": "domicilio_barrio", "label_es": "Barrio", "required": True},
+                            {"key": "domicilio_ciudad", "label_es": "Ciudad", "required": True},
                             {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True}
                         ]
                     }
@@ -434,7 +435,8 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "id": "domicilio",
                         "title_es": "Domicilio",
                         "fields": [
-                            {"key": "domicilio", "label_es": "Direccion", "required": True},
+                            {"key": "domicilio_barrio", "label_es": "Barrio", "required": True},
+                            {"key": "domicilio_ciudad", "label_es": "Ciudad", "required": True},
                             {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True}
                         ]
                     }
@@ -875,7 +877,9 @@ class PasaporteWorkflow(PredefinedWorkflow):
             "nacionalidad": "dip.titular.nacionalidad",
             "estado_civil": "dip.titular.estado_civil",
             "profesion": "dip.titular.profesion",
-            "domicilio": "dip.titular.domiciliacion",
+            # Address fields - parsed from domiciliacion by _post_process_extraction()
+            "domicilio_barrio": "dip.domiciliacion_barrio",
+            "domicilio_ciudad": "dip.domiciliacion_ciudad",
             "grupo_sanguineo": "dip.titular.grupo_sanguineo",
 
             # === DIP Filiation (bloc HIJO DE on verso) ===

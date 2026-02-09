@@ -45,6 +45,10 @@ export interface UseWizardSessionReturn {
   isSaving: boolean
   error: string | null
 
+  // Per-document upload tracking
+  uploadingDocs: Set<string>
+  isDocumentUploading: (documentCode: string) => boolean
+
   // TTL
   timeRemaining: number // seconds
   isExpiring: boolean // < 5 min
@@ -82,6 +86,7 @@ export function useWizardSession(): UseWizardSessionReturn {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState(0)
+  const [uploadingDocs, setUploadingDocs] = useState<Set<string>>(new Set())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ==========================================================================
@@ -223,7 +228,8 @@ export function useWizardSession(): UseWizardSessionReturn {
         return null
       }
       try {
-        setIsSaving(true)
+        // Track per-document upload state (allows parallel uploads)
+        setUploadingDocs((prev) => new Set(prev).add(documentCode))
         setError(null)
         const result = await wizardSessionApi.previewDocument(
           session.sessionId,
@@ -249,7 +255,11 @@ export function useWizardSession(): UseWizardSessionReturn {
         handleError(err)
         return null
       } finally {
-        setIsSaving(false)
+        setUploadingDocs((prev) => {
+          const next = new Set(prev)
+          next.delete(documentCode)
+          return next
+        })
       }
     },
     [session, handleError]
@@ -287,7 +297,7 @@ export function useWizardSession(): UseWizardSessionReturn {
         return false
       }
       try {
-        setIsSaving(true)
+        setUploadingDocs((prev) => new Set(prev).add(documentCode))
         setError(null)
         const updated = await wizardSessionApi.deleteDocument(
           session.sessionId,
@@ -299,7 +309,11 @@ export function useWizardSession(): UseWizardSessionReturn {
         handleError(err)
         return false
       } finally {
-        setIsSaving(false)
+        setUploadingDocs((prev) => {
+          const next = new Set(prev)
+          next.delete(documentCode)
+          return next
+        })
       }
     },
     [session, handleError]
@@ -428,6 +442,11 @@ export function useWizardSession(): UseWizardSessionReturn {
   const isExpired =
     timeRemaining <= 0 && session?.status === WizardSessionStatus.EXPIRED
 
+  const isDocumentUploading = useCallback(
+    (documentCode: string) => uploadingDocs.has(documentCode),
+    [uploadingDocs]
+  )
+
   // ==========================================================================
   // RETURN
   // ==========================================================================
@@ -438,6 +457,10 @@ export function useWizardSession(): UseWizardSessionReturn {
     isLoading,
     isSaving,
     error,
+
+    // Per-document upload tracking
+    uploadingDocs,
+    isDocumentUploading,
 
     // TTL
     timeRemaining,
