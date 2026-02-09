@@ -325,7 +325,7 @@
         "Zone inferieure: N° D.I.P. (9 chiffres), Firma del titular"
       ],
       "verso": [
-        "Zone superieure gauche: Bloc HIJO DE - Nom pere (1ere ligne) + Nom mere (2eme ligne)",
+        "Zone superieure gauche: Bloc HIJO DE (label parfois absent/coupe) suivi de 2 lignes de noms complets = padre (ligne 1) + madre (ligne 2). Ces 2 lignes sont les SEULS textes sans label-prefixe dans cette zone.",
         "Zone superieure droite: N° REGISTRO, ESTADO CIVIL, PROFESIÓN",
         "Zone centrale gauche: LUGAR DE NACIMIENTO, NATURAL DE, DISTRITO Y PROVINCIA, GRUPO SANGUÍNEO",
         "Zone centrale: Photo (repetee)",
@@ -340,7 +340,8 @@
       "Document use ou endommage",
       "MRZ partiellement visible",
       "Deux faces a traiter separement",
-      "IMPORTANT: Nombre et Lugar de emision sont sur la MEME LIGNE - extraire separement"
+      "IMPORTANT: Nombre et Lugar de emision sont sur la MEME LIGNE - extraire separement",
+      "HIJO DE (filiation): Le label 'HIJO DE' est souvent coupe, plie ou illisible sur les mauvais scans. Meme SANS ce label, les 2 lignes de noms complets en majuscules (3-5 mots chacune) dans le coin superieur gauche du verso sont TOUJOURS: ligne 1 = nombre_padre, ligne 2 = nombre_madre. Ces noms sont DIFFERENTS du titulaire (verifiable via MRZ)."
     ],
     "critical_field_separation": {
       "description": "ATTENTION: Sur le recto du DIP, certains champs sont sur la MEME LIGNE et doivent etre extraits SEPAREMENT",
@@ -355,6 +356,24 @@
           "warning": "NE PAS inclure la ville (MALABO, BATA, etc.) dans le champ nombres"
         }
       ],
+      "verso_filiation_layout": {
+        "description": "VERSO - IDENTIFICATION DES PARENTS (ordre structurel FIXE, de haut en bas, coin superieur gauche):",
+        "fixed_order": [
+          "1. Label 'HIJO DE' (PEUT ETRE ABSENT ou illisible - ne pas dependre de ce label)",
+          "2. Ligne de texte = nombre_padre (nom complet du pere, 3-5 mots en majuscules)",
+          "3. Ligne de texte = nombre_madre (nom complet de la mere, 3-5 mots en majuscules)",
+          "4. Puis: LUGAR DE NACIMIENTO, NATURAL DE, etc. (ces champs ont toujours un label-prefixe visible)"
+        ],
+        "recognition_pattern": "Les noms des parents sont les SEULS champs du verso qui: (a) sont des noms complets de personnes en majuscules, (b) n'ont PAS de label-prefixe (contrairement a LUGAR DE, NATURAL DE, PROFESION, etc.), (c) sont DIFFERENTS du nom du titulaire visible dans la MRZ ligne 3.",
+        "example": {
+          "label_visible": "HIJO DE\nCELESTINO NZO MESI EYANG\nFLORENTINA MISENG OSA OBONO",
+          "label_absent": "CELESTINO NZO MESI EYANG\nFLORENTINA MISENG OSA OBONO",
+          "extract_as": {
+            "nombre_padre": "CELESTINO NZO MESI EYANG (1ere ligne de noms)",
+            "nombre_madre": "FLORENTINA MISENG OSA OBONO (2eme ligne de noms)"
+          }
+        }
+      },
       "known_emission_cities": [
         "MALABO",
         "BATA",

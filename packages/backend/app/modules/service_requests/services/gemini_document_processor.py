@@ -2655,6 +2655,29 @@ class GeminiDocumentProcessor:
                     sep_lines.append(f"Ciudades de emisión conocidas (NO incluir en nombres): {', '.join(known_cities)}")
                     sep_lines.append("")
 
+                # Verso filiation layout (structural hints for parent names)
+                verso_layout = critical_sep.get("verso_filiation_layout")
+                if verso_layout:
+                    sep_lines.append("═══════════════════════════════════════════════════════════════════════════════")
+                    sep_lines.append(verso_layout.get("description", ""))
+                    for step in verso_layout.get("fixed_order", []):
+                        sep_lines.append(f"  {step}")
+                    sep_lines.append("")
+                    recognition = verso_layout.get("recognition_pattern", "")
+                    if recognition:
+                        sep_lines.append(f"PATRÓN DE RECONOCIMIENTO: {recognition}")
+                        sep_lines.append("")
+                    example = verso_layout.get("example")
+                    if example:
+                        sep_lines.append("EJEMPLO (label visible):")
+                        sep_lines.append(f"  {example.get('label_visible', '').replace(chr(10), chr(10) + '  ')}")
+                        sep_lines.append("EJEMPLO (label ABSENT - mismo resultado):")
+                        sep_lines.append(f"  {example.get('label_absent', '').replace(chr(10), chr(10) + '  ')}")
+                        extract_as = example.get("extract_as", {})
+                        for field, instruction in extract_as.items():
+                            sep_lines.append(f"  → {field}: {instruction}")
+                        sep_lines.append("")
+
                 critical_separation_text = "\n".join(sep_lines)
         else:
             doc_description = document_code
