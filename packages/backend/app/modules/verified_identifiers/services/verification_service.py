@@ -215,7 +215,7 @@ class VerificationService:
                 request_id=request_id,
                 status=status,
                 details={
-                    "results": {k: v.model_dump() for k, v in results.items()},
+                    "results": {k: v.model_dump(mode='json') for k, v in results.items()},
                     "errors": errors
                 }
             )

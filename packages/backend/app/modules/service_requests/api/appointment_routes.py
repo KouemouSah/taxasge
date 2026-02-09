@@ -151,10 +151,10 @@ async def get_appointment_locations(
             el.email,
             el.is_main_office
         FROM entity_locations el
-        INNER JOIN appointment_slot_configs asc ON asc.entity_location_id = el.id
+        INNER JOIN appointment_slot_configs asc_cfg ON asc_cfg.entity_location_id = el.id
         WHERE el.entity_code = $1
         AND el.is_active = TRUE
-        AND asc.is_active = TRUE
+        AND asc_cfg.is_active = TRUE
         ORDER BY el.city, el.location_name, el.id
     """, entity_code)
 
