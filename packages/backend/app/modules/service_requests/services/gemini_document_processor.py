@@ -2608,10 +2608,15 @@ class GeminiDocumentProcessor:
                     "→ Extrae los datos según su CONTEXTO SEMÁNTICO, no solo por posición",
                     ""
                 ]
-                for face, zones in visual_zones.items():
-                    face_label = "CARA FRONTAL (RECTO)" if face == "recto" else "CARA TRASERA (VERSO)"
-                    vz_lines.append(f"\n{face_label} (ubicación típica):")
-                    for zone in zones:
+                if isinstance(visual_zones, dict):
+                    for face, zones in visual_zones.items():
+                        face_label = "CARA FRONTAL (RECTO)" if face == "recto" else "CARA TRASERA (VERSO)"
+                        vz_lines.append(f"\n{face_label} (ubicación típica):")
+                        for zone in zones:
+                            vz_lines.append(f"  • {zone}")
+                elif isinstance(visual_zones, list):
+                    vz_lines.append("\nZONAS DEL DOCUMENTO (ubicación típica):")
+                    for zone in visual_zones:
                         vz_lines.append(f"  • {zone}")
                 vz_lines.append("")
 
