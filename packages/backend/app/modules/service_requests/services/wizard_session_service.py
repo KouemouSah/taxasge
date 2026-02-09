@@ -234,6 +234,14 @@ class WizardSessionService:
             except ValueError:
                 pass
 
+        # Build documents_uploaded from session cache data.
+        # In cache-first mode there are no DB record UUIDs yet,
+        # so we use placeholder UUIDs (only the keys matter for validation).
+        documents = session.get("documents", {})
+        documents_uploaded = {
+            code: uuid4() for code in documents.keys()
+        }
+
         return WorkflowContext(
             service_request_id=uuid4(),
             user_id=UUID(session["user_id"]),
@@ -244,6 +252,7 @@ class WizardSessionService:
             is_minor=is_minor,
             form_data=session.get("form_data", {}),
             extracted_data=session.get("extracted_data", {}),
+            documents_uploaded=documents_uploaded,
         )
 
     def _get_doc_requirements(self, workflow, context) -> List:
@@ -940,6 +949,14 @@ class WizardSessionService:
         # Build context for validation and tariff
         context = self._build_context(session)
 
+        # Diagnostic logging for payment validation
+        uploaded_docs = list(session.get("documents", {}).keys())
+        logger.info(
+            f"[WizardSession] Payment context: solicitud_type={context.solicitud_type.value}, "
+            f"motivo={context.motivo}, is_minor={context.is_minor}, "
+            f"uploaded_docs={uploaded_docs}, docs_in_context={list(context.documents_uploaded.keys())}"
+        )
+
         # Check required documents
         missing_documents = []
         doc_reqs = self._get_doc_requirements(workflow, context)
@@ -1008,10 +1025,17 @@ class WizardSessionService:
 
         ready_for_payment = not session["has_errors"] and not missing_documents
 
-        logger.info(
-            f"[WizardSession] Prepare payment complete: session={session_id}, "
-            f"ready={ready_for_payment}, errors={len(errors)}, missing_docs={len(missing_documents)}"
-        )
+        if not ready_for_payment:
+            error_details = [e.get("message_es", e.get("rule_id")) for e in errors]
+            logger.warning(
+                f"[WizardSession] Payment NOT ready: session={session_id}, "
+                f"missing_docs={missing_documents}, errors={error_details}"
+            )
+        else:
+            logger.info(
+                f"[WizardSession] Prepare payment complete: session={session_id}, "
+                f"ready=True, amount={tariff.get('total_amount', 0)}"
+            )
 
         return WizardPreparePaymentResponse(
             session_id=session_id,
