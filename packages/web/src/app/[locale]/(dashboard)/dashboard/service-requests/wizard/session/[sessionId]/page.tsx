@@ -100,15 +100,6 @@ const STEP_TYPE_ICONS: Record<string, React.ElementType> = {
   custom: Stamp,
 }
 
-// Fallback step definitions when workflow config is not yet loaded
-const FALLBACK_STEPS: WizardStepDef[] = [
-  { id: 'document_upload', type: 'document_upload', titleEs: 'Documentos', titleFr: 'Documents', titleEn: 'Documents', icon: Upload },
-  { id: 'form_review_1', type: 'form_review', titleEs: 'Revision de datos (1)', titleFr: 'Revision des donnees (1)', titleEn: 'Data Review (1)', icon: FileText },
-  { id: 'form_review_2', type: 'form_review', titleEs: 'Revision de datos (2)', titleFr: 'Revision des donnees (2)', titleEn: 'Data Review (2)', icon: FileText },
-  { id: 'payment', type: 'payment', titleEs: 'Pago', titleFr: 'Paiement', titleEn: 'Payment', icon: CreditCard },
-  { id: 'confirmation', type: 'confirmation', titleEs: 'Confirmacion', titleFr: 'Confirmation', titleEn: 'Confirmation', icon: CheckCircle },
-]
-
 /**
  * Step types that the wizard can render.
  * Steps with types not in this set are skipped (e.g., stamp_payment
@@ -241,8 +232,9 @@ export default function SessionWizardPage() {
   // Filter to renderable types, skip stamp_payment, and evaluate step-level conditions.
   const steps = useMemo((): WizardStepDef[] => {
     if (!workflowConfig?.steps || workflowConfig.steps.length === 0) {
-      // Fallback while workflow config is loading
-      return FALLBACK_STEPS
+      // Loading guard shows spinner until workflowConfig is available,
+      // so this only triggers if the backend returns 0 steps (bug).
+      return []
     }
 
     return workflowConfig.steps
@@ -571,8 +563,6 @@ export default function SessionWizardPage() {
   // ========================================================================
 
   // Loading state — wait for both session AND workflow config before rendering steps.
-  // Without this, FALLBACK_STEPS (starting with document_upload) flash briefly
-  // before the real steps (starting with selection) load.
   if ((isLoading && !session) || (session && isLoadingWorkflow)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -664,6 +654,48 @@ export default function SessionWizardPage() {
   }
 
   if (!session) return null
+
+  // No renderable steps — backend returned empty config or all steps filtered out
+  if (steps.length === 0 || !currentStep) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md w-full">
+          <CardHeader className="text-center">
+            <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <CardTitle>
+              {locale === 'es'
+                ? 'Configuracion no disponible'
+                : locale === 'fr'
+                  ? 'Configuration indisponible'
+                  : 'Configuration unavailable'}
+            </CardTitle>
+            <CardDescription>
+              {locale === 'es'
+                ? 'No se pudo cargar la configuracion del tramite. Intenta de nuevo.'
+                : locale === 'fr'
+                  ? 'Impossible de charger la configuration. Veuillez reessayer.'
+                  : 'Could not load the workflow configuration. Please try again.'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex gap-2 justify-center">
+            <Button
+              variant="outline"
+              onClick={() => loadSession(sessionId)}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {locale === 'es' ? 'Reintentar' : locale === 'fr' ? 'Reessayer' : 'Retry'}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => router.push(`/${locale}/dashboard/service-requests/new`)}
+            >
+              {locale === 'es' ? 'Volver' : locale === 'fr' ? 'Retour' : 'Back'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
