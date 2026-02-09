@@ -2,13 +2,20 @@
  * Workflow Mapping Form Component
  * Form for creating and editing workflow-to-menu mappings
  *
+ * Dynamic fields powered by backend API:
+ * - workflow_pattern: Select from workflow categories (derived from GET /menu-config/workflows)
+ * - menu_group_id: Auto-suggested based on selected pattern
+ * - menu_title_key: Auto-suggested based on selected pattern
+ * - menu_icon: Select with visual preview
+ *
  * @module admin/components
  * @date 2026-01-19
+ * @updated 2026-02-09 - Dynamic dropdowns from API, auto-fill logic
  */
 
 'use client';
 
-import React from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +25,9 @@ import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -33,12 +42,31 @@ import {
 } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Loader2,
+  Plane,
+  Globe,
+  Car,
+  FileSignature,
+  Briefcase,
+  Building2,
+  FileText,
+  CreditCard,
+  Users,
+  Shield,
+  Settings,
+  BadgeCheck,
+  Truck,
+  type LucideIcon,
+} from 'lucide-react';
 import type { WorkflowMenuMapping } from '@/modules/agent-dashboard/types/menu-config';
 import type {
   WorkflowMappingCreateRequest,
   WorkflowMappingUpdateRequest,
 } from '../services/menuConfigService';
+import { useWorkflowCodesGrouped } from '../hooks/useWorkflowCodes';
 
 // =============================================================================
 // VALIDATION SCHEMA
@@ -73,22 +101,85 @@ const workflowMappingSchema = z.object({
 type WorkflowMappingFormValues = z.infer<typeof workflowMappingSchema>;
 
 // =============================================================================
-// ICON OPTIONS
+// ICON OPTIONS WITH COMPONENTS (for visual preview)
 // =============================================================================
 
-const ICON_OPTIONS = [
-  { value: 'Plane', label: 'Plane (Passports)' },
-  { value: 'Globe', label: 'Globe (Residences/Visas)' },
-  { value: 'Car', label: 'Car (Vehicles/Licenses)' },
-  { value: 'FileSignature', label: 'FileSignature (Contracts)' },
-  { value: 'Briefcase', label: 'Briefcase (Work Permits)' },
-  { value: 'Building2', label: 'Building2 (Businesses)' },
-  { value: 'FileText', label: 'FileText (Documents)' },
-  { value: 'CreditCard', label: 'CreditCard (Payments)' },
-  { value: 'Users', label: 'Users (People)' },
-  { value: 'Shield', label: 'Shield (Security)' },
-  { value: 'Settings', label: 'Settings (Configuration)' },
+const ICON_OPTIONS: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: 'Plane', label: 'Pasaportes', icon: Plane },
+  { value: 'Globe', label: 'Residencias / Visados', icon: Globe },
+  { value: 'Car', label: 'Vehículos / Licencias', icon: Car },
+  { value: 'Truck', label: 'Transporte', icon: Truck },
+  { value: 'FileSignature', label: 'Contratos', icon: FileSignature },
+  { value: 'BadgeCheck', label: 'Funcionarios', icon: BadgeCheck },
+  { value: 'Briefcase', label: 'Permisos de Trabajo', icon: Briefcase },
+  { value: 'Building2', label: 'Empresas', icon: Building2 },
+  { value: 'FileText', label: 'Documentos', icon: FileText },
+  { value: 'CreditCard', label: 'Pagos', icon: CreditCard },
+  { value: 'Users', label: 'Personas', icon: Users },
+  { value: 'Shield', label: 'Seguridad', icon: Shield },
+  { value: 'Settings', label: 'Configuración', icon: Settings },
 ];
+
+// =============================================================================
+// AUTO-FILL PRESETS: pattern → suggested defaults
+// Derived from existing workflow_menu_mapping DB entries
+// =============================================================================
+
+const PATTERN_PRESETS: Record<string, {
+  menu_group_id: string;
+  menu_title_key: string;
+  menu_icon: string;
+  include_appointments: boolean;
+}> = {
+  'PASAPORTE_%': {
+    menu_group_id: 'pasaportes',
+    menu_title_key: 'agent.nav.passports',
+    menu_icon: 'Plane',
+    include_appointments: true,
+  },
+  'RESIDENCIA_%': {
+    menu_group_id: 'residencias',
+    menu_title_key: 'agent.nav.residences',
+    menu_icon: 'Globe',
+    include_appointments: true,
+  },
+  'CONDUCIR_%': {
+    menu_group_id: 'licencias',
+    menu_title_key: 'agent.nav.driverLicenses',
+    menu_icon: 'Car',
+    include_appointments: false,
+  },
+  'VEHICULO_%': {
+    menu_group_id: 'vehiculos',
+    menu_title_key: 'agent.nav.vehicles',
+    menu_icon: 'Car',
+    include_appointments: false,
+  },
+  'CONTRATO_%': {
+    menu_group_id: 'contratos',
+    menu_title_key: 'agent.nav.contracts',
+    menu_icon: 'FileSignature',
+    include_appointments: false,
+  },
+  'FP_%': {
+    menu_group_id: 'funcionarios',
+    menu_title_key: 'agent.nav.civilServants',
+    menu_icon: 'BadgeCheck',
+    include_appointments: false,
+  },
+  'PRORROGA_%': {
+    menu_group_id: 'visados',
+    menu_title_key: 'agent.nav.visas',
+    menu_icon: 'Globe',
+    include_appointments: false,
+  },
+  'VISADO_%': {
+    menu_group_id: 'visados',
+    menu_title_key: 'agent.nav.visas',
+    menu_icon: 'Globe',
+    include_appointments: false,
+  },
+};
 
 // =============================================================================
 // PROPS
@@ -120,6 +211,33 @@ export function WorkflowMappingForm({
 }: WorkflowMappingFormProps) {
   const t = useTranslations('menuConfig');
 
+  // Fetch workflow codes from backend API for dynamic pattern options
+  const {
+    grouped: workflowsByCategory,
+    categories,
+    isLoading: codesLoading,
+  } = useWorkflowCodesGrouped();
+
+  // Build pattern options from API workflow categories
+  const patternOptions = useMemo(() => {
+    if (!categories.length) return Object.keys(PATTERN_PRESETS).map(p => ({
+      value: p,
+      label: p,
+      count: 0,
+    }));
+
+    return categories.map((category) => {
+      const workflows = workflowsByCategory[category] || [];
+      const pattern = `${category}_%`;
+      return {
+        value: pattern,
+        label: `${category} (${workflows.length} workflows)`,
+        count: workflows.length,
+        workflows: workflows.map(w => w.code),
+      };
+    });
+  }, [categories, workflowsByCategory]);
+
   const form = useForm<WorkflowMappingFormValues>({
     resolver: zodResolver(workflowMappingSchema),
     defaultValues: {
@@ -137,13 +255,38 @@ export function WorkflowMappingForm({
     },
   });
 
+  // Auto-fill fields when workflow_pattern changes (create mode only)
+  const selectedPattern = form.watch('workflow_pattern');
+
+  useEffect(() => {
+    if (mode !== 'create' || !selectedPattern) return;
+
+    const preset = PATTERN_PRESETS[selectedPattern];
+    if (preset) {
+      form.setValue('menu_group_id', preset.menu_group_id);
+      form.setValue('menu_title_key', preset.menu_title_key);
+      form.setValue('menu_icon', preset.menu_icon);
+      form.setValue('include_appointments', preset.include_appointments);
+    } else {
+      // Generate defaults from pattern
+      const category = selectedPattern.replace('_%', '').toLowerCase();
+      form.setValue('menu_group_id', category);
+      form.setValue('menu_title_key', `agent.nav.${category}`);
+    }
+  }, [selectedPattern, mode, form]);
+
   const handleSubmit = (values: WorkflowMappingFormValues) => {
     onSubmit(values);
   };
 
+  // Get current icon for preview
+  const currentIcon = form.watch('menu_icon');
+  const IconPreview = ICON_OPTIONS.find(i => i.value === currentIcon)?.icon || FileText;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Main Configuration Card */}
         <Card>
           <CardHeader>
             <CardTitle>
@@ -151,20 +294,43 @@ export function WorkflowMappingForm({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Workflow pattern */}
+            {/* Workflow pattern — Dynamic Select from API */}
             <FormField
               control={form.control}
               name="workflow_pattern"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('fields.workflowPattern')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="PASAPORTE_%, RESIDENCIA_%"
+                  {codesLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
                       disabled={mode === 'edit'}
-                    />
-                  </FormControl>
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('fields.selectWorkflowPattern')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Categorías de workflows</SelectLabel>
+                          {patternOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              <div className="flex items-center gap-2">
+                                <span>{opt.value}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {opt.count}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormDescription>
                     {t('fields.workflowPatternDescription')}
                   </FormDescription>
@@ -173,7 +339,7 @@ export function WorkflowMappingForm({
               )}
             />
 
-            {/* Menu group ID */}
+            {/* Menu group ID — Auto-filled, editable */}
             <FormField
               control={form.control}
               name="menu_group_id"
@@ -181,7 +347,7 @@ export function WorkflowMappingForm({
                 <FormItem>
                   <FormLabel>{t('fields.menuGroupId')}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="pasaportes, residencias" />
+                    <Input {...field} />
                   </FormControl>
                   <FormDescription>
                     {t('fields.menuGroupIdDescription')}
@@ -191,7 +357,7 @@ export function WorkflowMappingForm({
               )}
             />
 
-            {/* Menu title key */}
+            {/* Menu title key — Auto-filled, editable */}
             <FormField
               control={form.control}
               name="menu_title_key"
@@ -199,7 +365,7 @@ export function WorkflowMappingForm({
                 <FormItem>
                   <FormLabel>{t('fields.menuTitleKey')}</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="agent.nav.passports" />
+                    <Input {...field} />
                   </FormControl>
                   <FormDescription>
                     {t('fields.menuTitleKeyDescription')}
@@ -209,70 +375,95 @@ export function WorkflowMappingForm({
               )}
             />
 
-            {/* Menu icon */}
+            {/* Menu icon — Select with visual preview */}
             <FormField
               control={form.control}
               name="menu_icon"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('fields.menuIcon')}</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg border bg-muted">
+                      <IconPreview className="h-5 w-5 text-primary" />
+                    </div>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Seleccionar icono" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {ICON_OPTIONS.map((opt) => {
+                          const Icon = opt.icon;
+                          return (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              <div className="flex items-center gap-2">
+                                <Icon className="h-4 w-4" />
+                                <span>{opt.label}</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Display order */}
+              <FormField
+                control={form.control}
+                name="display_order"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('fields.displayOrder')}</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select icon" />
-                      </SelectTrigger>
+                      <Input {...field} type="number" min={0} />
                     </FormControl>
-                    <SelectContent>
-                      {ICON_OPTIONS.map((icon) => (
-                        <SelectItem key={icon.value} value={icon.value}>
-                          {icon.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormDescription>
+                      {t('fields.displayOrderDescription')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Display order */}
-            <FormField
-              control={form.control}
-              name="display_order"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('fields.displayOrder')}</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" min={0} />
-                  </FormControl>
-                  <FormDescription>
-                    {t('fields.displayOrderDescription')}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Permission prefix */}
-            <FormField
-              control={form.control}
-              name="permission_prefix"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('fields.permissionPrefix')}</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="service_requests" />
-                  </FormControl>
-                  <FormDescription>
-                    {t('fields.permissionPrefixDescription')}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              {/* Permission prefix */}
+              <FormField
+                control={form.control}
+                name="permission_prefix"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('fields.permissionPrefix')}</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || 'service_requests'}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="service_requests">service_requests</SelectItem>
+                        <SelectItem value="treasury">treasury</SelectItem>
+                        <SelectItem value="declarations">declarations</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {t('fields.permissionPrefixDescription')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Sub-menu toggles */}
             <div className="space-y-3 pt-4 border-t">
@@ -280,97 +471,87 @@ export function WorkflowMappingForm({
                 {t('fields.subMenuOptions')}
               </h4>
 
-              <FormField
-                control={form.control}
-                name="include_pending"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        {t('fields.includePending')}
-                      </FormLabel>
-                      <FormDescription>
-                        {t('fields.includePendingDescription')}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="include_pending"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">
+                          {t('fields.includePending')}
+                        </FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="include_validation"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        {t('fields.includeValidation')}
-                      </FormLabel>
-                      <FormDescription>
-                        {t('fields.includeValidationDescription')}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="include_validation"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">
+                          {t('fields.includeValidation')}
+                        </FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="include_appointments"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        {t('fields.includeAppointments')}
-                      </FormLabel>
-                      <FormDescription>
-                        {t('fields.includeAppointmentsDescription')}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="include_appointments"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">
+                          {t('fields.includeAppointments')}
+                        </FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="include_history"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        {t('fields.includeHistory')}
-                      </FormLabel>
-                      <FormDescription>
-                        {t('fields.includeHistoryDescription')}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="include_history"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">
+                          {t('fields.includeHistory')}
+                        </FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             {/* Is active switch */}
@@ -396,6 +577,37 @@ export function WorkflowMappingForm({
             />
           </CardContent>
         </Card>
+
+        {/* Preview Card — Shows what workflows will be matched */}
+        {selectedPattern && patternOptions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Workflows correspondants</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const matchedCategory = selectedPattern.replace('_%', '');
+                const matchedWorkflows = workflowsByCategory[matchedCategory] || [];
+                if (matchedWorkflows.length === 0) {
+                  return (
+                    <p className="text-sm text-muted-foreground">
+                      Aucun workflow actif correspond au pattern {selectedPattern}
+                    </p>
+                  );
+                }
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {matchedWorkflows.map((wf) => (
+                      <Badge key={wf.code} variant="outline" className="text-xs">
+                        {wf.code}
+                      </Badge>
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Form actions */}
         <div className="flex justify-end gap-3">

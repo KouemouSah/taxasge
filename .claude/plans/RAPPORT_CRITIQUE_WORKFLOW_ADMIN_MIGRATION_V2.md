@@ -2,10 +2,10 @@
 # Migration V1 (Hardcoded) → V2 (Dynamic) : Etat des lieux
 
 **Date**: 2026-02-09
-**Version**: 1.0
+**Version**: 1.1 (mise à jour avec corrections)
 **Auteur**: Claude Code Expert (Opus 4.6)
-**Session**: Analyse architecturale approfondie
-**Statut**: RAPPORT D'AUDIT INITIAL
+**Session**: Analyse architecturale approfondie + corrections
+**Statut**: RAPPORT D'AUDIT — CORRECTIONS APPLIQUÉES
 
 ---
 
@@ -205,28 +205,23 @@ Le menu admin sous **Configuration > Menu Configuration** contient :
 - `workflow_menu_mapping` DB → `VEHICULO_%` pattern couvre ce workflow
 - Mais si `/menu-config/me` échoue, l'agent voit le menu de `entity-menus.ts` avec des hrefs différents de ceux générés dynamiquement
 
-### GAP-02 : WORKFLOW CODES INEXISTANTS EN BACKEND (CRITICITÉ: HAUTE)
+### GAP-02 : WORKFLOW CODES DÉSALIGNÉS (CRITICITÉ: HAUTE) — ✅ CORRIGÉ v1.1
 
-**Problème** : Le frontend `entity-menus.ts` et `types/index.ts` déclarent des workflow codes qui **n'existent PAS** dans le backend `WorkflowCode` enum :
+**Problème initial** : Codes workflow désalignés entre backend enum, SUBTYPE_PARENT_MAPPING, et frontend.
 
-| Code Frontend | Backend Enum | Statut |
-|--------------|-------------|--------|
-| `RESIDENCIA_DUPLICADO` | ABSENT | **PHANTOM** |
-| `RESIDENCIA_CAMBIO_DATOS` | ABSENT | **PHANTOM** |
-| `RESIDENCIA_REAGRUPACION` | ABSENT | **PHANTOM** |
-| `VEHICULO_CAMBIO_CARACTERISTICAS` | ABSENT | **PHANTOM** |
+**Analyse corrigée (v1.1)** :
+Les 3 codes RESIDENCIA (DUPLICADO, CAMBIO_DATOS, REAGRUPACION) ne sont PAS des "phantoms" — ils existent dans `SUBTYPE_PARENT_MAPPING` et `SUBTYPE_NAMES_ES` dans `admin_routes.py`, et le sync endpoint les insère dans la table `workflows` en DB. Ils sont visibles dans l'admin. Ils n'ont simplement pas de `WorkflowCode` enum ni de workflow Python implémenté (cas d'usage planifiés).
 
-**Le backend a** (que le frontend ne liste PAS dans entity-menus) :
-| Code Backend | Frontend entity-menus | Statut |
-|-------------|----------------------|--------|
-| `PRORROGA_VISADO` | Absent de EXTRANJERIA_CONFIG | **MANQUANT** |
-| `VISADO_ALTERNATIVO` | Absent de EXTRANJERIA_CONFIG | **MANQUANT** |
-| `PERMANENCIA_EXTRANJERIA` | Absent de EXTRANJERIA_CONFIG | **MANQUANT** |
-| `SALIDA_VISADO_VENCIDO` | Absent de EXTRANJERIA_CONFIG | **MANQUANT** |
+`VEHICULO_CAMBIO_CARACTERISTICAS` existe bien dans le backend enum (`enums.py:98`) — c'était une erreur d'analyse initiale.
 
-**Impact** :
-- Si un agent a `RESIDENCIA_DUPLICADO` dans ses workflows assignés et que le fallback statique est actif, les filtres de requêtes enverront un code que le backend ne reconnaît pas.
-- Les 4 workflows `VISADO_*` n'apparaissent dans aucun menu agent (ni statique, ni dynamique via entity-menus).
+**Cause racine des VISADO invisibles** :
+Les 4 codes VISADO (PRORROGA_VISADO, VISADO_ALTERNATIVO, PERMANENCIA_EXTRANJERIA, SALIDA_VISADO_VENCIDO) SONT dans l'enum ET dans TramitesVisadoWorkflow. Le sync les itère mais comme ils n'étaient PAS dans `SUBTYPE_PARENT_MAPPING`, ils recevaient `is_parent=True` → filtrés par l'admin (`wf.is_parent !== true`).
+
+**Corrections appliquées** :
+- ✅ Ajout des 4 codes VISADO à `SUBTYPE_PARENT_MAPPING` (parent: PRORROGA_VISADO)
+- ✅ Ajout des 4 codes à `SUBTYPE_NAMES_ES`
+- ✅ Ajout au frontend `entity-menus.ts` (EXTRANJERIA_CONFIG) et `types/index.ts`
+- ✅ Restauration des 3 codes RESIDENCIA dans entity-menus.ts et types/index.ts
 
 ### GAP-03 : MENU ADMIN NON UNIFIÉ (CRITICITÉ: MOYENNE)
 
@@ -242,9 +237,15 @@ Un admin qui crée un workflow ne sait pas qu'il doit AUSSI créer un mapping me
 
 **Impact** : Quand un agent ouvre une liste de requêtes pour un workflow sans display config, le système utilise des colonnes par défaut ("system columns fallback"), ce qui peut ne pas correspondre aux données réelles.
 
-### GAP-05 : SYNC WORKFLOW NON IDEMPOTENT (CRITICITÉ: BASSE)
+### GAP-05 : SYNC WORKFLOW SANS PROPAGATION MENUS (CRITICITÉ: HAUTE) — ✅ CORRIGÉ v1.1
 
-**Problème** : L'endpoint `POST /api/v1/admin/service-requests/sync/workflows` synchronise les workflows Python vers la DB. Cependant, il ne synchronise PAS les workflow_menu_mapping ni les display_config. C'est un processus one-way (Python → DB workflows) sans propagation aux tables dépendantes.
+**Problème initial** : L'endpoint `POST /api/v1/admin/service-requests/sync/workflows` synchronisait les workflows Python vers la DB MAIS ne propageait PAS aux tables `workflow_menu_mapping` ni `workflow_display_config`.
+
+**Correction v1.1** :
+- ✅ Le sync endpoint auto-génère maintenant les `workflow_menu_mapping` pour les nouvelles catégories détectées
+- Utilise `CATEGORY_MENU_DEFAULTS` pour assigner des icônes, titres, et groupes de menus automatiquement
+- Les patterns existants ne sont PAS écrasés (ON CONFLICT DO NOTHING)
+- Le résultat inclut `menu_mappings_created` pour tracer les créations
 
 ### GAP-06 : ENTITÉ DGI/POLICIA SANS MENUS (CRITICITÉ: BASSE)
 
@@ -332,20 +333,20 @@ retry: 1, // Only retry once since we have static fallback
 | PASAPORTE_DETERIORO | ✅ | ✅ | ✅ CNEDOGE | ✅ PASAPORTE_% | OK |
 | RESIDENCIA_PRIMERA_VEZ | ✅ | ✅ | ✅ EXTRANJERIA | ✅ RESIDENCIA_% | OK |
 | RESIDENCIA_RENOVACION | ✅ | ✅ | ✅ EXTRANJERIA | ✅ RESIDENCIA_% | OK |
-| **RESIDENCIA_DUPLICADO** | **❌ ABSENT** | ✅ | ✅ CNEDOGE_RES/EXTRA | ✅ RESIDENCIA_% | **PHANTOM** |
-| **RESIDENCIA_CAMBIO_DATOS** | **❌ ABSENT** | ✅ | ✅ CNEDOGE_RES/EXTRA | ✅ RESIDENCIA_% | **PHANTOM** |
-| **RESIDENCIA_REAGRUPACION** | **❌ ABSENT** | ✅ | ✅ CNEDOGE_RES/EXTRA | ✅ RESIDENCIA_% | **PHANTOM** |
-| PRORROGA_VISADO | ✅ | **❌ ABSENT** | **❌ ABSENT** | ❌ Pas de pattern | **INVISIBLE** |
-| VISADO_ALTERNATIVO | ✅ | **❌ ABSENT** | **❌ ABSENT** | ❌ Pas de pattern | **INVISIBLE** |
-| PERMANENCIA_EXTRANJERIA | ✅ | **❌ ABSENT** | **❌ ABSENT** | ❌ Pas de pattern | **INVISIBLE** |
-| SALIDA_VISADO_VENCIDO | ✅ | **❌ ABSENT** | **❌ ABSENT** | ❌ Pas de pattern | **INVISIBLE** |
+| RESIDENCIA_DUPLICADO | ❌ Enum | ✅ | ✅ CNEDOGE_RES/EXTRA | ✅ RESIDENCIA_% | **PLANIFIÉ** (in DB via sync) |
+| RESIDENCIA_CAMBIO_DATOS | ❌ Enum | ✅ | ✅ CNEDOGE_RES/EXTRA | ✅ RESIDENCIA_% | **PLANIFIÉ** (in DB via sync) |
+| RESIDENCIA_REAGRUPACION | ❌ Enum | ✅ | ✅ CNEDOGE_RES/EXTRA | ✅ RESIDENCIA_% | **PLANIFIÉ** (in DB via sync) |
+| PRORROGA_VISADO | ✅ | ✅ (v1.1) | ✅ EXTRANJERIA (v1.1) | ✅ PRORROGA_% (auto-sync v1.1) | **✅ CORRIGÉ** |
+| VISADO_ALTERNATIVO | ✅ | ✅ (v1.1) | ✅ EXTRANJERIA (v1.1) | ✅ VISADO_% (auto-sync v1.1) | **✅ CORRIGÉ** |
+| PERMANENCIA_EXTRANJERIA | ✅ | ✅ (v1.1) | ✅ EXTRANJERIA (v1.1) | ✅ PERMANENCIA_% (auto-sync v1.1) | **✅ CORRIGÉ** |
+| SALIDA_VISADO_VENCIDO | ✅ | ✅ (v1.1) | ✅ EXTRANJERIA (v1.1) | ✅ SALIDA_% (auto-sync v1.1) | **✅ CORRIGÉ** |
 | VEHICULO_PRIMERA_MATRICULACION | ✅ | ✅ | ✅ DGT | ✅ VEHICULO_% | OK |
 | VEHICULO_TRANSFERENCIA | ✅ | ✅ | ✅ DGT | ✅ VEHICULO_% | OK |
 | VEHICULO_RENOVACION_CUVE | ✅ | ✅ | ✅ OFIVE | ✅ VEHICULO_% | OK |
 | VEHICULO_RENOVACION_ITV | ✅ | ✅ | ✅ ITVE | ✅ VEHICULO_% | OK |
 | VEHICULO_DUPLICADO_PERMISO | ✅ | ✅ | ✅ DGT | ✅ VEHICULO_% | OK |
 | VEHICULO_DUPLICADO_CUVE | ✅ | ✅ | ✅ OFIVE | ✅ VEHICULO_% | OK |
-| **VEHICULO_CAMBIO_CARACTERISTICAS** | **❌ ABSENT** | ✅ | ✅ DGT | ✅ VEHICULO_% | **PHANTOM** |
+| VEHICULO_CAMBIO_CARACTERISTICAS | ✅ (enums.py:98) | ✅ | ✅ DGT | ✅ VEHICULO_% | OK (erreur initiale corrigée) |
 | CONDUCIR_NUEVO | ✅ | ✅ | ✅ DGT | ✅ CONDUCIR_% | OK |
 | CONDUCIR_CANJE | ✅ | ✅ | ✅ DGT | ✅ CONDUCIR_% | OK |
 | CONDUCIR_RENOVACION | ✅ | ✅ | ✅ DGT | ✅ CONDUCIR_% | OK |
@@ -366,11 +367,11 @@ retry: 1, // Only retry once since we have static fallback
 
 ### 7.2 Résumé des Inconsistances
 
-| Type | Codes | Nombre |
-|------|-------|--------|
-| **PHANTOM** (frontend seulement) | RESIDENCIA_DUPLICADO, RESIDENCIA_CAMBIO_DATOS, RESIDENCIA_REAGRUPACION, VEHICULO_CAMBIO_CARACTERISTICAS | **4** |
-| **INVISIBLE** (backend seulement) | PRORROGA_VISADO, VISADO_ALTERNATIVO, PERMANENCIA_EXTRANJERIA, SALIDA_VISADO_VENCIDO | **4** |
-| **OK** (alignés partout) | 27 codes | **27** |
+| Type | Codes | Nombre | Statut v1.1 |
+|------|-------|--------|-------------|
+| **PLANIFIÉ** (in DB via SUBTYPE_PARENT_MAPPING, sans enum) | RESIDENCIA_DUPLICADO, RESIDENCIA_CAMBIO_DATOS, RESIDENCIA_REAGRUPACION | **3** | Restaurés dans frontend |
+| **INVISIBLE** → **CORRIGÉ** | PRORROGA_VISADO, VISADO_ALTERNATIVO, PERMANENCIA_EXTRANJERIA, SALIDA_VISADO_VENCIDO | **4** | ✅ Ajoutés à SUBTYPE_PARENT_MAPPING + frontend |
+| **OK** (alignés partout) | 31 codes | **31** | ✅ |
 
 ---
 
@@ -504,23 +505,15 @@ Le frontend menuConfigService.ts définit les permissions dans les commentaires 
 
 ### PRIORITÉ HAUTE (Impact immédiat)
 
-#### R-01 : Résoudre les Workflow Codes PHANTOM
-**Action** : Décider pour chaque code si :
-- (A) Il doit être ajouté au backend `WorkflowCode` enum + implémenter le workflow
-- (B) Il doit être supprimé du frontend `entity-menus.ts` et `types/index.ts`
+#### R-01 : ~~Résoudre les Workflow Codes PHANTOM~~ ✅ CORRIGÉ v1.1
+**Résolution** : Les 3 codes RESIDENCIA ne sont PAS des phantoms — ils existent dans la DB via `SUBTYPE_PARENT_MAPPING`. VEHICULO_CAMBIO_CARACTERISTICAS existe dans l'enum backend. Codes restaurés dans le frontend.
 
-| Code | Recommandation |
-|------|---------------|
-| RESIDENCIA_DUPLICADO | **(A)** Ajouter au backend — cas d'usage réel |
-| RESIDENCIA_CAMBIO_DATOS | **(A)** Ajouter au backend — cas d'usage réel |
-| RESIDENCIA_REAGRUPACION | **(A)** Ajouter au backend — cas d'usage réel |
-| VEHICULO_CAMBIO_CARACTERISTICAS | **(A)** Ajouter au backend — cas d'usage réel |
-
-#### R-02 : Rendre les Workflows VISADO Visibles
-**Action** : Ajouter les 4 workflows `VISADO_*` et `PERMANENCIA_*` / `SALIDA_*` à :
-1. `entity-menus.ts` sous EXTRANJERIA_CONFIG
-2. `types/index.ts` WorkflowCode type
-3. `workflow_menu_mapping` DB (pattern `VISADO_%` ou `PRORROGA_%` ou ajout au pattern `RESIDENCIA_%`)
+#### R-02 : ~~Rendre les Workflows VISADO Visibles~~ ✅ CORRIGÉ v1.1
+**Résolution** :
+- ✅ Ajoutés à `SUBTYPE_PARENT_MAPPING` et `SUBTYPE_NAMES_ES` dans admin_routes.py
+- ✅ Ajoutés à `entity-menus.ts` (EXTRANJERIA_CONFIG avec menu visados)
+- ✅ Ajoutés à `types/index.ts` WorkflowCode type
+- ✅ `workflow_menu_mapping` patterns auto-générés par le sync endpoint
 
 #### R-03 : Ajouter un lien croisé Workflow ↔ Menu Mapping dans l'admin
 **Action** : Dans la page workflow detail, ajouter un onglet ou section montrant le mapping menu associé avec lien direct vers l'édition.
@@ -552,11 +545,14 @@ Le frontend menuConfigService.ts définit les permissions dans les commentaires 
 
 ## 12. PLAN DE MIGRATION PROPOSÉ
 
-### Phase 1 : Alignement des Données (Critique)
-- [ ] Résoudre les 4 workflow codes PHANTOM
-- [ ] Ajouter les 4 workflows VISADO/PERMANENCIA au frontend
-- [ ] Valider que les 35 workflow codes sont alignés backend ↔ frontend
-- [ ] Créer display configs pour les 6 catégories principales
+### Phase 1 : Alignement des Données (Critique) — ✅ COMPLÉTÉE v1.1
+- [x] Corriger SUBTYPE_PARENT_MAPPING (ajout 4 VISADO, cause racine de l'invisibilité admin)
+- [x] Corriger SUBTYPE_NAMES_ES (ajout noms espagnols pour VISADO)
+- [x] Ajouter les 4 workflows VISADO au frontend (entity-menus.ts + types/index.ts)
+- [x] Restaurer les 3 codes RESIDENCIA dans le frontend (incorrectement supprimés)
+- [x] Rendre sync auto-génère workflow_menu_mapping (CATEGORY_MENU_DEFAULTS)
+- [x] Dynamiser WorkflowMappingForm (Select dropdowns, auto-fill, preview)
+- [ ] Créer display configs pour les 6 catégories principales (à faire)
 
 ### Phase 2 : UX Admin Unifiée (Haute)
 - [ ] Ajouter indicateur santé (mapping/display/docs/tarifs) sur la page workflows
@@ -641,7 +637,17 @@ packages/backend/app/modules/
 | 064 | Seed data workflow mappings (6 entries) | ✅ Appliquée |
 | 087 | `workflow_display_config` (pattern-based) | ✅ Appliquée |
 | 088 | Migrate pattern → exact code + rename column | ✅ Appliquée |
+| 091 | Add VISADO patterns to workflow_menu_mapping + cleanup phantoms | ✅ Créée (backup, le sync auto-génère maintenant) |
+
+### D. Corrections v1.1 (2026-02-09)
+
+| Fichier | Modification |
+|---------|-------------|
+| `admin_routes.py` | +4 VISADO dans SUBTYPE_PARENT_MAPPING, +4 dans SUBTYPE_NAMES_ES, +CATEGORY_MENU_DEFAULTS (10 catégories), sync auto-génère workflow_menu_mapping |
+| `entity-menus.ts` | Restauration 3 RESIDENCIA dans CNEDOGE/CNEDOGE_RESIDENCIA/EXTRANJERIA, ajout 4 VISADO dans EXTRANJERIA |
+| `types/index.ts` | Restauration 3 RESIDENCIA, ajout 4 VISADO |
+| `WorkflowMappingForm.tsx` | Select dynamiques, auto-fill, preview (session précédente) |
 
 ---
 
-*Rapport généré le 2026-02-09. Ce rapport doit être mis à jour après chaque phase de correction.*
+*Rapport v1.0 généré le 2026-02-09. Mise à jour v1.1 le 2026-02-09 avec corrections appliquées.*

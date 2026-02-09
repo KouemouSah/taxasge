@@ -6109,8 +6109,85 @@ class WorkflowSyncResult(BaseModel):
     documents_synced: int = 0
     documents_created: int = 0
     documents_updated: int = 0
+    menu_mappings_created: int = 0
     errors: List[str] = Field(default_factory=list)
     details: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# Auto-generation defaults for workflow_menu_mapping
+# Maps workflow category prefix → menu defaults
+CATEGORY_MENU_DEFAULTS = {
+    "PASAPORTE": {
+        "pattern": "PASAPORTE_%",
+        "menu_group_id": "pasaportes",
+        "menu_title_key": "agent.nav.passports",
+        "menu_icon": "Plane",
+        "display_order": 1,
+    },
+    "RESIDENCIA": {
+        "pattern": "RESIDENCIA_%",
+        "menu_group_id": "residencias",
+        "menu_title_key": "agent.nav.residence",
+        "menu_icon": "Globe",
+        "display_order": 2,
+    },
+    "CONDUCIR": {
+        "pattern": "CONDUCIR_%",
+        "menu_group_id": "licencias",
+        "menu_title_key": "agent.nav.licenses",
+        "menu_icon": "Car",
+        "display_order": 3,
+    },
+    "VEHICULO": {
+        "pattern": "VEHICULO_%",
+        "menu_group_id": "vehiculos",
+        "menu_title_key": "agent.nav.vehicles",
+        "menu_icon": "Car",
+        "display_order": 4,
+    },
+    "CONTRATO": {
+        "pattern": "CONTRATO_%",
+        "menu_group_id": "contratos",
+        "menu_title_key": "agent.nav.contracts",
+        "menu_icon": "FileSignature",
+        "display_order": 5,
+    },
+    "PRORROGA": {
+        "pattern": "PRORROGA_%",
+        "menu_group_id": "visados",
+        "menu_title_key": "agent.nav.visas",
+        "menu_icon": "Globe",
+        "display_order": 6,
+    },
+    "VISADO": {
+        "pattern": "VISADO_%",
+        "menu_group_id": "visados",
+        "menu_title_key": "agent.nav.visas",
+        "menu_icon": "Globe",
+        "display_order": 7,
+    },
+    "PERMANENCIA": {
+        "pattern": "PERMANENCIA_%",
+        "menu_group_id": "visados",
+        "menu_title_key": "agent.nav.visas",
+        "menu_icon": "Globe",
+        "display_order": 8,
+    },
+    "SALIDA": {
+        "pattern": "SALIDA_%",
+        "menu_group_id": "visados",
+        "menu_title_key": "agent.nav.visas",
+        "menu_icon": "Globe",
+        "display_order": 9,
+    },
+    "FP": {
+        "pattern": "FP_%",
+        "menu_group_id": "funcion_publica",
+        "menu_title_key": "agent.nav.public_function",
+        "menu_icon": "Building2",
+        "display_order": 10,
+    },
+}
 
 
 # Mapping from sub_type to Spanish name for each workflow family
@@ -6155,6 +6232,11 @@ SUBTYPE_NAMES_ES = {
     "FP_PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
     "FP_PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
     "FP_CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
+    # TRAMITES VISADO (4)
+    "PRORROGA_VISADO": "Visado - Prórroga de Visado",
+    "VISADO_ALTERNATIVO": "Visado - Visado Alternativo",
+    "PERMANENCIA_EXTRANJERIA": "Visado - Permanencia Extranjería",
+    "SALIDA_VISADO_VENCIDO": "Visado - Salida con Visado Vencido",
 }
 
 def extract_document_requirements_from_workflow(workflow, sub_type: str) -> list:
@@ -6288,6 +6370,11 @@ SUBTYPE_PARENT_MAPPING = {
     "FP_PROMOCION_ADMINISTRATIVA": "FP_VERIFICACION_FUNCIONARIO",
     "FP_PERMISO_EXTRAORDINARIO": "FP_VERIFICACION_FUNCIONARIO",
     "FP_CERTIFICADO_ADMINISTRATIVO": "FP_VERIFICACION_FUNCIONARIO",
+    # TRAMITES VISADO (4)
+    "PRORROGA_VISADO": None,  # Base workflow (is_parent=True)
+    "VISADO_ALTERNATIVO": "PRORROGA_VISADO",
+    "PERMANENCIA_EXTRANJERIA": "PRORROGA_VISADO",
+    "SALIDA_VISADO_VENCIDO": "PRORROGA_VISADO",
 }
 
 
@@ -6296,12 +6383,13 @@ SUBTYPE_PARENT_MAPPING = {
     response_model=WorkflowSyncResult,
     summary="Sync predefined workflows to database",
     description="""
-    Synchronize ALL 34 predefined workflow codes to the database.
+    Synchronize ALL predefined workflow codes to the database.
 
     This endpoint reads from the Python workflow classes (source of truth) and:
     1. Iterates over ALL sub_types for each workflow class
     2. Creates/updates workflow entries in the `workflows` table for each sub_type
     3. Creates/updates tariff entries in the `workflow_tariffs` table
+    4. Auto-generates workflow_menu_mapping entries for new workflow categories
 
     Use this after deploying new workflow code to ensure DB is aligned.
     Set delete_existing=true to first delete all existing workflows.
@@ -6314,7 +6402,7 @@ async def sync_predefined_workflows(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin.manage_workflow"))
 ):
-    """Sync ALL 34 predefined workflow codes to database."""
+    """Sync ALL predefined workflow codes to database, including auto-generating menu mappings."""
     from ..services.workflow_engine import workflow_engine
     from ..models.enums import WorkflowCode, SolicitudType, TariffType
     from ..workflows.workflow_interface import PredefinedWorkflow
@@ -6578,5 +6666,59 @@ async def sync_predefined_workflows(
 
         except Exception as e:
             result.errors.append(f"Error processing workflow {base_code.value}: {str(e)}")
+
+    # Step 4: Auto-generate workflow_menu_mapping for new categories
+    if not dry_run:
+        try:
+            # Get all distinct workflow code prefixes from synced workflows
+            synced_codes = [
+                d['workflow_code'] for d in result.details
+                if d.get('action') == 'synced' and d.get('workflow_code')
+            ]
+
+            # Detect category prefixes from synced workflow codes
+            detected_prefixes = set()
+            for code in synced_codes:
+                # Extract the prefix (first part before _)
+                prefix = code.split('_')[0]
+                detected_prefixes.add(prefix)
+
+            # Get existing menu mapping patterns
+            existing_patterns = await db.fetch(
+                "SELECT workflow_pattern FROM workflow_menu_mapping"
+            )
+            existing_pattern_set = {row['workflow_pattern'] for row in existing_patterns}
+
+            # Auto-create missing menu mappings
+            for prefix in detected_prefixes:
+                defaults = CATEGORY_MENU_DEFAULTS.get(prefix)
+                if not defaults:
+                    continue
+
+                pattern = defaults["pattern"]
+                if pattern in existing_pattern_set:
+                    continue
+
+                # Insert new menu mapping with sensible defaults
+                await db.execute("""
+                    INSERT INTO workflow_menu_mapping (
+                        workflow_pattern, menu_group_id, menu_title_key, menu_icon,
+                        display_order, include_pending, include_validation,
+                        include_appointments, include_history,
+                        permission_prefix, is_active
+                    ) VALUES ($1, $2, $3, $4, $5, true, true, false, true, 'service_requests', true)
+                    ON CONFLICT (workflow_pattern) DO NOTHING
+                """, pattern, defaults["menu_group_id"], defaults["menu_title_key"],
+                    defaults["menu_icon"], defaults["display_order"])
+
+                result.menu_mappings_created += 1
+                result.details.append({
+                    "action": "menu_mapping_created",
+                    "pattern": pattern,
+                    "menu_group_id": defaults["menu_group_id"],
+                })
+
+        except Exception as e:
+            result.errors.append(f"Error auto-generating menu mappings: {str(e)}")
 
     return result

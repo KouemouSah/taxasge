@@ -120,7 +120,7 @@ export const CNEDOGE_CONFIG: EntityDashboardConfig = {
           href: '/dashboard/agent/cnedoge-residencia/residencias/pending',
           icon: Clock,
           permission: 'service_request.view',
-          workflows: ['RESIDENCIA_PRIMERA_VEZ', 'RESIDENCIA_RENOVACION', 'RESIDENCIA_DUPLICADO'],
+          workflows: ['RESIDENCIA_PRIMERA_VEZ', 'RESIDENCIA_RENOVACION', 'RESIDENCIA_DUPLICADO', 'RESIDENCIA_CAMBIO_DATOS', 'RESIDENCIA_REAGRUPACION'],
         },
         {
           id: 'residencias-validacion',
@@ -128,6 +128,7 @@ export const CNEDOGE_CONFIG: EntityDashboardConfig = {
           href: '/dashboard/agent/cnedoge-residencia/residencias/validation',
           icon: CheckCircle,
           permission: 'service_request.approve',
+          workflows: ['RESIDENCIA_PRIMERA_VEZ', 'RESIDENCIA_RENOVACION', 'RESIDENCIA_DUPLICADO', 'RESIDENCIA_CAMBIO_DATOS', 'RESIDENCIA_REAGRUPACION'],
         },
         {
           id: 'residencias-citas',
@@ -788,6 +789,10 @@ export const EXTRANJERIA_CONFIG: EntityDashboardConfig = {
     'RESIDENCIA_DUPLICADO',
     'RESIDENCIA_CAMBIO_DATOS',
     'RESIDENCIA_REAGRUPACION',
+    'PRORROGA_VISADO',
+    'VISADO_ALTERNATIVO',
+    'PERMANENCIA_EXTRANJERIA',
+    'SALIDA_VISADO_VENCIDO',
   ],
   menuItems: [
     {
@@ -807,6 +812,7 @@ export const EXTRANJERIA_CONFIG: EntityDashboardConfig = {
           href: '/dashboard/agent/extranjeria/residencias/pending',
           icon: Clock,
           permission: 'service_request.view',
+          workflows: ['RESIDENCIA_PRIMERA_VEZ', 'RESIDENCIA_RENOVACION', 'RESIDENCIA_DUPLICADO', 'RESIDENCIA_CAMBIO_DATOS', 'RESIDENCIA_REAGRUPACION'],
         },
         {
           id: 'residencias-validacion',
@@ -814,6 +820,7 @@ export const EXTRANJERIA_CONFIG: EntityDashboardConfig = {
           href: '/dashboard/agent/extranjeria/residencias/validation',
           icon: CheckCircle,
           permission: 'service_request.approve',
+          workflows: ['RESIDENCIA_PRIMERA_VEZ', 'RESIDENCIA_RENOVACION', 'RESIDENCIA_DUPLICADO', 'RESIDENCIA_CAMBIO_DATOS', 'RESIDENCIA_REAGRUPACION'],
         },
         {
           id: 'residencias-citas',
@@ -821,6 +828,29 @@ export const EXTRANJERIA_CONFIG: EntityDashboardConfig = {
           href: '/dashboard/agent/extranjeria/residencias/appointments',
           icon: Calendar,
           permission: 'service_request.schedule_appointment',
+        },
+      ],
+    },
+    {
+      id: 'visados',
+      titleKey: 'agent.nav.visas',
+      icon: Globe,
+      items: [
+        {
+          id: 'visados-pendientes',
+          titleKey: 'agent.nav.pending',
+          href: '/dashboard/agent/extranjeria/visados/pending',
+          icon: Clock,
+          permission: 'service_request.view',
+          workflows: ['PRORROGA_VISADO', 'VISADO_ALTERNATIVO', 'PERMANENCIA_EXTRANJERIA', 'SALIDA_VISADO_VENCIDO'],
+        },
+        {
+          id: 'visados-validacion',
+          titleKey: 'agent.nav.validation',
+          href: '/dashboard/agent/extranjeria/visados/validation',
+          icon: CheckCircle,
+          permission: 'service_request.approve',
+          workflows: ['PRORROGA_VISADO', 'VISADO_ALTERNATIVO', 'PERMANENCIA_EXTRANJERIA', 'SALIDA_VISADO_VENCIDO'],
         },
       ],
     },
