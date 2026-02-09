@@ -89,6 +89,18 @@ export interface BackendDocumentPreviewResponse {
   ttl_seconds: number
 }
 
+/** Payment method info from backend */
+export interface BackendPaymentMethodInfo {
+  code: string
+  label_es: string
+  label_en: string
+  label_fr: string
+  processor_type: string
+  requires_phone: boolean
+  requires_redirect: boolean
+  requires_agent_validation: boolean
+}
+
 /** Matches WizardPreparePaymentResponse */
 export interface BackendPreparePaymentResponse {
   session_id: string
@@ -104,6 +116,9 @@ export interface BackendPreparePaymentResponse {
 
   all_documents_uploaded: boolean
   missing_documents: string[]
+
+  payment_methods: BackendPaymentMethodInfo[]
+  default_payment_method: string | null
 }
 
 /** Matches WizardPersistResult */
@@ -112,6 +127,24 @@ export interface BackendPersistResult {
   service_request_id: string | null
   reference: string | null
   payment_id: string | null
+  error: string | null
+  error_code: string | null
+}
+
+/** Matches WizardInitiatePaymentResponse (atomic persist + pay) */
+export interface BackendInitiatePaymentResponse {
+  success: boolean
+  service_request_id: string | null
+  reference: string | null
+  payment_id: string | null
+  payment_reference: string | null
+  payment_status: string | null
+  redirect_url: string | null
+  requires_action: boolean
+  action_type: string | null
+  message_es: string | null
+  expires_at: string | null
+  requires_appointment: boolean
   error: string | null
   error_code: string | null
 }
@@ -179,6 +212,17 @@ export interface DocumentPreview {
   ttlSeconds: number
 }
 
+export interface PaymentMethodInfo {
+  code: string
+  labelEs: string
+  labelEn: string
+  labelFr: string
+  processorType: string
+  requiresPhone: boolean
+  requiresRedirect: boolean
+  requiresAgentValidation: boolean
+}
+
 export interface PreparePaymentResult {
   sessionId: string
   readyForPayment: boolean
@@ -193,6 +237,9 @@ export interface PreparePaymentResult {
 
   allDocumentsUploaded: boolean
   missingDocuments: string[]
+
+  paymentMethods: PaymentMethodInfo[]
+  defaultPaymentMethod: string | null
 }
 
 export interface PersistResult {
@@ -200,6 +247,24 @@ export interface PersistResult {
   serviceRequestId: string | null
   reference: string | null
   paymentId: string | null
+  error: string | null
+  errorCode: string | null
+}
+
+/** Frontend version of WizardInitiatePaymentResponse (camelCase) */
+export interface InitiatePaymentResult {
+  success: boolean
+  serviceRequestId: string | null
+  reference: string | null
+  paymentId: string | null
+  paymentReference: string | null
+  paymentStatus: string | null
+  redirectUrl: string | null
+  requiresAction: boolean
+  actionType: string | null
+  messageEs: string | null
+  expiresAt: string | null
+  requiresAppointment: boolean
   error: string | null
   errorCode: string | null
 }
@@ -315,6 +380,21 @@ export function transformDocumentPreview(
   }
 }
 
+function transformPaymentMethod(
+  backend: BackendPaymentMethodInfo
+): PaymentMethodInfo {
+  return {
+    code: backend.code,
+    labelEs: backend.label_es,
+    labelEn: backend.label_en,
+    labelFr: backend.label_fr,
+    processorType: backend.processor_type,
+    requiresPhone: backend.requires_phone,
+    requiresRedirect: backend.requires_redirect,
+    requiresAgentValidation: backend.requires_agent_validation,
+  }
+}
+
 export function transformPreparePayment(
   backend: BackendPreparePaymentResponse
 ): PreparePaymentResult {
@@ -329,6 +409,8 @@ export function transformPreparePayment(
     warnings: backend.warnings,
     allDocumentsUploaded: backend.all_documents_uploaded,
     missingDocuments: backend.missing_documents,
+    paymentMethods: (backend.payment_methods || []).map(transformPaymentMethod),
+    defaultPaymentMethod: backend.default_payment_method ?? null,
   }
 }
 
@@ -340,6 +422,27 @@ export function transformPersistResult(
     serviceRequestId: backend.service_request_id,
     reference: backend.reference,
     paymentId: backend.payment_id,
+    error: backend.error,
+    errorCode: backend.error_code,
+  }
+}
+
+export function transformInitiatePayment(
+  backend: BackendInitiatePaymentResponse
+): InitiatePaymentResult {
+  return {
+    success: backend.success,
+    serviceRequestId: backend.service_request_id,
+    reference: backend.reference,
+    paymentId: backend.payment_id,
+    paymentReference: backend.payment_reference,
+    paymentStatus: backend.payment_status,
+    redirectUrl: backend.redirect_url,
+    requiresAction: backend.requires_action,
+    actionType: backend.action_type,
+    messageEs: backend.message_es,
+    expiresAt: backend.expires_at,
+    requiresAppointment: backend.requires_appointment ?? false,
     error: backend.error,
     errorCode: backend.error_code,
   }

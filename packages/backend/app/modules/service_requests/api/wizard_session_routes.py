@@ -25,6 +25,8 @@ from ..models.wizard_session import (
     WizardFormDataSaveRequest,
     WizardPreparePaymentResponse,
     WizardPersistResult,
+    WizardInitiatePaymentRequest,
+    WizardInitiatePaymentResponse,
 )
 from ..models.form_config import FormConfigResponse
 from ..services.wizard_session_service import (
@@ -528,6 +530,71 @@ async def persist_session(
         logger.info(
             f"[WizardAPI] Session persisted: session={session_id}, "
             f"request_id={result.service_request_id}, ref={result.reference}"
+        )
+
+        return result
+
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+
+# =============================================================================
+# INITIATE PAYMENT (Atomic: persist + pay)
+# =============================================================================
+
+@router.post(
+    "/{session_id}/initiate-payment",
+    response_model=WizardInitiatePaymentResponse,
+    summary="Atomically persist session and initiate payment",
+    description="""
+    Single atomic endpoint that combines:
+    1. Persist session to database (create service_request + upload documents to Firebase)
+    2. Initiate payment (create service_payment + call payment processor)
+
+    All operations run in a single database transaction. If any step fails,
+    everything is rolled back:
+    - Database: automatic transaction rollback
+    - Firebase: uploaded files are cleaned up
+    - Cache: session restored to READY_FOR_PAYMENT for retry
+
+    **Payment methods:**
+    - `mobile_money`: Returns `redirect_url` to BANGE payment gateway
+    - `card`: Returns `redirect_url` to BANGE card gateway
+    - `bank_transfer`: Returns `redirect_url` to BANGE transfer page
+    - `cash`: Requires agent validation (`action_type='agent_validation'`)
+    - `check`: Requires agent validation (`action_type='agent_validation'`)
+
+    **Post-payment navigation:**
+    - `requires_appointment=true`: Frontend should advance to appointment step
+    - `redirect_url` set: Frontend should redirect to payment gateway
+    - Otherwise: Frontend should navigate to service request detail page
+    """,
+)
+async def initiate_session_payment(
+    session_id: str = Path(..., description="The wizard session ID"),
+    body: WizardInitiatePaymentRequest = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Atomically persist session and initiate payment."""
+    try:
+        result = await wizard_session_service.initiate_payment(
+            session_id=session_id,
+            user_id=current_user.id,
+            db=db,
+            payment_method=body.payment_method,
+            phone_number=body.phone_number,
+            user_email=current_user.email,
+            user_phone=getattr(current_user, "phone_number", None),
+            user_name=f"{getattr(current_user, 'first_name', '') or ''} {getattr(current_user, 'last_name', '') or ''}".strip(),
+        )
+
+        logger.info(
+            f"[WizardAPI] Atomic payment: session={session_id}, "
+            f"request_id={result.service_request_id}, "
+            f"payment_id={result.payment_id}, "
+            f"status={result.payment_status}, "
+            f"requires_appointment={result.requires_appointment}"
         )
 
         return result

@@ -21,6 +21,7 @@ import type {
   DocumentPreview,
   PreparePaymentResult,
   PersistResult,
+  InitiatePaymentResult,
   WizardSessionCreateRequest,
   DocumentConfirmRequest,
   FormDataSaveRequest,
@@ -69,7 +70,10 @@ export interface UseWizardSessionReturn {
 
   // Payment
   preparePayment: () => Promise<PreparePaymentResult | null>
+  /** @deprecated Use initiatePayment() for atomic persist+pay. Kept for free services (amount=0). */
   persistAndPay: (paymentId?: string) => Promise<PersistResult | null>
+  /** Atomically persist session + initiate payment in one call. */
+  initiatePayment: (paymentMethod: string, phoneNumber?: string) => Promise<InitiatePaymentResult | null>
 
   // Utility
   clearError: () => void
@@ -418,6 +422,46 @@ export function useWizardSession(): UseWizardSessionReturn {
     [session, handleError]
   )
 
+  const initiatePayment = useCallback(
+    async (
+      paymentMethod: string,
+      phoneNumber?: string
+    ): Promise<InitiatePaymentResult | null> => {
+      if (!session) {
+        setError('No hay sesión activa')
+        return null
+      }
+      try {
+        setIsLoading(true)
+        setError(null)
+        const result = await wizardSessionApi.initiatePayment(
+          session.sessionId,
+          paymentMethod,
+          phoneNumber,
+        )
+        if (result.success) {
+          setSession((prev) =>
+            prev
+              ? { ...prev, status: WizardSessionStatus.PERSISTED }
+              : null
+          )
+          // Stop timer - session is done
+          if (timerRef.current) {
+            clearInterval(timerRef.current)
+            timerRef.current = null
+          }
+        }
+        return result
+      } catch (err) {
+        handleError(err)
+        return null
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [session, handleError]
+  )
+
   // ==========================================================================
   // UTILITY
   // ==========================================================================
@@ -483,6 +527,7 @@ export function useWizardSession(): UseWizardSessionReturn {
     // Payment
     preparePayment,
     persistAndPay,
+    initiatePayment,
 
     // Utility
     clearError,

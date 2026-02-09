@@ -14,10 +14,12 @@ import type {
   BackendDocumentPreviewResponse,
   BackendPreparePaymentResponse,
   BackendPersistResult,
+  BackendInitiatePaymentResponse,
   WizardSession,
   DocumentPreview,
   PreparePaymentResult,
   PersistResult,
+  InitiatePaymentResult,
   WizardSessionCreateRequest,
   DocumentConfirmRequest,
   FormDataSaveRequest,
@@ -28,6 +30,7 @@ import {
   transformDocumentPreview,
   transformPreparePayment,
   transformPersistResult,
+  transformInitiatePayment,
 } from '../types/wizard-session'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -327,6 +330,31 @@ class WizardSessionApiClient {
       { method: 'POST' }
     )
     return transformPersistResult(raw)
+  }
+
+  /**
+   * Atomically persist session + initiate payment (single endpoint).
+   * POST /wizard-sessions/{sessionId}/initiate-payment
+   *
+   * Replaces the two-call pattern (persist + initiate-payment) with
+   * a single atomic operation. On failure, session stays in cache for retry.
+   */
+  async initiatePayment(
+    sessionId: string,
+    paymentMethod: string,
+    phoneNumber?: string,
+  ): Promise<InitiatePaymentResult> {
+    const raw = await this.request<BackendInitiatePaymentResponse>(
+      `/${sessionId}/initiate-payment`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          payment_method: paymentMethod,
+          phone_number: phoneNumber || null,
+        }),
+      }
+    )
+    return transformInitiatePayment(raw)
   }
 }
 

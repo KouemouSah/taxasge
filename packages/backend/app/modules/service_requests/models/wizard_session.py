@@ -267,6 +267,18 @@ class WizardFormDataSaveRequest(BaseModel):
     step_id: Optional[str] = Field(None, description="Current step ID")
 
 
+class PaymentMethodInfoResponse(BaseModel):
+    """Payment method info for frontend display."""
+    code: str
+    label_es: str
+    label_en: str
+    label_fr: str
+    processor_type: str
+    requires_phone: bool
+    requires_redirect: bool
+    requires_agent_validation: bool
+
+
 class WizardPreparePaymentResponse(BaseModel):
     """Response after preparing for payment."""
     session_id: str
@@ -285,6 +297,10 @@ class WizardPreparePaymentResponse(BaseModel):
     # Documents status
     all_documents_uploaded: bool
     missing_documents: List[str] = Field(default_factory=list)
+
+    # Payment methods
+    payment_methods: List[PaymentMethodInfoResponse] = Field(default_factory=list)
+    default_payment_method: Optional[str] = None
 
     class Config:
         json_schema_extra = {
@@ -320,5 +336,59 @@ class WizardPersistResult(BaseModel):
                 "service_request_id": "123e4567-e89b-12d3-a456-426614174000",
                 "reference": "PAS-2026-00001",
                 "payment_id": "pay_abc123"
+            }
+        }
+
+
+class WizardInitiatePaymentRequest(BaseModel):
+    """Request to atomically persist session + initiate payment."""
+    payment_method: str = Field(..., description="Payment method: mobile_money, card, bank_transfer, cash, check")
+    phone_number: Optional[str] = Field(None, description="Phone number (required for mobile_money)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "payment_method": "mobile_money",
+                "phone_number": "+240222123456"
+            }
+        }
+
+
+class WizardInitiatePaymentResponse(BaseModel):
+    """Response after atomic persist + payment initiation."""
+    # Persist result
+    success: bool
+    service_request_id: Optional[UUID] = None
+    reference: Optional[str] = None
+
+    # Payment result
+    payment_id: Optional[str] = None
+    payment_reference: Optional[str] = None
+    payment_status: Optional[str] = None
+    redirect_url: Optional[str] = None
+    requires_action: bool = False
+    action_type: Optional[str] = None  # "redirect", "agent_validation_cash", "agent_validation_check"
+    message_es: Optional[str] = None
+    expires_at: Optional[datetime] = None
+
+    # Workflow capabilities (for frontend navigation)
+    requires_appointment: bool = False
+
+    # Error info
+    error: Optional[str] = None
+    error_code: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "service_request_id": "123e4567-e89b-12d3-a456-426614174000",
+                "reference": "PAS-2026-00001",
+                "payment_id": "pay_abc123",
+                "payment_status": "pending",
+                "redirect_url": "https://pay.bange.gq/checkout/abc123",
+                "requires_action": True,
+                "action_type": "redirect",
+                "requires_appointment": True,
             }
         }

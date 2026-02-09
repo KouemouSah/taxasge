@@ -44,6 +44,8 @@ import {
   RefreshCw,
   ListChecks,
   Stamp,
+  Smartphone,
+  Banknote,
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -179,7 +181,7 @@ export default function SessionWizardPage() {
     deleteDocument,
     saveFormData,
     preparePayment,
-    persistAndPay,
+    initiatePayment,
     clearError,
   } = useWizardSession()
 
@@ -191,8 +193,13 @@ export default function SessionWizardPage() {
   const [formValues, setFormValues] = useState<Record<string, unknown>>({})
   const [paymentResult, setPaymentResult] =
     useState<PreparePaymentResult | null>(null)
-  const [isPersisting, setIsPersisting] = useState(false)
   const [persistedRequestId, setPersistedRequestId] = useState<string | null>(null)
+
+  // Payment method selection state
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
+  const [paymentPhone, setPaymentPhone] = useState('')
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
 
   // Identity mismatch blocker state
   const [identityMismatches, setIdentityMismatches] = useState<IdentityMismatch[]>([])
@@ -221,6 +228,13 @@ export default function SessionWizardPage() {
       setFormValues((prev) => ({ ...prev, ...session.formData }))
     }
   }, [session?.formData])
+
+  // Auto-select default payment method when payment result arrives
+  useEffect(() => {
+    if (paymentResult?.defaultPaymentMethod && !selectedPaymentMethod) {
+      setSelectedPaymentMethod(paymentResult.defaultPaymentMethod)
+    }
+  }, [paymentResult?.defaultPaymentMethod, selectedPaymentMethod])
 
   // Build wizard steps dynamically from backend workflow config.
   // Filter to renderable types, skip stamp_payment, and evaluate step-level conditions.
@@ -366,29 +380,72 @@ export default function SessionWizardPage() {
   }, [session, currentStep, paymentResult, hasBlockingMismatches, formValues, workflowConfig, documentPreviews])
 
   // ========================================================================
-  // PERSIST & PAY (must be before handleNext which references it)
+  // INITIATE PAYMENT (atomic: persist + pay in one call)
   // ========================================================================
 
-  const handlePersistAndPay = useCallback(async () => {
-    setIsPersisting(true)
+  const handleInitiatePayment = useCallback(async () => {
+    if (!selectedPaymentMethod || !paymentResult?.readyForPayment) return
+    // Mobile money requires phone number
+    if (selectedPaymentMethod === 'mobile_money' && !paymentPhone.trim()) return
+
+    setIsPaymentProcessing(true)
+    setPaymentError(null)
+
     try {
-      const result = await persistAndPay()
-      if (result?.success && result.serviceRequestId) {
-        setPersistedRequestId(result.serviceRequestId)
-        // If workflow requires appointment, advance to appointment step
-        if (session?.requiresAppointment) {
-          setCurrentStepIndex((prev) => prev + 1)
-        } else {
-          // Redirect to the created request's detail page
-          router.push(
-            `/${locale}/dashboard/service-requests/${result.serviceRequestId}`
-          )
-        }
+      // Single atomic call: persist session + initiate payment
+      const result = await initiatePayment(
+        selectedPaymentMethod,
+        selectedPaymentMethod === 'mobile_money' ? paymentPhone.trim() : undefined
+      )
+
+      if (!result?.success) {
+        setPaymentError(
+          result?.error ||
+          (locale === 'es'
+            ? 'Error al procesar el pago. Intente de nuevo.'
+            : locale === 'fr'
+              ? 'Erreur lors du traitement du paiement. Reessayez.'
+              : 'Error processing payment. Please try again.')
+        )
+        return
       }
+
+      // Store the request ID for appointment step
+      if (result.serviceRequestId) {
+        setPersistedRequestId(result.serviceRequestId)
+      }
+
+      // 1. BANGE electronic payment - redirect to gateway
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl
+        return
+      }
+
+      // 2. Workflow with appointment - advance to appointment step
+      if (result.requiresAppointment) {
+        setCurrentStepIndex((prev) => prev + 1)
+        return
+      }
+
+      // 3. No appointment, no redirect - go to request detail page
+      if (result.serviceRequestId) {
+        router.push(`/${locale}/dashboard/service-requests/${result.serviceRequestId}`)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error'
+      setPaymentError(msg)
+      console.error('[WizardSession] Payment error:', msg)
     } finally {
-      setIsPersisting(false)
+      setIsPaymentProcessing(false)
     }
-  }, [persistAndPay, router, locale, session?.requiresAppointment])
+  }, [
+    selectedPaymentMethod,
+    paymentPhone,
+    paymentResult,
+    initiatePayment,
+    router,
+    locale,
+  ])
 
   const handleNext = useCallback(async () => {
     if (!session || !currentStep) return
@@ -434,18 +491,6 @@ export default function SessionWizardPage() {
       setPaymentResult(result)
     }
 
-    // When leaving payment step to appointment, persist first
-    // (cache-first: need real requestId for appointment booking)
-    if (
-      currentStep.type === 'payment' &&
-      paymentResult?.readyForPayment &&
-      currentStepIndex + 1 < steps.length &&
-      steps[currentStepIndex + 1].type === 'appointment'
-    ) {
-      await handlePersistAndPay()
-      return // handlePersistAndPay handles step advance
-    }
-
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1)
     }
@@ -457,8 +502,6 @@ export default function SessionWizardPage() {
     formValues,
     saveFormData,
     preparePayment,
-    handlePersistAndPay,
-    paymentResult,
     currentFormConfig,
     locale,
   ])
@@ -1105,17 +1148,129 @@ export default function SessionWizardPage() {
                     </Alert>
                   )}
 
-                  {/* Ready for payment */}
+                  {/* Payment method selection */}
                   {paymentResult.readyForPayment && (
-                    <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span className="text-green-700 dark:text-green-300 font-medium">
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold">
                         {locale === 'es'
-                          ? 'Solicitud lista para pago'
+                          ? 'Seleccione un metodo de pago'
                           : locale === 'fr'
-                            ? 'Demande prete pour le paiement'
-                            : 'Request ready for payment'}
-                      </span>
+                            ? 'Choisissez un mode de paiement'
+                            : 'Select a payment method'}
+                      </h3>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {paymentResult.paymentMethods.map((method) => {
+                          const isSelected = selectedPaymentMethod === method.code
+                          const label =
+                            locale === 'fr'
+                              ? method.labelFr
+                              : locale === 'en'
+                                ? method.labelEn
+                                : method.labelEs
+                          const Icon =
+                            method.code === 'mobile_money'
+                              ? Smartphone
+                              : method.code === 'cash'
+                                ? Banknote
+                                : CreditCard
+
+                          return (
+                            <button
+                              key={method.code}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPaymentMethod(method.code)
+                                setPaymentError(null)
+                              }}
+                              className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition-colors ${
+                                isSelected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-muted hover:border-primary/50'
+                              }`}
+                            >
+                              <Icon className={`h-6 w-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <div>
+                                <p className={`font-medium ${isSelected ? 'text-primary' : ''}`}>
+                                  {label}
+                                </p>
+                                {method.requiresAgentValidation && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {locale === 'es'
+                                      ? 'Requiere validacion del agente'
+                                      : locale === 'fr'
+                                        ? 'Necessite la validation de l\'agent'
+                                        : 'Requires agent validation'}
+                                  </p>
+                                )}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Phone number for mobile money */}
+                      {selectedPaymentMethod === 'mobile_money' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-phone">
+                            {locale === 'es'
+                              ? 'Numero de telefono'
+                              : locale === 'fr'
+                                ? 'Numero de telephone'
+                                : 'Phone number'}
+                          </Label>
+                          <Input
+                            id="payment-phone"
+                            type="tel"
+                            value={paymentPhone}
+                            onChange={(e) => setPaymentPhone(e.target.value)}
+                            placeholder="+240 222 123 456"
+                            className="max-w-[300px]"
+                          />
+                        </div>
+                      )}
+
+                      {/* Payment error */}
+                      {paymentError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{paymentError}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Pay button */}
+                      <Button
+                        size="lg"
+                        onClick={handleInitiatePayment}
+                        disabled={
+                          isPaymentProcessing ||
+                          !selectedPaymentMethod ||
+                          (selectedPaymentMethod === 'mobile_money' && !paymentPhone.trim())
+                        }
+                        className="w-full sm:w-auto min-w-[200px]"
+                      >
+                        {isPaymentProcessing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {locale === 'es'
+                              ? 'Procesando...'
+                              : locale === 'fr'
+                                ? 'Traitement...'
+                                : 'Processing...'}
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            {locale === 'es'
+                              ? 'Pagar'
+                              : locale === 'fr'
+                                ? 'Payer'
+                                : 'Pay'}{' '}
+                            {paymentResult.totalAmount.toLocaleString()}{' '}
+                            {paymentResult.currency}
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -1131,50 +1286,31 @@ export default function SessionWizardPage() {
               <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
               <h2 className="text-lg font-semibold">
                 {locale === 'es'
-                  ? 'Confirmar y pagar'
+                  ? 'Solicitud completada'
                   : locale === 'fr'
-                    ? 'Confirmer et payer'
-                    : 'Confirm and pay'}
+                    ? 'Demande completee'
+                    : 'Request completed'}
               </h2>
               <p className="text-muted-foreground">
                 {locale === 'es'
-                  ? 'Al confirmar, tu solicitud sera creada y se procesara el pago.'
+                  ? 'Tu solicitud ha sido creada y el pago ha sido procesado.'
                   : locale === 'fr'
-                    ? 'En confirmant, votre demande sera creee et le paiement sera traite.'
-                    : 'By confirming, your request will be created and payment processed.'}
+                    ? 'Votre demande a ete creee et le paiement a ete traite.'
+                    : 'Your request has been created and payment has been processed.'}
               </p>
-              {paymentResult && (
-                <p className="text-2xl font-bold">
-                  {paymentResult.totalAmount.toLocaleString()}{' '}
-                  {paymentResult.currency}
-                </p>
+              {persistedRequestId && (
+                <Button
+                  size="lg"
+                  onClick={() => router.push(`/${locale}/dashboard/service-requests/${persistedRequestId}`)}
+                  className="min-w-[200px]"
+                >
+                  {locale === 'es'
+                    ? 'Ver mi solicitud'
+                    : locale === 'fr'
+                      ? 'Voir ma demande'
+                      : 'View my request'}
+                </Button>
               )}
-              <Button
-                size="lg"
-                onClick={handlePersistAndPay}
-                disabled={isPersisting || isLoading}
-                className="min-w-[200px]"
-              >
-                {isPersisting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {locale === 'es'
-                      ? 'Procesando...'
-                      : locale === 'fr'
-                        ? 'Traitement...'
-                        : 'Processing...'}
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    {locale === 'es'
-                      ? 'Confirmar pago'
-                      : locale === 'fr'
-                        ? 'Confirmer le paiement'
-                        : 'Confirm payment'}
-                  </>
-                )}
-              </Button>
             </div>
           )}
 
@@ -1244,7 +1380,7 @@ export default function SessionWizardPage() {
               : 'Previous'}
         </Button>
 
-        {currentStep.type !== 'confirmation' && (
+        {currentStep.type !== 'confirmation' && currentStep.type !== 'payment' && (
           <Button
             onClick={handleNext}
             disabled={!canGoNext() || isSaving || isLoading}
