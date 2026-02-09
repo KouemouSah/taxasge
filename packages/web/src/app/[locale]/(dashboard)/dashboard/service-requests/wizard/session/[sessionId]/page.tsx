@@ -365,6 +365,31 @@ export default function SessionWizardPage() {
     return true
   }, [session, currentStep, paymentResult, hasBlockingMismatches, formValues, workflowConfig, documentPreviews])
 
+  // ========================================================================
+  // PERSIST & PAY (must be before handleNext which references it)
+  // ========================================================================
+
+  const handlePersistAndPay = useCallback(async () => {
+    setIsPersisting(true)
+    try {
+      const result = await persistAndPay()
+      if (result?.success && result.serviceRequestId) {
+        setPersistedRequestId(result.serviceRequestId)
+        // If workflow requires appointment, advance to appointment step
+        if (session?.requiresAppointment) {
+          setCurrentStepIndex((prev) => prev + 1)
+        } else {
+          // Redirect to the created request's detail page
+          router.push(
+            `/${locale}/dashboard/service-requests/${result.serviceRequestId}`
+          )
+        }
+      }
+    } finally {
+      setIsPersisting(false)
+    }
+  }, [persistAndPay, router, locale, session?.requiresAppointment])
+
   const handleNext = useCallback(async () => {
     if (!session || !currentStep) return
 
@@ -409,6 +434,18 @@ export default function SessionWizardPage() {
       setPaymentResult(result)
     }
 
+    // When leaving payment step to appointment, persist first
+    // (cache-first: need real requestId for appointment booking)
+    if (
+      currentStep.type === 'payment' &&
+      paymentResult?.readyForPayment &&
+      currentStepIndex + 1 < steps.length &&
+      steps[currentStepIndex + 1].type === 'appointment'
+    ) {
+      await handlePersistAndPay()
+      return // handlePersistAndPay handles step advance
+    }
+
     if (currentStepIndex < steps.length - 1) {
       setCurrentStepIndex((prev) => prev + 1)
     }
@@ -420,6 +457,8 @@ export default function SessionWizardPage() {
     formValues,
     saveFormData,
     preparePayment,
+    handlePersistAndPay,
+    paymentResult,
     currentFormConfig,
     locale,
   ])
@@ -517,31 +556,6 @@ export default function SessionWizardPage() {
     setHasBlockingMismatches(false)
     // User will re-upload via DocumentUploader card (drag-drop or click)
   }, [])
-
-  // ========================================================================
-  // PERSIST & PAY
-  // ========================================================================
-
-  const handlePersistAndPay = useCallback(async () => {
-    setIsPersisting(true)
-    try {
-      const result = await persistAndPay()
-      if (result?.success && result.serviceRequestId) {
-        setPersistedRequestId(result.serviceRequestId)
-        // If workflow requires appointment, advance to appointment step
-        if (session?.requiresAppointment) {
-          setCurrentStepIndex((prev) => prev + 1)
-        } else {
-          // Redirect to the created request's detail page
-          router.push(
-            `/${locale}/dashboard/service-requests/${result.serviceRequestId}`
-          )
-        }
-      }
-    } finally {
-      setIsPersisting(false)
-    }
-  }, [persistAndPay, router, locale, session?.requiresAppointment])
 
   // ========================================================================
   // FORM CHANGE HANDLER
