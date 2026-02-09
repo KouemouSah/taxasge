@@ -219,7 +219,7 @@ export default function SessionWizardPage() {
   const [currentFormConfig, setCurrentFormConfig] = useState<import('@/modules/service-requests').FormConfig | null>(null)
 
   // Fetch workflow config to get step definitions dynamically
-  const { data: workflowConfig } = useWorkflow(session?.workflowCode || '', {
+  const { data: workflowConfig, isLoading: isLoadingWorkflow } = useWorkflow(session?.workflowCode || '', {
     enabled: !!session?.workflowCode,
   })
 
@@ -570,8 +570,10 @@ export default function SessionWizardPage() {
   // RENDER HELPERS
   // ========================================================================
 
-  // Loading state
-  if (isLoading && !session) {
+  // Loading state — wait for both session AND workflow config before rendering steps.
+  // Without this, FALLBACK_STEPS (starting with document_upload) flash briefly
+  // before the real steps (starting with selection) load.
+  if ((isLoading && !session) || (session && isLoadingWorkflow)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
