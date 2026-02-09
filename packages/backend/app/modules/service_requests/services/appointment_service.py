@@ -20,6 +20,7 @@ from uuid import UUID
 from dataclasses import dataclass, field
 from enum import Enum
 import asyncpg
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -606,56 +607,69 @@ class AppointmentService:
         self,
         db: asyncpg.Connection,
         workflow_code: str
-    ) -> str:
+    ) -> Optional[str]:
         """
         Get the appointment entity code for a workflow.
+
+        Resolution order (most specific first):
+        1. workflows.appointment_entity_code (explicit override)
+        2. Dynamic: entities.workflow_codes JSONB → entity that declares this
+           workflow AND has active entity_locations with appointment_slot_configs
+        3. workflows.entity_code (general entity for the workflow)
 
         Args:
             db: Database connection
             workflow_code: Workflow code
 
         Returns:
-            Entity code (e.g., 'CNEDOGE', 'DGT')
+            Entity code (e.g., 'CNEDOGE_PASAPORTE', 'DGT') or None
         """
-        entity = await db.fetchval("""
-            SELECT COALESCE(appointment_entity_code, entity_code)
+        # Priority 1: Explicit appointment_entity_code override
+        appt_entity = await db.fetchval("""
+            SELECT appointment_entity_code
             FROM workflows
-            WHERE code = $1
+            WHERE code = $1 AND appointment_entity_code IS NOT NULL
         """, workflow_code)
+        if appt_entity:
+            return appt_entity
 
-        if not entity:
-            # Fallback mapping based on workflow prefix
-            # This handles predefined workflows that may not be in the DB workflows table
-            # Maps align with WorkflowCode enum in models/enums.py
-            prefix_mapping = {
-                # PASAPORTE (5 types) → CNEDOGE
-                'PASAPORTE': 'CNEDOGE',
-                'DIP': 'CNEDOGE',
-                # RESIDENCIA (5 types) → EXTRANJERIA
-                'RESIDENCIA': 'EXTRANJERIA',
-                'VISA': 'EXTRANJERIA',
-                # VEHICULO (7 types) → DGT
-                'VEHICULO': 'DGT',
-                # CONDUCIR (5 types) → DGT
-                'CONDUCIR': 'DGT',
-                # CONTRATO (7 types) → ONRC (no appointments needed)
-                'CONTRATO': 'ONRC',
-                # FUNCION PUBLICA (5 types) → MINFP
-                'FP_': 'MINFP',
-                'FUNCIONARIO': 'MINFP',
-                'CARNET': 'MINFP',
-            }
+        # Priority 2: Dynamic — find the entity that declares this workflow
+        # in its workflow_codes JSONB AND has locations with active slot configs
+        dynamic_entity = await db.fetchval("""
+            SELECT e.code
+            FROM entities e
+            INNER JOIN entity_locations el ON el.entity_code = e.code
+            INNER JOIN appointment_slot_configs sc
+                ON sc.entity_location_id = el.id
+            WHERE e.workflow_codes @> $1::jsonb
+              AND e.is_active = TRUE
+              AND el.is_active = TRUE
+              AND sc.is_active = TRUE
+            ORDER BY e.code
+            LIMIT 1
+        """, json.dumps([workflow_code]))
+        if dynamic_entity:
+            logger.info(
+                f"Resolved appointment entity for {workflow_code} "
+                f"via entities.workflow_codes: {dynamic_entity}"
+            )
+            return dynamic_entity
 
-            workflow_upper = workflow_code.upper()
-            for prefix, code in prefix_mapping.items():
-                if workflow_upper.startswith(prefix):
-                    logger.info(f"Resolved entity_code for {workflow_code} via fallback mapping: {code}")
-                    return code
+        # Priority 3: Fallback to workflows.entity_code
+        entity = await db.fetchval("""
+            SELECT entity_code FROM workflows WHERE code = $1
+        """, workflow_code)
+        if entity:
+            logger.info(
+                f"Resolved appointment entity for {workflow_code} "
+                f"via workflows.entity_code fallback: {entity}"
+            )
+            return entity
 
-            logger.warning(f"No entity_code mapping found for workflow: {workflow_code}, defaulting to CNEDOGE")
-            return 'CNEDOGE'  # Default
-
-        return entity
+        logger.warning(
+            f"No entity_code mapping found for workflow: {workflow_code}"
+        )
+        return None
 
     # === PRIVATE METHODS ===
 

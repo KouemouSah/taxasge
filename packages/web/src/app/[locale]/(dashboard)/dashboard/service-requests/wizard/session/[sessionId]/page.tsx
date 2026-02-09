@@ -46,6 +46,7 @@ import {
   Stamp,
   Smartphone,
   Banknote,
+  Clock,
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -73,6 +74,7 @@ import type {
   DocumentPreview,
   PreparePaymentResult,
   RequiredDocument,
+  InitiatePaymentResult,
 } from '@/modules/service-requests/types/wizard-session'
 
 // ============================================================================
@@ -194,6 +196,9 @@ export default function SessionWizardPage() {
   const [paymentResult, setPaymentResult] =
     useState<PreparePaymentResult | null>(null)
   const [persistedRequestId, setPersistedRequestId] = useState<string | null>(null)
+
+  // Manual payment confirmation (cash/check) — shown before appointment
+  const [manualPaymentResult, setManualPaymentResult] = useState<InitiatePaymentResult | null>(null)
 
   // Payment method selection state
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
@@ -421,13 +426,20 @@ export default function SessionWizardPage() {
         return
       }
 
-      // 2. Workflow with appointment - advance to appointment step
+      // 2. Manual payment (cash/check) - show confirmation with reference
+      //    User sees payment reference + message before proceeding to appointment or detail
+      if (result.requiresAction && result.actionType?.startsWith('agent_validation')) {
+        setManualPaymentResult(result)
+        return // Stay on payment step, render confirmation card
+      }
+
+      // 3. Workflow with appointment (electronic payment confirmed) - advance to appointment step
       if (result.requiresAppointment) {
         setCurrentStepIndex((prev) => prev + 1)
         return
       }
 
-      // 3. No appointment, no redirect - go to request detail page
+      // 4. No appointment, no redirect - go to request detail page
       if (result.serviceRequestId) {
         router.push(`/${locale}/dashboard/service-requests/${result.serviceRequestId}`)
       }
@@ -1042,9 +1054,120 @@ export default function SessionWizardPage() {
           )}
 
           {/* ============================================================ */}
+          {/* STEP: Payment - Manual Confirmation (cash/check)             */}
+          {/* ============================================================ */}
+          {currentStep.type === 'payment' && manualPaymentResult && (
+            <div className="space-y-6">
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Clock className="h-8 w-8 text-amber-600" />
+                </div>
+                <h2 className="text-lg font-semibold">
+                  {locale === 'es'
+                    ? 'Pago registrado - Pendiente de validacion'
+                    : locale === 'fr'
+                      ? 'Paiement enregistre - En attente de validation'
+                      : 'Payment registered - Pending validation'}
+                </h2>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  {locale === 'es'
+                    ? 'Su pago ha sido registrado. Presente este comprobante en la oficina del Tesoro para su validacion por un agente.'
+                    : locale === 'fr'
+                      ? 'Votre paiement a ete enregistre. Presentez ce justificatif au bureau du Tresor pour validation par un agent.'
+                      : 'Your payment has been registered. Present this receipt at the Treasury office for validation by an agent.'}
+                </p>
+              </div>
+
+              {/* Payment details card */}
+              <div className="border rounded-lg p-4 max-w-sm mx-auto space-y-3">
+                {manualPaymentResult.reference && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {locale === 'es' ? 'Solicitud' : locale === 'fr' ? 'Demande' : 'Request'}
+                    </span>
+                    <span className="font-mono font-bold">{manualPaymentResult.reference}</span>
+                  </div>
+                )}
+                {manualPaymentResult.paymentReference && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {locale === 'es' ? 'Ref. pago' : locale === 'fr' ? 'Ref. paiement' : 'Payment ref.'}
+                    </span>
+                    <span className="font-mono font-bold">{manualPaymentResult.paymentReference}</span>
+                  </div>
+                )}
+                {paymentResult && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {locale === 'es' ? 'Monto' : locale === 'fr' ? 'Montant' : 'Amount'}
+                    </span>
+                    <span className="font-bold">
+                      {paymentResult.totalAmount.toLocaleString()} {paymentResult.currency}
+                    </span>
+                  </div>
+                )}
+                <hr />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {locale === 'es' ? 'Estado' : locale === 'fr' ? 'Statut' : 'Status'}
+                  </span>
+                  <Badge variant="outline" className="text-amber-600 border-amber-300">
+                    {locale === 'es'
+                      ? 'Pendiente validacion'
+                      : locale === 'fr'
+                        ? 'En attente de validation'
+                        : 'Pending validation'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-col items-center gap-3">
+                {manualPaymentResult.requiresAppointment ? (
+                  <Button
+                    size="lg"
+                    onClick={() => setCurrentStepIndex((prev) => prev + 1)}
+                    className="min-w-[200px]"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {locale === 'es'
+                      ? 'Programar cita'
+                      : locale === 'fr'
+                        ? 'Prendre rendez-vous'
+                        : 'Schedule appointment'}
+                  </Button>
+                ) : manualPaymentResult.serviceRequestId ? (
+                  <Button
+                    size="lg"
+                    onClick={() => router.push(`/${locale}/dashboard/service-requests/${manualPaymentResult.serviceRequestId}`)}
+                    className="min-w-[200px]"
+                  >
+                    {locale === 'es'
+                      ? 'Ver mi solicitud'
+                      : locale === 'fr'
+                        ? 'Voir ma demande'
+                        : 'View my request'}
+                  </Button>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push(`/${locale}/dashboard/service-requests`)}
+                >
+                  {locale === 'es'
+                    ? 'Ir a mis solicitudes'
+                    : locale === 'fr'
+                      ? 'Aller a mes demandes'
+                      : 'Go to my requests'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================ */}
           {/* STEP: Payment Preparation                                    */}
           {/* ============================================================ */}
-          {currentStep.type === 'payment' && (
+          {currentStep.type === 'payment' && !manualPaymentResult && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">
                 {locale === 'es'
@@ -1364,8 +1487,8 @@ export default function SessionWizardPage() {
         </CardContent>
       </Card>
 
-      {/* Navigation buttons (hidden on appointment step - it has its own nav) */}
-      {currentStep.type !== 'appointment' && (
+      {/* Navigation buttons (hidden on appointment step and after manual payment confirmation) */}
+      {currentStep.type !== 'appointment' && !manualPaymentResult && (
       <div className="flex justify-between">
         <Button
           variant="outline"

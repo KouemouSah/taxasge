@@ -560,8 +560,8 @@ class NotificationEventHandler:
             "receipt_number": payload.get("receipt_number"),
             "payment_id": payload.get("payment_id"),
 
-            # Payment info - legacy style (for PAYMENT_RECEIVED template)
-            "reference": payload.get("receipt_number"),  # Maps receipt_number → reference
+            # Payment info - reference (payment_reference for pending, receipt_number for completed)
+            "reference": payload.get("payment_reference") or payload.get("receipt_number"),
             "date": payment_date,  # For PAYMENT_RECEIVED {{date}}
 
             # Request info

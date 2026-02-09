@@ -135,6 +135,8 @@ async def get_appointment_locations(
     entity_code = await appointment_service.get_entity_code_for_workflow(
         db, request['workflow_code']
     )
+    if not entity_code:
+        return []
 
     # Get locations from entity_locations table via appointment_slot_configs FK
     # Migration 030 moved location data to entity_locations table
@@ -245,6 +247,8 @@ async def get_available_slots(
     entity_code = await appointment_service.get_entity_code_for_workflow(
         db, request['workflow_code']
     )
+    if not entity_code:
+        return []
 
     # Get available slots
     slots = await appointment_service.get_available_slots(
