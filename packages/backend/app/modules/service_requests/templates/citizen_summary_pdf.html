@@ -427,6 +427,17 @@
         }
 
         .qr-box {
+            width: 75px;
+            height: 75px;
+            text-align: center;
+        }
+
+        .qr-box img {
+            width: 75px;
+            height: 75px;
+        }
+
+        .qr-fallback {
             width: 65px;
             height: 65px;
             border: 1px solid #e5e7eb;
@@ -632,7 +643,13 @@
                 <div class="footer-verify">{{ texts.verification_url }}</div>
             </td>
             <td class="footer-qr-cell">
-                <div class="qr-box">QR Code</div>
+                {% if qr_code_b64 %}
+                <div class="qr-box">
+                    <img src="data:image/png;base64,{{ qr_code_b64 }}" alt="QR" />
+                </div>
+                {% else %}
+                <div class="qr-fallback">QR</div>
+                {% endif %}
             </td>
         </tr>
     </table>

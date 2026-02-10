@@ -14,6 +14,16 @@ import hashlib
 from loguru import logger
 from jinja2 import Environment, FileSystemLoader
 
+# QR code generation with logo overlay
+try:
+    import qrcode
+    from qrcode.constants import ERROR_CORRECT_H
+    from PIL import Image
+    QR_AVAILABLE = True
+except ImportError:
+    QR_AVAILABLE = False
+    logger.warning("qrcode/Pillow not installed. QR codes will be disabled.")
+
 # xhtml2pdf for HTML to PDF conversion
 try:
     from xhtml2pdf import pisa
@@ -295,12 +305,64 @@ class SummaryPDFService:
         },
     }
 
+    # Logo path for QR code overlay
+    LOGO_PATH = Path(__file__).parent.parent / "templates" / "logo.png"
+
     def __init__(self):
         """Initialize the PDF service with Jinja2 environment"""
         self.env = Environment(
             loader=FileSystemLoader(str(self.TEMPLATES_DIR)),
             autoescape=True
         )
+
+    def _generate_qr_with_logo(self, data: str, size: int = 200) -> Optional[str]:
+        """
+        Generate a QR code with the TGE logo overlaid in the center.
+
+        Uses ERROR_CORRECT_H (30% redundancy) so the QR remains scannable
+        even with ~20% of the center covered by the logo.
+
+        Returns base64-encoded PNG string, or None on failure.
+        """
+        if not QR_AVAILABLE:
+            return None
+        try:
+            qr = qrcode.QRCode(
+                version=None,  # auto-size
+                error_correction=ERROR_CORRECT_H,
+                box_size=10,
+                border=2,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+            qr_img = qr_img.resize((size, size), Image.LANCZOS)
+
+            # Overlay logo if available
+            if self.LOGO_PATH.exists():
+                logo = Image.open(self.LOGO_PATH).convert("RGBA")
+                # Logo = 22% of QR size (within 30% error correction budget)
+                logo_size = int(size * 0.22)
+                logo = logo.resize((logo_size, logo_size), Image.LANCZOS)
+
+                # White circle background behind logo for contrast
+                bg_size = logo_size + 8
+                bg = Image.new("RGBA", (bg_size, bg_size), (255, 255, 255, 255))
+                # Center the background
+                bg_pos = ((size - bg_size) // 2, (size - bg_size) // 2)
+                qr_img.paste(bg, bg_pos)
+                # Center the logo
+                logo_pos = ((size - logo_size) // 2, (size - logo_size) // 2)
+                qr_img.paste(logo, logo_pos, logo)
+
+            # Convert to base64 PNG
+            buffer = BytesIO()
+            qr_img.save(buffer, format="PNG")
+            buffer.seek(0)
+            return base64.b64encode(buffer.read()).decode("ascii")
+        except Exception as e:
+            logger.warning(f"QR code generation failed: {e}")
+            return None
 
     async def generate_summary_pdf(
         self,
@@ -398,6 +460,10 @@ class SummaryPDFService:
             solicitud_labels.get(solicitud_type.upper(), solicitud_type)
         )
 
+        # Generate QR code with logo
+        verify_url = f"https://taxasge.emacash.com/verify/{request_number}"
+        qr_code_b64 = self._generate_qr_with_logo(verify_url, size=200)
+
         # Render template
         template = self.env.get_template("citizen_summary_pdf.html")
         html_content = template.render(
@@ -413,6 +479,7 @@ class SummaryPDFService:
             tariff=formatted_tariff,
             appointment=formatted_appointment,
             generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+            qr_code_b64=qr_code_b64,
         )
 
         # Convert HTML to PDF
