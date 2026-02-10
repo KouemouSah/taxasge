@@ -537,12 +537,25 @@ class PasaporteWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 9: Payment (BEFORE Appointment) ===
-        # NOTE: Cross-document validation is done during extraction
-        # by Gemini processor with identity mismatch blocking. No separate validation step needed.
-        # Payment methods loaded dynamically via GET /payment/methods endpoint
+        # === Step 9: Appointment (BEFORE Payment) ===
+        # Selection cached in wizard session, hold created atomically during payment
         self.add_step(WorkflowStep(
             step_number=9,
+            step_id="appointment",
+            step_type=StepType.APPOINTMENT,
+            title_es="Programar Cita",
+            description_es="Seleccione una cita en la oficina CNEDOGE",
+            config={
+                "entity_code": EntityCode.CNEDOGE.value,
+                "entity_via_request": True,
+                "use_appointment_module": True,
+            }
+        ))
+
+        # === Step 10: Payment (AFTER Appointment) ===
+        # Payment methods loaded dynamically via GET /payment/methods endpoint
+        self.add_step(WorkflowStep(
+            step_number=10,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Tasas",
@@ -550,23 +563,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
             config={
                 "currency": "XAF",
                 "show_breakdown": True,
-                "dynamic_tariff": True  # Tariff based on solicitud_type/motivo
-            }
-        ))
-
-        # === Step 10: Appointment (AFTER Payment, with 15min hold) ===
-        self.add_step(WorkflowStep(
-            step_number=10,
-            step_id="appointment",
-            step_type=StepType.APPOINTMENT,
-            title_es="Programar Cita",
-            description_es="Seleccione una cita en la oficina CNEDOGE",
-            config={
-                "entity_code": EntityCode.CNEDOGE.value,
-                "entity_via_request": True,  # Get entity_code from service_request
-                "hold_duration_minutes": 15,
-                "show_payment_confirmation": True,  # Show "Pago confirmado" banner
-                "use_appointment_module": True  # Use appointments module
+                "dynamic_tariff": True,
             }
         ))
 

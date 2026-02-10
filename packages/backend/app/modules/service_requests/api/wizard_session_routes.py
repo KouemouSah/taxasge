@@ -9,8 +9,9 @@ No database writes occur until payment is initiated.
 """
 from fastapi import APIRouter, Depends, File, UploadFile, Query, Path, Body, Request
 from fastapi import HTTPException, status
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
+from datetime import date, timedelta
 import asyncpg
 from loguru import logger
 
@@ -29,6 +30,15 @@ from ..models.wizard_session import (
     WizardInitiatePaymentResponse,
 )
 from ..models.form_config import FormConfigResponse
+from ..models.appointments import (
+    EntityLocationResponse,
+    AvailableSlotResponse,
+    AvailableDayResponse,
+    AvailableDaysListResponse,
+    AppointmentLocationsListResponse,
+    AppointmentSlotsListResponse,
+)
+from ..services.appointment_service import appointment_service
 from ..services.wizard_session_service import (
     wizard_session_service,
     WizardSessionError,
@@ -598,6 +608,247 @@ async def initiate_session_payment(
         )
 
         return result
+
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+
+# =============================================================================
+# APPOINTMENT SELECTION (session-based, before payment)
+# =============================================================================
+
+@router.get(
+    "/{session_id}/appointments/locations",
+    response_model=AppointmentLocationsListResponse,
+    summary="Get appointment locations for wizard session",
+    description="Get available locations based on session's workflow entity code.",
+)
+async def get_session_appointment_locations(
+    session_id: str = Path(..., description="The wizard session ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Get appointment locations for a wizard session (before payment)."""
+    try:
+        session = await wizard_session_service._get_session(session_id, current_user.id)
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+    workflow_code = session["workflow_code"]
+
+    # Resolve entity_code for this workflow
+    entity_code = await appointment_service.get_entity_code_for_workflow(db, workflow_code)
+    if not entity_code:
+        return AppointmentLocationsListResponse(
+            entity_code=workflow_code,
+            locations=[],
+            count=0,
+        )
+
+    # Get locations with active slot configs
+    rows = await db.fetch("""
+        SELECT DISTINCT ON (el.city, el.location_name)
+            el.id,
+            el.entity_code,
+            el.location_name,
+            el.location_address,
+            el.city,
+            el.region,
+            el.phone,
+            el.email,
+            el.is_main_office
+        FROM entity_locations el
+        INNER JOIN appointment_slot_configs asc_cfg ON asc_cfg.entity_location_id = el.id
+        WHERE el.entity_code = $1
+        AND el.is_active = TRUE
+        AND asc_cfg.is_active = TRUE
+        ORDER BY el.city, el.location_name, el.id
+    """, entity_code)
+
+    locations = [
+        EntityLocationResponse(
+            id=row['id'],
+            entity_code=row['entity_code'],
+            location_code=f"{row['entity_code']}_{row['city']}".upper(),
+            location_name=row['location_name'],
+            city=row['city'],
+            province=row['city'],
+            region=row['region'],
+            address=row['location_address'],
+            phone=row['phone'],
+            email=row['email'],
+            is_main_office=row['is_main_office'] or (row['city'] == 'Malabo'),
+        )
+        for row in rows
+    ]
+
+    return AppointmentLocationsListResponse(
+        entity_code=entity_code,
+        locations=locations,
+        count=len(locations),
+    )
+
+
+@router.get(
+    "/{session_id}/appointments/available-days",
+    response_model=AvailableDaysListResponse,
+    summary="Get days with available slots for calendar view (session-based)",
+)
+async def get_session_available_days(
+    session_id: str = Path(..., description="The wizard session ID"),
+    entity_location_id: UUID = Query(..., description="FK to entity_locations table"),
+    from_date: Optional[date] = Query(None, description="Start of range"),
+    to_date: Optional[date] = Query(None, description="End of range"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Get available days for calendar rendering (session-based, before payment)."""
+    try:
+        await wizard_session_service._get_session(session_id, current_user.id)
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+    # Verify location exists
+    location = await db.fetchrow("""
+        SELECT entity_code, location_name, city
+        FROM entity_locations
+        WHERE id = $1 AND is_active = TRUE
+    """, entity_location_id)
+
+    if not location:
+        raise HTTPException(status_code=404, detail="Entity location not found or inactive")
+
+    # Get all slots in range
+    slots = await appointment_service.get_available_slots(
+        db=db,
+        entity_location_id=entity_location_id,
+        from_date=from_date,
+        limit=500,
+    )
+
+    # Group by date
+    days_map: dict = {}
+    for slot in slots:
+        d = slot.slot_date
+        if d not in days_map:
+            days_map[d] = {"time_slot_count": 0, "total_slots_remaining": 0}
+        days_map[d]["time_slot_count"] += 1
+        days_map[d]["total_slots_remaining"] += slot.slots_remaining
+
+    if to_date:
+        days_map = {d: v for d, v in days_map.items() if d <= to_date}
+
+    days = sorted([
+        AvailableDayResponse(slot_date=d, **v) for d, v in days_map.items()
+    ], key=lambda x: x.slot_date)
+
+    min_date = slots[0].slot_date if slots else None
+    effective_from = from_date or (min_date or date.today())
+    effective_to = to_date or (effective_from + timedelta(days=59))
+
+    return AvailableDaysListResponse(
+        entity_code=location['entity_code'],
+        location_name=location['location_name'],
+        from_date=effective_from,
+        to_date=effective_to,
+        days=days,
+        count=len(days),
+        min_date=min_date,
+    )
+
+
+@router.get(
+    "/{session_id}/appointments/available-slots",
+    response_model=AppointmentSlotsListResponse,
+    summary="Get available time slots for a location (session-based)",
+)
+async def get_session_available_slots(
+    session_id: str = Path(..., description="The wizard session ID"),
+    entity_location_id: UUID = Query(..., description="FK to entity_locations table"),
+    from_date: Optional[date] = Query(None, description="Start date"),
+    limit: int = Query(20, ge=1, le=100, description="Max slots to return"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Get available time slots (session-based, before payment)."""
+    try:
+        await wizard_session_service._get_session(session_id, current_user.id)
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+    # Verify location exists
+    location = await db.fetchrow("""
+        SELECT entity_code, location_name, city
+        FROM entity_locations
+        WHERE id = $1 AND is_active = TRUE
+    """, entity_location_id)
+
+    if not location:
+        raise HTTPException(status_code=404, detail="Entity location not found or inactive")
+
+    slots = await appointment_service.get_available_slots(
+        db=db,
+        entity_location_id=entity_location_id,
+        from_date=from_date,
+        limit=limit,
+    )
+
+    slot_responses = [
+        AvailableSlotResponse(
+            slot_date=slot.slot_date,
+            slot_time=slot.slot_time,
+            location_name=slot.location_name,
+            location_address=slot.location_address,
+            slots_remaining=slot.slots_remaining,
+            city=slot.city or location['city'],
+        )
+        for slot in slots
+    ]
+
+    return AppointmentSlotsListResponse(
+        entity_code=location['entity_code'],
+        location_name=location['location_name'],
+        from_date=from_date or date.today(),
+        slots=slot_responses,
+        count=len(slot_responses),
+        has_availability=len(slot_responses) > 0,
+    )
+
+
+@router.post(
+    "/{session_id}/appointments/select",
+    summary="Save appointment selection to session cache",
+    description="Stores the user's appointment choice without creating a real hold.",
+)
+async def save_session_appointment_selection(
+    session_id: str = Path(..., description="The wizard session ID"),
+    body: dict = Body(..., examples=[{
+        "entity_location_id": "550e8400-e29b-41d4-a716-446655440000",
+        "location_name": "CNEDOGE Malabo",
+        "city": "Malabo",
+        "appointment_date": "2026-03-15",
+        "appointment_time": "09:00:00",
+    }]),
+    current_user=Depends(get_current_user),
+):
+    """Save appointment selection in wizard session cache (no real hold)."""
+    try:
+        appointment_data = {
+            "entity_location_id": body.get("entity_location_id"),
+            "location_name": body.get("location_name"),
+            "city": body.get("city"),
+            "appointment_date": body.get("appointment_date"),
+            "appointment_time": body.get("appointment_time"),
+            "slot_config_id": body.get("slot_config_id"),
+        }
+
+        result = await wizard_session_service.save_appointment_data(
+            session_id=session_id,
+            user_id=current_user.id,
+            appointment_data=appointment_data,
+        )
+
+        return {"success": True, "appointment_data": result}
 
     except WizardSessionError as e:
         _handle_session_error(e)

@@ -117,6 +117,9 @@ class WizardSessionData(BaseModel):
     # Tariff calculation (computed on prepare_for_payment)
     tariff: Optional[Dict[str, Any]] = None
 
+    # Appointment selection (cached before payment, not a real hold)
+    appointment_data: Optional[Dict[str, Any]] = None
+
     # Validation results
     validation_results: Optional[List[Dict[str, Any]]] = None
     has_errors: bool = False
@@ -193,6 +196,9 @@ class WizardSessionResponse(BaseModel):
     # Workflow capabilities
     requires_appointment: bool = False
     entity_code: Optional[str] = None
+
+    # Appointment selection (cached in session, not a real hold)
+    appointment_data: Optional[Dict[str, Any]] = None
 
     class Config:
         use_enum_values = True
@@ -373,6 +379,12 @@ class WizardInitiatePaymentResponse(BaseModel):
 
     # Workflow capabilities (for frontend navigation)
     requires_appointment: bool = False
+
+    # Appointment confirmation (set when appointment was held+confirmed atomically)
+    appointment_confirmed: bool = False
+    appointment_date: Optional[str] = None
+    appointment_time: Optional[str] = None
+    appointment_location: Optional[str] = None
 
     # Error info
     error: Optional[str] = None

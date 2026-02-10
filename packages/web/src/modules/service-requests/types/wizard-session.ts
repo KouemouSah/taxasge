@@ -59,6 +59,16 @@ export interface BackendWizardSessionResponse {
   // Workflow capabilities
   requires_appointment: boolean
   entity_code: string | null
+
+  // Appointment selection (cached in session, not a real hold)
+  appointment_data: {
+    entity_location_id: string
+    location_name: string
+    city: string
+    appointment_date: string
+    appointment_time: string
+    slot_config_id: string | null
+  } | null
 }
 
 export interface BackendRequiredDocument {
@@ -145,6 +155,10 @@ export interface BackendInitiatePaymentResponse {
   message_es: string | null
   expires_at: string | null
   requires_appointment: boolean
+  appointment_confirmed: boolean
+  appointment_date: string | null
+  appointment_time: string | null
+  appointment_location: string | null
   error: string | null
   error_code: string | null
 }
@@ -183,6 +197,16 @@ export interface WizardSession {
   // Workflow capabilities
   requiresAppointment: boolean
   entityCode: string | null
+
+  // Appointment selection (cached in session)
+  appointmentData: {
+    entityLocationId: string
+    locationName: string
+    city: string
+    appointmentDate: string
+    appointmentTime: string
+    slotConfigId: string | null
+  } | null
 }
 
 export interface RequiredDocument {
@@ -265,6 +289,10 @@ export interface InitiatePaymentResult {
   messageEs: string | null
   expiresAt: string | null
   requiresAppointment: boolean
+  appointmentConfirmed: boolean
+  appointmentDate: string | null
+  appointmentTime: string | null
+  appointmentLocation: string | null
   error: string | null
   errorCode: string | null
 }
@@ -345,6 +373,16 @@ export function transformSession(
     requiredDocuments: (backend.required_documents || []).map(transformRequiredDocument),
     requiresAppointment: backend.requires_appointment ?? false,
     entityCode: backend.entity_code ?? null,
+    appointmentData: backend.appointment_data
+      ? {
+          entityLocationId: backend.appointment_data.entity_location_id,
+          locationName: backend.appointment_data.location_name,
+          city: backend.appointment_data.city,
+          appointmentDate: backend.appointment_data.appointment_date,
+          appointmentTime: backend.appointment_data.appointment_time,
+          slotConfigId: backend.appointment_data.slot_config_id ?? null,
+        }
+      : null,
   }
 }
 
@@ -443,6 +481,10 @@ export function transformInitiatePayment(
     messageEs: backend.message_es,
     expiresAt: backend.expires_at,
     requiresAppointment: backend.requires_appointment ?? false,
+    appointmentConfirmed: backend.appointment_confirmed ?? false,
+    appointmentDate: backend.appointment_date ?? null,
+    appointmentTime: backend.appointment_time ?? null,
+    appointmentLocation: backend.appointment_location ?? null,
     error: backend.error,
     errorCode: backend.error_code,
   }

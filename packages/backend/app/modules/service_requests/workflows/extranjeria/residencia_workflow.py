@@ -471,9 +471,23 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # Step 5: Stamp payment (Cédula + Póliza = 2,500 XAF before submission)
+        # Step 5: Appointment (BEFORE payments)
         self.add_step(WorkflowStep(
             step_number=5,
+            step_id="appointment",
+            step_type=StepType.APPOINTMENT,
+            title_es="Cita para Recogida del Permiso",
+            description_es="Seleccione una fecha y lugar para recoger su permiso de residencia",
+            config={
+                "entity_code": "EXTRANJERIA",
+                "dynamic_locations": True,
+            }
+        ))
+
+        # Step 6: Stamp payment (Cédula + Póliza = 2,500 XAF)
+        # Note: Filtered out in frontend, cost folded into tariff breakdown
+        self.add_step(WorkflowStep(
+            step_number=6,
             step_id="stamp_payment",
             step_type=StepType.PAYMENT,
             title_es="Pago de Timbres (Cédula y Póliza)",
@@ -489,9 +503,9 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # Step 6: Main payment (Nota de Ingreso)
+        # Step 7: Main payment (Nota de Ingreso)
         self.add_step(WorkflowStep(
-            step_number=6,
+            step_number=7,
             step_id="payment",
             step_type=StepType.PAYMENT,
             title_es="Pago Principal (Nota de Ingreso)",
@@ -505,19 +519,6 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                     "EXPEDICION": 200000,
                     "RENOVACION": 100000,
                 },
-            }
-        ))
-
-        # Step 7: Appointment
-        self.add_step(WorkflowStep(
-            step_number=7,
-            step_id="appointment",
-            step_type=StepType.APPOINTMENT,
-            title_es="Cita para Recogida del Permiso",
-            description_es="Seleccione una fecha y lugar para recoger su permiso de residencia",
-            config={
-                "entity_code": "EXTRANJERIA",
-                "dynamic_locations": True,
             }
         ))
 

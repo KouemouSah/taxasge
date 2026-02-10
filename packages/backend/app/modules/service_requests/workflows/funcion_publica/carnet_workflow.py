@@ -486,22 +486,10 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
         ))
 
         # -----------------------------------------------------------------
-        # Step 4: Payment
+        # Step 4: Appointment (biometric capture, BEFORE Payment)
         # -----------------------------------------------------------------
         self.add_step(WorkflowStep(
             step_number=4,
-            step_id="payment",
-            step_type=StepType.PAYMENT,
-            title_es="Pago de Tasas",
-            description_es="Tasa de emisión de Carnet de Funcionario: 3.500 XAF",
-            config={"dynamic_tariff": True}
-        ))
-
-        # -----------------------------------------------------------------
-        # Step 5: Appointment (biometric capture)
-        # -----------------------------------------------------------------
-        self.add_step(WorkflowStep(
-            step_number=5,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
             title_es="Cita para Captura Biométrica",
@@ -509,6 +497,18 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
             config={
                 "locations_from": "entity_locations",
             }
+        ))
+
+        # -----------------------------------------------------------------
+        # Step 5: Payment (AFTER Appointment)
+        # -----------------------------------------------------------------
+        self.add_step(WorkflowStep(
+            step_number=5,
+            step_id="payment",
+            step_type=StepType.PAYMENT,
+            title_es="Pago de Tasas",
+            description_es="Tasa de emisión de Carnet de Funcionario: 3.500 XAF",
+            config={"dynamic_tariff": True}
         ))
 
         # -----------------------------------------------------------------

@@ -76,6 +76,7 @@ import type {
   RequiredDocument,
   InitiatePaymentResult,
 } from '@/modules/service-requests/types/wizard-session'
+import { wizardSessionApi } from '@/modules/service-requests/services/wizard-session-api'
 
 // ============================================================================
 // WIZARD STEPS (computed from session state)
@@ -415,7 +416,7 @@ export default function SessionWizardPage() {
         return
       }
 
-      // Store the request ID for appointment step
+      // Store the persisted request ID (for confirmation step reference)
       if (result.serviceRequestId) {
         setPersistedRequestId(result.serviceRequestId)
       }
@@ -433,18 +434,24 @@ export default function SessionWizardPage() {
         return // Stay on payment step, render confirmation card
       }
 
-      // 3. Workflow with appointment (electronic payment confirmed) - advance to appointment step
-      if (result.requiresAppointment) {
-        setCurrentStepIndex((prev) => prev + 1)
-        return
-      }
-
-      // 4. No appointment, no redirect - go to request detail page
+      // 3. Payment completed (appointment already confirmed atomically if applicable)
+      //    → redirect to request detail page
       if (result.serviceRequestId) {
         router.push(`/${locale}/dashboard/service-requests/${result.serviceRequestId}`)
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
+      // Slot was taken between selection and payment → go back to appointment step
+      if (msg.includes('ya no está disponible') || msg.includes('APPOINTMENT_SLOT_TAKEN')) {
+        setPaymentError(locale === 'es'
+          ? 'El horario seleccionado ya no está disponible. Seleccione otro horario.'
+          : locale === 'fr'
+            ? 'Le créneau sélectionné n\'est plus disponible. Veuillez en choisir un autre.'
+            : 'The selected time slot is no longer available. Please select another.')
+        const apptStepIdx = steps.findIndex(s => s.type === 'appointment')
+        if (apptStepIdx >= 0) setCurrentStepIndex(apptStepIdx)
+        return
+      }
       setPaymentError(msg)
       console.error('[WizardSession] Payment error:', msg)
     } finally {
@@ -457,6 +464,7 @@ export default function SessionWizardPage() {
     initiatePayment,
     router,
     locale,
+    steps,
   ])
 
   const handleNext = useCallback(async () => {
@@ -1123,20 +1131,7 @@ export default function SessionWizardPage() {
 
               {/* Action buttons */}
               <div className="flex flex-col items-center gap-3">
-                {manualPaymentResult.requiresAppointment ? (
-                  <Button
-                    size="lg"
-                    onClick={() => setCurrentStepIndex((prev) => prev + 1)}
-                    className="min-w-[200px]"
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {locale === 'es'
-                      ? 'Programar cita'
-                      : locale === 'fr'
-                        ? 'Prendre rendez-vous'
-                        : 'Schedule appointment'}
-                  </Button>
-                ) : manualPaymentResult.serviceRequestId ? (
+                {manualPaymentResult.serviceRequestId && (
                   <Button
                     size="lg"
                     onClick={() => router.push(`/${locale}/dashboard/service-requests/${manualPaymentResult.serviceRequestId}`)}
@@ -1148,7 +1143,7 @@ export default function SessionWizardPage() {
                         ? 'Voir ma demande'
                         : 'View my request'}
                   </Button>
-                ) : null}
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1438,57 +1433,28 @@ export default function SessionWizardPage() {
           )}
 
           {/* ============================================================ */}
-          {/* STEP: Appointment (after persist, uses real requestId)       */}
+          {/* STEP: Appointment (session-based, BEFORE payment)           */}
           {/* ============================================================ */}
-          {currentStep.type === 'appointment' && persistedRequestId && (
+          {currentStep.type === 'appointment' && (
             <AppointmentSelection
-              requestId={persistedRequestId}
-              onComplete={(_data) => {
-                // Navigate to the service request detail page
-                router.push(
-                  `/${locale}/dashboard/service-requests/${persistedRequestId}`
-                )
+              sessionId={session.sessionId}
+              onComplete={() => {
+                // Advance to next step (payment) — handleNext auto-prepares payment
+                handleNext()
               }}
-              onBack={() => {
-                // Can't go back from appointment after persist - redirect to detail
-                router.push(
-                  `/${locale}/dashboard/service-requests/${persistedRequestId}`
-                )
-              }}
+              onBack={() => setCurrentStepIndex((prev) => prev - 1)}
               locale={locale as 'es' | 'fr' | 'en'}
-              getLocations={(requestId) =>
-                serviceRequestsApi.getAppointmentLocations(requestId)
+              getSessionLocations={(sid) =>
+                wizardSessionApi.getAppointmentLocations(sid)
               }
-              getAvailableDays={(requestId, entityLocationId, fromDate, toDate) =>
-                serviceRequestsApi.getAvailableDays(
-                  requestId,
-                  entityLocationId,
-                  fromDate,
-                  toDate
-                )
+              getSessionAvailableDays={(sid, entityLocationId, fromDate, toDate) =>
+                wizardSessionApi.getAvailableDays(sid, entityLocationId, fromDate, toDate)
               }
-              getSlots={(requestId, entityLocationId, fromDate, limit) =>
-                serviceRequestsApi.getAppointmentSlots(
-                  requestId,
-                  entityLocationId,
-                  fromDate,
-                  limit
-                )
+              getSessionSlots={(sid, entityLocationId, fromDate, limit) =>
+                wizardSessionApi.getAvailableSlots(sid, entityLocationId, fromDate, limit)
               }
-              holdSlot={(requestId, data) =>
-                serviceRequestsApi.holdAppointmentSlot(requestId, data)
-              }
-              getHoldStatus={(requestId) =>
-                serviceRequestsApi.getHoldStatus(requestId)
-              }
-              releaseHold={(requestId) =>
-                serviceRequestsApi.releaseHold(requestId)
-              }
-              submitWithoutAppointment={(requestId, entityLocationId) =>
-                serviceRequestsApi.submitWithoutAppointment(
-                  requestId,
-                  entityLocationId
-                )
+              saveSelection={(sid, data) =>
+                wizardSessionApi.saveAppointmentSelection(sid, data)
               }
             />
           )}

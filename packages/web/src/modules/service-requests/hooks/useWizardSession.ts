@@ -68,6 +68,16 @@ export interface UseWizardSessionReturn {
   // Form data
   saveFormData: (data: FormDataSaveRequest) => Promise<boolean>
 
+  // Appointment (session-based, before payment)
+  saveAppointmentData: (data: {
+    entityLocationId: string
+    locationName: string
+    city: string
+    appointmentDate: string
+    appointmentTime: string
+    slotConfigId?: string | null
+  }) => Promise<boolean>
+
   // Payment
   preparePayment: () => Promise<PreparePaymentResult | null>
   /** @deprecated Use initiatePayment() for atomic persist+pay. Kept for free services (amount=0). */
@@ -353,6 +363,58 @@ export function useWizardSession(): UseWizardSessionReturn {
   )
 
   // ==========================================================================
+  // APPOINTMENT (session-based, before payment)
+  // ==========================================================================
+
+  const saveAppointmentData = useCallback(
+    async (data: {
+      entityLocationId: string
+      locationName: string
+      city: string
+      appointmentDate: string
+      appointmentTime: string
+      slotConfigId?: string | null
+    }): Promise<boolean> => {
+      if (!session) {
+        setError('No hay sesión activa')
+        return false
+      }
+      try {
+        setIsLoading(true)
+        setError(null)
+        const result = await wizardSessionApi.saveAppointmentSelection(
+          session.sessionId,
+          data,
+        )
+        if (result.success) {
+          setSession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  appointmentData: {
+                    entityLocationId: data.entityLocationId,
+                    locationName: data.locationName,
+                    city: data.city,
+                    appointmentDate: data.appointmentDate,
+                    appointmentTime: data.appointmentTime,
+                    slotConfigId: data.slotConfigId ?? null,
+                  },
+                }
+              : null
+          )
+        }
+        return result.success
+      } catch (err) {
+        handleError(err)
+        return false
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [session, handleError]
+  )
+
+  // ==========================================================================
   // PAYMENT
   // ==========================================================================
 
@@ -523,6 +585,9 @@ export function useWizardSession(): UseWizardSessionReturn {
 
     // Form data
     saveFormData,
+
+    // Appointment
+    saveAppointmentData,
 
     // Payment
     preparePayment,

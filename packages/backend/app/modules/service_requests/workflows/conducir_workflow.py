@@ -650,23 +650,9 @@ class ConducirWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # === Step 8: Payment ===
+        # === Step 8: Appointment (BEFORE Payment) ===
         self.add_step(WorkflowStep(
             step_number=8,
-            step_id="payment",
-            step_type=StepType.PAYMENT,
-            title_es="Pago de Tasas",
-            description_es="Realice el pago mediante Mobile Money",
-            config={
-                "currency": "XAF",
-                "show_breakdown": True,
-                "dynamic_tariff": True  # Tariff based on sub_type
-            }
-        ))
-
-        # === Step 9: Appointment ===
-        self.add_step(WorkflowStep(
-            step_number=9,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
             title_es="Programar Cita",
@@ -674,8 +660,6 @@ class ConducirWorkflow(PredefinedWorkflow):
             config={
                 "entity_code": EntityCode.DGT.value,
                 "entity_via_request": True,
-                "hold_duration_minutes": 15,
-                "show_payment_confirmation": True,
                 "use_appointment_module": True,
                 "exam_scheduling": {
                     "applies_to": ["NUEVO"],
@@ -683,6 +667,20 @@ class ConducirWorkflow(PredefinedWorkflow):
                     "notification_before_days": 3,
                     "locations_from": "entity_locations"
                 }
+            }
+        ))
+
+        # === Step 9: Payment (AFTER Appointment) ===
+        self.add_step(WorkflowStep(
+            step_number=9,
+            step_id="payment",
+            step_type=StepType.PAYMENT,
+            title_es="Pago de Tasas",
+            description_es="Realice el pago mediante Mobile Money",
+            config={
+                "currency": "XAF",
+                "show_breakdown": True,
+                "dynamic_tariff": True,
             }
         ))
 

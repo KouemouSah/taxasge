@@ -356,6 +356,193 @@ class WizardSessionApiClient {
     )
     return transformInitiatePayment(raw)
   }
+
+  // ==========================================================================
+  // APPOINTMENT SELECTION (session-based, before payment)
+  // ==========================================================================
+
+  /**
+   * Get appointment locations for a wizard session.
+   * GET /wizard-sessions/{sessionId}/appointments/locations
+   */
+  async getAppointmentLocations(sessionId: string): Promise<{
+    entityCode: string
+    locations: Array<{
+      id: string
+      entityCode: string
+      locationCode: string
+      locationName: string
+      city: string
+      province: string | null
+      region: string | null
+      address: string | null
+      phone: string | null
+      email: string | null
+      isMainOffice: boolean
+    }>
+    count: number
+  }> {
+    const raw = await this.request<{
+      entity_code: string
+      locations: Array<{
+        id: string
+        entity_code: string
+        location_code: string
+        location_name: string
+        city: string
+        province: string | null
+        region: string | null
+        address: string | null
+        phone: string | null
+        email: string | null
+        is_main_office: boolean
+      }>
+      count: number
+    }>(`/${sessionId}/appointments/locations`)
+
+    return {
+      entityCode: raw.entity_code,
+      locations: raw.locations.map((l) => ({
+        id: l.id,
+        entityCode: l.entity_code,
+        locationCode: l.location_code,
+        locationName: l.location_name,
+        city: l.city,
+        province: l.province,
+        region: l.region,
+        address: l.address,
+        phone: l.phone,
+        email: l.email,
+        isMainOffice: l.is_main_office,
+      })),
+      count: raw.count,
+    }
+  }
+
+  /**
+   * Get available days for calendar rendering (session-based).
+   * GET /wizard-sessions/{sessionId}/appointments/available-days
+   */
+  async getAvailableDays(
+    sessionId: string,
+    entityLocationId: string,
+    fromDate?: string,
+    toDate?: string,
+  ): Promise<{
+    days: Array<{ date: string; timeSlotCount: number; totalSlotsRemaining: number }>
+    minDate?: string
+  }> {
+    const params = new URLSearchParams({ entity_location_id: entityLocationId })
+    if (fromDate) params.append('from_date', fromDate)
+    if (toDate) params.append('to_date', toDate)
+
+    const raw = await this.request<{
+      days: Array<{ slot_date: string; time_slot_count: number; total_slots_remaining: number }>
+      min_date?: string
+    }>(`/${sessionId}/appointments/available-days?${params.toString()}`)
+
+    return {
+      days: raw.days.map((d) => ({
+        date: d.slot_date,
+        timeSlotCount: d.time_slot_count,
+        totalSlotsRemaining: d.total_slots_remaining,
+      })),
+      minDate: raw.min_date,
+    }
+  }
+
+  /**
+   * Get available time slots for a location (session-based).
+   * GET /wizard-sessions/{sessionId}/appointments/available-slots
+   */
+  async getAvailableSlots(
+    sessionId: string,
+    entityLocationId: string,
+    fromDate?: string,
+    limit?: number,
+  ): Promise<{
+    entityCode: string
+    locationName: string
+    fromDate: string
+    slots: Array<{
+      slotDate: string
+      slotTime: string
+      locationName: string
+      locationAddress: string | null
+      slotsRemaining: number
+      city: string | null
+    }>
+    count: number
+    hasAvailability: boolean
+  }> {
+    const params = new URLSearchParams({ entity_location_id: entityLocationId })
+    if (fromDate) params.append('from_date', fromDate)
+    if (limit) params.append('limit', String(limit))
+
+    const raw = await this.request<{
+      entity_code: string
+      location_name: string
+      from_date: string
+      slots: Array<{
+        slot_date: string
+        slot_time: string
+        location_name: string
+        location_address: string | null
+        slots_remaining: number
+        city: string | null
+      }>
+      count: number
+      has_availability: boolean
+    }>(`/${sessionId}/appointments/available-slots?${params.toString()}`)
+
+    return {
+      entityCode: raw.entity_code,
+      locationName: raw.location_name,
+      fromDate: raw.from_date,
+      slots: raw.slots.map((s) => ({
+        slotDate: s.slot_date,
+        slotTime: s.slot_time,
+        locationName: s.location_name,
+        locationAddress: s.location_address,
+        slotsRemaining: s.slots_remaining,
+        city: s.city,
+      })),
+      count: raw.count,
+      hasAvailability: raw.has_availability,
+    }
+  }
+
+  /**
+   * Save appointment selection to session cache (not a real hold).
+   * POST /wizard-sessions/{sessionId}/appointments/select
+   */
+  async saveAppointmentSelection(
+    sessionId: string,
+    data: {
+      entityLocationId: string
+      locationName: string
+      city: string
+      appointmentDate: string
+      appointmentTime: string
+      slotConfigId?: string | null
+    },
+  ): Promise<{ success: boolean }> {
+    const raw = await this.request<{ success: boolean }>(
+      `/${sessionId}/appointments/select`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          entity_location_id: data.entityLocationId,
+          location_name: data.locationName,
+          city: data.city,
+          appointment_date: data.appointmentDate,
+          appointment_time: data.appointmentTime,
+          slot_config_id: data.slotConfigId || null,
+        }),
+      }
+    )
+    return raw
+  }
 }
 
 // ============================================================================

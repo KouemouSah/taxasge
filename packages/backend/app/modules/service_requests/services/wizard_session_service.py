@@ -339,6 +339,7 @@ class WizardSessionService:
             required_documents=required_documents,
             requires_appointment=requires_appointment,
             entity_code=entity_code,
+            appointment_data=session.get("appointment_data"),
         )
 
     # =========================================================================
@@ -783,6 +784,44 @@ class WizardSessionService:
 
         workflow = workflow_engine.get_workflow_by_string(session["workflow_code"])
         return self._session_to_response(session, workflow)
+
+    async def save_appointment_data(
+        self,
+        session_id: str,
+        user_id: UUID,
+        appointment_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Save appointment selection data to session cache.
+
+        This stores the user's appointment choice (location, date, time)
+        WITHOUT creating a real hold. The actual hold is created atomically
+        during payment via initiate_payment().
+
+        Args:
+            session_id: Session ID
+            user_id: User ID for authorization
+            appointment_data: Appointment selection data
+
+        Returns:
+            Saved appointment data dict
+        """
+        session = await self._get_session(session_id, user_id)
+
+        session["appointment_data"] = appointment_data
+
+        success = await self._save_session(session_id, session, renew_ttl=True)
+        if not success:
+            raise WizardSessionError("Error al guardar la selección de cita.")
+
+        logger.info(
+            f"[WizardSession] Appointment data saved: session={session_id}, "
+            f"location={appointment_data.get('location_name')}, "
+            f"date={appointment_data.get('appointment_date')}, "
+            f"time={appointment_data.get('appointment_time')}"
+        )
+
+        return appointment_data
 
     async def get_form_config(
         self,
@@ -1395,12 +1434,58 @@ class WizardSessionService:
             workflow = workflow_engine.get_workflow_by_string(workflow_code)
             requires_appointment = getattr(workflow, "requires_appointment", False) if workflow else False
 
+            # Read appointment data from session (selected before payment)
+            appointment_data = session.get("appointment_data")
+            appointment_confirmed = False
+            appt_date_str = None
+            appt_time_str = None
+            appt_location_str = None
+
             async with db.transaction():
                 # Steps A+B: create service_request + upload docs (shared logic)
                 service_request_id, reference, uploaded_files = \
                     await self._persist_session_data(
                         db, session, f"Atomic wizard payment: {payment_method}"
                     )
+
+                # Step A2: Hold + confirm appointment atomically (if selected)
+                if appointment_data and requires_appointment:
+                    from ..services.appointment_service import appointment_service
+                    from datetime import date as date_type, time as time_type
+
+                    appt_loc_id = UUID(appointment_data["entity_location_id"])
+                    appt_date = date_type.fromisoformat(appointment_data["appointment_date"])
+                    appt_time = time_type.fromisoformat(appointment_data["appointment_time"])
+                    slot_config_id = (
+                        UUID(appointment_data["slot_config_id"])
+                        if appointment_data.get("slot_config_id")
+                        else None
+                    )
+
+                    hold_result = await appointment_service.hold_slot(
+                        db, service_request_id, appt_loc_id,
+                        appt_date, appt_time, slot_config_id
+                    )
+                    if not hold_result.success:
+                        raise WizardPersistError(
+                            f"El horario seleccionado ya no está disponible: {hold_result.error}",
+                            "APPOINTMENT_SLOT_TAKEN",
+                            {"appointment_error": hold_result.error}
+                        )
+
+                    confirm_result = await appointment_service.confirm_hold(
+                        db, service_request_id
+                    )
+                    if confirm_result.success:
+                        appointment_confirmed = True
+                        appt_date_str = appointment_data["appointment_date"]
+                        appt_time_str = appointment_data["appointment_time"]
+                        appt_location_str = appointment_data.get("location_name")
+                        logger.info(
+                            f"[WizardSession] Appointment confirmed atomically: "
+                            f"request={service_request_id}, date={appt_date_str}, "
+                            f"time={appt_time_str}, location={appt_location_str}"
+                        )
 
                 # Step C: Build PaymentContext and call processor
                 payment_context = PaymentContext(
@@ -1463,6 +1548,10 @@ class WizardSessionService:
                 message_es=payment_result.message_es,
                 expires_at=payment_result.expires_at,
                 requires_appointment=requires_appointment,
+                appointment_confirmed=appointment_confirmed,
+                appointment_date=appt_date_str,
+                appointment_time=appt_time_str,
+                appointment_location=appt_location_str,
             )
 
         except WizardPersistError:
