@@ -170,6 +170,7 @@ export default function PassportWizardPage() {
     checkPaymentStatus,
     // Appointment methods
     getAppointmentLocations,
+    getAvailableDays,
     getAppointmentSlots,
     holdAppointmentSlot,
     getAppointmentHoldStatus,
@@ -1288,6 +1289,7 @@ export default function PassportWizardPage() {
           paymentComplete={paymentComplete}
           pendingPaymentReference={pendingPaymentResult?.paymentReference}
           getLocations={getAppointmentLocations}
+          getAvailableDays={getAvailableDays}
           getSlots={getAppointmentSlots}
           holdSlot={holdAppointmentSlot}
           getHoldStatus={getAppointmentHoldStatus}
@@ -2791,6 +2793,7 @@ interface AppointmentStepImprovedProps {
   paymentComplete: boolean
   pendingPaymentReference?: string
   getLocations: (requestId: string) => Promise<{ entityCode: string; locations: EntityLocation[]; count: number }>
+  getAvailableDays: (requestId: string, entityLocationId: string, fromDate?: string, toDate?: string) => Promise<{ days: Array<{ date: string; timeSlotCount: number; totalSlotsRemaining: number }>; minDate?: string }>
   // Migration 030: Uses entityLocationId FK instead of locationName
   getSlots: (requestId: string, entityLocationId: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
   holdSlot: (requestId: string, data: { entityLocationId: string; slotConfigId?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
@@ -2807,6 +2810,7 @@ function AppointmentStepImproved({
   paymentComplete,
   pendingPaymentReference,
   getLocations,
+  getAvailableDays,
   getSlots,
   holdSlot,
   getHoldStatus,
@@ -2860,6 +2864,7 @@ function AppointmentStepImproved({
         onComplete={onComplete}
         onBack={onBack}
         getLocations={getLocations}
+        getAvailableDays={getAvailableDays}
         getSlots={getSlots}
         holdSlot={holdSlot}
         getHoldStatus={getHoldStatus}

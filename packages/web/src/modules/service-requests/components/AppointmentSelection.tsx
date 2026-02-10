@@ -2,18 +2,18 @@
 
 /**
  * AppointmentSelection Component
- * Citizen-first appointment flow where users select location and slot BEFORE payment
+ * Citizen-first appointment flow where users select location and slot AFTER payment
  *
  * Flow:
  * 1. Select location (Malabo or Bata)
- * 2. View available slots (6 displayed)
+ * 2. Calendar view: navigate months, click available day → see time slots
  * 3. Hold a slot (15 min countdown)
- * 4. Proceed to payment
+ * 4. Proceed to confirmation
  *
  * Fallback: Submit without appointment if no slots available
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   MapPin,
   Calendar,
@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Loader2,
   ChevronRight,
+  ChevronLeft,
   ArrowLeft,
   Timer,
   Building2,
@@ -36,6 +37,22 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
+
+import {
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  format,
+  addMonths,
+  subMonths,
+  isSameMonth,
+  isToday,
+  isBefore,
+  startOfWeek,
+  endOfWeek,
+} from 'date-fns'
+import { es as esLocale, fr as frLocale, enUS as enLocale } from 'date-fns/locale'
 
 import type {
   EntityLocation,
@@ -47,6 +64,11 @@ import type {
 // ============================================================================
 // TYPES
 // ============================================================================
+
+interface AvailableDayInfo {
+  timeSlotCount: number
+  totalSlotsRemaining: number
+}
 
 interface AppointmentSelectionProps {
   requestId: string
@@ -64,6 +86,10 @@ interface AppointmentSelectionProps {
     entityCode: string
     locations: EntityLocation[]
     count: number
+  }>
+  getAvailableDays: (requestId: string, entityLocationId: string, fromDate?: string, toDate?: string) => Promise<{
+    days: Array<{ date: string; timeSlotCount: number; totalSlotsRemaining: number }>
+    minDate?: string
   }>
   // Migration 030: Uses entityLocationId FK instead of locationName
   getSlots: (requestId: string, entityLocationId: string, fromDate?: string, limit?: number) => Promise<{
@@ -102,8 +128,8 @@ const TEXTS = {
     subtitle: 'Selecciona ubicacion y horario para tu cita',
     step1Title: 'Selecciona Ubicacion',
     step1Desc: 'Elige la oficina donde deseas realizar el tramite',
-    step2Title: 'Selecciona Horario',
-    step2Desc: 'Elige una de las fechas disponibles',
+    step2Title: 'Selecciona Fecha y Horario',
+    step2Desc: 'Los dias destacados tienen citas disponibles',
     step3Title: 'Cita Reservada',
     step3Desc: 'Tu cita esta reservada temporalmente',
     mainOffice: 'Oficina Principal',
@@ -125,14 +151,18 @@ const TEXTS = {
     holdExpired: 'La reserva ha expirado',
     holdExpiredDesc: 'Tu reserva temporal ha expirado. Por favor selecciona un nuevo horario.',
     selectNewSlot: 'Seleccionar Nuevo Horario',
+    today: 'Hoy',
+    timeSlotsTitle: 'Horarios disponibles',
+    noSlotsForDay: 'No hay horarios para este dia',
+    slotsAvailable: '{count} horario(s)',
   },
   fr: {
     title: 'Selectionner un Rendez-vous',
     subtitle: 'Selectionnez le lieu et l\'horaire de votre rendez-vous',
     step1Title: 'Selectionnez le Lieu',
     step1Desc: 'Choisissez le bureau ou vous souhaitez effectuer la demarche',
-    step2Title: 'Selectionnez l\'Horaire',
-    step2Desc: 'Choisissez une des dates disponibles',
+    step2Title: 'Selectionnez Date et Horaire',
+    step2Desc: 'Les jours surlignes ont des rendez-vous disponibles',
     step3Title: 'Rendez-vous Reserve',
     step3Desc: 'Votre rendez-vous est temporairement reserve',
     mainOffice: 'Bureau Principal',
@@ -154,14 +184,18 @@ const TEXTS = {
     holdExpired: 'La reservation a expire',
     holdExpiredDesc: 'Votre reservation temporaire a expire. Veuillez selectionner un nouvel horaire.',
     selectNewSlot: 'Selectionner un Nouvel Horaire',
+    today: 'Aujourd\'hui',
+    timeSlotsTitle: 'Horaires disponibles',
+    noSlotsForDay: 'Pas d\'horaires pour ce jour',
+    slotsAvailable: '{count} horaire(s)',
   },
   en: {
     title: 'Select Appointment',
     subtitle: 'Select location and time for your appointment',
     step1Title: 'Select Location',
     step1Desc: 'Choose the office where you want to complete the process',
-    step2Title: 'Select Time Slot',
-    step2Desc: 'Choose one of the available dates',
+    step2Title: 'Select Date and Time',
+    step2Desc: 'Highlighted days have available appointments',
     step3Title: 'Appointment Reserved',
     step3Desc: 'Your appointment is temporarily reserved',
     mainOffice: 'Main Office',
@@ -183,12 +217,18 @@ const TEXTS = {
     holdExpired: 'Reservation has expired',
     holdExpiredDesc: 'Your temporary reservation has expired. Please select a new time slot.',
     selectNewSlot: 'Select New Time Slot',
+    today: 'Today',
+    timeSlotsTitle: 'Available times',
+    noSlotsForDay: 'No times for this day',
+    slotsAvailable: '{count} time slot(s)',
   },
 }
 
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+const DATE_LOCALES = { es: esLocale, fr: frLocale, en: enLocale }
 
 function formatDate(dateStr: string, locale: string): string {
   const date = new Date(dateStr)
@@ -202,7 +242,7 @@ function formatDate(dateStr: string, locale: string): string {
 }
 
 function formatTime(timeStr: string): string {
-  // Convert HH:MM:SS to HH:MM or HHhMM for FR
+  // Convert HH:MM:SS to HH:MM
   const parts = timeStr.split(':')
   return `${parts[0]}:${parts[1]}`
 }
@@ -223,6 +263,7 @@ export function AppointmentSelection({
   onBack,
   locale = 'es',
   getLocations,
+  getAvailableDays,
   getSlots,
   holdSlot,
   getHoldStatus,
@@ -230,6 +271,7 @@ export function AppointmentSelection({
   submitWithoutAppointment,
 }: AppointmentSelectionProps) {
   const t = TEXTS[locale]
+  const dateLocale = DATE_LOCALES[locale]
 
   // State
   const [currentStep, setCurrentStep] = useState<Step>('location')
@@ -240,15 +282,38 @@ export function AppointmentSelection({
   const [locations, setLocations] = useState<EntityLocation[]>([])
   const [selectedLocation, setSelectedLocation] = useState<EntityLocation | null>(null)
 
-  // Slots state
+  // Calendar state
+  const [viewMonth, setViewMonth] = useState(new Date())
+  const [availableDays, setAvailableDays] = useState<Map<string, AvailableDayInfo>>(new Map())
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [isLoadingDays, setIsLoadingDays] = useState(false)
+  const [minBookableDate, setMinBookableDate] = useState<string | null>(null)
+
+  // Slots state (for selected day)
   const [slots, setSlots] = useState<AvailableSlot[]>([])
-  const [_hasAvailability, setHasAvailability] = useState(true)
   const [isLoadingSlots, setIsLoadingSlots] = useState(false)
 
   // Hold state
   const [holdStatus, setHoldStatus] = useState<AppointmentHoldStatus | null>(null)
   const [holdCountdown, setHoldCountdown] = useState(0)
   const [isHolding, setIsHolding] = useState(false)
+
+  // Calendar days for current month view
+  const calendarDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(viewMonth), { locale: dateLocale })
+    const end = endOfWeek(endOfMonth(viewMonth), { locale: dateLocale })
+    return eachDayOfInterval({ start, end })
+  }, [viewMonth, dateLocale])
+
+  // Weekday headers from locale
+  const weekdayHeaders = useMemo(() => {
+    const start = startOfWeek(new Date(), { locale: dateLocale })
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(start)
+      day.setDate(day.getDate() + i)
+      return format(day, 'EEE', { locale: dateLocale })
+    })
+  }, [dateLocale])
 
   // ============================================================================
   // LOAD INITIAL DATA
@@ -314,28 +379,83 @@ export function AppointmentSelection({
   // HANDLERS
   // ============================================================================
 
+  const loadAvailableDays = useCallback(async (
+    locationId: string,
+    fromDate?: string,
+    toDate?: string
+  ) => {
+    const response = await getAvailableDays(requestId, locationId, fromDate, toDate)
+    const daysMap = new Map<string, AvailableDayInfo>(
+      response.days.map(d => [d.date, {
+        timeSlotCount: d.timeSlotCount,
+        totalSlotsRemaining: d.totalSlotsRemaining,
+      }])
+    )
+    setAvailableDays(daysMap)
+    return { daysMap, minDate: response.minDate }
+  }, [requestId, getAvailableDays])
+
   const handleSelectLocation = useCallback(async (location: EntityLocation) => {
     setSelectedLocation(location)
-    setIsLoadingSlots(true)
+    setIsLoadingDays(true)
     setError(null)
+    setSelectedDate(null)
+    setSlots([])
 
     try {
-      // Migration 030: Pass entity_location_id instead of location_name
-      const slotsResponse = await getSlots(requestId, location.id)
-      setSlots(slotsResponse.slots)
-      setHasAvailability(slotsResponse.hasAvailability)
+      const { daysMap, minDate } = await loadAvailableDays(location.id)
+      setMinBookableDate(minDate || null)
 
-      if (slotsResponse.hasAvailability) {
+      if (minDate) {
+        setViewMonth(new Date(minDate + 'T00:00:00'))
+      }
+
+      if (daysMap.size > 0) {
         setCurrentStep('slots')
       } else {
         setCurrentStep('fallback')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load slots')
+      setError(err instanceof Error ? err.message : 'Failed to load available days')
+    } finally {
+      setIsLoadingDays(false)
+    }
+  }, [loadAvailableDays])
+
+  const handleMonthChange = useCallback(async (newMonth: Date) => {
+    if (!selectedLocation) return
+    setViewMonth(newMonth)
+    setSelectedDate(null)
+    setSlots([])
+    setIsLoadingDays(true)
+
+    try {
+      const fromDate = format(startOfMonth(newMonth), 'yyyy-MM-dd')
+      const toDate = format(endOfMonth(newMonth), 'yyyy-MM-dd')
+      await loadAvailableDays(selectedLocation.id, fromDate, toDate)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load days')
+    } finally {
+      setIsLoadingDays(false)
+    }
+  }, [selectedLocation, loadAvailableDays])
+
+  const handleSelectDate = useCallback(async (dateStr: string) => {
+    if (!selectedLocation) return
+    setSelectedDate(dateStr)
+    setIsLoadingSlots(true)
+
+    try {
+      const slotsResponse = await getSlots(requestId, selectedLocation.id, dateStr, 20)
+      // Filter to only the selected date (v3 may return some from subsequent days)
+      const filtered = slotsResponse.slots.filter(s => s.slotDate === dateStr)
+      setSlots(filtered)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load time slots')
     } finally {
       setIsLoadingSlots(false)
     }
-  }, [requestId, getSlots])
+  }, [requestId, selectedLocation, getSlots])
 
   const handleSelectSlot = useCallback(async (slot: AvailableSlot) => {
     if (!selectedLocation) return
@@ -344,7 +464,6 @@ export function AppointmentSelection({
     setError(null)
 
     try {
-      // Migration 030: Use entityLocationId FK instead of locationName/Address
       const holdResponse = await holdSlot(requestId, {
         entityLocationId: selectedLocation.id,
         appointmentDate: slot.slotDate,
@@ -408,7 +527,6 @@ export function AppointmentSelection({
     setError(null)
 
     try {
-      // Migration 030: Use entityLocationId FK instead of locationName
       const response = await submitWithoutAppointment(requestId, selectedLocation.id)
 
       if (response.success) {
@@ -430,6 +548,8 @@ export function AppointmentSelection({
   const handleChangeLocation = useCallback(() => {
     setSelectedLocation(null)
     setSlots([])
+    setAvailableDays(new Map())
+    setSelectedDate(null)
     setCurrentStep('location')
   }, [])
 
@@ -507,13 +627,13 @@ export function AppointmentSelection({
               <div
                 key={location.id}
                 className={`flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                  isLoadingSlots && selectedLocation?.id === location.id
+                  (isLoadingDays || isLoadingSlots) && selectedLocation?.id === location.id
                     ? 'border-primary bg-primary/5'
                     : 'hover:bg-muted/50'
                 }`}
-                onClick={() => !isLoadingSlots && handleSelectLocation(location)}
+                onClick={() => !(isLoadingDays || isLoadingSlots) && handleSelectLocation(location)}
               >
-                <RadioGroupItem value={location.id} id={location.id} disabled={isLoadingSlots} />
+                <RadioGroupItem value={location.id} id={location.id} disabled={isLoadingDays || isLoadingSlots} />
                 <div className="flex-1 space-y-1">
                   <Label
                     htmlFor={location.id}
@@ -536,7 +656,7 @@ export function AppointmentSelection({
                     <p className="text-sm text-muted-foreground">{location.address}</p>
                   )}
                 </div>
-                {isLoadingSlots && selectedLocation?.id === location.id ? (
+                {(isLoadingDays || isLoadingSlots) && selectedLocation?.id === location.id ? (
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 ) : (
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
@@ -557,10 +677,13 @@ export function AppointmentSelection({
   }
 
   // ============================================================================
-  // RENDER: STEP 2 - SLOT SELECTION
+  // RENDER: STEP 2 - CALENDAR + TIME PICKER
   // ============================================================================
 
   if (currentStep === 'slots') {
+    const todayDate = new Date()
+    const minDate = minBookableDate ? new Date(minBookableDate + 'T00:00:00') : todayDate
+
     return (
       <Card>
         <CardHeader>
@@ -575,39 +698,155 @@ export function AppointmentSelection({
             )}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {slots.map((slot, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors"
+        <CardContent className="space-y-4">
+          {/* Calendar Navigation */}
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handleMonthChange(subMonths(viewMonth, 1))}
+              disabled={isLoadingDays}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold capitalize">
+                {format(viewMonth, 'MMMM yyyy', { locale: dateLocale })}
+              </h3>
+              {isLoadingDays && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date()
+                  setViewMonth(today)
+                  handleMonthChange(today)
+                }}
+                disabled={isLoadingDays}
               >
-                <div className="space-y-1">
-                  <p className="font-medium">{formatDate(slot.slotDate, locale)}</p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    {formatTime(slot.slotTime)}
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {t.slotsRemaining.replace('{count}', String(slot.slotsRemaining))}
-                  </Badge>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => handleSelectSlot(slot)}
-                  disabled={isHolding}
-                >
-                  {isHolding ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    t.selectSlot
-                  )}
-                </Button>
+                {t.today}
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleMonthChange(addMonths(viewMonth, 1))}
+                disabled={isLoadingDays}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Weekday Headers */}
+          <div className="grid grid-cols-7 gap-1">
+            {weekdayHeaders.map((day) => (
+              <div
+                key={day}
+                className="text-center text-xs font-semibold text-muted-foreground py-2 uppercase"
+              >
+                {day}
               </div>
             ))}
           </div>
 
-          <div className="flex gap-2 mt-6">
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((day) => {
+              const dateKey = format(day, 'yyyy-MM-dd')
+              const dayInfo = availableDays.get(dateKey)
+              const isCurrentMonth = isSameMonth(day, viewMonth)
+              const isTodayDate = isToday(day)
+              const isBeforeMin = isBefore(day, minDate)
+              const isSelected = selectedDate === dateKey
+              const hasSlots = !!dayInfo && dayInfo.totalSlotsRemaining > 0
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6
+
+              return (
+                <button
+                  key={dateKey}
+                  type="button"
+                  disabled={!hasSlots || !isCurrentMonth || isBeforeMin || isWeekend}
+                  onClick={() => hasSlots && isCurrentMonth && !isBeforeMin && handleSelectDate(dateKey)}
+                  className={cn(
+                    'relative flex flex-col items-center justify-center rounded-lg p-2 min-h-[52px] transition-all text-sm',
+                    // Base
+                    !isCurrentMonth && 'opacity-30',
+                    isCurrentMonth && !hasSlots && 'text-muted-foreground',
+                    // Available day
+                    hasSlots && isCurrentMonth && !isSelected && 'bg-primary/10 border border-primary/30 text-primary font-semibold hover:bg-primary/20 cursor-pointer',
+                    // Selected day
+                    isSelected && 'bg-primary text-primary-foreground font-bold shadow-md',
+                    // Today ring
+                    isTodayDate && !isSelected && 'ring-2 ring-primary/50',
+                    // Before min date
+                    isBeforeMin && isCurrentMonth && 'opacity-40 cursor-not-allowed',
+                    // Weekend
+                    isWeekend && isCurrentMonth && 'text-muted-foreground/50',
+                    // Disabled
+                    (!hasSlots || !isCurrentMonth || isBeforeMin || isWeekend) && 'cursor-default',
+                  )}
+                >
+                  <span>{format(day, 'd')}</span>
+                  {hasSlots && isCurrentMonth && (
+                    <span className={cn(
+                      'text-[10px] leading-tight',
+                      isSelected ? 'text-primary-foreground/80' : 'text-primary/70'
+                    )}>
+                      {dayInfo.timeSlotCount}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Time Slots for Selected Day */}
+          {selectedDate && (
+            <div className="border-t pt-4 mt-2">
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                {t.timeSlotsTitle} — {formatDate(selectedDate, locale)}
+              </h4>
+
+              {isLoadingSlots ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
+                  <span className="text-sm text-muted-foreground">{t.loading}</span>
+                </div>
+              ) : slots.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {slots.map((slot, idx) => (
+                    <Button
+                      key={idx}
+                      variant={isHolding ? 'outline' : 'outline'}
+                      size="sm"
+                      className="h-auto py-2 px-4 flex flex-col items-center gap-0.5 hover:bg-primary hover:text-primary-foreground transition-colors"
+                      onClick={() => handleSelectSlot(slot)}
+                      disabled={isHolding}
+                    >
+                      {isHolding ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <span className="text-base font-semibold">{formatTime(slot.slotTime)}</span>
+                          <span className="text-[10px] opacity-70">
+                            {t.slotsRemaining.replace('{count}', String(slot.slotsRemaining))}
+                          </span>
+                        </>
+                      )}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">{t.noSlotsForDay}</p>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2">
             <Button variant="outline" onClick={handleChangeLocation}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t.changeLocation}

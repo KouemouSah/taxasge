@@ -80,6 +80,24 @@ class AvailableSlotResponse(BaseModel):
         }
 
 
+class AvailableDayResponse(BaseModel):
+    """A date with available appointment slots (for calendar rendering)."""
+    date: date = Field(..., description="Date with availability")
+    time_slot_count: int = Field(..., description="Number of distinct time slots available")
+    total_slots_remaining: int = Field(..., description="Sum of all slots remaining across time slots")
+
+
+class AvailableDaysListResponse(BaseModel):
+    """Available days for calendar view."""
+    entity_code: str
+    location_name: str
+    from_date: date
+    to_date: date
+    days: List[AvailableDayResponse]
+    count: int
+    min_date: Optional[date] = Field(None, description="Earliest bookable date (after delay)")
+
+
 class HoldSlotRequest(BaseModel):
     """
     Request to hold an appointment slot before payment.

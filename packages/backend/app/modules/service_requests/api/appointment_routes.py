@@ -18,7 +18,7 @@ Status Validation:
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from uuid import UUID
 import asyncpg
 import logging
@@ -30,6 +30,8 @@ from app.modules.users.models.user import UserResponse
 from ..models.appointments import (
     EntityLocationResponse,
     AvailableSlotResponse,
+    AvailableDayResponse,
+    AvailableDaysListResponse,
     HoldSlotRequest,
     HoldSlotResponse,
     ConfirmHoldResponse,
@@ -268,6 +270,101 @@ async def get_available_slots(
         slots=slot_responses,
         count=len(slot_responses),
         has_availability=len(slot_responses) > 0
+    )
+
+
+# =============================================================================
+# AVAILABLE DAYS ENDPOINT (Calendar view)
+# =============================================================================
+
+@router.get(
+    "/{request_id}/appointments/available-days",
+    response_model=AvailableDaysListResponse,
+    summary="Get days with available slots for calendar view",
+    description="""
+    Returns dates that have available appointment slots, grouped by day.
+    Designed for rendering a calendar where available days are highlighted.
+    Use the /slots endpoint with a specific from_date to get time slots for a day.
+    """
+)
+async def get_available_days(
+    request_id: UUID,
+    entity_location_id: UUID = Query(..., description="FK to entity_locations table"),
+    from_date: Optional[date] = Query(None, description="Start of range (defaults to min delay date)"),
+    to_date: Optional[date] = Query(None, description="End of range (defaults to from_date + 60 days)"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get days with available appointment slots for calendar rendering."""
+    # Get service request
+    request = await db.fetchrow("""
+        SELECT id, user_id, workflow_code, status
+        FROM service_requests
+        WHERE id = $1
+    """, request_id)
+
+    if not request:
+        raise HTTPException(status_code=404, detail="Service request not found")
+
+    # Verify ownership
+    if str(request['user_id']) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Validate status allows appointment access
+    validate_appointment_access(request['status'], "view available days")
+
+    # Verify entity_location exists and is active
+    location = await db.fetchrow("""
+        SELECT entity_code, location_name, city
+        FROM entity_locations
+        WHERE id = $1 AND is_active = TRUE
+    """, entity_location_id)
+
+    if not location:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Entity location not found or inactive: {entity_location_id}"
+        )
+
+    # Get all slots in range (high limit to cover full 60-day window)
+    slots = await appointment_service.get_available_slots(
+        db=db,
+        entity_location_id=entity_location_id,
+        from_date=from_date,
+        limit=500
+    )
+
+    # Group by date
+    days_map: dict = {}
+    for slot in slots:
+        d = slot.slot_date
+        if d not in days_map:
+            days_map[d] = {"time_slot_count": 0, "total_slots_remaining": 0}
+        days_map[d]["time_slot_count"] += 1
+        days_map[d]["total_slots_remaining"] += slot.slots_remaining
+
+    # Filter to to_date range if provided
+    if to_date:
+        days_map = {d: v for d, v in days_map.items() if d <= to_date}
+
+    days = sorted([
+        AvailableDayResponse(date=d, **v) for d, v in days_map.items()
+    ], key=lambda x: x.date)
+
+    # min_date = earliest bookable date (delay-aware)
+    min_date = slots[0].slot_date if slots else None
+
+    effective_from = from_date or (min_date or date.today())
+    effective_to = to_date or (effective_from + timedelta(days=59))
+
+    return AvailableDaysListResponse(
+        entity_code=location['entity_code'],
+        location_name=location['location_name'],
+        from_date=effective_from,
+        to_date=effective_to,
+        days=days,
+        count=len(days),
+        min_date=min_date
     )
 
 

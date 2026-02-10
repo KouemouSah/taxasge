@@ -1480,6 +1480,52 @@ class ServiceRequestsApiClient {
   }
 
   /**
+   * Get available days for calendar view (grouped by date)
+   */
+  async getAvailableDays(
+    requestId: string,
+    entityLocationId: string,
+    fromDate?: string,
+    toDate?: string
+  ): Promise<{
+    entityCode: string
+    locationName: string
+    fromDate: string
+    toDate: string
+    days: Array<{ date: string; timeSlotCount: number; totalSlotsRemaining: number }>
+    count: number
+    minDate?: string
+  }> {
+    const params = new URLSearchParams({ entity_location_id: entityLocationId })
+    if (fromDate) params.append('from_date', fromDate)
+    if (toDate) params.append('to_date', toDate)
+
+    const response = await this.request<{
+      entity_code: string
+      location_name: string
+      from_date: string
+      to_date: string
+      days: Array<{ date: string; time_slot_count: number; total_slots_remaining: number }>
+      count: number
+      min_date?: string
+    }>(`/${requestId}/appointments/available-days?${params.toString()}`)
+
+    return {
+      entityCode: response.entity_code,
+      locationName: response.location_name,
+      fromDate: response.from_date,
+      toDate: response.to_date,
+      days: response.days.map(d => ({
+        date: d.date,
+        timeSlotCount: d.time_slot_count,
+        totalSlotsRemaining: d.total_slots_remaining,
+      })),
+      count: response.count,
+      minDate: response.min_date,
+    }
+  }
+
+  /**
    * Hold an appointment slot before payment
    * Migration 030: Now uses entity_location_id FK instead of location_name/address
    */

@@ -1459,6 +1459,14 @@ export default function SessionWizardPage() {
               getLocations={(requestId) =>
                 serviceRequestsApi.getAppointmentLocations(requestId)
               }
+              getAvailableDays={(requestId, entityLocationId, fromDate, toDate) =>
+                serviceRequestsApi.getAvailableDays(
+                  requestId,
+                  entityLocationId,
+                  fromDate,
+                  toDate
+                )
+              }
               getSlots={(requestId, entityLocationId, fromDate, limit) =>
                 serviceRequestsApi.getAppointmentSlots(
                   requestId,

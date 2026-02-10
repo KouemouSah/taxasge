@@ -108,6 +108,7 @@ export interface UseServiceRequestsReturn {
   // Appointment actions (citizen-first flow)
   // Migration 030: Uses entityLocationId FK instead of locationName
   getAppointmentLocations: (requestId: string) => Promise<{ entityCode: string; locations: EntityLocation[]; count: number }>
+  getAvailableDays: (requestId: string, entityLocationId: string, fromDate?: string, toDate?: string) => Promise<{ days: Array<{ date: string; timeSlotCount: number; totalSlotsRemaining: number }>; count: number; minDate?: string }>
   getAppointmentSlots: (requestId: string, entityLocationId: string, fromDate?: string, limit?: number) => Promise<{ entityCode: string; locationName: string; fromDate: string; slots: AvailableSlot[]; count: number; hasAvailability: boolean }>
   holdAppointmentSlot: (requestId: string, data: { entityLocationId: string; slotConfigId?: string; appointmentDate: string; appointmentTime: string }) => Promise<{ success: boolean; holdId?: string; expiresInSeconds: number; expiresAt?: string; error?: string }>
   getAppointmentHoldStatus: (requestId: string) => Promise<AppointmentHoldStatus>
@@ -897,6 +898,15 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     return serviceRequestsApi.getAppointmentLocations(requestId)
   }, [])
 
+  const getAvailableDays = useCallback(async (
+    requestId: string,
+    entityLocationId: string,
+    fromDate?: string,
+    toDate?: string
+  ) => {
+    return serviceRequestsApi.getAvailableDays(requestId, entityLocationId, fromDate, toDate)
+  }, [])
+
   // Migration 030: Uses entityLocationId FK instead of locationName
   const getAppointmentSlots = useCallback(async (
     requestId: string,
@@ -1010,6 +1020,7 @@ export function useServiceRequests(): UseServiceRequestsReturn {
 
     // Appointment actions (citizen-first flow)
     getAppointmentLocations,
+    getAvailableDays,
     getAppointmentSlots,
     holdAppointmentSlot,
     getAppointmentHoldStatus,
