@@ -680,7 +680,14 @@ class AppointmentService:
         workflow_code: Optional[str] = None,
         priority: str = 'NORMAL'
     ) -> int:
-        """Get the delay days for appointment scheduling."""
+        """
+        Get the delay days for appointment scheduling.
+
+        3-level cascade (most specific wins):
+        P1: workflow_code specific
+        P2: entity_code specific (workflow_code IS NULL)
+        P3: global default (both NULL)
+        """
 
         # Priority 1: Workflow-specific rule
         if workflow_code:
@@ -695,11 +702,26 @@ class AppointmentService:
             if delay is not None:
                 return delay
 
-        # Priority 2: Default rule (workflow_code IS NULL = applies to all)
+        # Priority 2: Entity-specific rule
+        if entity_code:
+            delay = await db.fetchval("""
+                SELECT delay_business_days
+                FROM appointment_delay_rules
+                WHERE entity_code = $1
+                AND workflow_code IS NULL
+                AND priority = $2
+                AND is_active = TRUE
+            """, entity_code, priority)
+
+            if delay is not None:
+                return delay
+
+        # Priority 3: Global default (entity_code IS NULL, workflow_code IS NULL)
         delay = await db.fetchval("""
             SELECT delay_business_days
             FROM appointment_delay_rules
-            WHERE workflow_code IS NULL
+            WHERE entity_code IS NULL
+            AND workflow_code IS NULL
             AND priority = $1
             AND is_active = TRUE
         """, priority)
