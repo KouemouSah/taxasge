@@ -228,9 +228,9 @@ async def get_available_slots(
     # Validate status allows appointment access
     validate_appointment_access(request['status'], "view appointment slots")
 
-    # Look up location_name from entity_locations table (migration 030)
+    # Verify entity_location exists and is active
     location = await db.fetchrow("""
-        SELECT location_name, city
+        SELECT entity_code, location_name, city
         FROM entity_locations
         WHERE id = $1 AND is_active = TRUE
     """, entity_location_id)
@@ -241,20 +241,10 @@ async def get_available_slots(
             detail=f"Entity location not found or inactive: {entity_location_id}"
         )
 
-    location_name = location['location_name']
-
-    # Get entity code
-    entity_code = await appointment_service.get_entity_code_for_workflow(
-        db, request['workflow_code']
-    )
-    if not entity_code:
-        return []
-
-    # Get available slots
+    # Direct call: entity_location_id UUID → set-based v3 function
     slots = await appointment_service.get_available_slots(
         db=db,
-        entity_code=entity_code,
-        location_name=location_name,
+        entity_location_id=entity_location_id,
         from_date=from_date,
         limit=limit
     )
@@ -266,14 +256,14 @@ async def get_available_slots(
             location_name=slot.location_name,
             location_address=slot.location_address,
             slots_remaining=slot.slots_remaining,
-            city=slot.city or location['city']  # Use location city as fallback
+            city=slot.city or location['city']
         )
         for slot in slots
     ]
 
     return AppointmentSlotsListResponse(
-        entity_code=entity_code,
-        location_name=location_name,
+        entity_code=location['entity_code'],
+        location_name=location['location_name'],
         from_date=from_date or date.today(),
         slots=slot_responses,
         count=len(slot_responses),

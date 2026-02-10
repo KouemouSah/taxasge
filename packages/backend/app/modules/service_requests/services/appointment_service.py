@@ -171,21 +171,21 @@ class AppointmentService:
     async def get_available_slots(
         self,
         db: asyncpg.Connection,
-        entity_code: str,
-        location_name: str,
+        entity_location_id: UUID,
         from_date: Optional[date] = None,
         limit: int = DEFAULT_SLOTS_LIMIT
     ) -> List[AvailableSlot]:
         """
         Get available appointment slots for a specific location.
 
-        Uses get_available_slots_v2() PostgreSQL function which considers
-        both confirmed reservations AND active holds.
+        Uses get_available_slots_v3() set-based PostgreSQL function which:
+        - Accepts entity_location_id UUID directly (no string resolution)
+        - Uses generate_series + LATERAL JOINs (1 query instead of 60 loop iterations)
+        - Returns city for display
 
         Args:
             db: Database connection
-            entity_code: Entity code
-            location_name: Location name (e.g., 'CNEDOGE Malabo')
+            entity_location_id: UUID FK to entity_locations table
             from_date: Start date (defaults to minimum delay date)
             limit: Max slots to return (default 6)
 
@@ -194,19 +194,27 @@ class AppointmentService:
         """
         # Calculate minimum date based on delay rules
         if from_date is None:
-            delay_days = await self._get_delay_days(db, entity_code)
+            # Resolve entity_code for delay rules lookup
+            entity_code = await db.fetchval("""
+                SELECT entity_code FROM entity_locations WHERE id = $1
+            """, entity_location_id)
+            if entity_code:
+                delay_days = await self._get_delay_days(db, entity_code)
+            else:
+                delay_days = self.DEFAULT_DELAY_DAYS
             from_date = self._add_business_days(date.today(), delay_days)
 
-        # Use the v2 function that considers holds
+        # Set-based v3 function: 1 query with generate_series + LATERAL
         rows = await db.fetch("""
             SELECT
                 slot_date,
                 slot_time,
                 location_name,
                 location_address,
+                city,
                 slots_remaining
-            FROM get_available_slots_v2($1, $2, $3, $4)
-        """, entity_code, location_name, from_date, limit)
+            FROM get_available_slots_v3($1, $2, $3)
+        """, entity_location_id, from_date, limit)
 
         return [
             AvailableSlot(
@@ -214,7 +222,8 @@ class AppointmentService:
                 slot_time=row['slot_time'],
                 location_name=row['location_name'],
                 location_address=row['location_address'],
-                slots_remaining=row['slots_remaining']
+                slots_remaining=row['slots_remaining'],
+                city=row['city']
             )
             for row in rows
         ]
