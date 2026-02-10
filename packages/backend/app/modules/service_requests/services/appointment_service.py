@@ -695,25 +695,11 @@ class AppointmentService:
             if delay is not None:
                 return delay
 
-        # Priority 2: Entity-specific rule
+        # Priority 2: Default rule (workflow_code IS NULL = applies to all)
         delay = await db.fetchval("""
             SELECT delay_business_days
             FROM appointment_delay_rules
-            WHERE entity_code = $1
-            AND workflow_code IS NULL
-            AND priority = $2
-            AND is_active = TRUE
-        """, entity_code, priority)
-
-        if delay is not None:
-            return delay
-
-        # Priority 3: Default rule
-        delay = await db.fetchval("""
-            SELECT delay_business_days
-            FROM appointment_delay_rules
-            WHERE entity_code IS NULL
-            AND workflow_code IS NULL
+            WHERE workflow_code IS NULL
             AND priority = $1
             AND is_active = TRUE
         """, priority)
