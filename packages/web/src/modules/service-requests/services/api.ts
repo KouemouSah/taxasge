@@ -1505,7 +1505,7 @@ class ServiceRequestsApiClient {
       location_name: string
       from_date: string
       to_date: string
-      days: Array<{ date: string; time_slot_count: number; total_slots_remaining: number }>
+      days: Array<{ slot_date: string; time_slot_count: number; total_slots_remaining: number }>
       count: number
       min_date?: string
     }>(`/${requestId}/appointments/available-days?${params.toString()}`)
@@ -1516,7 +1516,7 @@ class ServiceRequestsApiClient {
       fromDate: response.from_date,
       toDate: response.to_date,
       days: response.days.map(d => ({
-        date: d.date,
+        date: d.slot_date,
         timeSlotCount: d.time_slot_count,
         totalSlotsRemaining: d.total_slots_remaining,
       })),

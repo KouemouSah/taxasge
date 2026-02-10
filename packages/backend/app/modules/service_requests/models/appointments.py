@@ -82,7 +82,7 @@ class AvailableSlotResponse(BaseModel):
 
 class AvailableDayResponse(BaseModel):
     """A date with available appointment slots (for calendar rendering)."""
-    date: date = Field(..., description="Date with availability")
+    slot_date: date = Field(..., description="Date with availability")
     time_slot_count: int = Field(..., description="Number of distinct time slots available")
     total_slots_remaining: int = Field(..., description="Sum of all slots remaining across time slots")
 

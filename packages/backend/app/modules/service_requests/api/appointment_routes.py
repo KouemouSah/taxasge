@@ -348,8 +348,8 @@ async def get_available_days(
         days_map = {d: v for d, v in days_map.items() if d <= to_date}
 
     days = sorted([
-        AvailableDayResponse(date=d, **v) for d, v in days_map.items()
-    ], key=lambda x: x.date)
+        AvailableDayResponse(slot_date=d, **v) for d, v in days_map.items()
+    ], key=lambda x: x.slot_date)
 
     # min_date = earliest bookable date (delay-aware)
     min_date = slots[0].slot_date if slots else None
