@@ -49,9 +49,11 @@ import {
   Clock,
   Download,
   Printer,
+  ChevronDown,
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Label } from '@/components/ui/label'
 import {
   useWizardSession,
@@ -1725,6 +1727,7 @@ function ConfirmationStepContent({
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   // Determine payment status
   const isPendingValidation = paymentResult?.requiresAction &&
@@ -1797,6 +1800,8 @@ function ConfirmationStepContent({
       nextStepsPending: 'Acuda a la oficina del Tesoro con este comprobante para validar su pago. Una vez validado, su solicitud sera procesada.',
       nextStepsConfirmed: 'Su solicitud sera procesada por el agente correspondiente. Recibira una notificacion por email con los avances.',
       loading: 'Cargando resumen...',
+      showDetails: 'Ver detalle de la solicitud',
+      hideDetails: 'Ocultar detalle',
     },
     fr: {
       title: 'Demande completee',
@@ -1823,6 +1828,8 @@ function ConfirmationStepContent({
       nextStepsPending: 'Rendez-vous au bureau du Tresor avec ce justificatif pour valider votre paiement. Une fois valide, votre demande sera traitee.',
       nextStepsConfirmed: 'Votre demande sera traitee par l\'agent competent. Vous recevrez une notification par email.',
       loading: 'Chargement du resume...',
+      showDetails: 'Voir le detail de la demande',
+      hideDetails: 'Masquer le detail',
     },
     en: {
       title: 'Request completed',
@@ -1849,13 +1856,17 @@ function ConfirmationStepContent({
       nextStepsPending: 'Go to the Treasury office with this receipt to validate your payment. Once validated, your request will be processed.',
       nextStepsConfirmed: 'Your request will be processed by the corresponding agent. You will receive an email notification with updates.',
       loading: 'Loading summary...',
+      showDetails: 'View request details',
+      hideDetails: 'Hide details',
     },
   }
   const t = texts[locale]
 
   return (
     <div className="space-y-6">
-      {/* Payment status banner */}
+      {/* ============================================================
+          HERO SECTION — Payment status + reference + actions
+          ============================================================ */}
       <div className="text-center space-y-3">
         <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
           isPendingValidation ? 'bg-amber-100' : 'bg-green-100'
@@ -1908,126 +1919,27 @@ function ConfirmationStepContent({
         </div>
       </div>
 
-      {/* Summary sections (loaded from API) */}
-      {summaryLoading && (
-        <div className="flex items-center justify-center gap-2 py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm text-muted-foreground">{t.loading}</span>
-        </div>
-      )}
-
-      {summary && (
-        <div className="space-y-4 max-w-lg mx-auto">
-          {/* Personal Data */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
-              {t.personalData}
+      {/* Appointment (always visible when present — important info) */}
+      {paymentResult?.appointmentConfirmed && (
+        <div className="border-2 border-primary rounded-lg p-4 bg-primary/5 max-w-md mx-auto">
+          <h4 className="font-semibold text-sm mb-2">{t.appointment}</h4>
+          <div className="flex gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span>{paymentResult.appointmentDate}</span>
             </div>
-            <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              {Object.entries(summary.personalData).map(([key, value]) => {
-                if (!value) return null
-                const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-                return (
-                  <div key={key}>
-                    <span className="text-muted-foreground text-xs">{label}</span>
-                    <div className="font-medium">{String(value)}</div>
-                  </div>
-                )
-              })}
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4 text-primary" />
+              <span>{paymentResult.appointmentTime}</span>
             </div>
           </div>
-
-          {/* Documents */}
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
-              {t.documents} ({summary.documentsUploaded.length})
-            </div>
-            <div className="divide-y">
-              {summary.documentsUploaded.map((doc) => (
-                <div key={doc.documentCode} className="flex items-center justify-between px-4 py-2 text-sm">
-                  <span>{doc.documentName}</span>
-                  <Badge variant="outline" className={
-                    doc.isValidated
-                      ? 'text-green-600 border-green-300'
-                      : 'text-amber-600 border-amber-300'
-                  }>
-                    {doc.isValidated
-                      ? (locale === 'es' ? 'Verificado' : locale === 'fr' ? 'Verifie' : 'Verified')
-                      : (locale === 'es' ? 'Pendiente' : locale === 'fr' ? 'En attente' : 'Pending')
-                    }
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tariff breakdown */}
-          {summary.tariffSummary && (
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
-                {t.tariff}
-              </div>
-              <div className="p-4 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>{t.baseTariff}</span>
-                  <span>{summary.tariffSummary.baseAmount.toLocaleString()} {summary.tariffSummary.currency}</span>
-                </div>
-                {summary.tariffSummary.supplements.map((s, i) => (
-                  <div key={i} className="flex justify-between text-muted-foreground">
-                    <span>{s.name}</span>
-                    <span>{s.amount.toLocaleString()} {summary.tariffSummary!.currency}</span>
-                  </div>
-                ))}
-                <hr />
-                <div className="flex justify-between font-bold">
-                  <span>{t.total}</span>
-                  <span>{summary.tariffSummary.total.toLocaleString()} {summary.tariffSummary.currency}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Appointment */}
-          {paymentResult?.appointmentConfirmed && (
-            <div className="border-2 border-primary rounded-lg p-4 bg-primary/5">
-              <h4 className="font-semibold text-sm mb-2">{t.appointment}</h4>
-              <div className="flex gap-4 text-sm">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <span>{paymentResult.appointmentDate}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span>{paymentResult.appointmentTime}</span>
-                </div>
-              </div>
-              {paymentResult.appointmentLocation && (
-                <p className="text-sm text-muted-foreground mt-1">{paymentResult.appointmentLocation}</p>
-              )}
-            </div>
+          {paymentResult.appointmentLocation && (
+            <p className="text-sm text-muted-foreground mt-1">{paymentResult.appointmentLocation}</p>
           )}
         </div>
       )}
 
-      {/* Summary fetch error (non-blocking: show basic info from paymentResult) */}
-      {summaryError && !summary && (
-        <Alert variant="default" className="max-w-md mx-auto">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="text-xs">
-            {summaryError}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Next steps */}
-      <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
-        <h4 className="font-semibold text-sm mb-1">{t.nextSteps}</h4>
-        <p className="text-sm text-muted-foreground">
-          {isPendingValidation ? t.nextStepsPending : t.nextStepsConfirmed}
-        </p>
-      </div>
-
-      {/* Action buttons */}
+      {/* Action buttons — prominent position */}
       <div className="flex flex-col items-center gap-3">
         <div className="flex gap-3">
           <Button
@@ -2051,7 +1963,121 @@ function ConfirmationStepContent({
             {t.print}
           </Button>
         </div>
+      </div>
 
+      {/* Next steps */}
+      <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
+        <h4 className="font-semibold text-sm mb-1">{t.nextSteps}</h4>
+        <p className="text-sm text-muted-foreground">
+          {isPendingValidation ? t.nextStepsPending : t.nextStepsConfirmed}
+        </p>
+      </div>
+
+      {/* ============================================================
+          COLLAPSIBLE — Summary details (closed by default)
+          ============================================================ */}
+      {summaryLoading && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">{t.loading}</span>
+        </div>
+      )}
+
+      {summary && (
+        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen} className="max-w-lg mx-auto">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between px-4 py-3 h-auto">
+              <span className="text-sm font-medium">
+                {detailsOpen ? t.hideDetails : t.showDetails}
+              </span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${detailsOpen ? 'rotate-180' : ''}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 mt-2">
+            {/* Personal Data */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
+                {t.personalData}
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                {Object.entries(summary.personalData).map(([key, value]) => {
+                  if (!value) return null
+                  const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                  return (
+                    <div key={key}>
+                      <span className="text-muted-foreground text-xs">{label}</span>
+                      <div className="font-medium">{String(value)}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Documents */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
+                {t.documents} ({summary.documentsUploaded.length})
+              </div>
+              <div className="divide-y">
+                {summary.documentsUploaded.map((doc) => (
+                  <div key={doc.documentCode} className="flex items-center justify-between px-4 py-2 text-sm">
+                    <span>{doc.documentName}</span>
+                    <Badge variant="outline" className={
+                      doc.isValidated
+                        ? 'text-green-600 border-green-300'
+                        : 'text-amber-600 border-amber-300'
+                    }>
+                      {doc.isValidated
+                        ? (locale === 'es' ? 'Verificado' : locale === 'fr' ? 'Verifie' : 'Verified')
+                        : (locale === 'es' ? 'Pendiente' : locale === 'fr' ? 'En attente' : 'Pending')
+                      }
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tariff breakdown */}
+            {summary.tariffSummary && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
+                  {t.tariff}
+                </div>
+                <div className="p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>{t.baseTariff}</span>
+                    <span>{summary.tariffSummary.baseAmount.toLocaleString()} {summary.tariffSummary.currency}</span>
+                  </div>
+                  {summary.tariffSummary.supplements.map((s, i) => (
+                    <div key={i} className="flex justify-between text-muted-foreground">
+                      <span>{s.name}</span>
+                      <span>{s.amount.toLocaleString()} {summary.tariffSummary!.currency}</span>
+                    </div>
+                  ))}
+                  <hr />
+                  <div className="flex justify-between font-bold">
+                    <span>{t.total}</span>
+                    <span>{summary.tariffSummary.total.toLocaleString()} {summary.tariffSummary.currency}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Summary fetch error */}
+      {summaryError && !summary && (
+        <Alert variant="default" className="max-w-md mx-auto">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            {summaryError}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Navigation buttons */}
+      <div className="flex flex-col items-center gap-3">
         <Button
           size="lg"
           onClick={onNavigateToRequest}

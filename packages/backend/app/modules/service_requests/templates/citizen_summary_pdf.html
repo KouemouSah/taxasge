@@ -12,7 +12,6 @@
         * {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
@@ -23,57 +22,63 @@
         }
 
         /* ================================================================
-           HEADER - Logo + Title + Reference
+           UTILITY
            ================================================================ */
-        .header {
-            display: table;
+        .no-break {
+            page-break-inside: avoid;
+        }
+
+        /* ================================================================
+           HEADER TABLE
+           ================================================================ */
+        .header-table {
             width: 100%;
+            border-collapse: collapse;
             border-bottom: 3px solid #2563eb;
-            padding-bottom: 12px;
+            padding-bottom: 10px;
             margin-bottom: 15px;
         }
 
-        .header-left {
-            display: table-cell;
+        .header-table td {
             vertical-align: middle;
+            padding-bottom: 10px;
+        }
+
+        .logo-cell {
             width: 70px;
         }
 
-        .logo {
-            width: 60px;
-            height: 60px;
+        .logo-box {
+            width: 55px;
+            height: 55px;
             background: #2563eb;
-            border-radius: 10px;
+            border-radius: 8px;
             color: white;
             font-weight: bold;
             font-size: 14pt;
             text-align: center;
-            line-height: 60px;
+            line-height: 55px;
         }
 
-        .header-center {
-            display: table-cell;
-            vertical-align: middle;
-            padding-left: 15px;
+        .title-cell {
+            padding-left: 12px;
         }
 
         .platform-name {
             font-size: 16pt;
             font-weight: bold;
             color: #1e40af;
-            margin-bottom: 2px;
         }
 
         .platform-subtitle {
             font-size: 8pt;
             color: #666;
+            margin-top: 2px;
         }
 
-        .header-right {
-            display: table-cell;
-            vertical-align: middle;
+        .ref-cell {
+            width: 170px;
             text-align: right;
-            width: 180px;
         }
 
         .reference-number {
@@ -83,7 +88,7 @@
         }
 
         .reference-date {
-            font-size: 9pt;
+            font-size: 8pt;
             color: #666;
             margin-top: 2px;
         }
@@ -94,7 +99,6 @@
         .document-title {
             background: #f3f4f6;
             padding: 10px 15px;
-            border-radius: 6px;
             margin-bottom: 15px;
         }
 
@@ -111,45 +115,42 @@
         }
 
         /* ================================================================
-           SECTIONS
+           SECTION STYLE
            ================================================================ */
-        .section {
-            margin-bottom: 15px;
-        }
-
         .section-header {
             background: #2563eb;
             color: white;
             padding: 6px 12px;
             font-weight: bold;
             font-size: 10pt;
-            border-radius: 4px 4px 0 0;
         }
 
-        .section-content {
+        .section-border {
             border: 1px solid #e5e7eb;
             border-top: none;
-            padding: 12px;
-            border-radius: 0 0 4px 4px;
+            padding: 10px 12px;
+            margin-bottom: 15px;
         }
 
         /* ================================================================
-           DATA TABLE - Two columns layout
+           PERSONAL DATA - 2 columns via table
            ================================================================ */
-        .two-columns {
-            display: table;
+        .personal-data-table {
             width: 100%;
+            border-collapse: collapse;
         }
 
-        .column {
-            display: table-cell;
+        .personal-data-table td {
             width: 50%;
             vertical-align: top;
+            padding: 0;
+        }
+
+        .personal-data-table td:first-child {
             padding-right: 10px;
         }
 
-        .column:last-child {
-            padding-right: 0;
+        .personal-data-table td:last-child {
             padding-left: 10px;
         }
 
@@ -159,22 +160,22 @@
         }
 
         .data-table td {
-            padding: 4px 6px;
-            vertical-align: top;
+            padding: 3px 4px;
             font-size: 9pt;
+            vertical-align: top;
         }
 
-        .data-table .label {
-            width: 40%;
+        .data-label {
+            width: 42%;
             color: #6b7280;
         }
 
-        .data-table .value {
+        .data-value {
             font-weight: 500;
         }
 
         /* ================================================================
-           DOCUMENTS LIST
+           DOCUMENTS TABLE
            ================================================================ */
         .documents-table {
             width: 100%;
@@ -182,7 +183,7 @@
         }
 
         .documents-table td {
-            padding: 6px 8px;
+            padding: 5px 6px;
             border-bottom: 1px solid #e5e7eb;
             font-size: 9pt;
             vertical-align: middle;
@@ -192,43 +193,53 @@
             border-bottom: none;
         }
 
-        .doc-name-cell {
-            width: 60%;
+        .doc-name {
+            width: 58%;
         }
 
-        .doc-status-cell {
-            width: 25%;
+        .doc-status {
+            width: 27%;
             text-align: right;
         }
 
-        .doc-confidence-cell {
+        .doc-confidence {
             width: 15%;
             text-align: right;
-            color: #666;
+            color: #888;
             font-size: 8pt;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 10px;
+        .badge {
+            padding: 2px 8px;
+            border-radius: 8px;
             font-size: 8pt;
             font-weight: 500;
         }
 
-        .status-verified {
+        .badge-verified {
             background: #d1fae5;
             color: #065f46;
         }
 
-        .status-pending {
+        .badge-pending {
             background: #fef3c7;
             color: #b45309;
         }
 
-        .status-error {
+        .badge-error {
             background: #fee2e2;
             color: #991b1b;
+        }
+
+        /* ================================================================
+           WARNING BOX
+           ================================================================ */
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 6px 10px;
+            margin-top: 8px;
+            font-size: 9pt;
         }
 
         /* ================================================================
@@ -239,110 +250,98 @@
             border-collapse: collapse;
         }
 
-        .tariff-table th,
-        .tariff-table td {
-            padding: 6px 10px;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 9pt;
-        }
-
         .tariff-table th {
-            background: #f9fafb;
-            font-weight: 600;
+            background: #f3f4f6;
+            padding: 5px 8px;
+            text-align: left;
             font-size: 9pt;
+            font-weight: 600;
+            border-bottom: 1px solid #e5e7eb;
         }
 
-        .tariff-table .amount {
+        .tariff-table th.amount-col {
+            text-align: right;
+        }
+
+        .tariff-table td {
+            padding: 5px 8px;
+            font-size: 9pt;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .tariff-amount {
             text-align: right;
             font-family: 'Courier New', monospace;
         }
 
-        .tariff-table .total-row {
+        .tariff-total td {
+            border-top: 2px solid #2563eb;
             font-weight: bold;
+            font-size: 10pt;
             background: #f3f4f6;
         }
 
-        .tariff-table .total-row td {
-            border-top: 2px solid #2563eb;
-            font-size: 10pt;
+        /* ================================================================
+           APPOINTMENT + PAYMENT ROW
+           ================================================================ */
+        .bottom-row-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
         }
 
-        /* ================================================================
-           APPOINTMENT + PAYMENT ROW (70% / 30%)
-           ================================================================ */
-        .appointment-payment-row {
-            display: table;
-            width: 100%;
-            margin-bottom: 12px;
+        .bottom-row-table td {
+            vertical-align: top;
+            padding: 0;
         }
 
         .appointment-cell {
-            display: table-cell;
             width: 68%;
-            vertical-align: top;
             padding-right: 10px;
         }
 
         .payment-cell {
-            display: table-cell;
             width: 32%;
-            vertical-align: top;
         }
 
         .appointment-box {
             background: #eff6ff;
             border: 1px solid #bfdbfe;
-            border-radius: 6px;
             padding: 10px;
         }
 
         .appointment-title {
             font-weight: bold;
             color: #1e40af;
-            font-size: 9pt;
-            margin-bottom: 6px;
-        }
-
-        .appointment-details {
-            display: table;
-            width: 100%;
-        }
-
-        .appointment-item {
-            display: table-row;
-        }
-
-        .appointment-icon {
-            display: table-cell;
-            width: 22px;
             font-size: 10pt;
-            padding: 2px 0;
-            vertical-align: middle;
+            margin-bottom: 8px;
         }
 
-        .appointment-label {
-            display: table-cell;
-            font-size: 8pt;
-            color: #6b7280;
-            width: 55px;
-            padding: 2px 0;
-            vertical-align: middle;
+        .appointment-detail-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .appointment-value {
-            display: table-cell;
-            font-weight: bold;
+        .appointment-detail-table td {
+            padding: 2px 4px;
             font-size: 9pt;
-            color: #1e40af;
-            padding: 2px 0;
             vertical-align: middle;
+        }
+
+        .appt-label {
+            width: 55px;
+            color: #6b7280;
+            font-size: 8pt;
+        }
+
+        .appt-value {
+            font-weight: bold;
+            color: #1e40af;
         }
 
         .no-appointment-box {
             background: #f3f4f6;
             border: 1px solid #e5e7eb;
-            border-radius: 6px;
             padding: 10px;
         }
 
@@ -350,139 +349,115 @@
             font-weight: bold;
             color: #6b7280;
             font-size: 9pt;
-            margin-bottom: 4px;
         }
 
         .no-appointment-text {
             font-size: 8pt;
             color: #9ca3af;
+            margin-top: 4px;
         }
 
-        /* ================================================================
-           PAYMENT BOX
-           ================================================================ */
         .payment-box {
             background: #d1fae5;
             border: 1px solid #6ee7b7;
-            border-radius: 6px;
-            padding: 10px;
+            padding: 12px 8px;
             text-align: center;
-        }
-
-        .payment-icon {
-            font-size: 18pt;
-            color: #059669;
-            margin-bottom: 2px;
+            height: 100%;
         }
 
         .payment-amount {
-            font-size: 14pt;
+            font-size: 16pt;
             font-weight: bold;
             color: #065f46;
+            margin-top: 4px;
         }
 
         .payment-currency {
-            font-size: 8pt;
+            font-size: 9pt;
             color: #065f46;
             font-weight: normal;
         }
 
         .payment-label {
-            font-size: 7pt;
+            font-size: 8pt;
             color: #047857;
-            margin-top: 3px;
+            margin-top: 4px;
         }
 
         /* ================================================================
-           WARNING BOX
+           FOOTER TABLE
            ================================================================ */
-        .warning-box {
-            background: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 8px 12px;
-            margin-top: 10px;
-            font-size: 9pt;
-        }
-
-        /* ================================================================
-           FOOTER
-           ================================================================ */
-        .footer {
-            margin-top: 20px;
-            padding-top: 12px;
-            border-top: 1px solid #e5e7eb;
-            display: table;
+        .footer-table {
             width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-top: 1px solid #e5e7eb;
         }
 
-        .footer-left {
-            display: table-cell;
+        .footer-table td {
             vertical-align: bottom;
+            padding-top: 10px;
+        }
+
+        .footer-text-cell {
             width: 75%;
         }
 
-        .footer-right {
-            display: table-cell;
-            vertical-align: bottom;
+        .footer-qr-cell {
+            width: 25%;
             text-align: right;
         }
 
         .footer-text {
             font-size: 8pt;
             color: #6b7280;
-            line-height: 1.5;
+            line-height: 1.6;
         }
 
-        .verify-url {
+        .footer-verify {
             font-size: 8pt;
             color: #2563eb;
             font-weight: 500;
         }
 
-        .generated-date {
+        .footer-date {
             font-size: 7pt;
             color: #9ca3af;
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
         .qr-box {
-            width: 70px;
-            height: 70px;
+            width: 65px;
+            height: 65px;
             border: 1px solid #e5e7eb;
             background: #f9fafb;
-            display: inline-block;
-        }
-
-        .qr-box img {
-            width: 100%;
-            height: 100%;
-        }
-
-        .qr-placeholder-text {
+            text-align: center;
             font-size: 7pt;
             color: #9ca3af;
-            text-align: center;
-            padding-top: 25px;
+            line-height: 65px;
         }
     </style>
 </head>
 <body>
+
     <!-- ================================================================
          HEADER
          ================================================================ -->
-    <div class="header">
-        <div class="header-left">
-            <div class="logo">GE</div>
-        </div>
-        <div class="header-center">
-            <div class="platform-name">Facil</div>
-            <div class="platform-subtitle">{{ texts.platform_subtitle }}</div>
-        </div>
-        <div class="header-right">
-            <div class="reference-number">{{ request_number }}</div>
-            <div class="reference-date">{{ generated_at }}</div>
-        </div>
-    </div>
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                <div class="logo-box">GE</div>
+            </td>
+            <td class="title-cell">
+                <div class="platform-name">Facil</div>
+                <div class="platform-subtitle">{{ texts.platform_subtitle }}</div>
+            </td>
+            <td class="ref-cell">
+                <div class="reference-number">{{ request_number }}</div>
+                <div class="reference-date">{{ generated_at }}</div>
+            </td>
+        </tr>
+    </table>
 
     <!-- ================================================================
          DOCUMENT TITLE
@@ -493,70 +468,72 @@
     </div>
 
     <!-- ================================================================
-         PERSONAL DATA SECTION
+         PERSONAL DATA - 2 columns
          ================================================================ -->
-    <div class="section">
+    <div class="no-break">
         <div class="section-header">{{ texts.personal_data }}</div>
-        <div class="section-content">
-            <div class="two-columns">
-                <div class="column">
-                    <table class="data-table">
-                        <tr>
-                            <td class="label">{{ texts.full_name }}</td>
-                            <td class="value">{{ personal_data.nombres }} {{ personal_data.apellidos }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">{{ texts.dip_number }}</td>
-                            <td class="value">{{ personal_data.numero_dip or '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">{{ texts.birth_date }}</td>
-                            <td class="value">{{ personal_data.fecha_nacimiento or '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">{{ texts.nationality }}</td>
-                            <td class="value">{{ personal_data.nacionalidad or '-' }}</td>
-                        </tr>
-                    </table>
-                </div>
-                <div class="column">
-                    <table class="data-table">
-                        <tr>
-                            <td class="label">{{ texts.birth_place }}</td>
-                            <td class="value">{{ personal_data.lugar_nacimiento or '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">{{ texts.address }}</td>
-                            <td class="value">{{ personal_data.domicilio or '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">{{ texts.profession }}</td>
-                            <td class="value">{{ personal_data.profesion or '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="label">{{ texts.marital_status }}</td>
-                            <td class="value">{{ personal_data.estado_civil or '-' }}</td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
+        <div class="section-border">
+            <table class="personal-data-table">
+                <tr>
+                    <td>
+                        <table class="data-table">
+                            <tr>
+                                <td class="data-label">{{ texts.full_name }}</td>
+                                <td class="data-value">{{ personal_data.nombres }} {{ personal_data.apellidos }}</td>
+                            </tr>
+                            <tr>
+                                <td class="data-label">{{ texts.dip_number }}</td>
+                                <td class="data-value">{{ personal_data.numero_dip or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="data-label">{{ texts.birth_date }}</td>
+                                <td class="data-value">{{ personal_data.fecha_nacimiento or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="data-label">{{ texts.nationality }}</td>
+                                <td class="data-value">{{ personal_data.nacionalidad or '-' }}</td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td>
+                        <table class="data-table">
+                            <tr>
+                                <td class="data-label">{{ texts.birth_place }}</td>
+                                <td class="data-value">{{ personal_data.lugar_nacimiento or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="data-label">{{ texts.address }}</td>
+                                <td class="data-value">{{ personal_data.domicilio or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="data-label">{{ texts.profession }}</td>
+                                <td class="data-value">{{ personal_data.profesion or '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="data-label">{{ texts.marital_status }}</td>
+                                <td class="data-value">{{ personal_data.estado_civil or '-' }}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 
     <!-- ================================================================
-         DOCUMENTS SECTION
+         DOCUMENTS
          ================================================================ -->
-    <div class="section">
+    <div class="no-break">
         <div class="section-header">{{ texts.uploaded_documents }} ({{ documents|length }})</div>
-        <div class="section-content">
+        <div class="section-border">
             <table class="documents-table">
                 {% for doc in documents %}
                 <tr>
-                    <td class="doc-name-cell">{{ doc.name }}</td>
-                    <td class="doc-status-cell">
-                        <span class="status-badge {{ doc.status_class }}">{{ doc.status_label }}</span>
+                    <td class="doc-name">{{ doc.name }}</td>
+                    <td class="doc-status">
+                        <span class="badge {% if doc.status_class == 'status-verified' %}badge-verified{% elif doc.status_class == 'status-error' %}badge-error{% else %}badge-pending{% endif %}">{{ doc.status_label }}</span>
                     </td>
-                    <td class="doc-confidence-cell">
+                    <td class="doc-confidence">
                         {% if doc.confidence %}{{ doc.confidence }}%{% endif %}
                     </td>
                 </tr>
@@ -572,101 +549,93 @@
     </div>
 
     <!-- ================================================================
-         TARIFF SECTION
+         TARIFF
          ================================================================ -->
-    <div class="section">
+    <div class="no-break">
         <div class="section-header">{{ texts.payment_breakdown }}</div>
-        <div class="section-content">
+        <div class="section-border">
             <table class="tariff-table">
-                <thead>
-                    <tr>
-                        <th>{{ texts.concept }}</th>
-                        <th class="amount">{{ texts.amount }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{{ texts.base_tariff }}</td>
-                        <td class="amount">{{ tariff.base_amount }} XAF</td>
-                    </tr>
-                    {% for fee in tariff.additional_fees %}
-                    <tr>
-                        <td>{{ fee.name }}</td>
-                        <td class="amount">{{ fee.amount }} XAF</td>
-                    </tr>
-                    {% endfor %}
-                    <tr class="total-row">
-                        <td>{{ texts.total }}</td>
-                        <td class="amount">{{ tariff.total_amount }} XAF</td>
-                    </tr>
-                </tbody>
+                <tr>
+                    <th>{{ texts.concept }}</th>
+                    <th class="amount-col">{{ texts.amount }}</th>
+                </tr>
+                <tr>
+                    <td>{{ texts.base_tariff }}</td>
+                    <td class="tariff-amount">{{ tariff.base_amount }} XAF</td>
+                </tr>
+                {% for fee in tariff.additional_fees %}
+                <tr>
+                    <td>{{ fee.name }}</td>
+                    <td class="tariff-amount">{{ fee.amount }} XAF</td>
+                </tr>
+                {% endfor %}
+                <tr class="tariff-total">
+                    <td>{{ texts.total }}</td>
+                    <td class="tariff-amount">{{ tariff.total_amount }} XAF</td>
+                </tr>
             </table>
         </div>
     </div>
 
     <!-- ================================================================
-         APPOINTMENT + PAYMENT ROW (70% / 30%)
+         APPOINTMENT + PAYMENT ROW
          ================================================================ -->
-    <div class="appointment-payment-row">
-        <!-- Appointment Section (68%) -->
-        <div class="appointment-cell">
-            {% if appointment %}
-            <div class="appointment-box">
-                <div class="appointment-title">{{ texts.scheduled_appointment }}</div>
-                <div class="appointment-details">
-                    <div class="appointment-item">
-                        <span class="appointment-icon">&#128197;</span>
-                        <span class="appointment-label">{{ texts.date }}:</span>
-                        <span class="appointment-value">{{ appointment.date }}</span>
+    <div class="no-break">
+        <table class="bottom-row-table">
+            <tr>
+                <td class="appointment-cell">
+                    {% if appointment %}
+                    <div class="appointment-box">
+                        <div class="appointment-title">{{ texts.scheduled_appointment }}</div>
+                        <table class="appointment-detail-table">
+                            <tr>
+                                <td class="appt-label">{{ texts.date }}:</td>
+                                <td class="appt-value">{{ appointment.date }}</td>
+                            </tr>
+                            <tr>
+                                <td class="appt-label">{{ texts.time }}:</td>
+                                <td class="appt-value">{{ appointment.time }}</td>
+                            </tr>
+                            <tr>
+                                <td class="appt-label">{{ texts.location }}:</td>
+                                <td class="appt-value">{{ appointment.location }}</td>
+                            </tr>
+                        </table>
                     </div>
-                    <div class="appointment-item">
-                        <span class="appointment-icon">&#128337;</span>
-                        <span class="appointment-label">{{ texts.time }}:</span>
-                        <span class="appointment-value">{{ appointment.time }}</span>
+                    {% else %}
+                    <div class="no-appointment-box">
+                        <div class="no-appointment-title">{{ texts.scheduled_appointment }}</div>
+                        <div class="no-appointment-text">{{ texts.no_appointment }}</div>
                     </div>
-                    <div class="appointment-item">
-                        <span class="appointment-icon">&#128205;</span>
-                        <span class="appointment-label">{{ texts.location }}:</span>
-                        <span class="appointment-value">{{ appointment.location }}</span>
+                    {% endif %}
+                </td>
+                <td class="payment-cell">
+                    <div class="payment-box">
+                        <div class="payment-amount">{{ tariff.total_amount }} <span class="payment-currency">XAF</span></div>
+                        <div class="payment-label">{{ texts.payment_confirmed }}</div>
                     </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="no-appointment-box">
-                <div class="no-appointment-title">{{ texts.scheduled_appointment }}</div>
-                <div class="no-appointment-text">{{ texts.no_appointment }}</div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Payment Section (32%) -->
-        <div class="payment-cell">
-            <div class="payment-box">
-                <div class="payment-icon">&#128176;</div>
-                <div class="payment-amount">{{ tariff.total_amount }} <span class="payment-currency">XAF</span></div>
-                <div class="payment-label">{{ texts.payment_confirmed }}</div>
-            </div>
-        </div>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <!-- ================================================================
          FOOTER
          ================================================================ -->
-    <div class="footer">
-        <div class="footer-left">
-            <div class="footer-text">
-                <strong>{{ texts.reference }}:</strong> {{ request_number }}<br/>
-                {{ texts.generated_on }}: {{ generated_at }}
-            </div>
-            <div class="generated-date">
-                {{ texts.verification_url }}
-            </div>
-        </div>
-        <div class="footer-right">
-            <div class="qr-box">
-                <div class="qr-placeholder-text">QR<br/>Code</div>
-            </div>
-        </div>
-    </div>
+    <table class="footer-table">
+        <tr>
+            <td class="footer-text-cell">
+                <div class="footer-text">
+                    <strong>{{ texts.reference }}:</strong> {{ request_number }}<br/>
+                    {{ texts.generated_on }}: {{ generated_at }}
+                </div>
+                <div class="footer-verify">{{ texts.verification_url }}</div>
+            </td>
+            <td class="footer-qr-cell">
+                <div class="qr-box">QR Code</div>
+            </td>
+        </tr>
+    </table>
+
 </body>
 </html>
