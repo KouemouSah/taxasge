@@ -63,7 +63,6 @@ import {
   usePrefetchSessionFormConfig,
   validateFormConfig,
   ExtractionStatus,
-  serviceRequestsApi,
 } from '@/modules/service-requests'
 import type {
   DocumentRequirement,
