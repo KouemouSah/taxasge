@@ -71,6 +71,11 @@ class SummaryPDFService:
             "status_verified": "Verificado",
             "status_pending": "Pendiente",
             "status_error": "Error",
+            "date": "Fecha",
+            "time": "Hora",
+            "location": "Ubicacion",
+            "no_appointment": "Sin cita programada",
+            "payment_confirmed": "Pago registrado",
         },
         "fr": {
             "platform_subtitle": "Plateforme de Services Fiscaux - Guinee Equatoriale",
@@ -101,6 +106,11 @@ class SummaryPDFService:
             "status_verified": "Verifie",
             "status_pending": "En attente",
             "status_error": "Erreur",
+            "date": "Date",
+            "time": "Heure",
+            "location": "Lieu",
+            "no_appointment": "Sans rendez-vous programme",
+            "payment_confirmed": "Paiement enregistre",
         },
         "en": {
             "platform_subtitle": "Fiscal Services Platform - Equatorial Guinea",
@@ -131,6 +141,11 @@ class SummaryPDFService:
             "status_verified": "Verified",
             "status_pending": "Pending",
             "status_error": "Error",
+            "date": "Date",
+            "time": "Time",
+            "location": "Location",
+            "no_appointment": "No appointment scheduled",
+            "payment_confirmed": "Payment registered",
         },
     }
 

@@ -6,61 +6,74 @@
     <style>
         @page {
             size: A4;
-            margin: 2cm;
+            margin: 1.5cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 11pt;
+            font-size: 10pt;
             line-height: 1.4;
-            color: #333;
-            margin: 0;
-            padding: 0;
+            color: #1a1a1a;
         }
 
-        /* Header */
+        /* ================================================================
+           HEADER - Logo + Title + Reference
+           ================================================================ */
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            display: table;
+            width: 100%;
             border-bottom: 3px solid #2563eb;
-            padding-bottom: 15px;
-            margin-bottom: 25px;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
         }
 
         .header-left {
-            display: flex;
-            align-items: center;
+            display: table-cell;
+            vertical-align: middle;
+            width: 70px;
         }
 
-        .logo-placeholder {
+        .logo {
             width: 60px;
             height: 60px;
-            background: linear-gradient(135deg, #2563eb, #1e40af);
+            background: #2563eb;
             border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             color: white;
             font-weight: bold;
             font-size: 14pt;
-            margin-right: 15px;
+            text-align: center;
+            line-height: 60px;
         }
 
-        .header-title h1 {
-            margin: 0;
+        .header-center {
+            display: table-cell;
+            vertical-align: middle;
+            padding-left: 15px;
+        }
+
+        .platform-name {
             font-size: 16pt;
+            font-weight: bold;
             color: #1e40af;
+            margin-bottom: 2px;
         }
 
-        .header-title p {
-            margin: 3px 0 0 0;
-            font-size: 9pt;
+        .platform-subtitle {
+            font-size: 8pt;
             color: #666;
         }
 
         .header-right {
+            display: table-cell;
+            vertical-align: middle;
             text-align: right;
+            width: 180px;
         }
 
         .reference-number {
@@ -72,107 +85,134 @@
         .reference-date {
             font-size: 9pt;
             color: #666;
+            margin-top: 2px;
         }
 
-        /* Document Title */
+        /* ================================================================
+           DOCUMENT TITLE BOX
+           ================================================================ */
         .document-title {
             background: #f3f4f6;
-            padding: 12px 15px;
+            padding: 10px 15px;
             border-radius: 6px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .document-title h2 {
             margin: 0;
-            font-size: 14pt;
+            font-size: 13pt;
             color: #333;
         }
 
-        .document-title .workflow-name {
-            font-size: 10pt;
+        .workflow-name {
+            font-size: 9pt;
             color: #666;
             margin-top: 3px;
         }
 
-        /* Section */
+        /* ================================================================
+           SECTIONS
+           ================================================================ */
         .section {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .section-header {
             background: #2563eb;
             color: white;
-            padding: 8px 12px;
+            padding: 6px 12px;
             font-weight: bold;
-            font-size: 11pt;
+            font-size: 10pt;
             border-radius: 4px 4px 0 0;
         }
 
         .section-content {
             border: 1px solid #e5e7eb;
             border-top: none;
-            padding: 15px;
+            padding: 12px;
             border-radius: 0 0 4px 4px;
         }
 
-        /* Data Table */
+        /* ================================================================
+           DATA TABLE - Two columns layout
+           ================================================================ */
+        .two-columns {
+            display: table;
+            width: 100%;
+        }
+
+        .column {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            padding-right: 10px;
+        }
+
+        .column:last-child {
+            padding-right: 0;
+            padding-left: 10px;
+        }
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
         }
 
         .data-table td {
-            padding: 6px 8px;
+            padding: 4px 6px;
             vertical-align: top;
+            font-size: 9pt;
         }
 
         .data-table .label {
-            width: 35%;
-            color: #666;
-            font-size: 10pt;
+            width: 40%;
+            color: #6b7280;
         }
 
         .data-table .value {
             font-weight: 500;
         }
 
-        /* Two columns layout */
-        .two-columns {
-            display: flex;
-            gap: 20px;
+        /* ================================================================
+           DOCUMENTS LIST
+           ================================================================ */
+        .documents-table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .column {
-            flex: 1;
-        }
-
-        /* Documents List */
-        .document-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .document-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 10px;
+        .documents-table td {
+            padding: 6px 8px;
             border-bottom: 1px solid #e5e7eb;
+            font-size: 9pt;
+            vertical-align: middle;
         }
 
-        .document-item:last-child {
+        .documents-table tr:last-child td {
             border-bottom: none;
         }
 
-        .document-name {
-            flex: 1;
+        .doc-name-cell {
+            width: 60%;
         }
 
-        .document-status {
-            padding: 3px 10px;
+        .doc-status-cell {
+            width: 25%;
+            text-align: right;
+        }
+
+        .doc-confidence-cell {
+            width: 15%;
+            text-align: right;
+            color: #666;
+            font-size: 8pt;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
             border-radius: 10px;
-            font-size: 9pt;
+            font-size: 8pt;
             font-weight: 500;
         }
 
@@ -191,30 +231,26 @@
             color: #991b1b;
         }
 
-        .confidence {
-            font-size: 9pt;
-            color: #666;
-            margin-left: 10px;
-        }
-
-        /* Tariff Table */
+        /* ================================================================
+           TARIFF TABLE
+           ================================================================ */
         .tariff-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
         }
 
         .tariff-table th,
         .tariff-table td {
-            padding: 8px 10px;
+            padding: 6px 10px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
+            font-size: 9pt;
         }
 
         .tariff-table th {
             background: #f9fafb;
             font-weight: 600;
-            font-size: 10pt;
+            font-size: 9pt;
         }
 
         .tariff-table .amount {
@@ -229,108 +265,218 @@
 
         .tariff-table .total-row td {
             border-top: 2px solid #2563eb;
+            font-size: 10pt;
         }
 
-        /* Appointment Box */
+        /* ================================================================
+           APPOINTMENT + PAYMENT ROW (70% / 30%)
+           ================================================================ */
+        .appointment-payment-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .appointment-cell {
+            display: table-cell;
+            width: 68%;
+            vertical-align: top;
+            padding-right: 10px;
+        }
+
+        .payment-cell {
+            display: table-cell;
+            width: 32%;
+            vertical-align: top;
+        }
+
         .appointment-box {
             background: #eff6ff;
-            border: 2px solid #2563eb;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 15px;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 10px;
         }
 
-        .appointment-box h4 {
-            margin: 0 0 10px 0;
+        .appointment-title {
+            font-weight: bold;
             color: #1e40af;
+            font-size: 9pt;
+            margin-bottom: 6px;
         }
 
         .appointment-details {
-            display: flex;
-            gap: 30px;
+            display: table;
+            width: 100%;
         }
 
-        .appointment-details .item {
-            display: flex;
-            align-items: center;
+        .appointment-item {
+            display: table-row;
         }
 
-        .appointment-details .icon {
-            width: 20px;
-            margin-right: 8px;
-            color: #2563eb;
+        .appointment-icon {
+            display: table-cell;
+            width: 22px;
+            font-size: 10pt;
+            padding: 2px 0;
+            vertical-align: middle;
         }
 
-        /* Footer */
-        .footer {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #e5e7eb;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-
-        .footer-left {
-            font-size: 9pt;
-            color: #666;
-        }
-
-        .qr-placeholder {
-            width: 80px;
-            height: 80px;
-            border: 1px dashed #ccc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .appointment-label {
+            display: table-cell;
             font-size: 8pt;
-            color: #999;
+            color: #6b7280;
+            width: 55px;
+            padding: 2px 0;
+            vertical-align: middle;
+        }
+
+        .appointment-value {
+            display: table-cell;
+            font-weight: bold;
+            font-size: 9pt;
+            color: #1e40af;
+            padding: 2px 0;
+            vertical-align: middle;
+        }
+
+        .no-appointment-box {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .no-appointment-title {
+            font-weight: bold;
+            color: #6b7280;
+            font-size: 9pt;
+            margin-bottom: 4px;
+        }
+
+        .no-appointment-text {
+            font-size: 8pt;
+            color: #9ca3af;
+        }
+
+        /* ================================================================
+           PAYMENT BOX
+           ================================================================ */
+        .payment-box {
+            background: #d1fae5;
+            border: 1px solid #6ee7b7;
+            border-radius: 6px;
+            padding: 10px;
             text-align: center;
         }
 
-        /* Warning Box */
+        .payment-icon {
+            font-size: 18pt;
+            color: #059669;
+            margin-bottom: 2px;
+        }
+
+        .payment-amount {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #065f46;
+        }
+
+        .payment-currency {
+            font-size: 8pt;
+            color: #065f46;
+            font-weight: normal;
+        }
+
+        .payment-label {
+            font-size: 7pt;
+            color: #047857;
+            margin-top: 3px;
+        }
+
+        /* ================================================================
+           WARNING BOX
+           ================================================================ */
         .warning-box {
             background: #fef3c7;
             border-left: 4px solid #f59e0b;
-            padding: 10px 15px;
-            margin-top: 15px;
-            font-size: 10pt;
+            padding: 8px 12px;
+            margin-top: 10px;
+            font-size: 9pt;
         }
 
-        /* Status Badge */
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 15px;
-            font-weight: bold;
-            font-size: 10pt;
+        /* ================================================================
+           FOOTER
+           ================================================================ */
+        .footer {
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+            display: table;
+            width: 100%;
         }
 
-        .status-draft {
-            background: #f3f4f6;
+        .footer-left {
+            display: table-cell;
+            vertical-align: bottom;
+            width: 75%;
+        }
+
+        .footer-right {
+            display: table-cell;
+            vertical-align: bottom;
+            text-align: right;
+        }
+
+        .footer-text {
+            font-size: 8pt;
             color: #6b7280;
+            line-height: 1.5;
         }
 
-        .status-submitted {
-            background: #dbeafe;
-            color: #1e40af;
+        .verify-url {
+            font-size: 8pt;
+            color: #2563eb;
+            font-weight: 500;
         }
 
-        .status-approved {
-            background: #d1fae5;
-            color: #065f46;
+        .generated-date {
+            font-size: 7pt;
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+
+        .qr-box {
+            width: 70px;
+            height: 70px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            display: inline-block;
+        }
+
+        .qr-box img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-placeholder-text {
+            font-size: 7pt;
+            color: #9ca3af;
+            text-align: center;
+            padding-top: 25px;
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
+    <!-- ================================================================
+         HEADER
+         ================================================================ -->
     <div class="header">
         <div class="header-left">
-            <div class="logo-placeholder">GE</div>
-            <div class="header-title">
-                <h1>TaxasGE</h1>
-                <p>{{ texts.platform_subtitle }}</p>
-            </div>
+            <div class="logo">GE</div>
+        </div>
+        <div class="header-center">
+            <div class="platform-name">Facil</div>
+            <div class="platform-subtitle">{{ texts.platform_subtitle }}</div>
         </div>
         <div class="header-right">
             <div class="reference-number">{{ request_number }}</div>
@@ -338,13 +484,17 @@
         </div>
     </div>
 
-    <!-- Document Title -->
+    <!-- ================================================================
+         DOCUMENT TITLE
+         ================================================================ -->
     <div class="document-title">
         <h2>{{ texts.summary_title }}</h2>
         <div class="workflow-name">{{ workflow_name }} - {{ solicitud_type_label }}</div>
     </div>
 
-    <!-- Personal Data Section -->
+    <!-- ================================================================
+         PERSONAL DATA SECTION
+         ================================================================ -->
     <div class="section">
         <div class="section-header">{{ texts.personal_data }}</div>
         <div class="section-content">
@@ -393,21 +543,25 @@
         </div>
     </div>
 
-    <!-- Documents Section -->
+    <!-- ================================================================
+         DOCUMENTS SECTION
+         ================================================================ -->
     <div class="section">
         <div class="section-header">{{ texts.uploaded_documents }} ({{ documents|length }})</div>
         <div class="section-content">
-            <ul class="document-list">
+            <table class="documents-table">
                 {% for doc in documents %}
-                <li class="document-item">
-                    <span class="document-name">{{ doc.name }}</span>
-                    <span class="document-status {{ doc.status_class }}">{{ doc.status_label }}</span>
-                    {% if doc.confidence %}
-                    <span class="confidence">{{ doc.confidence }}%</span>
-                    {% endif %}
-                </li>
+                <tr>
+                    <td class="doc-name-cell">{{ doc.name }}</td>
+                    <td class="doc-status-cell">
+                        <span class="status-badge {{ doc.status_class }}">{{ doc.status_label }}</span>
+                    </td>
+                    <td class="doc-confidence-cell">
+                        {% if doc.confidence %}{{ doc.confidence }}%{% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
-            </ul>
+            </table>
 
             {% if has_validation_errors %}
             <div class="warning-box">
@@ -417,7 +571,9 @@
         </div>
     </div>
 
-    <!-- Tariff Section -->
+    <!-- ================================================================
+         TARIFF SECTION
+         ================================================================ -->
     <div class="section">
         <div class="section-header">{{ texts.payment_breakdown }}</div>
         <div class="section-content">
@@ -448,41 +604,68 @@
         </div>
     </div>
 
-    <!-- Appointment Section (if applicable) -->
-    {% if appointment %}
-    <div class="section">
-        <div class="section-header">{{ texts.appointment }}</div>
-        <div class="section-content">
+    <!-- ================================================================
+         APPOINTMENT + PAYMENT ROW (70% / 30%)
+         ================================================================ -->
+    <div class="appointment-payment-row">
+        <!-- Appointment Section (68%) -->
+        <div class="appointment-cell">
+            {% if appointment %}
             <div class="appointment-box">
-                <h4>{{ texts.scheduled_appointment }}</h4>
+                <div class="appointment-title">{{ texts.scheduled_appointment }}</div>
                 <div class="appointment-details">
-                    <div class="item">
-                        <span class="icon">&#128197;</span>
-                        <span>{{ appointment.date }}</span>
+                    <div class="appointment-item">
+                        <span class="appointment-icon">&#128197;</span>
+                        <span class="appointment-label">{{ texts.date }}:</span>
+                        <span class="appointment-value">{{ appointment.date }}</span>
                     </div>
-                    <div class="item">
-                        <span class="icon">&#128337;</span>
-                        <span>{{ appointment.time }}</span>
+                    <div class="appointment-item">
+                        <span class="appointment-icon">&#128337;</span>
+                        <span class="appointment-label">{{ texts.time }}:</span>
+                        <span class="appointment-value">{{ appointment.time }}</span>
                     </div>
-                    <div class="item">
-                        <span class="icon">&#128205;</span>
-                        <span>{{ appointment.location }}</span>
+                    <div class="appointment-item">
+                        <span class="appointment-icon">&#128205;</span>
+                        <span class="appointment-label">{{ texts.location }}:</span>
+                        <span class="appointment-value">{{ appointment.location }}</span>
                     </div>
                 </div>
             </div>
+            {% else %}
+            <div class="no-appointment-box">
+                <div class="no-appointment-title">{{ texts.scheduled_appointment }}</div>
+                <div class="no-appointment-text">{{ texts.no_appointment }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Payment Section (32%) -->
+        <div class="payment-cell">
+            <div class="payment-box">
+                <div class="payment-icon">&#128176;</div>
+                <div class="payment-amount">{{ tariff.total_amount }} <span class="payment-currency">XAF</span></div>
+                <div class="payment-label">{{ texts.payment_confirmed }}</div>
+            </div>
         </div>
     </div>
-    {% endif %}
 
-    <!-- Footer -->
+    <!-- ================================================================
+         FOOTER
+         ================================================================ -->
     <div class="footer">
         <div class="footer-left">
-            <p><strong>{{ texts.reference }}:</strong> {{ request_number }}</p>
-            <p>{{ texts.generated_on }}: {{ generated_at }}</p>
-            <p>{{ texts.verification_url }}</p>
+            <div class="footer-text">
+                <strong>{{ texts.reference }}:</strong> {{ request_number }}<br/>
+                {{ texts.generated_on }}: {{ generated_at }}
+            </div>
+            <div class="generated-date">
+                {{ texts.verification_url }}
+            </div>
         </div>
-        <div class="qr-placeholder">
-            {{ texts.qr_code }}
+        <div class="footer-right">
+            <div class="qr-box">
+                <div class="qr-placeholder-text">QR<br/>Code</div>
+            </div>
         </div>
     </div>
 </body>

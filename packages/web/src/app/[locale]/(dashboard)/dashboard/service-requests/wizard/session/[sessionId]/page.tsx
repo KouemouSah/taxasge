@@ -1762,7 +1762,8 @@ function ConfirmationStepContent({
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Delay revoke to let browser start the download
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
     } catch (err) {
       console.error('[ConfirmationStep] PDF download error:', err)
     } finally {
