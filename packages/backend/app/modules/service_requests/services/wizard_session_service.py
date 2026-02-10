@@ -25,7 +25,7 @@ Flow:
 import base64
 import hashlib
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from uuid import UUID, uuid4
 
 from loguru import logger
@@ -1231,6 +1231,74 @@ class WizardSessionService:
             pass  # Import failure — nothing to do
 
     # =========================================================================
+    # PRIVATE: generate PDF attachment for email notification
+    # =========================================================================
+
+    async def _generate_summary_pdf_attachment(
+        self,
+        session: Dict[str, Any],
+        reference: str,
+        workflow: Any,
+        appointment_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[List[Tuple[str, bytes, str]]]:
+        """Generate citizen summary PDF for email attachment. Returns None on failure."""
+        try:
+            from .summary_pdf_service import summary_pdf_service
+
+            workflow_code = session.get("workflow_code", "")
+            workflow_name = workflow.service_name_es if workflow else workflow_code
+            form_data = session.get("form_data", {})
+
+            personal_data = {
+                k: form_data.get(k, "")
+                for k in [
+                    "nombres", "apellidos", "fecha_nacimiento", "lugar_nacimiento",
+                    "numero_dip", "nacionalidad", "sexo", "estado_civil", "profesion",
+                ]
+            }
+            documents = [
+                {
+                    "name": doc_data.get("document_name") or doc_code,
+                    "confidence": (doc_data.get("confidence") or 0) * 100,
+                    "validation_status": "verified" if doc_data.get("confirmed_at") else "pending",
+                }
+                for doc_code, doc_data in session.get("documents", {}).items()
+            ]
+            tariff = session.get("tariff", {})
+            tariff_for_pdf = {
+                "base_amount": tariff.get("base_amount", 0),
+                "additional_fees": [
+                    {"name": s.get("label_es", "Suplemento"), "amount": s.get("amount", 0)}
+                    for s in tariff.get("supplements", [])
+                ],
+                "total_amount": tariff.get("total_amount", 0),
+            }
+            appointment_for_pdf = None
+            if appointment_data:
+                appointment_for_pdf = {
+                    "date": appointment_data.get("appointment_date", "-"),
+                    "time": appointment_data.get("appointment_time", "-"),
+                    "location": appointment_data.get("location_name", "-"),
+                }
+            solicitud_type = session.get("solicitud_type", "expedicion")
+
+            pdf_bytes = await summary_pdf_service.generate_summary_pdf(
+                request_number=reference,
+                workflow_name=workflow_name,
+                solicitud_type=solicitud_type,
+                personal_data=personal_data,
+                documents=documents,
+                tariff=tariff_for_pdf,
+                appointment=appointment_for_pdf,
+                language="es",
+            )
+            logger.info(f"[WizardSession] Generated summary PDF for {reference} ({len(pdf_bytes)} bytes)")
+            return [(f"solicitud_{reference}.pdf", pdf_bytes, "application/pdf")]
+        except Exception as e:
+            logger.warning(f"[WizardSession] PDF generation failed (non-blocking): {e}")
+            return None
+
+    # =========================================================================
     # PUBLIC: persist_to_db (free services / legacy)
     # =========================================================================
 
@@ -1295,13 +1363,39 @@ class WizardSessionService:
                 f"request_id={service_request_id}, reference={reference}"
             )
 
-            # Publish event
+            # Generate PDF attachment for email notification (non-blocking)
+            workflow = workflow_engine.get_workflow_by_string(session.get("workflow_code", ""))
+            pdf_attachment = await self._generate_summary_pdf_attachment(
+                session, reference, workflow, session.get("appointment_data")
+            )
+
+            # Fetch user info for email notification
+            user_email = None
+            user_name = None
+            user_phone = None
+            try:
+                user_row = await db.fetchrow(
+                    "SELECT email, first_name, last_name, phone_number FROM users WHERE id = $1",
+                    user_id,
+                )
+                if user_row:
+                    user_email = user_row["email"]
+                    user_name = f"{user_row['first_name'] or ''} {user_row['last_name'] or ''}".strip()
+                    user_phone = user_row.get("phone_number")
+            except Exception:
+                pass  # Non-blocking
+
+            # Publish event (include user info for email notification)
             try:
                 EventBus.publish_nowait(EventType.REQUEST_SUBMITTED, {
                     "request_id": str(service_request_id),
                     "user_id": str(user_id),
+                    "user_email": user_email,
+                    "user_phone": user_phone,
+                    "user_name": user_name,
                     "workflow_code": session["workflow_code"],
                     "reference": reference,
+                    "attachments": pdf_attachment,
                 })
             except Exception:
                 pass  # Non-blocking
@@ -1523,14 +1617,23 @@ class WizardSessionService:
                 f"payment_id={payment_result.payment_id}"
             )
 
-            # Publish event
+            # Generate PDF attachment for email notification (non-blocking)
+            pdf_attachment = await self._generate_summary_pdf_attachment(
+                session, reference, workflow, appointment_data
+            )
+
+            # Publish event (include user info for email notification)
             try:
                 EventBus.publish_nowait(EventType.REQUEST_SUBMITTED, {
                     "request_id": str(service_request_id),
                     "user_id": str(user_id),
+                    "user_email": user_email,
+                    "user_phone": user_phone,
+                    "user_name": user_name,
                     "workflow_code": workflow_code,
                     "reference": reference,
                     "payment_id": payment_result.payment_id,
+                    "attachments": pdf_attachment,
                 })
             except Exception:
                 pass  # Non-blocking

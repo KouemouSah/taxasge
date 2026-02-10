@@ -47,6 +47,8 @@ import {
   Smartphone,
   Banknote,
   Clock,
+  Download,
+  Printer,
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -76,6 +78,8 @@ import type {
   InitiatePaymentResult,
 } from '@/modules/service-requests/types/wizard-session'
 import { wizardSessionApi } from '@/modules/service-requests/services/wizard-session-api'
+import { serviceRequestsApi } from '@/modules/service-requests/services/api'
+import type { CitizenSummaryResponse } from '@/modules/service-requests/types'
 
 // ============================================================================
 // WIZARD STEPS (computed from session state)
@@ -415,9 +419,10 @@ export default function SessionWizardPage() {
         return
       }
 
-      // Store the persisted request ID (for confirmation step reference)
+      // Store the persisted request ID and payment result for confirmation step
       if (result.serviceRequestId) {
         setPersistedRequestId(result.serviceRequestId)
+        setManualPaymentResult(result)
       }
 
       // 1. BANGE electronic payment - redirect to gateway
@@ -426,17 +431,15 @@ export default function SessionWizardPage() {
         return
       }
 
-      // 2. Manual payment (cash/check) - show confirmation with reference
-      //    User sees payment reference + message before proceeding to appointment or detail
-      if (result.requiresAction && result.actionType?.startsWith('agent_validation')) {
-        setManualPaymentResult(result)
-        return // Stay on payment step, render confirmation card
-      }
-
-      // 3. Payment completed (appointment already confirmed atomically if applicable)
-      //    → redirect to request detail page
-      if (result.serviceRequestId) {
-        router.push(`/${locale}/dashboard/service-requests/${result.serviceRequestId}`)
+      // 2. ALL other flows (manual + completed) → advance to confirmation step
+      const confirmIdx = steps.findIndex(s => s.type === 'confirmation')
+      if (confirmIdx >= 0) {
+        setCurrentStepIndex(confirmIdx)
+      } else {
+        // Fallback: no confirmation step → redirect to detail
+        if (result.serviceRequestId) {
+          router.push(`/${locale}/dashboard/service-requests/${result.serviceRequestId}`)
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
@@ -1061,107 +1064,9 @@ export default function SessionWizardPage() {
           )}
 
           {/* ============================================================ */}
-          {/* STEP: Payment - Manual Confirmation (cash/check)             */}
-          {/* ============================================================ */}
-          {currentStep.type === 'payment' && manualPaymentResult && (
-            <div className="space-y-6">
-              <div className="text-center space-y-4">
-                <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Clock className="h-8 w-8 text-amber-600" />
-                </div>
-                <h2 className="text-lg font-semibold">
-                  {locale === 'es'
-                    ? 'Pago registrado - Pendiente de validacion'
-                    : locale === 'fr'
-                      ? 'Paiement enregistre - En attente de validation'
-                      : 'Payment registered - Pending validation'}
-                </h2>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  {locale === 'es'
-                    ? 'Su pago ha sido registrado. Presente este comprobante en la oficina del Tesoro para su validacion por un agente.'
-                    : locale === 'fr'
-                      ? 'Votre paiement a ete enregistre. Presentez ce justificatif au bureau du Tresor pour validation par un agent.'
-                      : 'Your payment has been registered. Present this receipt at the Treasury office for validation by an agent.'}
-                </p>
-              </div>
-
-              {/* Payment details card */}
-              <div className="border rounded-lg p-4 max-w-sm mx-auto space-y-3">
-                {manualPaymentResult.reference && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {locale === 'es' ? 'Solicitud' : locale === 'fr' ? 'Demande' : 'Request'}
-                    </span>
-                    <span className="font-mono font-bold">{manualPaymentResult.reference}</span>
-                  </div>
-                )}
-                {manualPaymentResult.paymentReference && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {locale === 'es' ? 'Ref. pago' : locale === 'fr' ? 'Ref. paiement' : 'Payment ref.'}
-                    </span>
-                    <span className="font-mono font-bold">{manualPaymentResult.paymentReference}</span>
-                  </div>
-                )}
-                {paymentResult && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {locale === 'es' ? 'Monto' : locale === 'fr' ? 'Montant' : 'Amount'}
-                    </span>
-                    <span className="font-bold">
-                      {paymentResult.totalAmount.toLocaleString()} {paymentResult.currency}
-                    </span>
-                  </div>
-                )}
-                <hr />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {locale === 'es' ? 'Estado' : locale === 'fr' ? 'Statut' : 'Status'}
-                  </span>
-                  <Badge variant="outline" className="text-amber-600 border-amber-300">
-                    {locale === 'es'
-                      ? 'Pendiente validacion'
-                      : locale === 'fr'
-                        ? 'En attente de validation'
-                        : 'Pending validation'}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex flex-col items-center gap-3">
-                {manualPaymentResult.serviceRequestId && (
-                  <Button
-                    size="lg"
-                    onClick={() => router.push(`/${locale}/dashboard/service-requests/${manualPaymentResult.serviceRequestId}`)}
-                    className="min-w-[200px]"
-                  >
-                    {locale === 'es'
-                      ? 'Ver mi solicitud'
-                      : locale === 'fr'
-                        ? 'Voir ma demande'
-                        : 'View my request'}
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push(`/${locale}/dashboard/service-requests`)}
-                >
-                  {locale === 'es'
-                    ? 'Ir a mis solicitudes'
-                    : locale === 'fr'
-                      ? 'Aller a mes demandes'
-                      : 'Go to my requests'}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================ */}
           {/* STEP: Payment Preparation                                    */}
           {/* ============================================================ */}
-          {currentStep.type === 'payment' && !manualPaymentResult && (
+          {currentStep.type === 'payment' && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">
                 {locale === 'es'
@@ -1396,39 +1301,21 @@ export default function SessionWizardPage() {
           )}
 
           {/* ============================================================ */}
-          {/* STEP: Confirmation                                           */}
+          {/* STEP: Confirmation (rich summary + PDF download)             */}
           {/* ============================================================ */}
           {currentStep.type === 'confirmation' && (
-            <div className="space-y-4 text-center">
-              <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
-              <h2 className="text-lg font-semibold">
-                {locale === 'es'
-                  ? 'Solicitud completada'
-                  : locale === 'fr'
-                    ? 'Demande completee'
-                    : 'Request completed'}
-              </h2>
-              <p className="text-muted-foreground">
-                {locale === 'es'
-                  ? 'Tu solicitud ha sido creada y el pago ha sido procesado.'
-                  : locale === 'fr'
-                    ? 'Votre demande a ete creee et le paiement a ete traite.'
-                    : 'Your request has been created and payment has been processed.'}
-              </p>
-              {persistedRequestId && (
-                <Button
-                  size="lg"
-                  onClick={() => router.push(`/${locale}/dashboard/service-requests/${persistedRequestId}`)}
-                  className="min-w-[200px]"
-                >
-                  {locale === 'es'
-                    ? 'Ver mi solicitud'
-                    : locale === 'fr'
-                      ? 'Voir ma demande'
-                      : 'View my request'}
-                </Button>
-              )}
-            </div>
+            <ConfirmationStepContent
+              persistedRequestId={persistedRequestId}
+              paymentResult={manualPaymentResult}
+              tariffResult={paymentResult}
+              locale={locale as 'es' | 'fr' | 'en'}
+              onNavigateToRequest={() =>
+                router.push(`/${locale}/dashboard/service-requests/${persistedRequestId}`)
+              }
+              onNavigateToList={() =>
+                router.push(`/${locale}/dashboard/service-requests`)
+              }
+            />
           )}
 
           {/* ============================================================ */}
@@ -1460,8 +1347,8 @@ export default function SessionWizardPage() {
         </CardContent>
       </Card>
 
-      {/* Navigation buttons (hidden on appointment step and after manual payment confirmation) */}
-      {currentStep.type !== 'appointment' && !manualPaymentResult && (
+      {/* Navigation buttons (hidden on appointment + confirmation steps) */}
+      {currentStep.type !== 'appointment' && currentStep.type !== 'confirmation' && (
       <div className="flex justify-between">
         <Button
           variant="outline"
@@ -1812,5 +1699,374 @@ function SessionDynamicFormReview({
       locale={locale}
       errors={errors}
     />
+  )
+}
+
+// ============================================================================
+// SUB-COMPONENT: Confirmation Step (rich summary + PDF download + print)
+// ============================================================================
+
+function ConfirmationStepContent({
+  persistedRequestId,
+  paymentResult,
+  tariffResult,
+  locale,
+  onNavigateToRequest,
+  onNavigateToList,
+}: {
+  persistedRequestId: string | null
+  paymentResult: InitiatePaymentResult | null
+  tariffResult: PreparePaymentResult | null
+  locale: 'es' | 'fr' | 'en'
+  onNavigateToRequest: () => void
+  onNavigateToList: () => void
+}) {
+  const [summary, setSummary] = useState<CitizenSummaryResponse | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  // Determine payment status
+  const isPendingValidation = paymentResult?.requiresAction &&
+    paymentResult?.actionType?.startsWith('agent_validation')
+
+  // Fetch summary on mount
+  useEffect(() => {
+    if (!persistedRequestId) return
+    let cancelled = false
+    setSummaryLoading(true)
+    setSummaryError(null)
+    serviceRequestsApi.getCitizenSummary(persistedRequestId)
+      .then((data) => {
+        if (!cancelled) setSummary(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setSummaryError(err instanceof Error ? err.message : 'Error')
+      })
+      .finally(() => {
+        if (!cancelled) setSummaryLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [persistedRequestId])
+
+  // PDF download handler
+  const handleDownloadPDF = useCallback(async () => {
+    if (!persistedRequestId) return
+    setIsDownloading(true)
+    try {
+      const blob = await serviceRequestsApi.downloadSummaryPDF(persistedRequestId, locale)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `solicitud_${paymentResult?.reference || persistedRequestId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[ConfirmationStep] PDF download error:', err)
+    } finally {
+      setIsDownloading(false)
+    }
+  }, [persistedRequestId, locale, paymentResult?.reference])
+
+  const texts = {
+    es: {
+      title: 'Solicitud completada',
+      subtitle: 'Su solicitud ha sido registrada correctamente.',
+      pendingTitle: 'Solicitud registrada - Pago pendiente de validacion',
+      pendingSubtitle: 'Presente este comprobante en la oficina del Tesoro para la validacion de su pago.',
+      reference: 'Referencia',
+      paymentRef: 'Ref. pago',
+      amount: 'Monto total',
+      status: 'Estado pago',
+      statusPending: 'Pendiente validacion',
+      statusConfirmed: 'Confirmado',
+      personalData: 'Datos personales',
+      documents: 'Documentos presentados',
+      tariff: 'Desglose de pago',
+      baseTariff: 'Tarifa base',
+      total: 'Total',
+      appointment: 'Cita programada',
+      downloadPdf: 'Descargar PDF',
+      print: 'Imprimir',
+      viewRequest: 'Ver mi solicitud',
+      goToList: 'Ir a mis solicitudes',
+      nextSteps: 'Proximos pasos',
+      nextStepsPending: 'Acuda a la oficina del Tesoro con este comprobante para validar su pago. Una vez validado, su solicitud sera procesada.',
+      nextStepsConfirmed: 'Su solicitud sera procesada por el agente correspondiente. Recibira una notificacion por email con los avances.',
+      loading: 'Cargando resumen...',
+    },
+    fr: {
+      title: 'Demande completee',
+      subtitle: 'Votre demande a ete enregistree avec succes.',
+      pendingTitle: 'Demande enregistree - Paiement en attente de validation',
+      pendingSubtitle: 'Presentez ce justificatif au bureau du Tresor pour la validation de votre paiement.',
+      reference: 'Reference',
+      paymentRef: 'Ref. paiement',
+      amount: 'Montant total',
+      status: 'Statut paiement',
+      statusPending: 'En attente de validation',
+      statusConfirmed: 'Confirme',
+      personalData: 'Donnees personnelles',
+      documents: 'Documents presentes',
+      tariff: 'Detail du paiement',
+      baseTariff: 'Tarif de base',
+      total: 'Total',
+      appointment: 'Rendez-vous programme',
+      downloadPdf: 'Telecharger PDF',
+      print: 'Imprimer',
+      viewRequest: 'Voir ma demande',
+      goToList: 'Aller a mes demandes',
+      nextSteps: 'Prochaines etapes',
+      nextStepsPending: 'Rendez-vous au bureau du Tresor avec ce justificatif pour valider votre paiement. Une fois valide, votre demande sera traitee.',
+      nextStepsConfirmed: 'Votre demande sera traitee par l\'agent competent. Vous recevrez une notification par email.',
+      loading: 'Chargement du resume...',
+    },
+    en: {
+      title: 'Request completed',
+      subtitle: 'Your request has been successfully registered.',
+      pendingTitle: 'Request registered - Payment pending validation',
+      pendingSubtitle: 'Present this receipt at the Treasury office for payment validation by an agent.',
+      reference: 'Reference',
+      paymentRef: 'Payment ref.',
+      amount: 'Total amount',
+      status: 'Payment status',
+      statusPending: 'Pending validation',
+      statusConfirmed: 'Confirmed',
+      personalData: 'Personal data',
+      documents: 'Documents submitted',
+      tariff: 'Payment breakdown',
+      baseTariff: 'Base tariff',
+      total: 'Total',
+      appointment: 'Scheduled appointment',
+      downloadPdf: 'Download PDF',
+      print: 'Print',
+      viewRequest: 'View my request',
+      goToList: 'Go to my requests',
+      nextSteps: 'Next steps',
+      nextStepsPending: 'Go to the Treasury office with this receipt to validate your payment. Once validated, your request will be processed.',
+      nextStepsConfirmed: 'Your request will be processed by the corresponding agent. You will receive an email notification with updates.',
+      loading: 'Loading summary...',
+    },
+  }
+  const t = texts[locale]
+
+  return (
+    <div className="space-y-6">
+      {/* Payment status banner */}
+      <div className="text-center space-y-3">
+        <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
+          isPendingValidation ? 'bg-amber-100' : 'bg-green-100'
+        }`}>
+          {isPendingValidation
+            ? <Clock className="h-8 w-8 text-amber-600" />
+            : <CheckCircle className="h-8 w-8 text-green-600" />
+          }
+        </div>
+        <h2 className="text-lg font-semibold">
+          {isPendingValidation ? t.pendingTitle : t.title}
+        </h2>
+        <p className="text-muted-foreground max-w-md mx-auto text-sm">
+          {isPendingValidation ? t.pendingSubtitle : t.subtitle}
+        </p>
+      </div>
+
+      {/* Reference + payment info card */}
+      <div className="border rounded-lg p-4 max-w-md mx-auto space-y-3">
+        {paymentResult?.reference && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t.reference}</span>
+            <span className="font-mono font-bold">{paymentResult.reference}</span>
+          </div>
+        )}
+        {paymentResult?.paymentReference && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t.paymentRef}</span>
+            <span className="font-mono font-bold">{paymentResult.paymentReference}</span>
+          </div>
+        )}
+        {tariffResult && (
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t.amount}</span>
+            <span className="font-bold">
+              {tariffResult.totalAmount.toLocaleString()} {tariffResult.currency}
+            </span>
+          </div>
+        )}
+        <hr />
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">{t.status}</span>
+          <Badge variant="outline" className={
+            isPendingValidation
+              ? 'text-amber-600 border-amber-300'
+              : 'text-green-600 border-green-300'
+          }>
+            {isPendingValidation ? t.statusPending : t.statusConfirmed}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Summary sections (loaded from API) */}
+      {summaryLoading && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm text-muted-foreground">{t.loading}</span>
+        </div>
+      )}
+
+      {summary && (
+        <div className="space-y-4 max-w-lg mx-auto">
+          {/* Personal Data */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
+              {t.personalData}
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {Object.entries(summary.personalData).map(([key, value]) => {
+                if (!value) return null
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                return (
+                  <div key={key}>
+                    <span className="text-muted-foreground text-xs">{label}</span>
+                    <div className="font-medium">{String(value)}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Documents */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
+              {t.documents} ({summary.documentsUploaded.length})
+            </div>
+            <div className="divide-y">
+              {summary.documentsUploaded.map((doc) => (
+                <div key={doc.documentCode} className="flex items-center justify-between px-4 py-2 text-sm">
+                  <span>{doc.documentName}</span>
+                  <Badge variant="outline" className={
+                    doc.isValidated
+                      ? 'text-green-600 border-green-300'
+                      : 'text-amber-600 border-amber-300'
+                  }>
+                    {doc.isValidated
+                      ? (locale === 'es' ? 'Verificado' : locale === 'fr' ? 'Verifie' : 'Verified')
+                      : (locale === 'es' ? 'Pendiente' : locale === 'fr' ? 'En attente' : 'Pending')
+                    }
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tariff breakdown */}
+          {summary.tariffSummary && (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
+                {t.tariff}
+              </div>
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>{t.baseTariff}</span>
+                  <span>{summary.tariffSummary.baseAmount.toLocaleString()} {summary.tariffSummary.currency}</span>
+                </div>
+                {summary.tariffSummary.supplements.map((s, i) => (
+                  <div key={i} className="flex justify-between text-muted-foreground">
+                    <span>{s.name}</span>
+                    <span>{s.amount.toLocaleString()} {summary.tariffSummary!.currency}</span>
+                  </div>
+                ))}
+                <hr />
+                <div className="flex justify-between font-bold">
+                  <span>{t.total}</span>
+                  <span>{summary.tariffSummary.total.toLocaleString()} {summary.tariffSummary.currency}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Appointment */}
+          {paymentResult?.appointmentConfirmed && (
+            <div className="border-2 border-primary rounded-lg p-4 bg-primary/5">
+              <h4 className="font-semibold text-sm mb-2">{t.appointment}</h4>
+              <div className="flex gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span>{paymentResult.appointmentDate}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span>{paymentResult.appointmentTime}</span>
+                </div>
+              </div>
+              {paymentResult.appointmentLocation && (
+                <p className="text-sm text-muted-foreground mt-1">{paymentResult.appointmentLocation}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Summary fetch error (non-blocking: show basic info from paymentResult) */}
+      {summaryError && !summary && (
+        <Alert variant="default" className="max-w-md mx-auto">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            {summaryError}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Next steps */}
+      <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto">
+        <h4 className="font-semibold text-sm mb-1">{t.nextSteps}</h4>
+        <p className="text-sm text-muted-foreground">
+          {isPendingValidation ? t.nextStepsPending : t.nextStepsConfirmed}
+        </p>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPDF}
+            disabled={isDownloading || !persistedRequestId}
+          >
+            {isDownloading
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : <Download className="mr-2 h-4 w-4" />
+            }
+            {t.downloadPdf}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.print()}
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            {t.print}
+          </Button>
+        </div>
+
+        <Button
+          size="lg"
+          onClick={onNavigateToRequest}
+          disabled={!persistedRequestId}
+          className="min-w-[200px]"
+        >
+          {t.viewRequest}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onNavigateToList}
+        >
+          {t.goToList}
+        </Button>
+      </div>
+    </div>
   )
 }

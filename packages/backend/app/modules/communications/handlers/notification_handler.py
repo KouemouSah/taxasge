@@ -917,9 +917,9 @@ class NotificationEventHandler:
                 "en": f"Your cash payment has been rejected. Reason: {reason}"
             },
             "request_submitted": {
-                "es": "Su solicitud ha sido recibida y está siendo procesada.",
-                "fr": "Votre demande a été reçue et est en cours de traitement.",
-                "en": "Your request has been received and is being processed."
+                "es": self._get_request_submitted_body("es", context),
+                "fr": self._get_request_submitted_body("fr", context),
+                "en": self._get_request_submitted_body("en", context),
             },
             "request_approved": {
                 "es": self._get_request_approved_body("es", context),
@@ -1048,6 +1048,92 @@ class NotificationEventHandler:
                 lines.append("")
 
             lines.append("Para cualquier consulta, contacte con nuestro servicio de soporte.")
+
+        return "<br>".join(lines)
+
+    def _get_request_submitted_body(self, language: str, context: Dict[str, Any]) -> str:
+        """
+        Generate rich body text for request_submitted notification.
+
+        Includes reference number, payment status, appointment info,
+        and reference to attached PDF summary.
+        """
+        reference = context.get("reference", "")
+        workflow_code = context.get("workflow_code", "")
+        payment_id = context.get("payment_id")
+        appointment_date = context.get("appointment_date")
+        appointment_time = context.get("appointment_time")
+        location = context.get("location", "")
+        has_attachment = context.get("attachments") is not None
+
+        if language == "fr":
+            lines = [
+                f"Votre demande <strong>{reference}</strong> a été enregistrée avec succès.",
+                "",
+            ]
+
+            if payment_id:
+                lines.append("Votre paiement a été enregistré et est en cours de traitement.")
+                lines.append("")
+
+            if appointment_date and appointment_time:
+                lines.append("<strong>Rendez-vous:</strong>")
+                lines.append(f"Date: {appointment_date} - Heure: {appointment_time}")
+                if location:
+                    lines.append(f"Lieu: {location}")
+                lines.append("")
+
+            if has_attachment:
+                lines.append("Vous trouverez en pièce jointe le <strong>résumé de votre demande</strong> au format PDF.")
+                lines.append("")
+
+            lines.append("Vous recevrez une notification lorsque votre demande sera traitée.")
+
+        elif language == "en":
+            lines = [
+                f"Your request <strong>{reference}</strong> has been successfully registered.",
+                "",
+            ]
+
+            if payment_id:
+                lines.append("Your payment has been registered and is being processed.")
+                lines.append("")
+
+            if appointment_date and appointment_time:
+                lines.append("<strong>Appointment:</strong>")
+                lines.append(f"Date: {appointment_date} - Time: {appointment_time}")
+                if location:
+                    lines.append(f"Location: {location}")
+                lines.append("")
+
+            if has_attachment:
+                lines.append("Please find attached the <strong>summary of your request</strong> in PDF format.")
+                lines.append("")
+
+            lines.append("You will receive a notification when your request is processed.")
+
+        else:  # Spanish (default)
+            lines = [
+                f"Su solicitud <strong>{reference}</strong> ha sido registrada correctamente.",
+                "",
+            ]
+
+            if payment_id:
+                lines.append("Su pago ha sido registrado y está siendo procesado.")
+                lines.append("")
+
+            if appointment_date and appointment_time:
+                lines.append("<strong>Cita programada:</strong>")
+                lines.append(f"Fecha: {appointment_date} - Hora: {appointment_time}")
+                if location:
+                    lines.append(f"Lugar: {location}")
+                lines.append("")
+
+            if has_attachment:
+                lines.append("Adjunto encontrará el <strong>resumen de su solicitud</strong> en formato PDF.")
+                lines.append("")
+
+            lines.append("Recibirá una notificación cuando su solicitud sea procesada.")
 
         return "<br>".join(lines)
 
