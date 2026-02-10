@@ -23,8 +23,8 @@ Relations clés:
 - payments.tax_declaration_id → tax_declarations (XOR fiscal_service_id)
 - payments.fiscal_service_id → fiscal_services (XOR tax_declaration_id)
 - payments.user_id → users (REQUIRED)
-- service_payments.assigned_agent_profile_id → agent_profiles (UUID)
-- service_payments.validated_by_agent_profile_id → agent_profiles (UUID)
+- service_payments.assigned_agent_id → agent_profiles (UUID)
+- service_payments.validated_by_agent_id → agent_profiles (UUID)
 - bank_transactions → intégration BANGE API
 
 Endpoints: ~18

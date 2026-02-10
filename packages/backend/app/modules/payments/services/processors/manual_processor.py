@@ -275,7 +275,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 SET status = 'completed',
                     workflow_status = 'completed',
                     paid_at = $2,
-                    validated_by_agent_profile_id = $3::uuid,
+                    validated_by_agent_id = $3::uuid,
                     validated_at = NOW(),
                     validation_comment = $4,
                     updated_at = NOW()
@@ -422,7 +422,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 UPDATE service_payments
                 SET status = 'failed',
                     workflow_status = 'rejected_by_agent',
-                    validated_by_agent_profile_id = $2::uuid,
+                    validated_by_agent_id = $2::uuid,
                     validated_at = NOW(),
                     validation_comment = $3,
                     updated_at = NOW()

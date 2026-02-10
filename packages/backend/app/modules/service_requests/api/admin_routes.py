@@ -2958,7 +2958,7 @@ async def get_payment_details(
 
     **Behavior:**
     - Sets workflow_status to 'completed'
-    - Sets validated_by_agent_profile_id and validated_at
+    - Sets validated_by_agent_id and validated_at
     - Generates receipt_number
     - Updates service_request payment_status
 
