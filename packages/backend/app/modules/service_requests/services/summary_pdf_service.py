@@ -374,6 +374,7 @@ class SummaryPDFService:
         tariff: Dict[str, Any],
         appointment: Optional[Dict[str, Any]] = None,
         language: str = "es",
+        photo_url: Optional[str] = None,
     ) -> bytes:
         """
         Generate a PDF summary for a service request.
@@ -460,6 +461,11 @@ class SummaryPDFService:
             solicitud_labels.get(solicitud_type.upper(), solicitud_type)
         )
 
+        # Fetch citizen photo as base64 (non-blocking on failure)
+        photo_base64 = None
+        if photo_url:
+            photo_base64 = await self.fetch_photo_as_base64(photo_url)
+
         # Generate QR code with logo
         verify_url = f"https://taxasge.emacash.com/verify/{request_number}"
         qr_code_b64 = self._generate_qr_with_logo(verify_url, size=200)
@@ -480,6 +486,7 @@ class SummaryPDFService:
             appointment=formatted_appointment,
             generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
             qr_code_b64=qr_code_b64,
+            photo_base64=photo_base64,
         )
 
         # Convert HTML to PDF

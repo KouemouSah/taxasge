@@ -133,7 +133,7 @@
         }
 
         /* ================================================================
-           PERSONAL DATA - 2 columns via table
+           PERSONAL DATA - photo + 2 columns via table
            ================================================================ */
         .personal-data-table {
             width: 100%;
@@ -141,17 +141,41 @@
         }
 
         .personal-data-table td {
-            width: 50%;
             vertical-align: top;
             padding: 0;
         }
 
-        .personal-data-table td:first-child {
+        .photo-cell {
+            width: 95px;
             padding-right: 10px;
         }
 
-        .personal-data-table td:last-child {
-            padding-left: 10px;
+        .photo-box {
+            width: 85px;
+            height: 105px;
+            border: 2px solid #e5e7eb;
+            text-align: center;
+        }
+
+        .photo-box img {
+            width: 85px;
+            height: 105px;
+        }
+
+        .photo-placeholder {
+            width: 85px;
+            height: 105px;
+            background: #f3f4f6;
+            font-size: 7pt;
+            color: #9ca3af;
+            line-height: 105px;
+            text-align: center;
+        }
+
+        .data-col {
+            width: 50%;
+            padding-left: 5px;
+            padding-right: 5px;
         }
 
         .data-table {
@@ -486,7 +510,18 @@
         <div class="section-border">
             <table class="personal-data-table">
                 <tr>
-                    <td>
+                    <!-- Photo column -->
+                    <td class="photo-cell">
+                        {% if photo_base64 %}
+                        <div class="photo-box">
+                            <img src="{{ photo_base64 }}" alt="Photo" />
+                        </div>
+                        {% else %}
+                        <div class="photo-placeholder">Sin foto</div>
+                        {% endif %}
+                    </td>
+                    <!-- Data column 1 -->
+                    <td class="data-col">
                         <table class="data-table">
                             <tr>
                                 <td class="data-label">{{ texts.full_name }}</td>
@@ -506,7 +541,8 @@
                             </tr>
                         </table>
                     </td>
-                    <td>
+                    <!-- Data column 2 -->
+                    <td class="data-col">
                         <table class="data-table">
                             <tr>
                                 <td class="data-label">{{ texts.birth_place }}</td>

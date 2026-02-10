@@ -50,6 +50,7 @@ import {
   Download,
   Printer,
   ChevronDown,
+  MapPin,
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -1753,13 +1754,25 @@ function ConfirmationStepContent({
     return () => { cancelled = true }
   }, [persistedRequestId])
 
-  // PDF download handler
-  const handleDownloadPDF = useCallback(async () => {
-    if (!persistedRequestId) return
-    setIsDownloading(true)
+  // Fetch PDF blob (shared between download and print)
+  const fetchPDFBlob = useCallback(async (): Promise<Blob | null> => {
+    if (!persistedRequestId) return null
     setDownloadError(null)
     try {
-      const blob = await serviceRequestsApi.downloadSummaryPDF(persistedRequestId, locale)
+      return await serviceRequestsApi.downloadSummaryPDF(persistedRequestId, locale)
+    } catch (err) {
+      console.error('[ConfirmationStep] PDF error:', err)
+      setDownloadError(err instanceof Error ? err.message : 'Error al descargar PDF')
+      return null
+    }
+  }, [persistedRequestId, locale])
+
+  // PDF download handler
+  const handleDownloadPDF = useCallback(async () => {
+    setIsDownloading(true)
+    try {
+      const blob = await fetchPDFBlob()
+      if (!blob) return
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -1767,15 +1780,26 @@ function ConfirmationStepContent({
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      // Delay revoke to let browser start the download
       setTimeout(() => URL.revokeObjectURL(url), 5000)
-    } catch (err) {
-      console.error('[ConfirmationStep] PDF download error:', err)
-      setDownloadError(err instanceof Error ? err.message : 'Error al descargar PDF')
     } finally {
       setIsDownloading(false)
     }
-  }, [persistedRequestId, locale, paymentResult?.reference])
+  }, [fetchPDFBlob, paymentResult?.reference, persistedRequestId])
+
+  // Print handler — opens PDF in new tab for native print
+  const [isPrinting, setIsPrinting] = useState(false)
+  const handlePrint = useCallback(async () => {
+    setIsPrinting(true)
+    try {
+      const blob = await fetchPDFBlob()
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 30000)
+    } finally {
+      setIsPrinting(false)
+    }
+  }, [fetchPDFBlob])
 
   const texts = {
     es: {
@@ -1960,9 +1984,13 @@ function ConfirmationStepContent({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.print()}
+            onClick={handlePrint}
+            disabled={isPrinting || !persistedRequestId}
           >
-            <Printer className="mr-2 h-4 w-4" />
+            {isPrinting
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : <Printer className="mr-2 h-4 w-4" />
+            }
             {t.print}
           </Button>
         </div>
@@ -2068,6 +2096,40 @@ function ConfirmationStepContent({
                 </div>
               </div>
             )}
+
+            {/* Appointment */}
+            {paymentResult?.appointmentConfirmed && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-primary/10 px-4 py-2 font-semibold text-sm">
+                  {t.appointment}
+                </div>
+                <div className="p-4 space-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{paymentResult.appointmentDate}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{paymentResult.appointmentTime}</span>
+                  </div>
+                  {paymentResult.appointmentLocation && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{paymentResult.appointmentLocation}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Reference footer */}
+            <div className="border-t pt-3 text-xs text-muted-foreground space-y-1">
+              <div><strong>{t.reference}:</strong> {summary.reference}</div>
+              <div className="text-primary">
+                {locale === 'es' ? 'Verificar en' : locale === 'fr' ? 'Verifier sur' : 'Verify at'}:{' '}
+                taxasge.emacash.com/verify/{summary.reference}
+              </div>
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}

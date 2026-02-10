@@ -1457,15 +1457,29 @@ async def download_citizen_summary_pdf(
 
     # Appointment (if scheduled)
     appointment = None
-    if request.appointment_date:
+    if request.cita_date:
         appointment = {
-            "date": request.appointment_date.strftime("%d/%m/%Y") if request.appointment_date else None,
-            "time": request.appointment_time.strftime("%H:%M") if request.appointment_time else None,
-            "location": request.form_data.get("appointment_location", "Oficina Central")
+            "date": request.cita_date.strftime("%d/%m/%Y") if request.cita_date else None,
+            "time": request.cita_time.strftime("%H:%M") if request.cita_time else None,
+            "location": request.cita_location or request.form_data.get("appointment_location", "Oficina Central")
         }
 
     # Get sub_type
     solicitud_type = request.form_data.get("sub_type") or request.solicitud_type.value
+
+    # Get citizen photo URL (photo_carnet, fotografias, etc.)
+    photo_url = None
+    photo_codes = ("photo_carnet", "fotografias", "foto_carnet")
+    for doc in request.provided_documents:
+        if doc.document_code in photo_codes and doc.file_path:
+            try:
+                from app.modules.documents.services.storage_service import firebase_storage_service
+                photo_url = await firebase_storage_service.get_signed_url(
+                    doc.file_path, expiration_hours=1
+                )
+            except Exception as photo_err:
+                logger.warning(f"Could not get photo URL: {photo_err}")
+            break
 
     # Generate PDF
     pdf_bytes = await summary_pdf_service.generate_summary_pdf(
@@ -1476,7 +1490,8 @@ async def download_citizen_summary_pdf(
         documents=documents,
         tariff=tariff,
         appointment=appointment,
-        language=language
+        language=language,
+        photo_url=photo_url,
     )
 
     # Return PDF response
