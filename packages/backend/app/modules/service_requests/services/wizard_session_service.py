@@ -1154,6 +1154,18 @@ class WizardSessionService:
             comment=status_comment,
         )
 
+        # 1b. Store tariff amounts so GET /summary and PDF endpoints can read them
+        tariff = session.get("tariff", {})
+        if tariff.get("total_amount"):
+            await service_request_repository.update_amounts(
+                db=db,
+                request_id=service_request_id,
+                base_amount=float(tariff.get("base_amount", 0)),
+                supplements_amount=float(tariff.get("supplements_total", 0)),
+                penalties_amount=0.0,
+                total_amount=float(tariff["total_amount"]),
+            )
+
         # 2. Upload documents to Firebase and create document records
         for doc_code, doc_data in session.get("documents", {}).items():
             file_content = base64.b64decode(doc_data["content_b64"])

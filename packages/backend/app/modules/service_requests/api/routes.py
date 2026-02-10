@@ -1325,13 +1325,15 @@ async def get_citizen_summary(
     ]
     personal_data = {k: v for k, v in request.form_data.items() if k in personal_fields}
 
-    # Documents summary
+    # Documents summary — field names must match BackendCitizenSummaryResponse
     docs_summary = []
     for doc in request.provided_documents:
         docs_summary.append({
-            "code": doc.document_code,
-            "name": doc.document_name,
-            "status": "validated" if doc.is_valid else ("pending" if doc.extraction_status == "pending" else "uploaded")
+            "document_code": doc.document_code,
+            "document_name": doc.document_name or doc.document_code,
+            "file_name": doc.file_path or "",
+            "extraction_confidence": doc.extraction_confidence or 0,
+            "is_validated": doc.is_valid,
         })
 
     # Check if all required documents are provided

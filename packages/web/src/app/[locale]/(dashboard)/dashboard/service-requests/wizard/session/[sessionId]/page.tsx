@@ -1727,6 +1727,7 @@ function ConfirmationStepContent({
   const [summaryLoading, setSummaryLoading] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
 
   // Determine payment status
@@ -1756,6 +1757,7 @@ function ConfirmationStepContent({
   const handleDownloadPDF = useCallback(async () => {
     if (!persistedRequestId) return
     setIsDownloading(true)
+    setDownloadError(null)
     try {
       const blob = await serviceRequestsApi.downloadSummaryPDF(persistedRequestId, locale)
       const url = URL.createObjectURL(blob)
@@ -1769,6 +1771,7 @@ function ConfirmationStepContent({
       setTimeout(() => URL.revokeObjectURL(url), 5000)
     } catch (err) {
       console.error('[ConfirmationStep] PDF download error:', err)
+      setDownloadError(err instanceof Error ? err.message : 'Error al descargar PDF')
     } finally {
       setIsDownloading(false)
     }
@@ -1963,6 +1966,9 @@ function ConfirmationStepContent({
             {t.print}
           </Button>
         </div>
+        {downloadError && (
+          <p className="text-xs text-red-600">{downloadError}</p>
+        )}
       </div>
 
       {/* Next steps */}
