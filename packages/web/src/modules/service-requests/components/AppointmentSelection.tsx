@@ -13,7 +13,7 @@
  * Fallback: Submit without appointment if no slots available
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   MapPin,
   Calendar,
@@ -331,6 +331,36 @@ export function AppointmentSelection({
   const t = TEXTS[locale]
   const dateLocale = DATE_LOCALES[locale]
 
+  // Refs for API callbacks — avoids infinite useEffect loops from inline lambda props
+  const getSessionLocationsRef = useRef(getSessionLocations)
+  const getSessionAvailableDaysRef = useRef(getSessionAvailableDays)
+  const getSessionSlotsRef = useRef(getSessionSlots)
+  const saveSelectionRef = useRef(saveSelection)
+  const getLocationsRef = useRef(getLocations)
+  const getAvailableDaysRef = useRef(getAvailableDays)
+  const getSlotsRef = useRef(getSlots)
+  const holdSlotRef = useRef(holdSlot)
+  const getHoldStatusRef = useRef(getHoldStatus)
+  const releaseHoldRef = useRef(releaseHold)
+  const submitWithoutAppointmentRef = useRef(submitWithoutAppointment)
+  const onCompleteRef = useRef(onComplete)
+
+  // Keep refs up-to-date
+  useEffect(() => {
+    getSessionLocationsRef.current = getSessionLocations
+    getSessionAvailableDaysRef.current = getSessionAvailableDays
+    getSessionSlotsRef.current = getSessionSlots
+    saveSelectionRef.current = saveSelection
+    getLocationsRef.current = getLocations
+    getAvailableDaysRef.current = getAvailableDays
+    getSlotsRef.current = getSlots
+    holdSlotRef.current = holdSlot
+    getHoldStatusRef.current = getHoldStatus
+    releaseHoldRef.current = releaseHold
+    submitWithoutAppointmentRef.current = submitWithoutAppointment
+    onCompleteRef.current = onComplete
+  })
+
   // State
   const [currentStep, setCurrentStep] = useState<Step>('location')
   const [isLoading, setIsLoading] = useState(true)
@@ -383,9 +413,9 @@ export function AppointmentSelection({
       setError(null)
 
       try {
-        if (isSessionMode && sessionId && getSessionLocations) {
+        if (isSessionMode && sessionId && getSessionLocationsRef.current) {
           // Session mode: no hold check, just load locations
-          const locationsResponse = await getSessionLocations(sessionId)
+          const locationsResponse = await getSessionLocationsRef.current(sessionId)
           // Convert to EntityLocation format
           const locs: EntityLocation[] = locationsResponse.locations.map((l) => ({
             id: l.id,
@@ -400,9 +430,9 @@ export function AppointmentSelection({
           }))
           setLocations(locs)
           setCurrentStep('location')
-        } else if (requestId && getHoldStatus && getLocations) {
+        } else if (requestId && getHoldStatusRef.current && getLocationsRef.current) {
           // Request mode: check for existing hold first
-          const existingHold = await getHoldStatus(requestId)
+          const existingHold = await getHoldStatusRef.current(requestId)
 
           if (existingHold.hasHold && !existingHold.isExpired) {
             setHoldStatus(existingHold)
@@ -414,7 +444,7 @@ export function AppointmentSelection({
             }
             setCurrentStep('held')
           } else {
-            const locationsResponse = await getLocations(requestId)
+            const locationsResponse = await getLocationsRef.current(requestId)
             setLocations(locationsResponse.locations)
             setCurrentStep('location')
           }
@@ -427,7 +457,9 @@ export function AppointmentSelection({
     }
 
     loadInitialData()
-  }, [requestId, sessionId, isSessionMode, getLocations, getHoldStatus, getSessionLocations])
+    // Only re-run when identity changes, not when callback refs change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId, sessionId, isSessionMode])
 
   // ============================================================================
   // COUNTDOWN TIMER
@@ -461,10 +493,10 @@ export function AppointmentSelection({
   ) => {
     let response: { days: Array<{ date: string; timeSlotCount: number; totalSlotsRemaining: number }>; minDate?: string }
 
-    if (isSessionMode && sessionId && getSessionAvailableDays) {
-      response = await getSessionAvailableDays(sessionId, locationId, fromDate, toDate)
-    } else if (requestId && getAvailableDays) {
-      response = await getAvailableDays(requestId, locationId, fromDate, toDate)
+    if (isSessionMode && sessionId && getSessionAvailableDaysRef.current) {
+      response = await getSessionAvailableDaysRef.current(sessionId, locationId, fromDate, toDate)
+    } else if (requestId && getAvailableDaysRef.current) {
+      response = await getAvailableDaysRef.current(requestId, locationId, fromDate, toDate)
     } else {
       return { daysMap: new Map<string, AvailableDayInfo>(), minDate: undefined }
     }
@@ -477,7 +509,7 @@ export function AppointmentSelection({
     )
     setAvailableDays(daysMap)
     return { daysMap, minDate: response.minDate }
-  }, [requestId, sessionId, isSessionMode, getAvailableDays, getSessionAvailableDays])
+  }, [requestId, sessionId, isSessionMode])
 
   const handleSelectLocation = useCallback(async (location: EntityLocation) => {
     setSelectedLocation(location)
@@ -530,9 +562,9 @@ export function AppointmentSelection({
     setIsLoadingSlots(true)
 
     try {
-      if (isSessionMode && sessionId && getSessionSlots) {
+      if (isSessionMode && sessionId && getSessionSlotsRef.current) {
         // Session mode: use session-based API
-        const slotsResponse = await getSessionSlots(sessionId, selectedLocation.id, dateStr, 20)
+        const slotsResponse = await getSessionSlotsRef.current(sessionId, selectedLocation.id, dateStr, 20)
         const filtered: AvailableSlot[] = slotsResponse.slots
           .filter(s => s.slotDate === dateStr)
           .map(s => ({
@@ -544,9 +576,9 @@ export function AppointmentSelection({
             city: s.city ?? undefined,
           }))
         setSlots(filtered)
-      } else if (requestId && getSlots) {
+      } else if (requestId && getSlotsRef.current) {
         // Request mode: use request-based API
-        const slotsResponse = await getSlots(requestId, selectedLocation.id, dateStr, 20)
+        const slotsResponse = await getSlotsRef.current(requestId, selectedLocation.id, dateStr, 20)
         const filtered = slotsResponse.slots.filter(s => s.slotDate === dateStr)
         setSlots(filtered)
       }
@@ -555,7 +587,7 @@ export function AppointmentSelection({
     } finally {
       setIsLoadingSlots(false)
     }
-  }, [requestId, sessionId, isSessionMode, selectedLocation, getSlots, getSessionSlots])
+  }, [requestId, sessionId, isSessionMode, selectedLocation])
 
   const handleSelectSlot = useCallback(async (slot: AvailableSlot) => {
     if (!selectedLocation) return
@@ -564,9 +596,9 @@ export function AppointmentSelection({
     setError(null)
 
     try {
-      if (isSessionMode && sessionId && saveSelection) {
+      if (isSessionMode && sessionId && saveSelectionRef.current) {
         // Session mode: save selection to cache, then advance (no hold/countdown)
-        const result = await saveSelection(sessionId, {
+        const result = await saveSelectionRef.current(sessionId, {
           entityLocationId: selectedLocation.id,
           locationName: slot.locationName,
           city: slot.city || selectedLocation.city,
@@ -574,7 +606,7 @@ export function AppointmentSelection({
           appointmentTime: slot.slotTime,
         })
         if (result.success) {
-          onComplete({
+          onCompleteRef.current({
             hasAppointment: true,
             locationName: slot.locationName,
             appointmentDate: slot.slotDate,
@@ -586,9 +618,9 @@ export function AppointmentSelection({
         } else {
           setError('Failed to save appointment selection')
         }
-      } else if (requestId && holdSlot) {
+      } else if (requestId && holdSlotRef.current) {
         // Request mode: hold the slot (15 min countdown)
-        const holdResponse = await holdSlot(requestId, {
+        const holdResponse = await holdSlotRef.current(requestId, {
           entityLocationId: selectedLocation.id,
           appointmentDate: slot.slotDate,
           appointmentTime: slot.slotTime,
@@ -615,23 +647,23 @@ export function AppointmentSelection({
     } finally {
       setIsHolding(false)
     }
-  }, [requestId, sessionId, isSessionMode, selectedLocation, holdSlot, saveSelection, onComplete])
+  }, [requestId, sessionId, isSessionMode, selectedLocation])
 
   const handleContinueToPayment = useCallback(() => {
     if (!holdStatus) return
 
-    onComplete({
+    onCompleteRef.current({
       hasAppointment: true,
       locationName: holdStatus.locationName,
       appointmentDate: holdStatus.appointmentDate,
       appointmentTime: holdStatus.appointmentTime,
       isFallback: false,
     })
-  }, [holdStatus, onComplete])
+  }, [holdStatus])
 
   const handleChangeSlot = useCallback(async () => {
     try {
-      if (releaseHold && requestId) await releaseHold(requestId)
+      if (releaseHoldRef.current && requestId) await releaseHoldRef.current(requestId)
       setHoldStatus(null)
       setHoldCountdown(0)
 
@@ -643,14 +675,14 @@ export function AppointmentSelection({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to release hold')
     }
-  }, [requestId, releaseHold, selectedLocation, handleSelectLocation])
+  }, [requestId, selectedLocation, handleSelectLocation])
 
   const handleSubmitWithoutAppointment = useCallback(async () => {
     if (!selectedLocation) return
 
     if (isSessionMode) {
       // Session mode: just advance with fallback (no DB operation needed)
-      onComplete({
+      onCompleteRef.current({
         hasAppointment: false,
         locationName: selectedLocation.locationName,
         city: selectedLocation.city,
@@ -665,11 +697,11 @@ export function AppointmentSelection({
     setError(null)
 
     try {
-      if (!submitWithoutAppointment || !requestId) return
-      const response = await submitWithoutAppointment(requestId, selectedLocation.id)
+      if (!submitWithoutAppointmentRef.current || !requestId) return
+      const response = await submitWithoutAppointmentRef.current(requestId, selectedLocation.id)
 
       if (response.success) {
-        onComplete({
+        onCompleteRef.current({
           hasAppointment: false,
           locationName: response.locationName,
           isFallback: true,
@@ -682,7 +714,7 @@ export function AppointmentSelection({
     } finally {
       setIsLoading(false)
     }
-  }, [requestId, isSessionMode, selectedLocation, submitWithoutAppointment, onComplete])
+  }, [requestId, isSessionMode, selectedLocation])
 
   const handleChangeLocation = useCallback(() => {
     setSelectedLocation(null)
