@@ -19,11 +19,10 @@ from ..models.entity_location import (
     EntityLocationUpdate,
     EntityLocationResponse,
     EntityLocationListResponse,
-    DEFAULT_ENTITY_CODES,
-    DEFAULT_CITIES,
     VALID_REGIONS,
 )
 from ..services.entity_location_service import EntityLocationService
+from ..repositories.entity_location_repository import EntityLocationRepository
 
 
 router = APIRouter(prefix="/entity-locations", tags=["Entity Locations"])
@@ -106,23 +105,29 @@ async def get_locations_by_region(
 @router.get(
     "/meta/entities",
     response_model=List[str],
-    summary="Get default entity codes",
-    description="Returns the list of default entity codes. Use /api/v1/entities/simple for full list.",
+    summary="Get entity codes from locations",
+    description="Returns all distinct entity codes from entity_locations table.",
 )
-async def get_default_entity_codes() -> List[str]:
-    """Get list of default entity codes."""
-    return list(DEFAULT_ENTITY_CODES)
+async def get_entity_codes(
+    db: Connection = Depends(get_database),
+) -> List[str]:
+    """Get list of distinct entity codes from entity_locations."""
+    repo = EntityLocationRepository(db)
+    return await repo.get_distinct_entity_codes()
 
 
 @router.get(
     "/meta/cities",
     response_model=List[str],
-    summary="Get default cities",
-    description="Returns the list of default cities. Use /api/v1/cities/simple for full list.",
+    summary="Get cities from locations",
+    description="Returns all distinct cities from entity_locations table.",
 )
-async def get_default_cities() -> List[str]:
-    """Get list of default cities."""
-    return list(DEFAULT_CITIES)
+async def get_cities(
+    db: Connection = Depends(get_database),
+) -> List[str]:
+    """Get list of distinct cities from entity_locations."""
+    repo = EntityLocationRepository(db)
+    return await repo.get_distinct_cities()
 
 
 # ============================================================================

@@ -307,3 +307,31 @@ class EntityLocationRepository:
 
         rows = await self.db.fetch(query, region)
         return [dict(row) for row in rows]
+
+    async def get_distinct_entity_codes(self) -> List[str]:
+        """Get all distinct entity codes from entity_locations table.
+
+        Returns:
+            List of distinct entity codes (sorted alphabetically)
+        """
+        rows = await self.db.fetch("""
+            SELECT DISTINCT entity_code
+            FROM entity_locations
+            WHERE entity_code IS NOT NULL
+            ORDER BY entity_code
+        """)
+        return [row['entity_code'] for row in rows]
+
+    async def get_distinct_cities(self) -> List[str]:
+        """Get all distinct cities from entity_locations table.
+
+        Returns:
+            List of distinct cities (sorted alphabetically)
+        """
+        rows = await self.db.fetch("""
+            SELECT DISTINCT city
+            FROM entity_locations
+            WHERE city IS NOT NULL
+            ORDER BY city
+        """)
+        return [row['city'] for row in rows]
