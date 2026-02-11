@@ -12,7 +12,7 @@ from typing import Optional, Literal
 from datetime import datetime
 from loguru import logger
 
-from app.database.connection import get_database
+from app.database.connection import db_manager
 from app.modules.payments.services.receipt_service import receipt_service
 
 router = APIRouter(tags=["Verification"])
@@ -77,7 +77,7 @@ async def verify_service_request(
     Returns basic request information: workflow, status, appointment, payment.
     Used by QR code on citizen summary PDF.
     """
-    async with get_database() as db:
+    async with db_manager.get_connection() as db:
         try:
             query = """
                 SELECT
@@ -220,7 +220,7 @@ async def verify_receipt(
     Returns:
         ReceiptVerificationResponse with validity status and receipt details
     """
-    async with get_database() as db:
+    async with db_manager.get_connection() as db:
         try:
             # 1. Look up the payment by receipt number
             query = """
