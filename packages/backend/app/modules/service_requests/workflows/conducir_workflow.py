@@ -627,7 +627,8 @@ class ConducirWorkflow(PredefinedWorkflow):
                                 "label_es": "Fecha del Certificado Médico",
                                 "type": "date",
                                 "required": True,
-                                "readonly": False
+                                "readonly": False,
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "entidad_medica_nombre",
@@ -635,14 +636,16 @@ class ConducirWorkflow(PredefinedWorkflow):
                                 "type": "text",
                                 "required": True,
                                 "readonly": False,
-                                "placeholder_es": "Ej: Hospital General de Malabo, Clínica Santa Isabel..."
+                                "placeholder_es": "Ej: Hospital General de Malabo, Clínica Santa Isabel...",
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "medico_nombre",
                                 "label_es": "Nombre del Médico (opcional)",
                                 "type": "text",
                                 "required": False,
-                                "readonly": False
+                                "readonly": False,
+                                "pdf_exclude": True
                             }
                         ]
                     }
