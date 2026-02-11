@@ -18,6 +18,7 @@ from loguru import logger
 from app.database.connection import get_database
 from app.core.events import EventBus, EventType
 from app.config import get_settings
+from app.modules.payments.services.payment_sla_service import PaymentSLAService
 
 router = APIRouter(prefix="/cron", tags=["Cron Jobs (Internal)"])
 
@@ -165,4 +166,37 @@ async def cleanup_expired_holds(
     return {
         "message": "Expired holds cleaned up",
         "released_count": count
+    }
+
+
+@router.post(
+    "/payment-sla-check",
+    summary="Check payment SLA and send notifications",
+    description="""
+    Called daily by Cloud Scheduler to monitor cash/check payments
+    pending treasury agent validation.
+
+    Three actions:
+    1. 48h warning: Email treasury agents with table of pending payments
+    2. 5-day escalation: Email supervisors with table of overdue payments
+    3. 15-day expiration: Expire payment + request, email citizen
+    """
+)
+async def payment_sla_check(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth)
+):
+    """Run payment SLA checks: warning, escalation, expiration."""
+    sla_service = PaymentSLAService()
+    results = await sla_service.run_sla_check(db)
+
+    logger.info(
+        f"Payment SLA check: {results['warnings_sent']} warnings, "
+        f"{results['escalations_sent']} escalations, "
+        f"{results['expirations_processed']} expirations"
+    )
+
+    return {
+        "message": "Payment SLA check completed",
+        **results
     }
