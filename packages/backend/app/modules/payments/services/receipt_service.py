@@ -241,8 +241,10 @@ class ReceiptService:
         "nif": "GE-MHEP-001",
     }
 
-    # Verification URL base (deployed domain)
-    VERIFICATION_URL_BASE = "https://taxasge.emacsah.com/verify"
+    # Verification URL base - resolved dynamically from settings
+    @property
+    def VERIFICATION_URL_BASE(self) -> str:
+        return f"{settings.FRONTEND_URL.rstrip('/')}/verify"
 
     def __init__(self):
         """Initialize the receipt service with Jinja2 environment"""
