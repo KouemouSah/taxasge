@@ -76,7 +76,7 @@ class SummaryPDFService:
             "scheduled_appointment": "Cita Programada",
             "reference": "Referencia",
             "generated_on": "Generado el",
-            "verification_url": "Verificar en: taxasge.com/verify",
+            "verification_url": "Verificar en:",
             "qr_code": "Codigo QR",
             "status_verified": "Verificado",
             "status_pending": "Pendiente",
@@ -114,7 +114,7 @@ class SummaryPDFService:
             "scheduled_appointment": "Rendez-vous Programme",
             "reference": "Reference",
             "generated_on": "Genere le",
-            "verification_url": "Verifier sur: taxasge.com/verify",
+            "verification_url": "Verifier sur:",
             "qr_code": "Code QR",
             "status_verified": "Verifie",
             "status_pending": "En attente",
@@ -152,7 +152,7 @@ class SummaryPDFService:
             "scheduled_appointment": "Scheduled Appointment",
             "reference": "Reference",
             "generated_on": "Generated on",
-            "verification_url": "Verify at: taxasge.com/verify",
+            "verification_url": "Verify at:",
             "qr_code": "QR Code",
             "status_verified": "Verified",
             "status_pending": "Pending",
@@ -491,8 +491,9 @@ class SummaryPDFService:
         else:
             payment_status_label = texts.get("payment_pending_validation", "Pendiente de validacion")
 
-        # Generate QR code with logo
-        verify_url = f"https://taxasge.emacash.com/verify/{request_number}"
+        # Generate QR code with logo - use FRONTEND_URL from settings
+        frontend_url = settings.FRONTEND_URL.rstrip("/")
+        verify_url = f"{frontend_url}/verify/{request_number}"
         qr_code_b64 = self._generate_qr_with_logo(verify_url, size=200)
 
         # Render template
@@ -512,6 +513,7 @@ class SummaryPDFService:
             photo_base64=photo_base64,
             logo_base64=logo_base64,
             payment_status_label=payment_status_label,
+            verify_url=verify_url,
         )
 
         # Convert HTML to PDF

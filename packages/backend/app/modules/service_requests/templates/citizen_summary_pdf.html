@@ -555,7 +555,7 @@
                     <strong>{{ texts.reference }}:</strong> {{ request_number }}<br/>
                     {{ texts.generated_on }}: {{ generated_at }}
                 </div>
-                <div class="footer-verify">{{ texts.verification_url }}</div>
+                <div class="footer-verify">{{ texts.verification_url }} {{ verify_url }}</div>
             </td>
             <td class="footer-qr-cell">
                 {% if qr_code_b64 %}
