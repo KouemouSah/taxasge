@@ -1553,6 +1553,10 @@ class WizardSessionService:
                     await self._persist_session_data(
                         db, session, f"Atomic wizard payment: {payment_method}"
                     )
+                logger.info(
+                    f"[WizardSession] Step A+B complete: request={service_request_id}, "
+                    f"ref={reference}, files={len(uploaded_files)}"
+                )
 
                 # Step A2: Hold + confirm appointment atomically (if selected)
                 if appointment_data and requires_appointment:
@@ -1593,7 +1597,14 @@ class WizardSessionService:
                             f"time={appt_time_str}, location={appt_location_str}"
                         )
 
+                logger.info(
+                    f"[WizardSession] Step A2 complete (appointment): "
+                    f"confirmed={appointment_confirmed}, has_data={bool(appointment_data)}, "
+                    f"requires={requires_appointment}"
+                )
+
                 # Step C: Build PaymentContext and call processor
+                logger.info(f"[WizardSession] Step C: initiating {payment_method} payment...")
                 payment_context = PaymentContext(
                     service_request_id=str(service_request_id),
                     user_id=str(user_id_uuid),
@@ -1610,6 +1621,11 @@ class WizardSessionService:
                 )
 
                 payment_result = await payment_processor_registry.initiate_payment(db, payment_context)
+                logger.info(
+                    f"[WizardSession] Step C result: success={payment_result.success}, "
+                    f"payment_id={payment_result.payment_id}, status={payment_result.status}, "
+                    f"error={payment_result.error}"
+                )
 
                 if not payment_result.success:
                     raise WizardPersistError(
@@ -1669,7 +1685,11 @@ class WizardSessionService:
                 appointment_location=appt_location_str,
             )
 
-        except WizardPersistError:
+        except WizardPersistError as wpe:
+            logger.error(
+                f"[WizardSession] Atomic payment WizardPersistError: "
+                f"code={wpe.code}, message={wpe.message}, details={wpe.details}"
+            )
             await self._rollback_firebase_uploads(uploaded_files)
             session["status"] = WizardSessionStatus.READY_FOR_PAYMENT.value
             await self._save_session(session_id, session, renew_ttl=True)
