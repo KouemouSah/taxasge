@@ -85,8 +85,19 @@ def _handle_session_error(e: WizardSessionError):
             detail={"message": e.message, "code": e.code}
         )
     elif isinstance(e, WizardPersistError):
+        # User-actionable errors return 422, truly unexpected errors return 500
+        user_actionable_codes = {
+            "APPOINTMENT_SLOT_TAKEN", "APPOINTMENT_REQUIRED",
+            "PAYMENT_FAILED", "VALIDATION_ERRORS",
+            "INCOMPLETE_APPOINTMENT_DATA",
+        }
+        http_status = (
+            status.HTTP_422_UNPROCESSABLE_ENTITY
+            if e.code in user_actionable_codes
+            else status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status,
             detail={"message": e.message, "code": e.code, "details": e.details}
         )
     else:

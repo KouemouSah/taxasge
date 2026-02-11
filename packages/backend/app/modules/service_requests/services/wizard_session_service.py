@@ -1547,6 +1547,13 @@ class WizardSessionService:
             appt_time_str = None
             appt_location_str = None
 
+            # Fail early: appointment required but no data selected
+            if requires_appointment and not appointment_data:
+                raise WizardPersistError(
+                    "Se requiere una cita para este trámite. Seleccione una cita antes de pagar.",
+                    "APPOINTMENT_REQUIRED",
+                )
+
             async with db.transaction():
                 # Steps A+B: create service_request + upload docs (shared logic)
                 service_request_id, reference, uploaded_files = \
@@ -1562,6 +1569,16 @@ class WizardSessionService:
                 if appointment_data and requires_appointment:
                     from ..services.appointment_service import appointment_service
                     from datetime import date as date_type, time as time_type
+
+                    # Validate required fields before parsing
+                    required_appt_keys = ["entity_location_id", "appointment_date", "appointment_time"]
+                    missing_keys = [k for k in required_appt_keys if not appointment_data.get(k)]
+                    if missing_keys:
+                        raise WizardPersistError(
+                            f"Datos de cita incompletos: faltan {', '.join(missing_keys)}",
+                            "INCOMPLETE_APPOINTMENT_DATA",
+                            {"missing_keys": missing_keys}
+                        )
 
                     appt_loc_id = UUID(appointment_data["entity_location_id"])
                     appt_date = date_type.fromisoformat(appointment_data["appointment_date"])

@@ -1679,7 +1679,9 @@ function SessionDynamicFormReview({
   useEffect(() => {
     const stepNum = parseInt(stepId.replace('form_review_', ''), 10)
     if (!isNaN(stepNum)) {
-      prefetch(sessionId, `form_review_${stepNum + 1}`)
+      prefetch(sessionId, `form_review_${stepNum + 1}`).catch(() => {
+        // Next form_review step doesn't exist or context incomplete - that's fine
+      })
     }
   }, [sessionId, stepId, prefetch])
 
