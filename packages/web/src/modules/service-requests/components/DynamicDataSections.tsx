@@ -34,27 +34,45 @@ interface DynamicDataSectionsProps {
   locale?: string
 }
 
-// Payment status color mapping
+// Payment status color mapping (covers all 17 payment_workflow_status values)
 const PAYMENT_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+  submitted: { bg: 'bg-blue-100', text: 'text-blue-800' },
+  auto_processing: { bg: 'bg-blue-100', text: 'text-blue-800' },
   pending_agent_review: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+  pending_validation: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+  locked_by_agent: { bg: 'bg-purple-100', text: 'text-purple-800' },
   processing: { bg: 'bg-blue-100', text: 'text-blue-800' },
   approved: { bg: 'bg-green-100', text: 'text-green-800' },
   completed: { bg: 'bg-green-100', text: 'text-green-800' },
   rejected: { bg: 'bg-red-100', text: 'text-red-800' },
   failed: { bg: 'bg-red-100', text: 'text-red-800' },
   cancelled: { bg: 'bg-gray-100', text: 'text-gray-800' },
+  pending_correction: { bg: 'bg-orange-100', text: 'text-orange-800' },
+  corrected: { bg: 'bg-blue-100', text: 'text-blue-800' },
+  escalated: { bg: 'bg-red-100', text: 'text-red-800' },
+  under_investigation: { bg: 'bg-purple-100', text: 'text-purple-800' },
+  partially_refunded: { bg: 'bg-amber-100', text: 'text-amber-800' },
 }
 
 const PAYMENT_STATUS_LABELS: Record<string, Record<string, string>> = {
   pending: { es: 'Pendiente', fr: 'En attente', en: 'Pending' },
+  submitted: { es: 'Enviado', fr: 'Soumis', en: 'Submitted' },
+  auto_processing: { es: 'Procesamiento auto.', fr: 'Traitement auto.', en: 'Auto processing' },
   pending_agent_review: { es: 'Revisión agente', fr: "Révision agent", en: 'Agent review' },
+  pending_validation: { es: 'Validación pendiente', fr: 'Validation en attente', en: 'Pending validation' },
+  locked_by_agent: { es: 'En revisión', fr: 'En révision', en: 'Under review' },
   processing: { es: 'Procesando', fr: 'En cours', en: 'Processing' },
   approved: { es: 'Aprobado', fr: 'Approuvé', en: 'Approved' },
   completed: { es: 'Completado', fr: 'Complété', en: 'Completed' },
   rejected: { es: 'Rechazado', fr: 'Rejeté', en: 'Rejected' },
   failed: { es: 'Fallido', fr: 'Échoué', en: 'Failed' },
   cancelled: { es: 'Cancelado', fr: 'Annulé', en: 'Cancelled' },
+  pending_correction: { es: 'Corrección pendiente', fr: 'Correction en attente', en: 'Pending correction' },
+  corrected: { es: 'Corregido', fr: 'Corrigé', en: 'Corrected' },
+  escalated: { es: 'Escalado', fr: 'Escaladé', en: 'Escalated' },
+  under_investigation: { es: 'Investigación', fr: 'Investigation', en: 'Under investigation' },
+  partially_refunded: { es: 'Reembolso parcial', fr: 'Remboursement partiel', en: 'Partially refunded' },
 }
 
 /**
@@ -85,13 +103,16 @@ export function DynamicDataSections({
   // Build highlight blocks
   const highlightBlocks: React.ReactNode[] = []
 
-  // Payment block
-  if (highlight?.paymentStatus || highlight?.tariff) {
-    const status = highlight.paymentStatus || 'pending'
+  // Payment block — only show if there's a meaningful amount or an active payment status
+  const paymentAmount = highlight?.tariff?.total_amount as number | undefined
+  const hasAmount = paymentAmount != null && paymentAmount > 0
+  const hasActivePayment = !!highlight?.paymentStatus && highlight.paymentStatus !== 'pending'
+  if (hasAmount || hasActivePayment) {
+    const status = highlight?.paymentStatus || 'pending'
     const statusColors = PAYMENT_STATUS_COLORS[status] || PAYMENT_STATUS_COLORS.pending
     const statusLabel = PAYMENT_STATUS_LABELS[status]?.[locale] || status
-    const amount = highlight.tariff?.total_amount as number | undefined
-    const currency = (highlight.tariff?.currency as string) || 'XAF'
+    const amount = paymentAmount
+    const currency = (highlight?.tariff?.currency as string) || 'XAF'
 
     highlightBlocks.push(
       <div key="payment" className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4">
@@ -112,12 +133,12 @@ export function DynamicDataSections({
               {amount.toLocaleString()} {currency}
             </p>
           )}
-          {highlight.paymentReference && (
+          {highlight?.paymentReference && (
             <p className="text-xs text-emerald-700">
               Ref: {highlight.paymentReference}
             </p>
           )}
-          {highlight.receiptNumber && (
+          {highlight?.receiptNumber && (
             <p className="text-xs text-emerald-700">
               {locale === 'fr' ? 'Reçu' : locale === 'en' ? 'Receipt' : 'Recibo'}: {highlight.receiptNumber}
             </p>
@@ -194,58 +215,71 @@ export function DynamicDataSections({
         </div>
       )}
 
-      {/* Data sections */}
-      {renderSections.map((section, index) => {
-        // First section with <= 2 fields: inline subtitle
-        if (index === 0 && section.fields.length <= 2 && section.fields.length > 0) {
-          return (
-            <div key={`s-${index}`} className="text-sm text-muted-foreground px-1">
-              {section.fields
-                .filter(f => f.value)
-                .map(f => f.value)
-                .join(' · ')}
-            </div>
-          )
+      {/* Data sections — pre-compute side-by-side pairs to avoid skip bugs */}
+      {(() => {
+        // Pre-compute paired indices: adjacent small sections rendered side-by-side
+        const pairedIndices = new Set<number>()
+        const isSubtitle = (i: number) => i === 0 && renderSections[0].fields.length <= 2 && renderSections[0].fields.length > 0
+        for (let i = 0; i < renderSections.length; i++) {
+          if (pairedIndices.has(i) || isSubtitle(i)) continue
+          const s = renderSections[i]
+          const next = renderSections[i + 1]
+          if (s.fields.length <= 3 && next && next.fields.length <= 3 && !isSubtitle(i + 1)) {
+            pairedIndices.add(i)
+            pairedIndices.add(i + 1)
+            i++ // skip next since it's part of this pair
+          }
         }
 
-        const hasPhoto = photoSectionIndex === index && !!photoUrl
-        const isSmall = section.fields.length <= 3
+        const elements: React.ReactNode[] = []
+        for (let index = 0; index < renderSections.length; index++) {
+          const section = renderSections[index]
 
-        // Check if this + next section are both small → render side-by-side
-        const nextSection = renderSections[index + 1]
-        const nextIsSmall = nextSection && nextSection.fields.length <= 3
-        // Only pair if current is small, next is small, and we're not the subtitle section
-        const shouldPairWithNext = isSmall && nextIsSmall && !(index === 0 && section.fields.length <= 2)
+          // First section with <= 2 fields: inline subtitle
+          if (isSubtitle(index)) {
+            elements.push(
+              <div key={`s-${index}`} className="text-sm text-muted-foreground px-1">
+                {section.fields
+                  .filter(f => f.value)
+                  .map(f => f.value)
+                  .join(' · ')}
+              </div>
+            )
+            continue
+          }
 
-        if (shouldPairWithNext) {
-          // Render paired side-by-side sections
-          return (
-            <div key={`s-${index}`} className="flex flex-col md:flex-row md:gap-4">
-              <div className="md:w-1/2">
-                <SectionCard section={section} hasPhoto={false} photoUrl={null} />
+          // If this is the first of a pair, render both side-by-side
+          if (pairedIndices.has(index) && pairedIndices.has(index + 1)) {
+            const nextSection = renderSections[index + 1]
+            elements.push(
+              <div key={`s-${index}`} className="flex flex-col md:flex-row md:gap-4">
+                <div className="md:w-1/2">
+                  <SectionCard section={section} hasPhoto={false} photoUrl={null} />
+                </div>
+                <div className="md:w-1/2 mt-4 md:mt-0">
+                  <SectionCard section={nextSection} hasPhoto={false} photoUrl={null} />
+                </div>
               </div>
-              <div className="md:w-1/2 mt-4 md:mt-0">
-                <SectionCard section={nextSection} hasPhoto={false} photoUrl={null} />
-              </div>
-            </div>
+            )
+            index++ // skip next
+            continue
+          }
+
+          // Skip second element of a pair (shouldn't happen with i++ above, but safety)
+          if (pairedIndices.has(index)) continue
+
+          const hasPhoto = photoSectionIndex === index && !!photoUrl
+          elements.push(
+            <SectionCard
+              key={`s-${index}`}
+              section={section}
+              hasPhoto={hasPhoto}
+              photoUrl={hasPhoto ? photoUrl : null}
+            />
           )
         }
-
-        // Skip if this section was already rendered as part of a pair
-        const prevSection = index > 0 ? renderSections[index - 1] : null
-        const prevIsSmall = prevSection && prevSection.fields.length <= 3
-        const wasPairedWithPrev = prevIsSmall && isSmall && !(index - 1 === 0 && (prevSection?.fields.length ?? 0) <= 2)
-        if (wasPairedWithPrev) return null
-
-        return (
-          <SectionCard
-            key={`s-${index}`}
-            section={section}
-            hasPhoto={hasPhoto}
-            photoUrl={hasPhoto ? photoUrl : null}
-          />
-        )
-      })}
+        return elements
+      })()}
     </div>
   )
 }

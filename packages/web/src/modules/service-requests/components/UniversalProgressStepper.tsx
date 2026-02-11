@@ -120,7 +120,7 @@ export function UniversalProgressStepper({ phases, currentIndex, status, locale 
         <span className="text-xs text-muted-foreground">
           {isTerminal
             ? '100%'
-            : `${Math.round((groups.findIndex(g => currentIndex >= g.startIndex && currentIndex <= g.endIndex) / Math.max(groups.length - 1, 1)) * 100)}%`}
+            : `${Math.round((Math.max(0, groups.findIndex(g => currentIndex >= g.startIndex && currentIndex <= g.endIndex)) / Math.max(groups.length - 1, 1)) * 100)}%`}
         </span>
       </div>
     </div>

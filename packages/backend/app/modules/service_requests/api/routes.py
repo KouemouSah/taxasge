@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Bod
 from typing import List, Optional, Any
 from uuid import UUID
 from datetime import datetime
+import asyncio
 import asyncpg
 from loguru import logger
 
@@ -1494,18 +1495,27 @@ async def get_request_detail_view(
     except Exception as e:
         logger.warning(f"Could not fetch payment reference: {e}")
 
-    # 13. Build documents with signed URLs from provided_documents
+    # 13. Build documents with signed URLs from provided_documents (parallel)
     documents: list[DocumentInfo] = []
-    for doc in request.provided_documents:
-        if doc.file_path:
-            file_url = None
+    docs_with_paths = [
+        doc for doc in request.provided_documents if doc.file_path
+    ]
+    if docs_with_paths:
+        from app.modules.documents.services.storage_service import firebase_storage_service
+
+        async def _get_signed_url(path: str) -> str | None:
             try:
-                from app.modules.documents.services.storage_service import firebase_storage_service
-                file_url = await firebase_storage_service.get_signed_url(
-                    doc.file_path, expiration_hours=1
+                return await firebase_storage_service.get_signed_url(
+                    path, expiration_hours=1
                 )
-            except Exception as doc_err:
-                logger.warning(f"Could not get signed URL for {doc.document_code}: {doc_err}")
+            except Exception as e:
+                logger.warning(f"Could not get signed URL for {path}: {e}")
+                return None
+
+        signed_urls = await asyncio.gather(
+            *[_get_signed_url(doc.file_path) for doc in docs_with_paths]
+        )
+        for doc, file_url in zip(docs_with_paths, signed_urls):
             documents.append(DocumentInfo(
                 id=str(doc.id),
                 document_code=doc.document_code,
