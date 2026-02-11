@@ -515,8 +515,8 @@ export function useWizardSession(): UseWizardSessionReturn {
         }
         return result
       } catch (err) {
-        handleError(err)
-        return null
+        const msg = handleError(err)
+        return { success: false, error: msg } as InitiatePaymentResult
       } finally {
         setIsLoading(false)
       }

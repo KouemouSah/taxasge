@@ -411,14 +411,26 @@ export default function SessionWizardPage() {
       )
 
       if (!result?.success) {
-        setPaymentError(
-          result?.error ||
+        const errorMsg = result?.error ||
           (locale === 'es'
             ? 'Error al procesar el pago. Intente de nuevo.'
             : locale === 'fr'
               ? 'Erreur lors du traitement du paiement. Reessayez.'
               : 'Error processing payment. Please try again.')
-        )
+
+        // Appointment slot taken → go back to appointment step
+        if (errorMsg.includes('ya no está disponible') || errorMsg.includes('APPOINTMENT_SLOT_TAKEN')) {
+          setPaymentError(locale === 'es'
+            ? 'El horario seleccionado ya no está disponible. Seleccione otro horario.'
+            : locale === 'fr'
+              ? 'Le créneau sélectionné n\'est plus disponible. Veuillez en choisir un autre.'
+              : 'The selected time slot is no longer available. Please select another.')
+          const apptStepIdx = steps.findIndex(s => s.type === 'appointment')
+          if (apptStepIdx >= 0) setCurrentStepIndex(apptStepIdx)
+          return
+        }
+
+        setPaymentError(errorMsg)
         return
       }
 
