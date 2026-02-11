@@ -220,14 +220,15 @@ class MatriculacionTransferenciaWorkflow(PredefinedWorkflow):
                              "help_text_es": "Número del certificado (ej: 25496/48762)"},
                             {"key": "cumple_condiciones_minimas", "label_es": "Cumple Condiciones Mínimas",
                              "type": "boolean", "required": True, "readonly": True,
+                             "pdf_exclude": True,
                              "help_text_es": (
                                  "Determinado por el texto del certificado: "
                                  "'reúne las condiciones mínimas necesarias para circular'"
                              )},
                             {"key": "tiene_firma", "label_es": "Firma del Ingeniero", "type": "boolean",
-                             "required": True, "readonly": True},
+                             "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "tiene_sello", "label_es": "Sello Oficial", "type": "boolean",
-                             "required": True, "readonly": True},
+                             "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "fecha_certificado", "label_es": "Fecha del Certificado", "type": "date",
                              "required": True, "readonly": True},
                         ]
