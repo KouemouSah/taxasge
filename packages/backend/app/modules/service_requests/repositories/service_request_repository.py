@@ -850,9 +850,13 @@ class ServiceRequestRepository:
         unread_count = 0
 
         for row in rows:
-            is_new = False
-            if citizen_last_viewed_at and row["performed_at"]:
+            # NULL citizen_last_viewed_at = never viewed = everything is new
+            if citizen_last_viewed_at is None:
+                is_new = True
+            elif row["performed_at"]:
                 is_new = row["performed_at"] > citizen_last_viewed_at
+            else:
+                is_new = False
 
             if is_new:
                 unread_count += 1
@@ -873,7 +877,7 @@ class ServiceRequestRepository:
                 "action": action,
                 "title": title,
                 "message": message,
-                "performed_at": row["performed_at"].isoformat() if row["performed_at"] else None,
+                "performed_at": row["performed_at"],  # Keep native datetime, Pydantic serializes
                 "performer_role": row["performer_role"],
                 "is_new": is_new,
                 "new_status": row["new_status"],
