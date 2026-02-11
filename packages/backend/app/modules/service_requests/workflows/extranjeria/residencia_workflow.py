@@ -398,15 +398,15 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                         "source_document": "certificado_conducta",
                         "fields": [
                             {"key": "buena_conducta_numero", "label_es": "N° Certificado",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "buena_conducta_fecha", "label_es": "Fecha de Expedición",
-                             "type": "date", "required": True, "readonly": True},
+                             "type": "date", "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "buena_conducta_comunidad", "label_es": "Comunidad de Vecinos",
-                             "type": "text", "required": True, "readonly": True},
+                             "type": "text", "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "buena_conducta_municipio", "label_es": "Municipio",
-                             "type": "text", "required": True, "readonly": True},
+                             "type": "text", "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "buena_conducta_resultado", "label_es": "Resultado",
-                             "type": "text", "required": True, "readonly": True},
+                             "type": "text", "required": True, "readonly": True, "pdf_exclude": True},
                         ]
                     },
                     {
@@ -416,11 +416,11 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                         "condition": {"solicitud_type": "renovacion"},
                         "fields": [
                             {"key": "antecedentes_timbre", "label_es": "N° Timbre Fiscal",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "antecedentes_fecha", "label_es": "Fecha de Expedición",
-                             "type": "date", "required": True, "readonly": True},
+                             "type": "date", "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "antecedentes_resultado", "label_es": "Resultado",
-                             "type": "text", "required": True, "readonly": True},
+                             "type": "text", "required": True, "readonly": True, "pdf_exclude": True},
                         ]
                     },
                     {
@@ -430,13 +430,13 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                         "condition": {"solicitud_type": "expedicion"},
                         "fields": [
                             {"key": "antecedentes_intl_numero", "label_es": "N° Referencia",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "antecedentes_intl_fecha", "label_es": "Fecha de Expedición",
-                             "type": "date", "required": True, "readonly": True},
+                             "type": "date", "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "antecedentes_intl_pais", "label_es": "País Emisor",
-                             "type": "text", "required": True, "readonly": True},
+                             "type": "text", "required": True, "readonly": True, "pdf_exclude": True},
                             {"key": "antecedentes_intl_resultado", "label_es": "Resultado",
-                             "type": "text", "required": True, "readonly": True},
+                             "type": "text", "required": True, "readonly": True, "pdf_exclude": True},
                         ]
                     },
                     {
@@ -450,21 +450,21 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                         ),
                         "fields": [
                             {"key": "nif_empresa_nif", "label_es": "NIF",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "nif_empresa_expediente", "label_es": "N° Expediente",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "nif_empresa_nombre", "label_es": "Razón Social",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "nif_empresa_telefono", "label_es": "Teléfono",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "autorizacion_numero", "label_es": "N° Autorización",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "autorizacion_delegacion", "label_es": "Autoridad Emisora",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "autorizacion_provincia", "label_es": "Provincia",
-                             "type": "text", "required": False, "readonly": True},
+                             "type": "text", "required": False, "readonly": True, "pdf_exclude": True},
                             {"key": "autorizacion_fecha", "label_es": "Fecha Autorización",
-                             "type": "date", "required": False, "readonly": True},
+                             "type": "date", "required": False, "readonly": True, "pdf_exclude": True},
                         ]
                     },
                 ]
