@@ -697,6 +697,16 @@ class CitizenNotification(BaseModel):
     new_status: Optional[str] = Field(None, description="New status if STATUS_CHANGE")
 
 
+class DocumentInfo(BaseModel):
+    """Document info with signed download URL for citizen preview."""
+    id: str
+    document_code: str
+    document_name: str
+    file_name: str
+    mime_type: Optional[str] = None
+    file_url: Optional[str] = None
+
+
 class DetailViewResponse(BaseModel):
     """
     Combined response for the citizen 'Mi Solicitud' detail page.
@@ -724,9 +734,14 @@ class DetailViewResponse(BaseModel):
 
     # Payment status
     payment_status: Optional[str] = None
+    payment_reference: Optional[str] = None
+    receipt_number: Optional[str] = None
 
     # Appointment
     appointment: Optional[Dict[str, Any]] = None
+
+    # Documents with signed URLs
+    documents: List[DocumentInfo] = Field(default_factory=list)
 
     # Workflow metadata
     workflow_name_es: str = ""

@@ -31,7 +31,7 @@ const STEP_TYPE_ICONS: Record<string, React.ElementType> = {
  * E.g. form_review_1, form_review_2, form_review_3 → single "Formulario" dot.
  * Non-form_review steps are kept as-is.
  */
-function collapsePhases(phases: StepperPhase[]): { label: string; type: string; startIndex: number; endIndex: number }[] {
+function collapsePhases(phases: StepperPhase[], formLabel: string): { label: string; type: string; startIndex: number; endIndex: number }[] {
   const groups: { label: string; type: string; startIndex: number; endIndex: number }[] = []
   let i = 0
   while (i < phases.length) {
@@ -43,7 +43,7 @@ function collapsePhases(phases: StepperPhase[]): { label: string; type: string; 
         i++
       }
       groups.push({
-        label: 'Formulario',
+        label: formLabel,
         type: 'form_review',
         startIndex: start,
         endIndex: i - 1,
@@ -61,11 +61,18 @@ function collapsePhases(phases: StepperPhase[]): { label: string; type: string; 
   return groups
 }
 
-export function UniversalProgressStepper({ phases, currentIndex, status }: UniversalProgressStepperProps) {
+const FORM_REVIEW_LABELS: Record<string, string> = {
+  es: 'Formulario',
+  fr: 'Formulaire',
+  en: 'Form',
+}
+
+export function UniversalProgressStepper({ phases, currentIndex, status, locale = 'es' }: UniversalProgressStepperProps) {
   if (!phases.length) return null
 
   const isTerminal = ['COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED'].includes(status)
-  const groups = collapsePhases(phases)
+  const formLabel = FORM_REVIEW_LABELS[locale] || FORM_REVIEW_LABELS.es
+  const groups = collapsePhases(phases, formLabel)
 
   return (
     <div className="overflow-x-auto">
@@ -108,12 +115,12 @@ export function UniversalProgressStepper({ phases, currentIndex, status }: Unive
           )
         })}
       </div>
-      {/* Progress percentage */}
+      {/* Progress percentage based on collapsed groups */}
       <div className="mt-3 text-center">
         <span className="text-xs text-muted-foreground">
           {isTerminal
             ? '100%'
-            : `${Math.round((currentIndex / Math.max(phases.length - 1, 1)) * 100)}%`}
+            : `${Math.round((groups.findIndex(g => currentIndex >= g.startIndex && currentIndex <= g.endIndex) / Math.max(groups.length - 1, 1)) * 100)}%`}
         </span>
       </div>
     </div>

@@ -32,6 +32,7 @@ from ..models.service_request import (
     StepperPhase,
     DataSection,
     DataSectionField,
+    DocumentInfo,
 )
 from ..models.form_config import FormConfigResponse
 from ..models.enums import ServiceRequestStatus
@@ -1479,6 +1480,41 @@ async def get_request_detail_view(
     except Exception:
         pass  # Column may not exist yet (pre-migration)
 
+    # 12. Get payment reference from service_payments
+    payment_reference = None
+    receipt_number = None
+    try:
+        pay_row = await db.fetchrow(
+            "SELECT payment_reference, receipt_number FROM service_payments WHERE service_request_id = $1 ORDER BY created_at DESC LIMIT 1",
+            request_id,
+        )
+        if pay_row:
+            payment_reference = pay_row["payment_reference"]
+            receipt_number = pay_row["receipt_number"]
+    except Exception as e:
+        logger.warning(f"Could not fetch payment reference: {e}")
+
+    # 13. Build documents with signed URLs from provided_documents
+    documents: list[DocumentInfo] = []
+    for doc in request.provided_documents:
+        if doc.file_path:
+            file_url = None
+            try:
+                from app.modules.documents.services.storage_service import firebase_storage_service
+                file_url = await firebase_storage_service.get_signed_url(
+                    doc.file_path, expiration_hours=1
+                )
+            except Exception as doc_err:
+                logger.warning(f"Could not get signed URL for {doc.document_code}: {doc_err}")
+            documents.append(DocumentInfo(
+                id=str(doc.id),
+                document_code=doc.document_code,
+                document_name=doc.document_name,
+                file_name=doc.file_name,
+                mime_type=doc.mime_type,
+                file_url=file_url,
+            ))
+
     return DetailViewResponse(
         request=request,
         stepper_phases=stepper_phases,
@@ -1489,7 +1525,10 @@ async def get_request_detail_view(
         photo_url=photo_url,
         tariff=tariff,
         payment_status=request.payment_status,
+        payment_reference=payment_reference,
+        receipt_number=receipt_number,
         appointment=appointment,
+        documents=documents,
         workflow_name_es=workflow_name,
         solicitud_type_display=solicitud_type_display,
     )

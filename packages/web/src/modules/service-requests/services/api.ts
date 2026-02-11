@@ -1301,7 +1301,10 @@ class ServiceRequestsApiClient {
       photo_url?: string | null
       tariff?: Record<string, unknown> | null
       payment_status?: string | null
+      payment_reference?: string | null
+      receipt_number?: string | null
       appointment?: { date?: string | null; time?: string | null; location?: string | null } | null
+      documents: DetailViewResponse['documents']
       workflow_name_es: string
       solicitud_type_display?: string | null
     }
@@ -1318,7 +1321,10 @@ class ServiceRequestsApiClient {
       photo_url: backend.photo_url,
       tariff: backend.tariff,
       payment_status: backend.payment_status,
+      payment_reference: backend.payment_reference,
+      receipt_number: backend.receipt_number,
       appointment: backend.appointment,
+      documents: backend.documents || [],
       workflow_name_es: backend.workflow_name_es,
       solicitud_type_display: backend.solicitud_type_display,
     }

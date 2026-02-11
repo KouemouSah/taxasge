@@ -77,6 +77,18 @@ function formatRelativeTime(dateString: string, locale: string): string {
   })
 }
 
+const ACTION_TITLES: Record<string, Record<string, string>> = {
+  status_change: { es: 'Cambio de estado', fr: 'Changement de statut', en: 'Status change' },
+  agent_action_taken: { es: 'Accion del agente', fr: "Action de l'agent", en: 'Agent action' },
+  comment_added: { es: 'Comentario', fr: 'Commentaire', en: 'Comment' },
+  cita_scheduled: { es: 'Cita programada', fr: 'Rendez-vous programmé', en: 'Appointment scheduled' },
+  cita_rescheduled: { es: 'Cita reprogramada', fr: 'Rendez-vous reprogrammé', en: 'Appointment rescheduled' },
+  cita_cancelled: { es: 'Cita cancelada', fr: 'Rendez-vous annulé', en: 'Appointment cancelled' },
+  payment_received: { es: 'Pago recibido', fr: 'Paiement reçu', en: 'Payment received' },
+  payment_failed: { es: 'Pago fallido', fr: 'Paiement échoué', en: 'Payment failed' },
+  validation_failed: { es: 'Validacion fallida', fr: 'Validation échouée', en: 'Validation failed' },
+}
+
 export function CitizenNotificationsPanel({ notifications, unreadCount, locale = 'es' }: CitizenNotificationsPanelProps) {
   const [expanded, setExpanded] = useState(unreadCount > 0)
 
@@ -132,7 +144,7 @@ export function CitizenNotificationsPanel({ notifications, unreadCount, locale =
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">{notif.title}</p>
+                      <p className="text-sm font-medium truncate">{ACTION_TITLES[notif.action]?.[locale] || notif.title}</p>
                       {notif.is_new && (
                         <span className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500" />
                       )}

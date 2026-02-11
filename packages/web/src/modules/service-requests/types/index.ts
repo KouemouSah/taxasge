@@ -1359,6 +1359,15 @@ export interface DetailViewCitizenNotification {
   new_status?: string | null
 }
 
+export interface DetailViewDocumentInfo {
+  id: string
+  document_code: string
+  document_name: string
+  file_name: string
+  mime_type?: string | null
+  file_url?: string | null
+}
+
 export interface DetailViewResponse {
   request: ServiceRequest
   stepper_phases: DetailViewStepperPhase[]
@@ -1369,11 +1378,14 @@ export interface DetailViewResponse {
   photo_url?: string | null
   tariff?: Record<string, unknown> | null
   payment_status?: string | null
+  payment_reference?: string | null
+  receipt_number?: string | null
   appointment?: {
     date?: string | null
     time?: string | null
     location?: string | null
   } | null
+  documents: DetailViewDocumentInfo[]
   workflow_name_es: string
   solicitud_type_display?: string | null
 }

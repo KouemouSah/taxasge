@@ -18,7 +18,7 @@
  * - Other statuses → Read-only consultation with notifications
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -27,48 +27,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Progress } from '@/components/ui/progress'
 import {
   ArrowLeft,
   ArrowRight,
   FileText,
   CheckCircle,
-  Clock,
   AlertCircle,
   XCircle,
-  Calendar,
   CreditCard,
   Upload,
   Eye,
   Loader2,
-  MapPin,
   CalendarCheck,
   RefreshCw,
   Download,
+  Clock,
 } from 'lucide-react'
 import { useDetailView } from '@/modules/service-requests/hooks/useWorkflowQueries'
-import { useServiceRequests } from '@/modules/service-requests'
 import { UniversalProgressStepper } from '@/modules/service-requests/components/UniversalProgressStepper'
 import { DynamicDataSections } from '@/modules/service-requests/components/DynamicDataSections'
 import { CitizenNotificationsPanel } from '@/modules/service-requests/components/CitizenNotificationsPanel'
+import { CitizenDocumentPreview } from '@/modules/service-requests/components/CitizenDocumentPreview'
 import { serviceRequestsApi } from '@/modules/service-requests/services/api'
+import type { DetailViewDocumentInfo } from '@/modules/service-requests/types'
 
 // Status configuration for visual styling (messages use translation keys)
 const STATUS_CONFIG: Record<string, { color: string; icon: React.ElementType; messageKey: string }> = {
@@ -100,54 +81,10 @@ export default function ServiceRequestDetailPage() {
   // Detail view data (single API call)
   const { data: detailView, isLoading, error: queryError, refetch } = useDetailView(requestId)
 
-  // Legacy hook for document operations
-  const {
-    documents,
-    loadDocuments,
-    uploadDocument,
-  } = useServiceRequests()
-
-  // State for upload dialog
-  const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [uploadingDocument, setUploadingDocument] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [selectedDocType, setSelectedDocType] = useState('')
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  // State
   const [activeTab, setActiveTab] = useState('overview')
   const [downloadingPdf, setDownloadingPdf] = useState(false)
-
-  // Handle file upload
-  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file || !selectedDocType) return
-
-    setUploadingDocument(true)
-    setUploadError(null)
-    setUploadProgress(10)
-
-    try {
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 20, 90))
-      }, 200)
-
-      await uploadDocument(selectedDocType, file)
-      clearInterval(progressInterval)
-      setUploadProgress(100)
-      await loadDocuments()
-
-      setTimeout(() => {
-        setShowUploadDialog(false)
-        setSelectedDocType('')
-        setUploadProgress(0)
-        if (fileInputRef.current) fileInputRef.current.value = ''
-      }, 500)
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Error uploading document')
-    } finally {
-      setUploadingDocument(false)
-    }
-  }, [selectedDocType, uploadDocument, loadDocuments])
+  const [previewDoc, setPreviewDoc] = useState<DetailViewDocumentInfo | null>(null)
 
   // Handle PDF download
   const handleDownloadPdf = useCallback(async () => {
@@ -168,13 +105,6 @@ export default function ServiceRequestDetailPage() {
       setDownloadingPdf(false)
     }
   }, [requestId, locale, detailView])
-
-  // Load documents on mount
-  useEffect(() => {
-    if (requestId) {
-      loadDocuments()
-    }
-  }, [requestId, loadDocuments])
 
   // Auto-redirect DRAFT status to wizard
   useEffect(() => {
@@ -198,16 +128,6 @@ export default function ServiceRequestDetailPage() {
     const hours = date.getHours().toString().padStart(2, '0')
     const minutes = date.getMinutes().toString().padStart(2, '0')
     return `${day}/${month}/${year} - ${hours}H${minutes}`
-  }
-
-  // Format amount
-  const formatAmount = (amount?: number): string => {
-    if (!amount) return '-'
-    return new Intl.NumberFormat(locale === 'es' ? 'es-GQ' : locale, {
-      style: 'currency',
-      currency: 'XAF',
-      minimumFractionDigits: 0,
-    }).format(amount)
   }
 
   // Loading state
@@ -264,7 +184,7 @@ export default function ServiceRequestDetailPage() {
     )
   }
 
-  const { request, stepper_phases, current_phase_index, data_sections, citizen_notifications, unread_notification_count, photo_url, appointment, payment_status } = detailView
+  const { request, stepper_phases, current_phase_index, data_sections, citizen_notifications, unread_notification_count, photo_url, appointment, payment_status, payment_reference, receipt_number, documents: requestDocuments } = detailView
   const statusConfig = getStatusConfig(request.status)
   const StatusIcon = statusConfig.icon
   const hasNotifications = citizen_notifications.length > 0
@@ -408,86 +328,21 @@ export default function ServiceRequestDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Dynamic Data Sections (from workflow form configs) */}
+              {/* Dynamic Data Sections with highlight blocks (Pago/Cita/Anterior) */}
               {data_sections.length > 0 && (
                 <DynamicDataSections
                   sections={data_sections}
                   photoUrl={photo_url}
+                  highlight={{
+                    paymentStatus: payment_status,
+                    paymentReference: payment_reference,
+                    receiptNumber: receipt_number,
+                    tariff: detailView.tariff,
+                    appointment: appointment,
+                  }}
+                  locale={locale}
                 />
               )}
-
-              {/* Payment & Appointment Cards */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Payment Card */}
-                {detailView.tariff && (detailView.tariff.total_amount as number) > 0 && (
-                  <Card>
-                    <CardHeader className="py-3 px-4">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        {locale === 'es' ? 'Pago' : locale === 'fr' ? 'Paiement' : 'Payment'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Total</span>
-                          <span className="font-bold text-primary">
-                            {formatAmount(detailView.tariff.total_amount as number)}
-                          </span>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">
-                            {locale === 'es' ? 'Estado' : locale === 'fr' ? 'Statut' : 'Status'}
-                          </span>
-                          <Badge variant={
-                            payment_status === 'completed' ? 'default' :
-                            payment_status === 'pending_agent_review' ? 'secondary' :
-                            'outline'
-                          }>
-                            {payment_status === 'completed'
-                              ? (locale === 'es' ? 'Confirmado' : locale === 'fr' ? 'Confirmé' : 'Confirmed')
-                              : payment_status === 'pending_agent_review'
-                                ? (locale === 'es' ? 'Pendiente validación' : locale === 'fr' ? 'En attente de validation' : 'Pending validation')
-                                : payment_status === 'processing'
-                                  ? (locale === 'es' ? 'En proceso' : locale === 'fr' ? 'En cours' : 'Processing')
-                                  : (locale === 'es' ? 'Pendiente' : locale === 'fr' ? 'En attente' : 'Pending')}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Appointment Card */}
-                {appointment && (
-                  <Card>
-                    <CardHeader className="py-3 px-4">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <CalendarCheck className="h-4 w-4" />
-                        {locale === 'es' ? 'Cita Programada' : locale === 'fr' ? 'Rendez-vous' : 'Appointment'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-4 pb-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{appointment.date || '-'}</span>
-                          {appointment.time && (
-                            <span className="text-sm text-muted-foreground">{appointment.time}</span>
-                          )}
-                        </div>
-                        {appointment.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{appointment.location}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
             </TabsContent>
 
             {/* Documents Tab */}
@@ -497,69 +352,69 @@ export default function ServiceRequestDetailPage() {
                   <div>
                     <CardTitle>{t('documents_tab')}</CardTitle>
                     <CardDescription>
-                      {documents.length} {t('documents_uploaded')}
+                      {requestDocuments.length} {t('documents_uploaded')}
                     </CardDescription>
                   </div>
                   {['DRAFT', 'DOCUMENTS_REQUIRED'].includes(request.status) && (
-                    <Button onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/documents`)}>
+                    <Button onClick={() => router.push(`/${locale}/dashboard/service-requests/${requestId}/wizard`)}>
                       <Upload className="mr-2 h-4 w-4" />
                       {t('upload')}
                     </Button>
                   )}
                 </CardHeader>
                 <CardContent>
-                  {documents.length === 0 ? (
+                  {requestDocuments.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>{t('documents.no_documents')}</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {documents.map((doc) => (
+                      {requestDocuments.map((doc) => (
                         <div
                           key={doc.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => doc.file_url && setPreviewDoc(doc)}
                         >
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-muted rounded">
                               <FileText className="h-5 w-5" />
                             </div>
                             <div>
-                              <p className="font-medium">{doc.documentNameEs || doc.documentCode}</p>
-                              <p className="text-sm text-muted-foreground">{doc.fileName}</p>
+                              <p className="font-medium">{doc.document_name}</p>
+                              <p className="text-sm text-muted-foreground">{doc.file_name}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge
-                              variant={
-                                doc.extractionStatus === 'completed'
-                                  ? 'default'
-                                  : doc.extractionStatus === 'failed'
-                                    ? 'destructive'
-                                    : 'secondary'
-                              }
-                            >
-                              {doc.extractionStatus === 'completed' && <CheckCircle className="h-3 w-3 mr-1" />}
-                              {doc.extractionStatus === 'failed' && <XCircle className="h-3 w-3 mr-1" />}
-                              {doc.extractionStatus === 'pending' && <Clock className="h-3 w-3 mr-1" />}
-                              {doc.extractionStatus}
-                            </Badge>
-                            {doc.fileUrl && (
+                            {doc.file_url && (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setPreviewDoc(doc)
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                {locale === 'es' ? 'Ver' : locale === 'fr' ? 'Voir' : 'View'}
+                              </Button>
+                            )}
+                            {doc.file_url && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
                                   const link = document.createElement('a')
-                                  link.href = doc.fileUrl!
-                                  link.download = doc.fileName || 'document'
+                                  link.href = doc.file_url!
+                                  link.download = doc.file_name || 'document'
                                   link.target = '_blank'
                                   document.body.appendChild(link)
                                   link.click()
                                   document.body.removeChild(link)
                                 }}
                               >
-                                <Download className="h-4 w-4 mr-1" />
-                                {locale === 'es' ? 'Descargar' : locale === 'fr' ? 'Télécharger' : 'Download'}
+                                <Download className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
@@ -628,72 +483,12 @@ export default function ServiceRequestDetailPage() {
         </div>
       </div>
 
-      {/* Upload Document Dialog */}
-      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              {t('upload_document') || 'Subir Documento'}
-            </DialogTitle>
-            <DialogDescription>
-              {t('upload_document_description') || 'Selecciona el tipo de documento y sube el archivo'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="docType">{t('document_type') || 'Tipo de documento'}</Label>
-              <Select value={selectedDocType} onValueChange={setSelectedDocType}>
-                <SelectTrigger id="docType">
-                  <SelectValue placeholder={t('select_document_type') || 'Seleccionar tipo...'} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dip_gq">DIP Guinea Ecuatorial</SelectItem>
-                  <SelectItem value="pasaporte_gq">Pasaporte GQ</SelectItem>
-                  <SelectItem value="partida_nacimiento">Partida de Nacimiento</SelectItem>
-                  <SelectItem value="certificado_residencia">Certificado de Residencia</SelectItem>
-                  <SelectItem value="foto_carnet">Foto Carnet</SelectItem>
-                  <SelectItem value="otros">Otros</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="file">{t('file') || 'Archivo'}</Label>
-              <Input
-                id="file"
-                type="file"
-                ref={fileInputRef}
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={handleFileUpload}
-                disabled={!selectedDocType || uploadingDocument}
-              />
-              <p className="text-xs text-muted-foreground">PDF, JPG o PNG. Max 5MB.</p>
-            </div>
-            {uploadingDocument && (
-              <div className="space-y-2">
-                <Progress value={uploadProgress} className="h-2" />
-                <p className="text-sm text-center text-muted-foreground">
-                  {t('uploading') || 'Subiendo...'} {uploadProgress}%
-                </p>
-              </div>
-            )}
-            {uploadError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{uploadError}</AlertDescription>
-              </Alert>
-            )}
-            {uploadProgress === 100 && !uploadingDocument && (
-              <Alert className="border-green-500 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <AlertDescription className="text-green-700">
-                  {t('upload_success') || 'Documento subido correctamente'}
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Document Preview Dialog */}
+      <CitizenDocumentPreview
+        document={previewDoc}
+        open={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+      />
     </div>
   )
 }
