@@ -1509,6 +1509,7 @@ async def download_citizen_summary_pdf(
         appointment=appointment,
         language=language,
         photo_url=photo_url,
+        payment_status=request.payment_status,
     )
 
     # Return PDF response

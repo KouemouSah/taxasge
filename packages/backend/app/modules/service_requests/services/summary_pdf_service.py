@@ -86,6 +86,9 @@ class SummaryPDFService:
             "location": "Ubicacion",
             "no_appointment": "Sin cita programada",
             "payment_confirmed": "Pago registrado",
+            "payment_pending_validation": "Pendiente de validacion",
+            "payment_processing": "Pago en proceso",
+            "payment_pending": "Pendiente",
         },
         "fr": {
             "platform_subtitle": "Plateforme de Services Fiscaux - Guinee Equatoriale",
@@ -121,6 +124,9 @@ class SummaryPDFService:
             "location": "Lieu",
             "no_appointment": "Sans rendez-vous programme",
             "payment_confirmed": "Paiement enregistre",
+            "payment_pending_validation": "En attente de validation",
+            "payment_processing": "Paiement en cours",
+            "payment_pending": "En attente",
         },
         "en": {
             "platform_subtitle": "Fiscal Services Platform - Equatorial Guinea",
@@ -156,6 +162,9 @@ class SummaryPDFService:
             "location": "Location",
             "no_appointment": "No appointment scheduled",
             "payment_confirmed": "Payment registered",
+            "payment_pending_validation": "Pending validation",
+            "payment_processing": "Payment processing",
+            "payment_pending": "Pending",
         },
     }
 
@@ -375,6 +384,7 @@ class SummaryPDFService:
         appointment: Optional[Dict[str, Any]] = None,
         language: str = "es",
         photo_url: Optional[str] = None,
+        payment_status: Optional[str] = None,
     ) -> bytes:
         """
         Generate a PDF summary for a service request.
@@ -468,6 +478,19 @@ class SummaryPDFService:
         if photo_url:
             photo_base64 = await self.fetch_photo_as_base64(photo_url)
 
+        # Get logo as base64
+        logo_base64 = self.get_logo_base64()
+
+        # Resolve payment status label
+        if payment_status == "completed":
+            payment_status_label = texts.get("payment_confirmed", "Pago registrado")
+        elif payment_status in ("pending_agent_review", "submitted"):
+            payment_status_label = texts.get("payment_pending_validation", "Pendiente de validacion")
+        elif payment_status == "processing":
+            payment_status_label = texts.get("payment_processing", "Pago en proceso")
+        else:
+            payment_status_label = texts.get("payment_pending_validation", "Pendiente de validacion")
+
         # Generate QR code with logo
         verify_url = f"https://taxasge.emacash.com/verify/{request_number}"
         qr_code_b64 = self._generate_qr_with_logo(verify_url, size=200)
@@ -482,13 +505,13 @@ class SummaryPDFService:
             workflow_name=workflow_name,
             solicitud_type_label=solicitud_type_label,
             data_sections=data_sections,
-            documents=prepared_documents,
-            has_validation_errors=has_validation_errors,
             tariff=formatted_tariff,
             appointment=formatted_appointment,
             generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
             qr_code_b64=qr_code_b64,
             photo_base64=photo_base64,
+            logo_base64=logo_base64,
+            payment_status_label=payment_status_label,
         )
 
         # Convert HTML to PDF

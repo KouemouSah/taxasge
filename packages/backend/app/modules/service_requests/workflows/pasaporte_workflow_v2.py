@@ -382,7 +382,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "fields": [
                             {"key": "domicilio_barrio", "label_es": "Barrio", "required": True},
                             {"key": "domicilio_ciudad", "label_es": "Ciudad", "required": True},
-                            {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True}
+                            {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True, "pdf_exclude": True}
                         ]
                     }
                 ],
@@ -437,7 +437,7 @@ class PasaporteWorkflow(PredefinedWorkflow):
                         "fields": [
                             {"key": "domicilio_barrio", "label_es": "Barrio", "required": True},
                             {"key": "domicilio_ciudad", "label_es": "Ciudad", "required": True},
-                            {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True}
+                            {"key": "distrito_provincia", "label_es": "Distrito/Provincia", "required": True, "pdf_exclude": True}
                         ]
                     }
                 ]
