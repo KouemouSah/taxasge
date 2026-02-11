@@ -385,7 +385,7 @@ class BangeProcessor(PaymentProcessorBase):
                 status, workflow_status, requires_agent_validation,
                 created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4,
+                $1::uuid, $2, $3::uuid, $4::uuid,
                 'full', $5, $6, $7, $8,
                 $9::jsonb,
                 'processing', 'submitted', false,

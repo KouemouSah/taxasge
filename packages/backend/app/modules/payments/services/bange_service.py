@@ -46,7 +46,7 @@ class BANGEService:
             request_data = {
                 "merchant_id": self.merchant_id,
                 "amount": float(payment_request.amount),
-                "currency": payment_request.currency.value,
+                "currency": payment_request.currency,
                 "description": payment_request.description,
                 "reference": payment_request.reference,
                 "callback_url": payment_request.callback_url,
