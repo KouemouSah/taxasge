@@ -503,14 +503,20 @@
     </div>
 
     <!-- ================================================================
-         PERSONAL DATA - 2 columns
+         DATA SECTIONS (dynamic from workflow form_review config)
+         Photo is always rendered with the first section, or standalone
+         if no data sections exist.
          ================================================================ -->
+
+    {# --- First section (with photo) --- #}
+    {% if data_sections | length > 0 %}
+    {% set first = data_sections[0] %}
     <div class="no-break">
-        <div class="section-header">{{ texts.personal_data }}</div>
+        <div class="section-header">{{ first.title }}</div>
         <div class="section-border">
+            {% set columns = first.fields | slice(2) | list %}
             <table class="personal-data-table">
                 <tr>
-                    <!-- Photo column -->
                     <td class="photo-cell">
                         {% if photo_base64 %}
                         <div class="photo-box">
@@ -520,52 +526,88 @@
                         <div class="photo-placeholder">Sin foto</div>
                         {% endif %}
                     </td>
-                    <!-- Data column 1 -->
                     <td class="data-col">
                         <table class="data-table">
+                            {% for field in columns[0] %}
                             <tr>
-                                <td class="data-label">{{ texts.full_name }}</td>
-                                <td class="data-value">{{ personal_data.nombres }} {{ personal_data.apellidos }}</td>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
                             </tr>
-                            <tr>
-                                <td class="data-label">{{ texts.dip_number }}</td>
-                                <td class="data-value">{{ personal_data.numero_dip or '-' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="data-label">{{ texts.birth_date }}</td>
-                                <td class="data-value">{{ personal_data.fecha_nacimiento or '-' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="data-label">{{ texts.nationality }}</td>
-                                <td class="data-value">{{ personal_data.nacionalidad or '-' }}</td>
-                            </tr>
+                            {% endfor %}
                         </table>
                     </td>
-                    <!-- Data column 2 -->
                     <td class="data-col">
                         <table class="data-table">
+                            {% if columns | length > 1 %}
+                            {% for field in columns[1] %}
                             <tr>
-                                <td class="data-label">{{ texts.birth_place }}</td>
-                                <td class="data-value">{{ personal_data.lugar_nacimiento or '-' }}</td>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
                             </tr>
-                            <tr>
-                                <td class="data-label">{{ texts.address }}</td>
-                                <td class="data-value">{{ personal_data.domicilio or '-' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="data-label">{{ texts.profession }}</td>
-                                <td class="data-value">{{ personal_data.profesion or '-' }}</td>
-                            </tr>
-                            <tr>
-                                <td class="data-label">{{ texts.marital_status }}</td>
-                                <td class="data-value">{{ personal_data.estado_civil or '-' }}</td>
-                            </tr>
+                            {% endfor %}
+                            {% endif %}
                         </table>
                     </td>
                 </tr>
             </table>
         </div>
     </div>
+    {% else %}
+    {# No data sections — render photo standalone if available #}
+    {% if photo_base64 %}
+    <div class="no-break">
+        <div class="section-header">{{ texts.personal_data }}</div>
+        <div class="section-border">
+            <table class="personal-data-table">
+                <tr>
+                    <td class="photo-cell">
+                        <div class="photo-box">
+                            <img src="{{ photo_base64 }}" alt="Photo" />
+                        </div>
+                    </td>
+                    <td class="data-col" colspan="2"></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {# --- Remaining sections (no photo) --- #}
+    {% for section in data_sections[1:] %}
+    <div class="no-break">
+        <div class="section-header">{{ section.title }}</div>
+        <div class="section-border">
+            {% set columns = section.fields | slice(2) | list %}
+            <table class="personal-data-table">
+                <tr>
+                    <td class="data-col">
+                        <table class="data-table">
+                            {% for field in columns[0] %}
+                            <tr>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </td>
+                    <td class="data-col">
+                        <table class="data-table">
+                            {% if columns | length > 1 %}
+                            {% for field in columns[1] %}
+                            <tr>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% endif %}
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
 
     <!-- ================================================================
          DOCUMENTS

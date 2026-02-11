@@ -1118,3 +1118,168 @@ class PredefinedWorkflow(ABC):
                 eval_context[key] = value
 
         return eval_context
+
+    # === PDF Data Sections ===
+
+    def get_pdf_data_sections(self, context: "WorkflowContext") -> List[Dict[str, Any]]:
+        """
+        Build data sections for PDF summary from workflow step configs.
+
+        Processes:
+        1. SELECTION steps → resolved choices (solicitud_type, motivo, etc.)
+        2. FORM_REVIEW steps → all visible fields with values from form_data
+
+        Labels come from the workflow config (label_es on fields, label_es on options).
+        Values come from context.form_data.
+
+        Auto-excludes:
+        - Field types: validation_badge, error_list, hidden
+        - Fields with pdf_exclude=True in raw config
+        - Fields hidden by show_when condition (frontend visibility)
+        - Fields with empty/missing values in form_data
+
+        Returns:
+            List of sections:
+            [{"title": "Datos Personales", "fields": [{"label": "...", "value": "..."}]}]
+        """
+        from ..services.condition_evaluator import evaluate_condition
+
+        EXCLUDED_TYPES = {"validation_badge", "error_list", "hidden"}
+
+        data_sections: List[Dict[str, Any]] = []
+        form_data = context.form_data or {}
+
+        # --- 1. Collect SELECTION step choices ---
+        selection_fields: List[Dict[str, str]] = []
+        eval_context = self._build_eval_context(context)
+
+        for step in self.get_steps():
+            if step.step_type != StepType.SELECTION:
+                continue
+            config = step.config or {}
+
+            # Skip if step condition not met
+            step_condition = config.get("condition")
+            if step_condition and not evaluate_condition(step_condition, eval_context):
+                continue
+
+            selection_key = config.get("selection_type", "")
+            if not selection_key:
+                continue
+
+            value = form_data.get(selection_key, "")
+            # Also check context-level fields (solicitud_type, motivo, is_minor)
+            if not value:
+                if selection_key == "solicitud_type" and context.solicitud_type:
+                    value = context.solicitud_type.value
+                elif selection_key == "motivo" and context.motivo:
+                    value = context.motivo.value
+                elif selection_key == "is_minor":
+                    value = str(context.is_minor).lower()
+                elif selection_key == "sub_type" and context.sub_type:
+                    value = context.sub_type
+
+            if not value:
+                continue
+
+            # Resolve display label from options
+            display_value = str(value)
+            for opt in config.get("options", []):
+                opt_value = opt.get("value", opt.get("id", ""))
+                if str(opt_value) == str(value):
+                    display_value = opt.get("label_es", str(value))
+                    break
+
+            selection_fields.append({
+                "label": step.title_es,
+                "value": display_value,
+            })
+
+        if selection_fields:
+            data_sections.append({
+                "title": "Detalles de la Solicitud",
+                "fields": selection_fields,
+            })
+
+        # --- 2. Collect FORM_REVIEW step fields ---
+        for step in self.get_steps():
+            if step.step_type != StepType.FORM_REVIEW:
+                continue
+
+            try:
+                form_config = self.get_form_config(step.step_id, context)
+            except Exception as e:
+                logger.warning(
+                    f"get_pdf_data_sections: get_form_config('{step.step_id}') "
+                    f"failed for {self.workflow_code.value}: {e}"
+                )
+                continue
+
+            # Build pdf_exclude lookup for this step (one pass, not per-field)
+            pdf_exclude_keys = self._build_pdf_exclude_set(step)
+
+            for section in form_config.sections:
+                fields: List[Dict[str, str]] = []
+                for f in section.fields:
+                    # Skip excluded types
+                    if f.type in EXCLUDED_TYPES:
+                        continue
+
+                    # Skip fields marked for PDF exclusion
+                    if f.key in pdf_exclude_keys:
+                        continue
+
+                    # Skip fields hidden by show_when (frontend visibility)
+                    if f.show_when:
+                        trigger_key = f.show_when.get("field", "")
+                        trigger_value = f.show_when.get("value", "")
+                        actual_value = str(form_data.get(trigger_key, ""))
+                        if actual_value != str(trigger_value):
+                            continue
+
+                    # Get value from form_data
+                    value = form_data.get(f.key, "")
+
+                    # Skip empty values
+                    if not value and value != 0:
+                        continue
+
+                    # For select/radio fields, resolve display label from options
+                    display_value = str(value)
+                    if f.options and value:
+                        for opt in f.options:
+                            if isinstance(opt, dict):
+                                if opt.get("value") == str(value):
+                                    display_value = opt.get("label_es", str(value))
+                                    break
+                            elif str(opt) == str(value):
+                                display_value = str(value)
+                                break
+
+                    fields.append({
+                        "label": f.label_es,
+                        "value": display_value,
+                    })
+
+                if fields:
+                    data_sections.append({
+                        "title": section.title_es,
+                        "fields": fields,
+                    })
+
+        return data_sections
+
+    def _build_pdf_exclude_set(self, step: "WorkflowStep") -> set:
+        """
+        Build a set of field keys marked with pdf_exclude=True for a step.
+
+        Single pass over all section variants — O(n) instead of O(n³) per-field lookup.
+        """
+        exclude_keys: set = set()
+        config = step.config or {}
+        for sections_key in ("sections", "sections_adult", "sections_minor"):
+            for section_data in config.get(sections_key, []):
+                for field_data in section_data.get("fields", []):
+                    if field_data.get("pdf_exclude"):
+                        exclude_keys.add(field_data["key"])
+        return exclude_keys

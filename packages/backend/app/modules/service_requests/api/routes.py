@@ -1420,18 +1420,35 @@ async def download_citizen_summary_pdf(
     workflow = workflow_engine.get_workflow_by_string(request.workflow_code)
     workflow_name = workflow.service_name_es if workflow else request.workflow_code
 
-    # Build personal data from form_data
-    personal_data = {
-        "nombres": request.form_data.get("nombres", ""),
-        "apellidos": request.form_data.get("apellidos", ""),
-        "fecha_nacimiento": request.form_data.get("fecha_nacimiento", ""),
-        "lugar_nacimiento": request.form_data.get("lugar_nacimiento", ""),
-        "numero_dip": request.form_data.get("numero_dip", ""),
-        "nacionalidad": request.form_data.get("nacionalidad", ""),
-        "domicilio": request.form_data.get("domicilio", ""),
-        "profesion": request.form_data.get("profesion", ""),
-        "estado_civil": request.form_data.get("estado_civil", ""),
-    }
+    # Build dynamic data sections from workflow form_review configs
+    # Context is built from the already-loaded request (no extra DB query)
+    from ..workflows.workflow_interface import PredefinedWorkflow, WorkflowContext, RenovacionMotivo
+    from ..models.enums import WorkflowCode
+
+    data_sections = []
+    if workflow and isinstance(workflow, PredefinedWorkflow):
+        motivo = None
+        motivo_value = request.form_data.get("motivo")
+        if motivo_value:
+            try:
+                motivo = RenovacionMotivo(motivo_value)
+            except ValueError:
+                pass
+
+        is_minor_raw = request.form_data.get("is_minor", False)
+        is_minor = is_minor_raw is True or is_minor_raw == "true"
+
+        pdf_context = WorkflowContext(
+            service_request_id=request_id,
+            user_id=current_user.id,
+            workflow_code=WorkflowCode(request.workflow_code),
+            solicitud_type=request.solicitud_type,
+            sub_type=request.form_data.get("sub_type") or request.form_data.get("tipo"),
+            motivo=motivo,
+            is_minor=is_minor,
+            form_data=request.form_data,
+        )
+        data_sections = workflow.get_pdf_data_sections(pdf_context)
 
     # Documents list
     documents = [
@@ -1486,9 +1503,9 @@ async def download_citizen_summary_pdf(
         request_number=request.reference,
         workflow_name=workflow_name,
         solicitud_type=solicitud_type,
-        personal_data=personal_data,
         documents=documents,
         tariff=tariff,
+        data_sections=data_sections,
         appointment=appointment,
         language=language,
         photo_url=photo_url,

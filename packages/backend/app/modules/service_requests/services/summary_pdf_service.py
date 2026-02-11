@@ -369,9 +369,9 @@ class SummaryPDFService:
         request_number: str,
         workflow_name: str,
         solicitud_type: str,
-        personal_data: Dict[str, Any],
         documents: list,
         tariff: Dict[str, Any],
+        data_sections: list,
         appointment: Optional[Dict[str, Any]] = None,
         language: str = "es",
         photo_url: Optional[str] = None,
@@ -383,11 +383,13 @@ class SummaryPDFService:
             request_number: The service request reference number
             workflow_name: Name of the workflow (e.g., "Pasaporte Nuevo")
             solicitud_type: Type of request (expedicion, renovacion, duplicado)
-            personal_data: Dict with personal info (nombres, apellidos, etc.)
             documents: List of uploaded documents with validation status
             tariff: Dict with tariff breakdown (base_amount, additional_fees, total)
+            data_sections: Dynamic data sections from workflow.get_pdf_data_sections().
+                           Each: {"title": str, "fields": [{"label": str, "value": str}]}
             appointment: Optional appointment details (date, time, location)
             language: Language for the PDF (es, fr, en)
+            photo_url: URL of citizen photo
 
         Returns:
             PDF bytes
@@ -479,7 +481,7 @@ class SummaryPDFService:
             request_number=request_number,
             workflow_name=workflow_name,
             solicitud_type_label=solicitud_type_label,
-            personal_data=personal_data,
+            data_sections=data_sections,
             documents=prepared_documents,
             has_validation_errors=has_validation_errors,
             tariff=formatted_tariff,
@@ -528,8 +530,15 @@ class SummaryPDFService:
         workflow_name = summary.get("workflow_name", summary.get("workflowName", "Unknown Workflow"))
         solicitud_type = summary.get("solicitud_type", summary.get("solicitidType", "expedicion"))
 
-        # Personal data
+        # Build data_sections from personal_data in summary
+        texts = self.TRANSLATIONS.get(language, self.TRANSLATIONS["es"])
         personal_data = summary.get("personal_data", summary.get("personalData", {}))
+        data_fields = [
+            {"label": k, "value": str(v)}
+            for k, v in personal_data.items()
+            if v
+        ]
+        data_sections = [{"title": texts.get("personal_data", "Datos Personales"), "fields": data_fields}] if data_fields else []
 
         # Documents
         raw_documents = summary.get("documents", [])
@@ -564,9 +573,9 @@ class SummaryPDFService:
             request_number=request_number,
             workflow_name=workflow_name,
             solicitud_type=solicitud_type,
-            personal_data=personal_data,
             documents=documents,
             tariff=tariff,
+            data_sections=data_sections,
             appointment=appointment,
             language=language,
         )

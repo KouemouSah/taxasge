@@ -1256,18 +1256,18 @@ class WizardSessionService:
         """Generate citizen summary PDF for email attachment. Returns None on failure."""
         try:
             from .summary_pdf_service import summary_pdf_service
+            from ..workflows.workflow_interface import PredefinedWorkflow
 
             workflow_code = session.get("workflow_code", "")
             workflow_name = workflow.service_name_es if workflow else workflow_code
             form_data = session.get("form_data", {})
 
-            personal_data = {
-                k: form_data.get(k, "")
-                for k in [
-                    "nombres", "apellidos", "fecha_nacimiento", "lugar_nacimiento",
-                    "numero_dip", "nacionalidad", "sexo", "estado_civil", "profesion",
-                ]
-            }
+            # Build dynamic data sections from workflow form_review configs
+            data_sections = []
+            if workflow and isinstance(workflow, PredefinedWorkflow):
+                context = self._build_context(session)
+                data_sections = workflow.get_pdf_data_sections(context)
+
             documents = [
                 {
                     "name": doc_data.get("document_name") or doc_code,
@@ -1298,9 +1298,9 @@ class WizardSessionService:
                 request_number=reference,
                 workflow_name=workflow_name,
                 solicitud_type=solicitud_type,
-                personal_data=personal_data,
                 documents=documents,
                 tariff=tariff_for_pdf,
+                data_sections=data_sections,
                 appointment=appointment_for_pdf,
                 language="es",
             )
