@@ -22,6 +22,7 @@ export {
   useServiceRequest,
   usePrefetchWorkflows,
   useInvalidateWorkflowCache,
+  useDetailView,
   workflowQueryKeys,
   serviceRequestQueryKeys,
 } from './useWorkflowQueries'

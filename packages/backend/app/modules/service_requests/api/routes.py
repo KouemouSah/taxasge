@@ -28,6 +28,10 @@ from ..models.service_request import (
     PaymentMethodsResponse,
     PaymentInitiateRequest,
     PaymentInitiateResponse,
+    DetailViewResponse,
+    StepperPhase,
+    DataSection,
+    DataSectionField,
 )
 from ..models.form_config import FormConfigResponse
 from ..models.enums import ServiceRequestStatus
@@ -1278,6 +1282,214 @@ async def initiate_payment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Payment initiation failed: {str(e)}"
         )
+
+
+# ═══════════════════════════════════════════════════════════════
+# DETAIL VIEW (Mi Solicitud dynamic page)
+# ═══════════════════════════════════════════════════════════════
+
+# Mapping request status → workflow phase type for stepper positioning
+_STATUS_PHASE_MAP = {
+    "DRAFT": "selection",
+    "TIMBRES_PENDING": "upload",
+    "TIMBRES_PAID": "upload",
+    "DOCUMENTS_REQUIRED": "upload",
+    "SUBMITTED": "confirmation",
+    "UNDER_REVIEW": "confirmation",
+    "DOSSIER_VALIDE": "payment",
+    "PAYMENT_PENDING": "payment",
+    "PAYMENT_PROCESSING": "payment",
+    "PAID": "confirmation",
+    "CITA_SCHEDULED": "confirmation",
+    "IN_PROGRESS": "confirmation",
+    "COMPLETED": "confirmation",
+    "REJECTED": "confirmation",
+    "CANCELLED": "confirmation",
+    "EXPIRED": "confirmation",
+}
+
+
+@router.get(
+    "/{request_id}/detail-view",
+    response_model=DetailViewResponse,
+    summary="Get complete detail view for citizen page",
+    description="""
+    Single endpoint providing all data needed for the citizen 'Mi Solicitud' detail page.
+
+    **Includes:**
+    - Request core data
+    - Dynamic stepper phases (from workflow definition)
+    - Data sections (same as PDF, from form review configs)
+    - Photo URL
+    - Tariff, payment status, appointment info
+    - Citizen notifications (from service_request_history, Phase 2)
+    """,
+)
+async def get_request_detail_view(
+    request_id: UUID = Path(..., description="The service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Get complete detail view for citizen Mi Solicitud page."""
+    from ..repositories.service_request_repository import service_request_repository
+
+    # 1. Get full request (reuse existing service)
+    request = await service_request_service.get_request(
+        db=db, request_id=request_id, user_id=current_user.id
+    )
+
+    # 2. Get workflow
+    workflow = workflow_engine.get_workflow_by_string(request.workflow_code)
+    workflow_name = workflow.service_name_es if workflow else request.workflow_code
+
+    # 3. Build stepper phases from workflow steps
+    stepper_phases: list[StepperPhase] = []
+    if workflow:
+        from ..workflows.workflow_interface import PredefinedWorkflow
+        if isinstance(workflow, PredefinedWorkflow):
+            for s in workflow.get_steps():
+                stepper_phases.append(StepperPhase(
+                    id=s.step_id,
+                    title_es=s.title_es,
+                    step_type=s.step_type.value,
+                    number=s.step_number,
+                    is_optional=s.is_optional,
+                ))
+
+    # 4. Calculate current phase index from status
+    current_phase_index = 0
+    status_str = request.status.value if hasattr(request.status, 'value') else str(request.status)
+
+    # For DOSSIER_VALIDE, check if workflow requires appointment (appointment before payment)
+    target_phase_type = _STATUS_PHASE_MAP.get(status_str, "confirmation")
+    if status_str == "DOSSIER_VALIDE" and workflow and hasattr(workflow, 'requires_appointment') and workflow.requires_appointment:
+        target_phase_type = "appointment"
+
+    for i, phase in enumerate(stepper_phases):
+        if phase.step_type == target_phase_type:
+            current_phase_index = i
+            # For confirmation/payment, take the LAST matching phase
+            if target_phase_type not in ("confirmation", "payment", "appointment"):
+                break
+
+    # 5. Build data sections (reuse same logic as PDF route)
+    data_sections: list[DataSection] = []
+    if workflow:
+        from ..workflows.workflow_interface import PredefinedWorkflow, WorkflowContext, RenovacionMotivo
+        from ..models.enums import WorkflowCode
+
+        if isinstance(workflow, PredefinedWorkflow):
+            motivo = None
+            motivo_value = request.form_data.get("motivo")
+            if motivo_value:
+                try:
+                    motivo = RenovacionMotivo(motivo_value)
+                except ValueError:
+                    pass
+
+            is_minor_raw = request.form_data.get("is_minor", False)
+            is_minor = is_minor_raw is True or is_minor_raw == "true"
+
+            pdf_context = WorkflowContext(
+                service_request_id=request_id,
+                user_id=current_user.id,
+                workflow_code=WorkflowCode(request.workflow_code),
+                solicitud_type=request.solicitud_type,
+                sub_type=request.form_data.get("sub_type") or request.form_data.get("tipo"),
+                motivo=motivo,
+                is_minor=is_minor,
+                form_data=request.form_data,
+            )
+            raw_sections = workflow.get_pdf_data_sections(pdf_context)
+            for sec in raw_sections:
+                data_sections.append(DataSection(
+                    title=sec.get("title", ""),
+                    fields=[
+                        DataSectionField(label=f.get("label", ""), value=f.get("value"))
+                        for f in sec.get("fields", [])
+                    ]
+                ))
+
+    # 6. Get photo URL
+    photo_url = None
+    photo_codes = ("photo_carnet", "fotografias", "foto_carnet")
+    for doc in request.provided_documents:
+        if doc.document_code in photo_codes and doc.file_path:
+            try:
+                from app.modules.documents.services.storage_service import firebase_storage_service
+                photo_url = await firebase_storage_service.get_signed_url(
+                    doc.file_path, expiration_hours=1
+                )
+            except Exception as photo_err:
+                logger.warning(f"Could not get photo URL: {photo_err}")
+            break
+
+    # 7. Build tariff dict
+    tariff = None
+    if request.tariff:
+        tariff = {
+            "base_amount": request.tariff.base_amount,
+            "supplements": request.tariff.supplements,
+            "supplements_total": request.tariff.supplements_total,
+            "total_amount": request.tariff.total_amount,
+            "currency": request.tariff.currency,
+        }
+
+    # 8. Build appointment dict
+    appointment = None
+    if request.cita_date:
+        appointment = {
+            "date": request.cita_date.strftime("%d/%m/%Y") if request.cita_date else None,
+            "time": request.cita_time.strftime("%H:%M") if request.cita_time else None,
+            "location": request.cita_location or request.form_data.get("appointment_location", ""),
+        }
+
+    # 9. Sub-type display
+    solicitud_type_display = request.form_data.get("sub_type") or request.solicitud_type.value
+
+    # 10. Get citizen notifications from history
+    citizen_last_viewed_at = None
+    try:
+        row = await db.fetchrow(
+            "SELECT citizen_last_viewed_at FROM service_requests WHERE id = $1",
+            request_id,
+        )
+        if row:
+            citizen_last_viewed_at = row["citizen_last_viewed_at"]
+    except Exception:
+        pass  # Column may not exist yet (pre-migration)
+
+    notifications = []
+    unread_count = 0
+    try:
+        notifications, unread_count = await service_request_repository.get_citizen_notifications(
+            db, request_id, citizen_last_viewed_at
+        )
+    except Exception as e:
+        logger.warning(f"Could not fetch citizen notifications: {e}")
+
+    # 11. Update citizen_last_viewed_at (mark as read)
+    try:
+        await service_request_repository.update_citizen_last_viewed(
+            db, request_id, current_user.id
+        )
+    except Exception:
+        pass  # Column may not exist yet (pre-migration)
+
+    return DetailViewResponse(
+        request=request,
+        stepper_phases=stepper_phases,
+        current_phase_index=current_phase_index,
+        data_sections=data_sections,
+        citizen_notifications=notifications,
+        unread_notification_count=unread_count,
+        photo_url=photo_url,
+        tariff=tariff,
+        payment_status=request.payment_status,
+        appointment=appointment,
+        workflow_name_es=workflow_name,
+        solicitud_type_display=solicitud_type_display,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -24,6 +24,7 @@ import type {
   ServiceRequest,
   ServiceRequestListResponse,
   ServiceRequestFilters,
+  DetailViewResponse,
 } from '../types';
 
 // =============================================================================
@@ -45,6 +46,7 @@ export const serviceRequestQueryKeys = {
   myRequests: (page: number, filters?: ServiceRequestFilters) =>
     [...serviceRequestQueryKeys.lists(), 'my', page, JSON.stringify(filters || {})] as const,
   detail: (id: string) => [...serviceRequestQueryKeys.all, 'detail', id] as const,
+  detailView: (id: string) => [...serviceRequestQueryKeys.all, 'detail-view', id] as const,
   documents: (id: string) => [...serviceRequestQueryKeys.all, 'documents', id] as const,
   tariff: (id: string) => [...serviceRequestQueryKeys.all, 'tariff', id] as const,
   appointments: (id: string) => [...serviceRequestQueryKeys.all, 'appointments', id] as const,
@@ -223,3 +225,22 @@ export function useInvalidateWorkflowCache() {
 }
 
 export default useWorkflows;
+
+// =============================================================================
+// DETAIL VIEW HOOK (Mi Solicitud dynamic page)
+// =============================================================================
+
+/**
+ * Hook for the citizen "Mi Solicitud" detail page.
+ * Fetches all data in a single API call (stepper, sections, notifications).
+ */
+export function useDetailView(requestId: string | undefined) {
+  return useQuery<DetailViewResponse>({
+    queryKey: serviceRequestQueryKeys.detailView(requestId || ''),
+    queryFn: () => serviceRequestsApi.getDetailView(requestId!),
+    enabled: !!requestId,
+    staleTime: 30 * 1000, // 30 seconds — notifications should be fresh
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true, // Refresh when user returns to tab
+  });
+}

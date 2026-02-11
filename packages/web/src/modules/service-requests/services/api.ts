@@ -34,6 +34,8 @@ import type {
   HistoryListResponse,
   HistoryListSummaryResponse,
   HistoryStatistics,
+  // Detail view types
+  DetailViewResponse,
 } from '../types'
 import { HistoryActionType } from '../types'
 import { ExtractionStatus } from '../types'
@@ -92,6 +94,9 @@ interface BackendServiceRequest {
   assigned_to?: string
   current_step?: number
   tariff?: Record<string, unknown>
+  // Notes & Rejection
+  notes?: string
+  rejection_reason?: string
   // Verification fields (from migration 040)
   verification_status?: string
   verification_details?: Record<string, {
@@ -312,6 +317,9 @@ function transformServiceRequest(backend: BackendServiceRequest): ServiceRequest
     updatedAt: backend.updated_at,
     submittedAt: backend.submitted_at,
     completedAt: backend.completed_at,
+    // Notes & Rejection
+    notes: backend.notes,
+    rejectionReason: backend.rejection_reason,
     // Verification fields
     verificationStatus: backend.verification_status as ServiceRequest['verificationStatus'],
     verificationDetails,
@@ -1275,6 +1283,45 @@ class ServiceRequestsApiClient {
   async getCitizenSummary(requestId: string): Promise<CitizenSummaryResponse> {
     const backend = await this.request<BackendCitizenSummaryResponse>(`/${requestId}/summary`)
     return transformCitizenSummaryResponse(backend)
+  }
+
+  /**
+   * Get complete detail view for citizen "Mi Solicitud" page.
+   * Single endpoint combining request data, stepper, data sections, notifications.
+   * Backend returns snake_case for the nested `request` — transform to camelCase.
+   */
+  async getDetailView(requestId: string): Promise<DetailViewResponse> {
+    interface BackendDetailViewResponse {
+      request: BackendServiceRequest
+      stepper_phases: DetailViewResponse['stepper_phases']
+      current_phase_index: number
+      data_sections: DetailViewResponse['data_sections']
+      citizen_notifications: DetailViewResponse['citizen_notifications']
+      unread_notification_count: number
+      photo_url?: string | null
+      tariff?: Record<string, unknown> | null
+      payment_status?: string | null
+      appointment?: { date?: string | null; time?: string | null; location?: string | null } | null
+      workflow_name_es: string
+      solicitud_type_display?: string | null
+    }
+
+    const backend = await this.request<BackendDetailViewResponse>(`/${requestId}/detail-view`)
+
+    return {
+      request: transformServiceRequest(backend.request),
+      stepper_phases: backend.stepper_phases,
+      current_phase_index: backend.current_phase_index,
+      data_sections: backend.data_sections,
+      citizen_notifications: backend.citizen_notifications,
+      unread_notification_count: backend.unread_notification_count,
+      photo_url: backend.photo_url,
+      tariff: backend.tariff,
+      payment_status: backend.payment_status,
+      appointment: backend.appointment,
+      workflow_name_es: backend.workflow_name_es,
+      solicitud_type_display: backend.solicitud_type_display,
+    }
   }
 
   /**

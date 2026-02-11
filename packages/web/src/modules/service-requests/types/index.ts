@@ -193,6 +193,7 @@ export interface ServiceRequest {
   appointmentId?: string
   assignedAgentId?: string
   agentNotes?: string
+  notes?: string
   rejectionReason?: string
   createdAt: string
   updatedAt?: string
@@ -1323,6 +1324,58 @@ export function getHistoryActionLabel(
     },
   }
   return labels[action]?.[locale] || action
+}
+
+// ============================================================================
+// DETAIL VIEW (Mi Solicitud dynamic page)
+// ============================================================================
+
+export interface DetailViewStepperPhase {
+  id: string
+  title_es: string
+  step_type: string
+  number: number
+  is_optional?: boolean
+}
+
+export interface DetailViewDataField {
+  label: string
+  value?: string | null
+}
+
+export interface DetailViewDataSection {
+  title: string
+  fields: DetailViewDataField[]
+}
+
+export interface DetailViewCitizenNotification {
+  id: string
+  action: string
+  title: string
+  message?: string | null
+  performed_at: string
+  performer_role?: string | null
+  is_new: boolean
+  new_status?: string | null
+}
+
+export interface DetailViewResponse {
+  request: ServiceRequest
+  stepper_phases: DetailViewStepperPhase[]
+  current_phase_index: number
+  data_sections: DetailViewDataSection[]
+  citizen_notifications: DetailViewCitizenNotification[]
+  unread_notification_count: number
+  photo_url?: string | null
+  tariff?: Record<string, unknown> | null
+  payment_status?: string | null
+  appointment?: {
+    date?: string | null
+    time?: string | null
+    location?: string | null
+  } | null
+  workflow_name_es: string
+  solicitud_type_display?: string | null
 }
 
 // ============================================================================

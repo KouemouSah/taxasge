@@ -779,6 +779,119 @@ class ServiceRequestRepository:
 
         return items, total
 
+    # ─── Citizen Notifications ───────────────────────────────────
+
+    # Actions visible to citizens (filtered server-side for security)
+    CITIZEN_VISIBLE_ACTIONS = (
+        "status_change",
+        "agent_action_taken",
+        "comment_added",
+        "cita_scheduled",
+        "cita_rescheduled",
+        "cita_cancelled",
+        "payment_received",
+        "payment_failed",
+        "validation_failed",
+    )
+
+    # Human-readable titles for citizen notifications (Spanish)
+    _ACTION_TITLES = {
+        "status_change": "Cambio de estado",
+        "agent_action_taken": "Acción del agente",
+        "comment_added": "Nuevo comentario",
+        "cita_scheduled": "Cita programada",
+        "cita_rescheduled": "Cita reprogramada",
+        "cita_cancelled": "Cita cancelada",
+        "payment_received": "Pago recibido",
+        "payment_failed": "Error de pago",
+        "validation_failed": "Validación fallida",
+    }
+
+    async def get_citizen_notifications(
+        self, db, request_id: UUID, citizen_last_viewed_at=None, limit: int = 20
+    ) -> tuple:
+        """
+        Get notifications visible to the citizen for a service request.
+
+        Filters service_request_history to only CITIZEN_VISIBLE_ACTIONS.
+        Never exposes agent names (RGPD), only performer role.
+
+        Returns:
+            (notifications_list, unread_count)
+        """
+        placeholders = ", ".join(f"${i+2}" for i in range(len(self.CITIZEN_VISIBLE_ACTIONS)))
+
+        query = f"""
+            SELECT
+                h.id,
+                h.action,
+                h.previous_status,
+                h.new_status,
+                h.comment,
+                h.details,
+                h.performed_at,
+                CASE
+                    WHEN u.role IN ('admin', 'supervisor', 'dgi_agent', 'ministry_agent') THEN 'agent'
+                    WHEN h.performed_by IS NULL THEN 'system'
+                    ELSE 'citizen'
+                END as performer_role
+            FROM service_request_history h
+            LEFT JOIN users u ON u.id = h.performed_by
+            WHERE h.service_request_id = $1
+              AND h.action IN ({placeholders})
+            ORDER BY h.performed_at DESC
+            LIMIT {limit}
+        """
+
+        params = [request_id] + list(self.CITIZEN_VISIBLE_ACTIONS)
+        rows = await db.fetch(query, *params)
+
+        notifications = []
+        unread_count = 0
+
+        for row in rows:
+            is_new = False
+            if citizen_last_viewed_at and row["performed_at"]:
+                is_new = row["performed_at"] > citizen_last_viewed_at
+
+            if is_new:
+                unread_count += 1
+
+            action = row["action"]
+            title = self._ACTION_TITLES.get(action, action)
+
+            # Build message from comment or status change
+            message = row["comment"]
+            if not message and action == "status_change" and row["new_status"]:
+                message = f"Estado: {row['new_status']}"
+            elif not message and row.get("details"):
+                details = row["details"] if isinstance(row["details"], dict) else {}
+                message = details.get("message") or details.get("reason")
+
+            notifications.append({
+                "id": str(row["id"]),
+                "action": action,
+                "title": title,
+                "message": message,
+                "performed_at": row["performed_at"].isoformat() if row["performed_at"] else None,
+                "performer_role": row["performer_role"],
+                "is_new": is_new,
+                "new_status": row["new_status"],
+            })
+
+        return notifications, unread_count
+
+    async def update_citizen_last_viewed(self, db, request_id: UUID, user_id: UUID):
+        """Update citizen_last_viewed_at when citizen opens the detail page."""
+        await db.execute(
+            """
+            UPDATE service_requests
+            SET citizen_last_viewed_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            """,
+            request_id, user_id,
+        )
+
     def _row_to_dict(self, row: asyncpg.Record) -> Dict:
         """Convert asyncpg Record to dict with proper JSON parsing"""
         if not row:

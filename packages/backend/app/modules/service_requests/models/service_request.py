@@ -662,6 +662,77 @@ class PaymentMethodsResponse(BaseModel):
     default_method: Optional[str] = Field(default=None, description="Recommended default method")
 
 
+# === Detail View Models (Mi Solicitud dynamic page) ===
+
+class StepperPhase(BaseModel):
+    """A step/phase in the workflow stepper."""
+    id: str = Field(..., description="Step ID e.g. 'selection', 'upload', 'form_review_1'")
+    title_es: str = Field(..., description="Step title in Spanish")
+    step_type: str = Field(..., description="Step type: selection, upload, form_review, appointment, payment, confirmation")
+    number: int = Field(..., description="Step number in sequence")
+    is_optional: bool = Field(default=False)
+
+
+class DataSectionField(BaseModel):
+    """A single field in a data section."""
+    label: str
+    value: Optional[str] = None
+
+
+class DataSection(BaseModel):
+    """A section of data fields (e.g. 'Datos Personales', 'Domicilio')."""
+    title: str
+    fields: List[DataSectionField] = Field(default_factory=list)
+
+
+class CitizenNotification(BaseModel):
+    """A notification visible to the citizen."""
+    id: str
+    action: str = Field(..., description="Action type e.g. STATUS_CHANGE, AGENT_ACTION")
+    title: str = Field(..., description="Human-readable title")
+    message: Optional[str] = Field(None, description="Detail message")
+    performed_at: datetime
+    performer_role: Optional[str] = Field(None, description="Role of performer (agent, system) - never the name")
+    is_new: bool = Field(default=False, description="True if after citizen_last_viewed_at")
+    new_status: Optional[str] = Field(None, description="New status if STATUS_CHANGE")
+
+
+class DetailViewResponse(BaseModel):
+    """
+    Combined response for the citizen 'Mi Solicitud' detail page.
+    Single endpoint replacing multiple separate API calls.
+    """
+    # Core request data
+    request: ServiceRequestResponse
+
+    # Dynamic stepper
+    stepper_phases: List[StepperPhase] = Field(default_factory=list)
+    current_phase_index: int = Field(default=0, description="Index of current phase in stepper_phases")
+
+    # Dynamic data sections (same as PDF)
+    data_sections: List[DataSection] = Field(default_factory=list)
+
+    # Citizen notifications
+    citizen_notifications: List[CitizenNotification] = Field(default_factory=list)
+    unread_notification_count: int = Field(default=0)
+
+    # Photo URL
+    photo_url: Optional[str] = None
+
+    # Tariff
+    tariff: Optional[Dict[str, Any]] = None
+
+    # Payment status
+    payment_status: Optional[str] = None
+
+    # Appointment
+    appointment: Optional[Dict[str, Any]] = None
+
+    # Workflow metadata
+    workflow_name_es: str = ""
+    solicitud_type_display: Optional[str] = None
+
+
 class PaymentInitiateRequest(BaseModel):
     """Request to initiate a payment."""
     payment_method: str = Field(..., description="Payment method code")

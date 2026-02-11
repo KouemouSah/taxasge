@@ -20,3 +20,11 @@ export { DynamicFormRenderer } from './DynamicFormRenderer'
 // Cache-First Wizard Components
 export { SessionTimer } from './SessionTimer'
 export type { SessionTimerProps } from './SessionTimer'
+
+// Mi Solicitud Detail Page Components
+export { UniversalProgressStepper } from './UniversalProgressStepper'
+export type { StepperPhase } from './UniversalProgressStepper'
+export { DynamicDataSections } from './DynamicDataSections'
+export type { DataSection, DataSectionField } from './DynamicDataSections'
+export { CitizenNotificationsPanel } from './CitizenNotificationsPanel'
+export type { CitizenNotification } from './CitizenNotificationsPanel'
