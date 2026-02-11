@@ -350,7 +350,8 @@ class ContratoWorkflow(PredefinedWorkflow):
                                 "label_es": "Tipo de Autorización NIF",
                                 "type": "text",
                                 "required": False,
-                                "readonly": True
+                                "readonly": True,
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "representante_legal",
@@ -371,14 +372,16 @@ class ContratoWorkflow(PredefinedWorkflow):
                                 "label_es": "Apellidos del Representante",
                                 "type": "text",
                                 "required": True,
-                                "readonly": True
+                                "readonly": True,
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "nombres_representante",
                                 "label_es": "Nombres del Representante",
                                 "type": "text",
                                 "required": True,
-                                "readonly": True
+                                "readonly": True,
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "domicilio_social",
@@ -392,14 +395,16 @@ class ContratoWorkflow(PredefinedWorkflow):
                                 "label_es": "Teléfono de Contacto",
                                 "type": "text",
                                 "required": False,
-                                "readonly": False
+                                "readonly": False,
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "email_contratista",
                                 "label_es": "Email de Contacto",
                                 "type": "email",
                                 "required": False,
-                                "readonly": False
+                                "readonly": False,
+                                "pdf_exclude": True
                             }
                         ]
                     }
@@ -482,7 +487,8 @@ class ContratoWorkflow(PredefinedWorkflow):
                                 "label_es": "Lugar de Firma",
                                 "type": "text",
                                 "required": False,
-                                "readonly": False
+                                "readonly": False,
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "objeto_contrato",
@@ -544,7 +550,8 @@ class ContratoWorkflow(PredefinedWorkflow):
                                 "type": "text",
                                 "required": False,
                                 "readonly": False,
-                                "placeholder_es": "Ej: Ministro, Director General..."
+                                "placeholder_es": "Ej: Ministro, Director General...",
+                                "pdf_exclude": True
                             },
                             {
                                 "key": "nif_contratante",
@@ -657,6 +664,7 @@ class ContratoWorkflow(PredefinedWorkflow):
                                 "type": "text",
                                 "required": False,
                                 "readonly": True,
+                                "pdf_exclude": True,
                                 "help_es": "Extraído del contrato para verificación cruzada"
                             },
                             {
