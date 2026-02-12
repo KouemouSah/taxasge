@@ -369,40 +369,37 @@ export default function ServiceRequestDetailPage() {
                       <p>{t('documents.no_documents')}</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {requestDocuments.map((doc) => (
                         <div
                           key={doc.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                          className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
                           onClick={() => doc.file_url && setPreviewDoc(doc)}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-muted rounded">
-                              <FileText className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{doc.document_name}</p>
-                              <p className="text-sm text-muted-foreground">{doc.file_name}</p>
-                            </div>
+                          <div className="p-2 bg-muted rounded flex-shrink-0">
+                            <FileText className="h-4 w-4" />
                           </div>
-                          <div className="flex items-center gap-2">
-                            {doc.file_url && (
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{doc.document_name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{doc.file_name}</p>
+                          </div>
+                          {doc.file_url && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
                               <Button
-                                variant="outline"
-                                size="sm"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setPreviewDoc(doc)
                                 }}
                               >
-                                <Eye className="h-4 w-4 mr-1" />
-                                {locale === 'es' ? 'Ver' : locale === 'fr' ? 'Voir' : 'View'}
+                                <Eye className="h-4 w-4" />
                               </Button>
-                            )}
-                            {doc.file_url && (
                               <Button
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
+                                className="h-8 w-8"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   const link = document.createElement('a')
@@ -416,8 +413,8 @@ export default function ServiceRequestDetailPage() {
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

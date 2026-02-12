@@ -206,6 +206,7 @@ export function middleware(request: NextRequest) {
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       `connect-src 'self' ${apiOrigins}`,
+      "frame-src 'self' https://firebasestorage.googleapis.com https://*.firebasestorage.app",
       "frame-ancestors 'none'",
     ].join('; ')
   );
