@@ -220,15 +220,35 @@ class ResidenciaWorkflow(PredefinedWorkflow):
         self._setup_tariffs()
 
     def _setup_steps(self) -> None:
-        # Step 0: Selection — persona type (before upload to filter documents)
+        # Step 0: Selection — solicitud type + persona type (before upload to filter documents)
         self.add_step(WorkflowStep(
             step_number=0,
             step_id="selection",
             step_type=StepType.SELECTION,
-            title_es="Tipo de Persona",
-            description_es="Indique si la solicitud es a través de empresa o como persona física",
+            title_es="Tipo de Solicitud",
+            description_es="Seleccione el tipo de solicitud y si tramita como persona física o jurídica",
             config={
                 "sections": [
+                    {
+                        "id": "tipo_solicitud",
+                        "title_es": "Tipo de Solicitud",
+                        "fields": [
+                            {"key": "solicitud_type",
+                             "label_es": "¿Qué tipo de permiso de residencia solicita?",
+                             "type": "select", "required": True,
+                             "options": [
+                                 {"value": "expedicion",
+                                  "label_es": "Primera vez — Solicitud de Permiso de Residencia"},
+                                 {"value": "renovacion",
+                                  "label_es": "Renovación — Renovación de Permiso de Residencia"},
+                             ],
+                             "help_text_es": (
+                                 "Art. 3.A.1: Primera solicitud de residencia. "
+                                 "Art. 3.A.2: Renovación de un permiso de residencia existente. "
+                                 "Los documentos requeridos varían según el tipo de solicitud."
+                             )},
+                        ]
+                    },
                     {
                         "id": "tipo_persona",
                         "title_es": "Tipo de Persona",
@@ -758,10 +778,11 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                 order += 1
 
             # Art. 3.A.1.f - Permanencia previa o prórroga de visado
+            # Non-obligatory: applicant may still have a valid visa (no permanencia yet)
             requirements.append(DocumentRequirement(
                 document_code="permanencia_previa",
                 document_name_es="Permanencia Previa o Prórroga de Visado",
-                is_required=True,
+                is_required=False,
                 display_order=order,
                 condition_type=DocumentConditionType.IS_NEW,
                 instructions_es=(
@@ -809,10 +830,11 @@ class ResidenciaWorkflow(PredefinedWorkflow):
         # --- COMMON DOCUMENTS (continued) ---
 
         # Art. 3.A.1.d / 3.A.2.e - Carnet de empadronamiento
+        # Non-obligatory: not all applicants have this document yet at application time
         requirements.append(DocumentRequirement(
             document_code="carnet_empadronamiento",
             document_name_es="Carnet de Empadronamiento",
-            is_required=True,
+            is_required=False,
             display_order=order,
             condition_type=DocumentConditionType.ALWAYS,
             instructions_es="Carnet de empadronamiento vigente",
