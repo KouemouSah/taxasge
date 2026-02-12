@@ -75,7 +75,7 @@ const translations = {
     verifying: 'Verificando...',
     error: 'Error de Verificacion',
     error_message: 'No se pudo verificar. Intente nuevamente.',
-    official_notice: 'Este sistema de verificacion es proporcionado por el Ministerio de Hacienda, Economia y Planificacion de Guinea Ecuatorial.',
+    official_notice: 'Este sistema de verificacion es proporcionado por la plataforma Facil para autenticar las solicitudes.',
     // Receipt
     receipt_title: 'Verificacion de Recibo',
     receipt_subtitle: 'Sistema de Verificacion de Pagos del Tesoro Publico',
@@ -121,7 +121,7 @@ const translations = {
     verifying: 'Verification en cours...',
     error: 'Erreur de Verification',
     error_message: 'Impossible de verifier. Veuillez reessayer.',
-    official_notice: 'Ce systeme de verification est fourni par le Ministere des Finances, de l\'Economie et de la Planification de Guinee Equatoriale.',
+    official_notice: 'Ce systeme de verification est fourni par la plateforme Facil pour authentifier les requetes.',
     receipt_title: 'Verification du Recu',
     receipt_subtitle: 'Systeme de Verification des Paiements du Tresor Public',
     valid_receipt: 'Recu Valide',
@@ -165,7 +165,7 @@ const translations = {
     verifying: 'Verifying...',
     error: 'Verification Error',
     error_message: 'Could not verify. Please try again.',
-    official_notice: 'This verification system is provided by the Ministry of Finance, Economy and Planning of Equatorial Guinea.',
+    official_notice: 'This verification system is provided by the Facil platform to authenticate requests.',
     receipt_title: 'Receipt Verification',
     receipt_subtitle: 'Public Treasury Payment Verification System',
     valid_receipt: 'Valid Receipt',
@@ -243,8 +243,8 @@ export default function VerifyPage() {
 
   useEffect(() => {
     const verify = async () => {
-      // Receipt verification requires a token
-      if (!isSR && !token) {
+      // Both receipt and service request verification require a token
+      if (!token) {
         setError(t.missing_token);
         setLoading(false);
         return;
@@ -255,11 +255,11 @@ export default function VerifyPage() {
         let url: string;
 
         if (isSR) {
-          // Service request: GET /api/v1/verify/request/{reference}
-          url = `${apiUrl}/api/v1/verify/request/${encodeURIComponent(reference)}`;
+          // Service request: GET /api/v1/verify/request/{reference}?t={token}
+          url = `${apiUrl}/api/v1/verify/request/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
         } else {
           // Receipt: GET /api/v1/verify/{receipt_number}?t={token}
-          url = `${apiUrl}/api/v1/verify/${encodeURIComponent(reference)}?t=${encodeURIComponent(token!)}`;
+          url = `${apiUrl}/api/v1/verify/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
         }
 
         const response = await fetch(url);
@@ -426,7 +426,7 @@ export default function VerifyPage() {
 
                 <Separator />
 
-                {/* Solicitud type + Entity + Date */}
+                {/* Solicitud type + Date */}
                 <div className="grid grid-cols-2 gap-4">
                   {result.solicitud_type && (
                     <div>
@@ -434,23 +434,23 @@ export default function VerifyPage() {
                       <p className="font-medium capitalize">{result.solicitud_type}</p>
                     </div>
                   )}
-                  {result.entity_code && (
+                  {result.created_at && (
                     <div>
-                      <p className="text-xs text-gray-500 uppercase">{t.entity}</p>
+                      <p className="text-xs text-gray-500 uppercase">{t.created}</p>
                       <p className="font-medium flex items-center gap-1">
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        {result.entity_code}
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        {result.created_at}
                       </p>
                     </div>
                   )}
                 </div>
 
-                {result.created_at && (
+                {result.entity_code && (
                   <div>
-                    <p className="text-xs text-gray-500 uppercase">{t.created}</p>
+                    <p className="text-xs text-gray-500 uppercase">{t.entity}</p>
                     <p className="font-medium flex items-center gap-1">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      {result.created_at}
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                      {result.entity_code}
                     </p>
                   </div>
                 )}

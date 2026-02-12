@@ -11,6 +11,7 @@ from pathlib import Path
 from datetime import datetime
 import base64
 import hashlib
+import hmac as hmac_lib
 from loguru import logger
 from jinja2 import Environment, FileSystemLoader
 
@@ -324,6 +325,25 @@ class SummaryPDFService:
             autoescape=True
         )
 
+    @staticmethod
+    def _generate_sr_verification_token(reference: str) -> str:
+        """
+        Generate HMAC-SHA256 verification token for service request QR codes.
+        Uses the same pattern as receipt verification tokens.
+        Message: reference string, signed with RECEIPT_VERIFICATION_SECRET or SECRET_KEY.
+        Returns first 16 hex chars (64 bits).
+        """
+        secret_key = getattr(settings, 'RECEIPT_VERIFICATION_SECRET', None)
+        if not secret_key:
+            secret_key = getattr(settings, 'SECRET_KEY', 'taxasge-sr-verification-key')
+        message = f"sr-verify|{reference}"
+        signature = hmac_lib.new(
+            secret_key.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        return signature[:16]
+
     def _generate_qr_with_logo(self, data: str, size: int = 200) -> Optional[str]:
         """
         Generate a QR code with the TGE logo overlaid in the center.
@@ -493,7 +513,8 @@ class SummaryPDFService:
 
         # Generate QR code with logo - use FRONTEND_URL from settings
         frontend_url = settings.FRONTEND_URL.rstrip("/")
-        verify_url = f"{frontend_url}/verify/{request_number}"
+        sr_token = self._generate_sr_verification_token(request_number)
+        verify_url = f"{frontend_url}/verify/{request_number}?t={sr_token}"
         qr_code_b64 = self._generate_qr_with_logo(verify_url, size=200)
 
         # Render template

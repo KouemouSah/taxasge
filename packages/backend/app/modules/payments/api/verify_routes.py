@@ -10,10 +10,30 @@ from fastapi import APIRouter, HTTPException, status, Query, Path
 from pydantic import BaseModel
 from typing import Optional, Literal
 from datetime import datetime
+import hmac as hmac_lib
+import hashlib
 from loguru import logger
 
 from app.database.connection import db_manager
+from app.config import settings
 from app.modules.payments.services.receipt_service import receipt_service
+
+
+def _verify_sr_token(reference: str, provided_token: str) -> bool:
+    """
+    Verify HMAC-SHA256 token for service request verification.
+    Must match the generation logic in SummaryPDFService._generate_sr_verification_token().
+    """
+    secret_key = getattr(settings, 'RECEIPT_VERIFICATION_SECRET', None)
+    if not secret_key:
+        secret_key = getattr(settings, 'SECRET_KEY', 'taxasge-sr-verification-key')
+    message = f"sr-verify|{reference}"
+    expected = hmac_lib.new(
+        secret_key.encode('utf-8'),
+        message.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()[:16]
+    return hmac_lib.compare_digest(expected, provided_token)
 
 router = APIRouter(tags=["Verification"])
 
@@ -69,14 +89,25 @@ class ServiceRequestVerificationResponse(BaseModel):
     summary="Verify service request status (PUBLIC)",
 )
 async def verify_service_request(
-    reference: str = Path(..., description="Service request reference (e.g., SRV-2026-00011)")
+    reference: str = Path(..., description="Service request reference (e.g., SRV-2026-00011)"),
+    t: str = Query(..., description="HMAC verification token (from QR code)"),
 ):
     """
     Verify service request status by reference number (PUBLIC - no authentication).
+    Requires a valid HMAC token (generated in QR code) to prevent enumeration.
 
     Returns basic request information: workflow, status, appointment, payment.
     Used by QR code on citizen summary PDF.
     """
+    # Verify HMAC token before any DB access
+    if not _verify_sr_token(reference, t):
+        logger.warning(f"Service request verification failed: invalid token for {reference}")
+        return ServiceRequestVerificationResponse(
+            valid=False,
+            reference=reference,
+            message="Token de verificacion invalido / Invalid verification token"
+        )
+
     async with db_manager.get_connection() as db:
         try:
             query = """
