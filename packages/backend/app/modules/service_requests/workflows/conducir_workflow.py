@@ -927,7 +927,7 @@ class ConducirWorkflow(PredefinedWorkflow):
 
             # === Request data (from wizard selections) ===
             "tipo_solicitud": "_form:sub_type",
-            "clases_solicitadas": "_form:clases_solicitadas",
+            "clases_solicitadas": "_form:select_classes",
             "motivo_duplicado": "_form:motivo",
 
             # === From current certificate (RENOVACION/EXTENSION) ===
@@ -1008,7 +1008,7 @@ class ConducirWorkflow(PredefinedWorkflow):
 
         # EXTENSION: price per new class
         if sub_type == "EXTENSION" and context and context.form_data:
-            clases_solicitadas = context.form_data.get("clases_solicitadas", [])
+            clases_solicitadas = context.form_data.get("select_classes", [])
             clases_actuales = context.form_data.get("clases_actuales", [])
             if isinstance(clases_solicitadas, str):
                 clases_solicitadas = [c.strip() for c in clases_solicitadas.split(",")]
@@ -1192,7 +1192,7 @@ class ConducirWorkflow(PredefinedWorkflow):
     ) -> List[ValidationResult]:
         """Verify that requested classes are not already on the current certificate."""
         results = []
-        clases_solicitadas = context.form_data.get("clases_solicitadas", [])
+        clases_solicitadas = context.form_data.get("select_classes", [])
         if isinstance(clases_solicitadas, str):
             clases_solicitadas = [c.strip() for c in clases_solicitadas.split(",")]
         if not clases_solicitadas:
@@ -1242,11 +1242,8 @@ class ConducirWorkflow(PredefinedWorkflow):
             # No birth date yet - skip validation (will be validated later)
             return results
 
-        # Get requested classes
-        clases_solicitadas = context.form_data.get("clases_solicitadas", [])
-        if not clases_solicitadas:
-            # Also check in step data for select_classes
-            clases_solicitadas = context.form_data.get("selected_classes", [])
+        # Get requested classes (stored by frontend as select_classes from step_id)
+        clases_solicitadas = context.form_data.get("select_classes", [])
 
         if not clases_solicitadas:
             return results

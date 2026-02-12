@@ -947,7 +947,7 @@ class WorkflowEngine:
         # Store in context
         if not context.form_data:
             context.form_data = {}
-        context.form_data["clases_solicitadas"] = selected_classes
+        context.form_data["select_classes"] = selected_classes
 
         # === Validate age if birth date is known ===
         fecha_nacimiento = context.form_data.get("fecha_nacimiento")
