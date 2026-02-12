@@ -842,13 +842,13 @@ class ConducirWorkflow(PredefinedWorkflow):
             ))
 
         # Medical certificate - ONLY for NUEVO and EXTENSION
-        # NOT required for CANJE, RENOVACION, DUPLICADO
+        # Optional: citizen may not have it yet at online request time
         if sub_type in ["NUEVO", "EXTENSION"]:
             requirements.append(DocumentRequirement(
                 document_code="certificado_medico",
                 document_name_es="Certificado Médico de Aptitud",
                 schema_key="CERTIFICADO_MEDICO_GQ_V1",
-                is_required=True,
+                is_required=False,
                 display_order=4,
                 condition_type=DocumentConditionType.CUSTOM,
                 condition_value={"types": ["NUEVO", "EXTENSION"]},
