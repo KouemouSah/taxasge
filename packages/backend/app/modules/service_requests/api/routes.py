@@ -610,22 +610,13 @@ async def get_dashboard_summary(
     def _wf_label(code: str) -> str:
         return wf_labels.get(code, code.replace("_", " ").title())
 
-    # Execute all queries in parallel
-    (
-        stats,
-        recent_requests_raw,
-        recent_payments_raw,
-        (notifications_raw, unread_count),
-        upcoming_raw,
-        action_required_raw,
-    ) = await asyncio.gather(
-        service_request_repository.get_dashboard_stats(db, user_id),
-        service_request_repository.get_dashboard_recent_requests(db, user_id, limit=5),
-        service_request_repository.get_dashboard_recent_payments(db, user_id, limit=5),
-        service_request_repository.get_dashboard_global_notifications(db, user_id, limit=10),
-        service_request_repository.get_dashboard_upcoming_appointment(db, user_id),
-        service_request_repository.get_dashboard_action_required(db, user_id, limit=5, locale=locale),
-    )
+    # Execute queries sequentially (single asyncpg connection cannot run concurrent queries)
+    stats = await service_request_repository.get_dashboard_stats(db, user_id)
+    recent_requests_raw = await service_request_repository.get_dashboard_recent_requests(db, user_id, limit=5)
+    recent_payments_raw = await service_request_repository.get_dashboard_recent_payments(db, user_id, limit=5)
+    (notifications_raw, unread_count) = await service_request_repository.get_dashboard_global_notifications(db, user_id, limit=10)
+    upcoming_raw = await service_request_repository.get_dashboard_upcoming_appointment(db, user_id)
+    action_required_raw = await service_request_repository.get_dashboard_action_required(db, user_id, limit=5, locale=locale)
 
     from ..models.service_request import CitizenNotification
 
