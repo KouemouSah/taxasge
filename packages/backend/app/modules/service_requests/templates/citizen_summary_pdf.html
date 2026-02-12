@@ -42,7 +42,7 @@
         }
 
         .logo-cell {
-            width: 140px;
+            width: 130px;
         }
 
         .logo-cell img {
@@ -69,15 +69,15 @@
            WORKFLOW TITLE + SELECTION META
            ================================================================ */
         .workflow-title-box {
-            background: #f3f4f6;
             padding: 6px 12px;
             margin-bottom: 10px;
         }
 
         .workflow-title-box h2 {
             margin: 0;
-            font-size: 12pt;
+            font-size: 10pt;
             color: #333;
+            text-transform: uppercase;
         }
 
         .selection-meta {
@@ -96,13 +96,11 @@
             font-weight: bold;
             font-size: 9pt;
             text-align: center;
+            margin-bottom: 10px;
         }
 
-        .section-border {
-            border: 1px solid #e5e7eb;
-            border-top: none;
-            padding: 6px 10px;
-            margin-bottom: 8px;
+        .section-container {
+            margin-bottom: 14px;
         }
 
         /* ================================================================
@@ -119,20 +117,21 @@
         }
 
         .photo-cell {
-            width: 90px;
-            padding-right: 8px;
+            width: 98px;
+            padding-right: 16px;
         }
 
         .photo-box {
             width: 80px;
             height: 100px;
-            border: 2px solid #e5e7eb;
+            border: 1px solid #e5e7eb;
             text-align: center;
         }
 
         .photo-box img {
             width: 80px;
             height: 100px;
+            object-fit: cover;
         }
 
         .photo-placeholder {
@@ -146,9 +145,8 @@
         }
 
         .data-col {
-            width: 50%;
-            padding-left: 4px;
-            padding-right: 4px;
+            width: 48%;
+            vertical-align: top;
         }
 
         .data-table {
@@ -157,80 +155,65 @@
         }
 
         .data-table td {
-            padding: 2px 3px;
+            padding: 3px 5px;
             font-size: 8.5pt;
-            vertical-align: top;
+            border: none;
         }
 
         .data-label {
-            width: 42%;
+            width: 40%;
             color: #6b7280;
+            font-weight: normal;
         }
 
         .data-value {
-            font-weight: 500;
+            font-weight: bold;
+            color: #000;
         }
 
         /* ================================================================
-           INLINE SECTION (for <=3 fields: single row)
+           BORDERED DATA TABLE (for previous document info sections)
            ================================================================ */
-        .inline-fields {
-            font-size: 8.5pt;
-        }
-
-        .inline-fields table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .inline-fields td {
-            padding: 2px 6px;
-            vertical-align: top;
-        }
-
-        .inline-label {
-            color: #6b7280;
-            font-size: 8pt;
-        }
-
-        .inline-value {
-            font-weight: 500;
+        .bordered-section .data-table td {
+            border: 1px solid #e5e7eb;
+            padding: 2px 5px;
         }
 
         /* ================================================================
-           APPOINTMENT + PAYMENT ROW
+           APPOINTMENT + PAYMENT BLOCKS
            ================================================================ */
-        .bottom-row-table {
+        .blocks-row-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 10px;
         }
 
-        .bottom-row-table td {
+        .blocks-row-table > tr > td {
             vertical-align: top;
             padding: 0;
         }
 
         .appointment-cell {
-            width: 55%;
-            padding-right: 8px;
+            width: 62%;
+            padding-right: 12px;
         }
 
         .payment-cell {
-            width: 45%;
+            width: 38%;
         }
 
-        .appointment-box {
+        .card-block {
             background: #f0f7ec;
-            border: 1px solid #b8d4a8;
-            padding: 8px;
+            padding: 10px 12px;
         }
 
-        .appointment-title {
+        .card-block-title {
             font-weight: bold;
-            color: #2d5a03;
+            color: #3a7104;
             font-size: 9pt;
-            margin-bottom: 5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            text-align: left;
         }
 
         .appointment-detail-table {
@@ -239,13 +222,14 @@
         }
 
         .appointment-detail-table td {
-            padding: 1px 3px;
+            padding: 2px 3px;
+            border: none;
             font-size: 9pt;
             vertical-align: middle;
         }
 
         .appt-label {
-            width: 55px;
+            width: 60px;
             color: #6b7280;
             font-size: 8pt;
         }
@@ -257,14 +241,14 @@
 
         .no-appointment-box {
             background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            padding: 8px;
+            padding: 10px 12px;
         }
 
         .no-appointment-title {
             font-weight: bold;
             color: #6b7280;
             font-size: 9pt;
+            text-transform: uppercase;
         }
 
         .no-appointment-text {
@@ -273,28 +257,26 @@
             margin-top: 3px;
         }
 
-        .payment-box {
-            border: 1px solid #e5e7eb;
-            padding: 8px;
-            text-align: center;
-        }
-
         .payment-amount {
             font-size: 15pt;
             font-weight: bold;
             color: #2d5a03;
-            margin-top: 2px;
+            text-align: center;
+            margin-top: 4px;
         }
 
         .payment-currency {
-            font-size: 9pt;
-            font-weight: normal;
+            font-size: 14pt;
+            font-weight: bold;
+            color: #2d5a03;
         }
 
         .payment-label {
             font-size: 8pt;
             color: #6b7280;
             margin-top: 4px;
+            text-transform: uppercase;
+            text-align: center;
         }
 
         /* ================================================================
@@ -394,7 +376,7 @@
          DATA SECTIONS (dynamic)
          - Section 0 "Detalles de la Solicitud" → already rendered inline above
          - Section 1 (usually "Datos Personales") → rendered with photo
-         - Remaining sections → 2-col if >3 fields, inline if <=3
+         - Remaining sections → 2-column layout
          ================================================================ -->
 
     {% set ns = namespace(photo_rendered=false, skip_first=false) %}
@@ -408,111 +390,92 @@
     {% elif not ns.photo_rendered %}
         {# First real data section: render WITH photo #}
         {% set ns.photo_rendered = true %}
-        <div class="no-break">
+        <div class="no-break section-container">
             <div class="section-header">{{ section.title }}</div>
-            <div class="section-border">
-                {% set columns = section.fields | slice(2) | list %}
-                <table class="personal-data-table">
-                    <tr>
-                        <td class="photo-cell">
-                            {% if photo_base64 %}
-                            <div class="photo-box">
-                                <img src="{{ photo_base64 }}" alt="Photo" />
-                            </div>
-                            {% else %}
-                            <div class="photo-placeholder">Sin foto</div>
+            {% set columns = section.fields | slice(2) | list %}
+            <table class="personal-data-table">
+                <tr>
+                    <td class="photo-cell">
+                        {% if photo_base64 %}
+                        <div class="photo-box">
+                            <img src="{{ photo_base64 }}" alt="Photo" />
+                        </div>
+                        {% else %}
+                        <div class="photo-placeholder">Sin foto</div>
+                        {% endif %}
+                    </td>
+                    <td class="data-col">
+                        <table class="data-table">
+                            {% for field in columns[0] %}
+                            <tr>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </td>
+                    <td class="data-col">
+                        <table class="data-table">
+                            {% if columns | length > 1 %}
+                            {% for field in columns[1] %}
+                            <tr>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
+                            </tr>
+                            {% endfor %}
                             {% endif %}
-                        </td>
-                        <td class="data-col">
-                            <table class="data-table">
-                                {% for field in columns[0] %}
-                                <tr>
-                                    <td class="data-label">{{ field.label }}</td>
-                                    <td class="data-value">{{ field.value or '-' }}</td>
-                                </tr>
-                                {% endfor %}
-                            </table>
-                        </td>
-                        <td class="data-col">
-                            <table class="data-table">
-                                {% if columns | length > 1 %}
-                                {% for field in columns[1] %}
-                                <tr>
-                                    <td class="data-label">{{ field.label }}</td>
-                                    <td class="data-value">{{ field.value or '-' }}</td>
-                                </tr>
-                                {% endfor %}
-                                {% endif %}
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-    {% elif section.fields | length <= 3 %}
-        {# Small section: render inline (single row) #}
-        <div class="no-break">
-            <div class="section-header">{{ section.title }}</div>
-            <div class="section-border inline-fields">
-                <table>
-                    <tr>
-                        {% for field in section.fields %}
-                        <td>
-                            <span class="inline-label">{{ field.label }}</span><br/>
-                            <span class="inline-value">{{ field.value or '-' }}</span>
-                        </td>
-                        {% endfor %}
-                    </tr>
-                </table>
-            </div>
+                        </table>
+                    </td>
+                </tr>
+            </table>
         </div>
     {% else %}
-        {# Normal section: 2-column layout #}
-        <div class="no-break">
+        {# Remaining sections: 2-column layout #}
+        {# Sections with "Certificado" or "Anterior" or "Actual" keep table borders #}
+        {% set is_doc_section = "Certificado" in section.title or "Anterior" in section.title or "Actual" in section.title or "Permiso" in section.title %}
+        <div class="no-break section-container {% if is_doc_section %}bordered-section{% endif %}">
             <div class="section-header">{{ section.title }}</div>
-            <div class="section-border">
-                {% set columns = section.fields | slice(2) | list %}
-                <table class="personal-data-table">
-                    <tr>
-                        <td class="data-col">
-                            <table class="data-table">
-                                {% for field in columns[0] %}
-                                <tr>
-                                    <td class="data-label">{{ field.label }}</td>
-                                    <td class="data-value">{{ field.value or '-' }}</td>
-                                </tr>
-                                {% endfor %}
-                            </table>
-                        </td>
-                        <td class="data-col">
-                            <table class="data-table">
-                                {% if columns | length > 1 %}
-                                {% for field in columns[1] %}
-                                <tr>
-                                    <td class="data-label">{{ field.label }}</td>
-                                    <td class="data-value">{{ field.value or '-' }}</td>
-                                </tr>
-                                {% endfor %}
-                                {% endif %}
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            {% set columns = section.fields | slice(2) | list %}
+            <table class="personal-data-table">
+                <tr>
+                    <td class="data-col">
+                        <table class="data-table">
+                            {% for field in columns[0] %}
+                            <tr>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </td>
+                    <td class="data-col">
+                        <table class="data-table">
+                            {% if columns | length > 1 %}
+                            {% for field in columns[1] %}
+                            <tr>
+                                <td class="data-label">{{ field.label }}</td>
+                                <td class="data-value">{{ field.value or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% endif %}
+                        </table>
+                    </td>
+                </tr>
+            </table>
         </div>
     {% endif %}
     {% endfor %}
 
     <!-- ================================================================
-         APPOINTMENT + PAYMENT (side by side)
+         APPOINTMENT + PAYMENT (two distinct blocks, side by side)
          ================================================================ -->
     <div class="no-break">
-        <table class="bottom-row-table">
+        <table class="blocks-row-table">
             <tr>
                 <td class="appointment-cell">
                     {% if appointment %}
-                    <div class="appointment-box">
-                        <div class="appointment-title">{{ texts.scheduled_appointment }}</div>
+                    <div class="card-block">
+                        <div class="card-block-title">{{ texts.scheduled_appointment }}</div>
                         <table class="appointment-detail-table">
                             <tr>
                                 <td class="appt-label">{{ texts.date }}:</td>
@@ -536,7 +499,8 @@
                     {% endif %}
                 </td>
                 <td class="payment-cell">
-                    <div class="payment-box">
+                    <div class="card-block">
+                        <div class="card-block-title">{{ texts.payment_breakdown }}</div>
                         <div class="payment-amount">{{ tariff.total_amount }} <span class="payment-currency">XAF</span></div>
                         <div class="payment-label">{{ payment_status_label }}</div>
                     </div>

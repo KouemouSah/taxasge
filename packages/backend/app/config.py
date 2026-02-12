@@ -117,7 +117,7 @@ class Settings(BaseSettings):
 
     # Receipt verification (HMAC key for QR code security)
     RECEIPT_VERIFICATION_SECRET: str = Field(
-        default_factory=lambda: secrets.token_urlsafe(32),
+        default="",
         env="RECEIPT_VERIFICATION_SECRET"
     )
 
@@ -253,7 +253,14 @@ class Settings(BaseSettings):
 
     # RAG Configuration
     RAG_MAX_CONTEXT_SERVICES: int = Field(default=5, env="RAG_MAX_CONTEXT_SERVICES")
+    RAG_MAX_CONTEXT_DOCUMENTS: int = Field(default=5, env="RAG_MAX_CONTEXT_DOCUMENTS")
     RAG_CONVERSATION_HISTORY_LENGTH: int = Field(default=5, env="RAG_CONVERSATION_HISTORY_LENGTH")
+    MAX_CONTEXT_TOKENS: int = Field(default=3000, env="MAX_CONTEXT_TOKENS")
+    PDF_CHUNK_SIZE: int = Field(default=1000, env="PDF_CHUNK_SIZE")
+    PDF_CHUNK_OVERLAP: int = Field(default=100, env="PDF_CHUNK_OVERLAP")
+    SUGGESTION_SIMILARITY_THRESHOLD: float = Field(default=0.4, env="SUGGESTION_SIMILARITY_THRESHOLD")
+    RAG_EXTENDED_SEARCH_TOP_K: int = Field(default=10, env="RAG_EXTENDED_SEARCH_TOP_K")
+    RAG_MIN_CONTEXT_LENGTH: int = Field(default=100, env="RAG_MIN_CONTEXT_LENGTH")
     
     # ========================================================================
     # EXTERNAL SERVICES
@@ -430,7 +437,14 @@ class Settings(BaseSettings):
             "search_top_k": self.SEMANTIC_SEARCH_TOP_K,
             "similarity_threshold": self.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD,
             "max_context_services": self.RAG_MAX_CONTEXT_SERVICES,
+            "max_context_documents": self.RAG_MAX_CONTEXT_DOCUMENTS, # New
             "conversation_history_length": self.RAG_CONVERSATION_HISTORY_LENGTH,
+            "max_context_tokens": self.MAX_CONTEXT_TOKENS, # New
+            "pdf_chunk_size": self.PDF_CHUNK_SIZE,
+            "pdf_chunk_overlap": self.PDF_CHUNK_OVERLAP,
+            "suggestion_similarity_threshold": self.SUGGESTION_SIMILARITY_THRESHOLD,
+            "extended_search_top_k": self.RAG_EXTENDED_SEARCH_TOP_K,
+            "min_context_length": self.RAG_MIN_CONTEXT_LENGTH,
         }
     
     # ========================================================================
