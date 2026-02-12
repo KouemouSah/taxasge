@@ -4522,7 +4522,18 @@
       "agent_review": "En revision",
       "documents_pending": "Documents requis",
       "payment_pending": "Paiement en attente",
-      "payment_completed": "Payee"
+      "payment_completed": "Payee",
+      "timbres_pending": "Timbres en attente",
+      "timbres_paid": "Timbres payes",
+      "dossier_valide": "Dossier valide",
+      "pending_nota_ingreso": "Note d'encaissement en attente",
+      "nota_uploaded": "Note telechargee",
+      "paid": "Paye",
+      "payment_failed": "Paiement echoue",
+      "in_progress": "En cours",
+      "under_review": "En revision",
+      "documents_required": "Documents requis",
+      "cita_scheduled": "Rendez-vous programme"
     },
     "priority": {
       "low": "Basse",

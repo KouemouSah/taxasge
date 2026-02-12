@@ -4546,7 +4546,9 @@
       "payment_failed": "Pago Fallido",
       "in_progress": "En Proceso",
       "expired": "Expirada",
-      "under_review": "En Revisión"
+      "under_review": "En Revisión",
+      "documents_required": "Documentos Requeridos",
+      "cita_scheduled": "Cita Programada"
     },
     "documents": {
       "uploading": "Subiendo...",

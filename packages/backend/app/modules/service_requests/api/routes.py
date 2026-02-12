@@ -518,6 +518,53 @@ async def get_document_url(
 
 
 # ═══════════════════════════════════════════════════════════════
+# FILTER OPTIONS (must be BEFORE /{request_id} to avoid route conflict)
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/filter-options",
+    summary="Get available filter options",
+    description="Returns dynamic filter options (statuses and categories) for the list page.",
+)
+async def get_filter_options(
+    current_user=Depends(get_current_user),
+):
+    """Returns dynamic filter options from backend enums."""
+    from ..models.enums import ServiceRequestStatus as SRS, WorkflowCategory
+
+    _STATUS_PHASES = {
+        "DRAFT": "inicial", "TIMBRES_PENDING": "inicial", "TIMBRES_PAID": "inicial",
+        "SUBMITTED": "tramitacion", "DOCUMENTS_REQUIRED": "tramitacion",
+        "UNDER_REVIEW": "validacion", "DOSSIER_VALIDE": "validacion", "REJECTED": "validacion",
+        "PENDING_NOTA_INGRESO": "nota", "NOTA_UPLOADED": "nota",
+        "PAYMENT_PENDING": "pago", "PAID": "pago",
+        "CITA_SCHEDULED": "final", "IN_PROGRESS": "final",
+        "COMPLETED": "final", "CANCELLED": "final",
+    }
+    _HIDDEN_STATUSES = {SRS.PAYMENT_PROCESSING, SRS.PAYMENT_FAILED, SRS.EXPIRED}
+    _HIDDEN_CATEGORIES = {WorkflowCategory.GENERAL, WorkflowCategory.OTROS}
+    _CATEGORY_LABELS = {
+        "IDENTIDAD": "Identidad (Pasaporte)",
+        "EXTRANJERIA": "Extranjería (Residencia, Visado)",
+        "VEHICULOS": "Vehículos",
+        "CONTRATOS": "Contratos (ONRC)",
+        "CONDUCCION": "Certificado para Conducir",
+        "FUNCION_PUBLICA": "Función Pública",
+    }
+
+    return {
+        "statuses": [
+            {"value": s.value, "phase": _STATUS_PHASES.get(s.value, "other")}
+            for s in SRS if s not in _HIDDEN_STATUSES
+        ],
+        "categories": [
+            {"value": c.value, "label_es": _CATEGORY_LABELS.get(c.value, c.value)}
+            for c in WorkflowCategory if c not in _HIDDEN_CATEGORIES
+        ],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
 # READ
 # ═══════════════════════════════════════════════════════════════
 
@@ -548,32 +595,33 @@ async def get_service_request(
 
 @router.get(
     "/",
-    response_model=List[ServiceRequestResponse],
+    response_model=ServiceRequestListResponse,
     summary="List my service requests",
-    description="""
-    List all service requests for the current user.
-
-    Can be filtered by status:
-    - `DRAFT` - Initial state
-    - `SUBMITTED` - All documents provided
-    - `UNDER_REVIEW` - Being reviewed by agent
-    - `PAYMENT_PENDING` - Waiting for payment
-    - `COMPLETED` - Finished
-    """
+    description="List all service requests for the current user with server-side pagination and filters.",
 )
 async def list_service_requests(
     status: Optional[str] = Query(None, description="Filter by status"),
-    limit: int = Query(20, ge=1, le=100, description="Number of results"),
-    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    workflow_code: Optional[str] = Query(None, description="Filter by exact workflow code"),
+    category: Optional[str] = Query(None, description="Filter by workflow category (e.g. IDENTIDAD, VEHICULOS)"),
+    search: Optional[str] = Query(None, description="Search by reference number or workflow code"),
+    date_from: Optional[str] = Query(None, description="From date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="To date (YYYY-MM-DD)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     return await service_request_service.list_requests(
         db=db,
         user_id=current_user.id,
         status_filter=status,
-        limit=limit,
-        offset=offset
+        workflow_code=workflow_code,
+        category=category,
+        search=search,
+        date_from=date_from,
+        date_to=date_to,
+        page=page,
+        page_size=page_size,
     )
 
 

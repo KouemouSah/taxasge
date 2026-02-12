@@ -3,8 +3,9 @@
  * State management for service requests following useSupport pattern
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { serviceRequestsApi } from '../services/api'
+import type { FilterOptions } from '../services/api'
 import type {
   ServiceRequest,
   ServiceRequestCreate,
@@ -50,6 +51,8 @@ export interface UseServiceRequestsReturn {
     totalPages: number
   }
   filters: ServiceRequestFilters
+  filterOptions: FilterOptions | null
+  loadFilterOptions: () => Promise<void>
 
   // Workflow actions
   loadWorkflows: (category?: string) => Promise<WorkflowConfig[]>
@@ -92,7 +95,7 @@ export interface UseServiceRequestsReturn {
   checkPaymentStatus: () => Promise<{ status: string; paid: boolean } | null>
 
   // List actions
-  loadMyRequests: (page?: number, pageSize?: number) => Promise<void>
+  loadMyRequests: (page?: number, pageSize?: number, filtersOverride?: ServiceRequestFilters) => Promise<void>
   loadAllRequests: (page?: number, pageSize?: number) => Promise<void>
   updateRequest: (data: ServiceRequestUpdate) => Promise<ServiceRequest | null>
   deleteRequest: () => Promise<boolean>
@@ -143,10 +146,14 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   const [filters, setFilters] = useState<ServiceRequestFilters>({})
   const [pagination, setPagination] = useState({
     page: 1,
-    pageSize: 10,
+    pageSize: 20,
     total: 0,
     totalPages: 0,
   })
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null)
+
+  // Sequence counter to discard stale responses from rapid filter changes
+  const listRequestSeqRef = useRef(0)
 
   // =========================================================================
   // HELPER FUNCTIONS
@@ -163,6 +170,19 @@ export function useServiceRequests(): UseServiceRequestsReturn {
   const updateCurrentStep = useCallback((request: ServiceRequest, wf: WorkflowConfig) => {
     const step = wf.steps.find(s => s.stepNumber === request.currentStep)
     setCurrentStep(step || null)
+  }, [])
+
+  // =========================================================================
+  // FILTER OPTIONS
+  // =========================================================================
+
+  const loadFilterOptions = useCallback(async (): Promise<void> => {
+    try {
+      const options = await serviceRequestsApi.getFilterOptions()
+      setFilterOptions(options)
+    } catch (err) {
+      console.error('[ServiceRequests] Failed to load filter options:', err)
+    }
   }, [])
 
   // =========================================================================
@@ -668,12 +688,17 @@ export function useServiceRequests(): UseServiceRequestsReturn {
 
   const loadMyRequests = useCallback(async (
     page: number = 1,
-    pageSize: number = 10
+    pageSize: number = 20,
+    filtersOverride?: ServiceRequestFilters
   ): Promise<void> => {
+    // Increment sequence to invalidate any in-flight requests
+    const seq = ++listRequestSeqRef.current
     try {
       setIsLoading(true)
       setError(null)
-      const response = await serviceRequestsApi.listMyRequests(page, pageSize, filters)
+      const response = await serviceRequestsApi.listMyRequests(page, pageSize, filtersOverride ?? filters)
+      // Discard stale response if a newer request was initiated
+      if (seq !== listRequestSeqRef.current) return
       setRequests(response.requests)
       setPagination({
         page: response.page,
@@ -682,9 +707,12 @@ export function useServiceRequests(): UseServiceRequestsReturn {
         totalPages: response.totalPages,
       })
     } catch (err) {
+      if (seq !== listRequestSeqRef.current) return
       handleError(err)
     } finally {
-      setIsLoading(false)
+      if (seq === listRequestSeqRef.current) {
+        setIsLoading(false)
+      }
     }
   }, [filters, handleError])
 
@@ -963,6 +991,8 @@ export function useServiceRequests(): UseServiceRequestsReturn {
     error,
     pagination,
     filters,
+    filterOptions,
+    loadFilterOptions,
 
     // Workflow actions
     loadWorkflows,

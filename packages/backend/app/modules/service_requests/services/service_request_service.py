@@ -874,25 +874,45 @@ class ServiceRequestService:
         db: asyncpg.Connection,
         user_id: UUID,
         status_filter: Optional[str] = None,
-        limit: int = 20,
-        offset: int = 0
-    ) -> List[ServiceRequestResponse]:
-        """List service requests for a user"""
-        requests = await service_request_repository.find_by_user(
-            db=db,
-            user_id=user_id,
-            status=status_filter,
-            limit=limit,
-            offset=offset
+        workflow_code: Optional[str] = None,
+        category: Optional[str] = None,
+        search: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ):
+        """List service requests for a user with server-side pagination and filters."""
+        import math
+        from ..models.service_request import ServiceRequestListResponse
+
+        offset = (page - 1) * page_size
+
+        # Count total with same filters
+        total = await service_request_repository.count_by_user(
+            db=db, user_id=user_id, status=status_filter,
+            workflow_code=workflow_code, category=category,
+            search=search, date_from=date_from, date_to=date_to,
         )
 
-        results = []
-        for req in requests:
-            params = self._extract_workflow_params(req)
-            required_docs = await self._get_required_documents(db, req["workflow_code"], **params)
-            results.append(await self._build_response(db, req, required_docs))
+        # Fetch current page
+        requests = await service_request_repository.find_by_user(
+            db=db, user_id=user_id, status=status_filter,
+            workflow_code=workflow_code, category=category,
+            search=search, date_from=date_from, date_to=date_to,
+            limit=page_size, offset=offset,
+        )
 
-        return results
+        # Build lightweight responses for list view (no document loading = no N+1)
+        results = [self._build_list_item_response(req) for req in requests]
+
+        return ServiceRequestListResponse(
+            requests=results,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=math.ceil(total / page_size) if total > 0 else 0,
+        )
 
     # ═══════════════════════════════════════════════════════════════
     # UPDATE / DELETE / SUBMIT / CANCEL
@@ -1845,6 +1865,58 @@ class ServiceRequestService:
             # Status stays DRAFT - user must complete form review, validation,
             # and confirmation steps before request can be SUBMITTED
             logger.info(f"Request {request['reference']} has all documents, tariff calculated: {tariff['total_amount']} XAF. Status remains {request['status']}")
+
+    def _build_list_item_response(self, request: Dict) -> ServiceRequestResponse:
+        """Build lightweight response for list views.
+        Skips document loading (no extra DB queries) since list pages only
+        use: id, reference, workflow_code, status, created_at, tariff fields."""
+        tariff = None
+        if request.get("total_amount"):
+            tariff = TariffBreakdown(
+                base_amount=float(request["base_amount"] or 0),
+                supplements=[],
+                supplements_total=float(request["supplements_amount"] or 0),
+                penalties_amount=float(request["penalties_amount"] or 0),
+                total_amount=float(request["total_amount"])
+            )
+
+        return ServiceRequestResponse(
+            id=request["id"],
+            reference=request["reference"],
+            user_id=request["user_id"],
+            workflow_code=request["workflow_code"],
+            solicitud_type=request["solicitud_type"],
+            fiscal_service_id=request.get("fiscal_service_id"),
+            status=request["status"],
+            priority=request["priority"],
+            required_documents=[],
+            provided_documents=[],
+            missing_documents=[],
+            documents_progress="0/0",
+            form_data={},
+            extracted_data={},
+            extraction_confidence=None,
+            validations={},
+            tariff=tariff,
+            assigned_to=request.get("assigned_to"),
+            assigned_at=request.get("assigned_at"),
+            entity_code=request.get("entity_code"),
+            payment_id=request.get("payment_id"),
+            payment_status=request.get("payment_status"),
+            paid_at=request.get("paid_at"),
+            cita_date=request.get("cita_date"),
+            cita_time=request.get("cita_time"),
+            cita_location=request.get("cita_location"),
+            created_at=request["created_at"],
+            updated_at=request.get("updated_at"),
+            submitted_at=request.get("submitted_at"),
+            validated_at=request.get("validated_at"),
+            completed_at=request.get("completed_at"),
+            expires_at=request.get("expires_at"),
+            notes=request.get("notes"),
+            rejection_reason=request.get("rejection_reason"),
+            created_by=request.get("created_by"),
+        )
 
     async def _build_response(
         self,

@@ -65,38 +65,96 @@ class ServiceRequestRepository:
         row = await db.fetchrow(query, reference)
         return self._row_to_dict(row) if row else None
 
+    def _build_user_filters(
+        self,
+        user_id: UUID,
+        status: Optional[str] = None,
+        workflow_code: Optional[str] = None,
+        category: Optional[str] = None,
+        search: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+    ) -> tuple:
+        """Build WHERE clause + params for user queries.
+        Returns (where_str, params_list, next_param_idx)."""
+        conditions = ["user_id = $1"]
+        params: List[Any] = [user_id]
+        idx = 2
+
+        if status:
+            conditions.append(f"status = ${idx}")
+            params.append(status)
+            idx += 1
+
+        if workflow_code:
+            conditions.append(f"workflow_code = ${idx}")
+            params.append(workflow_code)
+            idx += 1
+        elif category:
+            codes = self._get_codes_for_category(category)
+            if codes:
+                conditions.append(f"workflow_code = ANY(${idx})")
+                params.append(codes)
+                idx += 1
+
+        if search:
+            conditions.append(f"(reference ILIKE ${idx} OR workflow_code ILIKE ${idx})")
+            params.append(f"%{search}%")
+            idx += 1
+
+        if date_from:
+            conditions.append(f"created_at >= ${idx}::timestamptz")
+            params.append(date_from)
+            idx += 1
+
+        if date_to:
+            conditions.append(f"created_at < (${idx}::date + interval '1 day')")
+            params.append(date_to)
+            idx += 1
+
+        return " AND ".join(conditions), params, idx
+
+    def _get_codes_for_category(self, category: str) -> List[str]:
+        """Get all workflow codes for a category from WorkflowEngine registry."""
+        try:
+            from ..services.workflow_engine import workflow_engine
+            from ..models.enums import WorkflowCategory
+            cat = WorkflowCategory(category)
+            workflows = workflow_engine.get_workflows_by_category(cat)
+            codes: List[str] = []
+            for w in workflows:
+                if hasattr(w, 'get_all_workflow_codes'):
+                    codes.extend([c.value for c in w.get_all_workflow_codes()])
+                else:
+                    codes.append(w.workflow_code.value)
+            return codes
+        except (ValueError, Exception):
+            return []
+
     async def find_by_user(
         self,
         db: asyncpg.Connection,
         user_id: UUID,
         status: Optional[str] = None,
         workflow_code: Optional[str] = None,
+        category: Optional[str] = None,
+        search: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
         limit: int = 20,
         offset: int = 0
     ) -> List[Dict]:
-        """List service requests for a user with optional filters"""
-        conditions = ["user_id = $1"]
-        params: List[Any] = [user_id]
-        param_idx = 2
-
-        if status:
-            conditions.append(f"status = ${param_idx}")
-            params.append(status)
-            param_idx += 1
-
-        if workflow_code:
-            conditions.append(f"workflow_code = ${param_idx}")
-            params.append(workflow_code)
-            param_idx += 1
-
-        where_clause = " AND ".join(conditions)
+        """List service requests for a user with full server-side filters"""
+        where_clause, params, idx = self._build_user_filters(
+            user_id, status, workflow_code, category, search, date_from, date_to
+        )
         params.extend([limit, offset])
 
         query = f"""
             SELECT * FROM service_requests
             WHERE {where_clause}
             ORDER BY created_at DESC
-            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            LIMIT ${idx} OFFSET ${idx + 1}
         """
         rows = await db.fetch(query, *params)
         return [self._row_to_dict(row) for row in rows]
@@ -105,15 +163,19 @@ class ServiceRequestRepository:
         self,
         db: asyncpg.Connection,
         user_id: UUID,
-        status: Optional[str] = None
+        status: Optional[str] = None,
+        workflow_code: Optional[str] = None,
+        category: Optional[str] = None,
+        search: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
     ) -> int:
-        """Count service requests for a user"""
-        if status:
-            query = "SELECT COUNT(*) FROM service_requests WHERE user_id = $1 AND status = $2"
-            row = await db.fetchrow(query, user_id, status)
-        else:
-            query = "SELECT COUNT(*) FROM service_requests WHERE user_id = $1"
-            row = await db.fetchrow(query, user_id)
+        """Count service requests for a user with same filters as find_by_user"""
+        where_clause, params, _ = self._build_user_filters(
+            user_id, status, workflow_code, category, search, date_from, date_to
+        )
+        query = f"SELECT COUNT(*) FROM service_requests WHERE {where_clause}"
+        row = await db.fetchrow(query, *params)
         return row["count"]
 
     async def update_status(

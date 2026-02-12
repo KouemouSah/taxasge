@@ -4,13 +4,15 @@
  * Service Requests Page - User Dashboard
  * List and manage service requests for citizens
  *
- * ALIGNED WITH BACKEND:
- * - ServiceRequestResponse Pydantic model
- * - ServiceRequestStatus enum (15+ statuses)
- * - Workflow codes and categories
+ * Dynamic filters from backend:
+ * - Status: from /filter-options endpoint (backend enum)
+ * - Category: from /filter-options endpoint (backend enum)
+ * - Workflow: from /workflows endpoint (filtered by category)
+ * - Search: server-side ILIKE on reference + workflow_code
+ * - Pagination: server-side with total count
  */
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -70,9 +72,10 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useTranslations } from 'next-intl'
 import { useServiceRequests } from '@/modules/service-requests'
-import type { ServiceRequestStatus } from '@/modules/service-requests'
+import type { ServiceRequestFilters, WorkflowConfig, WorkflowCategory } from '@/modules/service-requests'
+import { serviceRequestsApi } from '@/modules/service-requests'
 
-// Status color mapping
+// Status color mapping (kept for badge rendering)
 const STATUS_COLORS: Record<string, { bg: string; text: string; icon: React.ElementType }> = {
   DRAFT: { bg: 'bg-slate-500', text: 'text-white', icon: FileText },
   TIMBRES_PENDING: { bg: 'bg-amber-500', text: 'text-white', icon: CreditCard },
@@ -95,29 +98,21 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; icon: React.Elem
   EXPIRED: { bg: 'bg-gray-600', text: 'text-white', icon: Clock },
 }
 
-// Status options for filter
-const STATUS_OPTIONS = [
-  { value: 'all', labelKey: 'allStatuses' },
-  { value: 'DRAFT', labelKey: 'status.draft' },
-  { value: 'SUBMITTED', labelKey: 'status.submitted' },
-  { value: 'UNDER_REVIEW', labelKey: 'status.agent_review' },
-  { value: 'DOCUMENTS_REQUIRED', labelKey: 'status.documents_pending' },
-  { value: 'PAYMENT_PENDING', labelKey: 'status.payment_pending' },
-  { value: 'PAID', labelKey: 'status.payment_completed' },
-  { value: 'CITA_SCHEDULED', labelKey: 'status.appointment_scheduled' },
-  { value: 'COMPLETED', labelKey: 'status.completed' },
-  { value: 'REJECTED', labelKey: 'status.rejected' },
-  { value: 'CANCELLED', labelKey: 'status.cancelled' },
-]
+const PAGE_SIZE = 20
 
 export default function ServiceRequestsPage() {
   const params = useParams()
   const locale = params.locale as string
   const t = useTranslations('service_requests')
 
+  // Filter state
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterCategory, setFilterCategory] = useState('all')
   const [filterWorkflow, setFilterWorkflow] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [requestToDelete, setRequestToDelete] = useState<{ id: string; reference: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -127,67 +122,129 @@ export default function ServiceRequestsPage() {
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
   const [isBulkDeleting, setIsBulkDeleting] = useState(false)
 
+  // Dynamic filter data (loaded from backend)
+  const [workflows, setWorkflows] = useState<WorkflowConfig[]>([])
+  const [filtersReady, setFiltersReady] = useState(false)
+
   // Use the service requests hook
   const {
     requests,
     isLoading,
     error,
     pagination,
+    filterOptions,
     loadMyRequests,
+    loadFilterOptions,
     setFilters,
     clearError,
     deleteRequestById,
   } = useServiceRequests()
 
-  // Load requests on mount
-  useEffect(() => {
-    loadMyRequests(1, 20)
-  }, [loadMyRequests])
+  // Stable ref for current filters to avoid circular deps
+  const currentFiltersRef = useRef<ServiceRequestFilters>({})
 
-  // Apply filters when status or workflow changes
+  // =========================================================================
+  // INITIALIZATION
+  // =========================================================================
+
+  const loadDynamicFilters = useCallback(async () => {
+    try {
+      await loadFilterOptions()
+    } catch (err) {
+      console.error('[ServiceRequests] Failed to load filter options:', err)
+    }
+    try {
+      const wf = await serviceRequestsApi.getWorkflows()
+      setWorkflows(wf)
+    } catch (err) {
+      console.error('[ServiceRequests] Failed to load workflows:', err)
+    }
+    setFiltersReady(true)
+  }, [loadFilterOptions])
+
+  // Load filter options + workflows + first page on mount
   useEffect(() => {
-    const newFilters: { status?: ServiceRequestStatus; workflowCode?: string } = {}
-    if (filterStatus !== 'all') {
-      newFilters.status = filterStatus as ServiceRequestStatus
-    }
-    if (filterWorkflow !== 'all') {
-      newFilters.workflowCode = filterWorkflow
-    }
+    loadDynamicFilters()
+    loadMyRequests(1, PAGE_SIZE)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // =========================================================================
+  // FILTER HANDLERS (all trigger server-side reload → page 1)
+  // =========================================================================
+
+  const reloadWithFilters = useCallback((newFilters: ServiceRequestFilters) => {
+    currentFiltersRef.current = newFilters
     setFilters(newFilters)
-  }, [filterStatus, filterWorkflow, setFilters])
+    // Pass filters directly to avoid stale closure issue
+    loadMyRequests(1, PAGE_SIZE, newFilters)
+  }, [setFilters, loadMyRequests])
 
-  // Get unique workflow codes for filter dropdown
-  const workflowOptions = useMemo(() => {
-    const uniqueWorkflows = new Set(requests.map((r) => r.workflowCode))
-    return Array.from(uniqueWorkflows).sort()
-  }, [requests])
-
-  // Filter by search query (client-side)
-  const filteredRequests = useMemo(() => {
-    let result = requests
-
-    // Filter by workflow (client-side backup if server filter not applied)
-    if (filterWorkflow !== 'all') {
-      result = result.filter((req) => req.workflowCode === filterWorkflow)
+  const handleStatusChange = useCallback((value: string) => {
+    setFilterStatus(value)
+    const updated = {
+      ...currentFiltersRef.current,
+      status: value === 'all' ? undefined : value,
     }
+    reloadWithFilters(updated)
+  }, [reloadWithFilters])
 
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter((req) => {
-        const reference = req.requestNumber || req.id || ''
-        const workflow = req.workflowCode || ''
-        return (
-          reference.toLowerCase().includes(query) ||
-          workflow.toLowerCase().includes(query)
-        )
-      })
+  const handleCategoryChange = useCallback((value: string) => {
+    setFilterCategory(value)
+    setFilterWorkflow('all') // Reset workflow when category changes
+    const updated = {
+      ...currentFiltersRef.current,
+      category: value === 'all' ? undefined : value as WorkflowCategory,
+      workflowCode: undefined, // Reset workflow filter
     }
+    reloadWithFilters(updated)
+  }, [reloadWithFilters])
 
-    return result
-  }, [requests, searchQuery, filterWorkflow])
+  const handleWorkflowChange = useCallback((value: string) => {
+    setFilterWorkflow(value)
+    const updated = {
+      ...currentFiltersRef.current,
+      workflowCode: value === 'all' ? undefined : value,
+    }
+    reloadWithFilters(updated)
+  }, [reloadWithFilters])
 
-  // Handle delete confirmation
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value)
+    // Debounce search: wait 400ms after last keystroke
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
+    searchTimerRef.current = setTimeout(() => {
+      const updated = {
+        ...currentFiltersRef.current,
+        search: value.trim() || undefined,
+      }
+      reloadWithFilters(updated)
+    }, 400)
+  }, [reloadWithFilters])
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
+  }, [])
+
+  // =========================================================================
+  // DERIVED DATA
+  // =========================================================================
+
+  // Workflows filtered by selected category (for 2nd-level dropdown)
+  const filteredWorkflows = useMemo(() => {
+    if (filterCategory === 'all') return []
+    return workflows.filter(w => w.category === filterCategory)
+  }, [workflows, filterCategory])
+
+  // =========================================================================
+  // DELETE HANDLERS
+  // =========================================================================
+
   const handleDeleteClick = (id: string, reference: string) => {
     setRequestToDelete({ id, reference })
     setDeleteDialogOpen(true)
@@ -203,7 +260,7 @@ export default function ServiceRequestsPage() {
     setRequestToDelete(null)
 
     if (success) {
-      // Request was removed from list by the hook
+      loadMyRequests(pagination.page, PAGE_SIZE)
     }
   }
 
@@ -216,22 +273,18 @@ export default function ServiceRequestsPage() {
   // BULK SELECTION HANDLERS
   // =========================================================================
 
-  // Get selectable requests (only DRAFT status can be deleted)
   const selectableRequests = useMemo(() => {
-    return filteredRequests.filter(req => req.status === 'DRAFT')
-  }, [filteredRequests])
+    return requests.filter(req => req.status === 'DRAFT')
+  }, [requests])
 
-  // Check if all selectable items are selected
   const isAllSelected = useMemo(() => {
     return selectableRequests.length > 0 && selectableRequests.every(req => selectedIds.has(req.id))
   }, [selectableRequests, selectedIds])
 
-  // Check if some items are selected
   const isSomeSelected = useMemo(() => {
     return selectableRequests.some(req => selectedIds.has(req.id))
   }, [selectableRequests, selectedIds])
 
-  // Toggle single item selection
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -244,29 +297,22 @@ export default function ServiceRequestsPage() {
     })
   }
 
-  // Toggle select all
   const handleSelectAll = () => {
     if (isAllSelected) {
-      // Deselect all
       setSelectedIds(new Set())
     } else {
-      // Select all selectable
       setSelectedIds(new Set(selectableRequests.map(req => req.id)))
     }
   }
 
-  // Clear selection
   const clearSelection = () => {
     setSelectedIds(new Set())
   }
 
-  // Handle bulk delete confirmation
   const handleBulkDeleteConfirm = async () => {
     if (selectedIds.size === 0) return
 
     setIsBulkDeleting(true)
-
-    // Delete each selected request
     const idsToDelete = Array.from(selectedIds)
     for (const id of idsToDelete) {
       try {
@@ -279,13 +325,17 @@ export default function ServiceRequestsPage() {
     setIsBulkDeleting(false)
     setBulkDeleteDialogOpen(false)
     clearSelection()
+    loadMyRequests(pagination.page, PAGE_SIZE)
   }
 
   const handleBulkDeleteCancel = () => {
     setBulkDeleteDialogOpen(false)
   }
 
-  // Get status badge
+  // =========================================================================
+  // RENDERING HELPERS
+  // =========================================================================
+
   const getStatusBadge = (status: string) => {
     const config = STATUS_COLORS[status] || STATUS_COLORS.DRAFT
     const Icon = config.icon
@@ -305,7 +355,6 @@ export default function ServiceRequestsPage() {
     )
   }
 
-  // Calculate progress based on status
   const getProgress = (status: string): number => {
     const progressMap: Record<string, number> = {
       DRAFT: 10,
@@ -330,12 +379,10 @@ export default function ServiceRequestsPage() {
     return progressMap[status] || 0
   }
 
-  // Check if request can be continued
   const canContinue = (status: string): boolean => {
     return ['DRAFT', 'DOCUMENTS_REQUIRED', 'TIMBRES_PENDING'].includes(status)
   }
 
-  // Format currency
   const formatAmount = (amount?: number): string => {
     if (!amount) return '-'
     return new Intl.NumberFormat(locale === 'es' ? 'es-GQ' : locale, {
@@ -345,7 +392,6 @@ export default function ServiceRequestsPage() {
     }).format(amount)
   }
 
-  // Format date
   const formatDate = (dateString?: string): string => {
     if (!dateString) return '-'
     return new Date(dateString).toLocaleDateString(locale, {
@@ -355,9 +401,7 @@ export default function ServiceRequestsPage() {
     })
   }
 
-  // Get workflow display name (translated)
   const getWorkflowName = (code: string): string => {
-    // Try to get translation first
     const translationKey = `workflows.${code.toLowerCase()}`
     try {
       const translated = t(translationKey)
@@ -367,11 +411,21 @@ export default function ServiceRequestsPage() {
     } catch {
       // Fallback to formatting
     }
-    // Fallback: Replace underscores with spaces and format
     return code
       .split('_')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ')
+  }
+
+  const getStatusLabel = (value: string): string => {
+    const key = `status.${value.toLowerCase()}`
+    try {
+      const translated = t(key)
+      if (translated && translated !== key) return translated
+    } catch {
+      // fallback
+    }
+    return value.replace(/_/g, ' ')
   }
 
   return (
@@ -390,7 +444,7 @@ export default function ServiceRequestsPage() {
         </Button>
       </div>
 
-      {/* Quick Action Cards */}
+      {/* Quick Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 border-primary/20">
           <Link href={`/${locale}/dashboard/service-requests/new`}>
@@ -414,24 +468,21 @@ export default function ServiceRequestsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{pagination.total || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {filteredRequests.length} {t('table.shown')}
+              {t('page_of', { page: pagination.page, total: pagination.totalPages || 1 })}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => handleStatusChange('DRAFT')}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('filters.pending') || 'Pendientes'}</CardTitle>
             <Clock className="h-6 w-6 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {requests.filter((r) =>
-                ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'DOCUMENTS_REQUIRED', 'PAYMENT_PENDING'].includes(r.status)
-              ).length}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('filters.pending')}
+            <p className="text-sm text-muted-foreground">
+              {locale === 'es' ? 'Clic para filtrar borradores' : locale === 'fr' ? 'Cliquer pour filtrer brouillons' : 'Click to filter drafts'}
             </p>
           </CardContent>
         </Card>
@@ -440,47 +491,87 @@ export default function ServiceRequestsPage() {
       {/* Requests Table */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4">
             <div>
               <CardTitle>{t('allRequests') || 'Todas las Solicitudes'}</CardTitle>
               <CardDescription>
-                {t('table.loading') || 'Historial de tus solicitudes de servicio'}
+                {pagination.total > 0
+                  ? (t('showing_of', {
+                      start: (pagination.page - 1) * PAGE_SIZE + 1,
+                      end: Math.min(pagination.page * PAGE_SIZE, pagination.total),
+                      total: pagination.total,
+                    }))
+                  : (t('table.loading') || 'Historial de tus solicitudes de servicio')}
               </CardDescription>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <div className="relative flex-1 sm:w-64">
+
+            {/* Filters Row */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {/* Search */}
+              <div className="relative flex-1 sm:min-w-[200px] sm:max-w-[280px]">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder={t('search_placeholder') || 'Buscar...'}
                   className="pl-8"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </div>
-              <Select value={filterWorkflow} onValueChange={setFilterWorkflow}>
+
+              {/* Category filter (dynamic from /filter-options) */}
+              <Select value={filterCategory} onValueChange={handleCategoryChange} disabled={!filtersReady}>
                 <SelectTrigger className="w-full sm:w-48">
                   <FileText className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder={t('filter_workflow') || 'Tipo'} />
+                  <SelectValue placeholder={!filtersReady
+                    ? (locale === 'es' ? 'Cargando...' : 'Loading...')
+                    : (locale === 'es' ? 'Categoría' : 'Category')
+                  } />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('allTypes') || 'Todos los tipos'}</SelectItem>
-                  {workflowOptions.map((workflow) => (
-                    <SelectItem key={workflow} value={workflow}>
-                      {getWorkflowName(workflow)}
+                  <SelectItem value="all">
+                    {locale === 'es' ? 'Todas las categorías' : locale === 'fr' ? 'Toutes les catégories' : 'All categories'}
+                  </SelectItem>
+                  {filterOptions?.categories.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label_es}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+
+              {/* Workflow filter (conditional on category) */}
+              {filteredWorkflows.length > 0 && (
+                <Select value={filterWorkflow} onValueChange={handleWorkflowChange}>
+                  <SelectTrigger className="w-full sm:w-52">
+                    <FileText className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder={t('allTypes') || 'Tipo'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('allTypes') || 'Todos los tipos'}</SelectItem>
+                    {filteredWorkflows.map((w) => (
+                      <SelectItem key={w.workflowCode} value={w.workflowCode}>
+                        {w.serviceNameEs || getWorkflowName(w.workflowCode)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {/* Status filter (dynamic from /filter-options) */}
+              <Select value={filterStatus} onValueChange={handleStatusChange} disabled={!filtersReady}>
                 <SelectTrigger className="w-full sm:w-48">
                   <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder={t('filter_status') || 'Estado'} />
+                  <SelectValue placeholder={!filtersReady
+                    ? (locale === 'es' ? 'Cargando...' : 'Loading...')
+                    : (t('filter_status') || 'Estado')
+                  } />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {t(option.labelKey) || option.value}
+                  <SelectItem value="all">{t('allStatuses') || 'Todos los estados'}</SelectItem>
+                  {filterOptions?.statuses.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {getStatusLabel(s.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -495,11 +586,11 @@ export default function ServiceRequestsPage() {
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">
                   {selectedIds.size} {selectedIds.size === 1
-                    ? (locale === 'es' ? 'seleccionado' : locale === 'fr' ? 'sélectionné' : 'selected')
-                    : (locale === 'es' ? 'seleccionados' : locale === 'fr' ? 'sélectionnés' : 'selected')}
+                    ? (locale === 'es' ? 'seleccionado' : locale === 'fr' ? 'selectionne' : 'selected')
+                    : (locale === 'es' ? 'seleccionados' : locale === 'fr' ? 'selectionnes' : 'selected')}
                 </span>
                 <Button variant="ghost" size="sm" onClick={clearSelection}>
-                  {locale === 'es' ? 'Limpiar selección' : locale === 'fr' ? 'Effacer la sélection' : 'Clear selection'}
+                  {locale === 'es' ? 'Limpiar seleccion' : locale === 'fr' ? 'Effacer la selection' : 'Clear selection'}
                 </Button>
               </div>
               <div className="flex items-center gap-2">
@@ -532,12 +623,11 @@ export default function ServiceRequestsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {/* Checkbox column for bulk selection */}
                   <TableHead className="w-[40px]">
                     <Checkbox
                       checked={isAllSelected}
                       onCheckedChange={handleSelectAll}
-                      aria-label={locale === 'es' ? 'Seleccionar todo' : locale === 'fr' ? 'Tout sélectionner' : 'Select all'}
+                      aria-label={locale === 'es' ? 'Seleccionar todo' : locale === 'fr' ? 'Tout selectionner' : 'Select all'}
                       disabled={selectableRequests.length === 0}
                       className={isSomeSelected && !isAllSelected ? 'data-[state=checked]:bg-primary/50' : ''}
                     />
@@ -572,7 +662,7 @@ export default function ServiceRequestsPage() {
                           size="sm"
                           onClick={() => {
                             clearError()
-                            loadMyRequests(1, 20)
+                            loadMyRequests(1, PAGE_SIZE)
                           }}
                           className="mt-2"
                         >
@@ -582,14 +672,13 @@ export default function ServiceRequestsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filteredRequests.length > 0 ? (
-                  filteredRequests.map((req) => {
+                ) : requests.length > 0 ? (
+                  requests.map((req) => {
                     const progress = getProgress(req.status)
                     const isSelectable = req.status === 'DRAFT'
                     const isSelected = selectedIds.has(req.id)
                     return (
                       <TableRow key={req.id} className={isSelected ? 'bg-primary/5' : ''}>
-                        {/* Checkbox cell */}
                         <TableCell>
                           {isSelectable ? (
                             <Checkbox
@@ -598,7 +687,7 @@ export default function ServiceRequestsPage() {
                               aria-label={`${locale === 'es' ? 'Seleccionar' : 'Select'} ${req.requestNumber || req.id}`}
                             />
                           ) : (
-                            <span className="w-4 h-4 block" /> // Placeholder for alignment
+                            <span className="w-4 h-4 block" />
                           )}
                         </TableCell>
                         <TableCell className="font-medium font-mono">
@@ -697,17 +786,17 @@ export default function ServiceRequestsPage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
               <p className="text-sm text-muted-foreground">
                 {t('showing_of', {
-                  start: (pagination.page - 1) * pagination.pageSize + 1,
-                  end: Math.min(pagination.page * pagination.pageSize, pagination.total),
+                  start: (pagination.page - 1) * PAGE_SIZE + 1,
+                  end: Math.min(pagination.page * PAGE_SIZE, pagination.total),
                   total: pagination.total,
-                }) || `Mostrando ${filteredRequests.length} de ${pagination.total}`}
+                })}
               </p>
               <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={pagination.page <= 1}
-                  onClick={() => loadMyRequests(1, pagination.pageSize)}
+                  onClick={() => loadMyRequests(1, PAGE_SIZE)}
                   className="hidden sm:flex"
                 >
                   {'<<'}
@@ -716,7 +805,7 @@ export default function ServiceRequestsPage() {
                   variant="outline"
                   size="sm"
                   disabled={pagination.page <= 1}
-                  onClick={() => loadMyRequests(pagination.page - 1, pagination.pageSize)}
+                  onClick={() => loadMyRequests(pagination.page - 1, PAGE_SIZE)}
                 >
                   {t('previous')}
                 </Button>
@@ -728,27 +817,22 @@ export default function ServiceRequestsPage() {
                     const current = pagination.page
                     const total = pagination.totalPages
 
-                    // Always show first page
                     pages.push(1)
 
-                    // Show ellipsis if current is far from start
                     if (current > 3) {
                       pages.push('...')
                     }
 
-                    // Show pages around current
                     for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
                       if (!pages.includes(i)) {
                         pages.push(i)
                       }
                     }
 
-                    // Show ellipsis if current is far from end
                     if (current < total - 2) {
                       pages.push('...')
                     }
 
-                    // Always show last page
                     if (total > 1 && !pages.includes(total)) {
                       pages.push(total)
                     }
@@ -764,7 +848,7 @@ export default function ServiceRequestsPage() {
                           variant={page === current ? 'default' : 'outline'}
                           size="sm"
                           className="min-w-[36px]"
-                          onClick={() => loadMyRequests(page, pagination.pageSize)}
+                          onClick={() => loadMyRequests(page, PAGE_SIZE)}
                         >
                           {page}
                         </Button>
@@ -777,7 +861,7 @@ export default function ServiceRequestsPage() {
                   variant="outline"
                   size="sm"
                   disabled={pagination.page >= pagination.totalPages}
-                  onClick={() => loadMyRequests(pagination.page + 1, pagination.pageSize)}
+                  onClick={() => loadMyRequests(pagination.page + 1, PAGE_SIZE)}
                 >
                   {t('next')}
                 </Button>
@@ -785,7 +869,7 @@ export default function ServiceRequestsPage() {
                   variant="outline"
                   size="sm"
                   disabled={pagination.page >= pagination.totalPages}
-                  onClick={() => loadMyRequests(pagination.totalPages, pagination.pageSize)}
+                  onClick={() => loadMyRequests(pagination.totalPages, PAGE_SIZE)}
                   className="hidden sm:flex"
                 >
                   {'>>'}
@@ -809,9 +893,9 @@ export default function ServiceRequestsPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {locale === 'es'
-                ? `¿Está seguro de que desea eliminar la solicitud ${requestToDelete?.reference}? Esta acción no se puede deshacer.`
+                ? `Esta seguro de que desea eliminar la solicitud ${requestToDelete?.reference}? Esta accion no se puede deshacer.`
                 : locale === 'fr'
-                  ? `Êtes-vous sûr de vouloir supprimer la demande ${requestToDelete?.reference} ? Cette action est irréversible.`
+                  ? `Etes-vous sur de vouloir supprimer la demande ${requestToDelete?.reference} ? Cette action est irreversible.`
                   : `Are you sure you want to delete request ${requestToDelete?.reference}? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -848,14 +932,14 @@ export default function ServiceRequestsPage() {
               {locale === 'es'
                 ? 'Eliminar Solicitudes Seleccionadas'
                 : locale === 'fr'
-                  ? 'Supprimer les Demandes Sélectionnées'
+                  ? 'Supprimer les Demandes Selectionnees'
                   : 'Delete Selected Requests'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {locale === 'es'
-                ? `¿Está seguro de que desea eliminar ${selectedIds.size} solicitud(es)? Esta acción no se puede deshacer.`
+                ? `Esta seguro de que desea eliminar ${selectedIds.size} solicitud(es)? Esta accion no se puede deshacer.`
                 : locale === 'fr'
-                  ? `Êtes-vous sûr de vouloir supprimer ${selectedIds.size} demande(s) ? Cette action est irréversible.`
+                  ? `Etes-vous sur de vouloir supprimer ${selectedIds.size} demande(s) ? Cette action est irreversible.`
                   : `Are you sure you want to delete ${selectedIds.size} request(s)? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>

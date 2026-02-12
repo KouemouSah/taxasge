@@ -4282,7 +4282,18 @@
       "agent_review": "Under review",
       "documents_pending": "Documents required",
       "payment_pending": "Payment pending",
-      "payment_completed": "Paid"
+      "payment_completed": "Paid",
+      "timbres_pending": "Stamps Pending",
+      "timbres_paid": "Stamps Paid",
+      "dossier_valide": "Dossier Validated",
+      "pending_nota_ingreso": "Income Note Pending",
+      "nota_uploaded": "Note Uploaded",
+      "paid": "Paid",
+      "payment_failed": "Payment Failed",
+      "in_progress": "In Progress",
+      "under_review": "Under Review",
+      "documents_required": "Documents Required",
+      "cita_scheduled": "Appointment Scheduled"
     },
     "priority": {
       "low": "Low",

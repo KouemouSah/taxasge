@@ -109,6 +109,21 @@ interface BackendServiceRequest {
   }>
 }
 
+/** Backend paginated list response (snake_case) */
+interface BackendListResponse {
+  requests: BackendServiceRequest[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+/** Filter options from /filter-options endpoint */
+export interface FilterOptions {
+  statuses: Array<{ value: string; phase: string }>
+  categories: Array<{ value: string; label_es: string }>
+}
+
 
 // Backend types for two-step preview/validate flow (snake_case from Python)
 interface BackendFieldIndicator {
@@ -722,42 +737,43 @@ class ServiceRequestsApiClient {
   }
 
   /**
-   * List user's service requests with filters
-   * Backend uses limit/offset pagination and returns array directly (snake_case)
+   * List user's service requests with server-side filters + pagination
+   * Backend returns ServiceRequestListResponse with total count
    */
   async listMyRequests(
     page: number = 1,
-    pageSize: number = 10,
+    pageSize: number = 20,
     filters?: ServiceRequestFilters
   ): Promise<ServiceRequestListResponse> {
-    // Convert page/pageSize to limit/offset for backend
-    const limit = pageSize
-    const offset = (page - 1) * pageSize
-
     const params = new URLSearchParams({
-      limit: limit.toString(),
-      offset: offset.toString(),
+      page: page.toString(),
+      page_size: pageSize.toString(),
     })
 
     if (filters?.status) params.append('status', filters.status)
     if (filters?.workflowCode) params.append('workflow_code', filters.workflowCode)
-    if (filters?.category) params.append('category', filters.category)
+    if (filters?.category) params.append('category', filters.category as string)
     if (filters?.search) params.append('search', filters.search)
     if (filters?.dateFrom) params.append('date_from', filters.dateFrom)
     if (filters?.dateTo) params.append('date_to', filters.dateTo)
 
-    // Backend returns List[ServiceRequestResponse] directly (array, snake_case)
-    const backendRequests = await this.request<BackendServiceRequest[]>(`/?${params.toString()}`)
-    const requests = (backendRequests || []).map(transformServiceRequest)
+    const response = await this.request<BackendListResponse>(`/?${params.toString()}`)
+    const requests = (response.requests || []).map(transformServiceRequest)
 
-    // Wrap in expected response format for frontend hook compatibility
     return {
       requests,
-      total: requests.length,
-      page,
-      pageSize,
-      totalPages: Math.ceil(requests.length / pageSize),
+      total: response.total,
+      page: response.page,
+      pageSize: response.page_size,
+      totalPages: response.total_pages,
     }
+  }
+
+  /**
+   * Get dynamic filter options (statuses + categories) from backend enums
+   */
+  async getFilterOptions(): Promise<FilterOptions> {
+    return this.request<FilterOptions>('/filter-options')
   }
 
   /**

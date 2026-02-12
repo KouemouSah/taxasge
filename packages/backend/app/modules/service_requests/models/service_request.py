@@ -174,6 +174,15 @@ class ServiceRequestResponse(BaseModel):
         from_attributes = True
 
 
+class ServiceRequestListResponse(BaseModel):
+    """Paginated list response for service requests."""
+    requests: List[ServiceRequestResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class DocumentUploadResponse(BaseModel):
     """Response after uploading a document (legacy - kept for compatibility)"""
     document_id: UUID
