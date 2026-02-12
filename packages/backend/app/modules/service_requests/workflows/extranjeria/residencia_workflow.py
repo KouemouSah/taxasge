@@ -1660,9 +1660,15 @@ class ResidenciaWorkflow(PredefinedWorkflow):
         today = datetime.today()
 
         # Rule 10: Amount coherence — nota montant vs expected tariff
-        nota_montant_str = context.get_extracted_field(
-            "nota_ingreso", "bloc_paiement.montant_chiffre"
-        )
+        # Priority: form_data (user correction) > OCR extraction (flat fallback)
+        nota_montant_str = context.form_data.get("nota_montant")
+        if not nota_montant_str:
+            nota_montant_str = context.get_extracted_field(
+                "nota_ingreso", "bloc_paiement.montant_chiffre"
+            )
+        if not nota_montant_str:
+            # Flat fallback: Gemini returns flat fields
+            nota_montant_str = context.extracted_data.get("nota_ingreso", {}).get("montant_chiffre")
         if nota_montant_str:
             try:
                 nota_montant = int(str(nota_montant_str).replace(" ", "").replace(",", ""))
@@ -1686,12 +1692,22 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                 pass
 
         # Rule 11: Nota expired — date_emission + dias_validez < today
-        fecha_emission_str = context.get_extracted_field(
-            "nota_ingreso", "bloc_verification.date_emission"
-        )
-        dias_validez_str = context.get_extracted_field(
-            "nota_ingreso", "bloc_verification.dias_validez"
-        )
+        # Priority: form_data (user correction) > OCR extraction (flat fallback)
+        fecha_emission_str = context.form_data.get("nota_date_emission")
+        if not fecha_emission_str:
+            fecha_emission_str = context.get_extracted_field(
+                "nota_ingreso", "bloc_verification.date_emission"
+            )
+        if not fecha_emission_str:
+            fecha_emission_str = context.extracted_data.get("nota_ingreso", {}).get("date_emission")
+
+        dias_validez_str = context.form_data.get("nota_dias_validez")
+        if not dias_validez_str:
+            dias_validez_str = context.get_extracted_field(
+                "nota_ingreso", "bloc_verification.dias_validez"
+            )
+        if not dias_validez_str:
+            dias_validez_str = context.extracted_data.get("nota_ingreso", {}).get("dias_validez")
         if fecha_emission_str:
             fecha_emission = self._parse_date(str(fecha_emission_str))
             if fecha_emission:
