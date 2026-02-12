@@ -909,10 +909,13 @@ class ConducirWorkflow(PredefinedWorkflow):
         if context and context.form_data:
             applicant_type = context.form_data.get("applicant_type")
 
+        # Resolve tipo_identificacion from applicant_type selection
+        tipo_id = "NIE" if applicant_type == ApplicantType.RESIDENT.value else "DIP"
+
         # Base mapping - common fields
         mapping = {
             # === Identification ===
-            "tipo_identificacion": "auto_detect",  # DIP or NIE based on uploaded doc
+            "tipo_identificacion": f"_literal:{tipo_id}",
 
             # === From DIP (CITIZEN_GQ) ===
             "numero_identificacion": "dip.documento.numero_dip",

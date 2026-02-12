@@ -925,6 +925,10 @@ class WizardSessionService:
         if not extraction_path:
             return None
 
+        # Literal values (e.g. "_literal:DIP" → "DIP")
+        if extraction_path.startswith("_literal:"):
+            return extraction_path[9:]
+
         # Parse path like "dip.titular.apellidos"
         parts = extraction_path.split(".")
         if len(parts) < 2:
