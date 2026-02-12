@@ -841,7 +841,7 @@ class PredefinedWorkflow(ABC):
         )
 
         for doc in requirements:
-            if doc.is_required and doc.document_code not in context.documents_uploaded:
+            if doc.should_show(context) and doc.is_required and doc.document_code not in context.documents_uploaded:
                 results.append(ValidationResult(
                     is_valid=False,
                     rule_id=f"doc_required_{doc.document_code}",
