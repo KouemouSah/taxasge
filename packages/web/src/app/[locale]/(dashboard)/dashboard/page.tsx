@@ -242,7 +242,7 @@ export default function DashboardPage() {
         <h2 className="text-xl font-semibold mb-4">{t('quickActions')}</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href={`/${locale}/dashboard/service-requests?action=new`}>
+            <Link href={`/${locale}/dashboard/service-requests/new`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   {t('newServiceRequest')}
@@ -445,7 +445,7 @@ export default function DashboardPage() {
                     <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>{t('noRequests')}</p>
                     <p className="text-sm mt-1">{t('noRequestsDesc')}</p>
-                    <Link href={`/${locale}/dashboard/service-requests?action=new`}>
+                    <Link href={`/${locale}/dashboard/service-requests/new`}>
                       <Button variant="outline" className="mt-4">
                         {t('startFirstRequest')}
                       </Button>
