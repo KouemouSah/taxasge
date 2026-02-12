@@ -8,7 +8,7 @@
  * @see .claude/plans/CACHE_FIRST_WIZARD_MIGRATION_PLAN.md
  */
 
-import { getAuthData } from '@/core/auth/storage'
+import { getAuthData, setAuthData, clearAuthData } from '@/core/auth/storage'
 import type {
   BackendWizardSessionResponse,
   BackendDocumentPreviewResponse,
@@ -38,6 +38,27 @@ const API_VERSION = '/api/v1'
 const ENDPOINT_BASE = '/wizard-sessions'
 
 // ============================================================================
+// TOKEN REFRESH STATE (module-level, shared across concurrent requests)
+// ============================================================================
+
+let isRefreshing = false
+let failedQueue: Array<{
+  resolve: (token: string) => void
+  reject: (error: Error) => void
+}> = []
+
+const processQueue = (error: Error | null, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token!)
+    }
+  })
+  failedQueue = []
+}
+
+// ============================================================================
 // WIZARD SESSION API CLIENT
 // ============================================================================
 
@@ -54,9 +75,78 @@ class WizardSessionApiClient {
     return authData?.access_token || null
   }
 
+  /**
+   * Refresh the access token using the stored refresh token.
+   * Handles concurrent 401s with a queue to avoid multiple refresh calls.
+   */
+  private async handleTokenRefresh(): Promise<string | null> {
+    if (isRefreshing) {
+      // Another request is already refreshing — wait for it
+      return new Promise<string>((resolve, reject) => {
+        failedQueue.push({ resolve, reject })
+      })
+    }
+
+    isRefreshing = true
+    const authData = getAuthData()
+
+    if (!authData?.refresh_token) {
+      this.handleAuthFailure()
+      isRefreshing = false
+      return null
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}${API_VERSION}/auth/refresh`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: authData.refresh_token }),
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Refresh failed: ${response.status}`)
+      }
+
+      const { access_token, refresh_token } = await response.json()
+
+      setAuthData({
+        ...authData,
+        access_token,
+        refresh_token,
+      })
+
+      console.log('[WizardSession] Token refreshed successfully')
+      processQueue(null, access_token)
+      isRefreshing = false
+      return access_token
+    } catch (error) {
+      console.error('[WizardSession] Token refresh failed:', error)
+      processQueue(error as Error, null)
+      this.handleAuthFailure()
+      isRefreshing = false
+      return null
+    }
+  }
+
+  private handleAuthFailure(): void {
+    clearAuthData()
+    if (typeof window !== 'undefined') {
+      const pathParts = window.location.pathname.split('/')
+      const locale =
+        pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1])
+          ? pathParts[1]
+          : 'es'
+      window.location.href = `/${locale}/auth`
+    }
+  }
+
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    _isRetry = false,
   ): Promise<T> {
     const token = this.getToken()
     const headers: HeadersInit = {
@@ -75,6 +165,15 @@ class WizardSessionApiClient {
       })
 
       console.log(`[WizardSession] Response status: ${response.status}`)
+
+      // Handle 401 with automatic token refresh (one retry only)
+      if (response.status === 401 && !_isRetry) {
+        console.log('[WizardSession] 401 detected, attempting token refresh...')
+        const newToken = await this.handleTokenRefresh()
+        if (newToken) {
+          return this.request<T>(endpoint, options, true)
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -117,7 +216,8 @@ class WizardSessionApiClient {
 
   private async uploadRequest<T>(
     endpoint: string,
-    formData: FormData
+    formData: FormData,
+    _isRetry = false,
   ): Promise<T> {
     const token = this.getToken()
     const headers: HeadersInit = {
@@ -132,6 +232,15 @@ class WizardSessionApiClient {
       headers,
       body: formData,
     })
+
+    // Handle 401 with automatic token refresh (one retry only)
+    if (response.status === 401 && !_isRetry) {
+      console.log('[WizardSession] Upload 401 detected, attempting token refresh...')
+      const newToken = await this.handleTokenRefresh()
+      if (newToken) {
+        return this.uploadRequest<T>(endpoint, formData, true)
+      }
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
