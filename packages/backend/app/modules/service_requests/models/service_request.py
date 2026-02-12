@@ -433,14 +433,6 @@ class DocumentValidationResponse(BaseModel):
     validated_at: datetime
 
 
-class ServiceRequestListResponse(BaseModel):
-    """Paginated list of service requests"""
-    items: List[ServiceRequestResponse]
-    total: int
-    limit: int
-    offset: int
-
-
 # === Workflow Step Execution Models ===
 
 class StepExecutionRequest(BaseModel):
