@@ -17,13 +17,20 @@ const apiClient: AxiosInstance = axios.create({
   timeout: appConfig.api.timeout,
 });
 
-// Request interceptor - Add auth token
+// Request interceptor - Add auth token + Accept-Language
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const authData = getAuthData();
 
     if (authData?.access_token && config.headers) {
       config.headers.Authorization = `Bearer ${authData.access_token}`;
+    }
+
+    // Send current locale to backend for localized responses
+    if (typeof window !== 'undefined' && config.headers) {
+      const pathParts = window.location.pathname.split('/');
+      const locale = pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1]) ? pathParts[1] : 'es';
+      config.headers['Accept-Language'] = locale;
     }
 
     return config;

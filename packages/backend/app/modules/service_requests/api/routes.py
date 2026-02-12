@@ -2,7 +2,7 @@
 API Routes for Service Requests.
 RESTful endpoints following FastAPI conventions.
 """
-from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Body
+from fastapi import APIRouter, Depends, File, UploadFile, Query, Form, Path, Body, Request, Header
 from typing import List, Optional, Any
 from uuid import UUID
 from datetime import datetime
@@ -34,6 +34,12 @@ from ..models.service_request import (
     DataSection,
     DataSectionField,
     DocumentInfo,
+    DashboardSummaryResponse,
+    DashboardSummaryStats,
+    DashboardRecentRequest,
+    DashboardRecentPayment,
+    DashboardUpcomingAppointment,
+    DashboardActionRequired,
 )
 from ..models.form_config import FormConfigResponse
 from ..models.enums import ServiceRequestStatus
@@ -562,6 +568,109 @@ async def get_filter_options(
             for c in WorkflowCategory if c not in _HIDDEN_CATEGORIES
         ],
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# CITIZEN DASHBOARD SUMMARY (must be BEFORE /{request_id})
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/dashboard-summary",
+    response_model=DashboardSummaryResponse,
+    summary="Get citizen dashboard summary",
+    description="Single endpoint providing all data for the citizen dashboard.",
+)
+async def get_dashboard_summary(
+    accept_language: Optional[str] = Header(None),
+    db=Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Get complete citizen dashboard summary in one API call."""
+    from ..repositories.service_request_repository import service_request_repository
+    from ..services.workflow_engine import workflow_engine
+
+    user_id = current_user.id
+
+    # Parse locale from Accept-Language header (es, fr, en)
+    locale = "es"
+    if accept_language:
+        lang = accept_language.split(",")[0].split("-")[0].strip().lower()
+        if lang in ("es", "fr", "en"):
+            locale = lang
+
+    # Build workflow_code → display label map from workflow engine registry
+    wf_labels: dict[str, str] = {}
+    for code, wf in workflow_engine.get_all_workflows().items():
+        try:
+            wf_labels[code.value] = wf.service_name_es
+        except Exception:
+            wf_labels[code.value] = code.value.replace("_", " ").title()
+
+    def _wf_label(code: str) -> str:
+        return wf_labels.get(code, code.replace("_", " ").title())
+
+    # Execute all queries in parallel
+    (
+        stats,
+        recent_requests_raw,
+        recent_payments_raw,
+        (notifications_raw, unread_count),
+        upcoming_raw,
+        action_required_raw,
+    ) = await asyncio.gather(
+        service_request_repository.get_dashboard_stats(db, user_id),
+        service_request_repository.get_dashboard_recent_requests(db, user_id, limit=5),
+        service_request_repository.get_dashboard_recent_payments(db, user_id, limit=5),
+        service_request_repository.get_dashboard_global_notifications(db, user_id, limit=10),
+        service_request_repository.get_dashboard_upcoming_appointment(db, user_id),
+        service_request_repository.get_dashboard_action_required(db, user_id, limit=5, locale=locale),
+    )
+
+    from ..models.service_request import CitizenNotification
+
+    return DashboardSummaryResponse(
+        stats=DashboardSummaryStats(**stats),
+        recent_requests=[
+            DashboardRecentRequest(
+                id=str(r["id"]),
+                reference=r["reference"],
+                workflow_code=r["workflow_code"],
+                workflow_label=_wf_label(r["workflow_code"]),
+                status=r["status"],
+                solicitud_type=r["solicitud_type"],
+                created_at=r["created_at"],
+                updated_at=r.get("updated_at"),
+                total_amount=float(r["total_amount"]) if r.get("total_amount") else None,
+            ) for r in recent_requests_raw
+        ],
+        recent_payments=[
+            DashboardRecentPayment(
+                id=str(p["id"]),
+                service_request_id=str(p["service_request_id"]),
+                request_reference=p["request_reference"],
+                workflow_code=p["workflow_code"],
+                workflow_label=_wf_label(p["workflow_code"]),
+                amount=float(p["amount"]),
+                currency=p.get("currency") or "XAF",
+                status=p["status"],
+                payment_method=p.get("payment_method"),
+                created_at=p["created_at"],
+            ) for p in recent_payments_raw
+        ],
+        notifications=[
+            CitizenNotification(**n) for n in notifications_raw
+        ],
+        unread_count=unread_count,
+        upcoming_appointment=DashboardUpcomingAppointment(
+            **{**upcoming_raw, "workflow_label": _wf_label(upcoming_raw["workflow_code"])}
+        ) if upcoming_raw else None,
+        action_required=[
+            DashboardActionRequired(
+                **{**a, "workflow_label": _wf_label(a["workflow_code"])}
+            ) for a in action_required_raw
+        ],
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

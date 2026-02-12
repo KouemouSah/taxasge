@@ -1,12 +1,13 @@
 'use client'
 
 /**
- * Dashboard Page
- * Main user dashboard with quick actions, statistics, and activity tables
- * Uses real API data instead of mocks
+ * Citizen Dashboard Page
+ * Service-request-centric dashboard with stats, recent activity, and notifications.
+ *
+ * All labels are dynamic (from backend or i18n) — no hardcoded Spanish strings.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -30,112 +31,175 @@ import {
   Clock,
   DollarSign,
   FileCheck,
-  FilePlus,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  ClipboardList,
+  CalendarClock,
+  CheckCircle,
+  MessageSquare,
+  Calendar,
+  XCircle,
+  AlertTriangle,
+  ArrowRight,
 } from 'lucide-react'
 import { getAuthData } from '@/core/auth/storage'
 import type { User } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
 import { useDashboardData } from '@/modules/dashboard'
-import { DeclarationStatus } from '@/types/declaration'
-import { PaymentStatus, getPaymentMethodLabel, getPaymentStatusLabel } from '@/types/payment'
+import { STATUS_BADGE_COLORS, PAYMENT_STATUS_COLORS } from '@/modules/service-requests/constants'
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATION STYLING (action type → icon + color)
+// ═══════════════════════════════════════════════════════════════
+
+const NOTIFICATION_ICONS: Record<string, typeof CheckCircle> = {
+  status_change: ArrowRight,
+  agent_action_taken: CheckCircle,
+  comment_added: MessageSquare,
+  cita_scheduled: Calendar,
+  cita_rescheduled: Calendar,
+  cita_cancelled: XCircle,
+  payment_received: CreditCard,
+  payment_failed: AlertTriangle,
+  validation_failed: AlertCircle,
+}
+
+const NOTIFICATION_COLORS: Record<string, string> = {
+  status_change: 'text-blue-500',
+  agent_action_taken: 'text-green-500',
+  comment_added: 'text-purple-500',
+  cita_scheduled: 'text-teal-500',
+  cita_rescheduled: 'text-orange-500',
+  cita_cancelled: 'text-red-500',
+  payment_received: 'text-green-600',
+  payment_failed: 'text-red-600',
+  validation_failed: 'text-amber-500',
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS (locale-aware)
+// ═══════════════════════════════════════════════════════════════
+
+/** Format ISO date string using browser's Intl API */
+function formatDate(dateStr: string, locale: string): string {
+  try {
+    const intlLocale = locale === 'es' ? 'es-GQ' : locale === 'fr' ? 'fr-FR' : 'en-US'
+    return new Date(dateStr).toLocaleDateString(intlLocale, {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+function formatAmount(amount: number): string {
+  return amount.toLocaleString('fr-FR')
+}
+
+/** Locale-aware relative time using Intl.RelativeTimeFormat */
+function timeAgo(dateStr: string, locale: string): string {
+  try {
+    const now = Date.now()
+    const date = new Date(dateStr).getTime()
+    const diffSec = Math.floor((now - date) / 1000)
+
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' })
+
+    if (diffSec < 60) return rtf.format(-diffSec, 'second')
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) return rtf.format(-diffMin, 'minute')
+    const diffHrs = Math.floor(diffMin / 60)
+    if (diffHrs < 24) return rtf.format(-diffHrs, 'hour')
+    const diffDays = Math.floor(diffHrs / 24)
+    if (diffDays < 7) return rtf.format(-diffDays, 'day')
+    return formatDate(dateStr, locale)
+  } catch {
+    return dateStr
+  }
+}
+
+/** Check if ISO date string is today */
+function isToday(dateStr: string): boolean {
+  const d = new Date(dateStr)
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+}
+
+/** Check if ISO date string is tomorrow */
+function isTomorrow(dateStr: string): boolean {
+  const d = new Date(dateStr)
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return d.getFullYear() === tomorrow.getFullYear() &&
+    d.getMonth() === tomorrow.getMonth() &&
+    d.getDate() === tomorrow.getDate()
+}
+
+/** Format appointment date in locale-aware long format */
+function formatAppointmentDate(dateStr: string, locale: string): string {
+  try {
+    const intlLocale = locale === 'es' ? 'es-GQ' : locale === 'fr' ? 'fr-FR' : 'en-US'
+    return new Date(dateStr).toLocaleDateString(intlLocale, {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════════════════════════════
 
 export default function DashboardPage() {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('dashboard')
+  const tStatus = useTranslations('statusLabels')
   const [user, setUser] = useState<User | null>(null)
 
-  // Fetch real dashboard data
-  const { stats, recentDeclarations, recentPayments, isLoading, error, refetch } = useDashboardData()
+  const { stats, summary, isLoading, error, refetch } = useDashboardData()
 
   useEffect(() => {
     const authData = getAuthData()
-
     if (!authData) {
       router.push(`/${locale}/auth`)
       return
     }
-
     const userData = {
       ...authData.user,
       is_active: authData.user.status === 'active',
       email_verified: authData.user.email_verified ?? false,
     }
-
     setUser(userData as User)
   }, [router, locale])
 
+  const hasData = summary !== null
+  const hasRequests = hasData && summary.recentRequests.length > 0
+
+  /** Get localized status label — tries i18n key, falls back to formatted string */
+  const getStatusLabel = useMemo(() => {
+    return (status: string) => {
+      try {
+        return tStatus(status)
+      } catch {
+        return status.replace(/_/g, ' ')
+      }
+    }
+  }, [tStatus])
+
+  /** Appointment time i18n label */
+  const appointmentTimeLabel = useMemo(() => {
+    return { es: 'a las', fr: 'à', en: 'at' }[locale] || 'at'
+  }, [locale])
+
   if (!user) return null
-
-  // Helper to get status badge
-  const getDeclarationStatusBadge = (status: DeclarationStatus | string) => {
-    switch (status) {
-      case DeclarationStatus.ACCEPTED:
-        return <Badge className="bg-green-500">Validée</Badge>
-      case DeclarationStatus.SUBMITTED:
-      case DeclarationStatus.PROCESSING:
-        return <Badge className="bg-blue-500">En cours</Badge>
-      case DeclarationStatus.DRAFT:
-        return <Badge className="bg-yellow-500">Brouillon</Badge>
-      case DeclarationStatus.REJECTED:
-        return <Badge className="bg-red-500">Rejetée</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  const getPaymentStatusBadge = (status: PaymentStatus | string) => {
-    switch (status) {
-      case PaymentStatus.COMPLETED:
-        return <Badge className="bg-green-500">{getPaymentStatusLabel(PaymentStatus.COMPLETED)}</Badge>
-      case PaymentStatus.PENDING:
-        return <Badge className="bg-yellow-500">{getPaymentStatusLabel(PaymentStatus.PENDING)}</Badge>
-      case PaymentStatus.PROCESSING:
-        return <Badge className="bg-blue-500">{getPaymentStatusLabel(PaymentStatus.PROCESSING)}</Badge>
-      case PaymentStatus.FAILED:
-      case PaymentStatus.CANCELLED:
-        return <Badge className="bg-red-500">{getPaymentStatusLabel(status as PaymentStatus)}</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
-
-  // Calculate progress for declarations (based on status)
-  const getDeclarationProgress = (status: DeclarationStatus | string): number => {
-    switch (status) {
-      case DeclarationStatus.DRAFT:
-        return 25
-      case DeclarationStatus.SUBMITTED:
-        return 50
-      case DeclarationStatus.PROCESSING:
-        return 75
-      case DeclarationStatus.ACCEPTED:
-        return 100
-      case DeclarationStatus.REJECTED:
-        return 100
-      default:
-        return 0
-    }
-  }
-
-  // Get declaration type label in Spanish
-  const getDeclarationTypeLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-      'iva_destajo': 'IVA Destajo',
-      'iva_real': 'IVA Régimen Real',
-      'income_tax': 'Impôt sur le Revenu',
-      'corporate_tax': 'Impôt sur les Sociétés',
-      'property_tax': 'Taxe Foncière',
-      'vat_declaration': 'TVA',
-    }
-    return labels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-  }
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
+      {/* ── Welcome ── */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
           {t('welcomeMessage', { name: user.first_name || user.email })}
@@ -145,37 +209,65 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Actions Rapides */}
+      {/* ── Action Required Banner ── */}
+      {hasData && summary.actionRequired.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <div className="space-y-2 flex-1">
+              <p className="font-medium text-amber-800 dark:text-amber-200">
+                {t('actionRequired')}
+              </p>
+              <div className="space-y-1">
+                {summary.actionRequired.map((ar) => (
+                  <Link
+                    key={ar.requestId}
+                    href={`/${locale}/dashboard/service-requests/${ar.requestId}`}
+                    className="flex items-center gap-2 text-sm text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+                  >
+                    <span className="font-mono">{ar.reference}</span>
+                    <span>—</span>
+                    <span>{ar.message}</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick Actions ── */}
       <div>
         <h2 className="text-xl font-semibold mb-4">{t('quickActions')}</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href={`/${locale}/dashboard/declarations/new`}>
+            <Link href={`/${locale}/dashboard/service-requests?action=new`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {t('newDeclaration')}
+                  {t('newServiceRequest')}
                 </CardTitle>
-                <FilePlus className="h-5 w-5 text-primary" />
+                <ClipboardList className="h-5 w-5 text-primary" />
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                  {t('newDeclarationDesc')}
+                  {t('newServiceRequestDesc')}
                 </p>
               </CardContent>
             </Link>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href={`/${locale}/dashboard/payments/new`}>
+            <Link href={`/${locale}/dashboard/service-requests`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {t('newPayment')}
+                  {t('myRequests')}
                 </CardTitle>
-                <CreditCard className="h-5 w-5 text-primary" />
+                <FileText className="h-5 w-5 text-primary" />
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                  {t('newPaymentDesc')}
+                  {t('myRequestsDesc')}
                 </p>
               </CardContent>
             </Link>
@@ -185,51 +277,28 @@ export default function DashboardPage() {
             <Link href={`/${locale}/dashboard/support`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  {t('newRequest')}
+                  {t('support')}
                 </CardTitle>
                 <HelpCircle className="h-5 w-5 text-primary" />
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                  {t('newRequestDesc')}
+                  {t('supportDesc')}
                 </p>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="#notifications-tab">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {t('myNotifications')}
-                </CardTitle>
-                <Bell className="h-5 w-5 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-muted-foreground">
-                    {t('viewAllAlerts')}
-                  </p>
-                  {stats.unreadNotifications > 0 && (
-                    <Badge variant="destructive" className="text-xs">
-                      {stats.unreadNotifications}
-                    </Badge>
-                  )}
-                </div>
               </CardContent>
             </Link>
           </Card>
         </div>
       </div>
 
-      {/* Statistiques */}
+      {/* ── Statistics ── */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">{t('statistics')}</h2>
           {error && (
             <Button variant="outline" size="sm" onClick={refetch} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Réessayer
+              {t('retry')}
             </Button>
           )}
         </div>
@@ -244,134 +313,141 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {t('declarationsInProgress')}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">{t('activeRequests')}</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{stats.declarationsInProgress}</div>
-                  <p className="text-xs text-muted-foreground">
-                    À compléter
-                  </p>
-                </>
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (
+                <div className="text-2xl font-bold">{stats.active}</div>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Déclarations complètes
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">{t('completedRequests')}</CardTitle>
               <FileCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{stats.declarationsCompleted}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Validées
-                  </p>
-                </>
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (
+                <div className="text-2xl font-bold">{stats.completed}</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className={stats.pendingAction > 0 ? 'border-amber-300 dark:border-amber-700' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{t('pendingAction')}</CardTitle>
+              <AlertCircle className={`h-4 w-4 ${stats.pendingAction > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? <Skeleton className="h-8 w-16" /> : (
+                <div className={`text-2xl font-bold ${stats.pendingAction > 0 ? 'text-amber-600' : ''}`}>
+                  {stats.pendingAction}
+                </div>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Paiements
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">{t('totalPaid')}</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {stats.totalPayments.toLocaleString('fr-FR')} FCFA
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Paiements complétés
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Notifications
-              </CardTitle>
-              <Bell className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-8 w-12" />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">{stats.unreadNotifications}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Non lues
-                  </p>
-                </>
+              {isLoading ? <Skeleton className="h-8 w-24" /> : (
+                <div className="text-2xl font-bold">
+                  {formatAmount(stats.totalPaid)} <span className="text-sm font-normal text-muted-foreground">FCFA</span>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Tabs: Déclarations / Paiements / Notifications */}
+      {/* ── Upcoming Appointment ── */}
+      {hasData && summary.upcomingAppointment && (
+        <Card className="border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/30">
+          <CardHeader className="flex flex-row items-center gap-3 pb-3">
+            <CalendarClock className="h-5 w-5 text-teal-600" />
+            <div className="flex-1">
+              <CardTitle className="text-base">{t('upcomingAppointment')}</CardTitle>
+            </div>
+            {isToday(summary.upcomingAppointment.appointmentDate) && (
+              <Badge className="bg-green-500">{t('today')}</Badge>
+            )}
+            {isTomorrow(summary.upcomingAppointment.appointmentDate) && (
+              <Badge className="bg-blue-500">{t('tomorrow')}</Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {summary.upcomingAppointment.workflowLabel}
+                  {' — '}
+                  <span className="font-mono text-muted-foreground">
+                    {summary.upcomingAppointment.requestReference}
+                  </span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatAppointmentDate(summary.upcomingAppointment.appointmentDate, locale)}
+                  {summary.upcomingAppointment.time && ` ${appointmentTimeLabel} ${summary.upcomingAppointment.time}`}
+                  {summary.upcomingAppointment.location && ` — ${summary.upcomingAppointment.location}`}
+                </p>
+              </div>
+              <Link href={`/${locale}/dashboard/service-requests/${summary.upcomingAppointment.requestId}`}>
+                <Button variant="outline" size="sm">
+                  {t('viewRequest')}
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Tabs ── */}
       <div>
-        <Tabs defaultValue="declarations" className="space-y-4">
+        <Tabs defaultValue="requests" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="declarations">
-              <FileText className="h-4 w-4 mr-2" />
-              Déclarations récentes
+            <TabsTrigger value="requests">
+              <ClipboardList className="h-4 w-4 mr-2" />
+              {t('recentRequestsTab')}
             </TabsTrigger>
-            <TabsTrigger value="paiements">
+            <TabsTrigger value="payments">
               <CreditCard className="h-4 w-4 mr-2" />
-              Paiements récents
+              {t('recentPaymentsTab')}
             </TabsTrigger>
-            <TabsTrigger value="notifications" id="notifications-tab">
+            <TabsTrigger value="notifications">
               <Bell className="h-4 w-4 mr-2" />
-              Notifications
+              {t('notificationsTab')}
+              {stats.unreadNotifications > 0 && (
+                <Badge variant="destructive" className="ml-2 text-xs px-1.5 py-0">
+                  {stats.unreadNotifications}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
-          {/* Déclarations Tab */}
-          <TabsContent value="declarations" className="space-y-4">
+          {/* ── Solicitudes Recientes Tab ── */}
+          <TabsContent value="requests" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Suivi des déclarations</CardTitle>
-                <CardDescription>
-                  Vos déclarations fiscales récentes
-                </CardDescription>
+                <CardTitle>{t('recentRequestsTab')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
                   </div>
-                ) : recentDeclarations.length === 0 ? (
+                ) : !hasRequests ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Aucune déclaration trouvée</p>
-                    <Link href={`/${locale}/dashboard/declarations/new`}>
+                    <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>{t('noRequests')}</p>
+                    <p className="text-sm mt-1">{t('noRequestsDesc')}</p>
+                    <Link href={`/${locale}/dashboard/service-requests?action=new`}>
                       <Button variant="outline" className="mt-4">
-                        <FilePlus className="h-4 w-4 mr-2" />
-                        Créer une déclaration
+                        {t('startFirstRequest')}
                       </Button>
                     </Link>
                   </div>
@@ -379,37 +455,31 @@ export default function DashboardPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Référence</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Date création</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead>Progression</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>{t('reference')}</TableHead>
+                        <TableHead>{t('workflow')}</TableHead>
+                        <TableHead>{t('date')}</TableHead>
+                        <TableHead>{t('status')}</TableHead>
+                        <TableHead className="text-right">{t('amount')}</TableHead>
+                        <TableHead className="text-right">{t('actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {recentDeclarations.map((decl) => (
-                        <TableRow key={decl.id}>
-                          <TableCell className="font-medium">{decl.declarationNumber || decl.id.slice(0, 8)}</TableCell>
-                          <TableCell>{getDeclarationTypeLabel(decl.declarationType)}</TableCell>
-                          <TableCell>{new Date(decl.createdAt).toLocaleDateString('fr-FR')}</TableCell>
-                          <TableCell>{getDeclarationStatusBadge(decl.status)}</TableCell>
+                      {summary!.recentRequests.map((req) => (
+                        <TableRow key={req.id}>
+                          <TableCell className="font-mono text-sm">{req.reference}</TableCell>
+                          <TableCell className="text-sm">{req.workflowLabel}</TableCell>
+                          <TableCell className="text-sm">{formatDate(req.createdAt, locale)}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-full bg-secondary rounded-full h-2 max-w-[100px]">
-                                <div
-                                  className="bg-primary h-2 rounded-full"
-                                  style={{ width: `${getDeclarationProgress(decl.status)}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-muted-foreground">{getDeclarationProgress(decl.status)}%</span>
-                            </div>
+                            <Badge className={STATUS_BADGE_COLORS[req.status] || 'bg-gray-500'}>
+                              {getStatusLabel(req.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {req.totalAmount ? `${formatAmount(req.totalAmount)} FCFA` : '—'}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Link href={`/${locale}/dashboard/declarations/${decl.id}`}>
-                              <Button variant="outline" size="sm">
-                                Voir
-                              </Button>
+                            <Link href={`/${locale}/dashboard/service-requests/${req.id}`}>
+                              <Button variant="outline" size="sm">{t('view')}</Button>
                             </Link>
                           </TableCell>
                         </TableRow>
@@ -421,55 +491,50 @@ export default function DashboardPage() {
             </Card>
           </TabsContent>
 
-          {/* Paiements Tab */}
-          <TabsContent value="paiements" className="space-y-4">
+          {/* ── Pagos Recientes Tab ── */}
+          <TabsContent value="payments" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Suivi des paiements</CardTitle>
-                <CardDescription>
-                  Historique de vos paiements fiscaux
-                </CardDescription>
+                <CardTitle>{t('recentPaymentsTab')}</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
                   </div>
-                ) : recentPayments.length === 0 ? (
+                ) : !hasData || summary.recentPayments.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Aucun paiement trouvé</p>
+                    <p>{t('noPayments')}</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Référence</TableHead>
-                        <TableHead>Montant</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Méthode</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>{t('reference')}</TableHead>
+                        <TableHead>{t('workflow')}</TableHead>
+                        <TableHead>{t('amount')}</TableHead>
+                        <TableHead>{t('date')}</TableHead>
+                        <TableHead>{t('paymentMethod')}</TableHead>
+                        <TableHead>{t('status')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {recentPayments.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">{payment.bankReference || payment.id.slice(0, 8)}</TableCell>
-                          <TableCell className="font-semibold">
-                            {payment.amount.toLocaleString('fr-FR')} {payment.currency}
+                      {summary.recentPayments.map((pay) => (
+                        <TableRow key={pay.id}>
+                          <TableCell className="font-mono text-sm">{pay.requestReference}</TableCell>
+                          <TableCell className="text-sm">{pay.workflowLabel}</TableCell>
+                          <TableCell className="font-semibold text-sm">
+                            {formatAmount(pay.amount)} {pay.currency}
                           </TableCell>
-                          <TableCell>{new Date(payment.createdAt).toLocaleDateString('fr-FR')}</TableCell>
-                          <TableCell>{getPaymentMethodLabel(payment.paymentMethod)}</TableCell>
-                          <TableCell>{getPaymentStatusBadge(payment.status)}</TableCell>
-                          <TableCell className="text-right">
-                            <Link href={`/${locale}/dashboard/payments/${payment.id}`}>
-                              <Button variant="outline" size="sm">
-                                Détails
-                              </Button>
-                            </Link>
+                          <TableCell className="text-sm">{formatDate(pay.createdAt, locale)}</TableCell>
+                          <TableCell className="text-sm capitalize">
+                            {pay.paymentMethod?.replace(/_/g, ' ') || '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={PAYMENT_STATUS_COLORS[pay.status] || 'bg-gray-500'}>
+                              {pay.status}
+                            </Badge>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -480,27 +545,60 @@ export default function DashboardPage() {
             </Card>
           </TabsContent>
 
-          {/* Notifications Tab */}
+          {/* ── Notificaciones Tab ── */}
           <TabsContent value="notifications" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>
-                  Vos alertes et mises à jour récentes
-                </CardDescription>
+                <CardTitle>{t('notificationsTab')}</CardTitle>
+                {stats.unreadNotifications > 0 && (
+                  <CardDescription>
+                    {stats.unreadNotifications} {t('unread')}
+                  </CardDescription>
+                )}
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent>
                 {isLoading ? (
                   <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-20 w-full" />
-                    ))}
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
                   </div>
-                ) : (
+                ) : !hasData || summary.notifications.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Aucune notification</p>
-                    <p className="text-sm mt-2">Les notifications seront disponibles prochainement</p>
+                    <p>{t('noNotifications')}</p>
+                    <p className="text-sm mt-1">{t('noNotificationsDesc')}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {summary.notifications.map((notif) => {
+                      const Icon = NOTIFICATION_ICONS[notif.action] || Bell
+                      const color = NOTIFICATION_COLORS[notif.action] || 'text-gray-500'
+                      return (
+                        <div
+                          key={notif.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
+                            notif.isNew ? 'bg-blue-50/70 dark:bg-blue-950/30' : 'hover:bg-muted/50'
+                          }`}
+                        >
+                          <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${color}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium truncate">{notif.title}</p>
+                              {notif.isNew && (
+                                <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                              )}
+                            </div>
+                            {notif.message && (
+                              <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
+                                {notif.message}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
+                            {timeAgo(notif.performedAt, locale)}
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>

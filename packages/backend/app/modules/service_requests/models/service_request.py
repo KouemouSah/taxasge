@@ -698,6 +698,78 @@ class CitizenNotification(BaseModel):
     new_status: Optional[str] = Field(None, description="New status if STATUS_CHANGE")
 
 
+# ═══════════════════════════════════════════════════════════════
+# CITIZEN DASHBOARD SUMMARY MODELS
+# ═══════════════════════════════════════════════════════════════
+
+
+class DashboardSummaryStats(BaseModel):
+    """Aggregated statistics for citizen dashboard."""
+    active: int = 0
+    completed: int = 0
+    pending_action: int = 0
+    total_paid: float = 0.0
+
+
+class DashboardRecentRequest(BaseModel):
+    """Lightweight request for dashboard list."""
+    id: str
+    reference: str
+    workflow_code: str
+    workflow_label: str = ""
+    status: str
+    solicitud_type: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    total_amount: Optional[float] = None
+
+
+class DashboardRecentPayment(BaseModel):
+    """Recent service payment for dashboard."""
+    id: str
+    service_request_id: str
+    request_reference: str
+    workflow_code: str
+    workflow_label: str = ""
+    amount: float
+    currency: str = "XAF"
+    status: str
+    payment_method: Optional[str] = None
+    created_at: datetime
+
+
+class DashboardUpcomingAppointment(BaseModel):
+    """Next upcoming appointment."""
+    request_id: str
+    request_reference: str
+    workflow_code: str
+    workflow_label: str = ""
+    appointment_date: datetime
+    time: Optional[str] = None
+    location: Optional[str] = None
+
+
+class DashboardActionRequired(BaseModel):
+    """Request needing citizen action."""
+    request_id: str
+    reference: str
+    workflow_code: str
+    workflow_label: str = ""
+    status: str
+    message: str
+
+
+class DashboardSummaryResponse(BaseModel):
+    """Complete citizen dashboard data — single endpoint, single call."""
+    stats: DashboardSummaryStats
+    recent_requests: List[DashboardRecentRequest] = Field(default_factory=list)
+    recent_payments: List[DashboardRecentPayment] = Field(default_factory=list)
+    notifications: List[CitizenNotification] = Field(default_factory=list)
+    unread_count: int = 0
+    upcoming_appointment: Optional[DashboardUpcomingAppointment] = None
+    action_required: List[DashboardActionRequired] = Field(default_factory=list)
+
+
 class DocumentInfo(BaseModel):
     """Document info with signed download URL for citizen preview."""
     id: str

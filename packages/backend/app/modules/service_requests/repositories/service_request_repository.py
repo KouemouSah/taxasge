@@ -958,6 +958,227 @@ class ServiceRequestRepository:
             request_id, user_id,
         )
 
+    # ─── Citizen Dashboard Summary ──────────────────────────────
+
+    _PENDING_ACTION_MESSAGES = {
+        "DRAFT": {
+            "es": "Continuar con su solicitud",
+            "fr": "Continuer votre demande",
+            "en": "Continue your request",
+        },
+        "DOCUMENTS_REQUIRED": {
+            "es": "Documentos adicionales requeridos",
+            "fr": "Documents supplémentaires requis",
+            "en": "Additional documents required",
+        },
+        "PAYMENT_PENDING": {
+            "es": "Pago pendiente",
+            "fr": "Paiement en attente",
+            "en": "Payment pending",
+        },
+        "PAYMENT_FAILED": {
+            "es": "Reintentar pago",
+            "fr": "Réessayer le paiement",
+            "en": "Retry payment",
+        },
+        "TIMBRES_PENDING": {
+            "es": "Pago de timbres pendiente",
+            "fr": "Paiement des timbres en attente",
+            "en": "Stamp payment pending",
+        },
+    }
+
+    async def get_dashboard_stats(self, db, user_id: UUID) -> Dict[str, Any]:
+        """Get aggregated stats for citizen dashboard (2 queries)."""
+        stats_row = await db.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE status NOT IN ('COMPLETED', 'CANCELLED', 'EXPIRED', 'REJECTED')) as active,
+                COUNT(*) FILTER (WHERE status = 'COMPLETED') as completed,
+                COUNT(*) FILTER (WHERE status IN ('DRAFT', 'DOCUMENTS_REQUIRED', 'PAYMENT_PENDING', 'PAYMENT_FAILED', 'TIMBRES_PENDING')) as pending_action
+            FROM service_requests
+            WHERE user_id = $1
+        """, user_id)
+
+        paid_row = await db.fetchrow("""
+            SELECT COALESCE(SUM(sp.total_amount), 0) as total_paid
+            FROM service_payments sp
+            JOIN service_requests sr ON sr.id = sp.service_request_id
+            WHERE sr.user_id = $1 AND sp.status = 'completed'
+        """, user_id)
+
+        return {
+            "active": stats_row["active"] or 0,
+            "completed": stats_row["completed"] or 0,
+            "pending_action": stats_row["pending_action"] or 0,
+            "total_paid": float(paid_row["total_paid"] or 0),
+        }
+
+    async def get_dashboard_recent_requests(self, db, user_id: UUID, limit: int = 5) -> List[Dict]:
+        """Get N most recent requests for dashboard display."""
+        rows = await db.fetch("""
+            SELECT id, reference, workflow_code, status, solicitud_type,
+                   created_at, updated_at, total_amount
+            FROM service_requests
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+        """, user_id, limit)
+        return [dict(row) for row in rows]
+
+    async def get_dashboard_recent_payments(self, db, user_id: UUID, limit: int = 5) -> List[Dict]:
+        """Get N most recent service_payments for dashboard display."""
+        rows = await db.fetch("""
+            SELECT
+                sp.id, sp.service_request_id,
+                sr.reference as request_reference,
+                sr.workflow_code,
+                sp.total_amount as amount,
+                sp.currency,
+                sp.status,
+                sp.payment_method::text as payment_method,
+                sp.created_at
+            FROM service_payments sp
+            JOIN service_requests sr ON sr.id = sp.service_request_id
+            WHERE sr.user_id = $1
+            ORDER BY sp.created_at DESC
+            LIMIT $2
+        """, user_id, limit)
+        return [dict(row) for row in rows]
+
+    async def get_dashboard_global_notifications(
+        self, db, user_id: UUID, limit: int = 10
+    ) -> tuple:
+        """Get global citizen notifications across ALL user's requests."""
+        placeholders = ", ".join(
+            f"${i+2}" for i in range(len(self.CITIZEN_VISIBLE_ACTIONS))
+        )
+
+        query = f"""
+            SELECT
+                h.id,
+                h.action,
+                h.previous_status,
+                h.new_status,
+                h.comment,
+                h.details,
+                h.performed_at,
+                sr.reference as request_reference,
+                sr.workflow_code,
+                sr.citizen_last_viewed_at,
+                CASE
+                    WHEN u.role IN ('admin','supervisor','dgi_agent','ministry_agent') THEN 'agent'
+                    WHEN h.performed_by IS NULL THEN 'system'
+                    ELSE 'citizen'
+                END as performer_role
+            FROM service_request_history h
+            JOIN service_requests sr ON sr.id = h.service_request_id
+            LEFT JOIN users u ON u.id = h.performed_by
+            WHERE sr.user_id = $1
+              AND h.action IN ({placeholders})
+            ORDER BY h.performed_at DESC
+            LIMIT {limit}
+        """
+        params = [user_id] + list(self.CITIZEN_VISIBLE_ACTIONS)
+        rows = await db.fetch(query, *params)
+
+        notifications = []
+        for row in rows:
+            citizen_last_viewed_at = row["citizen_last_viewed_at"]
+            if citizen_last_viewed_at is None:
+                is_new = True
+            elif row["performed_at"]:
+                is_new = row["performed_at"] > citizen_last_viewed_at
+            else:
+                is_new = False
+
+            action = row["action"]
+            title = self._ACTION_TITLES.get(action, action)
+
+            message = row["comment"]
+            if not message and action == "status_change" and row["new_status"]:
+                message = f"Estado: {row['new_status']}"
+            elif not message and row.get("details"):
+                details = row["details"] if isinstance(row["details"], dict) else {}
+                message = details.get("message") or details.get("reason")
+
+            notifications.append({
+                "id": str(row["id"]),
+                "action": action,
+                "title": f"{title} - {row['request_reference']}",
+                "message": message,
+                "performed_at": row["performed_at"],
+                "performer_role": row["performer_role"],
+                "is_new": is_new,
+                "new_status": row["new_status"],
+            })
+
+        # Total unread count (may be > limit)
+        unread_query = f"""
+            SELECT COUNT(*) as cnt
+            FROM service_request_history h
+            JOIN service_requests sr ON sr.id = h.service_request_id
+            WHERE sr.user_id = $1
+              AND h.action IN ({placeholders})
+              AND (sr.citizen_last_viewed_at IS NULL OR h.performed_at > sr.citizen_last_viewed_at)
+        """
+        unread_row = await db.fetchrow(unread_query, *params)
+        total_unread = unread_row["cnt"] if unread_row else 0
+
+        return notifications, total_unread
+
+    async def get_dashboard_upcoming_appointment(self, db, user_id: UUID) -> Optional[Dict]:
+        """Get next future appointment for citizen."""
+        row = await db.fetchrow("""
+            SELECT id, reference, workflow_code, cita_date, cita_time, cita_location
+            FROM service_requests
+            WHERE user_id = $1
+              AND cita_date IS NOT NULL
+              AND cita_date >= CURRENT_DATE
+              AND status NOT IN ('COMPLETED', 'CANCELLED', 'EXPIRED', 'REJECTED')
+            ORDER BY cita_date ASC, cita_time ASC
+            LIMIT 1
+        """, user_id)
+
+        if not row:
+            return None
+
+        return {
+            "request_id": str(row["id"]),
+            "request_reference": row["reference"],
+            "workflow_code": row["workflow_code"],
+            "appointment_date": row["cita_date"],
+            "time": row["cita_time"].strftime("%H:%M") if row["cita_time"] else None,
+            "location": row["cita_location"],
+        }
+
+    async def get_dashboard_action_required(
+        self, db, user_id: UUID, limit: int = 5, locale: str = "es"
+    ) -> List[Dict]:
+        """Get requests that need citizen action."""
+        rows = await db.fetch("""
+            SELECT id, reference, workflow_code, status
+            FROM service_requests
+            WHERE user_id = $1
+              AND status IN ('DRAFT', 'DOCUMENTS_REQUIRED', 'PAYMENT_PENDING', 'PAYMENT_FAILED', 'TIMBRES_PENDING')
+            ORDER BY updated_at DESC
+            LIMIT $2
+        """, user_id, limit)
+
+        fallback_msg = {"es": "Acción requerida", "fr": "Action requise", "en": "Action required"}
+        result = []
+        for row in rows:
+            status = row["status"]
+            msg_dict = self._PENDING_ACTION_MESSAGES.get(status, fallback_msg)
+            message = msg_dict.get(locale, msg_dict.get("es", "Action required"))
+            result.append({
+                "request_id": str(row["id"]),
+                "reference": row["reference"],
+                "workflow_code": row["workflow_code"],
+                "status": status,
+                "message": message,
+            })
+        return result
+
     def _row_to_dict(self, row: asyncpg.Record) -> Dict:
         """Convert asyncpg Record to dict with proper JSON parsing"""
         if not row:

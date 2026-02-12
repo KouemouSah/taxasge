@@ -124,6 +124,68 @@ export interface FilterOptions {
   categories: Array<{ value: string; label_es: string }>
 }
 
+/** Backend dashboard summary response (snake_case) */
+interface BackendDashboardSummary {
+  stats: { active: number; completed: number; pending_action: number; total_paid: number }
+  recent_requests: Array<{
+    id: string; reference: string; workflow_code: string; workflow_label: string
+    status: string; solicitud_type: string; created_at: string
+    updated_at?: string | null; total_amount?: number | null
+  }>
+  recent_payments: Array<{
+    id: string; service_request_id: string; request_reference: string
+    workflow_code: string; workflow_label: string; amount: number
+    currency: string; status: string; payment_method?: string | null
+    created_at: string
+  }>
+  notifications: Array<{
+    id: string; action: string; title: string; message?: string | null
+    performed_at: string; performer_role?: string | null; is_new: boolean
+    new_status?: string | null
+  }>
+  unread_count: number
+  upcoming_appointment?: {
+    request_id: string; request_reference: string; workflow_code: string
+    workflow_label: string; appointment_date: string; time?: string | null
+    location?: string | null
+  } | null
+  action_required: Array<{
+    request_id: string; reference: string; workflow_code: string
+    workflow_label: string; status: string; message: string
+  }>
+}
+
+/** Frontend dashboard summary (camelCase) */
+export interface DashboardSummary {
+  stats: { active: number; completed: number; pendingAction: number; totalPaid: number }
+  recentRequests: Array<{
+    id: string; reference: string; workflowCode: string; workflowLabel: string
+    status: string; solicitudType: string; createdAt: string
+    updatedAt?: string | null; totalAmount?: number | null
+  }>
+  recentPayments: Array<{
+    id: string; serviceRequestId: string; requestReference: string
+    workflowCode: string; workflowLabel: string; amount: number
+    currency: string; status: string; paymentMethod?: string | null
+    createdAt: string
+  }>
+  notifications: Array<{
+    id: string; action: string; title: string; message?: string | null
+    performedAt: string; performerRole?: string | null; isNew: boolean
+    newStatus?: string | null
+  }>
+  unreadCount: number
+  upcomingAppointment: {
+    requestId: string; requestReference: string; workflowCode: string
+    workflowLabel: string; appointmentDate: string; time?: string | null
+    location?: string | null
+  } | null
+  actionRequired: Array<{
+    requestId: string; reference: string; workflowCode: string
+    workflowLabel: string; status: string; message: string
+  }>
+}
+
 
 // Backend types for two-step preview/validate flow (snake_case from Python)
 interface BackendFieldIndicator {
@@ -774,6 +836,54 @@ class ServiceRequestsApiClient {
    */
   async getFilterOptions(): Promise<FilterOptions> {
     return this.request<FilterOptions>('/filter-options')
+  }
+
+  /**
+   * Get citizen dashboard summary — single call, all data
+   */
+  async getDashboardSummary(): Promise<DashboardSummary> {
+    const b = await this.request<BackendDashboardSummary>('/dashboard-summary')
+    return {
+      stats: {
+        active: b.stats.active,
+        completed: b.stats.completed,
+        pendingAction: b.stats.pending_action,
+        totalPaid: b.stats.total_paid,
+      },
+      recentRequests: b.recent_requests.map(r => ({
+        id: r.id, reference: r.reference, workflowCode: r.workflow_code,
+        workflowLabel: r.workflow_label, status: r.status,
+        solicitudType: r.solicitud_type, createdAt: r.created_at,
+        updatedAt: r.updated_at, totalAmount: r.total_amount,
+      })),
+      recentPayments: b.recent_payments.map(p => ({
+        id: p.id, serviceRequestId: p.service_request_id,
+        requestReference: p.request_reference, workflowCode: p.workflow_code,
+        workflowLabel: p.workflow_label, amount: p.amount,
+        currency: p.currency, status: p.status,
+        paymentMethod: p.payment_method, createdAt: p.created_at,
+      })),
+      notifications: b.notifications.map(n => ({
+        id: n.id, action: n.action, title: n.title, message: n.message,
+        performedAt: n.performed_at, performerRole: n.performer_role,
+        isNew: n.is_new, newStatus: n.new_status,
+      })),
+      unreadCount: b.unread_count,
+      upcomingAppointment: b.upcoming_appointment ? {
+        requestId: b.upcoming_appointment.request_id,
+        requestReference: b.upcoming_appointment.request_reference,
+        workflowCode: b.upcoming_appointment.workflow_code,
+        workflowLabel: b.upcoming_appointment.workflow_label,
+        appointmentDate: b.upcoming_appointment.appointment_date,
+        time: b.upcoming_appointment.time,
+        location: b.upcoming_appointment.location,
+      } : null,
+      actionRequired: b.action_required.map(a => ({
+        requestId: a.request_id, reference: a.reference,
+        workflowCode: a.workflow_code, workflowLabel: a.workflow_label,
+        status: a.status, message: a.message,
+      })),
+    }
   }
 
   /**
