@@ -27,6 +27,8 @@ class IdentifierType(str, Enum):
     CARNET_FUNCIONARIO = "carnet_funcionario"
     # Social security (from migration 081)
     NUMERO_SEGURIDAD_SOCIAL = "numero_seguridad_social"
+    # Nota de Ingreso (Residencia Phase 2)
+    NUMERO_NOTA = "numero_nota"
 
 
 class VerificationSource(str, Enum):

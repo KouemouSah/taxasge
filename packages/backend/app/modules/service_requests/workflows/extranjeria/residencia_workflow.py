@@ -74,7 +74,7 @@ OCR Schemas (12):
 @legal Orden Ministerial 01/2021 de fecha 02 de diciembre
 """
 from typing import List, Dict, Any, Optional, Set
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..workflow_interface import (
     PredefinedWorkflow,
@@ -122,49 +122,51 @@ class ResidenciaWorkflow(PredefinedWorkflow):
     - RESIDENCIA_PRIMERA_VEZ → SolicitudType.EXPEDICION (Art. 3.A.1, 13-14 documents)
     - RESIDENCIA_RENOVACION → SolicitudType.RENOVACION (Art. 3.A.2, 11-12 documents)
 
-    Steps (9):
-    0. selection: Persona type (física/jurídica) — filters documents and form_reviews
-    1. upload_documents: Dynamic documents based on solicitud_type + CEMAC + persona_juridica
-    2. form_review_1: Passport identity + entry stamp (EXPEDICION) / previous residence (RENOVACION)
-    3. form_review_2: Professional data + company data (persona_juridica conditional)
-    4. form_review_3: Support docs verification (buena_conducta, antecedentes, NIF/autorización)
-    5. stamp_payment: Stamps Cédula + Póliza (2,500 XAF fixed, before submission)
-    6. payment: Main payment via Nota de Ingreso (200k or 100k XAF)
-    7. appointment: Appointment for permit collection
-    8. confirmation: Summary + agent_checklist + rejection_reasons
+    Two phases, conditional on "con_nota_ingreso" (set in step 0 SELECTION):
+    - Phase 1 (sin nota): Full dossier → Extranjería validation → stamps (2,500 XAF)
+    - Phase 2 (con nota): User has Nota from Extranjería → upload nota + identity → CNEDOGE payment
 
-    Validate_step rules (9 — workflow business logic only):
+    Steps (13, conditional visibility):
+    0.  selection: solicitud_type + persona_type + con_nota_ingreso + duracion (if renovacion+nota)
+    --- Phase 1 (sin nota) steps 1-7: condition {con_nota_ingreso: "false"} ---
+    1.  upload_documents: Dynamic documents (13-14 EXPEDICION / 11-12 RENOVACION)
+    2.  form_review_1: Passport identity + entry stamp / previous residence
+    3.  form_review_2: Professional data + company data (persona_juridica)
+    4.  form_review_3: Support docs verification (buena_conducta, antecedentes, NIF)
+    5.  appointment: Cita en Extranjería
+    6.  stamp_payment: Stamps Cédula + Póliza (2,500 XAF)
+    7.  payment: Phase 1 stamps payment
+    --- Phase 2 (con nota) steps 8-11: condition {con_nota_ingreso: "true"} ---
+    8.  upload_nota: Nota de Ingreso + identity document (pasaporte/residencia)
+    9.  form_review_nota: OCR verification of nota data + identity
+    10. appointment_cnedoge: Cita CNEDOGE (permit collection)
+    11. payment_phase2: Main payment (200K EXPEDICION / 100K×años RENOVACION)
+    --- Common ---
+    12. confirmation: Summary + agent_checklist + rejection_reasons
 
-    form_review_1 (step 2):
-     1. entrada_legal_fecha: Entry date must exist (OCR or user correction)
-     2. cemac_90_dias: CEMAC national entry < 90 days, warning with day count
-     3. visado_requerido: Non-CEMAC + EXPEDICION → visa must exist + date coherence
-     4. nacionalidad_extranjero: Applicant NOT Equatoguinean
-     5. residencia_renovable: Previous residence expiring < 90 days (RENOVACION, warning)
-     6. nombres_coherentes: Name match passport ↔ residence (RENOVACION, Levenshtein)
+    Tariffs:
+    - Phase 1: TariffType.NOTA_INGRESO → returns 0 (stamps only)
+    - Phase 2 EXPEDICION: 200,000 XAF (fixed)
+    - Phase 2 RENOVACION: 100,000 XAF × duracion_anos (1, 2, or 5 years)
+    - Stamps (Phase 1 only): Cédula (1,500) + Póliza (1,000) = 2,500 XAF
 
-    form_review_2 (step 3):
-     7. solvencia_resultado: NO_SOLVENTE → warning to agent, NOT blocking (persona_juridica)
+    Validate_step rules (11 — workflow business logic only):
 
-    form_review_3 (step 4):
-     8. buena_conducta_resultado: DESFAVORABLE → warning to agent
-     9. antecedentes_resultado: POSITIVO/HAS_CONVICTIONS → error (blocking)
-
-    Delegated to SchemaValidationEngine (NOT duplicated here):
-    - pasaporte_not_expired (pasaporte_international.json)
-    - fecha_entrada_not_future (sello_entrada_gq.json)
-    - entrada_dentro_validez_pasaporte (sello_entrada_gq.json cross-doc)
-    - tipo_sello_entrada == ENTRADA (sello_entrada_gq.json)
-    - sello_oficial + texto_legible (sello_entrada_gq.json autenticacion)
-    - tipo_visado_valido LIMITADO/ALTERNATIVO (visado_gq.json)
-    - certificado_vigente antecedentes < 3 months (antecedentes_penales_gq.json)
-    - certificado_vigente solvencia < 30 days (solvencia_tributaria_gq.json)
-    - resultado solvencia (warning-only in schema)
-    - antecedentes resultado NEGATIVO/POSITIVO (antecedentes_penales_gq.json)
-    - buena conducta resultado FAVORABLE/DESFAVORABLE
-    - NIF coherence solvencia ↔ nif_autorizacion
-    - Name coherence atestacion bancaria ↔ pasaporte
-    - firma_y_sello validations on all official documents
+    form_review_1 (step 2, Phase 1):
+     1. entrada_legal_fecha: Entry date must exist
+     2. cemac_90_dias: CEMAC entry < 90 days (warning)
+     3. visado_requerido: Non-CEMAC → visa must exist + date coherence
+     4. nacionalidad_extranjero: NOT Equatoguinean
+     5. residencia_renovable: Residence expiring < 90 days (RENOVACION, warning)
+     6. nombres_coherentes: Name match passport ↔ residence (Levenshtein)
+    form_review_2 (step 3, Phase 1):
+     7. solvencia_resultado: NO_SOLVENTE → warning (persona_juridica)
+    form_review_3 (step 4, Phase 1):
+     8. buena_conducta_resultado: DESFAVORABLE → warning
+     9. antecedentes_resultado: POSITIVO/HAS_CONVICTIONS → error
+    form_review_nota (step 9, Phase 2):
+     10. nota_amount_coherent: OCR amount vs expected tariff (warning)
+     11. nota_expired: date_emission + dias_validez < today (error)
     """
 
     # === Properties ===
@@ -268,11 +270,49 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                              )},
                         ]
                     },
+                    {
+                        "id": "modo_tramite",
+                        "title_es": "Modo de Trámite",
+                        "fields": [
+                            {"key": "con_nota_ingreso",
+                             "label_es": "¿Dispone de una Nota de Ingreso emitida por Extranjería?",
+                             "type": "select", "required": True,
+                             "options": [
+                                 {"value": "false",
+                                  "label_es": "No — Solicitud completa (documentos + validación + timbres)"},
+                                 {"value": "true",
+                                  "label_es": "Sí — Tengo la Nota de Ingreso (pago principal + cita CNEDOGE)"},
+                             ],
+                             "help_text_es": (
+                                 "Si ya tramitó su expediente en Extranjería y recibió la Nota de Ingreso, "
+                                 "seleccione 'Sí'. Si necesita iniciar el trámite desde cero, seleccione 'No'."
+                             )},
+                        ],
+                    },
+                    {
+                        "id": "duracion_residencia",
+                        "title_es": "Duración del Permiso de Residencia",
+                        "show_when": {"con_nota_ingreso": "true", "solicitud_type": "renovacion"},
+                        "fields": [
+                            {"key": "duracion_anos",
+                             "label_es": "Duración solicitada para la renovación",
+                             "type": "select", "required": True,
+                             "options": [
+                                 {"value": "1", "label_es": "1 año — 100 000 XAF"},
+                                 {"value": "2", "label_es": "2 años — 200 000 XAF"},
+                                 {"value": "5", "label_es": "5 años — 500 000 XAF"},
+                             ],
+                             "help_text_es": (
+                                 "El monto del permiso de residencia se calcula en función de la duración: "
+                                 "100 000 XAF × número de años. Primera vez: siempre 200 000 XAF fijo."
+                             )},
+                        ],
+                    },
                 ]
             }
         ))
 
-        # Step 1: Upload documents
+        # Step 1: Upload documents (Phase 1 only — sin nota)
         self.add_step(WorkflowStep(
             step_number=1,
             step_id="upload_documents",
@@ -280,12 +320,13 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             title_es="Documentos Requeridos",
             description_es="Cargue los documentos necesarios según la Orden Ministerial 01/2021",
             config={
+                "condition": {"con_nota_ingreso": "false"},
                 "dynamic_documents": True,
                 "max_file_size_mb": 10,
             }
         ))
 
-        # Step 2: Form Review 1 - Passport identity + entry data + previous residence
+        # Step 2: Form Review 1 - Passport identity + entry data + previous residence (Phase 1 only)
         self.add_step(WorkflowStep(
             step_number=2,
             step_id="form_review_1",
@@ -293,6 +334,7 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             title_es="Datos de Identidad y Entrada",
             description_es="Verifique los datos extraídos del pasaporte e indique la fecha de entrada",
             config={
+                "condition": {"con_nota_ingreso": "false"},
                 "sections": [
                     {
                         "id": "datos_pasaporte",
@@ -363,7 +405,7 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # Step 3: Form Review 2 - Professional data + company (persona_juridica)
+        # Step 3: Form Review 2 - Professional data + company (Phase 1 only)
         # NOTE: es_persona_juridica moved to step 0 (SELECTION)
         self.add_step(WorkflowStep(
             step_number=3,
@@ -372,6 +414,7 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             title_es="Datos Profesionales",
             description_es="Complete sus datos profesionales y de empresa (si aplica)",
             config={
+                "condition": {"con_nota_ingreso": "false"},
                 "sections": [
                     {
                         "id": "datos_profesionales",
@@ -403,7 +446,7 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # Step 4: Form Review 3 - Support documents verification
+        # Step 4: Form Review 3 - Support documents verification (Phase 1 only)
         self.add_step(WorkflowStep(
             step_number=4,
             step_id="form_review_3",
@@ -411,6 +454,7 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             title_es="Verificación de Documentos de Soporte",
             description_es="Verifique los datos extraídos de los documentos de soporte",
             config={
+                "condition": {"con_nota_ingreso": "false"},
                 "sections": [
                     {
                         "id": "buena_conducta",
@@ -491,20 +535,21 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # Step 5: Appointment (BEFORE payments)
+        # Step 5: Appointment Phase 1 — Extranjería (BEFORE payments, sin nota only)
         self.add_step(WorkflowStep(
             step_number=5,
             step_id="appointment",
             step_type=StepType.APPOINTMENT,
-            title_es="Cita para Recogida del Permiso",
-            description_es="Seleccione una fecha y lugar para recoger su permiso de residencia",
+            title_es="Cita en Extranjería",
+            description_es="Seleccione una fecha y lugar para entregar su expediente en Extranjería",
             config={
+                "condition": {"con_nota_ingreso": "false"},
                 "entity_code": "EXTRANJERIA",
                 "dynamic_locations": True,
             }
         ))
 
-        # Step 6: Stamp payment (Cédula + Póliza = 2,500 XAF)
+        # Step 6: Stamp payment Phase 1 (Cédula + Póliza = 2,500 XAF, sin nota only)
         # Note: Filtered out in frontend, cost folded into tariff breakdown
         self.add_step(WorkflowStep(
             step_number=6,
@@ -513,6 +558,7 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             title_es="Pago de Timbres (Cédula y Póliza)",
             description_es="Pago de timbres fiscales: Cédula Personal (1,500 XAF) + Póliza (1,000 XAF)",
             config={
+                "condition": {"con_nota_ingreso": "false"},
                 "currency": "XAF",
                 "payment_type": "stamps",
                 "fixed_amount": 2500,
@@ -523,28 +569,137 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             }
         ))
 
-        # Step 7: Main payment (Nota de Ingreso)
+        # Step 7: Payment Phase 1 — stamps only (sin nota, tariff returns 0 for NOTA_INGRESO type)
         self.add_step(WorkflowStep(
             step_number=7,
             step_id="payment",
             step_type=StepType.PAYMENT,
-            title_es="Pago Principal (Nota de Ingreso)",
-            description_es="Pago principal del trámite de residencia",
+            title_es="Pago de Timbres",
+            description_es="Pago de los timbres fiscales del expediente",
             config={
+                "condition": {"con_nota_ingreso": "false"},
                 "currency": "XAF",
-                "payment_type": "nota_ingreso",
-                "requires_status": "NOTA_UPLOADED",
-                "amount_source": "nota_ingreso.bloc_paiement.montant_chiffre",
-                "expected_amounts": {
-                    "EXPEDICION": 200000,
-                    "RENOVACION": 100000,
-                },
+                "payment_type": "stamps_phase1",
             }
         ))
 
-        # Step 8: Confirmation
+        # =====================================================================
+        # Phase 2 steps — Con Nota de Ingreso (user already has nota from Extranjería)
+        # =====================================================================
+
+        # Step 8: Upload nota de ingreso + identity document
         self.add_step(WorkflowStep(
             step_number=8,
+            step_id="upload_nota",
+            step_type=StepType.DOCUMENT_UPLOAD,
+            title_es="Nota de Ingreso y Documento de Identidad",
+            description_es=(
+                "Cargue la Nota de Ingreso emitida por Extranjería y su documento de identidad "
+                "(pasaporte o permiso de residencia anterior)"
+            ),
+            config={
+                "condition": {"con_nota_ingreso": "true"},
+                "dynamic_documents": True,
+                "max_file_size_mb": 10,
+            }
+        ))
+
+        # Step 9: Form Review — Nota de Ingreso data verification
+        self.add_step(WorkflowStep(
+            step_number=9,
+            step_id="form_review_nota",
+            step_type=StepType.FORM_REVIEW,
+            title_es="Verificación de la Nota de Ingreso",
+            description_es="Verifique los datos extraídos de la Nota de Ingreso y su documento de identidad",
+            config={
+                "condition": {"con_nota_ingreso": "true"},
+                "sections": [
+                    {
+                        "id": "datos_nota",
+                        "title_es": "Datos de la Nota de Ingreso",
+                        "source_document": "nota_ingreso",
+                        "fields": [
+                            {"key": "nota_numero", "label_es": "N° Nota", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "nota_concepto", "label_es": "Concepto de Pago", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "nota_montant", "label_es": "Monto (XAF)", "type": "number",
+                             "required": True, "readonly": True},
+                            {"key": "nota_date_emission", "label_es": "Fecha de Emisión", "type": "date",
+                             "required": True, "readonly": True},
+                            {"key": "nota_dias_validez", "label_es": "Días de Validez", "type": "number",
+                             "required": False, "readonly": True},
+                            {"key": "nota_organisme", "label_es": "Organismo Emisor", "type": "text",
+                             "required": False, "readonly": True},
+                        ],
+                    },
+                    {
+                        "id": "datos_identidad_pasaporte",
+                        "title_es": "Datos de Identidad (Pasaporte)",
+                        "source_document": "pasaporte",
+                        "condition": {"solicitud_type": "expedicion"},
+                        "fields": [
+                            {"key": "numero_pasaporte", "label_es": "N° Pasaporte", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "apellidos", "label_es": "Apellidos", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "nombres", "label_es": "Nombres", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "nacionalidad", "label_es": "Nacionalidad", "type": "text",
+                             "required": True, "readonly": True},
+                        ],
+                    },
+                    {
+                        "id": "datos_identidad_residencia",
+                        "title_es": "Datos de Identidad (Residencia Anterior)",
+                        "source_document": "residencia_anterior",
+                        "condition": {"solicitud_type": "renovacion"},
+                        "fields": [
+                            {"key": "numero_nie", "label_es": "N° N.I.E.", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "apellidos", "label_es": "Apellidos", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "nombres", "label_es": "Nombres", "type": "text",
+                             "required": True, "readonly": True},
+                            {"key": "fecha_expiracion_residencia", "label_es": "Fecha Expiración",
+                             "type": "date", "required": True, "readonly": True},
+                        ],
+                    },
+                ],
+            }
+        ))
+
+        # Step 10: Appointment Phase 2 — CNEDOGE (permit collection)
+        self.add_step(WorkflowStep(
+            step_number=10,
+            step_id="appointment_cnedoge",
+            step_type=StepType.APPOINTMENT,
+            title_es="Cita para Recogida del Permiso (CNEDOGE)",
+            description_es="Seleccione una fecha y lugar para recoger su permiso de residencia en CNEDOGE",
+            config={
+                "condition": {"con_nota_ingreso": "true"},
+                "entity_code": "CNEDOGE",
+                "dynamic_locations": True,
+            }
+        ))
+
+        # Step 11: Payment Phase 2 — Main residence permit payment
+        self.add_step(WorkflowStep(
+            step_number=11,
+            step_id="payment_phase2",
+            step_type=StepType.PAYMENT,
+            title_es="Pago Principal del Permiso de Residencia",
+            description_es="Pago del permiso de residencia según la duración solicitada",
+            config={
+                "condition": {"con_nota_ingreso": "true"},
+                "currency": "XAF",
+                "payment_type": "nota_ingreso_main",
+            }
+        ))
+
+        # Step 12: Confirmation (both Phase 1 and Phase 2)
+        self.add_step(WorkflowStep(
+            step_number=12,
             step_id="confirmation",
             step_type=StepType.CONFIRMATION,
             title_es="Confirmación y Envío",
@@ -663,15 +818,24 @@ class ResidenciaWorkflow(PredefinedWorkflow):
         context: Optional[WorkflowContext] = None,
     ) -> List[DocumentRequirement]:
         """
-        Get document requirements aligned with Orden Ministerial 01/2021 Art. 3 Section A.
+        Get document requirements.
 
-        EXPEDICION (Art. 3.A.1): 12 documents + visado_entrada for non-CEMAC = 13 max
-        RENOVACION (Art. 3.A.2): 11 documents (from law) + pasaporte (recommended)
+        Phase 1 (sin nota): Aligned with Orden Ministerial 01/2021 Art. 3 Section A.
+          EXPEDICION (Art. 3.A.1): 12 documents + visado_entrada for non-CEMAC = 13 max
+          RENOVACION (Art. 3.A.2): 11 documents (from law) + pasaporte (recommended)
+        Phase 2 (con nota): Nota de Ingreso + identity document (2-3 docs).
 
         Dynamic conditions:
+        - con_nota_ingreso: Phase 1 vs Phase 2 document set
         - persona_juridica/persona_fisica: based on form_data "es_persona_juridica" (set in step 0 SELECTION)
         - CEMAC/non-CEMAC: based on extracted passport "documento.codigo_pais"
         """
+        # Phase 2 (con nota): simplified document set
+        if self._is_con_nota(context):
+            return self._get_phase2_document_requirements(solicitud_type, context)
+
+        # Phase 1 (sin nota): full dossier — existing logic below
+
         # Resolve persona_juridica from form_data
         es_persona_juridica = None
         if context and context.form_data:
@@ -995,6 +1159,65 @@ class ResidenciaWorkflow(PredefinedWorkflow):
 
         return requirements
 
+    def _get_phase2_document_requirements(
+        self,
+        solicitud_type: SolicitudType,
+        context: Optional[WorkflowContext] = None,
+    ) -> List[DocumentRequirement]:
+        """Phase 2 document requirements: Nota de Ingreso + identity."""
+        requirements: List[DocumentRequirement] = []
+        order = 1
+
+        # Nota de Ingreso (always required for Phase 2)
+        requirements.append(DocumentRequirement(
+            document_code="nota_ingreso",
+            document_name_es="Nota de Ingreso",
+            schema_key="NOTA_INGRESO_RESIDENCIA_GQ_V1",
+            is_required=True,
+            display_order=order,
+            condition_type=DocumentConditionType.ALWAYS,
+            instructions_es=(
+                "Nota de Ingreso emitida por la Dirección General de Extranjería. "
+                "Escanee el documento completo con el sello oficial visible."
+            ),
+        ))
+        order += 1
+
+        # Pasaporte (required for EXPEDICION, recommended for RENOVACION)
+        requirements.append(DocumentRequirement(
+            document_code="pasaporte",
+            document_name_es="Pasaporte (Página de Datos)",
+            schema_key="PASAPORTE_INTERNATIONAL_V1",
+            is_required=solicitud_type == SolicitudType.EXPEDICION,
+            display_order=order,
+            condition_type=DocumentConditionType.ALWAYS,
+            instructions_es=(
+                "Página de datos del pasaporte en vigor. "
+                "Escanee la página con la foto, datos personales y zona MRZ."
+            ),
+            faces_required=["recto", "verso"],
+        ))
+        order += 1
+
+        # Residencia anterior (RENOVACION only — to verify previous permit)
+        if solicitud_type == SolicitudType.RENOVACION:
+            requirements.append(DocumentRequirement(
+                document_code="residencia_anterior",
+                document_name_es="Permiso de Residencia Anterior",
+                schema_key="PERMISO_RESIDENCIA_GQ_V1",
+                is_required=True,
+                display_order=order,
+                condition_type=DocumentConditionType.IS_RENEWAL,
+                instructions_es=(
+                    "Fotocopia del permiso de residencia anterior. "
+                    "Escanee recto y verso."
+                ),
+                faces_required=["recto", "verso"],
+            ))
+            order += 1
+
+        return requirements
+
     # === Form Mapping ===
 
     def get_form_mapping(
@@ -1002,6 +1225,11 @@ class ResidenciaWorkflow(PredefinedWorkflow):
         context: Optional[WorkflowContext] = None,
     ) -> Dict[str, str]:
         """Map extracted OCR data to form fields."""
+        # Phase 2 (con nota): simplified mapping for nota + identity
+        if self._is_con_nota(context):
+            return self._get_phase2_form_mapping(context)
+
+        # Phase 1 (sin nota): full mapping
         mapping: Dict[str, str] = {
             # Passport (OCR readonly) - form_review_1 (step 2)
             "numero_pasaporte": "pasaporte.documento.numero_pasaporte",
@@ -1071,6 +1299,42 @@ class ResidenciaWorkflow(PredefinedWorkflow):
 
         return mapping
 
+    def _get_phase2_form_mapping(
+        self,
+        context: Optional[WorkflowContext] = None,
+    ) -> Dict[str, str]:
+        """Phase 2 form mapping: nota de ingreso + identity document."""
+        mapping: Dict[str, str] = {
+            # Nota de Ingreso (OCR readonly) — form_review_nota (step 9)
+            "nota_numero": "nota_ingreso.bloc_paiement.numero_nota",
+            "nota_concepto": "nota_ingreso.bloc_paiement.concepto_pago",
+            "nota_montant": "nota_ingreso.bloc_paiement.montant_chiffre",
+            "nota_date_emission": "nota_ingreso.bloc_verification.date_emission",
+            "nota_dias_validez": "nota_ingreso.bloc_verification.dias_validez",
+            "nota_organisme": "nota_ingreso.bloc_administratif.departement_emetteur",
+        }
+
+        solicitud_type = context.solicitud_type if context else None
+
+        if solicitud_type == SolicitudType.EXPEDICION:
+            # Identity from passport (EXPEDICION: pasaporte required)
+            mapping.update({
+                "numero_pasaporte": "pasaporte.documento.numero_pasaporte",
+                "apellidos": "pasaporte.titular.apellidos",
+                "nombres": "pasaporte.titular.nombres",
+                "nacionalidad": "pasaporte.titular.nacionalidad",
+            })
+        elif solicitud_type == SolicitudType.RENOVACION:
+            # Identity from previous residence permit (RENOVACION: residencia required)
+            mapping.update({
+                "numero_nie": "residencia_anterior.documento.numero_nie",
+                "apellidos": "residencia_anterior.titular.apellidos",
+                "nombres": "residencia_anterior.titular.nombres",
+                "fecha_expiracion_residencia": "residencia_anterior.documento.fecha_expiracion",
+            })
+
+        return mapping
+
     # === Step Validation ===
 
     def validate_step(
@@ -1115,6 +1379,9 @@ class ResidenciaWorkflow(PredefinedWorkflow):
 
         if step.step_id == "form_review_3":
             results.extend(self._validate_support_documents(context))
+
+        if step.step_id == "form_review_nota":
+            results.extend(self._validate_nota_ingreso(context))
 
         return results
 
@@ -1378,6 +1645,161 @@ class ResidenciaWorkflow(PredefinedWorkflow):
                 ))
 
         return results
+
+    def _validate_nota_ingreso(self, context: WorkflowContext) -> List[ValidationResult]:
+        """
+        Validate nota de ingreso for Phase 2 (con nota).
+
+        Rule 10: nota_amount_coherent — extracted amount vs expected tariff (warning)
+        Rule 11: nota_expired — date_emission + dias_validez < today (error)
+
+        Other validations (tampon_officiel, organisme) are in the JSON schema
+        NOTA_INGRESO_RESIDENCIA_GQ_V1.
+        """
+        results: List[ValidationResult] = []
+        today = datetime.today()
+
+        # Rule 10: Amount coherence — nota montant vs expected tariff
+        nota_montant_str = context.get_extracted_field(
+            "nota_ingreso", "bloc_paiement.montant_chiffre"
+        )
+        if nota_montant_str:
+            try:
+                nota_montant = int(str(nota_montant_str).replace(" ", "").replace(",", ""))
+                expected = self.get_tariff(
+                    context.solicitud_type, context=context
+                )
+                if expected > 0 and nota_montant != expected:
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="nota_amount_coherent",
+                        severity="warning",
+                        message_es=(
+                            f"El monto de la Nota de Ingreso ({nota_montant:,} XAF) "
+                            f"no coincide con el monto esperado ({expected:,} XAF). "
+                            "El agente verificará la coherencia."
+                        ),
+                        field_name="nota_montant",
+                        document_code="nota_ingreso",
+                    ))
+            except (ValueError, TypeError):
+                pass
+
+        # Rule 11: Nota expired — date_emission + dias_validez < today
+        fecha_emission_str = context.get_extracted_field(
+            "nota_ingreso", "bloc_verification.date_emission"
+        )
+        dias_validez_str = context.get_extracted_field(
+            "nota_ingreso", "bloc_verification.dias_validez"
+        )
+        if fecha_emission_str:
+            fecha_emission = self._parse_date(str(fecha_emission_str))
+            if fecha_emission:
+                dias_validez = 15  # default validity if not specified
+                if dias_validez_str:
+                    try:
+                        dias_validez = int(str(dias_validez_str))
+                    except (ValueError, TypeError):
+                        pass
+                fecha_expiration = fecha_emission + timedelta(days=dias_validez)
+                if today > fecha_expiration:
+                    days_expired = (today - fecha_expiration).days
+                    results.append(ValidationResult(
+                        is_valid=False,
+                        rule_id="nota_expired",
+                        severity="error",
+                        message_es=(
+                            f"La Nota de Ingreso ha caducado hace {days_expired} día(s). "
+                            f"Emitida el {fecha_emission_str}, validez {dias_validez} días. "
+                            "Debe obtener una nueva Nota de Ingreso."
+                        ),
+                        field_name="nota_date_emission",
+                        document_code="nota_ingreso",
+                    ))
+
+        return results
+
+    # === Tariff Override (Phase 2) ===
+
+    def get_tariff(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None,
+    ) -> int:
+        """
+        Override tariff for Phase 2 (con nota).
+
+        Phase 1 (sin nota): Returns 0 (TariffType.NOTA_INGRESO → stamps only)
+        Phase 2 (con nota):
+          - EXPEDICION: 200,000 XAF (fixed)
+          - RENOVACION: 100,000 XAF × duracion_anos
+        """
+        if not self._is_con_nota(context):
+            return super().get_tariff(solicitud_type, motivo, context)
+
+        # Phase 2: actual amounts
+        if solicitud_type == SolicitudType.EXPEDICION:
+            return 200000
+        # RENOVACION: base × duration coefficient
+        duracion = self._get_duracion_anos(context)
+        return 100000 * duracion
+
+    def get_tariff_breakdown(
+        self,
+        solicitud_type: SolicitudType,
+        motivo: Optional[RenovacionMotivo] = None,
+        context: Optional[WorkflowContext] = None,
+        base_description: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Override tariff breakdown for Phase 2 (con nota).
+
+        Phase 1 (sin nota): Standard breakdown from TariffConfig (returns 0 base + stamps)
+        Phase 2 (con nota): Fixed amount with duration label
+        """
+        if not self._is_con_nota(context):
+            return super().get_tariff_breakdown(solicitud_type, motivo, context, base_description)
+
+        base_amount = self.get_tariff(solicitud_type, motivo, context)
+        if solicitud_type == SolicitudType.EXPEDICION:
+            desc = "Permiso de Residencia — Primera vez (200 000 XAF)"
+        else:
+            d = self._get_duracion_anos(context)
+            desc = f"Renovación de Residencia ({d} año{'s' if d > 1 else ''} × 100 000 XAF)"
+
+        return {
+            "base_amount": base_amount,
+            "base_description": base_description or desc,
+            "supplements": [],
+            "supplements_total": 0,
+            "penalties_amount": 0,
+            "penalty_reason": None,
+            "total_amount": base_amount,
+            "currency": "XAF",
+            "tariff_type": "FIXED",
+            "workflow_code": self.workflow_code.value,
+            "solicitud_type": solicitud_type.value,
+        }
+
+    # === Phase helpers ===
+
+    def _is_con_nota(self, context: Optional[WorkflowContext]) -> bool:
+        """Check if user selected Phase 2 (con nota de ingreso)."""
+        if context and context.form_data:
+            return str(context.form_data.get("con_nota_ingreso", "false")).lower() == "true"
+        return False
+
+    def _get_duracion_anos(self, context: Optional[WorkflowContext]) -> int:
+        """Get duration in years for RENOVACION coefficient (1, 2, or 5)."""
+        if context and context.form_data:
+            try:
+                val = int(context.form_data.get("duracion_anos", "1"))
+                if val in (1, 2, 5):
+                    return val
+            except (ValueError, TypeError):
+                pass
+        return 1
 
     # === Utility Methods ===
 
