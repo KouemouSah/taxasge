@@ -893,7 +893,7 @@ class ServiceRequestRepository:
                 h.details,
                 h.performed_at,
                 CASE
-                    WHEN u.role IN ('admin', 'supervisor', 'dgi_agent', 'ministry_agent') THEN 'agent'
+                    WHEN u.role::text NOT IN ('citizen', 'business', 'accountant') THEN 'agent'
                     WHEN h.performed_by IS NULL THEN 'system'
                     ELSE 'citizen'
                 END as performer_role
@@ -1066,7 +1066,7 @@ class ServiceRequestRepository:
                 sr.workflow_code,
                 sr.citizen_last_viewed_at,
                 CASE
-                    WHEN u.role IN ('admin','supervisor','dgi_agent','ministry_agent') THEN 'agent'
+                    WHEN u.role::text NOT IN ('citizen', 'business', 'accountant') THEN 'agent'
                     WHEN h.performed_by IS NULL THEN 'system'
                     ELSE 'citizen'
                 END as performer_role
