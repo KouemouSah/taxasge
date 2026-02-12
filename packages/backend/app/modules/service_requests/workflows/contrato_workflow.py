@@ -1095,7 +1095,7 @@ class ContratoWorkflow(PredefinedWorkflow):
             "email_contratista": "contrato.parte_contratista.email",
 
             # === From Contract - Metadata ===
-            "tipo_solicitud": "context.sub_type",
+            "tipo_solicitud": "_form:sub_type",
             "tipo_contrato": "contrato.documento.tipo_contrato",
             "numero_contrato": "contrato.documento.numero_contrato",
             "titulo_contrato": "contrato.documento.titulo_contrato",

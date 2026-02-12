@@ -399,7 +399,7 @@ class ConducirWorkflow(PredefinedWorkflow):
                                 "label_es": "Número de Identificación",
                                 "type": "text",
                                 "required": True,
-                                "readonly": True
+                                "readonly": False
                             }
                         ]
                     },
@@ -427,14 +427,14 @@ class ConducirWorkflow(PredefinedWorkflow):
                                 "label_es": "Fecha de Nacimiento",
                                 "type": "date",
                                 "required": True,
-                                "readonly": True
+                                "readonly": False
                             },
                             {
                                 "key": "nacionalidad",
                                 "label_es": "Nacionalidad",
                                 "type": "text",
                                 "required": True,
-                                "readonly": True
+                                "readonly": False
                             },
                             {
                                 "key": "domicilio",
@@ -925,10 +925,10 @@ class ConducirWorkflow(PredefinedWorkflow):
             "nacionalidad": "dip.titular.nacionalidad",
             "domicilio": "dip.titular.domiciliacion",
 
-            # === Request data (from context) ===
-            "tipo_solicitud": "context.sub_type",
-            "clases_solicitadas": "context.clases_solicitadas",
-            "motivo_duplicado": "context.motivo",
+            # === Request data (from wizard selections) ===
+            "tipo_solicitud": "_form:sub_type",
+            "clases_solicitadas": "_form:clases_solicitadas",
+            "motivo_duplicado": "_form:motivo",
 
             # === From current certificate (RENOVACION/EXTENSION) ===
             "cert_reg_numero": "certificado_actual.documento.reg_numero",

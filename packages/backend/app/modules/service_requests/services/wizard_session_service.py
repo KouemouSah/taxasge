@@ -929,6 +929,11 @@ class WizardSessionService:
         if extraction_path.startswith("_literal:"):
             return extraction_path[9:]
 
+        # Form data values (e.g. "_form:sub_type" → form_data["sub_type"])
+        if extraction_path.startswith("_form:"):
+            form_key = extraction_path[6:]
+            return form_data.get(form_key)
+
         # Parse path like "dip.titular.apellidos"
         parts = extraction_path.split(".")
         if len(parts) < 2:
