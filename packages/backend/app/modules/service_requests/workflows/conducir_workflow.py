@@ -371,6 +371,7 @@ class ConducirWorkflow(PredefinedWorkflow):
         ))
 
         # === Step 5: Form Review 1 - Datos Personales ===
+        # Single section (aligned with Pasaporte pattern — no split Identificación/Datos)
         self.add_step(WorkflowStep(
             step_number=5,
             step_id="form_review_1",
@@ -379,70 +380,20 @@ class ConducirWorkflow(PredefinedWorkflow):
             description_es="Verifique sus datos personales extraídos del documento de identidad",
             config={
                 "form_page": 1,
-                "max_sections": 2,
+                "max_sections": 1,
                 "sections": [
-                    {
-                        "id": "identificacion",
-                        "title_es": "Identificación",
-                        "condition": None,  # Always visible
-                        "fields": [
-                            {
-                                "key": "tipo_identificacion",
-                                "label_es": "Tipo de Identificación",
-                                "type": "select",
-                                "options": ["DIP", "NIE"],
-                                "required": True,
-                                "readonly": True
-                            },
-                            {
-                                "key": "numero_identificacion",
-                                "label_es": "Número de Identificación",
-                                "type": "text",
-                                "required": True,
-                                "readonly": False
-                            }
-                        ]
-                    },
                     {
                         "id": "datos_personales",
                         "title_es": "Datos Personales",
                         "condition": None,  # Always visible
                         "fields": [
-                            {
-                                "key": "apellidos",
-                                "label_es": "Apellidos",
-                                "type": "text",
-                                "required": True,
-                                "readonly": False
-                            },
-                            {
-                                "key": "nombres",
-                                "label_es": "Nombres",
-                                "type": "text",
-                                "required": True,
-                                "readonly": False
-                            },
-                            {
-                                "key": "fecha_nacimiento",
-                                "label_es": "Fecha de Nacimiento",
-                                "type": "date",
-                                "required": True,
-                                "readonly": False
-                            },
-                            {
-                                "key": "nacionalidad",
-                                "label_es": "Nacionalidad",
-                                "type": "text",
-                                "required": True,
-                                "readonly": False
-                            },
-                            {
-                                "key": "domicilio",
-                                "label_es": "Domicilio",
-                                "type": "text",
-                                "required": False,
-                                "readonly": False
-                            }
+                            {"key": "tipo_identificacion", "label_es": "Tipo de Identificación", "type": "select", "options": ["DIP", "NIE"], "required": True, "readonly": True},
+                            {"key": "numero_identificacion", "label_es": "Número de Identificación", "type": "text", "required": True, "readonly": False},
+                            {"key": "apellidos", "label_es": "Apellidos", "type": "text", "required": True, "readonly": False},
+                            {"key": "nombres", "label_es": "Nombres", "type": "text", "required": True, "readonly": False},
+                            {"key": "fecha_nacimiento", "label_es": "Fecha de Nacimiento", "type": "date", "required": True, "readonly": False},
+                            {"key": "nacionalidad", "label_es": "Nacionalidad", "type": "text", "required": True, "readonly": False},
+                            {"key": "domicilio", "label_es": "Domicilio", "type": "text", "required": False, "readonly": False},
                         ]
                     }
                 ]

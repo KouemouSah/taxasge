@@ -184,27 +184,52 @@
            ================================================================ */
         .blocks-row-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             margin-bottom: 10px;
         }
 
-        .blocks-row-table > tr > td {
+        .appointment-cell {
+            width: 56%;
+            border: 1px solid #3a7104;
+            border-radius: 6px;
+            padding: 10px 12px;
             vertical-align: top;
-            padding: 0;
         }
 
-        .appointment-cell {
-            width: 62%;
-            padding-right: 12px;
+        .appointment-cell-empty {
+            width: 56%;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px 12px;
+            vertical-align: top;
+        }
+
+        .spacer-cell {
+            width: 23px;
+            padding: 0;
+            border: none;
         }
 
         .payment-cell {
-            width: 38%;
+            width: 44%;
+            border: 1px solid #3a7104;
+            border-radius: 6px;
+            padding: 10px 12px;
+            vertical-align: top;
         }
 
-        .card-block {
-            background: #f0f7ec;
-            padding: 10px 12px;
+        .card-block-title {
+            font-weight: bold;
+            color: #3a7104;
+            font-size: 9pt;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            text-align: left;
+        }
+
+        .payment-cell .card-block-title {
+            text-align: center;
         }
 
         .card-block-title {
@@ -237,11 +262,6 @@
         .appt-value {
             font-weight: bold;
             color: #2d5a03;
-        }
-
-        .no-appointment-box {
-            background: #f3f4f6;
-            padding: 10px 12px;
         }
 
         .no-appointment-title {
@@ -472,38 +492,35 @@
     <div class="no-break">
         <table class="blocks-row-table">
             <tr>
+                {% if appointment %}
                 <td class="appointment-cell">
-                    {% if appointment %}
-                    <div class="card-block">
-                        <div class="card-block-title">{{ texts.scheduled_appointment }}</div>
-                        <table class="appointment-detail-table">
-                            <tr>
-                                <td class="appt-label">{{ texts.date }}:</td>
-                                <td class="appt-value">{{ appointment.date }}</td>
-                            </tr>
-                            <tr>
-                                <td class="appt-label">{{ texts.time }}:</td>
-                                <td class="appt-value">{{ appointment.time }}</td>
-                            </tr>
-                            <tr>
-                                <td class="appt-label">{{ texts.location }}:</td>
-                                <td class="appt-value">{{ appointment.location }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="no-appointment-box">
-                        <div class="no-appointment-title">{{ texts.scheduled_appointment }}</div>
-                        <div class="no-appointment-text">{{ texts.no_appointment }}</div>
-                    </div>
-                    {% endif %}
+                    <div class="card-block-title">{{ texts.scheduled_appointment }}</div>
+                    <table class="appointment-detail-table">
+                        <tr>
+                            <td class="appt-label">{{ texts.date }}:</td>
+                            <td class="appt-value">{{ appointment.date }}</td>
+                        </tr>
+                        <tr>
+                            <td class="appt-label">{{ texts.time }}:</td>
+                            <td class="appt-value">{{ appointment.time }}</td>
+                        </tr>
+                        <tr>
+                            <td class="appt-label">{{ texts.location }}:</td>
+                            <td class="appt-value">{{ appointment.location }}</td>
+                        </tr>
+                    </table>
                 </td>
+                {% else %}
+                <td class="appointment-cell-empty">
+                    <div class="no-appointment-title">{{ texts.scheduled_appointment }}</div>
+                    <div class="no-appointment-text">{{ texts.no_appointment }}</div>
+                </td>
+                {% endif %}
+                <td class="spacer-cell"></td>
                 <td class="payment-cell">
-                    <div class="card-block">
-                        <div class="card-block-title">{{ texts.payment_breakdown }}</div>
-                        <div class="payment-amount">{{ tariff.total_amount }} <span class="payment-currency">XAF</span></div>
-                        <div class="payment-label">{{ payment_status_label }}</div>
-                    </div>
+                    <div class="card-block-title">{{ texts.payment_breakdown }}</div>
+                    <div class="payment-amount">{{ tariff.total_amount }} <span class="payment-currency">XAF</span></div>
+                    <div class="payment-label">{{ payment_status_label }}</div>
                 </td>
             </tr>
         </table>
