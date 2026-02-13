@@ -10,7 +10,9 @@
 'use client';
 
 import React from 'react';
-import { Clock, AlertTriangle, AlertCircle } from 'lucide-react';
+import { useLocale } from 'next-intl';
+import Link from 'next/link';
+import { Clock, AlertTriangle, AlertCircle, FileStack } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ServiceRequestListItem, SlaStatus, Priority } from '../../services/agent-requests-api';
@@ -124,6 +126,7 @@ export function RequestListItem({
   onClick,
   displayColumns = [...DEFAULT_LIST_COLUMNS],
 }: RequestListItemProps) {
+  const locale = useLocale();
   const priorityStyle = PRIORITY_STYLES[item.priority] || PRIORITY_STYLES.NORMAL;
   const slaStyle = SLA_STYLES[item.slaStatus] || SLA_STYLES.on_track;
 
@@ -146,7 +149,21 @@ export function RequestListItem({
       <div className="flex items-center justify-between mb-1">
         {/* Reference - left side */}
         {showColumn('reference') && (
-          <span className="font-mono text-sm font-medium">{item.reference}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-sm font-medium">{item.reference}</span>
+            {item.batchReference && item.batchId && (
+              <Link
+                href={`/${locale}/dashboard/batch-requests/${item.batchId}`}
+                onClick={(e) => e.stopPropagation()}
+                title={item.batchReference}
+              >
+                <Badge className="text-[10px] px-1 py-0 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 cursor-pointer">
+                  <FileStack className="h-2.5 w-2.5 mr-0.5" />
+                  LOT
+                </Badge>
+              </Link>
+            )}
+          </div>
         )}
         {!showColumn('reference') && <span />}
 

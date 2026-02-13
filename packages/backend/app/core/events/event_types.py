@@ -187,6 +187,16 @@ class EventType(str, Enum):
     """Declaration payment is due"""
 
     # ==========================================================================
+    # BATCH EVENTS
+    # ==========================================================================
+
+    BATCH_SUBMITTED = "batch.submitted"
+    """Batch of service requests submitted and paid"""
+
+    BATCH_COMPLETED = "batch.completed"
+    """All items in batch have been processed (approved/rejected)"""
+
+    # ==========================================================================
     # SLA EVENTS
     # ==========================================================================
 

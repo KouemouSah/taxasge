@@ -25,7 +25,8 @@ import {
   ChevronRight,
   MessageCircle,
   BadgeCheck,
-  Lock
+  Lock,
+  FileStack
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/core/api/auth'
@@ -100,6 +101,11 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       titleKey: 'serviceRequests',
       href: `/${locale}/dashboard/service-requests`,
       icon: ClipboardList,
+    },
+    {
+      titleKey: 'batchRequests',
+      href: `/${locale}/dashboard/batch-requests`,
+      icon: FileStack,
     },
     // Funcionario menu - only visible for verified civil servants
     {

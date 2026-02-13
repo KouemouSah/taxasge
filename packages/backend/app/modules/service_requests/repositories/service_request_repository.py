@@ -20,7 +20,10 @@ class ServiceRequestRepository:
         solicitud_type: str = "expedicion",
         fiscal_service_id: Optional[int] = None,
         priority: str = "NORMAL",
-        form_data: Optional[Dict] = None
+        form_data: Optional[Dict] = None,
+        batch_id: Optional[UUID] = None,
+        company_id: Optional[UUID] = None,
+        entity_code: Optional[str] = None,
     ) -> Dict:
         """
         Create new service request.
@@ -29,9 +32,10 @@ class ServiceRequestRepository:
         query = """
             INSERT INTO service_requests (
                 user_id, workflow_code, solicitud_type,
-                fiscal_service_id, priority, form_data, created_by
+                fiscal_service_id, priority, form_data, created_by,
+                batch_id, company_id, entity_code
             )
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $1)
+            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $1, $7, $8, $9)
             RETURNING *
         """
         row = await db.fetchrow(
@@ -41,7 +45,10 @@ class ServiceRequestRepository:
             solicitud_type,
             fiscal_service_id,
             priority,
-            json.dumps(form_data) if form_data else '{}'
+            json.dumps(form_data) if form_data else '{}',
+            batch_id,
+            company_id,
+            entity_code,
         )
         return self._row_to_dict(row)
 

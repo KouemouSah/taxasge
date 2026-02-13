@@ -41,12 +41,15 @@ import {
   XCircle,
   AlertTriangle,
   ArrowRight,
+  FileStack,
 } from 'lucide-react'
 import { getAuthData } from '@/core/auth/storage'
 import type { User } from '@/types/auth'
 import { useLocale, useTranslations } from 'next-intl'
 import { useDashboardData } from '@/modules/dashboard'
 import { STATUS_BADGE_COLORS, PAYMENT_STATUS_COLORS } from '@/modules/service-requests/constants'
+import { batchApi } from '@/modules/batch-requests/services/batch-api'
+import type { BatchRequest } from '@/modules/batch-requests/types'
 
 // ═══════════════════════════════════════════════════════════════
 // NOTIFICATION STYLING (action type → icon + color)
@@ -161,6 +164,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
 
   const { stats, summary, isLoading, error, refetch } = useDashboardData()
+  const [activeBatch, setActiveBatch] = useState<BatchRequest | null>(null)
 
   useEffect(() => {
     const authData = getAuthData()
@@ -174,6 +178,13 @@ export default function DashboardPage() {
       email_verified: authData.user.email_verified ?? false,
     }
     setUser(userData as User)
+
+    // Fetch most recent active batch (lightweight, non-blocking)
+    batchApi.listBatches({ status: 'IN_PROGRESS', pageSize: 1 })
+      .then((res) => {
+        if (res.batches.length > 0) setActiveBatch(res.batches[0])
+      })
+      .catch(() => { /* silent — batch teaser is optional */ })
   }, [router, locale])
 
   const hasData = summary !== null
@@ -399,6 +410,48 @@ export default function DashboardPage() {
               <Link href={`/${locale}/dashboard/service-requests/${summary.upcomingAppointment.requestId}`}>
                 <Button variant="outline" size="sm">
                   {t('viewRequest')}
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Active Batch Teaser ── */}
+      {activeBatch && (
+        <Card className="border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/30">
+          <CardHeader className="flex flex-row items-center gap-3 pb-3">
+            <FileStack className="h-5 w-5 text-indigo-600" />
+            <div className="flex-1">
+              <CardTitle className="text-base">{t('batchRequests')}</CardTitle>
+            </div>
+            <Badge className="bg-indigo-100 text-indigo-700">
+              {activeBatch.itemsCompleted}/{activeBatch.totalItems}
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium font-mono">
+                  {activeBatch.reference}
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-indigo-100 rounded-full w-32">
+                    <div
+                      className="h-2 bg-indigo-500 rounded-full transition-all"
+                      style={{ width: `${activeBatch.totalItems > 0 ? (activeBatch.itemsCompleted / activeBatch.totalItems) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {activeBatch.totalItems > 0
+                      ? Math.round((activeBatch.itemsCompleted / activeBatch.totalItems) * 100)
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+              <Link href={`/${locale}/dashboard/batch-requests/${activeBatch.id}`}>
+                <Button variant="outline" size="sm">
+                  {t('viewBatch')}
                 </Button>
               </Link>
             </div>

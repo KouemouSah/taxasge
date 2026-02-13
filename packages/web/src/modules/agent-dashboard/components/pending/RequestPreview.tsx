@@ -247,6 +247,8 @@ export function RequestPreview({
             slaStatus={data.slaStatus}
             slaRemainingHours={data.slaRemainingHours}
             isMinor={data.isMinor}
+            batchReference={data.batchReference}
+            batchId={data.batchId}
           />
         )}
 

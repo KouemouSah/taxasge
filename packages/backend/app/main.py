@@ -985,6 +985,16 @@ except Exception as e:
     logger.error(f"❌ Service Requests router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load batch requests router (Module - Batch Service Requests)
+try:
+    from app.modules.batch_requests.api import router as batch_requests_router
+    app.include_router(batch_requests_router, prefix="/api/v1", tags=["batch-requests"])
+    routers_loaded.append("batch_requests")
+    logger.info("✅ Batch Requests router loaded (bulk submission of N requests)")
+except Exception as e:
+    logger.error(f"❌ Batch Requests router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load verified identifiers router (Module - External Document Verification)
 try:
     from app.modules.verified_identifiers.api import router as verified_identifiers_router

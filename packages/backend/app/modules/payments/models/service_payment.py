@@ -146,6 +146,9 @@ class ServicePaymentResponse(BaseModel):
         """List of supplements extracted from calculation_details JSON."""
         return extract_supplements_list(self.calculation_details)
 
+    # Batch reference (if created from a batch submission)
+    batch_id: Optional[str] = None
+
     # Status
     status: PaymentStatus
     workflow_status: PaymentWorkflowStatus

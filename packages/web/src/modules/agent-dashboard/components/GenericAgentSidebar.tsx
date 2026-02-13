@@ -64,6 +64,8 @@ import {
   Plane,
   Truck,
   FileSignature,
+  // Batch icons
+  FileStack,
   type LucideIcon,
 } from 'lucide-react';
 import { clearAuthData } from '@/core/auth/storage';
@@ -131,6 +133,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   AlertTriangle,
   AlertCircle,
   List,
+
+  // Batch
+  FileStack,
 };
 
 /**
@@ -184,7 +189,7 @@ export function GenericAgentSidebar({
     dynamicMenuItems,
     useDynamicMenus,
     context,
-    getBasePath: _getBasePath,
+    getBasePath,
   } = useAgentDashboard();
 
   // Use prop config if provided, otherwise use hook config
@@ -389,6 +394,28 @@ export function GenericAgentSidebar({
               getTitle,
             }))
           )}
+
+          {/* Batch requests link — always visible */}
+          {(() => {
+            const batchHref = `${getBasePath()}/batch-requests`;
+            const isActive = pathname?.startsWith(batchHref);
+            return (
+              <Link
+                href={batchHref}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
+                  isActive
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-muted-foreground hover:text-foreground',
+                  collapsed && 'justify-center px-2'
+                )}
+                title={collapsed ? t('batch.menuTitle') : undefined}
+              >
+                <FileStack className="h-4 w-4 flex-shrink-0" />
+                {!collapsed && <span>{t('batch.menuTitle')}</span>}
+              </Link>
+            );
+          })()}
         </nav>
       </ScrollArea>
 

@@ -248,6 +248,20 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         priority="normal",
         subject_key="notifications.user.welcome.subject"
     ),
+
+    # Batch Events
+    EventType.BATCH_SUBMITTED: NotificationConfig(
+        template_code="batch_submitted",
+        channels=[NotificationChannel.EMAIL],
+        priority="normal",
+        subject_key="notifications.batch.submitted.subject"
+    ),
+    EventType.BATCH_COMPLETED: NotificationConfig(
+        template_code="batch_completed",
+        channels=[NotificationChannel.EMAIL],
+        priority="high",
+        subject_key="notifications.batch.completed.subject"
+    ),
 }
 
 
@@ -600,6 +614,13 @@ class NotificationEventHandler:
             # Used for PDF certificates, receipts, etc.
             "attachments": payload.get("attachments"),
 
+            # Batch info
+            "batch_id": payload.get("batch_id"),
+            "batch_reference": payload.get("batch_reference"),
+            "total_items": payload.get("total_items"),
+            "items_count": payload.get("items_count"),
+            "beneficiary_names": payload.get("beneficiary_names", []),
+
             # Any additional metadata
             **(payload.get("metadata") or {}),
         }
@@ -732,6 +753,16 @@ class NotificationEventHandler:
                 "es": "¡Bienvenido a TaxasGE!",
                 "fr": "Bienvenue sur TaxasGE!",
                 "en": "Welcome to TaxasGE!"
+            },
+            "batch_submitted": {
+                "es": "Lote enviado - TaxasGE",
+                "fr": "Lot envoyé - TaxasGE",
+                "en": "Batch submitted - TaxasGE"
+            },
+            "batch_completed": {
+                "es": "Lote completado - TaxasGE",
+                "fr": "Lot terminé - TaxasGE",
+                "en": "Batch completed - TaxasGE"
             },
         }
 
@@ -956,6 +987,16 @@ class NotificationEventHandler:
                 "fr": "Merci de vous être inscrit sur TaxasGE. Votre compte a été créé avec succès. Vous pouvez maintenant accéder à tous les services fiscaux de Guinée Équatoriale.",
                 "en": "Thank you for registering on TaxasGE. Your account has been created successfully. You can now access all fiscal services of Equatorial Guinea."
             },
+            "batch_submitted": {
+                "es": self._get_batch_submitted_body("es", context),
+                "fr": self._get_batch_submitted_body("fr", context),
+                "en": self._get_batch_submitted_body("en", context),
+            },
+            "batch_completed": {
+                "es": self._get_batch_completed_body("es", context),
+                "fr": self._get_batch_completed_body("fr", context),
+                "en": self._get_batch_completed_body("en", context),
+            },
         }
 
         template_bodies = bodies.get(template_code, {})
@@ -1134,6 +1175,86 @@ class NotificationEventHandler:
                 lines.append("")
 
             lines.append("Recibirá una notificación cuando su solicitud sea procesada.")
+
+        return "<br>".join(lines)
+
+    def _get_batch_submitted_body(self, language: str, context: Dict[str, Any]) -> str:
+        """Generate body for batch_submitted notification."""
+        ref = context.get("batch_reference", "")
+        total_items = context.get("total_items", 0)
+        amount = context.get("amount", 0)
+        currency = context.get("currency", "XAF")
+        names = context.get("beneficiary_names", [])
+        names_display = ", ".join(names[:5])
+        if len(names) > 5:
+            more = {"es": f" y {len(names) - 5} más", "fr": f" et {len(names) - 5} autres", "en": f" and {len(names) - 5} more"}
+            names_display += more.get(language, more["es"])
+
+        if language == "fr":
+            lines = [
+                f"Votre lot <strong>{ref}</strong> a été envoyé avec succès.",
+                f"<strong>{total_items}</strong> demandes ont été créées.",
+                "",
+                f"<strong>Montant total:</strong> {amount:,.0f} {currency}",
+                "",
+            ]
+            if names_display:
+                lines.append(f"<strong>Bénéficiaires:</strong> {names_display}")
+                lines.append("")
+            lines.append("Vous recevrez une notification lorsque toutes les demandes seront traitées.")
+        elif language == "en":
+            lines = [
+                f"Your batch <strong>{ref}</strong> has been submitted successfully.",
+                f"<strong>{total_items}</strong> requests have been created.",
+                "",
+                f"<strong>Total amount:</strong> {amount:,.0f} {currency}",
+                "",
+            ]
+            if names_display:
+                lines.append(f"<strong>Beneficiaries:</strong> {names_display}")
+                lines.append("")
+            lines.append("You will receive a notification when all requests have been processed.")
+        else:
+            lines = [
+                f"Su lote <strong>{ref}</strong> ha sido enviado correctamente.",
+                f"Se han creado <strong>{total_items}</strong> solicitudes.",
+                "",
+                f"<strong>Monto total:</strong> {amount:,.0f} {currency}",
+                "",
+            ]
+            if names_display:
+                lines.append(f"<strong>Beneficiarios:</strong> {names_display}")
+                lines.append("")
+            lines.append("Recibirá una notificación cuando todas las solicitudes hayan sido procesadas.")
+
+        return "<br>".join(lines)
+
+    def _get_batch_completed_body(self, language: str, context: Dict[str, Any]) -> str:
+        """Generate body for batch_completed notification."""
+        ref = context.get("batch_reference", "")
+        total_items = context.get("total_items", 0)
+
+        if language == "fr":
+            lines = [
+                f"Toutes les demandes de votre lot <strong>{ref}</strong> ont été traitées.",
+                f"<strong>{total_items}</strong> demandes ont été finalisées.",
+                "",
+                "Vous pouvez consulter le détail de chaque demande dans votre tableau de bord.",
+            ]
+        elif language == "en":
+            lines = [
+                f"All requests in your batch <strong>{ref}</strong> have been processed.",
+                f"<strong>{total_items}</strong> requests have been finalized.",
+                "",
+                "You can view the details of each request in your dashboard.",
+            ]
+        else:
+            lines = [
+                f"Todas las solicitudes de su lote <strong>{ref}</strong> han sido procesadas.",
+                f"<strong>{total_items}</strong> solicitudes han sido finalizadas.",
+                "",
+                "Puede consultar el detalle de cada solicitud en su panel de control.",
+            ]
 
         return "<br>".join(lines)
 

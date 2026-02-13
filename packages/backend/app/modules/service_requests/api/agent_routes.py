@@ -37,12 +37,45 @@ from ..models.history import (
 )
 from ..repositories.service_request_repository import service_request_repository
 from app.core.events import EventBus, EventType
+from app.modules.batch_requests.repositories.batch_repository import batch_repository
 
 
 router = APIRouter(
     prefix="/agent/service-requests",
     tags=["Agent - Service Requests"]
 )
+
+
+# ═══════════════════════════════════════════════════════════════
+# HELPERS
+# ═══════════════════════════════════════════════════════════════
+
+async def _publish_batch_completed_event(db: asyncpg.Connection, batch_id: UUID) -> None:
+    """Publish BATCH_COMPLETED event with batch details for notification."""
+    try:
+        batch = await db.fetchrow("""
+            SELECT br.reference, br.workflow_code, br.total_items,
+                   br.total_amount, br.currency, br.submitted_by,
+                   u.email, u.full_name
+            FROM batch_requests br
+            LEFT JOIN users u ON u.id = br.submitted_by
+            WHERE br.id = $1
+        """, batch_id)
+        if batch:
+            EventBus.publish_nowait(EventType.BATCH_COMPLETED, {
+                "batch_id": str(batch_id),
+                "batch_reference": batch["reference"],
+                "user_id": str(batch["submitted_by"]),
+                "user_email": batch["email"],
+                "user_name": batch["full_name"] or "",
+                "workflow_code": batch["workflow_code"],
+                "total_items": batch["total_items"],
+                "amount": float(batch["total_amount"] or 0),
+                "currency": batch["currency"] or "XAF",
+                "preferred_language": "es",
+            })
+    except Exception as e:
+        logger.error(f"Failed to publish BATCH_COMPLETED for {batch_id}: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -885,6 +918,16 @@ async def make_decision(
         except Exception:
             pass  # Non-blocking
 
+        # Check batch auto-completion
+        if request.get("batch_id"):
+            try:
+                completed = await batch_repository.check_and_complete_batch(db, request["batch_id"])
+                if completed:
+                    logger.info(f"Batch auto-completed after approval of SR {request_id}")
+                    await _publish_batch_completed_event(db, request["batch_id"])
+            except Exception as e:
+                logger.error(f"Batch auto-completion check failed for SR {request_id}: {e}")
+
         return {
             "message": "Service request approved",
             "new_status": new_status,
@@ -942,6 +985,16 @@ async def make_decision(
                 )
         except Exception:
             pass  # Non-blocking
+
+        # Check batch auto-completion
+        if request.get("batch_id"):
+            try:
+                completed = await batch_repository.check_and_complete_batch(db, request["batch_id"])
+                if completed:
+                    logger.info(f"Batch auto-completed after rejection of SR {request_id}")
+                    await _publish_batch_completed_event(db, request["batch_id"])
+            except Exception as e:
+                logger.error(f"Batch auto-completion check failed for SR {request_id}: {e}")
 
         return {
             "message": "Service request rejected",
@@ -1615,6 +1668,9 @@ class ServiceRequestListItem(BaseModel):
     assigned_to: Optional[str] = None
     sla_deadline: Optional[str] = None
     sla_status: str = "on_track"
+    # Batch context (if created from batch submission)
+    batch_id: Optional[str] = None
+    batch_reference: Optional[str] = None
 
 
 class ServiceRequestListResponse(BaseModel):
@@ -1685,6 +1741,9 @@ class ServiceRequestPreview(BaseModel):
     # Metadata
     created_at: str
     submitted_at: Optional[str] = None
+    # Batch context
+    batch_id: Optional[str] = None
+    batch_reference: Optional[str] = None
     # Navigation
     list_index: Optional[int] = None
     list_total: Optional[int] = None
@@ -1852,7 +1911,9 @@ async def get_entity_service_requests(
             END as sla_deadline,
             u.first_name,
             u.last_name,
-            u.email
+            u.email,
+            sr.batch_id,
+            (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
@@ -1902,7 +1963,9 @@ async def get_entity_service_requests(
             created_at=row['created_at'].isoformat(),
             assigned_to=str(row['assigned_to']) if row['assigned_to'] else None,
             sla_deadline=row['sla_deadline'].isoformat() if row['sla_deadline'] else None,
-            sla_status=sla_status
+            sla_status=sla_status,
+            batch_id=str(row['batch_id']) if row.get('batch_id') else None,
+            batch_reference=row.get('batch_reference'),
         ))
 
     return ServiceRequestListResponse(
@@ -2080,7 +2143,9 @@ async def get_request_preview(
             el.location_address,
             sp.workflow_status AS payment_status,
             sp.amount AS total_amount,
-            agent_u.first_name || ' ' || agent_u.last_name AS assigned_agent_name
+            agent_u.first_name || ' ' || agent_u.last_name AS assigned_agent_name,
+            sr.batch_id,
+            (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
@@ -2194,6 +2259,8 @@ async def get_request_preview(
         appointment=appointment,
         created_at=row['created_at'].isoformat(),
         submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
+        batch_id=str(row['batch_id']) if row.get('batch_id') else None,
+        batch_reference=row.get('batch_reference'),
         list_index=list_index,
         list_total=list_total
     )

@@ -140,6 +140,10 @@ class ServiceRequestResponse(BaseModel):
     # Tariff (computed from base_amount, supplements_amount, etc.)
     tariff: Optional[TariffBreakdown] = None
 
+    # Batch (if created from a batch submission)
+    batch_id: Optional[UUID] = None
+    company_id: Optional[UUID] = None
+
     # Assignment
     assigned_to: Optional[UUID] = None
     assigned_at: Optional[datetime] = None

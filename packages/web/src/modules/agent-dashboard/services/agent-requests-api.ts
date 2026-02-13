@@ -40,6 +40,9 @@ export interface ServiceRequestListItem {
   assignedTo: string | null;
   slaDeadline: string | null;
   slaStatus: SlaStatus;
+  // Batch context
+  batchId?: string | null;
+  batchReference?: string | null;
 }
 
 export interface ServiceRequestListResponse {
@@ -166,6 +169,9 @@ export interface ServiceRequestPreview {
   // Metadata
   createdAt: string;
   submittedAt?: string | null;
+  // Batch context
+  batchId?: string | null;
+  batchReference?: string | null;
   // Navigation
   listIndex?: number | null;
   listTotal?: number | null;
@@ -187,6 +193,8 @@ interface BackendServiceRequestListItem {
   assigned_to: string | null;
   sla_deadline: string | null;
   sla_status: string;
+  batch_id?: string | null;
+  batch_reference?: string | null;
 }
 
 interface BackendServiceRequestListResponse {
@@ -238,6 +246,8 @@ interface BackendServiceRequestPreview {
   appointment?: BackendRequestPreviewAppointment | null;
   created_at: string;
   submitted_at?: string | null;
+  batch_id?: string | null;
+  batch_reference?: string | null;
   list_index?: number | null;
   list_total?: number | null;
 }
@@ -262,6 +272,8 @@ function transformServiceRequestItem(item: BackendServiceRequestListItem): Servi
     assignedTo: item.assigned_to,
     slaDeadline: item.sla_deadline,
     slaStatus: (item.sla_status || 'on_track') as SlaStatus,
+    batchId: item.batch_id,
+    batchReference: item.batch_reference,
   };
 }
 
@@ -301,6 +313,8 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     } : null,
     createdAt: data.created_at,
     submittedAt: data.submitted_at,
+    batchId: data.batch_id,
+    batchReference: data.batch_reference,
     listIndex: data.list_index,
     listTotal: data.list_total,
   };
@@ -325,7 +339,8 @@ class AgentRequestsApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    absoluteUrl: boolean = false,
   ): Promise<T> {
     const token = this.getToken();
     const headers: HeadersInit = {
@@ -334,7 +349,7 @@ class AgentRequestsApiClient {
       ...options.headers,
     };
 
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = absoluteUrl ? endpoint : `${this.baseUrl}${endpoint}`;
     console.log(`[AgentRequestsApi] ${options.method || 'GET'} ${url}`);
 
     const response = await fetch(url, {
@@ -589,6 +604,47 @@ class AgentRequestsApiClient {
       })),
     };
   }
+
+  // ─── Agent Batch Endpoints ──────────────────────────────────
+
+  async getEntityBatches(
+    entityCode: string,
+    filters?: { status?: string; search?: string; page?: number; pageSize?: number }
+  ): Promise<AgentBatchListResponse> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.page) params.set('page', String(filters.page));
+    if (filters?.pageSize) params.set('page_size', String(filters.pageSize));
+    const qs = params.toString();
+    const url = `${API_BASE_URL}${API_VERSION}/batch-requests/agent/entity/${entityCode}${qs ? `?${qs}` : ''}`;
+    return this.request(url, {}, true);
+  }
+
+  async getEntityBatchDetail(
+    entityCode: string,
+    batchId: string
+  ): Promise<AgentBatchDetail> {
+    const url = `${API_BASE_URL}${API_VERSION}/batch-requests/agent/entity/${entityCode}/${batchId}`;
+    return this.request(url, {}, true);
+  }
+
+  async bulkDecision(
+    entityCode: string,
+    batchId: string,
+    body: { decision: 'approve' | 'reject'; itemIds?: string[]; comments?: string; rejectionReason?: string }
+  ): Promise<BulkDecisionResult> {
+    const url = `${API_BASE_URL}${API_VERSION}/batch-requests/agent/entity/${entityCode}/${batchId}/bulk-decision`;
+    return this.request(url, {
+      method: 'POST',
+      body: JSON.stringify({
+        decision: body.decision,
+        item_ids: body.itemIds,
+        comments: body.comments,
+        rejection_reason: body.rejectionReason,
+      }),
+    }, true);
+  }
 }
 
 // Service request detail type
@@ -626,6 +682,62 @@ export interface ServiceRequestDetail {
     mimeType: string;
     validationStatus?: string;
   }>;
+}
+
+// ─── Agent Batch Types ──────────────────────────────────────
+
+export interface AgentBatchListResponse {
+  batches: AgentBatchSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface AgentBatchSummary {
+  id: string;
+  reference: string | null;
+  workflow_code: string;
+  solicitud_type: string;
+  total_items: number;
+  items_ready: number;
+  items_submitted: number;
+  items_completed: number;
+  status: string;
+  total_amount: number | null;
+  currency: string;
+  created_at: string;
+  submitted_at: string | null;
+}
+
+export interface AgentBatchDetail extends AgentBatchSummary {
+  items: AgentBatchItem[];
+  submitted_by_name: string | null;
+  submitted_by_email: string | null;
+  shared_documents: Array<{ document_code: string; file_path: string; file_name: string }>;
+  notes: string | null;
+}
+
+export interface AgentBatchItem {
+  id: string;
+  batch_id: string;
+  beneficiary_name: string;
+  beneficiary_identifier: string | null;
+  status: string;
+  service_request_id: string | null;
+  sr_status: string | null;
+  sr_reference: string | null;
+  sr_assigned_to: string | null;
+  sr_payment_status: string | null;
+  item_order: number;
+  created_at: string;
+}
+
+export interface BulkDecisionResult {
+  processed: number;
+  failed: number;
+  errors: Array<{ item_id: string; beneficiary: string; error: string }>;
+  batch_completed: boolean;
 }
 
 // Export singleton instance

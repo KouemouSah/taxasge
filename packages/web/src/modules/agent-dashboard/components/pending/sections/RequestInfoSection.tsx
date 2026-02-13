@@ -8,10 +8,11 @@
 'use client';
 
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Clock, AlertTriangle, AlertCircle, Baby } from 'lucide-react';
+import { FileText, Clock, AlertTriangle, AlertCircle, Baby, FileStack } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Priority } from '../../../services/agent-requests-api';
 
@@ -29,6 +30,8 @@ interface RequestInfoSectionProps {
   slaStatus: 'on_track' | 'warning' | 'breached';
   slaRemainingHours?: number | null;
   isMinor: boolean;
+  batchReference?: string | null;
+  batchId?: string | null;
 }
 
 // =============================================================================
@@ -82,7 +85,10 @@ export function RequestInfoSection({
   slaStatus,
   slaRemainingHours,
   isMinor,
+  batchReference,
+  batchId,
 }: RequestInfoSectionProps) {
+  const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
   const priorityStyle = PRIORITY_STYLES[priority] || PRIORITY_STYLES.NORMAL;
   const slaStyle = SLA_STYLES[slaStatus] || SLA_STYLES.on_track;
@@ -103,6 +109,19 @@ export function RequestInfoSection({
             <p className="font-mono font-semibold">{reference}</p>
           </div>
           <div className="flex items-center gap-2">
+            {batchReference && batchId ? (
+              <Link href={`/${locale}/dashboard/batch-requests/${batchId}`}>
+                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 cursor-pointer">
+                  <FileStack className="h-3 w-3 mr-1" />
+                  {batchReference}
+                </Badge>
+              </Link>
+            ) : batchReference ? (
+              <Badge className="bg-indigo-100 text-indigo-700">
+                <FileStack className="h-3 w-3 mr-1" />
+                {batchReference}
+              </Badge>
+            ) : null}
             {isMinor && (
               <Badge className="bg-purple-100 text-purple-700">
                 <Baby className="h-3 w-3 mr-1" />

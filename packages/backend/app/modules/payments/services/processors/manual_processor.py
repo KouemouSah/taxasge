@@ -311,6 +311,27 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 f"payment_status=completed, status=PAID"
             )
 
+            # 6c. Batch fan-out: if this payment belongs to a batch,
+            # update ALL sibling payments and service_requests to PAID
+            if payment.get("batch_id"):
+                try:
+                    from app.modules.batch_requests.services.batch_persist_service import (
+                        BatchPersistService,
+                    )
+                    fan_result = await BatchPersistService.fan_out_batch_completion(
+                        db=db,
+                        batch_id=payment["batch_id"],
+                        paid_at=paid_at,
+                        agent_profile_id=agent_profile_id,
+                    )
+                    logger.info(
+                        f"Batch fan-out for batch {payment['batch_id']}: "
+                        f"payments={fan_result['payments_updated']}, "
+                        f"requests={fan_result['requests_updated']}"
+                    )
+                except Exception as e:
+                    logger.error(f"Batch fan-out failed for {payment.get('batch_id')}: {e}")
+
             # 7. Generate and store receipt PDF
             receipt_number = None
             receipt_url = None

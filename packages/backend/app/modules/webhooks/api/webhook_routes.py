@@ -195,6 +195,31 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
         payment = await db.fetchrow(query, merchant_reference)
 
         if not payment:
+            # Fallback: check if this is a batch payment
+            # Try matching by BANGE's transaction ID first, then by our merchant reference
+            batch = await db.fetchrow(
+                """
+                SELECT id FROM batch_requests
+                WHERE (bange_transaction_id = $1 OR bange_transaction_id = $2)
+                AND status = 'PAYMENT_PENDING'
+                """,
+                bange_transaction_id,
+                merchant_reference,
+            )
+            if batch:
+                from app.modules.batch_requests.services.batch_persist_service import (
+                    BatchPersistService,
+                )
+                await BatchPersistService.fan_out_batch_completion(
+                    db=db,
+                    batch_id=batch["id"],
+                    paid_at=datetime.utcnow(),
+                )
+                logger.info(
+                    f"Batch payment reconciled: batch={batch['id']}, "
+                    f"bange_txn={bange_transaction_id}"
+                )
+                return True
             logger.debug(f"No pending service_payment found with reference {merchant_reference}")
             return False
 
