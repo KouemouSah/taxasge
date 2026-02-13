@@ -40,4 +40,21 @@ WHERE r.code IN ('admin', 'ADMIN')
     WHERE rp.role_id = r.id AND rp.permission_id = p.id
   );
 
+-- Agent roles: read + manage (view and process batches assigned to their entity)
+-- Real role codes from BD: agent_cnedoge_pasaporte, agent_cnedoge_residencia,
+-- agent_dgt, agent_extranjeria, agent_ofive, agent_onrc, agent_policia, agent_tesoro
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.code IN (
+    'agent_cnedoge_pasaporte', 'agent_cnedoge_residencia',
+    'agent_dgt', 'agent_extranjeria', 'agent_ofive',
+    'agent_onrc', 'agent_policia', 'agent_tesoro'
+  )
+  AND p.name IN ('batch_requests.read', 'batch_requests.manage')
+  AND NOT EXISTS (
+    SELECT 1 FROM role_permissions rp
+    WHERE rp.role_id = r.id AND rp.permission_id = p.id
+  );
+
 COMMIT;

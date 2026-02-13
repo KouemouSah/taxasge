@@ -15,7 +15,8 @@ from loguru import logger
 from app.core.events.event_bus import EventBus
 from app.core.events.event_types import EventType
 from app.database.connection import get_database
-from app.modules.auth.dependencies import require_permission, get_current_user
+from app.modules.auth.dependencies import get_current_user
+from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.service_requests.models.enums import WorkflowCode
 
 from ..models.batch_request import (
@@ -193,7 +194,7 @@ async def get_batch_workflows(
 async def create_batch(
     data: BatchRequestCreate,
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Create a new batch request for a given workflow."""
     _validate_workflow_code(data.workflow_code)
@@ -227,7 +228,7 @@ async def list_batches(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.read")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.read")),
 ):
     """List batch requests for the current user."""
     return await batch_repository.list_batches_by_user(
@@ -247,7 +248,7 @@ async def list_batches(
 async def get_batch(
     batch_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.read")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.read")),
 ):
     """Get a batch request with all its beneficiary items."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -265,7 +266,7 @@ async def update_batch(
     data: BatchRequestUpdate,
     batch_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Update batch fields (notes, entity_code). Status changes not allowed via PATCH."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -293,7 +294,7 @@ async def advance_batch_status(
     batch_id: UUID = Path(...),
     target_status: str = Query(..., alias="status"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Advance batch status with transition validation."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -323,7 +324,7 @@ async def advance_batch_status(
 async def delete_batch(
     batch_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Delete a batch request. Only allowed for DRAFT/UPLOADING/REVIEW batches."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -354,7 +355,7 @@ async def list_items(
     batch_id: UUID = Path(...),
     status_filter: Optional[str] = Query(None, alias="status"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.read")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.read")),
 ):
     """List all beneficiary items for a batch."""
     await _get_batch_or_404(db, batch_id, current_user.id)
@@ -371,7 +372,7 @@ async def add_item(
     data: BatchRequestItemCreate,
     batch_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Add a single beneficiary to the batch."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -408,7 +409,7 @@ async def add_items_bulk(
     data: BatchItemsBulkCreate,
     batch_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Add multiple beneficiaries to the batch in one call."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -436,7 +437,7 @@ async def update_item(
     batch_id: UUID = Path(...),
     item_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Update a beneficiary's details."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -468,7 +469,7 @@ async def delete_item(
     batch_id: UUID = Path(...),
     item_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Remove a beneficiary from the batch."""
     batch = await _get_batch_or_404(db, batch_id, current_user.id)
@@ -505,7 +506,7 @@ def _handle_session_error(e: BatchSessionError):
 )
 async def start_session(
     data: BatchRequestCreate,
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Start a new batch session in Redis.
@@ -531,7 +532,7 @@ async def start_session(
 )
 async def get_session(
     session_id: str = Path(...),
-    current_user=Depends(require_permission("batch_requests.read")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.read")),
 ):
     """Get the current state of a batch session."""
     try:
@@ -547,7 +548,7 @@ async def get_session(
 )
 async def cancel_session(
     session_id: str = Path(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Cancel/delete a batch session from cache."""
     try:
@@ -568,7 +569,7 @@ async def cancel_session(
 async def session_add_beneficiary(
     session_id: str = Path(...),
     data: BatchRequestItemCreate = ...,
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Add a single beneficiary to the batch session."""
     try:
@@ -593,7 +594,7 @@ async def session_add_beneficiary(
 async def session_import_csv(
     session_id: str = Path(...),
     file: UploadFile = File(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Import beneficiaries from a CSV file.
@@ -630,7 +631,7 @@ async def session_update_beneficiary(
     session_id: str = Path(...),
     beneficiary_id: str = Path(...),
     data: BatchRequestItemUpdate = ...,
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Update a beneficiary's details in the session."""
     try:
@@ -666,7 +667,7 @@ async def session_update_beneficiary(
 async def session_remove_beneficiary(
     session_id: str = Path(...),
     beneficiary_id: str = Path(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Remove a beneficiary from the session."""
     try:
@@ -688,7 +689,7 @@ async def session_reorder_beneficiary(
     session_id: str = Path(...),
     beneficiary_id: str = Path(...),
     direction: str = Query(..., regex="^(up|down)$"),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Move a beneficiary up or down in the list."""
     try:
@@ -716,7 +717,7 @@ async def session_upload_shared_document(
     session_id: str = Path(...),
     file: UploadFile = File(...),
     document_code: str = Form(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Upload a shared document to Firebase and register it in the session.
@@ -767,7 +768,7 @@ async def session_upload_shared_document(
 async def session_remove_shared_document(
     session_id: str = Path(...),
     document_code: str = Path(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """Remove a shared document reference from the session."""
     try:
@@ -791,7 +792,7 @@ async def session_remove_shared_document(
 async def session_classify_documents(
     session_id: str = Path(...),
     files: List[UploadFile] = File(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Upload multiple documents, classify them via Gemini Flash,
@@ -896,7 +897,7 @@ async def session_confirm_assignments(
         ...,
         description="List of {file_path, document_type, beneficiary_id}",
     ),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Confirm or modify the document-to-beneficiary assignments
@@ -924,7 +925,7 @@ async def session_confirm_assignments(
 )
 async def session_extract_documents(
     session_id: str = Path(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Run full OCR extraction on all assigned documents.
@@ -952,7 +953,7 @@ async def session_extract_documents(
 )
 async def session_get_form_config(
     session_id: str = Path(...),
-    current_user=Depends(require_permission("batch_requests.read")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.read")),
 ):
     """
     Get the form configuration for the batch workflow.
@@ -1053,7 +1054,7 @@ async def session_save_form_data(
         ...,
         description='Form data per beneficiary: {"beneficiary_id": {"field": "value", ...}}',
     ),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Save form data for all beneficiaries at once.
@@ -1101,7 +1102,7 @@ async def session_save_form_data(
 )
 async def session_prepare_payment(
     session_id: str = Path(...),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Calculate per-item tariff, identify ready vs excluded beneficiaries,
@@ -1130,7 +1131,7 @@ async def session_submit_batch(
     user_phone: Optional[str] = Body(None, embed=True),
     user_name: Optional[str] = Body(None, embed=True),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("batch_requests.create")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("batch_requests.create")),
 ):
     """
     Atomically submit the batch:
@@ -1218,7 +1219,7 @@ async def agent_list_entity_batches(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("service_request.view")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("service_request.view")),
 ):
     """List submitted batches whose workflow_code matches the entity."""
     entity_workflows = await _get_entity_workflows(db, entity_code)
@@ -1244,7 +1245,7 @@ async def agent_get_batch_detail(
     entity_code: str = Path(...),
     batch_id: UUID = Path(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("service_request.view")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("service_request.view")),
 ):
     """Get batch detail with items joined to service_requests for live status."""
     entity_workflows = await _get_entity_workflows(db, entity_code)
@@ -1270,7 +1271,7 @@ async def agent_bulk_decision(
     batch_id: UUID = Path(...),
     body: BulkDecisionRequest = Body(...),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(require_permission("service_request.process")),
+    current_user=Depends(get_current_user), _=Depends(permission_required("service_request.process")),
 ):
     """
     Bulk approve or reject service requests in a batch.
