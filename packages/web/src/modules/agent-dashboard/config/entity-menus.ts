@@ -1,12 +1,13 @@
 /**
- * Entity Menu Configurations
- * Defines menu structure for each entity's agent dashboard
+ * Entity Menu Configurations (STATIC FALLBACK)
+ *
+ * @deprecated Since 2026-02-14. Menus are now generated dynamically from
+ * PredefinedWorkflow classes via workflow_menu_mapping DB table.
+ * The backend endpoint GET /menu-config/me returns the dynamic menu.
+ * This file is kept as a reference only and will be removed in a future cleanup.
  *
  * @module agent-dashboard/config
  * @date 2025-01-14
- *
- * Each entity has its own menu configuration based on the workflows they handle.
- * Menu items are filtered by agent permissions at runtime.
  */
 
 import {
@@ -60,9 +61,6 @@ export const CNEDOGE_CONFIG: EntityDashboardConfig = {
     'PASAPORTE_DETERIORO',
     'RESIDENCIA_PRIMERA_VEZ',
     'RESIDENCIA_RENOVACION',
-    'RESIDENCIA_DUPLICADO',
-    'RESIDENCIA_CAMBIO_DATOS',
-    'RESIDENCIA_REAGRUPACION',
   ],
   menuItems: [
     {
@@ -120,7 +118,7 @@ export const CNEDOGE_CONFIG: EntityDashboardConfig = {
           href: '/dashboard/agent/cnedoge-residencia/residencias/pending',
           icon: Clock,
           permission: 'service_request.view',
-          workflows: ['RESIDENCIA_PRIMERA_VEZ', 'RESIDENCIA_RENOVACION', 'RESIDENCIA_DUPLICADO'],
+          workflows: ['RESIDENCIA_PRIMERA_VEZ', 'RESIDENCIA_RENOVACION'],
         },
         {
           id: 'residencias-validacion',
@@ -253,9 +251,6 @@ export const CNEDOGE_RESIDENCIA_CONFIG: EntityDashboardConfig = {
   workflows: [
     'RESIDENCIA_PRIMERA_VEZ',
     'RESIDENCIA_RENOVACION',
-    'RESIDENCIA_DUPLICADO',
-    'RESIDENCIA_CAMBIO_DATOS',
-    'RESIDENCIA_REAGRUPACION',
   ],
   menuItems: [
     {
@@ -785,9 +780,6 @@ export const EXTRANJERIA_CONFIG: EntityDashboardConfig = {
   workflows: [
     'RESIDENCIA_PRIMERA_VEZ',
     'RESIDENCIA_RENOVACION',
-    'RESIDENCIA_DUPLICADO',
-    'RESIDENCIA_CAMBIO_DATOS',
-    'RESIDENCIA_REAGRUPACION',
   ],
   menuItems: [
     {

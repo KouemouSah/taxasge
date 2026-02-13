@@ -6155,6 +6155,11 @@ SUBTYPE_NAMES_ES = {
     "FP_PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
     "FP_PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
     "FP_CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
+    # TRAMITES VISADO (4)
+    "PRORROGA_VISADO": "Prórroga de Visado",
+    "VISADO_ALTERNATIVO": "Visado Alternativo",
+    "PERMANENCIA_EXTRANJERIA": "Permanencia de Extranjería",
+    "SALIDA_VISADO_VENCIDO": "Salida con Visado Vencido",
 }
 
 def extract_document_requirements_from_workflow(workflow, sub_type: str) -> list:
@@ -6578,5 +6583,20 @@ async def sync_predefined_workflows(
 
         except Exception as e:
             result.errors.append(f"Error processing workflow {base_code.value}: {str(e)}")
+
+    # Step 4: Sync menu_mapping + display_config from workflow classes
+    if not dry_run:
+        try:
+            from ..services.workflow_sync_service import sync_workflow_config
+            config_result = await sync_workflow_config(db, invalidate_cache=True)
+            result.details.append({
+                "action": "config_synced",
+                "mappings_synced": config_result["mappings_synced"],
+                "mappings_created": config_result["mappings_created"],
+                "configs_synced": config_result["configs_synced"],
+                "configs_created": config_result["configs_created"],
+            })
+        except Exception as e:
+            result.errors.append(f"Error syncing workflow config: {str(e)}")
 
     return result

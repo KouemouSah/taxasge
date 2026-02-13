@@ -170,6 +170,10 @@ class ContratoWorkflow(PredefinedWorkflow):
         return False  # No appointment needed for contract registration
 
     @property
+    def menu_icon(self) -> str:
+        return "FileSignature"
+
+    @property
     def requires_agent_review(self) -> bool:
         return True
 

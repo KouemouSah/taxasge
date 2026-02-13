@@ -6,8 +6,7 @@
  * @date 2026-01-19
  *
  * This sidebar automatically adapts its menu based on:
- * - Dynamic menu configuration from backend API (preferred)
- * - Static entity-menus.ts fallback
+ * - Dynamic menu configuration from backend API (workflow_menu_mapping + PredefinedWorkflow)
  * - The agent's permissions
  * - The agent's role (supervisor gets all menus)
  */

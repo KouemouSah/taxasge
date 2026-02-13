@@ -6004,7 +6004,9 @@
       "myEscalations": "Mes Escalades",
       "escalate": "Escalader",
       "escalations": "Escalades",
-      "createEscalation": "Nouvelle Escalade"
+      "createEscalation": "Nouvelle Escalade",
+      "fp": "Fonction Publique",
+      "visas": "Visas et Permis"
     },
     "batch": {
       "menuTitle": "Lots",

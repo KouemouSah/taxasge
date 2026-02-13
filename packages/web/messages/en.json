@@ -5764,7 +5764,9 @@
       "myEscalations": "My Escalations",
       "escalate": "Escalate",
       "escalations": "Escalations",
-      "createEscalation": "New Escalation"
+      "createEscalation": "New Escalation",
+      "fp": "Public Function",
+      "visas": "Visas & Permits"
     },
     "batch": {
       "menuTitle": "Batches",

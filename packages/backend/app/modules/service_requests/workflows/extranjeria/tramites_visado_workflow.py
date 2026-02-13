@@ -146,6 +146,18 @@ class TramitesVisadoWorkflow(PredefinedWorkflow):
         return False
 
     @property
+    def menu_icon(self) -> str:
+        return "Globe"
+
+    @property
+    def menu_group(self) -> str:
+        return "VISADO"
+
+    @property
+    def menu_title_key(self) -> str:
+        return "agent.nav.visas"
+
+    @property
     def requires_agent_review(self) -> bool:
         return True
 

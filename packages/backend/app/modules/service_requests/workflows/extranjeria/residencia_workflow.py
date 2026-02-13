@@ -200,6 +200,10 @@ class ResidenciaWorkflow(PredefinedWorkflow):
         return True
 
     @property
+    def menu_icon(self) -> str:
+        return "Globe"
+
+    @property
     def requires_agent_review(self) -> bool:
         return True
 

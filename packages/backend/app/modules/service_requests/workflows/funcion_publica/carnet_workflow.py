@@ -113,6 +113,10 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
         return True  # Biometric capture at CNEDOGE
 
     @property
+    def menu_icon(self) -> str:
+        return "Briefcase"
+
+    @property
     def requires_agent_review(self) -> bool:
         return True
 

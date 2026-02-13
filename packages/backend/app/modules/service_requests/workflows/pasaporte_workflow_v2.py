@@ -133,6 +133,10 @@ class PasaporteWorkflow(PredefinedWorkflow):
         return True  # Passport requires cita at CNEDOGE
 
     @property
+    def menu_icon(self) -> str:
+        return "Plane"
+
+    @property
     def requires_agent_review(self) -> bool:
         return True
 

@@ -36,22 +36,104 @@ from app.core.cache import (
 )
 
 
+
+def _build_workflow_indexes() -> tuple:
+    """
+    Build dynamic indexes from workflow_engine registry.
+
+    100% dynamic: reads menu_group, menu_icon, menu_title_key, requires_appointment
+    from each PredefinedWorkflow class. Zero hardcoded mapping — adding a new
+    workflow class automatically populates all indexes.
+
+    Returns:
+        (category_index, icon_index, menu_metadata)
+        - category_index: Dict[code, menu_group] for _get_workflow_category()
+        - icon_index: Dict[menu_group, icon] for _create_default_menu()
+        - menu_metadata: Dict[menu_group, {icon, title_key, has_appointments}] for sync
+    """
+    from app.modules.service_requests.services.workflow_engine import workflow_engine
+
+    category_index: Dict[str, str] = {}
+    icon_index: Dict[str, str] = {}
+    menu_metadata: Dict[str, Dict[str, Any]] = {}
+    all_workflows = workflow_engine.get_all_workflows()
+
+    for base_code, workflow in all_workflows.items():
+        # Get all codes this workflow handles (multi-code via get_all_workflow_codes)
+        if hasattr(workflow, 'get_all_workflow_codes'):
+            codes = [c.value for c in workflow.get_all_workflow_codes()]
+        else:
+            codes = [base_code.value]
+
+        # Read properties from workflow class (dynamic, no hardcoding)
+        menu_group = workflow.menu_group
+        icon = workflow.menu_icon
+        title_key = workflow.menu_title_key
+        has_appointments = workflow.requires_appointment
+
+        for code in codes:
+            category_index[code] = menu_group
+
+        # Build icon and metadata per menu_group (first workflow wins)
+        if menu_group not in icon_index:
+            icon_index[menu_group] = icon
+        if menu_group not in menu_metadata:
+            menu_metadata[menu_group] = {
+                "icon": icon,
+                "title_key": title_key,
+                "has_appointments": has_appointments,
+            }
+        elif has_appointments:
+            # If any workflow in the group needs appointments, enable for group
+            menu_metadata[menu_group]["has_appointments"] = True
+
+    logger.debug(
+        f"Built workflow indexes: {len(category_index)} codes → "
+        f"{len(icon_index)} menu groups"
+    )
+    return category_index, icon_index, menu_metadata
+
+
+# Lazy-initialized indexes
+_workflow_category_index: Optional[Dict[str, str]] = None
+_workflow_icon_index: Optional[Dict[str, str]] = None
+_workflow_menu_metadata: Optional[Dict[str, Dict[str, Any]]] = None
+
+
+def get_workflow_category_index() -> Dict[str, str]:
+    """Get workflow_code → menu_group mapping (lazy, from workflow_engine)."""
+    global _workflow_category_index, _workflow_icon_index, _workflow_menu_metadata
+    if _workflow_category_index is None:
+        _workflow_category_index, _workflow_icon_index, _workflow_menu_metadata = _build_workflow_indexes()
+    return _workflow_category_index
+
+
+def get_workflow_icon_index() -> Dict[str, str]:
+    """Get menu_group → icon mapping (lazy, from workflow_engine)."""
+    global _workflow_icon_index
+    if _workflow_icon_index is None:
+        get_workflow_category_index()  # builds all indexes
+    return _workflow_icon_index
+
+
+def get_workflow_menu_metadata() -> Dict[str, Dict[str, Any]]:
+    """Get menu_group → {icon, title_key, has_appointments} (lazy, from workflow_engine)."""
+    global _workflow_menu_metadata
+    if _workflow_menu_metadata is None:
+        get_workflow_category_index()  # builds all indexes
+    return _workflow_menu_metadata
+
+
+def invalidate_workflow_indexes() -> None:
+    """Reset all indexes (call after workflow registration changes)."""
+    global _workflow_category_index, _workflow_icon_index, _workflow_menu_metadata
+    _workflow_category_index = None
+    _workflow_icon_index = None
+    _workflow_menu_metadata = None
+
+
 class MenuConfigService:
     """Service for generating and managing menu configurations"""
-
-    # Workflow category icons mapping (fallback if no mapping rule exists)
-    # These are workflow prefixes, not entity codes - used for icon assignment
-    WORKFLOW_ICONS = {
-        'PASAPORTE': 'Plane',
-        'RESIDENCIA': 'Globe',
-        'CONDUCIR': 'Car',
-        'VEHICULO': 'Car',
-        'CONTRATO': 'FileSignature',
-        'VISADO': 'Globe',
-        'PERMISO_TRABAJO': 'Briefcase',
-        'CEDULA': 'CreditCard',
-        'ACTA': 'FileText',
-    }
 
     # NOTE: Module-based entities are now determined dynamically:
     # If role.menu_config IS NOT NULL → module-based (use role config)
@@ -328,9 +410,15 @@ class MenuConfigService:
         )
 
     def _get_workflow_category(self, workflow_code: str) -> str:
-        """Extract category from workflow code (e.g., PASAPORTE_NUEVO -> PASAPORTE)"""
-        parts = workflow_code.split('_')
-        return parts[0] if parts else workflow_code
+        """Get menu category from workflow registry (dynamic)."""
+        index = get_workflow_category_index()
+        if workflow_code in index:
+            return index[workflow_code]
+        logger.warning(
+            f"Workflow code '{workflow_code}' not found in registry. "
+            f"Register it in workflow_engine to enable dynamic menu generation."
+        )
+        return workflow_code
 
     async def _fetch_workflow_mappings(self, db_connection) -> List[Dict]:
         """Fetch all active workflow menu mappings (cached for 30 min)"""
@@ -363,10 +451,16 @@ class MenuConfigService:
         category: str,
         mappings: List[Dict]
     ) -> Optional[Dict]:
-        """Find mapping rule for a workflow category"""
+        """Find mapping rule for a workflow category (exact match first, then prefix)."""
+        # Pass 1: exact match (e.g. VISADO == VISADO from VISADO_%)
         for mapping in mappings:
-            pattern = mapping['workflow_pattern'].replace('%', '')
-            if category.startswith(pattern.rstrip('_')):
+            pattern = mapping['workflow_pattern'].replace('%', '').rstrip('_')
+            if category == pattern:
+                return mapping
+        # Pass 2: prefix match (e.g. PASAPORTE startsWith PASAPORTE)
+        for mapping in mappings:
+            pattern = mapping['workflow_pattern'].replace('%', '').rstrip('_')
+            if category.startswith(pattern):
                 return mapping
         return None
 
@@ -434,11 +528,16 @@ class MenuConfigService:
         # Convert underscores to hyphens for URL paths
         entity_path = entity_code.lower().replace('_', '-') if entity_code else 'default'
         base_path = f"/dashboard/agent/{entity_path}/{menu_id}"
-        icon = self.WORKFLOW_ICONS.get(category, 'FileText')
+        # Dynamic icon lookup from workflow_engine registry
+        icon = get_workflow_icon_index().get(category, 'FileText')
+
+        # Dynamic title key from workflow_engine registry
+        metadata = get_workflow_menu_metadata().get(category)
+        title_key = metadata["title_key"] if metadata else f"agent.nav.{menu_id}"
 
         return MenuItemBase(
             id=menu_id,
-            titleKey=f"agent.nav.{menu_id}",
+            titleKey=title_key,
             icon=icon,
             permission="service_request.view",
             items=[

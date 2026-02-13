@@ -5867,7 +5867,9 @@
       "myEscalations": "Mis Escalaciones",
       "escalate": "Escalar",
       "escalations": "Escalaciones",
-      "createEscalation": "Nueva Escalación"
+      "createEscalation": "Nueva Escalación",
+      "fp": "Función Pública",
+      "visas": "Visados y Permisos"
     },
     "batch": {
       "menuTitle": "Lotes",

@@ -198,6 +198,10 @@ class ConducirWorkflow(PredefinedWorkflow):
         return True  # For exam (NUEVO) or document retrieval
 
     @property
+    def menu_icon(self) -> str:
+        return "Car"
+
+    @property
     def requires_agent_review(self) -> bool:
         return True
 

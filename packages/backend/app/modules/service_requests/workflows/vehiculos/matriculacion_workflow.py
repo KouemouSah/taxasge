@@ -101,6 +101,10 @@ class MatriculacionTransferenciaWorkflow(PredefinedWorkflow):
         return False
 
     @property
+    def menu_icon(self) -> str:
+        return "Truck"
+
+    @property
     def requires_agent_review(self) -> bool:
         return True
 

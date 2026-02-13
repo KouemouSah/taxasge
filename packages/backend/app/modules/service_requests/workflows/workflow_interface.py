@@ -655,6 +655,28 @@ class PredefinedWorkflow(ABC):
         """Override if workflow has sub-types (e.g., certificate types, leave reasons)."""
         return []
 
+    @property
+    def menu_icon(self) -> str:
+        """Lucide icon name for agent sidebar menu. Override per workflow class."""
+        return "FileText"
+
+    @property
+    def menu_group(self) -> str:
+        """
+        Menu group key for workflow_menu_mapping pattern matching.
+        Determines how workflows are grouped in agent sidebar.
+        Default: first word of workflow_code (e.g. PASAPORTE_NUEVO → PASAPORTE).
+        Override for workflows where prefix doesn't match grouping
+        (e.g. TramitesVisado: PRORROGA_VISADO → override to "VISADO").
+        """
+        code = self.workflow_code.value
+        return code.split('_')[0] if '_' in code else code
+
+    @property
+    def menu_title_key(self) -> str:
+        """i18n key for menu title. Default derived from menu_group."""
+        return f"agent.nav.{self.menu_group.lower()}"
+
     @abstractmethod
     def _setup_workflow(self) -> None:
         """
