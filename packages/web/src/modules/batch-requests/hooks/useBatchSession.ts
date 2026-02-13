@@ -138,6 +138,11 @@ function inferStepFromSession(session: BatchSession): BatchWizardStep {
   if (session.beneficiaries.length > 0) {
     return BatchWizardStep.BENEFICIARY_ROSTER
   }
+  // Session exists with workflow selected but no beneficiaries yet
+  // → freshly created session, skip to beneficiary roster
+  if (session.workflowCode) {
+    return BatchWizardStep.BENEFICIARY_ROSTER
+  }
   return BatchWizardStep.WORKFLOW_SELECTION
 }
 
