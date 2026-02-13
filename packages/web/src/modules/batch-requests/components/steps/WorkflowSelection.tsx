@@ -115,24 +115,26 @@ export function WorkflowSelection({ hook, onSessionCreated }: WorkflowSelectionP
           <SelectContent>
             {categories.map((cat) => {
               const catWorkflows = workflows.filter((w) => w.category === cat)
-              const catKey = `workflowSelection.category_${cat.toLowerCase()}` as Parameters<typeof t>[0]
-              let catLabel: string
-              try { catLabel = t(catKey) } catch { catLabel = cat }
+              // Category labels: use i18n if available, otherwise use raw category
+              const CATEGORY_LABELS: Record<string, string> = {
+                IDENTIDAD: 'Identidad',
+                CONDUCCION: 'Conducción',
+                CONTRATOS: 'Contratos',
+                EXTRANJERIA: 'Extranjería',
+                FUNCION_PUBLICA: 'Función Pública',
+                VEHICULOS: 'Vehículos',
+                OTROS: 'Otros',
+              }
+              const catLabel = CATEGORY_LABELS[cat] || cat
 
-              return catWorkflows.map((wf) => {
-                const wfKey = `workflowSelection.workflow_${wf.code}` as Parameters<typeof t>[0]
-                let wfLabel: string
-                try { wfLabel = t(wfKey) } catch { wfLabel = wf.service_name_es }
-
-                return (
-                  <SelectItem key={wf.code} value={wf.code}>
-                    <span className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">{catLabel}</span>
-                      <span>{wfLabel}</span>
-                    </span>
-                  </SelectItem>
-                )
-              })
+              return catWorkflows.map((wf) => (
+                <SelectItem key={wf.code} value={wf.code}>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">{catLabel}</span>
+                    <span>{wf.service_name_es}</span>
+                  </span>
+                </SelectItem>
+              ))
             })}
           </SelectContent>
         </Select>
@@ -147,12 +149,18 @@ export function WorkflowSelection({ hook, onSessionCreated }: WorkflowSelectionP
             </SelectTrigger>
             <SelectContent>
               {solicitudTypes.map((type) => {
-                const key = `workflowSelection.solicitud_${type}` as Parameters<typeof t>[0]
-                let label: string
-                try { label = t(key) } catch { label = type }
+                const SOLICITUD_LABELS: Record<string, string> = {
+                  expedicion: 'Expedición',
+                  renovacion: 'Renovación',
+                  duplicado: 'Duplicado',
+                  prorroga: 'Prórroga',
+                  primera_matriculacion: 'Primera Matriculación',
+                  renovacion_itv: 'Renovación ITV',
+                  duplicado_permiso: 'Duplicado Permiso',
+                }
                 return (
                   <SelectItem key={type} value={type}>
-                    {label}
+                    {SOLICITUD_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                   </SelectItem>
                 )
               })}
