@@ -71,6 +71,19 @@ const SR_STATUS_COLORS: Record<string, string> = {
   EXPIRED: 'bg-gray-200 text-gray-600',
 }
 
+const SR_STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: 'Enviado',
+  submitted: 'Enviado',
+  PENDING_REVIEW: 'Pendiente de revisión',
+  pending_review: 'Pendiente de revisión',
+  UNDER_REVIEW: 'En revisión',
+  DOSSIER_VALIDE: 'Dossier validado',
+  APPROVED: 'Aprobado',
+  REJECTED: 'Rechazado',
+  COMPLETED: 'Completado',
+  EXPIRED: 'Expirado',
+}
+
 const REJECTION_REASONS = [
   'documents_incomplete',
   'documents_invalid',
@@ -78,6 +91,14 @@ const REJECTION_REASONS = [
   'payment_issue',
   'other',
 ]
+
+const REJECTION_REASON_LABELS: Record<string, string> = {
+  documents_incomplete: 'Documentos incompletos',
+  documents_invalid: 'Documentos inválidos',
+  identity_mismatch: 'Discrepancia de identidad',
+  payment_issue: 'Problema de pago',
+  other: 'Otro motivo',
+}
 
 interface AgentBatchDetailProps {
   entityCode: string
@@ -296,19 +317,11 @@ export function AgentBatchDetail({ entityCode, batchId, basePath }: AgentBatchDe
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {batch.shared_documents.map((doc) => {
-                let docLabel: string
-                try {
-                  docLabel = tBatch(`sharedDocs.docType_${doc.document_code}` as Parameters<typeof tBatch>[0])
-                } catch {
-                  docLabel = doc.file_name || doc.document_code
-                }
-                return (
-                  <Badge key={doc.document_code} variant="outline" title={doc.file_name}>
-                    {docLabel}
-                  </Badge>
-                )
-              })}
+              {batch.shared_documents.map((doc) => (
+                <Badge key={doc.document_code} variant="outline" title={doc.file_name}>
+                  {doc.file_name || doc.document_code.replace(/_/g, ' ')}
+                </Badge>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -346,7 +359,7 @@ export function AgentBatchDetail({ entityCode, batchId, basePath }: AgentBatchDe
                   <TableCell>
                     {item.sr_status ? (
                       <Badge className={SR_STATUS_COLORS[item.sr_status] || 'bg-gray-100'}>
-                        {t(`batch.srStatus_${item.sr_status}` as Parameters<typeof t>[0])}
+                        {SR_STATUS_LABELS[item.sr_status] || item.sr_status}
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground">-</span>
@@ -402,7 +415,7 @@ export function AgentBatchDetail({ entityCode, batchId, basePath }: AgentBatchDe
                   <SelectContent>
                     {REJECTION_REASONS.map((reason) => (
                       <SelectItem key={reason} value={reason}>
-                        {t(`batch.rejectionReason_${reason}` as Parameters<typeof t>[0])}
+                        {REJECTION_REASON_LABELS[reason] || reason.replace(/_/g, ' ')}
                       </SelectItem>
                     ))}
                   </SelectContent>

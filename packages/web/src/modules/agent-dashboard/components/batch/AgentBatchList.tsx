@@ -198,7 +198,7 @@ export function AgentBatchList({ entityCode, basePath }: AgentBatchListProps) {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {tBatch(`workflowSelection.workflow_${batch.workflow_code}` as Parameters<typeof tBatch>[0])}
+                          {batch.workflow_code.replace(/_/g, ' ')}
                         </Badge>
                       </TableCell>
                       <TableCell>{batch.total_items}</TableCell>

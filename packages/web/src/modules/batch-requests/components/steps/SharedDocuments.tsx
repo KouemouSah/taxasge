@@ -89,13 +89,6 @@ export function SharedDocuments({ hook }: SharedDocumentsProps) {
 
   // Helper to get label for a document code
   const getDocLabel = (code: string): string => {
-    // Try i18n key first
-    const i18nKey = `sharedDocs.docType_${code}` as Parameters<typeof t>[0]
-    try {
-      const translated = t(i18nKey)
-      if (translated !== i18nKey) return translated
-    } catch { /* fallback below */ }
-
     // Fallback: use name_es from workflow config
     const doc = documentOptions.find((d) => d.code === code)
     if (doc) return doc.name_es

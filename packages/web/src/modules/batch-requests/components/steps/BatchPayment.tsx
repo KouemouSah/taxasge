@@ -146,15 +146,23 @@ export function BatchPayment({ hook, onSuccess }: BatchPaymentProps) {
       minimumFractionDigits: 0,
     }).format(amount)
 
-  // Payment method labels from i18n
-  const getMethodLabel = (method: string): string => {
-    const key = `payment.method_${method}` as const
-    try { return t(key) } catch { return method }
+  // Payment method labels from i18n (keys exist in all 3 languages)
+  const PAYMENT_METHOD_LABELS: Record<string, string> = {
+    mobile_money: 'BANGE Mobile Money',
+    card: 'Tarjeta bancaria',
+    bank_transfer: 'Transferencia bancaria',
+    cash: 'Efectivo',
   }
-  const getMethodDescription = (method: string): string => {
-    const key = `payment.methodDesc_${method}` as const
-    try { return t(key) } catch { return '' }
+  const PAYMENT_METHOD_DESCS: Record<string, string> = {
+    mobile_money: 'Pago mediante BANGE Mobile Money',
+    card: 'Pago con tarjeta de crédito o débito',
+    bank_transfer: 'Transferencia bancaria directa',
+    cash: 'Pago en efectivo en oficina',
   }
+  const getMethodLabel = (method: string): string =>
+    PAYMENT_METHOD_LABELS[method] || method
+  const getMethodDescription = (method: string): string =>
+    PAYMENT_METHOD_DESCS[method] || ''
 
   return (
     <div className="space-y-6">
