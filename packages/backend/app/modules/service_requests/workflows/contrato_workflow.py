@@ -1136,6 +1136,18 @@ class ContratoWorkflow(PredefinedWorkflow):
 
     # === Workflow Code Resolution ===
 
+    def get_all_workflow_codes(self) -> List[WorkflowCode]:
+        """All 7 contract type codes managed by this workflow."""
+        return [
+            WorkflowCode.CONTRATO_OBRA,
+            WorkflowCode.CONTRATO_SERVICIO,
+            WorkflowCode.CONTRATO_SUMINISTRO,
+            WorkflowCode.CONTRATO_CONCESION,
+            WorkflowCode.CONTRATO_JOINT_VENTURE,
+            WorkflowCode.CONTRATO_ARRENDAMIENTO,
+            WorkflowCode.CONTRATO_OTRO,
+        ]
+
     def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
         """Get the specific WorkflowCode for a contract type (not sub_type)."""
         mapping = {

@@ -170,8 +170,17 @@ _DEFAULT_PREVIEW_SECTIONS = ["identity", "documents"]
 
 # ─── Helpers (extracted from admin_routes.py) ───────────────────────────────
 
-def _extract_tariff_from_workflow(workflow, sub_type: str) -> Tuple[int, str]:
-    """Extract tariff amount and type from a workflow class."""
+def _extract_tariff_from_workflow(
+    workflow, sub_type: str, code: str = "",
+) -> Tuple[int, str]:
+    """Extract tariff amount and type from a workflow class.
+
+    Uses multiple key strategies to find the right amount in fixed_amounts:
+    1. Exact sub_type match (case-insensitive)
+    2. Code-derived parts (e.g. VEHICULO_DUPLICADO_PERMISO → DUPLICADO)
+    3. Standard fallbacks (expedicion, renovacion)
+    4. First non-zero value as representative
+    """
     tariff_config = getattr(workflow, '_tariff_config', None)
     tariff_type = "FIXED"
 
@@ -180,30 +189,63 @@ def _extract_tariff_from_workflow(workflow, sub_type: str) -> Tuple[int, str]:
         if config_type:
             tariff_type = config_type.value if hasattr(config_type, 'value') else str(config_type)
 
+        # For non-fixed types, amount is computed dynamically
+        if tariff_type in ("PERCENTAGE", "RBC", "NOTA_INGRESO"):
+            # Extract base amount from fixed_amounts if available
+            fixed_amounts = getattr(tariff_config, 'fixed_amounts', {})
+            if fixed_amounts:
+                amount = fixed_amounts.get(sub_type) or fixed_amounts.get(sub_type.lower())
+                if amount:
+                    return (amount, tariff_type)
+                # Use first non-zero as representative
+                for v in fixed_amounts.values():
+                    if v and v > 0:
+                        return (v, tariff_type)
+            return (0, tariff_type)
+
         if tariff_type == "FIXED" and hasattr(tariff_config, 'fixed_amounts'):
             fixed_amounts = tariff_config.fixed_amounts
-            tariff_amount = (
-                fixed_amounts.get(sub_type) or
-                fixed_amounts.get(sub_type.lower()) or
-                fixed_amounts.get('expedicion') or
-                fixed_amounts.get('renovacion') or
-                0
-            )
-            return (tariff_amount, tariff_type)
+            # Strategy 1: exact sub_type match
+            amount = fixed_amounts.get(sub_type) or fixed_amounts.get(sub_type.lower())
+            if amount and amount > 0:
+                return (amount, tariff_type)
+
+            # Strategy 2: code-derived parts
+            # e.g. code=VEHICULO_DUPLICADO_PERMISO → try DUPLICADO_PERMISO, DUPLICADO
+            if code and '_' in code:
+                code_parts = code.split('_', 1)[1].split('_')
+                for part in code_parts:
+                    amount = fixed_amounts.get(part) or fixed_amounts.get(part.lower())
+                    if amount and amount > 0:
+                        return (amount, tariff_type)
+
+            # Strategy 3: standard fallbacks
+            for key in ('expedicion', 'renovacion'):
+                amount = fixed_amounts.get(key)
+                if amount and amount > 0:
+                    return (amount, tariff_type)
+
+            # Strategy 4: first non-zero as representative
+            for v in fixed_amounts.values():
+                if v and v > 0:
+                    return (v, tariff_type)
+
+            return (0, tariff_type)
 
     if hasattr(workflow, 'TARIFF'):
         return (getattr(workflow, 'TARIFF', 0), tariff_type)
 
     if hasattr(workflow, 'TARIFFS'):
         tariffs_dict = workflow.TARIFFS
-        tariff_amount = (
-            tariffs_dict.get(sub_type) or
-            tariffs_dict.get(sub_type.lower()) or
-            0
-        )
-        return (tariff_amount, tariff_type)
-
-    if tariff_type in ("PERCENTAGE", "RBC", "NOTA_INGRESO"):
+        amount = tariffs_dict.get(sub_type) or tariffs_dict.get(sub_type.lower())
+        if amount and amount > 0:
+            return (amount, tariff_type)
+        # Code-derived fallback
+        if code and '_' in code:
+            for part in code.split('_', 1)[1].split('_'):
+                amount = tariffs_dict.get(part) or tariffs_dict.get(part.lower())
+                if amount and amount > 0:
+                    return (amount, tariff_type)
         return (0, tariff_type)
 
     return (0, tariff_type)
@@ -242,33 +284,62 @@ def _resolve_workflow_codes(workflow, base_code) -> List[Tuple[str, str]]:
     """
     Resolve all (code, sub_type) pairs for a workflow class.
 
-    Three patterns:
-    A) allowed_sub_types + get_workflow_code_for_subtype → iterate sub_types
-    B) get_all_workflow_codes() without sub_types → iterate codes
-    C) Single-code → use base_code
-    """
-    allowed_sub_types = getattr(workflow, 'allowed_sub_types', [])
-    has_subtype_mapping = hasattr(workflow, 'get_workflow_code_for_subtype')
+    Priority order:
+    B) get_all_workflow_codes() — definitive code list (preferred)
+    A) allowed_sub_types + get_workflow_code_for_subtype — legacy mapping
+    C) Single-code from base_code — fallback
 
-    if allowed_sub_types and has_subtype_mapping:
-        # Pattern A
+    Pattern B is checked FIRST because allowed_sub_types may contain
+    solicitud types (e.g. REGISTRO_NUEVO) that don't match the
+    get_workflow_code_for_subtype mapping (e.g. OBRA→CONTRATO_OBRA).
+    get_all_workflow_codes() is always authoritative.
+    """
+    # Pattern B: get_all_workflow_codes() (definitive, preferred)
+    if hasattr(workflow, 'get_all_workflow_codes'):
+        codes = workflow.get_all_workflow_codes()
+
+        # Build reverse map for accurate sub_type derivation:
+        # sub_type is used for tariff/document extraction, so correctness matters.
+        # Collision detection: if N sub_types map to the same code, it means
+        # allowed_sub_types is a different dimension (e.g. solicitud types vs
+        # contract types in ContratoWorkflow). Skip collided entries.
+        reverse_map = {}
+        if hasattr(workflow, 'get_workflow_code_for_subtype'):
+            seen_codes: Dict[Any, List[str]] = {}
+            for sub in getattr(workflow, 'allowed_sub_types', []):
+                try:
+                    mapped_code = workflow.get_workflow_code_for_subtype(sub)
+                    if mapped_code not in seen_codes:
+                        seen_codes[mapped_code] = []
+                    seen_codes[mapped_code].append(sub)
+                except Exception:
+                    pass
+            # Only keep 1:1 mappings (no collisions)
+            for code_key, subs in seen_codes.items():
+                if len(subs) == 1:
+                    reverse_map[code_key] = subs[0]
+
+        pairs = []
+        for wf_code in codes:
+            # Use reverse_map if available, else strip category prefix
+            # split('_', 1)[1] gives full suffix: CONTRATO_JOINT_VENTURE → JOINT_VENTURE
+            sub = reverse_map.get(
+                wf_code,
+                wf_code.value.split('_', 1)[1] if '_' in wf_code.value else wf_code.value,
+            )
+            pairs.append((wf_code.value, sub))
+        return pairs
+
+    # Pattern A: allowed_sub_types + get_workflow_code_for_subtype
+    allowed_sub_types = getattr(workflow, 'allowed_sub_types', [])
+    if allowed_sub_types and hasattr(workflow, 'get_workflow_code_for_subtype'):
         pairs = []
         for sub_type in allowed_sub_types:
             wf_code = workflow.get_workflow_code_for_subtype(sub_type)
             pairs.append((wf_code.value, sub_type))
         return pairs
 
-    if hasattr(workflow, 'get_all_workflow_codes'):
-        # Pattern B
-        pairs = []
-        for wf_code in workflow.get_all_workflow_codes():
-            code_val = wf_code.value
-            # Derive sub_type from code for tariff extraction
-            sub = code_val.rsplit('_', 1)[-1] if '_' in code_val else code_val
-            pairs.append((code_val, sub))
-        return pairs
-
-    # Pattern C
+    # Pattern C: single code
     code_val = base_code.value
     sub = code_val.rsplit('_', 1)[-1] if '_' in code_val else code_val
     return [(code_val, sub)]
@@ -341,8 +412,11 @@ async def sync_all_workflows(
                 try:
                     name_es = SUBTYPE_NAMES_ES.get(code, code.replace('_', ' ').title())
                     parent_code = SUBTYPE_PARENT_MAPPING.get(code)
-                    is_parent = parent_code is None
-                    tariff_amount, tariff_type = _extract_tariff_from_workflow(workflow, sub_type)
+                    # All predefined workflows are real workflows, NOT category headers.
+                    # is_parent=True is reserved for generic "category" rows (e.g. "PASAPORTE").
+                    # The frontend filters out is_parent=True, so we must set False here.
+                    is_parent = False
+                    tariff_amount, tariff_type = _extract_tariff_from_workflow(workflow, sub_type, code)
 
                     if dry_run:
                         result.details.append({
@@ -367,6 +441,8 @@ async def sync_all_workflows(
                             is_generic, is_active, sla_hours, parent_workflow_code, is_parent
                         ) VALUES ($1, $2, $3, $4, $5, 'standard', $6, $7, FALSE, TRUE, $8, $9, $10)
                         ON CONFLICT (code) DO UPDATE SET
+                            name_es = EXCLUDED.name_es,
+                            description_es = EXCLUDED.description_es,
                             category = EXCLUDED.category,
                             entity_code = EXCLUDED.entity_code,
                             requires_agent_validation = EXCLUDED.requires_agent_validation,
@@ -390,39 +466,38 @@ async def sync_all_workflows(
                     elif row:
                         result.workflows_updated += 1
 
-                    # ── Step 4: UPSERT tariff ──
-                    if tariff_amount > 0 or tariff_type in ("RBC", "PERCENTAGE", "NOTA_INGRESO"):
-                        # Partial unique index: (workflow_code, solicitud_type) WHERE is_active AND effective_to IS NULL
-                        existing_tariff = await db_connection.fetchrow(
+                    # ── Step 4: UPSERT tariff (always for predefined — 0 = free, not "no tariff") ──
+                    # Partial unique index: (workflow_code, solicitud_type) WHERE is_active AND effective_to IS NULL
+                    existing_tariff = await db_connection.fetchrow(
+                        """
+                        SELECT id FROM workflow_tariffs
+                        WHERE workflow_code = $1 AND solicitud_type = 'expedicion'
+                          AND is_active = TRUE AND effective_to IS NULL
+                        """,
+                        code,
+                    )
+                    if existing_tariff:
+                        await db_connection.execute(
                             """
-                            SELECT id FROM workflow_tariffs
-                            WHERE workflow_code = $1 AND solicitud_type = 'expedicion'
-                              AND is_active = TRUE AND effective_to IS NULL
+                            UPDATE workflow_tariffs
+                            SET amount = $2, tariff_type = $3, updated_at = NOW()
+                            WHERE id = $1
                             """,
-                            code,
+                            existing_tariff['id'], tariff_amount, tariff_type,
                         )
-                        if existing_tariff:
-                            await db_connection.execute(
-                                """
-                                UPDATE workflow_tariffs
-                                SET amount = $2, tariff_type = $3, updated_at = NOW()
-                                WHERE id = $1
-                                """,
-                                existing_tariff['id'], tariff_amount, tariff_type,
-                            )
-                            result.tariffs_updated += 1
-                        else:
-                            await db_connection.execute(
-                                """
-                                INSERT INTO workflow_tariffs (
-                                    workflow_code, solicitud_type, amount, tariff_type,
-                                    currency, is_active
-                                ) VALUES ($1, 'expedicion', $2, $3, 'XAF', true)
-                                """,
-                                code, tariff_amount, tariff_type,
-                            )
-                            result.tariffs_created += 1
-                        result.tariffs_synced += 1
+                        result.tariffs_updated += 1
+                    else:
+                        await db_connection.execute(
+                            """
+                            INSERT INTO workflow_tariffs (
+                                workflow_code, solicitud_type, amount, tariff_type,
+                                currency, is_active
+                            ) VALUES ($1, 'expedicion', $2, $3, 'XAF', true)
+                            """,
+                            code, tariff_amount, tariff_type,
+                        )
+                        result.tariffs_created += 1
+                    result.tariffs_synced += 1
 
                     # ── Step 5: UPSERT document requirements ──
                     doc_requirements = _extract_document_requirements(workflow, sub_type)

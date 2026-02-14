@@ -98,7 +98,7 @@ interface WorkflowDomain {
   prefixes: string[]  // Workflow code prefixes that belong to this domain
   name: string
   description: string
-  icon: 'passport' | 'home' | 'car' | 'license' | 'contract' | 'public' | 'other'
+  icon: 'passport' | 'home' | 'car' | 'license' | 'contract' | 'public' | 'globe' | 'other'
   color: string  // Tailwind color class
 }
 
@@ -150,6 +150,14 @@ const WORKFLOW_DOMAINS: WorkflowDomain[] = [
     description: 'Trámites de funcionarios públicos',
     icon: 'public',
     color: 'indigo',
+  },
+  {
+    id: 'visado',
+    prefixes: ['PRORROGA_', 'VISADO_', 'PERMANENCIA_', 'SALIDA_'],
+    name: 'Visados y Permisos',
+    description: 'Trámites de visados: prórrogas, alternativos, permanencias',
+    icon: 'globe',
+    color: 'cyan',
   },
   {
     id: 'otros',
