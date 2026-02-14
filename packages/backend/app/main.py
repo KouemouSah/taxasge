@@ -95,30 +95,22 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
 
-        # Sync workflows table + menu_mapping + display_config from Python classes
+        # Sync all workflow data from Python classes → DB (single call)
         try:
-            from app.modules.service_requests.services.workflow_sync_service import (
-                sync_workflows_table,
-                sync_workflow_config,
-            )
+            from app.modules.service_requests.services.workflow_sync_service import sync_all_workflows
             async with db_manager.get_connection() as conn:
-                # Step 1: Sync workflows table (INSERT/UPDATE + deactivate orphans)
-                wf_result = await sync_workflows_table(conn)
+                r = await sync_all_workflows(conn)
                 logger.info(
-                    f"✅ Workflows synced: {wf_result['workflows_synced']} "
-                    f"({wf_result['workflows_created']} new, "
-                    f"{wf_result['workflows_deactivated']} deactivated)"
+                    f"✅ Workflows synced: {r.workflows_synced} "
+                    f"({r.workflows_created} new, {r.workflows_updated} updated, "
+                    f"{r.workflows_deactivated} orphans deleted), "
+                    f"{r.tariffs_synced} tariffs, {r.documents_synced} docs, "
+                    f"{r.menu_mappings_synced} menus, {r.display_configs_synced} display configs"
                 )
-                # Step 2: Sync menu_mapping + display_config
-                sync_result = await sync_workflow_config(conn)
-                logger.info(
-                    f"✅ Workflow config synced: {sync_result['mappings_synced']} menu mappings "
-                    f"({sync_result['mappings_created']} new), "
-                    f"{sync_result['configs_synced']} display configs "
-                    f"({sync_result['configs_created']} new)"
-                )
+                if r.errors:
+                    logger.warning(f"⚠️ Workflow sync errors: {r.errors}")
         except Exception as e:
-            logger.warning(f"⚠️ Failed to sync workflow config (non-blocking): {e}")
+            logger.warning(f"⚠️ Failed to sync workflows (non-blocking): {e}")
 
         # Initialize Event Bus and register handlers
         try:
