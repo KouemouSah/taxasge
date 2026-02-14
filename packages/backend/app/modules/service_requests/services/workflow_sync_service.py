@@ -433,6 +433,8 @@ async def sync_all_workflows(
                         continue
 
                     # ── Step 3: UPSERT workflow ──
+                    # No WHERE filter: predefined workflows ALWAYS take over,
+                    # even if an old row exists with is_generic=TRUE.
                     row = await db_connection.fetchrow(
                         """
                         INSERT INTO workflows (
@@ -450,9 +452,9 @@ async def sync_all_workflows(
                             sla_hours = EXCLUDED.sla_hours,
                             parent_workflow_code = EXCLUDED.parent_workflow_code,
                             is_parent = EXCLUDED.is_parent,
+                            is_generic = EXCLUDED.is_generic,
                             is_active = TRUE,
                             updated_at = NOW()
-                        WHERE workflows.is_generic = FALSE
                         RETURNING (xmax = 0) AS is_new
                         """,
                         code, name_es, f"Trámite de {name_es}",
@@ -466,27 +468,19 @@ async def sync_all_workflows(
                     elif row:
                         result.workflows_updated += 1
 
-                    # ── Step 4: UPSERT tariff (always for predefined — 0 = free, not "no tariff") ──
-                    # Partial unique index: (workflow_code, solicitud_type) WHERE is_active AND effective_to IS NULL
-                    existing_tariff = await db_connection.fetchrow(
-                        """
-                        SELECT id FROM workflow_tariffs
-                        WHERE workflow_code = $1 AND solicitud_type = 'expedicion'
-                          AND is_active = TRUE AND effective_to IS NULL
-                        """,
-                        code,
-                    )
-                    if existing_tariff:
+                    # Workflow row secured — add to synced_codes IMMEDIATELY.
+                    # Tariff/document failures must NOT cause orphan deletion.
+                    synced_codes.add(code)
+                    result.workflows_synced += 1
+
+                    # ── Step 4: REPLACE tariffs (delete stale + insert fresh) ──
+                    # Old data may have solicitud_type='renovacion'/'duplicado' which
+                    # the previous SELECT-by-expedicion approach never cleaned up.
+                    try:
                         await db_connection.execute(
-                            """
-                            UPDATE workflow_tariffs
-                            SET amount = $2, tariff_type = $3, updated_at = NOW()
-                            WHERE id = $1
-                            """,
-                            existing_tariff['id'], tariff_amount, tariff_type,
+                            "DELETE FROM workflow_tariffs WHERE workflow_code = $1",
+                            code,
                         )
-                        result.tariffs_updated += 1
-                    else:
                         await db_connection.execute(
                             """
                             INSERT INTO workflow_tariffs (
@@ -497,52 +491,44 @@ async def sync_all_workflows(
                             code, tariff_amount, tariff_type,
                         )
                         result.tariffs_created += 1
-                    result.tariffs_synced += 1
+                        result.tariffs_synced += 1
+                    except Exception as e:
+                        result.errors.append(f"Tariff error for {code}: {e}")
 
-                    # ── Step 5: UPSERT document requirements ──
-                    doc_requirements = _extract_document_requirements(workflow, sub_type)
-                    for doc_req in doc_requirements:
-                        condition_value = doc_req.get('condition_value') or {}
-                        condition_json = json.dumps(condition_value) if isinstance(condition_value, dict) else condition_value
-
-                        doc_row = await db_connection.fetchrow(
-                            """
-                            INSERT INTO workflow_document_requirements (
-                                workflow_code, document_code, document_name_es,
-                                is_required, display_order, condition_type,
-                                condition_value, instructions_es, extraction_schema_key,
-                                is_active
-                            ) VALUES ($1, $2, $3, $4, $5, $6::document_condition_type_enum,
-                                      $7::jsonb, $8, $9, true)
-                            ON CONFLICT (workflow_code, document_code)
-                            DO UPDATE SET
-                                document_name_es = EXCLUDED.document_name_es,
-                                is_required = EXCLUDED.is_required,
-                                display_order = EXCLUDED.display_order,
-                                condition_type = EXCLUDED.condition_type,
-                                condition_value = EXCLUDED.condition_value,
-                                instructions_es = EXCLUDED.instructions_es,
-                                extraction_schema_key = EXCLUDED.extraction_schema_key,
-                                updated_at = NOW()
-                            RETURNING (xmax = 0) AS is_new
-                            """,
-                            code, doc_req['document_code'],
-                            doc_req['document_name_es'],
-                            doc_req['is_required'],
-                            doc_req['display_order'],
-                            doc_req['condition_type'].lower(),
-                            condition_json,
-                            doc_req.get('instructions_es'),
-                            doc_req.get('extraction_schema_key'),
+                    # ── Step 5: REPLACE document requirements (delete stale + insert fresh) ──
+                    try:
+                        await db_connection.execute(
+                            "DELETE FROM workflow_document_requirements WHERE workflow_code = $1",
+                            code,
                         )
-                        if doc_row and doc_row['is_new']:
-                            result.documents_created += 1
-                        elif doc_row:
-                            result.documents_updated += 1
-                        result.documents_synced += 1
+                        doc_requirements = _extract_document_requirements(workflow, sub_type)
+                        for doc_req in doc_requirements:
+                            condition_value = doc_req.get('condition_value') or {}
+                            condition_json = json.dumps(condition_value) if isinstance(condition_value, dict) else condition_value
 
-                    synced_codes.add(code)
-                    result.workflows_synced += 1
+                            await db_connection.execute(
+                                """
+                                INSERT INTO workflow_document_requirements (
+                                    workflow_code, document_code, document_name_es,
+                                    is_required, display_order, condition_type,
+                                    condition_value, instructions_es, extraction_schema_key,
+                                    is_active
+                                ) VALUES ($1, $2, $3, $4, $5, $6::document_condition_type_enum,
+                                          $7::jsonb, $8, $9, true)
+                                """,
+                                code, doc_req['document_code'],
+                                doc_req['document_name_es'],
+                                doc_req['is_required'],
+                                doc_req['display_order'],
+                                doc_req['condition_type'].lower(),
+                                condition_json,
+                                doc_req.get('instructions_es'),
+                                doc_req.get('extraction_schema_key'),
+                            )
+                            result.documents_created += 1
+                            result.documents_synced += 1
+                    except Exception as e:
+                        result.errors.append(f"Document error for {code}: {e}")
 
                 except Exception as e:
                     result.errors.append(f"Error syncing {code}: {e}")
