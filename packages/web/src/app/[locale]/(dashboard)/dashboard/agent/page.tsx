@@ -28,21 +28,19 @@ export default function AgentDashboardPage() {
     isError,
     error,
     context,
-    entityCode: _entityCode,
-    entityConfig,
+    entityCode,
     getBasePath,
     isMinistryAgent,
     ministryEntities,
   } = useAgentDashboard();
 
-  // Auto-redirect to entity dashboard if configured
+  // Auto-redirect to entity dashboard if entity is known
   useEffect(() => {
-    if (!isLoading && entityConfig?.basePath) {
-      // If there's a specific entity dashboard, redirect there
-      const targetPath = `/${locale}${entityConfig.basePath}`;
+    if (!isLoading && entityCode) {
+      const targetPath = getBasePath();
       router.push(targetPath);
     }
-  }, [isLoading, entityConfig, locale, router]);
+  }, [isLoading, entityCode, getBasePath, locale, router]);
 
   // Loading state
   if (isLoading) {
@@ -83,8 +81,8 @@ export default function AgentDashboardPage() {
     );
   }
 
-  // If entityConfig exists, we're waiting for redirect
-  if (entityConfig) {
+  // If entity code is known, we're waiting for redirect
+  if (entityCode) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">

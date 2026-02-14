@@ -186,6 +186,7 @@ class MenuConfigService:
             raise ValueError(f"Agent profile not found: {agent_profile_id}")
 
         entity_code = agent_data.get('entity_code')
+        entity_name = agent_data.get('entity_name')
         role_code = agent_data.get('role_code')
         role_menu_config = agent_data.get('role_menu_config')
         role_dashboard_config = agent_data.get('role_dashboard_config')
@@ -237,13 +238,18 @@ class MenuConfigService:
                 dashboard_config, agent_dashboard_overrides
             )
 
-        # 7. Get user permissions
+        # 7. Derive entity_icon from entity's workflow categories (100% dynamic)
+        entity_icon = self._derive_entity_icon(available_workflows)
+
+        # 8. Get user permissions
         perm_repo = UserPermissionRepository(db_connection)
         permissions = await perm_repo.get_all_permission_names(str(user_id))
 
         result = AgentMenuConfigResponse(
             agent_profile_id=agent_profile_id,
             entity_code=entity_code,
+            entity_name=entity_name,
+            entity_icon=entity_icon,
             entity_type=entity_type,
             role_code=role_code,
             available_workflows=available_workflows,
@@ -276,6 +282,7 @@ class MenuConfigService:
                 ap.menu_overrides,
                 ap.dashboard_overrides,
                 e.code as entity_code,
+                e.name as entity_name,
                 e.workflow_codes as entity_workflow_codes,
                 r.code as role_code,
                 r.menu_config as role_menu_config,
@@ -409,6 +416,25 @@ class MenuConfigService:
             menus=menus
         )
 
+    def _derive_entity_icon(self, workflow_codes: List[str]) -> Optional[str]:
+        """
+        Derive entity icon from its workflow codes.
+
+        Uses the dynamic workflow indexes: workflow_code → menu_group → icon.
+        Returns the icon of the first workflow's category. 100% dynamic.
+        """
+        if not workflow_codes:
+            return None
+        category_index = get_workflow_category_index()
+        icon_index = get_workflow_icon_index()
+        for code in workflow_codes:
+            menu_group = category_index.get(code)
+            if menu_group:
+                icon = icon_index.get(menu_group)
+                if icon:
+                    return icon
+        return None
+
     def _get_workflow_category(self, workflow_code: str) -> str:
         """Get menu category from workflow registry (dynamic)."""
         index = get_workflow_category_index()
@@ -529,11 +555,25 @@ class MenuConfigService:
         entity_path = entity_code.lower().replace('_', '-') if entity_code else 'default'
         base_path = f"/dashboard/agent/{entity_path}/{menu_id}"
         # Dynamic icon lookup from workflow_engine registry
-        icon = get_workflow_icon_index().get(category, 'FileText')
+        icon_index = get_workflow_icon_index()
+        icon = icon_index.get(category)
+        if not icon:
+            logger.warning(
+                f"No icon found for category '{category}' in workflow registry. "
+                f"Register it via PredefinedWorkflow.menu_icon."
+            )
+            icon = 'FileText'
 
         # Dynamic title key from workflow_engine registry
         metadata = get_workflow_menu_metadata().get(category)
-        title_key = metadata["title_key"] if metadata else f"agent.nav.{menu_id}"
+        if metadata:
+            title_key = metadata["title_key"]
+        else:
+            logger.warning(
+                f"No menu metadata found for category '{category}' in workflow registry. "
+                f"Register it via PredefinedWorkflow.menu_title_key."
+            )
+            title_key = f"agent.nav.{menu_id}"
 
         return MenuItemBase(
             id=menu_id,

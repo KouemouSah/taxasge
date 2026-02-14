@@ -2,8 +2,11 @@
  * useAgentDashboard Hook
  * Fetches current user's agent profile and determines dashboard configuration
  *
- * Updated 2026-01-19: Now supports dynamic menu configuration from backend API.
- * Falls back to static entity-menus.ts if API fails.
+ * Updated 2026-01-19: Dynamic menu configuration from backend API.
+ * Updated 2026-02-14: 100% dynamic — backend API is the sole source of truth.
+ * No static imports from entity-menus.ts. All entity metadata (icon, name,
+ * menus) comes from GET /menu-config/me which reads from PredefinedWorkflow
+ * classes synced to DB at startup.
  *
  * @module agent-dashboard/hooks
  * @date 2026-01-19
@@ -18,7 +21,6 @@ import { getAuthData } from '@/core/auth/storage';
 import apiClient from '@/core/api/client';
 import type { AgentDashboardContext, EntityCode, MenuItem, MinistryCode } from '../types';
 import { MINISTRY_ENTITIES } from '../types';
-import { getEntityConfig, getEntityCodeFromName, ENTITY_CONFIGS } from '../config/entity-menus';
 import type { AgentMenuConfigResponse, DynamicMenuItem } from '../types/menu-config';
 import { FEATURE_DYNAMIC_MENUS } from '@/core/config/features';
 
@@ -117,16 +119,15 @@ interface UseAgentDashboardReturn {
   // Agent context
   context: AgentDashboardContext | null;
 
-  // Entity configuration
+  // Entity info (from backend API — 100% dynamic)
   entityCode: EntityCode | null;
-  entityConfig: ReturnType<typeof getEntityConfig> | null;
+  entityName: string | null;
+  entityIcon: string | null;
 
-  // Menu items (filtered by permissions)
-  // For ministry_agent: merged menus from all entities of the ministry
-  // Now supports dynamic menus from backend API
+  // Menu items (legacy — always empty, kept for backward compatibility)
   menuItems: MenuItem[];
 
-  // Dynamic menu items from API (if available)
+  // Dynamic menu items from API
   dynamicMenuItems: DynamicMenuItem[];
   useDynamicMenus: boolean;
 
@@ -183,40 +184,25 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     queryKey: ['agent-menu-config', 'me', userState.user?.id],
     queryFn: async () => {
       if (!userState.user?.id || !isAgent) return null;
-      try {
-        const response = await apiClient.get<AgentMenuConfigResponse>('/menu-config/me');
-        return response.data;
-      } catch (err) {
-        console.warn('[useAgentDashboard] Menu config API not available, using static config');
-        return null;
-      }
+      const response = await apiClient.get<AgentMenuConfigResponse>('/menu-config/me');
+      return response.data;
     },
     enabled: userState.isLoaded && !!userState.user?.id && isAgent,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: 1, // Only retry once since we have static fallback
+    retry: 2,
   });
 
-  // Use dynamic menus if:
-  // 1. Feature flag is enabled (default: true, set NEXT_PUBLIC_FEATURE_DYNAMIC_MENUS=false to disable)
-  // 2. API returns menu config with menus
+  // Use dynamic menus if feature flag is enabled and API returns menus
   const hasDynamicMenusFromApi = !!menuConfigData?.menu_config?.menus?.length;
   const useDynamicMenus = FEATURE_DYNAMIC_MENUS && hasDynamicMenusFromApi;
 
-  // Warning: Detect fallback scenarios and log appropriately
-  // has_role_menu_config = true means DB has menu_config, so if menus are empty, it's a parsing issue
+  // Log critical errors: DB has menu_config but parsing failed
   if (typeof window !== 'undefined' && !menuConfigLoading && menuConfigData) {
     if (menuConfigData.has_role_menu_config && !hasDynamicMenusFromApi) {
-      // DB has config but parsing failed - critical issue
       console.error(
-        `[useAgentDashboard] ❌ ERREUR: role.menu_config existe en DB mais aucun menu parsé. ` +
-        `role=${menuConfigData.role_code}. Vérifier le format JSON dans roles.menu_config.`
-      );
-    } else if (!menuConfigData.has_role_menu_config && !hasDynamicMenusFromApi) {
-      // No DB config - expected fallback for non-migrated entities
-      console.info(
-        `[useAgentDashboard] ℹ️ Fallback statique: role.menu_config NULL en DB. ` +
-        `role=${menuConfigData.role_code}, entity_type=${menuConfigData.entity_type}`
+        `[useAgentDashboard] role.menu_config exists in DB but no menus parsed. ` +
+        `role=${menuConfigData.role_code}. Check JSON format in roles.menu_config.`
       );
     }
   }
@@ -243,28 +229,15 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
       }
     : null;
 
-  // Determine entity code
-  const entityCode: EntityCode | null = agentProfile
-    ? (agentProfile.entity_code as EntityCode) ||
-      getEntityCodeFromName(agentProfile.entity_name || agentProfile.ministry_name || '')
-    : null;
+  // Entity code: from agent profile (primary) or menu config API (fallback)
+  const entityCode: EntityCode | null =
+    (agentProfile?.entity_code as EntityCode) ||
+    (menuConfigData?.entity_code as EntityCode) ||
+    null;
 
-  // Get entity configuration
-  const entityConfig = entityCode ? getEntityConfig(entityCode) : null;
-
-  // Debug logging for troubleshooting menu issues
-  if (typeof window !== 'undefined' && agentProfile) {
-    console.log('[AgentDashboard] Debug:', {
-      userId: user?.id,
-      role: user?.role,
-      entityCode,
-      entityConfigFound: !!entityConfig,
-      entityName: agentProfile?.entity_name,
-      ministryName: agentProfile?.ministry_name,
-      isSupervisor: agentProfile?.is_supervisor,
-      permissionsCount: user?.permissions?.length || 0,
-    });
-  }
+  // Entity metadata from backend API (100% dynamic, no static config)
+  const entityName: string | null = menuConfigData?.entity_name || agentProfile?.entity_name || null;
+  const entityIcon: string | null = menuConfigData?.entity_icon || null;
 
   // Get user permissions (from auth data or agent profile)
   const userPermissions = useMemo(
@@ -280,39 +253,6 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     return userPermissions.has(permission);
   }, [context?.isSupervisor, userPermissions]);
 
-  // Filter menu items by permissions (memoized to prevent infinite re-renders)
-  const filterMenuItems = useCallback((items: MenuItem[]): MenuItem[] => {
-    return items
-      .filter((item) => {
-        // Check group/item level permission
-        if ('permission' in item && item.permission) {
-          if (!hasPermission(item.permission)) return false;
-        }
-        return true;
-      })
-      .map((item) => {
-        // If it's a group, filter its items
-        if ('items' in item && Array.isArray(item.items)) {
-          const filteredSubItems = item.items.filter((subItem) => {
-            if (subItem.permission && !hasPermission(subItem.permission)) {
-              return false;
-            }
-            return true;
-          });
-
-          // Only include group if it has visible items
-          if (filteredSubItems.length === 0) return null;
-
-          return {
-            ...item,
-            items: filteredSubItems,
-          };
-        }
-        return item;
-      })
-      .filter(Boolean) as MenuItem[];
-  }, [hasPermission]);
-
   // Determine if this is a ministry_agent (supervisor over ministry entities)
   const isMinistryAgent = agentProfile?.agent_type === 'ministry_agent';
   const ministryCode = agentProfile?.ministry_code as MinistryCode | undefined;
@@ -322,70 +262,8 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     ? MINISTRY_ENTITIES[ministryCode]
     : [];
 
-  // Get filtered menu items
-  // For ministry_agent: merge menus from all entities of the ministry
-  // Memoize to prevent infinite re-render loop when used as useEffect dependency
-  const menuItems: MenuItem[] = useMemo(() => {
-    if (isMinistryAgent && ministryEntities.length > 0) {
-      // Merge menus from all ministry entities
-      const mergedMenus: MenuItem[] = [];
-      const seenIds = new Set<string>();
-
-      // Add ministry dashboard as first item
-      mergedMenus.push({
-        id: 'ministry-dashboard',
-        titleKey: 'agent.nav.ministryDashboard',
-        href: `/dashboard/agent/ministry`,
-        icon: entityConfig?.icon || ENTITY_CONFIGS.GENERAL.icon,
-      });
-
-      // Collect all menus from ministry entities (skip duplicates)
-      for (const entCode of ministryEntities) {
-        const entConfig = getEntityConfig(entCode);
-        if (!entConfig) continue;
-
-        for (const item of entConfig.menuItems) {
-          // Skip dashboard items (we already have ministry dashboard)
-          if (item.id === 'dashboard') continue;
-
-          // Prefix item ID with entity code to avoid collisions
-          const prefixedId = `${entCode}-${item.id}`;
-          if (seenIds.has(prefixedId)) continue;
-          seenIds.add(prefixedId);
-
-          // Add entity label to group titles for clarity
-          if ('items' in item && Array.isArray(item.items)) {
-            mergedMenus.push({
-              ...item,
-              id: prefixedId,
-              titleKey: `${item.titleKey}`, // Could prefix with entity name if needed
-            });
-          } else {
-            mergedMenus.push({
-              ...item,
-              id: prefixedId,
-            });
-          }
-        }
-      }
-
-      return filterMenuItems(mergedMenus);
-    }
-
-    // Regular entity agent: return entity-specific menus
-    return entityConfig ? filterMenuItems(entityConfig.menuItems) : [];
-  }, [isMinistryAgent, ministryEntities, entityConfig, filterMenuItems]);
-
-  // Debug: log menu items count
-  if (typeof window !== 'undefined' && entityConfig) {
-    console.log('[AgentDashboard] Menu items:', {
-      rawMenuItemsCount: entityConfig?.menuItems?.length || 0,
-      filteredMenuItemsCount: menuItems.length,
-      menuItemIds: menuItems.map(m => m.id),
-      useDynamicMenus,
-      dynamicMenuCount: menuConfigData?.menu_config?.menus?.length || 0,
-    });
-  }
+  // Legacy menuItems: always empty — dynamic menus from API are the sole source of truth.
+  const menuItems: MenuItem[] = useMemo(() => [], []);
 
   // Process dynamic menu items with locale-prefixed hrefs
   const dynamicMenuItems: DynamicMenuItem[] = useMemo(() => {
@@ -406,13 +284,14 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     }));
   }, [menuConfigData?.menu_config?.menus, locale]);
 
-  // Get base path with locale
+  // Derive base path from entity code (dynamic, no static config dependency)
   const getBasePath = (): string => {
     if (isMinistryAgent) {
       return `/${locale}/dashboard/agent/ministry`;
     }
-    if (!entityConfig) return `/${locale}/dashboard/agent`;
-    return `/${locale}${entityConfig.basePath}`;
+    if (!entityCode) return `/${locale}/dashboard/agent`;
+    const entityPath = entityCode.toLowerCase().replace(/_/g, '-');
+    return `/${locale}/dashboard/agent/${entityPath}`;
   };
 
   return {
@@ -421,7 +300,8 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     error: error as Error | null,
     context,
     entityCode,
-    entityConfig,
+    entityName,
+    entityIcon,
     menuItems,
     dynamicMenuItems,
     useDynamicMenus,
@@ -444,10 +324,10 @@ export function useAgentEntityRedirect(): {
   entityCode: EntityCode | null;
 } {
   const locale = useLocale();
-  const { isLoading, entityCode, entityConfig } = useAgentDashboard();
+  const { isLoading, entityCode } = useAgentDashboard();
 
-  const redirectUrl = entityConfig
-    ? `/${locale}${entityConfig.basePath}`
+  const redirectUrl = entityCode
+    ? `/${locale}/dashboard/agent/${entityCode.toLowerCase().replace(/_/g, '-')}`
     : null;
 
   return {

@@ -1,17 +1,13 @@
 /**
  * Agent Dashboard Configuration
+ *
+ * @deprecated entity-menus.ts is deprecated. All menu configuration
+ * now comes dynamically from backend API (GET /menu-config/me).
+ * These exports are kept only for backward compatibility.
+ *
  * @module agent-dashboard/config
  */
 
 export {
-  CNEDOGE_CONFIG,
-  DGT_CONFIG,
-  ONRC_CONFIG,
-  MINFP_CONFIG,
-  TESORO_CONFIG,
-  OFIVE_CONFIG,
-  EXTRANJERIA_CONFIG,
   ENTITY_CONFIGS,
-  getEntityConfig,
-  getEntityCodeFromName,
 } from './entity-menus';

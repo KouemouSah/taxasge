@@ -39,18 +39,10 @@ export type {
 } from './types';
 export { isMenuGroup } from './types';
 
-// Configuration
+// Configuration — entity-menus.ts is deprecated, menus come from backend API.
+// These exports are kept for backward compatibility only.
 export {
-  CNEDOGE_CONFIG,
-  DGT_CONFIG,
-  ONRC_CONFIG,
-  MINFP_CONFIG,
-  TESORO_CONFIG,
-  OFIVE_CONFIG,
-  EXTRANJERIA_CONFIG,
   ENTITY_CONFIGS,
-  getEntityConfig,
-  getEntityCodeFromName,
 } from './config';
 
 // Hooks

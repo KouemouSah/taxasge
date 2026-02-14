@@ -33,6 +33,7 @@ import {
   Plane,
   Truck,
   BadgeCheck,
+  Briefcase,
   FileText,
   LayoutDashboard,
 } from 'lucide-react';
@@ -85,10 +86,12 @@ export function GenericEntityDashboard({
     isError,
     error,
     context,
-    entityConfig,
+    entityName: hookEntityName,
+    entityIcon: hookEntityIcon,
     menuItems,
     dynamicMenuItems,
     useDynamicMenus,
+    getBasePath,
   } = useAgentDashboard();
 
   const { isLoading: statsLoading, stats } = useEntityStats(entityCode);
@@ -142,7 +145,7 @@ export function GenericEntityDashboard({
   }
 
   // Error state
-  if (isError || !context || !entityConfig) {
+  if (isError || !context) {
     return (
       <div className={`space-y-6 ${className || ''}`}>
         <Card className="border-red-200 bg-red-50">
@@ -157,7 +160,10 @@ export function GenericEntityDashboard({
     );
   }
 
-  // Get entity title
+  // Entity metadata from backend API (100% dynamic)
+  const displayName = hookEntityName || entityCode || 'Agent';
+
+  // Translate i18n keys for dynamic menu titles
   const getTitle = (titleKey: string): string => {
     try {
       return t(titleKey.replace('agent.', '')) || titleKey;
@@ -167,7 +173,11 @@ export function GenericEntityDashboard({
     }
   };
 
-  const EntityIcon = entityConfig.icon;
+  // Icon mapping for entity icon (string → Lucide component)
+  const entityIconMap: Record<string, typeof Clock> = {
+    Plane, Car, Globe, FileSignature, Truck, BadgeCheck, Briefcase, FileText, LayoutDashboard,
+  };
+  const EntityIcon = entityIconMap[hookEntityIcon || ''] || FileText;
 
   // Icon mapping for dynamic menu items (string icon names to Lucide components)
   const iconMap: Record<string, typeof Clock> = {
@@ -252,27 +262,28 @@ export function GenericEntityDashboard({
       return quickActions;
     }
 
-    // Priority 3: Default actions (hardcoded fallback)
-    return entityConfig ? [
+    // Priority 3: Default actions using dynamic basePath
+    const basePath = getBasePath();
+    return [
       {
         id: 'default-pending',
         titleKey: 'agent.nav.pending',
-        href: `${entityConfig.basePath}/pending`,
+        href: `${basePath}/pending`,
         icon: Clock,
       },
       {
         id: 'default-validation',
         titleKey: 'agent.nav.validation',
-        href: `${entityConfig.basePath}/validation`,
+        href: `${basePath}/validation`,
         icon: CheckCircle,
       },
       {
         id: 'default-history',
         titleKey: 'agent.nav.history',
-        href: `${entityConfig.basePath}/history`,
+        href: `${basePath}/history`,
         icon: History,
       },
-    ] : [];
+    ];
   })();
 
   return (
@@ -281,7 +292,7 @@ export function GenericEntityDashboard({
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <EntityIcon className="h-8 w-8 text-primary" />
-          {getTitle(entityConfig.titleKey)}
+          {displayName}
         </h1>
         <p className="text-muted-foreground mt-1">
           {t('dashboard.welcome', { name: context.entityName || context.ministryName || entityCode })}

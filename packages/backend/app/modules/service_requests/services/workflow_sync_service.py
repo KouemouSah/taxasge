@@ -70,51 +70,36 @@ async def sync_workflow_config(
     }
 
     # Step 1: Sync workflow_menu_mapping (one row per menu_group)
+    # INSERT ON CONFLICT DO NOTHING: never overwrite admin customizations.
+    # If admin wants to reset to Python defaults, delete the row and restart.
+    display_order_counter = 0
     for menu_group, meta in menu_metadata.items():
         pattern = f"{menu_group}_%"
         menu_group_id = menu_group.lower().replace('_', '-')
 
         try:
-            existing = await db_connection.fetchrow(
-                "SELECT id FROM workflow_menu_mapping WHERE workflow_pattern = $1",
+            row = await db_connection.fetchrow(
+                """
+                INSERT INTO workflow_menu_mapping (
+                    workflow_pattern, menu_group_id, menu_title_key, menu_icon,
+                    display_order, include_appointments, permission_prefix, is_active
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+                ON CONFLICT (workflow_pattern) DO NOTHING
+                RETURNING id
+                """,
                 pattern,
+                menu_group_id,
+                meta["title_key"],
+                meta["icon"],
+                display_order_counter,
+                meta["has_appointments"],
+                "service_requests",
             )
 
-            if existing:
-                # Update existing — only icon and title_key (don't overwrite admin customizations)
-                await db_connection.execute(
-                    """
-                    UPDATE workflow_menu_mapping SET
-                        menu_icon = $2,
-                        menu_title_key = $3,
-                        include_appointments = $4,
-                        updated_at = NOW()
-                    WHERE workflow_pattern = $1
-                    """,
-                    pattern,
-                    meta["icon"],
-                    meta["title_key"],
-                    meta["has_appointments"],
-                )
-            else:
-                # Insert new mapping
-                await db_connection.execute(
-                    """
-                    INSERT INTO workflow_menu_mapping (
-                        workflow_pattern, menu_group_id, menu_title_key, menu_icon,
-                        display_order, include_appointments, permission_prefix, is_active
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
-                    """,
-                    pattern,
-                    menu_group_id,
-                    meta["title_key"],
-                    meta["icon"],
-                    result["mappings_synced"],  # display_order = insertion order
-                    meta["has_appointments"],
-                    "service_requests",
-                )
+            if row:
                 result["mappings_created"] += 1
 
+            display_order_counter += 1
             result["mappings_synced"] += 1
         except Exception as e:
             logger.warning(f"Failed to sync menu mapping for {menu_group}: {e}")

@@ -180,6 +180,8 @@ class AgentMenuConfigResponse(BaseModel):
     # Agent info
     agent_profile_id: UUID
     entity_code: Optional[str] = None
+    entity_name: Optional[str] = None
+    entity_icon: Optional[str] = None
     entity_type: Literal["workflow", "module"]
     role_code: Optional[str] = None
 

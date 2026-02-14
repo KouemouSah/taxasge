@@ -88,6 +88,8 @@ export type EntityType = 'workflow' | 'module';
 export interface AgentMenuConfigResponse {
   agent_profile_id: string;
   entity_code: string | null;
+  entity_name: string | null;
+  entity_icon: string | null;
   entity_type: EntityType;
   role_code: string | null;
   available_workflows: string[];

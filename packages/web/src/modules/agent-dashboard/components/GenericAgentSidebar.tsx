@@ -69,7 +69,7 @@ import {
 } from 'lucide-react';
 import { clearAuthData } from '@/core/auth/storage';
 import { useToast } from '@/hooks/use-toast';
-import type { MenuItem, MenuGroup, EntityDashboardConfig } from '../types';
+import type { MenuItem, MenuGroup } from '../types';
 import { isMenuGroup } from '../types';
 import type { DynamicMenuItem, SubMenuItem } from '../types/menu-config';
 import { isDynamicMenuGroup, isDynamicMenuLink } from '../types/menu-config';
@@ -149,8 +149,6 @@ function getIconComponent(iconName: string): LucideIcon {
 // =============================================================================
 
 interface GenericAgentSidebarProps {
-  /** Optional: Override entity config (for testing or custom dashboards) */
-  entityConfig?: EntityDashboardConfig;
   /** Optional: Custom class name */
   className?: string;
   /** Show collapsed state toggle */
@@ -164,7 +162,6 @@ interface GenericAgentSidebarProps {
 // =============================================================================
 
 export function GenericAgentSidebar({
-  entityConfig: propConfig,
   className,
   collapsible = true,
   defaultCollapsed = false,
@@ -180,10 +177,12 @@ export function GenericAgentSidebar({
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Get agent dashboard configuration
+  // Get agent dashboard configuration (100% dynamic from backend API)
   const {
     isLoading,
-    entityConfig: hookConfig,
+    entityCode,
+    entityName,
+    entityIcon,
     menuItems,
     dynamicMenuItems,
     useDynamicMenus,
@@ -191,8 +190,9 @@ export function GenericAgentSidebar({
     getBasePath,
   } = useAgentDashboard();
 
-  // Use prop config if provided, otherwise use hook config
-  const entityConfig = propConfig || hookConfig;
+  // Resolve entity icon from backend string → Lucide component
+  const EntityIcon = getIconComponent(entityIcon || 'FileText');
+  const displayName = entityName || entityCode || 'Agent';
 
   // Build menu items with locale in href (for static menus)
   // Memoize to prevent infinite re-render loop when used as useEffect dependency
@@ -212,47 +212,24 @@ export function GenericAgentSidebar({
 
   // Auto-expand group containing active route
   useEffect(() => {
-    // Handle dynamic menus
-    if (useDynamicMenus && dynamicMenuItems.length > 0) {
-      for (const item of dynamicMenuItems) {
-        if (isDynamicMenuGroup(item)) {
-          const hasActiveChild = item.items.some(
-            (sub) =>
-              pathname === sub.href || pathname?.startsWith(sub.href + '/')
-          );
-          if (hasActiveChild) {
-            // Only update state if the group isn't already expanded (prevents infinite re-renders)
-            setExpandedGroups((prev) => {
-              if (prev.has(item.id)) return prev; // Already expanded, return same reference
-              return new Set(prev).add(item.id);
-            });
-            break;
-          }
-        }
-      }
-      return;
-    }
+    if (!dynamicMenuItems.length) return;
 
-    // Handle static menus
-    if (!localizedMenuItems.length) return;
-
-    for (const item of localizedMenuItems) {
-      if (isMenuGroup(item)) {
+    for (const item of dynamicMenuItems) {
+      if (isDynamicMenuGroup(item)) {
         const hasActiveChild = item.items.some(
           (sub) =>
             pathname === sub.href || pathname?.startsWith(sub.href + '/')
         );
         if (hasActiveChild) {
-          // Only update state if the group isn't already expanded (prevents infinite re-renders)
           setExpandedGroups((prev) => {
-            if (prev.has(item.id)) return prev; // Already expanded, return same reference
+            if (prev.has(item.id)) return prev;
             return new Set(prev).add(item.id);
           });
           break;
         }
       }
     }
-  }, [pathname, localizedMenuItems, dynamicMenuItems, useDynamicMenus]);
+  }, [pathname, dynamicMenuItems]);
 
   // Toggle group expansion
   const toggleGroup = useCallback((groupId: string) => {
@@ -306,24 +283,6 @@ export function GenericAgentSidebar({
     );
   }
 
-  // No config available
-  if (!entityConfig) {
-    return (
-      <aside className={cn('h-full bg-card border-r flex flex-col w-64', className)}>
-        <div className="h-16 flex items-center px-4 border-b">
-          <span className="font-semibold">Agent Dashboard</span>
-        </div>
-        <div className="flex-1 p-4 flex items-center justify-center text-muted-foreground">
-          <p className="text-sm text-center">
-            No configuration available for this agent.
-          </p>
-        </div>
-      </aside>
-    );
-  }
-
-  const EntityIcon = entityConfig.icon;
-
   return (
     <aside
       className={cn(
@@ -338,7 +297,7 @@ export function GenericAgentSidebar({
           <div className="flex items-center gap-2 overflow-hidden">
             <EntityIcon className="h-6 w-6 text-primary flex-shrink-0" />
             <span className="font-bold text-lg truncate">
-              {getTitle(entityConfig.titleKey)}
+              {displayName}
             </span>
           </div>
         )}
@@ -374,8 +333,8 @@ export function GenericAgentSidebar({
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
         <nav className="space-y-1 px-2">
-          {/* Use dynamic menus if available from API */}
-          {useDynamicMenus && dynamicMenuItems.length > 0 ? (
+          {/* Dynamic menus from backend API */}
+          {dynamicMenuItems.length > 0 ? (
             dynamicMenuItems.map((item) => renderDynamicMenuItem(item, {
               pathname,
               collapsed,
@@ -383,16 +342,12 @@ export function GenericAgentSidebar({
               toggleGroup,
               getTitle,
             }))
-          ) : (
-            /* Fall back to static menus */
-            localizedMenuItems.map((item) => renderMenuItem(item, {
-              pathname,
-              collapsed,
-              expandedGroups,
-              toggleGroup,
-              getTitle,
-            }))
-          )}
+          ) : !isLoading ? (
+            /* No menus available and not loading — show minimal fallback */
+            <div className={cn("px-3 py-2 text-xs text-muted-foreground", collapsed && "hidden")}>
+              {t('agent.nav.dashboard')}
+            </div>
+          ) : null}
 
           {/* Batch requests link — always visible */}
           {(() => {
@@ -469,7 +424,7 @@ export function GenericAgentSidebar({
         {/* Version info */}
         {!collapsed && (
           <div className="text-xs text-muted-foreground text-center pt-1">
-            {entityConfig.entityCode} Agent v1.0
+            {entityCode || 'Agent'} v1.0
           </div>
         )}
       </div>
