@@ -69,8 +69,6 @@ import {
 } from 'lucide-react';
 import { clearAuthData } from '@/core/auth/storage';
 import { useToast } from '@/hooks/use-toast';
-import type { MenuItem, MenuGroup } from '../types';
-import { isMenuGroup } from '../types';
 import type { DynamicMenuItem, SubMenuItem } from '../types/menu-config';
 import { isDynamicMenuGroup, isDynamicMenuLink } from '../types/menu-config';
 import { useAgentDashboard } from '../hooks';
@@ -183,9 +181,7 @@ export function GenericAgentSidebar({
     entityCode,
     entityName,
     entityIcon,
-    menuItems,
     dynamicMenuItems,
-    useDynamicMenus,
     context,
     getBasePath,
   } = useAgentDashboard();
@@ -193,22 +189,6 @@ export function GenericAgentSidebar({
   // Resolve entity icon from backend string → Lucide component
   const EntityIcon = getIconComponent(entityIcon || 'FileText');
   const displayName = entityName || entityCode || 'Agent';
-
-  // Build menu items with locale in href (for static menus)
-  // Memoize to prevent infinite re-render loop when used as useEffect dependency
-  const localizedMenuItems = useMemo(
-    () => menuItems.map((item) => localizeMenuItem(item, locale)),
-    [menuItems, locale]
-  );
-
-  // Debug: log which menu system is being used
-  if (typeof window !== 'undefined') {
-    console.log('[GenericAgentSidebar] Menu system:', {
-      useDynamicMenus,
-      dynamicMenuCount: dynamicMenuItems.length,
-      staticMenuCount: localizedMenuItems.length,
-    });
-  }
 
   // Auto-expand group containing active route
   useEffect(() => {
@@ -429,159 +409,6 @@ export function GenericAgentSidebar({
         )}
       </div>
     </aside>
-  );
-}
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-/**
- * Add locale prefix to menu item hrefs
- */
-function localizeMenuItem(item: MenuItem, locale: string): MenuItem {
-  if (isMenuGroup(item)) {
-    return {
-      ...item,
-      items: item.items.map((subItem) => ({
-        ...subItem,
-        href: `/${locale}${subItem.href}`,
-      })),
-    };
-  }
-  return {
-    ...item,
-    href: `/${locale}${item.href}`,
-  };
-}
-
-/**
- * Render a menu item (single or group)
- */
-function renderMenuItem(
-  item: MenuItem,
-  options: {
-    pathname: string | null;
-    collapsed: boolean;
-    expandedGroups: Set<string>;
-    toggleGroup: (id: string) => void;
-    getTitle: (key: string) => string;
-  }
-): React.ReactNode {
-  const { pathname, collapsed, getTitle } = options;
-
-  if (isMenuGroup(item)) {
-    return renderMenuGroup(item, options);
-  }
-
-  return renderSingleItem(item, { pathname, collapsed, getTitle });
-}
-
-/**
- * Render a menu group with collapsible sub-items
- */
-function renderMenuGroup(
-  group: MenuGroup,
-  options: {
-    pathname: string | null;
-    collapsed: boolean;
-    expandedGroups: Set<string>;
-    toggleGroup: (id: string) => void;
-    getTitle: (key: string) => string;
-  }
-): React.ReactNode {
-  const { pathname, collapsed, expandedGroups, toggleGroup, getTitle } = options;
-  const GroupIcon = group.icon;
-  const isExpanded = expandedGroups.has(group.id);
-  const hasActiveChild = group.items.some(
-    (sub) => pathname === sub.href || pathname?.startsWith(sub.href + '/')
-  );
-
-  return (
-    <div key={group.id} className="pt-2">
-      {/* Group header */}
-      <button
-        onClick={() => toggleGroup(group.id)}
-        className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm w-full transition-all hover:bg-accent',
-          hasActiveChild
-            ? 'text-primary font-medium'
-            : 'text-muted-foreground hover:text-foreground'
-        )}
-        title={collapsed ? getTitle(group.titleKey) : undefined}
-      >
-        <GroupIcon className="h-5 w-5 flex-shrink-0" />
-        {!collapsed && (
-          <>
-            <span className="flex-1 text-left truncate">
-              {getTitle(group.titleKey)}
-            </span>
-            <ChevronDown
-              className={cn(
-                'h-4 w-4 transition-transform duration-200',
-                isExpanded ? 'rotate-180' : ''
-              )}
-            />
-          </>
-        )}
-      </button>
-
-      {/* Collapsible sub-items */}
-      <div
-        className={cn(
-          'overflow-hidden transition-all duration-200 ease-in-out',
-          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-        )}
-      >
-        <div className={cn('space-y-1 mt-1', !collapsed && 'ml-4')}>
-          {group.items.map((subItem) =>
-            renderSingleItem(subItem, { pathname, collapsed, getTitle, isSubItem: true })
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Render a single menu item
- */
-function renderSingleItem(
-  item: MenuItem & { href: string },
-  options: {
-    pathname: string | null;
-    collapsed: boolean;
-    getTitle: (key: string) => string;
-    isSubItem?: boolean;
-  }
-): React.ReactNode {
-  const { pathname, collapsed, getTitle, isSubItem = false } = options;
-  const Icon = item.icon;
-  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-
-  return (
-    <Link
-      key={item.id}
-      href={item.href}
-      className={cn(
-        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
-        isActive
-          ? 'bg-primary/10 text-primary font-medium'
-          : 'text-muted-foreground hover:text-foreground',
-        isSubItem && 'py-1.5'
-      )}
-      title={collapsed ? getTitle(item.titleKey) : undefined}
-    >
-      <Icon className={cn('flex-shrink-0', isSubItem ? 'h-4 w-4' : 'h-5 w-5')} />
-      {!collapsed && (
-        <span className="truncate">{getTitle(item.titleKey)}</span>
-      )}
-      {!collapsed && 'badge' in item && item.badge !== undefined && item.badge > 0 && (
-        <span className="ml-auto bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
-          {item.badge}
-        </span>
-      )}
-    </Link>
   );
 }
 
