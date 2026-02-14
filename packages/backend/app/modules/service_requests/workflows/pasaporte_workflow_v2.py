@@ -106,6 +106,16 @@ class PasaporteWorkflow(PredefinedWorkflow):
 
     # === Configuration ===
 
+    def get_all_workflow_codes(self) -> List[WorkflowCode]:
+        """All workflow codes this class handles (for engine registration)."""
+        return [
+            WorkflowCode.PASAPORTE_NUEVO,
+            WorkflowCode.PASAPORTE_RENOVACION,
+            WorkflowCode.PASAPORTE_PERDIDA,
+            WorkflowCode.PASAPORTE_ROBO,
+            WorkflowCode.PASAPORTE_DETERIORO,
+        ]
+
     @property
     def workflow_code(self) -> WorkflowCode:
         return WorkflowCode.PASAPORTE_NUEVO  # Base code, variant determined by sub_type

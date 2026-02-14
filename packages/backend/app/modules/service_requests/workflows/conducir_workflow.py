@@ -169,6 +169,16 @@ class ConducirWorkflow(PredefinedWorkflow):
 
     # === Configuration (PredefinedWorkflow required properties) ===
 
+    def get_all_workflow_codes(self) -> List[WorkflowCode]:
+        """All workflow codes this class handles (for engine registration)."""
+        return [
+            WorkflowCode.CONDUCIR_NUEVO,
+            WorkflowCode.CONDUCIR_CANJE,
+            WorkflowCode.CONDUCIR_RENOVACION,
+            WorkflowCode.CONDUCIR_DUPLICADO,
+            WorkflowCode.CONDUCIR_EXTENSION,
+        ]
+
     @property
     def workflow_code(self) -> WorkflowCode:
         return WorkflowCode.CONDUCIR_NUEVO  # Base code, variant determined by sub_type

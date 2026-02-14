@@ -61,6 +61,7 @@ import {
   Eye,
   MapPin,
   ExternalLink,
+  ChevronDown,
 } from 'lucide-react'
 import {
   useWorkflow,
@@ -141,6 +142,9 @@ export default function WorkflowDetailPage() {
   // Page view mode: false = summary dashboard, true = tabbed editing
   const initialMode = searchParams.get('mode')
   const [isEditingPage, setIsEditingPage] = useState(initialMode === 'edit')
+
+  // Collapsible sections in view mode
+  const [docsExpanded, setDocsExpanded] = useState(false)
 
   // Tariffs data
   const { data: allTariffs, isLoading: loadingTariffs } = useTariffs({ workflow_code: workflowCode })
@@ -934,33 +938,41 @@ export default function WorkflowDetailPage() {
             </Card>
           </div>
 
-          {/* Documents Summary */}
+          {/* Documents Summary - Collapsible 2-column */}
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader
+              className="pb-3 cursor-pointer select-none"
+              onClick={() => setDocsExpanded(prev => !prev)}
+            >
               <CardTitle className="flex items-center gap-2 text-lg">
                 <FileCheck className="h-5 w-5" />
                 Documentos Requeridos ({sortedDocuments?.length || 0})
+                <ChevronDown
+                  className={`h-4 w-4 ml-auto transition-transform duration-200 ${docsExpanded ? 'rotate-180' : ''}`}
+                />
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {sortedDocuments.length > 0 ? (
-                <div className="grid gap-2">
-                  {sortedDocuments.map((doc, index) => (
-                    <div key={doc.id} className="flex items-center gap-3 py-1">
-                      <span className="text-muted-foreground w-6">{index + 1}.</span>
-                      <span className="flex-1">{doc.document_name_es}</span>
-                      {doc.is_required ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Opcional</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">Sin documentos requeridos</p>
-              )}
-            </CardContent>
+            {docsExpanded && (
+              <CardContent>
+                {sortedDocuments.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                    {sortedDocuments.map((doc, index) => (
+                      <div key={doc.id} className="flex items-center gap-3 py-1">
+                        <span className="text-muted-foreground w-6 shrink-0">{index + 1}.</span>
+                        <span className="flex-1 text-sm">{doc.document_name_es}</span>
+                        {doc.is_required ? (
+                          <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                        ) : (
+                          <span className="text-xs text-muted-foreground shrink-0">Opcional</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">Sin documentos requeridos</p>
+                )}
+              </CardContent>
+            )}
           </Card>
 
           {/* Appointments Summary */}
