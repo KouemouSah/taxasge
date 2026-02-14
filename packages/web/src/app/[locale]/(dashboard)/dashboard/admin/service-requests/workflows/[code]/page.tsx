@@ -511,30 +511,23 @@ export default function WorkflowDetailPage() {
     !configuredSupplementCodes.includes(s.code) && !pendingSupplementCodes.includes(s.code)
   ) || []
 
-  // Calculate totals per solicitud type (tariff + supplements)
+  // Calculate cost totals (single tariff + supplements)
   const costTotals = useMemo(() => {
-    const types = ['expedicion', 'renovacion', 'duplicado'] as const
-    const totals: Record<string, { tariff: number; supplements: number; total: number }> = {}
+    const activeTariff = allTariffs?.find(t => t.is_active)
+    const tariffAmount = activeTariff?.amount || 0
+    const tariffType = activeTariff?.tariff_type || 'FIXED'
 
-    // Calculate supplements total (same for all types)
     const supplementsTotal = workflowSupplements?.reduce((sum, s) => {
       if (!s.is_active) return sum
-      const supplementAmount = s.supplement_amount || 0
-      return sum + (supplementAmount * s.quantity_per_request)
+      return sum + ((s.supplement_amount || 0) * s.quantity_per_request)
     }, 0) || 0
 
-    for (const type of types) {
-      const tariff = allTariffs?.find(t => t.solicitud_type === type && t.is_active)
-      const tariffAmount = tariff?.amount || 0
-
-      totals[type] = {
-        tariff: tariffAmount,
-        supplements: supplementsTotal,
-        total: tariffAmount + supplementsTotal
-      }
+    return {
+      tariff: tariffAmount,
+      tariffType,
+      supplements: supplementsTotal,
+      total: tariffAmount + supplementsTotal,
     }
-
-    return totals
   }, [allTariffs, workflowSupplements])
 
   // Handlers - Documents
@@ -883,103 +876,63 @@ export default function WorkflowDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Tariffs Summary */}
+            {/* Tariffs & Supplements Summary (merged) */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <DollarSign className="h-5 w-5" />
-                  Tarifas
+                  Tarifas y Suplementos
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 font-medium"></th>
-                      <th className="text-right py-2 font-medium">Expedicion</th>
-                      <th className="text-right py-2 font-medium">Renovacion</th>
-                      <th className="text-right py-2 font-medium">Duplicado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-dashed">
-                      <td className="py-2 text-muted-foreground">Tarifa</td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.expedicion?.tariff ? formatCurrency(costTotals.expedicion.tariff) : '-'}
-                      </td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.renovacion?.tariff ? formatCurrency(costTotals.renovacion.tariff) : '-'}
-                      </td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.duplicado?.tariff ? formatCurrency(costTotals.duplicado.tariff) : '-'}
-                      </td>
-                    </tr>
-                    <tr className="border-b border-dashed">
-                      <td className="py-2 text-muted-foreground">Suplementos</td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.expedicion?.supplements ? formatCurrency(costTotals.expedicion.supplements) : '-'}
-                      </td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.renovacion?.supplements ? formatCurrency(costTotals.renovacion.supplements) : '-'}
-                      </td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.duplicado?.supplements ? formatCurrency(costTotals.duplicado.supplements) : '-'}
-                      </td>
-                    </tr>
-                    <tr className="font-semibold bg-muted/50">
-                      <td className="py-2">TOTAL</td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.expedicion?.total ? formatCurrency(costTotals.expedicion.total) : '-'}
-                      </td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.renovacion?.total ? formatCurrency(costTotals.renovacion.total) : '-'}
-                      </td>
-                      <td className="text-right py-2 font-mono">
-                        {costTotals.duplicado?.total ? formatCurrency(costTotals.duplicado.total) : '-'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <CardContent className="space-y-4">
+                {/* Tarifa Base */}
+                <div className="flex items-center justify-between py-2 border-b">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Tarifa Base</span>
+                    {allTariffs?.find(t => t.is_active) && (
+                      getTariffTypeBadge(allTariffs.find(t => t.is_active)!.tariff_type)
+                    )}
+                  </div>
+                  <span className="font-mono font-semibold text-lg">
+                    {costTotals.tariff ? formatCurrency(costTotals.tariff) : '-'}
+                  </span>
+                </div>
+
+                {/* Supplements list */}
+                {(workflowSupplements?.filter(s => s.is_active).length || 0) > 0 ? (
+                  <div className="space-y-1">
+                    <span className="text-sm text-muted-foreground font-medium">Suplementos</span>
+                    {workflowSupplements?.filter(s => s.is_active).map((s) => (
+                      <div key={s.id} className="flex items-center justify-between py-1.5 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>{s.supplement_name}</span>
+                          {s.is_required && <Badge variant="default" className="text-xs">Oblig.</Badge>}
+                        </div>
+                        <span className="font-mono">
+                          {s.supplement_amount?.toLocaleString()} × {s.quantity_per_request} = {((s.supplement_amount || 0) * s.quantity_per_request).toLocaleString()} XAF
+                        </span>
+                      </div>
+                    ))}
+                    {costTotals.supplements > 0 && (
+                      <div className="flex justify-end pt-1 text-sm text-muted-foreground">
+                        Subtotal: {costTotals.supplements.toLocaleString()} XAF
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground py-1">Sin suplementos configurados</div>
+                )}
+
+                {/* Total */}
+                <div className="flex items-center justify-between pt-3 border-t-2 border-primary/20">
+                  <span className="font-semibold text-lg">COSTE TOTAL</span>
+                  <span className="font-mono font-bold text-xl text-primary">
+                    {costTotals.total ? formatCurrency(costTotals.total) : '-'}
+                  </span>
+                </div>
               </CardContent>
             </Card>
           </div>
-
-          {/* Supplements Summary */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Boxes className="h-5 w-5" />
-                Suplementos ({workflowSupplements?.length || 0})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {(workflowSupplements?.length || 0) > 0 ? (
-                <div className="space-y-2">
-                  {workflowSupplements?.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{s.supplement_name}</span>
-                        {s.is_required && <Badge variant="default" className="text-xs">Obligatorio</Badge>}
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono text-sm">
-                          {s.supplement_amount?.toLocaleString()} XAF × {s.quantity_per_request}
-                        </span>
-                        <span className="font-mono font-semibold ml-2">
-                          = {((s.supplement_amount || 0) * s.quantity_per_request).toLocaleString()} XAF
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex justify-end pt-2 border-t font-semibold">
-                    <span>Total: {costTotals.expedicion?.supplements?.toLocaleString() || 0} XAF</span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">Sin suplementos configurados</p>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Documents Summary */}
           <Card>
@@ -1051,7 +1004,7 @@ export default function WorkflowDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="tariffs" className="gap-2">
               <DollarSign className="h-4 w-4" />
-              <span className="hidden sm:inline">Tarifas</span>
+              <span className="hidden sm:inline">Tarifas y Suplementos</span>
             </TabsTrigger>
             <TabsTrigger value="documents" className="gap-2">
               <FileCheck className="h-4 w-4" />
@@ -1171,61 +1124,30 @@ export default function WorkflowDetailPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Cost Summary Table */}
+              {/* Cost Summary */}
               {(allTariffs?.length || workflowSupplements?.length) && tariffEditMode === 'none' ? (
                 <div className="border rounded-lg p-4 bg-muted/30 mb-4">
-                  <h4 className="font-semibold mb-3 text-sm uppercase tracking-wide text-muted-foreground">
-                    Resumen de Costos por Tipo de Solicitud
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2 px-3 font-medium"></th>
-                          <th className="text-right py-2 px-3 font-medium">Expedicion</th>
-                          <th className="text-right py-2 px-3 font-medium">Renovacion</th>
-                          <th className="text-right py-2 px-3 font-medium">Duplicado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b border-dashed">
-                          <td className="py-2 px-3 text-muted-foreground">Tarifa Base</td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.expedicion?.tariff ? formatCurrency(costTotals.expedicion.tariff) : '-'}
-                          </td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.renovacion?.tariff ? formatCurrency(costTotals.renovacion.tariff) : '-'}
-                          </td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.duplicado?.tariff ? formatCurrency(costTotals.duplicado.tariff) : '-'}
-                          </td>
-                        </tr>
-                        <tr className="border-b border-dashed">
-                          <td className="py-2 px-3 text-muted-foreground">Suplementos</td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.expedicion?.supplements ? formatCurrency(costTotals.expedicion.supplements) : '-'}
-                          </td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.renovacion?.supplements ? formatCurrency(costTotals.renovacion.supplements) : '-'}
-                          </td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.duplicado?.supplements ? formatCurrency(costTotals.duplicado.supplements) : '-'}
-                          </td>
-                        </tr>
-                        <tr className="font-semibold bg-muted/50">
-                          <td className="py-2 px-3">TOTAL</td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.expedicion?.total ? formatCurrency(costTotals.expedicion.total) : '-'}
-                          </td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.renovacion?.total ? formatCurrency(costTotals.renovacion.total) : '-'}
-                          </td>
-                          <td className="text-right py-2 px-3 font-mono">
-                            {costTotals.duplicado?.total ? formatCurrency(costTotals.duplicado.total) : '-'}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="text-muted-foreground">Tarifa Base:</span>
+                        <span className="font-mono font-medium">{costTotals.tariff ? formatCurrency(costTotals.tariff) : '-'}</span>
+                        {allTariffs?.find(t => t.is_active) && getTariffTypeBadge(allTariffs.find(t => t.is_active)!.tariff_type)}
+                      </div>
+                      {costTotals.supplements > 0 && (
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="text-muted-foreground">Suplementos:</span>
+                          <span className="font-mono font-medium">{formatCurrency(costTotals.supplements)}</span>
+                          <span className="text-muted-foreground text-xs">({workflowSupplements?.filter(s => s.is_active).length || 0} configurados)</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground uppercase tracking-wide">Coste Total</div>
+                      <div className="font-mono font-bold text-xl text-primary">
+                        {costTotals.total ? formatCurrency(costTotals.total) : '-'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : null}
