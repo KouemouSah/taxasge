@@ -1,8 +1,12 @@
 """
 Workflow Sync Service
 
-Automatically synchronizes workflow configuration (menu_mapping, display_config)
-from PredefinedWorkflow classes to database tables.
+Automatically synchronizes workflow configuration from PredefinedWorkflow classes
+to database tables at startup:
+1. workflows table (INSERT ON CONFLICT DO UPDATE)
+2. workflow_menu_mapping (INSERT ON CONFLICT DO NOTHING)
+3. workflow_display_config (INSERT ON CONFLICT DO NOTHING)
+4. Deactivate orphaned predefined workflows
 
 100% dynamic: reads properties from workflow classes via workflow_engine registry.
 Zero hardcoded mapping. Adding a new PredefinedWorkflow class automatically
@@ -14,7 +18,7 @@ Called from:
 """
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List, Set
 
 from app.core.cache import (
     get_workflow_mappings_cache,
@@ -30,6 +34,112 @@ logger = logging.getLogger(__name__)
 # These are reasonable defaults; admin can override via UI
 _DEFAULT_LIST_COLUMNS = ["reference", "beneficiary", "status", "created_at"]
 _DEFAULT_PREVIEW_SECTIONS = ["identity", "documents"]
+
+
+async def sync_workflows_table(
+    db_connection,
+) -> Dict[str, Any]:
+    """
+    Lightweight sync of workflows table from Python classes at startup.
+
+    For each registered workflow, ensures a row exists in the workflows table.
+    Uses INSERT ON CONFLICT DO UPDATE for core fields (category, entity_code,
+    requires_appointment, is_active=true) but preserves admin-edited fields
+    (name_es, description_es, sla_hours, display_order).
+
+    Also deactivates orphaned predefined workflows (in DB but not in code).
+    """
+    from app.modules.service_requests.services.workflow_engine import workflow_engine
+    from app.modules.service_requests.models.enums import WorkflowCode
+
+    result = {
+        "workflows_synced": 0,
+        "workflows_created": 0,
+        "workflows_deactivated": 0,
+    }
+
+    all_workflows = workflow_engine.get_all_workflows()
+    synced_codes: Set[str] = set()
+
+    for base_code, workflow in all_workflows.items():
+        try:
+            # Collect all codes this workflow registers
+            codes_to_sync: List[str] = []
+
+            allowed_sub_types = getattr(workflow, 'allowed_sub_types', [])
+            has_subtype_mapping = hasattr(workflow, 'get_workflow_code_for_subtype')
+
+            if allowed_sub_types and has_subtype_mapping:
+                for sub_type in allowed_sub_types:
+                    wf_code = workflow.get_workflow_code_for_subtype(sub_type)
+                    codes_to_sync.append(wf_code.value)
+            elif hasattr(workflow, 'get_all_workflow_codes'):
+                for wf_code in workflow.get_all_workflow_codes():
+                    codes_to_sync.append(wf_code.value)
+            else:
+                codes_to_sync.append(base_code.value)
+
+            category = workflow.category.value if hasattr(workflow, 'category') else 'GENERAL'
+            entity_code = workflow.entity_code.value if hasattr(workflow, 'entity_code') else 'GENERAL'
+            requires_appointment = getattr(workflow, 'requires_appointment', False)
+            requires_agent = getattr(workflow, 'requires_agent_review', True)
+
+            for code in codes_to_sync:
+                if code in synced_codes:
+                    continue
+
+                name_es = code.replace('_', ' ').title()
+
+                row = await db_connection.fetchrow(
+                    """
+                    INSERT INTO workflows (
+                        code, name_es, description_es, category, entity_code,
+                        workflow_type, requires_agent_validation, requires_appointment,
+                        is_generic, is_active
+                    ) VALUES ($1, $2, $3, $4, $5, 'standard', $6, $7, FALSE, TRUE)
+                    ON CONFLICT (code) DO UPDATE SET
+                        category = EXCLUDED.category,
+                        entity_code = EXCLUDED.entity_code,
+                        requires_agent_validation = EXCLUDED.requires_agent_validation,
+                        requires_appointment = EXCLUDED.requires_appointment,
+                        is_active = TRUE,
+                        updated_at = NOW()
+                    WHERE workflows.is_generic = FALSE
+                    RETURNING (xmax = 0) AS is_new
+                    """,
+                    code, name_es, f"Trámite de {name_es}",
+                    category, entity_code,
+                    requires_agent, requires_appointment,
+                )
+
+                if row and row['is_new']:
+                    result["workflows_created"] += 1
+
+                synced_codes.add(code)
+                result["workflows_synced"] += 1
+
+        except Exception as e:
+            logger.warning(f"Failed to sync workflow {base_code.value}: {e}")
+
+    # Deactivate orphaned predefined workflows
+    if synced_codes:
+        try:
+            orphaned = await db_connection.fetch("""
+                UPDATE workflows
+                SET is_active = FALSE, updated_at = NOW()
+                WHERE is_generic = FALSE
+                  AND is_active = TRUE
+                  AND code != ALL($1)
+                RETURNING code
+            """, list(synced_codes))
+            if orphaned:
+                orphan_codes = [r['code'] for r in orphaned]
+                result["workflows_deactivated"] = len(orphan_codes)
+                logger.info(f"Deactivated {len(orphan_codes)} orphaned workflows: {orphan_codes}")
+        except Exception as e:
+            logger.warning(f"Failed to deactivate orphaned workflows: {e}")
+
+    return result
 
 
 async def sync_workflow_config(

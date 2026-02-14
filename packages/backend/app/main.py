@@ -95,10 +95,21 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize permissions (non-blocking): {e}")
 
-        # Sync workflow configuration (menu_mapping + display_config from Python classes)
+        # Sync workflows table + menu_mapping + display_config from Python classes
         try:
-            from app.modules.service_requests.services.workflow_sync_service import sync_workflow_config
+            from app.modules.service_requests.services.workflow_sync_service import (
+                sync_workflows_table,
+                sync_workflow_config,
+            )
             async with db_manager.get_connection() as conn:
+                # Step 1: Sync workflows table (INSERT/UPDATE + deactivate orphans)
+                wf_result = await sync_workflows_table(conn)
+                logger.info(
+                    f"✅ Workflows synced: {wf_result['workflows_synced']} "
+                    f"({wf_result['workflows_created']} new, "
+                    f"{wf_result['workflows_deactivated']} deactivated)"
+                )
+                # Step 2: Sync menu_mapping + display_config
                 sync_result = await sync_workflow_config(conn)
                 logger.info(
                     f"✅ Workflow config synced: {sync_result['mappings_synced']} menu mappings "

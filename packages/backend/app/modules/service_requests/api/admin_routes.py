@@ -12,6 +12,7 @@ from typing import List, Optional, Dict, Any
 from enum import Enum
 import asyncpg
 import json
+import logging
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -31,6 +32,8 @@ from app.modules.treasury.errors import (
     comment_required,
 )
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/admin/service-requests",
@@ -6121,12 +6124,9 @@ SUBTYPE_NAMES_ES = {
     "PASAPORTE_PERDIDA": "Pasaporte - Renovación por Pérdida",
     "PASAPORTE_ROBO": "Pasaporte - Renovación por Robo",
     "PASAPORTE_DETERIORO": "Pasaporte - Renovación por Deterioro",
-    # RESIDENCIA (5)
+    # RESIDENCIA (2)
     "RESIDENCIA_PRIMERA_VEZ": "Residencia - Primera Vez",
     "RESIDENCIA_RENOVACION": "Residencia - Renovación",
-    "RESIDENCIA_DUPLICADO": "Residencia - Duplicado",
-    "RESIDENCIA_CAMBIO_DATOS": "Residencia - Cambio de Datos",
-    "RESIDENCIA_REAGRUPACION": "Residencia - Reagrupación Familiar",
     # VEHICULO (7)
     "VEHICULO_PRIMERA_MATRICULACION": "Vehículo - Primera Matriculación",
     "VEHICULO_TRANSFERENCIA": "Vehículo - Transferencia",
@@ -6266,9 +6266,6 @@ SUBTYPE_PARENT_MAPPING = {
     "PASAPORTE_DETERIORO": "PASAPORTE_NUEVO",
     "RESIDENCIA_PRIMERA_VEZ": None,
     "RESIDENCIA_RENOVACION": "RESIDENCIA_PRIMERA_VEZ",
-    "RESIDENCIA_DUPLICADO": "RESIDENCIA_PRIMERA_VEZ",
-    "RESIDENCIA_CAMBIO_DATOS": "RESIDENCIA_PRIMERA_VEZ",
-    "RESIDENCIA_REAGRUPACION": "RESIDENCIA_PRIMERA_VEZ",
     "VEHICULO_PRIMERA_MATRICULACION": None,
     "VEHICULO_TRANSFERENCIA": "VEHICULO_PRIMERA_MATRICULACION",
     "VEHICULO_RENOVACION_CUVE": "VEHICULO_PRIMERA_MATRICULACION",
@@ -6293,6 +6290,11 @@ SUBTYPE_PARENT_MAPPING = {
     "FP_PROMOCION_ADMINISTRATIVA": "FP_VERIFICACION_FUNCIONARIO",
     "FP_PERMISO_EXTRAORDINARIO": "FP_VERIFICACION_FUNCIONARIO",
     "FP_CERTIFICADO_ADMINISTRATIVO": "FP_VERIFICACION_FUNCIONARIO",
+    # TRAMITES VISADO (4)
+    "PRORROGA_VISADO": None,
+    "VISADO_ALTERNATIVO": "PRORROGA_VISADO",
+    "PERMANENCIA_EXTRANJERIA": "PRORROGA_VISADO",
+    "SALIDA_VISADO_VENCIDO": "PRORROGA_VISADO",
 }
 
 
@@ -6353,31 +6355,45 @@ async def sync_predefined_workflows(
     # Step 2: Get all registered workflows from workflow_engine
     all_workflows = workflow_engine.get_all_workflows()
 
-    # Step 3: Iterate over each workflow class and its sub_types
+    # Step 3: Iterate over each workflow class and sync all its codes
+    #
+    # Three patterns exist:
+    # A) allowed_sub_types + get_workflow_code_for_subtype (Pasaporte, Conducir, Contrato, TramitesVisado)
+    #    → iterate sub_types, map each to WorkflowCode
+    # B) get_all_workflow_codes() without sub_types (Residencia: allowed_sub_types=[], 2 codes)
+    #    → iterate codes directly
+    # C) Single-code workflows (FP_*, Vehiculo_*)
+    #    → use base_code only
+    synced_codes = set()
+
     for base_code, workflow in all_workflows.items():
         try:
-            # Get allowed_sub_types from workflow
             allowed_sub_types = getattr(workflow, 'allowed_sub_types', [])
-
-            # If no sub_types, use the base workflow code directly
-            if not allowed_sub_types:
-                allowed_sub_types = [base_code.value.split('_')[-1] if '_' in base_code.value else base_code.value]
-
-            # Determine if workflow has get_workflow_code_for_subtype method
             has_subtype_mapping = hasattr(workflow, 'get_workflow_code_for_subtype')
 
-            for sub_type in allowed_sub_types:
-                try:
-                    # Get the actual WorkflowCode for this sub_type
-                    if has_subtype_mapping:
-                        workflow_code = workflow.get_workflow_code_for_subtype(sub_type)
-                        code = workflow_code.value
-                    else:
-                        # For workflows without sub_type mapping (like FP_*), use base code
-                        code = base_code.value
+            # Build list of (code, sub_type) pairs to sync
+            codes_to_sync = []
 
+            if allowed_sub_types and has_subtype_mapping:
+                # Pattern A: sub_types with mapping
+                for sub_type in allowed_sub_types:
+                    wf_code = workflow.get_workflow_code_for_subtype(sub_type)
+                    codes_to_sync.append((wf_code.value, sub_type))
+            elif hasattr(workflow, 'get_all_workflow_codes'):
+                # Pattern B: multi-code without sub_types (e.g. Residencia)
+                all_codes = workflow.get_all_workflow_codes()
+                for wf_code in all_codes:
+                    sub = wf_code.value.split('_')[-1] if '_' in wf_code.value else wf_code.value
+                    codes_to_sync.append((wf_code.value, sub))
+            else:
+                # Pattern C: single-code workflow
+                sub = base_code.value.split('_')[-1] if '_' in base_code.value else base_code.value
+                codes_to_sync.append((base_code.value, sub))
+
+            for code, sub_type in codes_to_sync:
+                try:
                     # Skip if we've already processed this code
-                    if any(d.get('workflow_code') == code and d.get('action') == 'synced' for d in result.details):
+                    if code in synced_codes:
                         continue
 
                     # Get workflow metadata from workflow class
@@ -6424,6 +6440,7 @@ async def sync_predefined_workflows(
                             "data": workflow_data
                         })
                         result.workflows_synced += 1
+                        synced_codes.add(code)
                         continue
 
                     # Check if workflow exists
@@ -6482,6 +6499,7 @@ async def sync_predefined_workflows(
                         result.workflows_created += 1
 
                     result.workflows_synced += 1
+                    synced_codes.add(code)
 
                     # Sync tariff for this workflow code
                     if tariff_amount > 0 or tariff_type in ["RBC", "PERCENTAGE"]:
@@ -6584,7 +6602,29 @@ async def sync_predefined_workflows(
         except Exception as e:
             result.errors.append(f"Error processing workflow {base_code.value}: {str(e)}")
 
-    # Step 4: Sync menu_mapping + display_config from workflow classes
+    # Step 4: Deactivate orphaned predefined workflows (in DB but not in code)
+    if not dry_run and synced_codes:
+        try:
+            orphaned = await db.fetch("""
+                UPDATE workflows
+                SET is_active = FALSE, updated_at = NOW()
+                WHERE is_generic = FALSE
+                  AND is_active = TRUE
+                  AND code != ALL($1)
+                RETURNING code
+            """, list(synced_codes))
+            if orphaned:
+                orphan_codes = [r['code'] for r in orphaned]
+                result.details.append({
+                    "action": "deactivated_orphans",
+                    "codes": orphan_codes,
+                    "count": len(orphan_codes),
+                })
+                logger.info(f"Deactivated {len(orphan_codes)} orphaned workflows: {orphan_codes}")
+        except Exception as e:
+            result.errors.append(f"Error deactivating orphaned workflows: {str(e)}")
+
+    # Step 5: Sync menu_mapping + display_config from workflow classes
     if not dry_run:
         try:
             from ..services.workflow_sync_service import sync_workflow_config
