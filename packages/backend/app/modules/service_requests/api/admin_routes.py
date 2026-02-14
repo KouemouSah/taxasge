@@ -12,8 +12,11 @@ from typing import List, Optional, Dict, Any
 from enum import Enum
 import asyncpg
 import json
+import logging
 from datetime import date, datetime
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -883,6 +886,9 @@ async def list_document_requirements(
                     is_active=True
                 ))
             return result
+        # Predefined but not in registry — return empty, don't fall to DB
+        logger.warning(f"Predefined workflow {code} not found in workflow_engine registry")
+        return []
 
     # For dynamic workflows (is_generic=True), read from database
     rows = await db.fetch("""
@@ -898,7 +904,8 @@ async def list_document_requirements(
         condition_type_str = str(condition_type_val) if condition_type_val else 'always'
 
         condition_value_val = row.get('condition_value')
-        condition_value_dict = dict(condition_value_val) if condition_value_val else None
+        # JSONB can be any type (dict, list, str, null); safely coerce to dict
+        condition_value_dict = condition_value_val if isinstance(condition_value_val, dict) else None
 
         result.append(DocumentRequirementResponse(
             id=str(row['id']),
