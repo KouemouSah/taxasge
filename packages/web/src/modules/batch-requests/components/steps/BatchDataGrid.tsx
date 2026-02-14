@@ -65,7 +65,10 @@ export function BatchDataGrid({ hook }: BatchDataGridProps) {
   // Track explicitly collapsed sections (all open by default)
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
 
-  const beneficiaries = session?.beneficiaries || []
+  const beneficiaries = useMemo(
+    () => session?.beneficiaries || [],
+    [session?.beneficiaries]
+  )
 
   // Load form config on mount (once only — guard prevents retry loop on failure)
   const formConfigLoadedRef = useRef(false)

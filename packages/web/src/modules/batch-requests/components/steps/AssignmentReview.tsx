@@ -38,7 +38,10 @@ export function AssignmentReview({ hook }: AssignmentReviewProps) {
   const t = useTranslations('batch')
 
   const beneficiaries = session?.beneficiaries || []
-  const classifications = session?.classificationResults || []
+  const classifications = useMemo(
+    () => session?.classificationResults || [],
+    [session?.classificationResults]
+  )
 
   // Local state for editable assignments
   const [assignments, setAssignments] = useState<

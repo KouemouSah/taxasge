@@ -375,15 +375,15 @@ export interface ChatWidgetProps {
 /**
  * Convert snake_case to camelCase
  */
-export function toCamelCase(obj: any): any {
+export function toCamelCase(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map(v => toCamelCase(v))
-  } else if (obj !== null && obj.constructor === Object) {
-    return Object.keys(obj).reduce((result, key) => {
+  } else if (obj !== null && typeof obj === 'object' && (obj as object).constructor === Object) {
+    return Object.keys(obj as Record<string, unknown>).reduce((result, key) => {
       const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase())
-      result[camelKey] = toCamelCase(obj[key])
+      result[camelKey] = toCamelCase((obj as Record<string, unknown>)[key])
       return result
-    }, {} as any)
+    }, {} as Record<string, unknown>)
   }
   return obj
 }
@@ -391,15 +391,15 @@ export function toCamelCase(obj: any): any {
 /**
  * Convert camelCase to snake_case
  */
-export function toSnakeCase(obj: any): any {
+export function toSnakeCase(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map(v => toSnakeCase(v))
-  } else if (obj !== null && obj.constructor === Object) {
-    return Object.keys(obj).reduce((result, key) => {
+  } else if (obj !== null && typeof obj === 'object' && (obj as object).constructor === Object) {
+    return Object.keys(obj as Record<string, unknown>).reduce((result, key) => {
       const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase()
-      result[snakeKey] = toSnakeCase(obj[key])
+      result[snakeKey] = toSnakeCase((obj as Record<string, unknown>)[key])
       return result
-    }, {} as any)
+    }, {} as Record<string, unknown>)
   }
   return obj
 }

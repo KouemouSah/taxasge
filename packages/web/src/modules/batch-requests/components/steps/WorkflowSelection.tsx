@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { FileStack, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -53,7 +53,10 @@ export function WorkflowSelection({ hook, onSessionCreated }: WorkflowSelectionP
 
   // F-006: Derive solicitud types from selected workflow
   const selectedWorkflow = workflows.find((w) => w.code === workflowCode)
-  const solicitudTypes = selectedWorkflow?.allowed_solicitud_types || []
+  const solicitudTypes = useMemo(
+    () => selectedWorkflow?.allowed_solicitud_types || [],
+    [selectedWorkflow?.allowed_solicitud_types]
+  )
 
   // Auto-select first solicitud type when workflow changes
   useEffect(() => {
