@@ -23,6 +23,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Set, Tuple
+from uuid import uuid4
 
 from app.core.cache import (
     get_menu_cache,
@@ -168,6 +169,36 @@ _DEFAULT_LIST_COLUMNS = ["reference", "beneficiary", "status", "created_at"]
 _DEFAULT_PREVIEW_SECTIONS = ["identity", "documents"]
 
 
+# ─── Sub_type → SolicitudType mapping (for document extraction) ──────────
+
+def _map_sub_type_to_solicitud_type(sub_type: str) -> "SolicitudType":
+    """Map a workflow sub_type string to the correct SolicitudType enum.
+
+    Workflows use sub_types like 'PRIMERA_VEZ', 'TRANSFERENCIA', etc.
+    but get_document_requirements() compares with SolicitudType enum
+    which is lowercase ('expedicion', 'renovacion', 'duplicado').
+    """
+    from app.modules.service_requests.models.enums import SolicitudType
+
+    _MAP = {
+        # EXPEDICION indicators
+        "NUEVO": SolicitudType.EXPEDICION,
+        "NUEVA": SolicitudType.EXPEDICION,
+        "PRIMERA_VEZ": SolicitudType.EXPEDICION,
+        "PRIMERA_MATRICULACION": SolicitudType.EXPEDICION,
+        "EXPEDICION": SolicitudType.EXPEDICION,
+        # RENOVACION indicators
+        "RENOVACION": SolicitudType.RENOVACION,
+        "RENOVACION_ITV": SolicitudType.RENOVACION,
+        "RENOVACION_CUVE": SolicitudType.RENOVACION,
+        # DUPLICADO indicators
+        "DUPLICADO": SolicitudType.DUPLICADO,
+        "DUPLICADO_PERMISO": SolicitudType.DUPLICADO,
+        "DUPLICADO_CUVE": SolicitudType.DUPLICADO,
+    }
+    return _MAP.get(sub_type, SolicitudType.EXPEDICION)
+
+
 # ─── Helpers (extracted from admin_routes.py) ───────────────────────────────
 
 def _extract_tariff_from_workflow(
@@ -252,13 +283,35 @@ def _extract_tariff_from_workflow(
 
 
 def _extract_document_requirements(workflow, sub_type: str) -> List[Dict[str, Any]]:
-    """Extract document requirements from a workflow class."""
+    """Extract document requirements from a workflow class.
+
+    Creates a minimal WorkflowContext so that:
+    1. solicitud_type is a proper SolicitudType enum (not uppercase string)
+    2. context.sub_type is set for workflows that branch on it (vehiculos)
+    """
     requirements = []
     try:
         if hasattr(workflow, 'get_document_requirements_legacy'):
             docs = workflow.get_document_requirements_legacy(sub_type)
         elif hasattr(workflow, 'get_document_requirements'):
-            docs = workflow.get_document_requirements(sub_type)
+            from app.modules.service_requests.workflows.workflow_interface import WorkflowContext
+            from app.modules.service_requests.models.enums import SolicitudType, WorkflowCode
+
+            solicitud_type = _map_sub_type_to_solicitud_type(sub_type)
+            wf_code = getattr(workflow, 'workflow_code', WorkflowCode.RESIDENCIA_PRIMERA_VEZ)
+
+            # Minimal context: only sub_type matters for document branching.
+            # service_request_id and user_id are dummy — never used in extraction.
+            minimal_context = WorkflowContext(
+                service_request_id=uuid4(),
+                user_id=uuid4(),
+                workflow_code=wf_code,
+                solicitud_type=solicitud_type,
+                sub_type=sub_type,
+            )
+            docs = workflow.get_document_requirements(
+                solicitud_type, context=minimal_context,
+            )
         else:
             return requirements
 

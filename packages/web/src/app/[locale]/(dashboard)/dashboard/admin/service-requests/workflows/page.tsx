@@ -393,7 +393,7 @@ export default function WorkflowsPage() {
     return (
       <div className="flex flex-wrap gap-1">
         {activeTariffs.slice(0, 3).map((tariff, idx) => {
-          const isRBC = tariff.tariff_type === 'PERCENTAGE' || tariff.tariff_type === 'NOTA_INGRESO'
+          const isRBC = tariff.tariff_type === 'PERCENTAGE' || tariff.tariff_type === 'RBC'
           return (
             <Badge key={idx} variant="outline" className="text-xs">
               {tariff.solicitud_type?.substring(0, 3) || 'N/A'}:{' '}
