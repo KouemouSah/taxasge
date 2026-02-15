@@ -441,7 +441,11 @@ class TramitesVisadoWorkflow(PredefinedWorkflow):
         self.set_tariff_config(TariffConfig(
             tariff_type=TariffType.FIXED,
             fixed_amounts={
-                SolicitudType.EXPEDICION.value.upper(): 20000,  # default/fallback
+                "PRORROGA": 20000,          # 1 month, fixed
+                "ALTERNATIVO": 80000,       # representative mid-tier (12 months)
+                                            # tiered: 3m→20K, 6m→40K, 12m→80K, 24m→600K
+                "PERMANENCIA": 50000,       # per month (default 1 month)
+                "SALIDA_VENCIDO": 30000,    # per month of overstay (default 1 month)
             },
             currency="XAF",
         ))
