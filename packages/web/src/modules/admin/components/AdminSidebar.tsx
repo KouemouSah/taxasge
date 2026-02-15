@@ -44,7 +44,6 @@ import {
   TicketIcon,
   ListChecks,
   GitBranch,
-  FileCheck,
   DollarSign,
   CalendarClock,
   Landmark,
