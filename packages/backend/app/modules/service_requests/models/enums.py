@@ -144,8 +144,11 @@ class DocumentConditionType(str, Enum):
 
 class WorkflowCategory(str, Enum):
     """
-    Categories for grouping workflows.
-    APPLICATION-LEVEL: Not stored as DB enum, for UI grouping and filtering.
+    Categories for grouping workflows in citizen UI.
+    APPLICATION-LEVEL: Not stored as DB enum (DB = varchar(50)), for UI grouping and filtering.
+    Must stay aligned with:
+      - Admin dropdown: packages/web/src/modules/service-requests-admin/types/index.ts (WORKFLOW_CATEGORIES_MAP)
+      - Citizen UI: packages/web/src/app/[locale]/(dashboard)/dashboard/service-requests/new/page.tsx (CATEGORY_CONFIG)
     """
     IDENTIDAD = "IDENTIDAD"
     EXTRANJERIA = "EXTRANJERIA"
@@ -153,6 +156,8 @@ class WorkflowCategory(str, Enum):
     CONTRATOS = "CONTRATOS"
     CONDUCCION = "CONDUCCION"
     FUNCION_PUBLICA = "FUNCION_PUBLICA"
+    REGISTRO_CIVIL = "REGISTRO_CIVIL"
+    COMERCIO = "COMERCIO"
     GENERAL = "GENERAL"  # Fallback for generic workflows
     OTROS = "OTROS"      # Other uncategorized services
 

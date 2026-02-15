@@ -243,10 +243,16 @@ class WizardSessionService:
             code: uuid4() for code in documents.keys()
         }
 
+        try:
+            wf_code = WorkflowCode(session["workflow_code"])
+        except ValueError:
+            from ..workflows.generic_workflow import _GenericCode
+            wf_code = _GenericCode(session["workflow_code"])
+
         return WorkflowContext(
             service_request_id=uuid4(),
             user_id=UUID(session["user_id"]),
-            workflow_code=WorkflowCode(session["workflow_code"]),
+            workflow_code=wf_code,
             solicitud_type=SolicitudType(session.get("solicitud_type", "expedicion")),
             sub_type=session.get("sub_type"),
             motivo=motivo,

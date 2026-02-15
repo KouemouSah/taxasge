@@ -50,6 +50,31 @@ from ..models.enums import (
 logger = logging.getLogger(__name__)
 
 
+class _GenericCode:
+    """Wrapper for generic workflow codes that don't have a WorkflowCode enum entry.
+
+    Mimics enum interface (.value, __eq__, __hash__) so that existing code
+    calling self.workflow_code.value works transparently for DB-driven workflows.
+    """
+
+    def __init__(self, value: str):
+        self.value = value
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.value == other
+        return getattr(other, 'value', other) == self.value
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return f"_GenericCode({self.value!r})"
+
+
 @dataclass
 class WorkflowConfig:
     """Configuration loaded from workflows table."""
@@ -186,7 +211,8 @@ class GenericWorkflowStandard(PredefinedWorkflow):
         try:
             self._workflow_code = WorkflowCode(self._config.code)
         except ValueError:
-            self._workflow_code = self._config.code
+            # Non-enum code (admin-created) — wrap so .value works everywhere
+            self._workflow_code = _GenericCode(self._config.code)
 
         try:
             self._category = WorkflowCategory(self._config.category)
@@ -344,9 +370,11 @@ class GenericWorkflowStandard(PredefinedWorkflow):
         """
         Setup ALL steps explicitly (V2 = autonomous, no inherited steps).
 
-        Standard flow steps:
-        0: Selection → 1: Upload → 2: Form Review
-        → 3: Agent Review → 4: Payment → (5: Appointment) → N: Confirmation
+        Standard flow: 0:Selection → 1:Upload → 2:Form Review
+        → 3:Appointment (optional) → 4:Payment → 5:Confirmation
+
+        Agent review happens at the status transition level
+        (SUBMITTED → UNDER_REVIEW → DOSSIER_VALIDE), not as a wizard step.
         """
         # Step 0: Selection
         self.add_step(WorkflowStep(
@@ -376,38 +404,30 @@ class GenericWorkflowStandard(PredefinedWorkflow):
             description_es="Verifique y corrija los datos extraídos de sus documentos",
         ))
 
-        # Step 3: Agent Review
-        self.add_step(WorkflowStep(
-            step_number=3,
-            step_id="agent_review",
-            step_type=StepType.AGENT_REVIEW,
-            title_es="Revisión por Agente",
-            description_es="Un agente revisará y validará su solicitud",
-        ))
+        step_num = 3
 
-        # Step 4: Payment
-        self.add_step(WorkflowStep(
-            step_number=4,
-            step_id="payment",
-            step_type=StepType.PAYMENT,
-            title_es="Pago",
-            description_es="Realice el pago de las tasas correspondientes",
-        ))
-
-        step_num = 5
-
-        # Step 5 (optional): Appointment
+        # Step 3 (optional): Appointment — BEFORE payment (Doctolib pattern)
         if self._config.requires_appointment:
             self.add_step(WorkflowStep(
                 step_number=step_num,
                 step_id="appointment",
                 step_type=StepType.APPOINTMENT,
                 title_es="Cita",
-                description_es="Se le asignará una cita para completar el trámite",
+                description_es="Seleccione una cita para completar el trámite",
             ))
             step_num += 1
 
-        # Final step: Confirmation
+        # Step 3/4: Payment
+        self.add_step(WorkflowStep(
+            step_number=step_num,
+            step_id="payment",
+            step_type=StepType.PAYMENT,
+            title_es="Pago",
+            description_es="Realice el pago de las tasas correspondientes",
+        ))
+        step_num += 1
+
+        # Final: Confirmation
         self.add_step(WorkflowStep(
             step_number=step_num,
             step_id="confirmation",
@@ -577,7 +597,8 @@ class GenericWorkflowDirectPayment(PredefinedWorkflow):
         try:
             self._workflow_code = WorkflowCode(self._config.code)
         except ValueError:
-            self._workflow_code = self._config.code
+            # Non-enum code (admin-created) — wrap so .value works everywhere
+            self._workflow_code = _GenericCode(self._config.code)
 
         try:
             self._category = WorkflowCategory(self._config.category)
@@ -729,9 +750,10 @@ class GenericWorkflowDirectPayment(PredefinedWorkflow):
         """
         Setup ALL steps explicitly (V2 = autonomous).
 
-        Direct payment flow steps:
-        0: Selection → 1: Upload → 2: Form Review
-        → 3: Payment (NO agent review) → (4: Appointment) → N: Confirmation
+        Direct payment flow: 0:Selection → 1:Upload → 2:Form Review
+        → 3:Appointment (optional) → 4:Payment → 5:Confirmation
+
+        No agent review — payment is direct (citizen pays immediately).
         """
         # Step 0: Selection
         self.add_step(WorkflowStep(
@@ -761,27 +783,28 @@ class GenericWorkflowDirectPayment(PredefinedWorkflow):
             description_es="Verifique y corrija los datos extraídos de sus documentos",
         ))
 
-        # Step 3: Payment (NO agent review!)
-        self.add_step(WorkflowStep(
-            step_number=3,
-            step_id="payment",
-            step_type=StepType.PAYMENT,
-            title_es="Pago",
-            description_es="Realice el pago de las tasas correspondientes",
-        ))
+        step_num = 3
 
-        step_num = 4
-
-        # Step 4 (optional): Appointment
+        # Step 3 (optional): Appointment — BEFORE payment (Doctolib pattern)
         if self._config.requires_appointment:
             self.add_step(WorkflowStep(
                 step_number=step_num,
                 step_id="appointment",
                 step_type=StepType.APPOINTMENT,
                 title_es="Cita",
-                description_es="Se le asignará una cita para recoger su documento",
+                description_es="Seleccione una cita para completar el trámite",
             ))
             step_num += 1
+
+        # Step 3/4: Payment
+        self.add_step(WorkflowStep(
+            step_number=step_num,
+            step_id="payment",
+            step_type=StepType.PAYMENT,
+            title_es="Pago",
+            description_es="Realice el pago de las tasas correspondientes",
+        ))
+        step_num += 1
 
         # Final step: Confirmation
         self.add_step(WorkflowStep(

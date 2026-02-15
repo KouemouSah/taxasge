@@ -1482,8 +1482,8 @@ class ServiceRequestService:
                 try:
                     wf_code_enum = WorkflowCode(workflow_code) if workflow_code else WorkflowCode.PASAPORTE_NUEVO
                 except ValueError:
-                    wf_code_enum = WorkflowCode.PASAPORTE_NUEVO
-                    logger.warning(f"Unknown workflow_code '{workflow_code}', using default")
+                    from ..workflows.generic_workflow import _GenericCode
+                    wf_code_enum = _GenericCode(workflow_code)
 
                 context = WorkflowContext(
                     service_request_id=uuid4(),  # Placeholder for requirements check

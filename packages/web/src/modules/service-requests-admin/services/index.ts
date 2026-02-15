@@ -5,3 +5,4 @@
 
 export * from './api'
 export { default as serviceRequestsAdminApi } from './api'
+export type { ExtractionSchema } from './api'

@@ -18,6 +18,7 @@ import {
   slotConfigsApi,
   blockedDatesApi,
   delayRulesApi,
+  extractionSchemasApi,
 } from '../services/api'
 import type {
   WorkflowFilters,
@@ -84,6 +85,9 @@ export const queryKeys = {
       all: ['admin', 'service-requests', 'delay-rules'] as const,
       list: (workflowCode?: string) => ['admin', 'service-requests', 'delay-rules', 'list', workflowCode] as const,
     },
+  },
+  extractionSchemas: {
+    all: ['admin', 'service-requests', 'extraction-schemas'] as const,
   },
 }
 
@@ -848,5 +852,17 @@ export function useDeleteDelayRule() {
         variant: 'destructive',
       })
     },
+  })
+}
+
+// =============================================================================
+// EXTRACTION SCHEMAS HOOKS
+// =============================================================================
+
+export function useExtractionSchemas() {
+  return useQuery({
+    queryKey: queryKeys.extractionSchemas.all,
+    queryFn: () => extractionSchemasApi.getAll(),
+    staleTime: 60 * 60 * 1000, // 1h — schemas change very rarely
   })
 }

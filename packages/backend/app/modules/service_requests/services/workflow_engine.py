@@ -67,6 +67,7 @@ class WorkflowEngine:
     def __init__(self):
         self._workflows: Dict[WorkflowCode, AnyWorkflow] = {}
         self._workflow_classes: Dict[WorkflowCode, Type[AnyWorkflow]] = {}
+        self._generic_cache: Dict[str, AnyWorkflow] = {}  # code_str → GenericWorkflow (DB-driven)
 
     def register(self, workflow_class: Type[AnyWorkflow]) -> None:
         """
@@ -105,11 +106,15 @@ class WorkflowEngine:
         return self._workflows.get(code)
 
     def get_workflow_by_string(self, code_str: str) -> Optional[AnyWorkflow]:
-        """Get workflow by string code (for API usage)."""
+        """Get workflow by string code. Checks predefined first, then generic cache."""
         try:
             code = WorkflowCode(code_str)
             return self.get_workflow(code)
         except ValueError:
+            # Not a predefined enum — check generic cache (DB-driven workflows)
+            cached = self._generic_cache.get(code_str)
+            if cached:
+                return cached
             logger.warning(f"Unknown workflow code: {code_str}")
             return None
 
@@ -118,10 +123,15 @@ class WorkflowEngine:
         return self._workflows.copy()
 
     def get_workflows_by_category(self, category: WorkflowCategory) -> List[AnyWorkflow]:
-        """Get all workflows in a category (deduplicated)."""
+        """Get all workflows in a category (deduplicated, predefined + generic)."""
         seen: set = set()
         result = []
         for w in self._workflows.values():
+            if w.category == category and id(w) not in seen:
+                seen.add(id(w))
+                result.append(w)
+        # Include generic (DB-driven) workflows matching category
+        for w in self._generic_cache.values():
             if w.category == category and id(w) not in seen:
                 seen.add(id(w))
                 result.append(w)
@@ -130,6 +140,19 @@ class WorkflowEngine:
     def is_registered(self, code: WorkflowCode) -> bool:
         """Check if a workflow is registered."""
         return code in self._workflows
+
+    # === Generic Workflow Cache (DB-driven) ===
+
+    def register_generic(self, code: str, workflow: AnyWorkflow) -> None:
+        """Register a generic (DB-driven) workflow in the cache."""
+        self._generic_cache[code] = workflow
+        logger.info(f"Registered generic workflow: {code}")
+
+    def unregister_generic(self, code: str) -> None:
+        """Remove a generic workflow from the cache."""
+        if code in self._generic_cache:
+            del self._generic_cache[code]
+            logger.info(f"Unregistered generic workflow: {code}")
 
     # === Context Management ===
 
@@ -195,8 +218,9 @@ class WorkflowEngine:
         try:
             workflow_code = WorkflowCode(row["workflow_code"])
         except ValueError:
-            logger.error(f"Unknown workflow_code in DB: {row['workflow_code']}")
-            return None
+            # Generic (admin-created) workflow — not in enum, use wrapper
+            from ..workflows.generic_workflow import _GenericCode
+            workflow_code = _GenericCode(row["workflow_code"])
 
         # Get sub_type and motivo from form_data if present
         # Handle legacy double-encoded form_data (stored as JSON string instead of object)
@@ -1137,8 +1161,10 @@ class WorkflowEngine:
         return result
 
     def get_available_workflows(self) -> List[Dict[str, Any]]:
-        """Get list of all available workflows (deduplicated)."""
-        return [w.get_info() for w in self._deduplicated_workflows()]
+        """Get list of all available workflows (predefined + generic, deduplicated)."""
+        predefined = [w.get_info() for w in self._deduplicated_workflows()]
+        generic = [w.get_info() for w in self._generic_cache.values()]
+        return predefined + generic
 
     def get_workflows_for_display(self) -> Dict[str, List[Dict[str, Any]]]:
         """Get workflows grouped by category for display (deduplicated)."""
@@ -1189,6 +1215,37 @@ def register_all_workflows() -> None:
             logger.error(f"Failed to register workflow {cls.__name__}: {e}")
 
     logger.info(f"Auto-registered {len(registered)} workflows")
+
+
+async def load_generic_workflows(db) -> int:
+    """Load all active generic workflows from database into engine cache.
+
+    Called at startup (after sync) and after admin activates/deactivates a workflow.
+    Uses the existing load_generic_workflow() factory which selects Standard or
+    DirectPayment based on workflow_type in DB.
+
+    Returns number of workflows loaded.
+    """
+    from ..workflows.generic_workflow import load_generic_workflow
+
+    rows = await db.fetch(
+        "SELECT code FROM workflows WHERE is_generic = TRUE AND is_active = TRUE"
+    )
+
+    # Clear existing generic cache before full reload
+    workflow_engine._generic_cache.clear()
+
+    loaded = 0
+    for row in rows:
+        try:
+            wf = await load_generic_workflow(db, row["code"])
+            workflow_engine.register_generic(row["code"], wf)
+            loaded += 1
+        except Exception as e:
+            logger.error(f"Failed to load generic workflow {row['code']}: {e}")
+
+    logger.info(f"Loaded {loaded} generic workflows from database")
+    return loaded
 
 
 # Auto-register workflows on module import

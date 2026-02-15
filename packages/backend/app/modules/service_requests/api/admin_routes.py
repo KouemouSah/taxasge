@@ -54,6 +54,23 @@ def _parse_config(config_value):
     return {}
 
 
+async def _refresh_generic_cache(db: asyncpg.Connection, workflow_code: str) -> None:
+    """Refresh generic workflow cache after config changes (documents, tariffs, etc.).
+
+    No-op for predefined workflows or inactive generic workflows.
+    """
+    row = await db.fetchrow(
+        "SELECT is_generic, is_active FROM workflows WHERE code = $1",
+        workflow_code
+    )
+    if row and row["is_generic"] and row["is_active"]:
+        try:
+            from ..workflows.generic_workflow import load_generic_workflow
+            from ..services.workflow_engine import workflow_engine
+            wf = await load_generic_workflow(db, workflow_code)
+            workflow_engine.register_generic(workflow_code, wf)
+        except Exception as e:
+            logger.warning(f"Failed to refresh generic cache for {workflow_code}: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -680,6 +697,16 @@ async def create_workflow(
         workflow.icon, workflow.color, config_json, workflow.is_active,
         workflow.parent_workflow_code, tags_json, workflow.is_parent)
 
+    # Hot-reload generic workflow into engine cache
+    if workflow.is_generic and workflow.is_active:
+        try:
+            from ..workflows.generic_workflow import load_generic_workflow
+            from ..services.workflow_engine import workflow_engine
+            wf = await load_generic_workflow(db, workflow.code)
+            workflow_engine.register_generic(workflow.code, wf)
+        except Exception:
+            pass  # Will be loaded at next startup
+
     return WorkflowResponse.from_row(row)
 
 
@@ -738,6 +765,19 @@ async def update_workflow(
 
     row = await db.fetchrow(query, *params)
 
+    # Hot-reload generic workflow in engine cache
+    if row and row["is_generic"]:
+        try:
+            from ..workflows.generic_workflow import load_generic_workflow
+            from ..services.workflow_engine import workflow_engine
+            if row["is_active"]:
+                wf = await load_generic_workflow(db, code)
+                workflow_engine.register_generic(code, wf)
+            else:
+                workflow_engine.unregister_generic(code)
+        except Exception:
+            pass  # Will be synced at next startup
+
     return WorkflowResponse.from_row(row)
 
 
@@ -764,6 +804,20 @@ async def toggle_workflow_status(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Workflow not found: {code}"
         )
+
+    # Hot-reload generic workflow in engine cache
+    row = await db.fetchrow("SELECT is_generic FROM workflows WHERE code = $1", code)
+    if row and row["is_generic"]:
+        try:
+            from ..workflows.generic_workflow import load_generic_workflow
+            from ..services.workflow_engine import workflow_engine
+            if is_active:
+                wf = await load_generic_workflow(db, code)
+                workflow_engine.register_generic(code, wf)
+            else:
+                workflow_engine.unregister_generic(code)
+        except Exception:
+            pass  # Will be synced at next startup
 
     return {
         "message": f"Workflow {'activated' if is_active else 'deactivated'}",
@@ -826,7 +880,37 @@ async def delete_workflow(
     )
     await db.execute("DELETE FROM workflows WHERE code = $1", code)
 
+    # Remove from generic workflow cache
+    from ..services.workflow_engine import workflow_engine
+    workflow_engine.unregister_generic(code)
+
     return None
+
+
+# ═══════════════════════════════════════════════════════════════
+# EXTRACTION SCHEMAS
+# ═══════════════════════════════════════════════════════════════
+
+@router.get(
+    "/extraction-schemas",
+    summary="List available OCR extraction schemas",
+    description="List all available OCR extraction schema keys for document configuration."
+)
+async def list_extraction_schemas(
+    current_user=Depends(get_current_user),
+):
+    """Return available OCR schemas for admin document configuration dropdown."""
+    from ..services.schema_loader import schema_loader
+    keys = schema_loader.get_schema_keys()
+    result = []
+    for key in sorted(keys):
+        schema = schema_loader.get_schema(key)
+        result.append({
+            "key": key,
+            "name": schema.get("document_name", key) if schema else key,
+            "version": schema.get("version", "1") if schema else "1",
+        })
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -978,6 +1062,8 @@ async def add_document_requirement(
         condition_value_json, doc.is_required, doc.display_order,
         doc.instructions_es, doc.extraction_schema_key, doc.is_active)
 
+    await _refresh_generic_cache(db, code)
+
     return DocumentRequirementResponse(
         id=str(row['id']),
         workflow_code=row['workflow_code'],
@@ -1072,6 +1158,8 @@ async def update_document_requirement(
             detail=f"Document requirement not found"
         )
 
+    await _refresh_generic_cache(db, code)
+
     return DocumentRequirementResponse(
         id=str(row['id']),
         workflow_code=row['workflow_code'],
@@ -1111,6 +1199,8 @@ async def remove_document_requirement(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document requirement not found"
         )
+
+    await _refresh_generic_cache(db, code)
 
     return None
 
@@ -1228,6 +1318,8 @@ async def create_tariff(
         tariff.legal_reference, tariff.effective_from, tariff.effective_to,
         tariff.is_active)
 
+    await _refresh_generic_cache(db, tariff.workflow_code)
+
     return WorkflowTariffResponse(
         id=row['id'],
         workflow_code=row['workflow_code'],
@@ -1309,6 +1401,8 @@ async def update_tariff(
             detail="Workflow tariff not found"
         )
 
+    await _refresh_generic_cache(db, row['workflow_code'])
+
     return WorkflowTariffResponse(
         id=row['id'],
         workflow_code=row['workflow_code'],
@@ -1336,6 +1430,11 @@ async def delete_tariff(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin.manage_tariff"))
 ):
+    # Get workflow_code before delete (for cache refresh)
+    wf_code = await db.fetchval(
+        "SELECT workflow_code FROM workflow_tariffs WHERE id = $1", tariff_id
+    )
+
     result = await db.execute(
         "DELETE FROM workflow_tariffs WHERE id = $1", tariff_id
     )
@@ -1345,6 +1444,9 @@ async def delete_tariff(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workflow tariff not found"
         )
+
+    if wf_code:
+        await _refresh_generic_cache(db, wf_code)
 
     return None
 

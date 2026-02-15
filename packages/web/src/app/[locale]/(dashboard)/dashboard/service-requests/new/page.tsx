@@ -35,12 +35,19 @@ import {
   Calendar,
   CreditCard,
   BadgeCheck,
+  BookOpen,
+  Store,
+  LayoutGrid,
+  HelpCircle,
 } from 'lucide-react'
 import { useServiceRequests, wizardSessionApi } from '@/modules/service-requests'
 import type { WorkflowConfig } from '@/modules/service-requests'
 import { FEATURE_CACHE_FIRST_WIZARD } from '@/core/config/features'
 
-// Category icons, labels and descriptions
+// Category display config — must stay aligned with:
+// - Backend: packages/backend/app/modules/service_requests/models/enums.py (WorkflowCategory)
+// - Admin dropdown: packages/web/src/modules/service-requests-admin/types/index.ts (WORKFLOW_CATEGORIES_MAP)
+// Unknown categories gracefully fallback via getCategoryLabel/getCategoryIcon below.
 const CATEGORY_CONFIG: Record<
   string,
   { icon: React.ElementType; labelEs: string; labelFr: string; labelEn: string; descEs: string; descFr: string; descEn: string }
@@ -48,7 +55,7 @@ const CATEGORY_CONFIG: Record<
   IDENTIDAD: {
     icon: BadgeCheck,
     labelEs: 'Identidad',
-    labelFr: 'Identite',
+    labelFr: 'Identit\u00e9',
     labelEn: 'Identity',
     descEs: 'DIP, Certificados de nacimiento, etc.',
     descFr: 'DIP, Certificats de naissance, etc.',
@@ -56,19 +63,19 @@ const CATEGORY_CONFIG: Record<
   },
   EXTRANJERIA: {
     icon: Globe,
-    labelEs: 'Extranjeria',
+    labelEs: 'Extranjer\u00eda',
     labelFr: 'Immigration',
     labelEn: 'Immigration',
     descEs: 'Visados, Permisos de residencia',
-    descFr: 'Visas, Permis de sejour',
+    descFr: 'Visas, Permis de s\u00e9jour',
     descEn: 'Visas, Residence permits',
   },
   VEHICULOS: {
     icon: Car,
-    labelEs: 'Vehiculos',
-    labelFr: 'Vehicules',
+    labelEs: 'Veh\u00edculos',
+    labelFr: 'V\u00e9hicules',
     labelEn: 'Vehicles',
-    descEs: 'Matriculacion, Transferencias',
+    descEs: 'Matriculaci\u00f3n, Transferencias',
     descFr: 'Immatriculation, Transferts',
     descEn: 'Registration, Transfers',
   },
@@ -77,13 +84,13 @@ const CATEGORY_CONFIG: Record<
     labelEs: 'Contratos',
     labelFr: 'Contrats',
     labelEn: 'Contracts',
-    descEs: 'Legalizacion de contratos',
-    descFr: 'Legalisation de contrats',
+    descEs: 'Legalizaci\u00f3n de contratos',
+    descFr: 'L\u00e9galisation de contrats',
     descEn: 'Contract legalization',
   },
   CONDUCCION: {
     icon: BadgeCheck,
-    labelEs: 'Conduccion',
+    labelEs: 'Conducci\u00f3n',
     labelFr: 'Conduite',
     labelEn: 'Driving',
     descEs: 'Permisos de conducir',
@@ -92,12 +99,48 @@ const CATEGORY_CONFIG: Record<
   },
   FUNCION_PUBLICA: {
     icon: Building,
-    labelEs: 'Funcion Publica',
+    labelEs: 'Funci\u00f3n P\u00fablica',
     labelFr: 'Fonction Publique',
     labelEn: 'Public Service',
     descEs: 'Certificados de funcionarios',
     descFr: 'Certificats de fonctionnaires',
     descEn: 'Civil servant certificates',
+  },
+  REGISTRO_CIVIL: {
+    icon: BookOpen,
+    labelEs: 'Registro Civil',
+    labelFr: '\u00c9tat Civil',
+    labelEn: 'Civil Registry',
+    descEs: 'Actas de nacimiento, defunci\u00f3n, matrimonio',
+    descFr: 'Actes de naissance, d\u00e9c\u00e8s, mariage',
+    descEn: 'Birth, death, marriage certificates',
+  },
+  COMERCIO: {
+    icon: Store,
+    labelEs: 'Comercio',
+    labelFr: 'Commerce',
+    labelEn: 'Commerce',
+    descEs: 'Licencias comerciales, registros mercantiles',
+    descFr: 'Licences commerciales, registres du commerce',
+    descEn: 'Business licenses, commercial registries',
+  },
+  GENERAL: {
+    icon: LayoutGrid,
+    labelEs: 'Tr\u00e1mites Generales',
+    labelFr: 'D\u00e9marches G\u00e9n\u00e9rales',
+    labelEn: 'General Services',
+    descEs: 'Otros tr\u00e1mites administrativos',
+    descFr: 'Autres d\u00e9marches administratives',
+    descEn: 'Other administrative services',
+  },
+  OTROS: {
+    icon: HelpCircle,
+    labelEs: 'Otros',
+    labelFr: 'Autres',
+    labelEn: 'Others',
+    descEs: 'Servicios diversos',
+    descFr: 'Services divers',
+    descEn: 'Miscellaneous services',
   },
 }
 
@@ -165,11 +208,14 @@ export default function NewServiceRequestPage() {
     return filtered
   }, [workflowsByCategory, searchQuery])
 
-  // Get category label
+  // Get category label — known categories use i18n labels, unknown format nicely from code
   const getCategoryLabel = (category: string): string => {
     const config = CATEGORY_CONFIG[category]
-    if (!config) return category
-    return locale === 'es' ? config.labelEs : locale === 'fr' ? config.labelFr : config.labelEn
+    if (config) {
+      return locale === 'es' ? config.labelEs : locale === 'fr' ? config.labelFr : config.labelEn
+    }
+    // Fallback: REGISTRO_CIVIL → "Registro Civil", SALUD → "Salud"
+    return category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\B\w+/g, w => w.toLowerCase())
   }
 
   // Get category description

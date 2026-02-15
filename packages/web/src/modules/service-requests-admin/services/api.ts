@@ -459,6 +459,26 @@ export const syncApi = {
 }
 
 // =============================================================================
+// EXTRACTION SCHEMAS API
+// =============================================================================
+
+export interface ExtractionSchema {
+  key: string
+  name: string
+  version: string
+}
+
+export const extractionSchemasApi = {
+  /**
+   * List available OCR extraction schemas
+   * BACKEND: GET /api/v1/admin/service-requests/extraction-schemas
+   */
+  getAll: async (): Promise<ExtractionSchema[]> => {
+    return fetchClient.get<ExtractionSchema[]>(`${ADMIN_BASE}/extraction-schemas`)
+  },
+}
+
+// =============================================================================
 // COMBINED EXPORT
 // =============================================================================
 
@@ -471,6 +491,7 @@ export const serviceRequestsAdminApi = {
   slotConfigs: slotConfigsApi,
   blockedDates: blockedDatesApi,
   delayRules: delayRulesApi,
+  extractionSchemas: extractionSchemasApi,
   sync: syncApi,
 }
 

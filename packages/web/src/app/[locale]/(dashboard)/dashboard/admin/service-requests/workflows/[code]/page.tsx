@@ -89,10 +89,13 @@ import {
   useDeleteDelayRule,
   DOCUMENT_CONDITION_TYPES,
   TARIFF_TYPES,
+  WORKFLOW_TYPES,
   PRIORITY_LABELS,
   DAY_OF_WEEK_LABELS,
+  useExtractionSchemas,
 } from '@/modules/service-requests-admin'
 import type {
+  WorkflowType,
   WorkflowUpdate,
   WorkflowTariff,
   WorkflowTariffCreate,
@@ -233,9 +236,13 @@ export default function WorkflowDetailPage() {
     condition_type: string
     is_required: boolean
     instructions_es: string
+    extraction_schema_key: string
   }
   const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([])
   const [isSavingDocBatch, setIsSavingDocBatch] = useState(false)
+
+  // Extraction schemas (for document OCR dropdown)
+  const { data: extractionSchemas } = useExtractionSchemas()
 
   // Appointments data
   const { data: slotConfigs } = useSlotConfigs({ entity_code: workflow?.entity_code })
@@ -275,6 +282,15 @@ export default function WorkflowDetailPage() {
         name_es: workflow.name_es,
         description_es: workflow.description_es,
         workflow_type: workflow.workflow_type,
+        requires_agent_validation: workflow.requires_agent_validation,
+        requires_appointment: workflow.requires_appointment,
+        sla_hours: workflow.sla_hours,
+        display_order: workflow.display_order,
+        max_processing_days: workflow.max_processing_days,
+        appointment_delay_days: workflow.appointment_delay_days,
+        tags: workflow.tags,
+        parent_workflow_code: workflow.parent_workflow_code,
+        is_parent: workflow.is_parent,
         is_active: workflow.is_active,
       })
     }
@@ -644,6 +660,7 @@ export default function WorkflowDetailPage() {
         condition_type: docForm.condition_type ?? 'always',
         is_required: docForm.is_required ?? true,
         instructions_es: docForm.instructions_es || '',
+        extraction_schema_key: docForm.extraction_schema_key || '',
       }
     ])
 
@@ -681,6 +698,7 @@ export default function WorkflowDetailPage() {
             condition_type: pending.condition_type as DocumentConditionType,
             is_required: pending.is_required,
             instructions_es: pending.instructions_es,
+            extraction_schema_key: pending.extraction_schema_key || null,
             display_order: baseOrder + i,
             is_active: true,
           },
@@ -1060,15 +1078,24 @@ export default function WorkflowDetailPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Identity — always read-only */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{t('code')}</Label>
-                  <Input value={workflow.code} disabled className="bg-muted" />
+                  <Input value={workflow.code} disabled className="bg-muted font-mono" />
                 </div>
                 <div className="space-y-2">
                   <Label>{t('entityCode')}</Label>
                   <Input value={workflow.entity_code} disabled className="bg-muted" />
                 </div>
+                <div className="space-y-2">
+                  <Label>{t('category')}</Label>
+                  <Input value={workflow.category} disabled className="bg-muted" />
+                </div>
+              </div>
+
+              {/* Editable fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>{t('nameEs')}</Label>
                   {isEditing ? (
@@ -1081,14 +1108,25 @@ export default function WorkflowDetailPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>{t('category')}</Label>
-                  <Input value={workflow.category} disabled className="bg-muted" />
-                </div>
-                <div className="space-y-2">
                   <Label>{t('type')}</Label>
-                  <Input value={workflow.workflow_type} disabled className="bg-muted" />
+                  {isEditing ? (
+                    <Select
+                      value={editForm.workflow_type || workflow.workflow_type}
+                      onValueChange={(v) => setEditForm({ ...editForm, workflow_type: v as WorkflowType })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {WORKFLOW_TYPES.map((wt) => (
+                          <SelectItem key={wt.value} value={wt.value}>{wt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input value={workflow.workflow_type} disabled className="bg-muted" />
+                  )}
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label>{t('descriptionEs')}</Label>
                 {isEditing ? (
@@ -1101,15 +1139,126 @@ export default function WorkflowDetailPage() {
                   <Textarea value={workflow.description_es || '-'} disabled className="bg-muted" rows={3} />
                 )}
               </div>
+
               {isEditing && (
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <Label htmlFor="is_active">{t('isActive')}</Label>
-                  <Switch
-                    id="is_active"
-                    checked={editForm.is_active}
-                    onCheckedChange={(checked) => setEditForm({ ...editForm, is_active: checked })}
-                  />
-                </div>
+                <>
+                  {/* Switches row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="edit_requires_agent">Requiere validación de agente</Label>
+                        <p className="text-xs text-muted-foreground">Un agente debe revisar la solicitud</p>
+                      </div>
+                      <Switch
+                        id="edit_requires_agent"
+                        checked={editForm.requires_agent_validation ?? workflow.requires_agent_validation}
+                        onCheckedChange={(checked) => setEditForm({ ...editForm, requires_agent_validation: checked })}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="edit_requires_appointment">Requiere cita</Label>
+                        <p className="text-xs text-muted-foreground">El ciudadano debe agendar cita</p>
+                      </div>
+                      <Switch
+                        id="edit_requires_appointment"
+                        checked={editForm.requires_appointment ?? workflow.requires_appointment}
+                        onCheckedChange={(checked) => setEditForm({ ...editForm, requires_appointment: checked })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Numeric fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label>SLA (horas)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={720}
+                        value={editForm.sla_hours ?? workflow.sla_hours}
+                        onChange={(e) => setEditForm({ ...editForm, sla_hours: parseInt(e.target.value) || 48 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Orden visualización</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editForm.display_order ?? workflow.display_order}
+                        onChange={(e) => setEditForm({ ...editForm, display_order: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Días máx. procesamiento</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={editForm.max_processing_days ?? workflow.max_processing_days ?? ''}
+                        onChange={(e) => setEditForm({ ...editForm, max_processing_days: e.target.value ? parseInt(e.target.value) : null })}
+                        placeholder="Opcional"
+                      />
+                    </div>
+                    {(editForm.requires_appointment ?? workflow.requires_appointment) && (
+                      <div className="space-y-2">
+                        <Label>Días anticip. cita</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={90}
+                          value={editForm.appointment_delay_days ?? workflow.appointment_delay_days ?? ''}
+                          onChange={(e) => setEditForm({ ...editForm, appointment_delay_days: e.target.value ? parseInt(e.target.value) : null })}
+                          placeholder="Opcional"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Parent workflow + is_parent */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Workflow Padre</Label>
+                      <Select
+                        value={editForm.parent_workflow_code ?? workflow.parent_workflow_code ?? '_none'}
+                        onValueChange={(v) => setEditForm({ ...editForm, parent_workflow_code: v === '_none' ? null : v })}
+                        disabled={editForm.is_parent ?? workflow.is_parent}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Ninguno" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_none">Ninguno</SelectItem>
+                          {allWorkflows?.filter(w => w.is_parent && w.code !== workflow.code).map((wf) => (
+                            <SelectItem key={wf.code} value={wf.code}>{wf.name_es}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="edit_is_parent">Es workflow padre</Label>
+                        <p className="text-xs text-muted-foreground">Actúa como grupo para otros workflows</p>
+                      </div>
+                      <Switch
+                        id="edit_is_parent"
+                        checked={editForm.is_parent ?? workflow.is_parent ?? false}
+                        onCheckedChange={(checked) => {
+                          setEditForm({ ...editForm, is_parent: checked, ...(checked ? { parent_workflow_code: null } : {}) })
+                        }}
+                        disabled={!!(editForm.parent_workflow_code ?? workflow.parent_workflow_code)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active toggle */}
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <Label htmlFor="is_active">{t('isActive')}</Label>
+                    <Switch
+                      id="is_active"
+                      checked={editForm.is_active}
+                      onCheckedChange={(checked) => setEditForm({ ...editForm, is_active: checked })}
+                    />
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -1754,6 +1903,48 @@ export default function WorkflowDetailPage() {
                         <Label htmlFor="doc_is_required">{tDocs('isRequired')}</Label>
                       </div>
                     </div>
+                    {/* OCR Schema + Instructions (both create and edit) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>{tDocs('extractionSchema')}</Label>
+                        <Select
+                          value={docForm.extraction_schema_key || '_none'}
+                          onValueChange={(v) => setDocForm({ ...docForm, extraction_schema_key: v === '_none' ? '' : v })}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Sin esquema OCR" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">Sin esquema (upload simple)</SelectItem>
+                            {extractionSchemas?.map((s) => (
+                              <SelectItem key={s.key} value={s.key}>
+                                {s.name} (v{s.version})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{tDocs('instructions')}</Label>
+                        <Textarea
+                          value={docForm.instructions_es || ''}
+                          onChange={(e) => setDocForm({ ...docForm, instructions_es: e.target.value })}
+                          rows={2}
+                          placeholder="Instrucciones para el ciudadano..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Edit mode: is_active toggle */}
+                    {documentEditMode === 'edit' && (
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="doc_is_active"
+                          checked={docForm.is_active}
+                          onCheckedChange={(checked) => setDocForm({ ...docForm, is_active: checked })}
+                        />
+                        <Label htmlFor="doc_is_active">{tDocs('isActive')}</Label>
+                      </div>
+                    )}
+
                     {documentEditMode === 'create' && (
                       <div className="flex justify-end">
                         <Button
@@ -1781,6 +1972,13 @@ export default function WorkflowDetailPage() {
                                   <code className="text-xs bg-muted px-2 py-1 rounded">{pending.document_code}</code>
                                 </TableCell>
                                 <TableCell className="font-medium">{pending.document_name_es}</TableCell>
+                                <TableCell>
+                                  {pending.extraction_schema_key ? (
+                                    <Badge variant="secondary" className="text-xs">{pending.extraction_schema_key}</Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-center w-[100px]">
                                   {pending.is_required ? (
                                     <Badge variant="default" className="text-xs">Obligatorio</Badge>
@@ -1803,37 +2001,6 @@ export default function WorkflowDetailPage() {
                           </TableBody>
                         </Table>
                       </div>
-                    )}
-
-                    {/* Edit mode additional fields */}
-                    {documentEditMode === 'edit' && (
-                      <>
-                        <div className="space-y-2">
-                          <Label>{tDocs('extractionSchema')}</Label>
-                          <Input
-                            value={docForm.extraction_schema_key || ''}
-                            onChange={(e) => setDocForm({ ...docForm, extraction_schema_key: e.target.value })}
-                            placeholder="dip_gq"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>{tDocs('instructions')}</Label>
-                          <Textarea
-                            value={docForm.instructions_es || ''}
-                            onChange={(e) => setDocForm({ ...docForm, instructions_es: e.target.value })}
-                            rows={2}
-                            placeholder="Instrucciones para el ciudadano..."
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Switch
-                            id="doc_is_active"
-                            checked={docForm.is_active}
-                            onCheckedChange={(checked) => setDocForm({ ...docForm, is_active: checked })}
-                          />
-                          <Label htmlFor="doc_is_active">{tDocs('isActive')}</Label>
-                        </div>
-                      </>
                     )}
 
                     {/* Action buttons */}
@@ -1897,6 +2064,7 @@ export default function WorkflowDetailPage() {
                         <TableHead className="w-[50px]">{tDocs('order')}</TableHead>
                         <TableHead>{tDocs('documentCode')}</TableHead>
                         <TableHead>{tDocs('documentName')}</TableHead>
+                        <TableHead>OCR</TableHead>
                         <TableHead>{tDocs('condition')}</TableHead>
                         <TableHead className="text-center">{tDocs('required')}</TableHead>
                         <TableHead className="text-center">{tDocs('status')}</TableHead>
@@ -1943,6 +2111,13 @@ export default function WorkflowDetailPage() {
                                 </div>
                               )}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {doc.extraction_schema_key ? (
+                              <Badge variant="secondary" className="text-xs font-mono">{doc.extraction_schema_key}</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell>{getConditionBadge(doc.condition_type)}</TableCell>
                           <TableCell className="text-center">

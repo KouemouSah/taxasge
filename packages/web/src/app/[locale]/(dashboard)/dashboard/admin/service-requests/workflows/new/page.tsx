@@ -141,8 +141,8 @@ export default function NewWorkflowPage() {
 
     if (!formData.code.trim()) {
       newErrors.code = 'El código es requerido'
-    } else if (!/^[A-Z0-9_]+$/.test(formData.code)) {
-      newErrors.code = 'El código solo puede contener letras mayúsculas, números y guiones bajos'
+    } else if (!/^[A-Z][A-Z0-9_]+$/.test(formData.code)) {
+      newErrors.code = 'El código debe comenzar con una letra y solo contener mayúsculas, números y guiones bajos'
     }
 
     if (!formData.name_es.trim()) {
@@ -173,7 +173,7 @@ export default function NewWorkflowPage() {
 
     try {
       await createWorkflowMutation.mutateAsync(formData)
-      router.push(`/${locale}/dashboard/admin/service-requests/workflows`)
+      router.push(`/${locale}/dashboard/admin/service-requests/workflows/${formData.code}?mode=edit`)
     } catch {
       // Error is handled by mutation hook
     }
@@ -555,6 +555,22 @@ export default function NewWorkflowPage() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Número menor = aparece primero en listas
+                </p>
+              </div>
+
+              {/* Max Processing Days */}
+              <div className="space-y-2">
+                <Label htmlFor="max_processing_days">Días máximos de procesamiento</Label>
+                <Input
+                  id="max_processing_days"
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={formData.max_processing_days ?? ''}
+                  onChange={(e) => handleChange('max_processing_days', e.target.value ? parseInt(e.target.value) : null)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Días hábiles máximos para completar el trámite (opcional)
                 </p>
               </div>
             </CardContent>
