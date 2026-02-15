@@ -898,6 +898,7 @@ async def delete_workflow(
 )
 async def list_extraction_schemas(
     current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin.manage_workflow")),
 ):
     """Return available OCR schemas for admin document configuration dropdown."""
     from ..services.schema_loader import schema_loader

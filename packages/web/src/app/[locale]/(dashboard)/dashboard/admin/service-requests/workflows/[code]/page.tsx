@@ -62,6 +62,7 @@ import {
   MapPin,
   ExternalLink,
   ChevronDown,
+  Tag,
 } from 'lucide-react'
 import {
   useWorkflow,
@@ -141,6 +142,7 @@ export default function WorkflowDetailPage() {
   // Workflow edit state
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState<Partial<WorkflowUpdate>>({})
+  const [newTag, setNewTag] = useState('')
 
   // Page view mode: false = summary dashboard, true = tabbed editing
   const initialMode = searchParams.get('mode')
@@ -1247,6 +1249,62 @@ export default function WorkflowDetailPage() {
                         disabled={!!(editForm.parent_workflow_code ?? workflow.parent_workflow_code)}
                       />
                     </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="space-y-2">
+                    <Label>Etiquetas</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        placeholder="Añadir etiqueta..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            const tag = newTag.trim().toLowerCase()
+                            if (tag && !(editForm.tags ?? workflow.tags ?? []).includes(tag)) {
+                              setEditForm({ ...editForm, tags: [...(editForm.tags ?? workflow.tags ?? []), tag] })
+                              setNewTag('')
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          const tag = newTag.trim().toLowerCase()
+                          if (tag && !(editForm.tags ?? workflow.tags ?? []).includes(tag)) {
+                            setEditForm({ ...editForm, tags: [...(editForm.tags ?? workflow.tags ?? []), tag] })
+                            setNewTag('')
+                          }
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {(editForm.tags ?? workflow.tags ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {(editForm.tags ?? workflow.tags ?? []).map((tag) => (
+                          <Badge key={tag} variant="secondary" className="gap-1">
+                            <Tag className="h-3 w-3" />
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => setEditForm({
+                                ...editForm,
+                                tags: (editForm.tags ?? workflow.tags ?? []).filter((t) => t !== tag),
+                              })}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Active toggle */}
