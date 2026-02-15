@@ -244,11 +244,6 @@ export default function AdminSidebar() {
               icon: GitBranch,
             },
             {
-              title: t('nav.documentRequirements'),
-              href: `/${locale}/dashboard/admin/service-requests/documents`,
-              icon: FileCheck,
-            },
-            {
               title: t('nav.tariffs'),
               href: `/${locale}/dashboard/admin/service-requests/tariffs`,
               icon: DollarSign,
