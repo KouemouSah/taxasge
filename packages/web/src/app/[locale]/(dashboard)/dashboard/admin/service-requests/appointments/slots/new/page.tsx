@@ -25,7 +25,9 @@ import {
   Clock,
   Users,
   MapPin,
+  AlertCircle,
 } from 'lucide-react'
+import { TimePicker } from '@/components/ui/time-picker'
 import { useCreateSlotConfigBatch } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfigBatchCreate } from '@/modules/service-requests-admin'
@@ -352,30 +354,34 @@ export default function NewSlotConfigPage() {
           {/* Time Range */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="start_time" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 {t('startTime')}
               </Label>
-              <Input
-                id="start_time"
-                type="time"
+              <TimePicker
                 value={formData.start_time}
-                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                onChange={(v) => setFormData({ ...formData, start_time: v })}
+                minuteStep={15}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="end_time" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 {t('endTime')}
               </Label>
-              <Input
-                id="end_time"
-                type="time"
+              <TimePicker
                 value={formData.end_time}
-                onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                onChange={(v) => setFormData({ ...formData, end_time: v })}
+                minuteStep={15}
               />
             </div>
           </div>
+          {formData.start_time >= formData.end_time && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              La hora de inicio debe ser anterior a la hora de fin
+            </div>
+          )}
 
           {/* Duration and Capacity */}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -394,10 +400,15 @@ export default function NewSlotConfigPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="5">5 {t('minutes')}</SelectItem>
+                  <SelectItem value="10">10 {t('minutes')}</SelectItem>
                   <SelectItem value="15">15 {t('minutes')}</SelectItem>
+                  <SelectItem value="20">20 {t('minutes')}</SelectItem>
                   <SelectItem value="30">30 {t('minutes')}</SelectItem>
                   <SelectItem value="45">45 {t('minutes')}</SelectItem>
                   <SelectItem value="60">60 {t('minutes')}</SelectItem>
+                  <SelectItem value="90">90 {t('minutes')}</SelectItem>
+                  <SelectItem value="120">120 {t('minutes')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -410,12 +421,12 @@ export default function NewSlotConfigPage() {
                 id="max_appointments"
                 type="number"
                 min={1}
-                max={20}
+                max={100}
                 value={formData.max_appointments_per_slot}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    max_appointments_per_slot: parseInt(e.target.value) || 1,
+                    max_appointments_per_slot: Math.min(100, Math.max(1, parseInt(e.target.value) || 1)),
                   })
                 }
               />

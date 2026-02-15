@@ -15,6 +15,7 @@ import json
 import logging
 from datetime import date, datetime
 from decimal import Decimal
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +379,7 @@ def parse_time_string(value: str) -> Time:
 
 class AppointmentSlotConfigCreate(BaseModel):
     """Create appointment slot config - aligned with migration 030 (entity_locations)"""
-    entity_location_id: str = Field(..., description="FK to entity_locations table")
+    entity_location_id: UUID = Field(..., description="FK to entity_locations table")
     day_of_week: int = Field(..., ge=0, le=6, description="0=Monday, 6=Sunday")
     start_time: str = Field(..., description="Start time in HH:MM format")
     end_time: str = Field(..., description="End time in HH:MM format")
@@ -402,7 +403,7 @@ class AppointmentSlotConfigCreate(BaseModel):
 
 class AppointmentSlotConfigUpdate(BaseModel):
     """Update appointment slot config"""
-    entity_location_id: Optional[str] = Field(None, description="FK to entity_locations table")
+    entity_location_id: Optional[UUID] = Field(None, description="FK to entity_locations table")
     start_time: Optional[str] = Field(None, description="Start time in HH:MM format")
     end_time: Optional[str] = Field(None, description="End time in HH:MM format")
     slot_duration_minutes: Optional[int] = Field(None, ge=5, le=120)
@@ -444,7 +445,7 @@ class AppointmentSlotConfigResponse(BaseModel):
 
 class AppointmentSlotConfigBatchCreate(BaseModel):
     """Batch create appointment slot configs - for multiple days at once"""
-    entity_location_id: str = Field(..., description="FK to entity_locations table")
+    entity_location_id: UUID = Field(..., description="FK to entity_locations table")
     days_of_week: List[int] = Field(..., min_length=1, max_length=7, description="List of days (0=Monday, 6=Sunday)")
     start_time: str = Field(..., description="Start time in HH:MM format")
     end_time: str = Field(..., description="End time in HH:MM format")

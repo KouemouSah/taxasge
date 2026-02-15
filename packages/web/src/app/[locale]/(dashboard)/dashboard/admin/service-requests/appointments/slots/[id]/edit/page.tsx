@@ -28,14 +28,12 @@ import {
   MapPin,
   AlertCircle,
 } from 'lucide-react'
+import { TimePicker } from '@/components/ui/time-picker'
 import { useSlotConfigs, useUpdateSlotConfig, DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfigUpdate } from '@/modules/service-requests-admin'
 import { toast } from 'sonner'
 import { useEntityLocations } from '@/modules/entity-locations/hooks'
-import {
-  DEFAULT_CITIES,
-  DEFAULT_CITY_REGION_MAP,
-} from '@/modules/entity-locations/types'
+import { useCitiesSimple } from '@/modules/cities/hooks'
 
 export default function EditSlotConfigPage() {
   const t = useTranslations('admin.serviceRequests.appointments.slots')
@@ -52,6 +50,10 @@ export default function EditSlotConfigPage() {
   const existingSlot = useMemo(() => {
     return slotConfigs?.find((s) => s.id === slotId)
   }, [slotConfigs, slotId])
+
+  // Fetch cities from database
+  const { data: citiesData, isLoading: citiesLoading } = useCitiesSimple(true)
+  const availableCities = useMemo(() => citiesData || [], [citiesData])
 
   // City filter state - initialized from existing slot
   const [selectedCity, setSelectedCity] = useState<string>('')
@@ -109,6 +111,11 @@ export default function EditSlotConfigPage() {
   const selectedLocation = useMemo(() => {
     return availableLocations.find((loc) => loc.id === selectedLocationId)
   }, [availableLocations, selectedLocationId])
+
+  // Get selected city object (for region display)
+  const selectedCityObj = useMemo(() => {
+    return availableCities.find((c) => c.name === selectedCity)
+  }, [availableCities, selectedCity])
 
   // Mutation
   const updateMutation = useUpdateSlotConfig()
@@ -233,25 +240,39 @@ export default function EditSlotConfigPage() {
                   setSelectedCity(v)
                   setSelectedLocationId('')
                 }}
+                disabled={citiesLoading || availableCities.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={t('selectCity')} />
+                  <SelectValue
+                    placeholder={
+                      citiesLoading
+                        ? t('loadingCities')
+                        : availableCities.length === 0
+                          ? t('noCitiesAvailable')
+                          : t('selectCity')
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {DEFAULT_CITIES.map((city) => (
-                    <SelectItem key={city} value={city}>
+                  {availableCities.map((city) => (
+                    <SelectItem key={city.id} value={city.name}>
                       <div className="flex items-center gap-2">
-                        <span>{city}</span>
+                        <span>{city.name}</span>
                         <Badge variant="outline" className="text-xs">
-                          {DEFAULT_CITY_REGION_MAP[city]}
+                          {city.region}
                         </Badge>
+                        {city.is_capital && (
+                          <Badge variant="secondary" className="text-xs">
+                            Capital
+                          </Badge>
+                        )}
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                {t('region')}: <span className="font-medium">{DEFAULT_CITY_REGION_MAP[selectedCity] || 'Continental'}</span>
+                {t('region')}: <span className="font-medium">{selectedCityObj?.region || '-'}</span>
               </p>
             </div>
 
@@ -321,30 +342,34 @@ export default function EditSlotConfigPage() {
           {/* Time Range */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="start_time" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 {t('startTime')}
               </Label>
-              <Input
-                id="start_time"
-                type="time"
-                value={formData.start_time}
-                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+              <TimePicker
+                value={formData.start_time || '08:00'}
+                onChange={(v) => setFormData({ ...formData, start_time: v })}
+                minuteStep={15}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="end_time" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 {t('endTime')}
               </Label>
-              <Input
-                id="end_time"
-                type="time"
-                value={formData.end_time}
-                onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+              <TimePicker
+                value={formData.end_time || '16:00'}
+                onChange={(v) => setFormData({ ...formData, end_time: v })}
+                minuteStep={15}
               />
             </div>
           </div>
+          {(formData.start_time || '08:00') >= (formData.end_time || '16:00') && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              La hora de inicio debe ser anterior a la hora de fin
+            </div>
+          )}
 
           {/* Duration and Capacity */}
           <div className="grid gap-4 sm:grid-cols-2">
@@ -363,10 +388,15 @@ export default function EditSlotConfigPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="5">5 {t('minutes')}</SelectItem>
+                  <SelectItem value="10">10 {t('minutes')}</SelectItem>
                   <SelectItem value="15">15 {t('minutes')}</SelectItem>
+                  <SelectItem value="20">20 {t('minutes')}</SelectItem>
                   <SelectItem value="30">30 {t('minutes')}</SelectItem>
                   <SelectItem value="45">45 {t('minutes')}</SelectItem>
                   <SelectItem value="60">60 {t('minutes')}</SelectItem>
+                  <SelectItem value="90">90 {t('minutes')}</SelectItem>
+                  <SelectItem value="120">120 {t('minutes')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -379,12 +409,12 @@ export default function EditSlotConfigPage() {
                 id="max_appointments"
                 type="number"
                 min={1}
-                max={20}
+                max={100}
                 value={formData.max_appointments_per_slot}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    max_appointments_per_slot: parseInt(e.target.value) || 1,
+                    max_appointments_per_slot: Math.min(100, Math.max(1, parseInt(e.target.value) || 1)),
                   })
                 }
               />
