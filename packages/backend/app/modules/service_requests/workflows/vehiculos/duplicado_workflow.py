@@ -87,6 +87,12 @@ class DuplicadoVehiculoWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Duplicado de Documentos de Vehículos"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "VEHICULO_DUPLICADO_PERMISO": "Vehículo - Duplicado Permiso",
+            "VEHICULO_DUPLICADO_CUVE": "Vehículo - Duplicado CUVE",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.DUPLICADO]

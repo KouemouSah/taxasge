@@ -133,6 +133,14 @@ class TramitesVisadoWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Trámites de Visado"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "PRORROGA_VISADO": "Prórroga de Visado",
+            "VISADO_ALTERNATIVO": "Visado Alternativo",
+            "PERMANENCIA_EXTRANJERIA": "Permanencia de Extranjería",
+            "SALIDA_VISADO_VENCIDO": "Salida con Visado Vencido",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.EXPEDICION]

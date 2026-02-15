@@ -187,6 +187,12 @@ class ResidenciaWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Permiso de Residencia para Extranjeros"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "RESIDENCIA_PRIMERA_VEZ": "Residencia - Primera Vez",
+            "RESIDENCIA_RENOVACION": "Residencia - Renovación",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.EXPEDICION, SolicitudType.RENOVACION]

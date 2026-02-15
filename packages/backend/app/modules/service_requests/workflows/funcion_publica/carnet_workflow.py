@@ -100,6 +100,9 @@ class CarnetFuncionarioWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Carnet de Funcionario"
 
+    def get_parent_mapping(self) -> Dict[str, Optional[str]]:
+        return {"FP_CARNET_FUNCIONARIO": "FP_VERIFICACION_FUNCIONARIO"}
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [

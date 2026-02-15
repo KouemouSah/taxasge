@@ -88,6 +88,12 @@ class MatriculacionTransferenciaWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Matriculación y Transferencia de Vehículos"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "VEHICULO_PRIMERA_MATRICULACION": "Vehículo - Primera Matriculación",
+            "VEHICULO_TRANSFERENCIA": "Vehículo - Transferencia",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.EXPEDICION]

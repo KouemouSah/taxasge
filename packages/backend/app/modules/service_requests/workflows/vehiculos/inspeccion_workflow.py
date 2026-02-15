@@ -93,6 +93,13 @@ class InspeccionVehiculoWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Inspección y Renovación de Documentos de Vehículos"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "VEHICULO_RENOVACION_ITV": "Vehículo - Inspección Técnica (ITV)",
+            "VEHICULO_RENOVACION_CUVE": "Vehículo - Renovación CUVE",
+            "VEHICULO_CAMBIO_CARACTERISTICAS": "Vehículo - Cambio Características",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.RENOVACION]

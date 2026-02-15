@@ -1165,54 +1165,30 @@ workflow_engine = WorkflowEngine()
 
 def register_all_workflows() -> None:
     """
-    Register all available workflows at application startup.
+    Auto-discover and register all PredefinedWorkflow subclasses.
 
-    This function is called automatically when the module is imported.
-    It registers all workflow classes so they can be retrieved via
-    workflow_engine.get_workflow() or workflow_engine.get_workflow_by_string().
-    
-    v2 (PredefinedWorkflow): Pasaporte, Conducir, Contrato, PromocionAdministrativa, CarnetFuncionario, VerificacionFuncionario, PermisoExtraordinario, CertificadoAdministrativo, Matriculacion, Inspeccion, Duplicado, Residencia, TramitesVisado (4 codes: Prorroga, Alternativo, Permanencia, Salida)
-    v1 (BaseWorkflow): (none)
+    Uses Python's __subclasses__() to find all concrete workflow classes.
+    Requires that workflow modules are imported (via __init__.py) so that
+    Python knows about the subclasses.
+
+    Filters out GenericWorkflow classes (is_generic=True) which are DB-driven.
     """
-    # v2 workflows (PredefinedWorkflow - autonomous)
-    from ..workflows import (
-        PasaporteWorkflow,
-        ConducirWorkflow,
-        ContratoWorkflow,
-        PromocionAdministrativaWorkflow,
-        CarnetFuncionarioWorkflow,
-        VerificacionFuncionarioWorkflow,
-        PermisoExtraordinarioWorkflow,
-        CertificadoAdministrativoWorkflow,
-        # Vehiculo v2 (3 workflows by domain) - Migrated 2026-02-07
-        MatriculacionTransferenciaWorkflow,
-        InspeccionVehiculoWorkflow,
-        DuplicadoVehiculoWorkflow,
-        # Extranjeria v2 (4 visa codes via get_all_workflow_codes) - Migrated 2026-02-08
-        ResidenciaWorkflow,
-        TramitesVisadoWorkflow,
-    )
+    # Force-import all workflow modules so __subclasses__() can discover them
+    import app.modules.service_requests.workflows  # noqa: F401
 
-    v2_workflows = [
-        PasaporteWorkflow,
-        ConducirWorkflow,
-        ContratoWorkflow,
-        PromocionAdministrativaWorkflow,
-        CarnetFuncionarioWorkflow,
-        VerificacionFuncionarioWorkflow,
-        PermisoExtraordinarioWorkflow,
-        CertificadoAdministrativoWorkflow,
-        # Vehiculo v2 (7 WorkflowCodes via get_all_workflow_codes())
-        MatriculacionTransferenciaWorkflow,
-        InspeccionVehiculoWorkflow,
-        DuplicadoVehiculoWorkflow,
-        # Extranjeria v2 (Residencia + TramitesVisado with 4 codes via get_all_workflow_codes)
-        ResidenciaWorkflow,
-        TramitesVisadoWorkflow,
-    ]
+    registered: set = set()
+    for cls in PredefinedWorkflow.__subclasses__():
+        if getattr(cls, 'is_generic', False):
+            continue
+        if cls in registered:
+            continue
+        try:
+            workflow_engine.register(cls)
+            registered.add(cls)
+        except Exception as e:
+            logger.error(f"Failed to register workflow {cls.__name__}: {e}")
 
-    workflow_engine.register_many(v2_workflows)
-    logger.info(f"Registered {len(v2_workflows)} workflows (all v2)")
+    logger.info(f"Auto-registered {len(registered)} workflows")
 
 
 # Auto-register workflows on module import

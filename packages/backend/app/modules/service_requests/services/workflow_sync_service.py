@@ -78,92 +78,6 @@ class WorkflowSyncResult:
         }
 
 
-# ─── Spanish names for workflow codes (admin-facing) ───────────────────────
-
-SUBTYPE_NAMES_ES: Dict[str, str] = {
-    # PASAPORTE (5)
-    "PASAPORTE_NUEVO": "Pasaporte - Primera Expedición",
-    "PASAPORTE_RENOVACION": "Pasaporte - Renovación por Vencimiento",
-    "PASAPORTE_PERDIDA": "Pasaporte - Renovación por Pérdida",
-    "PASAPORTE_ROBO": "Pasaporte - Renovación por Robo",
-    "PASAPORTE_DETERIORO": "Pasaporte - Renovación por Deterioro",
-    # RESIDENCIA (2)
-    "RESIDENCIA_PRIMERA_VEZ": "Residencia - Primera Vez",
-    "RESIDENCIA_RENOVACION": "Residencia - Renovación",
-    # VEHICULO (7)
-    "VEHICULO_PRIMERA_MATRICULACION": "Vehículo - Primera Matriculación",
-    "VEHICULO_TRANSFERENCIA": "Vehículo - Transferencia",
-    "VEHICULO_RENOVACION_CUVE": "Vehículo - Renovación CUVE",
-    "VEHICULO_RENOVACION_ITV": "Vehículo - Inspección Técnica (ITV)",
-    "VEHICULO_DUPLICADO_PERMISO": "Vehículo - Duplicado Permiso",
-    "VEHICULO_DUPLICADO_CUVE": "Vehículo - Duplicado CUVE",
-    "VEHICULO_CAMBIO_CARACTERISTICAS": "Vehículo - Cambio Características",
-    # CONDUCIR (5)
-    "CONDUCIR_NUEVO": "Licencia de Conducir - Nueva",
-    "CONDUCIR_CANJE": "Licencia de Conducir - Canje",
-    "CONDUCIR_RENOVACION": "Licencia de Conducir - Renovación",
-    "CONDUCIR_DUPLICADO": "Licencia de Conducir - Duplicado",
-    "CONDUCIR_EXTENSION": "Licencia de Conducir - Extensión",
-    # CONTRATO (7)
-    "CONTRATO_OBRA": "Contrato - Obra",
-    "CONTRATO_SERVICIO": "Contrato - Servicio",
-    "CONTRATO_SUMINISTRO": "Contrato - Suministro",
-    "CONTRATO_CONCESION": "Contrato - Concesión",
-    "CONTRATO_JOINT_VENTURE": "Contrato - Joint Venture",
-    "CONTRATO_ARRENDAMIENTO": "Contrato - Arrendamiento",
-    "CONTRATO_OTRO": "Contrato - Otro",
-    # FUNCION PUBLICA (5)
-    "FP_VERIFICACION_FUNCIONARIO": "Verificación de Funcionario",
-    "FP_CARNET_FUNCIONARIO": "Carnet de Funcionario",
-    "FP_PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
-    "FP_PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
-    "FP_CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
-    # TRAMITES VISADO (4)
-    "PRORROGA_VISADO": "Prórroga de Visado",
-    "VISADO_ALTERNATIVO": "Visado Alternativo",
-    "PERMANENCIA_EXTRANJERIA": "Permanencia de Extranjería",
-    "SALIDA_VISADO_VENCIDO": "Salida con Visado Vencido",
-}
-
-# Parent hierarchy: code → parent_code (None = is_parent)
-SUBTYPE_PARENT_MAPPING: Dict[str, Optional[str]] = {
-    "PASAPORTE_NUEVO": None,
-    "PASAPORTE_RENOVACION": "PASAPORTE_NUEVO",
-    "PASAPORTE_PERDIDA": "PASAPORTE_NUEVO",
-    "PASAPORTE_ROBO": "PASAPORTE_NUEVO",
-    "PASAPORTE_DETERIORO": "PASAPORTE_NUEVO",
-    "RESIDENCIA_PRIMERA_VEZ": None,
-    "RESIDENCIA_RENOVACION": "RESIDENCIA_PRIMERA_VEZ",
-    "VEHICULO_PRIMERA_MATRICULACION": None,
-    "VEHICULO_TRANSFERENCIA": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_RENOVACION_CUVE": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_RENOVACION_ITV": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_DUPLICADO_PERMISO": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_DUPLICADO_CUVE": "VEHICULO_PRIMERA_MATRICULACION",
-    "VEHICULO_CAMBIO_CARACTERISTICAS": "VEHICULO_PRIMERA_MATRICULACION",
-    "CONDUCIR_NUEVO": None,
-    "CONDUCIR_CANJE": "CONDUCIR_NUEVO",
-    "CONDUCIR_RENOVACION": "CONDUCIR_NUEVO",
-    "CONDUCIR_DUPLICADO": "CONDUCIR_NUEVO",
-    "CONDUCIR_EXTENSION": "CONDUCIR_NUEVO",
-    "CONTRATO_OBRA": None,
-    "CONTRATO_SERVICIO": "CONTRATO_OBRA",
-    "CONTRATO_SUMINISTRO": "CONTRATO_OBRA",
-    "CONTRATO_CONCESION": "CONTRATO_OBRA",
-    "CONTRATO_JOINT_VENTURE": "CONTRATO_OBRA",
-    "CONTRATO_ARRENDAMIENTO": "CONTRATO_OBRA",
-    "CONTRATO_OTRO": "CONTRATO_OBRA",
-    "FP_VERIFICACION_FUNCIONARIO": None,
-    "FP_CARNET_FUNCIONARIO": "FP_VERIFICACION_FUNCIONARIO",
-    "FP_PROMOCION_ADMINISTRATIVA": "FP_VERIFICACION_FUNCIONARIO",
-    "FP_PERMISO_EXTRAORDINARIO": "FP_VERIFICACION_FUNCIONARIO",
-    "FP_CERTIFICADO_ADMINISTRATIVO": "FP_VERIFICACION_FUNCIONARIO",
-    "PRORROGA_VISADO": None,
-    "VISADO_ALTERNATIVO": "PRORROGA_VISADO",
-    "PERMANENCIA_EXTRANJERIA": "PRORROGA_VISADO",
-    "SALIDA_VISADO_VENCIDO": "PRORROGA_VISADO",
-}
-
 # Default display_config columns/sections per category
 _DEFAULT_LIST_COLUMNS = ["reference", "beneficiary", "status", "created_at"]
 _DEFAULT_PREVIEW_SECTIONS = ["identity", "documents"]
@@ -448,6 +362,15 @@ async def sync_all_workflows(
     all_workflows = workflow_engine.get_all_workflows()
     synced_codes: Set[str] = set()
 
+    # Build display names and parent mapping dynamically from workflow classes
+    subtype_names_es: Dict[str, str] = {}
+    subtype_parent_mapping: Dict[str, Optional[str]] = {}
+    for _base_code, wf in all_workflows.items():
+        if hasattr(wf, 'get_subtype_display_names'):
+            subtype_names_es.update(wf.get_subtype_display_names())
+        if hasattr(wf, 'get_parent_mapping'):
+            subtype_parent_mapping.update(wf.get_parent_mapping())
+
     for base_code, workflow in all_workflows.items():
         try:
             category = workflow.category.value if hasattr(workflow, 'category') else 'GENERAL'
@@ -463,8 +386,8 @@ async def sync_all_workflows(
                     continue
 
                 try:
-                    name_es = SUBTYPE_NAMES_ES.get(code, code.replace('_', ' ').title())
-                    parent_code = SUBTYPE_PARENT_MAPPING.get(code)
+                    name_es = subtype_names_es.get(code, code.replace('_', ' ').title())
+                    parent_code = subtype_parent_mapping.get(code)
                     # All predefined workflows are real workflows, NOT category headers.
                     # is_parent=True is reserved for generic "category" rows (e.g. "PASAPORTE").
                     # The frontend filters out is_parent=True, so we must set False here.

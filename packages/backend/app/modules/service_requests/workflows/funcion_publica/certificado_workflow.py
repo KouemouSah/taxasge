@@ -134,6 +134,9 @@ class CertificadoAdministrativoWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Certificado Administrativo"
 
+    def get_parent_mapping(self) -> Dict[str, Optional[str]]:
+        return {"FP_CERTIFICADO_ADMINISTRATIVO": "FP_VERIFICACION_FUNCIONARIO"}
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.EXPEDICION]

@@ -132,6 +132,15 @@ class PasaporteWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Solicitud de Pasaporte"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "PASAPORTE_NUEVO": "Pasaporte - Primera Expedición",
+            "PASAPORTE_RENOVACION": "Pasaporte - Renovación por Vencimiento",
+            "PASAPORTE_PERDIDA": "Pasaporte - Renovación por Pérdida",
+            "PASAPORTE_ROBO": "Pasaporte - Renovación por Robo",
+            "PASAPORTE_DETERIORO": "Pasaporte - Renovación por Deterioro",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         # We use EXPEDICION and RENOVACION for generic typing

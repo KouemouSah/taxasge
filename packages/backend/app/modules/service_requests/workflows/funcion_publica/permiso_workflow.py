@@ -119,6 +119,9 @@ class PermisoExtraordinarioWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Permiso Extraordinario"
 
+    def get_parent_mapping(self) -> Dict[str, Optional[str]]:
+        return {"FP_PERMISO_EXTRAORDINARIO": "FP_VERIFICACION_FUNCIONARIO"}
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.EXPEDICION]

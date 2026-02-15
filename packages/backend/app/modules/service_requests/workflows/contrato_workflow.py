@@ -161,6 +161,17 @@ class ContratoWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Registro de Contrato Comercial"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "CONTRATO_OBRA": "Contrato - Obra",
+            "CONTRATO_SERVICIO": "Contrato - Servicio",
+            "CONTRATO_SUMINISTRO": "Contrato - Suministro",
+            "CONTRATO_CONCESION": "Contrato - Concesión",
+            "CONTRATO_JOINT_VENTURE": "Contrato - Joint Venture",
+            "CONTRATO_ARRENDAMIENTO": "Contrato - Arrendamiento",
+            "CONTRATO_OTRO": "Contrato - Otro",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.EXPEDICION, SolicitudType.RENOVACION]

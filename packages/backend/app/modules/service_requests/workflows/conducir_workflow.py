@@ -195,6 +195,15 @@ class ConducirWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Solicitud de Certificado para Conducir"
 
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        return {
+            "CONDUCIR_NUEVO": "Licencia de Conducir - Nueva",
+            "CONDUCIR_CANJE": "Licencia de Conducir - Canje",
+            "CONDUCIR_RENOVACION": "Licencia de Conducir - Renovación",
+            "CONDUCIR_DUPLICADO": "Licencia de Conducir - Duplicado",
+            "CONDUCIR_EXTENSION": "Licencia de Conducir - Extensión",
+        }
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [

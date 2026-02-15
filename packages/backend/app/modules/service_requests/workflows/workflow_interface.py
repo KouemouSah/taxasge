@@ -677,6 +677,47 @@ class PredefinedWorkflow(ABC):
         """i18n key for menu title. Default derived from menu_group."""
         return f"agent.nav.{self.menu_group.lower()}"
 
+    # === Auto-Discovery Methods (Plug & Play Pipeline) ===
+
+    def get_subtype_display_names(self) -> Dict[str, str]:
+        """Display names for each workflow code handled by this class.
+
+        Default: single-code classes use service_name_es,
+        multi-code classes use "{service_name_es} - {Suffix}".
+        Override in subclass for curated names.
+        """
+        codes = (self.get_all_workflow_codes()
+                 if hasattr(self, 'get_all_workflow_codes')
+                 else [self.workflow_code])
+        base_code = self.workflow_code.value
+        names: Dict[str, str] = {}
+        for code in codes:
+            code_val = code.value
+            if code_val == base_code and len(codes) == 1:
+                names[code_val] = self.service_name_es
+            else:
+                suffix = (code_val.replace(base_code + '_', '', 1)
+                          if code_val.startswith(base_code)
+                          else code_val.split('_', 1)[1] if '_' in code_val else code_val)
+                names[code_val] = f"{self.service_name_es} - {suffix.replace('_', ' ').title()}"
+        return names
+
+    def get_parent_mapping(self) -> Dict[str, Optional[str]]:
+        """Parent hierarchy for each workflow code.
+
+        Default: base workflow_code = root (None), all others = children of base.
+        Override for cross-class grouping (e.g. FP sub-workflows under FP_VERIFICACION).
+        """
+        codes = (self.get_all_workflow_codes()
+                 if hasattr(self, 'get_all_workflow_codes')
+                 else [self.workflow_code])
+        base = self.workflow_code.value
+        mapping: Dict[str, Optional[str]] = {}
+        for code in codes:
+            code_val = code.value
+            mapping[code_val] = None if code_val == base else base
+        return mapping
+
     @abstractmethod
     def _setup_workflow(self) -> None:
         """

@@ -102,6 +102,9 @@ class PromocionAdministrativaWorkflow(PredefinedWorkflow):
     def service_name_es(self) -> str:
         return "Promoción Administrativa"
 
+    def get_parent_mapping(self) -> Dict[str, Optional[str]]:
+        return {"FP_PROMOCION_ADMINISTRATIVA": "FP_VERIFICACION_FUNCIONARIO"}
+
     @property
     def allowed_solicitud_types(self) -> List[SolicitudType]:
         return [SolicitudType.EXPEDICION]
