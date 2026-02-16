@@ -591,6 +591,7 @@ class AgentProfileService:
             'agent_type': data.agent_type.value,
             'is_supervisor': data.is_supervisor,
             'entity_id': str(data.entity_id) if data.entity_id else None,
+            'entity_location_id': str(data.entity_location_id) if data.entity_location_id else None,
             'ministry_id': data.ministry_id,
             'agent_role': data.agent_role,
             'rbac_role_id': str(data.rbac_role_id) if data.rbac_role_id else None,
@@ -736,6 +737,7 @@ class AgentProfileService:
                 # Step 3: Create agent profile
                 logger.info(f"[AGENT_ACTIVATION] Step 3 - Creating agent profile...")
                 entity_id = UUID(agent_data['entity_id']) if agent_data.get('entity_id') else None
+                entity_location_id = UUID(agent_data['entity_location_id']) if agent_data.get('entity_location_id') else None
                 # rbac_role_id already defined above for user creation
                 assigned_by = UUID(created_by) if created_by else None
 
@@ -760,13 +762,13 @@ class AgentProfileService:
 
                 profile_query = """
                     INSERT INTO agent_profiles (
-                        user_id, agent_type, is_supervisor, entity_id, ministry_id,
-                        agent_role, can_approve_unlimited, max_approval_amount,
+                        user_id, agent_type, is_supervisor, entity_id, entity_location_id,
+                        ministry_id, agent_role, can_approve_unlimited, max_approval_amount,
                         can_escalate, can_assign_tasks, can_reassign,
                         specializations, working_hours_start, working_hours_end,
                         working_days, is_active, assigned_by, assigned_at
                     ) VALUES (
-                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, TRUE, $16, NOW()
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, TRUE, $17, NOW()
                     )
                     RETURNING id
                 """
@@ -776,6 +778,7 @@ class AgentProfileService:
                     agent_data.get('agent_type'),
                     agent_data.get('is_supervisor', False),
                     entity_id,
+                    entity_location_id,
                     agent_data.get('ministry_id'),
                     agent_data.get('agent_role', 'validator'),
                     agent_data.get('can_approve_unlimited', False),

@@ -106,6 +106,7 @@ class AgentQueueEventHandler:
                     reference,
                     workflow_code,
                     entity_code,
+                    entity_location_id,
                     status,
                     payment_status
                 FROM service_requests
@@ -169,7 +170,8 @@ class AgentQueueEventHandler:
                 entity_type="entity",
                 entity_id=None,  # Let workflow_code determine the entity
                 priority_level=5,
-                workflow_code=workflow_code  # Route by workflow to correct entity
+                workflow_code=workflow_code,  # Route by workflow to correct entity
+                entity_location_id=sr["entity_location_id"],  # Site-based routing
             )
 
             if assignment:

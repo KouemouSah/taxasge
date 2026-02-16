@@ -214,14 +214,27 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         ministry_id: int,
         max_capacity_percentage: float = 80.0,
+        entity_location_id: Optional["UUID"] = None,
     ) -> List[Dict[str, Any]]:
         """Get agents with available capacity.
 
         Considers both direct ministry assignment and entity-based assignment.
         An agent can be linked to a ministry directly (ap.ministry_id) or
         through an entity (ap.entity_id -> entities.ministry_id).
+
+        When entity_location_id is provided, prefers agents bound to that
+        specific site, but includes supervisor/floating agents (NULL location)
+        as well. Falls back to all entity agents if no site-specific ones found.
         """
-        query = """
+        location_filter = ""
+        params: list = [ministry_id, max_capacity_percentage]
+
+        if entity_location_id:
+            # Filter: agents at this specific site OR supervisors (NULL = sees all)
+            location_filter = "AND (ap.entity_location_id = $3 OR ap.entity_location_id IS NULL)"
+            params.append(entity_location_id)
+
+        query = f"""
             SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id, ap.agent_role
             FROM agent_workloads aw
             JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
@@ -231,9 +244,27 @@ class WorkloadRepository:
               AND aw.availability = 'available'
               AND aw.capacity_percentage < $2
               AND aw.workload_status != 'overloaded'
+              {location_filter}
             ORDER BY aw.capacity_percentage ASC, aw.quality_score_avg DESC
         """
-        results = await conn.fetch(query, ministry_id, max_capacity_percentage)
+        results = await conn.fetch(query, *params)
+
+        # Fallback: if no agents found with location filter, retry without it
+        if not results and entity_location_id:
+            fallback_query = """
+                SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id, ap.agent_role
+                FROM agent_workloads aw
+                JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
+                LEFT JOIN entities e ON ap.entity_id = e.id
+                WHERE (ap.ministry_id = $1 OR e.ministry_id = $1)
+                  AND ap.is_active = true
+                  AND aw.availability = 'available'
+                  AND aw.capacity_percentage < $2
+                  AND aw.workload_status != 'overloaded'
+                ORDER BY aw.capacity_percentage ASC, aw.quality_score_avg DESC
+            """
+            results = await conn.fetch(fallback_query, ministry_id, max_capacity_percentage)
+
         return [dict(r) for r in results]
 
     async def get_overloaded_agents(

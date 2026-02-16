@@ -78,6 +78,7 @@ export interface AgentProfile {
   agent_type: AgentType;
   is_supervisor: boolean;
   entity_id?: string;
+  entity_location_id?: string | null;
   ministry_id?: number;
   agent_role: AgentRole | string;
   can_approve_unlimited: boolean;
@@ -106,6 +107,10 @@ export interface AgentProfile {
   // Joined entity/ministry details
   entity_code?: string;
   entity_name?: string;
+  // Joined location details (site-based routing)
+  location_name?: string;
+  location_city?: string;
+  location_region?: string;
   ministry_code?: string;
   ministry_name?: string;
   // Computed category
@@ -202,6 +207,7 @@ export interface AgentCompleteCreateRequest {
   agent_type: AgentType;
   is_supervisor?: boolean;
   entity_id?: string;
+  entity_location_id?: string | null;
   ministry_id?: number;
   agent_role?: AgentRole | string;
   /** RBAC role ID for defining agent permissions */
@@ -268,6 +274,7 @@ export interface AgentProfileUpdateRequest {
   agent_type?: AgentType;
   is_supervisor?: boolean;
   entity_id?: string;
+  entity_location_id?: string | null;
   ministry_id?: number;
   agent_role?: AgentRole | string;
   /** RBAC role ID - replaces user's permissions with role's permissions */
@@ -425,6 +432,7 @@ export interface AgentInviteRequest {
   agent_type: AgentType;
   is_supervisor?: boolean;
   entity_id?: string;
+  entity_location_id?: string | null;
   ministry_id?: number;
   agent_role?: AgentRole | string;
   rbac_role_id?: string;

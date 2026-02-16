@@ -66,7 +66,8 @@ class AutoAssignmentService:
         entity_type: str = "ministry",
         entity_id: Optional[str] = None,
         priority_level: int = 5,
-        workflow_code: Optional[str] = None
+        workflow_code: Optional[str] = None,
+        entity_location_id: Optional[UUID] = None,
     ) -> Optional[Assignment]:
         """Automatically assign an item to the best available agent
 
@@ -79,6 +80,7 @@ class AutoAssignmentService:
             entity_id: Entity ID (UUID) for filtering agents by entity
             priority_level: Priority 1-10 (default 5)
             workflow_code: Workflow code to determine entity (e.g., 'PASAPORTE_NUEVO')
+            entity_location_id: Specific site UUID for location-based routing (migration 104)
 
         Returns:
             Assignment or None if no agent available
@@ -106,12 +108,13 @@ class AutoAssignmentService:
         # This is the key fix: route by workflow_code -> entity -> agents
         effective_workflow = workflow_code or item_type
 
-        # Get available agents filtered by entity
+        # Get available agents filtered by entity + location
         available_agents = await self.workload_repository.get_available_agents(
             db,
             max_workload_pct=80.0,
             entity_id=entity_uuid,
-            workflow_code=effective_workflow if not entity_uuid else None
+            workflow_code=effective_workflow if not entity_uuid else None,
+            entity_location_id=entity_location_id,
         )
 
         if not available_agents:

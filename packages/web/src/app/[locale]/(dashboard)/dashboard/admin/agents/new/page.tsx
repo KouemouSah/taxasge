@@ -47,6 +47,7 @@ import { hierarchyApi } from '@/modules/fiscal-services/services/api';
 import { useEntitiesSimple } from '@/modules/cities/hooks';
 import { rolesApi } from '@/modules/roles-admin/services/api';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useLocationsByEntity } from '@/modules/entity-locations/hooks';
 
 // =============================================================================
 // VALIDATION SCHEMAS
@@ -80,6 +81,7 @@ const agentSchema = z.object({
   is_supervisor: z.boolean().default(false),
   ministry_id: z.coerce.number().int().positive().optional(),
   entity_id: z.string().uuid().optional().or(z.literal('')),
+  entity_location_id: z.string().uuid().optional().nullable().or(z.literal('')),
   agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']).default('validator'),
   // RBAC role for permissions
   rbac_role_id: z.string().uuid('Sélectionnez un rôle RBAC'),
@@ -125,7 +127,7 @@ export default function CreateAgentPage() {
   // Transform data for select components
   // Ministry uses name_es for Spanish (default language)
   const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
-  const entities = entitiesData?.map(e => ({ id: e.id, name: e.name })) || [];
+  const entities = entitiesData?.map(e => ({ id: e.id, code: e.code, name: e.name })) || [];
   const rbacRoles = rbacRolesData || [];
   const workflows = workflowsData || [];
   const router = useRouter();
@@ -174,6 +176,16 @@ export default function CreateAgentPage() {
 
   const watchAgentType = agentForm.watch('agent_type');
   const watchCanApproveUnlimited = agentForm.watch('can_approve_unlimited');
+  const watchEntityId = agentForm.watch('entity_id');
+
+  // Derive entity_code from selected entity_id for location filtering
+  const selectedEntityCode = entities.find(e => e.id === watchEntityId)?.code;
+
+  // Fetch locations for the selected entity
+  const { data: entityLocations, isLoading: isLoadingLocations } = useLocationsByEntity(
+    selectedEntityCode as any,
+    !!selectedEntityCode && watchAgentType === AgentType.ENTITY_AGENT
+  );
 
   const handleAdminSubmit = async (data: AdminFormData) => {
     try {
@@ -214,6 +226,7 @@ export default function CreateAgentPage() {
         is_supervisor: data.is_supervisor,
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id : undefined,
         entity_id: data.agent_type === AgentType.ENTITY_AGENT ? data.entity_id : undefined,
+        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id ? data.entity_location_id : undefined,
         agent_role: data.agent_role,
         rbac_role_id: data.rbac_role_id, // RBAC role for permissions
         can_approve_unlimited: data.can_approve_unlimited,
@@ -581,6 +594,46 @@ export default function CreateAgentPage() {
                     />
                   )}
                 </div>
+
+                {/* Location (site-based routing) - only for entity agents */}
+                {watchAgentType === AgentType.ENTITY_AGENT && watchEntityId && (
+                  <FormField
+                    control={agentForm.control}
+                    name="entity_location_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Site / Ubicación</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Todas las ubicaciones (superviseur)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">Todas las ubicaciones</SelectItem>
+                            {isLoadingLocations ? (
+                              <SelectItem value="_loading" disabled>Chargement...</SelectItem>
+                            ) : !entityLocations || entityLocations.length === 0 ? (
+                              <SelectItem value="_empty" disabled>Aucun site configuré</SelectItem>
+                            ) : (
+                              entityLocations.map((loc) => (
+                                <SelectItem key={loc.id} value={loc.id}>
+                                  {loc.location_name} — {loc.city}
+                                  {loc.is_main_office ? ' (principal)' : ''}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Sélectionnez un site pour limiter l&apos;agent à cette ubicación.
+                          Laissez vide pour un agent superviseur/flottant.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {/* Functional Role & Supervisor */}
                 <div className="grid gap-4 md:grid-cols-2">

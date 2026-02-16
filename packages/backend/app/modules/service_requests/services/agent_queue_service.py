@@ -247,6 +247,7 @@ class AgentQueueService:
         db: asyncpg.Connection,
         entity_code: Optional[str] = None,
         ministry_id: Optional[int] = None,
+        entity_location_id: Optional[UUID] = None,
         limit: int = 1000,
         offset: int = 0
     ) -> List[Dict[str, Any]]:
@@ -259,6 +260,7 @@ class AgentQueueService:
             db: Database connection
             entity_code: Optional entity code filter
             ministry_id: Optional ministry ID filter
+            entity_location_id: Filter by specific site (NULL = show all for entity)
             limit: Maximum items to return (default: 1000 for agents to see all)
             offset: Offset for pagination
         """
@@ -286,6 +288,11 @@ class AgentQueueService:
         if ministry_id:
             query += f" AND q.ministry_id = ${param_idx}"
             params.append(ministry_id)
+            param_idx += 1
+
+        if entity_location_id:
+            query += f" AND sr.entity_location_id = ${param_idx}"
+            params.append(entity_location_id)
             param_idx += 1
 
         query += f"""

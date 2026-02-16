@@ -43,6 +43,7 @@ class AgentProfileBase(BaseModel):
     agent_type: AgentType
     is_supervisor: bool = False
     entity_id: Optional[UUID] = None
+    entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     agent_role: str = "validator"
     can_approve_unlimited: bool = False
@@ -65,6 +66,7 @@ class AgentProfileCreate(BaseModel):
     agent_type: AgentType
     is_supervisor: bool = False
     entity_id: Optional[UUID] = None
+    entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     agent_role: str = "validator"
     can_approve_unlimited: bool = False
@@ -84,6 +86,7 @@ class AgentProfileUpdate(BaseModel):
     agent_type: Optional[AgentType] = None
     is_supervisor: Optional[bool] = None
     entity_id: Optional[UUID] = None
+    entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     agent_role: Optional[str] = None
     rbac_role_id: Optional[UUID] = Field(
@@ -133,6 +136,11 @@ class AgentProfileWithDetails(AgentProfileResponse):
     parent_entity_id: Optional[UUID] = None
     parent_entity_code: Optional[str] = None
     parent_entity_name: Optional[str] = None
+
+    # Location details (site-based routing)
+    location_name: Optional[str] = None
+    location_city: Optional[str] = None
+    location_region: Optional[str] = None
 
     # Ministry details
     ministry_code: Optional[str] = None
@@ -230,6 +238,7 @@ class AgentCompleteCreate(BaseModel):
     agent_type: AgentType
     is_supervisor: bool = False
     entity_id: Optional[UUID] = None
+    entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     agent_role: str = Field(default="validator", pattern="^(validator|approver|auditor|reviewer)$")
 
@@ -326,6 +335,7 @@ class AgentInviteRequest(BaseModel):
     agent_type: AgentType
     is_supervisor: bool = False
     entity_id: Optional[UUID] = None
+    entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     agent_role: str = Field(default="validator", pattern="^(validator|approver|auditor|reviewer)$")
 

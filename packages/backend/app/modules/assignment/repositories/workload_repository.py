@@ -77,13 +77,15 @@ class WorkloadRepository:
         max_workload_pct: float = 80,
         entity_id: Optional[UUID] = None,
         workflow_code: Optional[str] = None,
-        entity_code: Optional[str] = None
+        entity_code: Optional[str] = None,
+        entity_location_id: Optional[UUID] = None,
     ) -> List[AgentWorkload]:
         """Get available agents for assignment
 
         Migration 048: Uses unified 'agent' role with agent_profiles table
         Migration 053/054: Uses assignments table with agent_profile_id
         Migration 058: Entity-based routing via agent_profiles.entity_id
+        Migration 104: Site-based routing via agent_profiles.entity_location_id
 
         Args:
             db: Database connection
@@ -91,9 +93,10 @@ class WorkloadRepository:
             entity_id: Filter agents by entity_id (CRITICAL for correct routing)
             workflow_code: Alternative: find entity by workflow_code and filter agents
             entity_code: Alternative: find entity by code (e.g., 'TESORO') and filter agents
+            entity_location_id: Filter agents by specific site (NULL agents = supervisors, included)
 
         Returns:
-            List of available agents, filtered by entity if specified
+            List of available agents, filtered by entity and optionally location
         """
         # If entity_code provided but no entity_id, find the entity by code
         if entity_code and not entity_id:
@@ -107,14 +110,21 @@ class WorkloadRepository:
             if entity_id:
                 logger.info(f"Resolved workflow_code '{workflow_code}' to entity_id '{entity_id}'")
 
-        # Build query with optional entity filter
+        # Build query with optional entity + location filters
         params = [max_workload_pct]
         entity_filter = ""
+        location_filter = ""
 
         if entity_id:
-            entity_filter = "AND ap.entity_id = $2"
+            entity_filter = f"AND ap.entity_id = ${len(params) + 1}"
             params.append(entity_id)
             logger.info(f"Filtering agents by entity_id: {entity_id}")
+
+        if entity_location_id:
+            # Match agents at this specific site OR supervisors/floating (NULL location)
+            location_filter = f"AND (ap.entity_location_id = ${len(params) + 1} OR ap.entity_location_id IS NULL)"
+            params.append(entity_location_id)
+            logger.info(f"Filtering agents by entity_location_id: {entity_location_id}")
 
         query = f"""
             SELECT
@@ -143,6 +153,7 @@ class WorkloadRepository:
             AND u.status = 'active'
             AND COALESCE(aw.availability::text, 'available') = 'available'
             {entity_filter}
+            {location_filter}
             GROUP BY ap.id, ap.user_id, ap.entity_id, u.id, u.full_name, u.first_name, u.last_name, u.email,
                      aw.max_concurrent_assignments, aw.workload_status, aw.availability,
                      aw.success_rate, aw.avg_processing_time_hours, ap.specializations
@@ -151,6 +162,50 @@ class WorkloadRepository:
             ORDER BY COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) ASC
         """
         rows = await db.fetch(query, *params)
+
+        # Fallback: if location filter yielded no agents, retry without it
+        if not rows and entity_location_id:
+            logger.info(f"No agents for location {entity_location_id}, falling back to entity-wide")
+            fallback_params = [max_workload_pct]
+            fallback_entity_filter = ""
+            if entity_id:
+                fallback_entity_filter = f"AND ap.entity_id = ${len(fallback_params) + 1}"
+                fallback_params.append(entity_id)
+            fallback_query = f"""
+                SELECT
+                    ap.id as agent_profile_id,
+                    ap.user_id,
+                    ap.entity_id,
+                    COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as agent_name,
+                    u.email as agent_email,
+                    COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) as current_assignments,
+                    COALESCE(aw.max_concurrent_assignments, 20) as max_concurrent_assignments,
+                    COUNT(a.id) FILTER (WHERE a.status = 'assigned') as pending_declarations,
+                    COUNT(a.id) FILTER (WHERE a.status = 'in_progress') as in_progress_declarations,
+                    COUNT(a.id) FILTER (WHERE a.status = 'completed' AND a.completed_at::date = CURRENT_DATE) as completed_today,
+                    MAX(a.assigned_at) as last_assignment_at,
+                    COALESCE(aw.workload_status::text, 'available') as workload_status,
+                    COALESCE(aw.availability::text, 'available') as availability,
+                    COALESCE(aw.success_rate, 0) as success_rate,
+                    aw.avg_processing_time_hours,
+                    ap.specializations
+                FROM agent_profiles ap
+                INNER JOIN users u ON u.id = ap.user_id
+                LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                LEFT JOIN assignments a ON a.agent_profile_id = ap.id
+                WHERE ap.is_active = true
+                AND u.role = 'agent'
+                AND u.status = 'active'
+                AND COALESCE(aw.availability::text, 'available') = 'available'
+                {fallback_entity_filter}
+                GROUP BY ap.id, ap.user_id, ap.entity_id, u.id, u.full_name, u.first_name, u.last_name, u.email,
+                         aw.max_concurrent_assignments, aw.workload_status, aw.availability,
+                         aw.success_rate, aw.avg_processing_time_hours, ap.specializations
+                HAVING (COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress'))::float /
+                        COALESCE(aw.max_concurrent_assignments, 20)) * 100 < $1
+                ORDER BY COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) ASC
+            """
+            rows = await db.fetch(fallback_query, *fallback_params)
 
         if not rows and entity_id:
             logger.warning(f"No available agents found for entity_id: {entity_id}")

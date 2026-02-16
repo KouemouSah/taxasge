@@ -71,15 +71,16 @@ class AgentProfileRepository:
         """Create new agent profile"""
         query = """
             INSERT INTO agent_profiles (
-                user_id, agent_type, is_supervisor, entity_id, ministry_id,
+                user_id, agent_type, is_supervisor, entity_id, entity_location_id,
+                ministry_id,
                 agent_role, can_approve_unlimited, max_approval_amount,
                 can_escalate, can_assign_tasks, can_reassign,
                 specializations, working_hours_start, working_hours_end,
                 working_days, assigned_by, assigned_at, created_at, updated_at
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-                $12, $13, $14, $15, $16, NOW(), NOW(), NOW()
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                $13, $14, $15, $16, $17, NOW(), NOW(), NOW()
             )
             RETURNING *
         """
@@ -89,6 +90,7 @@ class AgentProfileRepository:
             profile.agent_type.value if hasattr(profile.agent_type, 'value') else profile.agent_type,
             profile.is_supervisor,
             str(profile.entity_id) if profile.entity_id else None,
+            str(profile.entity_location_id) if profile.entity_location_id else None,
             profile.ministry_id,
             profile.agent_role,
             profile.can_approve_unlimited,
@@ -253,7 +255,7 @@ class AgentProfileRepository:
                     value = value.value
                 elif field == 'specializations':
                     value = json.dumps(value)
-                elif field in ['entity_id', 'backup_for_profile_id'] and value:
+                elif field in ['entity_id', 'entity_location_id', 'backup_for_profile_id'] and value:
                     value = str(value)
 
                 updates.append(f"{field} = ${param_idx}")
@@ -375,6 +377,7 @@ class AgentProfileRepository:
             SELECT COUNT(*)
             FROM agent_profiles ap
             LEFT JOIN entities e ON ap.entity_id = e.id
+            LEFT JOIN entity_locations el ON ap.entity_location_id = el.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
             LEFT JOIN ministries m ON COALESCE(e.ministry_id, ap.ministry_id) = m.id
             {where_clause}
@@ -390,6 +393,9 @@ class AgentProfileRepository:
                 u.full_name as user_full_name,
                 e.code as entity_code,
                 e.name as entity_name,
+                el.location_name as location_name,
+                el.city as location_city,
+                el.region as location_region,
                 m.ministry_code,
                 m.name_es as ministry_name,
                 -- Agent category: use entity code dynamically (lowercase)
@@ -405,6 +411,7 @@ class AgentProfileRepository:
             FROM agent_profiles ap
             JOIN users u ON ap.user_id = u.id
             LEFT JOIN entities e ON ap.entity_id = e.id
+            LEFT JOIN entity_locations el ON ap.entity_location_id = el.id
             LEFT JOIN ministries m ON COALESCE(ap.ministry_id, e.ministry_id) = m.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
             {where_clause}

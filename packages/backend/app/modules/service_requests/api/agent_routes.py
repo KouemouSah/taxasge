@@ -197,9 +197,16 @@ async def get_queue(
     # Calculate offset for pagination
     offset = (page - 1) * page_size
 
+    # Get agent's entity_location_id for site-based filtering
+    agent_entity_location_id = await db.fetchval(
+        "SELECT entity_location_id FROM agent_profiles WHERE user_id = $1 AND is_active = TRUE",
+        current_user["id"]
+    )
+
     items = await agent_queue_service.get_pending_items(
         db=db,
         entity_code=entity_code,
+        entity_location_id=agent_entity_location_id,
         limit=page_size,
         offset=offset
     )
