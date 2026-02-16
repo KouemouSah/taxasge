@@ -9,11 +9,13 @@ Based on DATABASE_SCHEMA_REFERENCE.md tables:
 - agent_workloads
 """
 
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any, Union
+from uuid import UUID
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime, time, date
 from enum import Enum
 from decimal import Decimal
+import json
 
 
 # ============================================================================
@@ -320,11 +322,11 @@ class AgentWorkload(AgentWorkloadBase):
     since migration 054. The legacy agent_id column may still exist for
     backward compatibility.
     """
-    id: str
+    id: Union[str, UUID]
     # Primary identifier (migration 054+)
-    agent_profile_id: Optional[str] = None
+    agent_profile_id: Optional[Union[str, UUID]] = None
     # Legacy field (kept for backward compatibility)
-    agent_id: Optional[str] = None
+    agent_id: Optional[Union[str, UUID]] = None
     avg_processing_time_hours: Optional[Decimal] = None
     avg_daily_completions: Decimal = Decimal("0.00")
     completion_rate_7d: Decimal = Decimal("0.00")
@@ -338,6 +340,17 @@ class AgentWorkload(AgentWorkloadBase):
     last_assignment_at: Optional[datetime] = None
     last_completion_at: Optional[datetime] = None
     last_updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @field_validator('active_specializations', 'preferred_declaration_types', mode='before')
+    @classmethod
+    def parse_jsonb_lists(cls, v):
+        """Handle JSONB columns that may come as strings from asyncpg."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return v if v is not None else []
 
     class Config:
         from_attributes = True
