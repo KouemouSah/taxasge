@@ -227,14 +227,32 @@ class EntityLocationRepository:
 
     async def delete(self, location_id: UUID) -> bool:
         """Delete an entity location."""
-        # First check if any slots reference this location
+        # Check all FK dependencies (NO ACTION constraints)
         slot_count = await self.db.fetchval(
             "SELECT COUNT(*) FROM appointment_slot_configs WHERE entity_location_id = $1",
             location_id
         )
         if slot_count > 0:
             raise ValueError(
-                f"Cannot delete: {slot_count} slot configs reference this location"
+                f"Cannot delete: {slot_count} slot config(s) reference this location"
+            )
+
+        hold_count = await self.db.fetchval(
+            "SELECT COUNT(*) FROM appointment_holds WHERE entity_location_id = $1",
+            location_id
+        )
+        if hold_count > 0:
+            raise ValueError(
+                f"Cannot delete: {hold_count} appointment hold(s) reference this location"
+            )
+
+        reservation_count = await self.db.fetchval(
+            "SELECT COUNT(*) FROM appointment_reservations WHERE entity_location_id = $1",
+            location_id
+        )
+        if reservation_count > 0:
+            raise ValueError(
+                f"Cannot delete: {reservation_count} appointment reservation(s) reference this location"
             )
 
         query = "DELETE FROM entity_locations WHERE id = $1"

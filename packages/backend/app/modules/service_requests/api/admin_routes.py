@@ -1862,9 +1862,33 @@ async def batch_update_slot_configs(
                 group.is_active)
             total_created += 1
 
-        # 4c. DELETE slots for removed days
+        # 4c. DELETE slots for removed days (with FK guard for appointment_holds)
         if days_to_delete:
             ids_to_delete = [existing_day_map[d] for d in days_to_delete]
+
+            # Check for active holds on slots being deleted
+            active_holds = await db.fetchval("""
+                SELECT COUNT(*) FROM appointment_holds
+                WHERE slot_config_id = ANY($1::uuid[])
+                  AND status IN ('held', 'confirmed')
+                  AND appointment_date >= CURRENT_DATE
+            """, ids_to_delete)
+
+            if active_holds and active_holds > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Cannot remove {len(days_to_delete)} day(s): "
+                           f"{active_holds} active appointment(s) exist. "
+                           "Cancel the appointments first."
+                )
+
+            # Clean up expired/cancelled holds before deleting
+            await db.execute("""
+                DELETE FROM appointment_holds
+                WHERE slot_config_id = ANY($1::uuid[])
+                  AND (status NOT IN ('held', 'confirmed') OR appointment_date < CURRENT_DATE)
+            """, ids_to_delete)
+
             await db.execute("""
                 DELETE FROM appointment_slot_configs
                 WHERE id = ANY($1::uuid[])
@@ -2089,6 +2113,28 @@ async def delete_slot_config(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("admin.manage_appointment"))
 ):
+    # Check for active appointment holds (confirmed or pending with future date)
+    active_holds = await db.fetchval("""
+        SELECT COUNT(*) FROM appointment_holds
+        WHERE slot_config_id = $1::uuid
+          AND status IN ('held', 'confirmed')
+          AND appointment_date >= CURRENT_DATE
+    """, slot_id)
+
+    if active_holds and active_holds > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot delete: {active_holds} active appointment(s) exist for this slot. "
+                   "Cancel the appointments first."
+        )
+
+    # Clean up expired/cancelled holds (safe to remove)
+    await db.execute("""
+        DELETE FROM appointment_holds
+        WHERE slot_config_id = $1::uuid
+          AND (status NOT IN ('held', 'confirmed') OR appointment_date < CURRENT_DATE)
+    """, slot_id)
+
     result = await db.execute(
         "DELETE FROM appointment_slot_configs WHERE id = $1::uuid", slot_id
     )

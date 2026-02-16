@@ -204,14 +204,28 @@ export default function SlotsTabContent() {
     router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/${group.originalSlots[0].id}/edit?ids=${ids}`)
   }, [router, locale])
 
-  // Bulk delete handler - deletes all slots in selected groups
+  // Bulk delete handler - deletes all slots in selected groups, reports failures
   const handleBulkDelete = useCallback(async (selectedGroups: GroupedSlotConfig[]) => {
+    let deleted = 0
+    const errors: string[] = []
+
     for (const group of selectedGroups) {
       for (const slot of group.originalSlots) {
-        await deleteMutation.mutateAsync(slot.id)
+        try {
+          await deleteMutation.mutateAsync(slot.id)
+          deleted++
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Error desconocido'
+          if (!errors.includes(msg)) errors.push(msg)
+        }
       }
     }
+
     refetch()
+
+    if (errors.length > 0 && deleted === 0) {
+      throw new Error(errors[0])
+    }
   }, [deleteMutation, refetch])
 
   // Table columns
