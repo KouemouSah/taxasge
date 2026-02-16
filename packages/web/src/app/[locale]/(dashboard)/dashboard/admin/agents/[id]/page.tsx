@@ -239,16 +239,16 @@ export default function AgentDetailPage() {
 
   // Fetch locations for the selected entity
   const { data: entityLocations, isLoading: isLoadingLocations } = useLocationsByEntity(
-    selectedEntityCode as any,
+    selectedEntityCode || '',
     !!selectedEntityCode && watchAgentType === AgentType.ENTITY_AGENT
   );
 
-  // Reset entity_location_id when entity_id changes
+  // Reset entity_location_id when entity_id changes (only after profile is loaded)
   useEffect(() => {
-    if (watchEntityId !== profile?.entity_id) {
+    if (profile && watchEntityId !== profile.entity_id) {
       form.setValue('entity_location_id', '');
     }
-  }, [watchEntityId, profile?.entity_id, form]);
+  }, [watchEntityId, profile, form]);
 
   // Handlers
   const handleSubmit = async (data: ProfileFormData) => {

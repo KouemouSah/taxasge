@@ -1168,7 +1168,7 @@ class WizardSessionService:
         if not entity_location_id:
             # Fallback: main office of the entity for this workflow
             workflow = workflow_engine.get_workflow_by_string(workflow_code)
-            if workflow:
+            if workflow and getattr(workflow, "entity_code", None):
                 entity_code = (
                     workflow.entity_code.value
                     if hasattr(workflow.entity_code, "value")

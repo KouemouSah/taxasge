@@ -291,7 +291,8 @@ class AgentQueueService:
             param_idx += 1
 
         if entity_location_id:
-            query += f" AND sr.entity_location_id = ${param_idx}"
+            # Show requests at this site + unrouted requests (NULL = legacy/no location)
+            query += f" AND (sr.entity_location_id = ${param_idx} OR sr.entity_location_id IS NULL)"
             params.append(entity_location_id)
             param_idx += 1
 

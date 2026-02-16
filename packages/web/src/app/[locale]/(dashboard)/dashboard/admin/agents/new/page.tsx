@@ -183,7 +183,7 @@ export default function CreateAgentPage() {
 
   // Fetch locations for the selected entity
   const { data: entityLocations, isLoading: isLoadingLocations } = useLocationsByEntity(
-    selectedEntityCode as any,
+    selectedEntityCode || '',
     !!selectedEntityCode && watchAgentType === AgentType.ENTITY_AGENT
   );
 
