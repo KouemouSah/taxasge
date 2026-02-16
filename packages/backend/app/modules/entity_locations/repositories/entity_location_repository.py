@@ -137,13 +137,18 @@ class EntityLocationRepository:
         created_by: Optional[UUID] = None
     ) -> Dict[str, Any]:
         """Create a new entity location."""
-        # Fetch region from cities table, use provided region as fallback
-        region = await self.db.fetchval(
-            "SELECT region FROM cities WHERE LOWER(name) = LOWER($1)",
+        # Validate city against cities table (source of truth)
+        city_row = await self.db.fetchrow(
+            "SELECT id, region FROM cities WHERE LOWER(name) = LOWER($1)",
             data.city
         )
-        if not region:
-            region = data.region  # Use region from request data
+        if not city_row:
+            available = await self.db.fetch("SELECT name FROM cities ORDER BY name")
+            city_names = [r['name'] for r in available]
+            raise ValueError(
+                f"Ciudad '{data.city}' no existe. Ciudades disponibles: {', '.join(city_names)}"
+            )
+        region = city_row['region']
 
         operating_hours = None
         if data.operating_hours:
@@ -191,6 +196,22 @@ class EntityLocationRepository:
         param_idx = 1
 
         update_data = data.model_dump(exclude_unset=True)
+
+        # Validate city against cities table if being changed
+        if 'city' in update_data and update_data['city'] is not None:
+            city_row = await self.db.fetchrow(
+                "SELECT id, region FROM cities WHERE LOWER(name) = LOWER($1)",
+                update_data['city']
+            )
+            if not city_row:
+                available = await self.db.fetch("SELECT name FROM cities ORDER BY name")
+                city_names = [r['name'] for r in available]
+                raise ValueError(
+                    f"Ciudad '{update_data['city']}' no existe. "
+                    f"Ciudades disponibles: {', '.join(city_names)}"
+                )
+            # Auto-set region from cities table
+            update_data['region'] = city_row['region']
 
         for field, value in update_data.items():
             if field == "operating_hours" and value is not None:

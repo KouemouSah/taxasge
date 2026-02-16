@@ -1,8 +1,9 @@
--- Migration 099: Update valid_city CHECK constraint to include Baney
--- The old constraint only allowed: Malabo, Bata, Mongomo, Evinayong, Ebebiyin
--- Baney was added to the cities table but not to the CHECK constraint
+-- Migration 099: Remove hardcoded CHECK constraints on entity_locations
+-- City and region validation is now done in Python code against the cities table
+-- which is the single source of truth for available cities.
+--
+-- Before: CHECK (city IN ('Malabo', 'Bata', ...)) — breaks when adding cities
+-- After: Python validates city EXISTS in cities table before INSERT/UPDATE
 
 ALTER TABLE entity_locations DROP CONSTRAINT IF EXISTS valid_city;
-
-ALTER TABLE entity_locations ADD CONSTRAINT valid_city
-    CHECK (city IN ('Malabo', 'Bata', 'Mongomo', 'Evinayong', 'Ebebiyin', 'Baney'));
+ALTER TABLE entity_locations DROP CONSTRAINT IF EXISTS valid_region;
