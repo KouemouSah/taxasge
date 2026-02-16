@@ -1784,11 +1784,16 @@ async def update_slot_config(
         params.append(new_location['entity_code'])
         param_idx += 1
 
-    # Handle other fields
+    # Handle other fields — apply type casts for asyncpg strict typing
+    TIME_FIELDS = {'start_time', 'end_time'}
     for field, value in slot_data.items():
         if field != 'entity_location_id' and value is not None:
-            updates.append(f"{field} = ${param_idx}")
-            params.append(value)
+            if field in TIME_FIELDS:
+                updates.append(f"{field} = ${param_idx}::time")
+                params.append(parse_time_string(value) if isinstance(value, str) else value)
+            else:
+                updates.append(f"{field} = ${param_idx}")
+                params.append(value)
             param_idx += 1
 
     # Helper function to fetch slot config with location details
@@ -1825,6 +1830,31 @@ async def update_slot_config(
             location_address=row.get('location_address'),
             city=row.get('city'),
             region=row.get('region')
+        )
+
+    # Check for duplicate: same entity_location_id + day_of_week + start_time (excluding self)
+    # Resolve final values (updated or existing)
+    current_slot = await fetch_slot_with_location(slot_id)
+    if not current_slot:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Slot configuration not found"
+        )
+
+    final_location_id = slot_data.get('entity_location_id', current_slot['entity_location_id'])
+    final_day = slot_data.get('day_of_week', current_slot['day_of_week'])
+    final_start = parse_time_string(slot_data['start_time']) if 'start_time' in slot_data else current_slot['start_time']
+
+    duplicate = await db.fetchrow("""
+        SELECT id FROM appointment_slot_configs
+        WHERE entity_location_id = $1::uuid AND day_of_week = $2 AND start_time = $3::time
+          AND id != $4::uuid
+    """, final_location_id, final_day, final_start, slot_id)
+
+    if duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A slot configuration already exists for this location, day, and start time"
         )
 
     updates.append("updated_at = NOW()")

@@ -141,12 +141,10 @@ export default function EditSlotConfigPage() {
           day_of_week: selectedDay,
         },
       })
-
-      toast.success(t('updateSuccess'))
+      // Toast handled by useUpdateSlotConfig hook
       handleBack()
-    } catch (error) {
-      toast.error(t('updateError'))
-      console.error('Failed to update slot config:', error)
+    } catch {
+      // Error toast handled by useUpdateSlotConfig hook
     }
   }
 
@@ -367,7 +365,7 @@ export default function EditSlotConfigPage() {
           {(formData.start_time || '08:00') >= (formData.end_time || '16:00') && (
             <div className="flex items-center gap-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
-              La hora de inicio debe ser anterior a la hora de fin
+              {t('validation.startBeforeEnd')}
             </div>
           )}
 

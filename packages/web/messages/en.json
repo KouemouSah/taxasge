@@ -1484,7 +1484,8 @@
           "createError": "Error creating slot(s)",
           "validation": {
             "requiredFields": "Please fill in all required fields",
-            "selectDay": "Select at least one day"
+            "selectDay": "Select at least one day",
+            "startBeforeEnd": "Start time must be before end time"
           },
           "city": "City",
           "region": "Region",

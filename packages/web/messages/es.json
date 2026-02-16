@@ -1689,7 +1689,8 @@
           "createError": "Error al crear horario(s)",
           "validation": {
             "requiredFields": "Por favor complete todos los campos requeridos",
-            "selectDay": "Seleccione al menos un día"
+            "selectDay": "Seleccione al menos un día",
+            "startBeforeEnd": "La hora de inicio debe ser anterior a la hora de fin"
           },
           "city": "Ciudad",
           "region": "Región",

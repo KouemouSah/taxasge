@@ -159,31 +159,15 @@ export default function NewSlotConfigPage() {
 
     try {
       // Create all slots in one batch request
-      const result = await createMutation.mutateAsync({
+      await createMutation.mutateAsync({
         ...formData,
         entity_location_id: selectedLocationId,
         days_of_week: selectedDays,
       })
-
-      // Show appropriate success message
-      if (result.total_skipped > 0) {
-        toast.success(
-          t('createSuccess.partial', {
-            created: result.total_created,
-            skipped: result.total_skipped
-          })
-        )
-      } else {
-        toast.success(
-          result.total_created > 1
-            ? t('createSuccess.multiple', { count: result.total_created })
-            : t('createSuccess.single')
-        )
-      }
+      // Toast handled by useCreateSlotConfigBatch hook
       handleBack()
-    } catch (error) {
-      toast.error(t('createError'))
-      console.error('Failed to create slot configs:', error)
+    } catch {
+      // Error toast handled by useCreateSlotConfigBatch hook
     }
   }
 
@@ -379,7 +363,7 @@ export default function NewSlotConfigPage() {
           {formData.start_time >= formData.end_time && (
             <div className="flex items-center gap-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
-              La hora de inicio debe ser anterior a la hora de fin
+              {t('validation.startBeforeEnd')}
             </div>
           )}
 

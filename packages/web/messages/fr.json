@@ -1724,7 +1724,8 @@
           "createError": "Erreur lors de la création",
           "validation": {
             "requiredFields": "Veuillez remplir tous les champs",
-            "selectDay": "Sélectionnez au moins un jour"
+            "selectDay": "Sélectionnez au moins un jour",
+            "startBeforeEnd": "L'heure de début doit être antérieure à l'heure de fin"
           },
           "city": "Ville",
           "region": "Région",
