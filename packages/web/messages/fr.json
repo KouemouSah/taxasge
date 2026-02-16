@@ -1715,6 +1715,7 @@
           "deleted": "Créneau supprimé avec succès",
           "errorLoading": "Erreur lors du chargement des créneaux",
           "creating": "Création...",
+          "saving": "Enregistrement...",
           "createMultiple": "Créer {count} Créneaux",
           "createSuccess": {
             "single": "Créneau créé avec succès",

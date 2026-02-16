@@ -483,6 +483,46 @@ class AppointmentSlotConfigBatchResponse(BaseModel):
     total_skipped: int
 
 
+class AppointmentSlotConfigGroupUpdate(BaseModel):
+    """Atomic update of an entire group of slot configs (reconcile pattern).
+    Updates existing slots, creates new ones for added days, deletes removed days."""
+    slot_ids: List[UUID] = Field(..., min_length=1, description="Current slot IDs in the group")
+    entity_location_id: UUID = Field(..., description="FK to entity_locations")
+    days_of_week: List[int] = Field(..., min_length=1, max_length=7, description="Desired final set of days (0=Monday, 6=Sunday)")
+    start_time: str = Field(..., description="Start time in HH:MM format")
+    end_time: str = Field(..., description="End time in HH:MM format")
+    slot_duration_minutes: int = Field(default=30, ge=5, le=120)
+    max_appointments_per_slot: int = Field(default=10, ge=1, le=100)
+    is_active: bool = True
+
+    @field_validator('days_of_week')
+    @classmethod
+    def validate_days(cls, v):
+        if not all(0 <= d <= 6 for d in v):
+            raise ValueError("Each day must be between 0 (Monday) and 6 (Sunday)")
+        if len(v) != len(set(v)):
+            raise ValueError("Days must be unique")
+        return sorted(v)
+
+    @field_validator('start_time', 'end_time', mode='before')
+    @classmethod
+    def validate_time(cls, v):
+        if isinstance(v, Time):
+            return v.strftime('%H:%M:%S')
+        if isinstance(v, str):
+            t = parse_time_string(v)
+            return t.strftime('%H:%M:%S')
+        raise ValueError(f"Invalid time: {v}")
+
+
+class AppointmentSlotConfigGroupUpdateResponse(BaseModel):
+    """Response for atomic group update"""
+    slots: List[AppointmentSlotConfigResponse]
+    total_updated: int
+    total_created: int
+    total_deleted: int
+
+
 # ─────────────────────────────────────────────────────────────────
 # APPOINTMENT_BLOCKED_DATES (table: appointment_blocked_dates)
 # ─────────────────────────────────────────────────────────────────
@@ -1738,6 +1778,149 @@ async def create_slot_configs_batch(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create slot configurations: {str(e)}"
+        )
+
+
+@router.put(
+    "/appointments/slot-configs/batch-update",
+    response_model=AppointmentSlotConfigGroupUpdateResponse,
+    summary="Batch update appointment slot configurations (reconcile pattern)",
+    description="Atomically update an entire group of slot configs. Updates existing slots, creates new ones for added days, deletes removed days."
+)
+async def batch_update_slot_configs(
+    group: AppointmentSlotConfigGroupUpdate = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("admin.manage_appointment"))
+):
+    from loguru import logger
+
+    try:
+        start_time_obj = parse_time_string(group.start_time)
+        end_time_obj = parse_time_string(group.end_time)
+
+        # 1. Validate entity_location
+        location = await db.fetchrow("""
+            SELECT id, entity_code, location_name, location_address, city, region
+            FROM entity_locations
+            WHERE id = $1::uuid AND is_active = TRUE
+        """, group.entity_location_id)
+
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Entity location not found or inactive: {group.entity_location_id}"
+            )
+
+        entity_code = location['entity_code']
+
+        # 2. Fetch existing slots by slot_ids -> build {day: slot_id} map
+        existing_slots = await db.fetch("""
+            SELECT id, day_of_week FROM appointment_slot_configs
+            WHERE id = ANY($1::uuid[])
+        """, [str(sid) for sid in group.slot_ids])
+
+        existing_day_map = {row['day_of_week']: str(row['id']) for row in existing_slots}
+        existing_days = set(existing_day_map.keys())
+        desired_days = set(group.days_of_week)
+
+        # 3. Compute reconcile sets
+        days_to_update = existing_days & desired_days
+        days_to_create = desired_days - existing_days
+        days_to_delete = existing_days - desired_days
+
+        total_updated = 0
+        total_created = 0
+        total_deleted = 0
+
+        # 4a. UPDATE existing slots that remain
+        for day in days_to_update:
+            slot_id = existing_day_map[day]
+            await db.execute("""
+                UPDATE appointment_slot_configs
+                SET entity_location_id = $1::uuid, entity_code = $2, day_of_week = $3,
+                    start_time = $4::time, end_time = $5::time,
+                    slot_duration_minutes = $6, max_appointments_per_slot = $7,
+                    is_active = $8, updated_at = NOW()
+                WHERE id = $9::uuid
+            """, group.entity_location_id, entity_code, day,
+                start_time_obj, end_time_obj,
+                group.slot_duration_minutes, group.max_appointments_per_slot,
+                group.is_active, slot_id)
+            total_updated += 1
+
+        # 4b. INSERT new slots for added days
+        for day in days_to_create:
+            await db.execute("""
+                INSERT INTO appointment_slot_configs (
+                    entity_location_id, entity_code, day_of_week, start_time, end_time,
+                    slot_duration_minutes, max_appointments_per_slot, is_active
+                ) VALUES ($1::uuid, $2, $3, $4::time, $5::time, $6, $7, $8)
+            """, group.entity_location_id, entity_code, day,
+                start_time_obj, end_time_obj,
+                group.slot_duration_minutes, group.max_appointments_per_slot,
+                group.is_active)
+            total_created += 1
+
+        # 4c. DELETE slots for removed days
+        if days_to_delete:
+            ids_to_delete = [existing_day_map[d] for d in days_to_delete]
+            await db.execute("""
+                DELETE FROM appointment_slot_configs
+                WHERE id = ANY($1::uuid[])
+            """, ids_to_delete)
+            total_deleted = len(ids_to_delete)
+
+        # 5. Fetch all resulting slots for this location + desired days
+        result_rows = await db.fetch("""
+            SELECT
+                sc.id, sc.entity_location_id, sc.entity_code, sc.day_of_week,
+                sc.start_time, sc.end_time, sc.slot_duration_minutes,
+                sc.max_appointments_per_slot, sc.is_active,
+                el.location_name, el.location_address, el.city, el.region
+            FROM appointment_slot_configs sc
+            LEFT JOIN entity_locations el ON sc.entity_location_id = el.id
+            WHERE sc.entity_location_id = $1::uuid AND sc.day_of_week = ANY($2::int[])
+            ORDER BY sc.day_of_week
+        """, group.entity_location_id, list(desired_days))
+
+        result_slots = [
+            AppointmentSlotConfigResponse(
+                id=str(row['id']),
+                entity_location_id=str(row['entity_location_id']) if row.get('entity_location_id') else None,
+                entity_code=row['entity_code'],
+                day_of_week=row['day_of_week'],
+                start_time=str(row['start_time']),
+                end_time=str(row['end_time']),
+                slot_duration_minutes=row['slot_duration_minutes'],
+                max_appointments_per_slot=row['max_appointments_per_slot'],
+                is_active=row['is_active'],
+                location_name=row.get('location_name'),
+                location_address=row.get('location_address'),
+                city=row.get('city'),
+                region=row.get('region')
+            ) for row in result_rows
+        ]
+
+        logger.info(
+            f"Batch update for {entity_code}: "
+            f"{total_updated} updated, {total_created} created, {total_deleted} deleted"
+        )
+
+        return AppointmentSlotConfigGroupUpdateResponse(
+            slots=result_slots,
+            total_updated=total_updated,
+            total_created=total_created,
+            total_deleted=total_deleted
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in batch slot config update: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to batch update slot configurations: {str(e)}"
         )
 
 

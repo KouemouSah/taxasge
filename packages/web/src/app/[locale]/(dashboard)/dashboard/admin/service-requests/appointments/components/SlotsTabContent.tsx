@@ -28,7 +28,6 @@ import {
 import { useSlotConfigs, useDeleteSlotConfig } from '@/modules/service-requests-admin'
 import type { AppointmentSlotConfig } from '@/modules/service-requests-admin'
 import { DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
-import { DEFAULT_CITIES } from '@/modules/entity-locations/types'
 import { DataTable, createBulkDeleteAction } from '@/components/ui/data-table'
 import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
 
@@ -168,8 +167,9 @@ export default function SlotsTabContent() {
   // Mutations
   const deleteMutation = useDeleteSlotConfig()
 
-  // Get unique entity codes for filter
+  // Get unique entity codes and cities for filters
   const entities = Array.from(new Set(slotConfigs?.map((s) => s.entity_code) || []))
+  const availableCities = Array.from(new Set(slotConfigs?.map((s) => s.city).filter((c): c is string => !!c) || [])).sort()
 
   // Group and filter slots
   const groupedSlots = useMemo(() => {
@@ -199,8 +199,9 @@ export default function SlotsTabContent() {
     router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/new`)
   }, [router, locale])
 
-  const handleEditSlot = useCallback((slot: AppointmentSlotConfig) => {
-    router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/${slot.id}/edit`)
+  const handleEditGroup = useCallback((group: GroupedSlotConfig) => {
+    const ids = group.originalSlots.map(s => s.id).join(',')
+    router.push(`/${locale}/dashboard/admin/service-requests/appointments/slots/${group.originalSlots[0].id}/edit?ids=${ids}`)
   }, [router, locale])
 
   // Bulk delete handler - deletes all slots in selected groups
@@ -310,14 +311,14 @@ export default function SlotsTabContent() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handleEditSlot(group.originalSlots[0])}
+            onClick={() => handleEditGroup(group)}
           >
             <Pencil className="h-4 w-4" />
           </Button>
         </div>
       ),
     },
-  ], [t, handleEditSlot])
+  ], [t, handleEditGroup])
 
   // Bulk actions
   const bulkActions: BulkAction<GroupedSlotConfig>[] = useMemo(() => [
@@ -393,7 +394,7 @@ export default function SlotsTabContent() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allCities')}</SelectItem>
-                {DEFAULT_CITIES.map((city) => (
+                {availableCities.map((city) => (
                   <SelectItem key={city} value={city}>
                     {city}
                   </SelectItem>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,8 +29,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { TimePicker } from '@/components/ui/time-picker'
-import { useSlotConfigs, useUpdateSlotConfig, DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
-import type { AppointmentSlotConfigUpdate } from '@/modules/service-requests-admin'
+import { useSlotConfigs, useBatchUpdateSlotConfig, DAY_OF_WEEK_LABELS } from '@/modules/service-requests-admin'
 import { toast } from 'sonner'
 import { useEntityLocations } from '@/modules/entity-locations/hooks'
 import { useCitiesSimple } from '@/modules/cities/hooks'
@@ -40,16 +39,30 @@ export default function EditSlotConfigPage() {
   const tCommon = useTranslations('common')
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const locale = params.locale as string
   const slotId = params.id as string
 
-  // Load all slot configs to find the one we're editing
+  // Get all group slot IDs from query params (fallback to single ID)
+  const groupSlotIds = useMemo(() => {
+    const idsParam = searchParams.get('ids')
+    if (idsParam) {
+      return idsParam.split(',').filter(Boolean)
+    }
+    return [slotId]
+  }, [searchParams, slotId])
+
+  // Load all slot configs to find the ones we're editing
   const { data: slotConfigs, isLoading: isLoadingSlot, error: loadError } = useSlotConfigs()
 
-  // Find the slot we're editing
-  const existingSlot = useMemo(() => {
-    return slotConfigs?.find((s) => s.id === slotId)
-  }, [slotConfigs, slotId])
+  // Find all slots in the group
+  const groupSlots = useMemo(() => {
+    if (!slotConfigs) return []
+    return slotConfigs.filter((s) => groupSlotIds.includes(s.id))
+  }, [slotConfigs, groupSlotIds])
+
+  // Use the first slot as reference for initial form values
+  const referenceSlot = groupSlots[0] ?? null
 
   // Fetch cities from database
   const { data: citiesData, isLoading: citiesLoading } = useCitiesSimple(true)
@@ -58,10 +71,12 @@ export default function EditSlotConfigPage() {
   // City filter state - initialized from existing slot
   const [selectedCity, setSelectedCity] = useState<string>('')
   const [selectedLocationId, setSelectedLocationId] = useState<string>('')
-  const [selectedDay, setSelectedDay] = useState<number>(0)
+
+  // Multi-day selection state (batch mode)
+  const [selectedDays, setSelectedDays] = useState<number[]>([])
 
   // Form state
-  const [formData, setFormData] = useState<AppointmentSlotConfigUpdate>({
+  const [formData, setFormData] = useState({
     start_time: '08:00',
     end_time: '16:00',
     slot_duration_minutes: 30,
@@ -69,14 +84,17 @@ export default function EditSlotConfigPage() {
     is_active: true,
   })
 
-  // Initialize form data when slot loads
+  // Initialize form data when group slots load
   useEffect(() => {
-    if (existingSlot) {
-      // Set city from existing slot (derive from location if available)
-      const city = existingSlot.city || 'Malabo'
+    if (referenceSlot && groupSlots.length > 0) {
+      // Set city from reference slot
+      const city = referenceSlot.city || 'Malabo'
       setSelectedCity(city)
-      setSelectedLocationId(existingSlot.entity_location_id || '')
-      setSelectedDay(existingSlot.day_of_week)
+      setSelectedLocationId(referenceSlot.entity_location_id || '')
+
+      // Pre-select all days in the group
+      const days = groupSlots.map((s) => s.day_of_week).sort((a, b) => a - b)
+      setSelectedDays(days)
 
       // Parse time (remove seconds if present)
       const formatTime = (time: string) => {
@@ -86,14 +104,14 @@ export default function EditSlotConfigPage() {
       }
 
       setFormData({
-        start_time: formatTime(existingSlot.start_time),
-        end_time: formatTime(existingSlot.end_time),
-        slot_duration_minutes: existingSlot.slot_duration_minutes,
-        max_appointments_per_slot: existingSlot.max_appointments_per_slot,
-        is_active: existingSlot.is_active,
+        start_time: formatTime(referenceSlot.start_time),
+        end_time: formatTime(referenceSlot.end_time),
+        slot_duration_minutes: referenceSlot.slot_duration_minutes,
+        max_appointments_per_slot: referenceSlot.max_appointments_per_slot,
+        is_active: referenceSlot.is_active,
       })
     }
-  }, [existingSlot])
+  }, [referenceSlot, groupSlots.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch entity locations filtered by city
   const { data: locationsData, isLoading: locationsLoading } = useEntityLocations({
@@ -117,34 +135,62 @@ export default function EditSlotConfigPage() {
     return availableCities.find((c) => c.name === selectedCity)
   }, [availableCities, selectedCity])
 
-  // Mutation
-  const updateMutation = useUpdateSlotConfig()
+  // Mutation — batch update (reconcile pattern)
+  const batchUpdateMutation = useBatchUpdateSlotConfig()
+
+  // Toggle day selection
+  const toggleDay = (day: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b)
+    )
+  }
+
+  // Select all weekdays
+  const selectAllWeekdays = () => {
+    setSelectedDays([0, 1, 2, 3, 4]) // Monday to Friday
+  }
+
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedDays([])
+  }
+
+  // Compute change summary
+  const changeSummary = useMemo(() => {
+    const existingDays = new Set(groupSlots.map((s) => s.day_of_week))
+    const desiredDays = new Set(selectedDays)
+    const toUpdate = Array.from(existingDays).filter((d) => desiredDays.has(d)).length
+    const toCreate = Array.from(desiredDays).filter((d) => !existingDays.has(d)).length
+    const toDelete = Array.from(existingDays).filter((d) => !desiredDays.has(d)).length
+    return { toUpdate, toCreate, toDelete }
+  }, [groupSlots, selectedDays])
 
   // Navigate back
   const handleBack = () => {
     router.push(`/${locale}/dashboard/admin/service-requests/appointments?tab=slots`)
   }
 
-  // Handle form submission
+  // Handle form submission — batch update
   const handleSubmit = async () => {
-    if (!selectedLocationId) {
+    if (!selectedLocationId || selectedDays.length === 0) {
       toast.error(t('validation.requiredFields'))
       return
     }
 
     try {
-      await updateMutation.mutateAsync({
-        slotId,
-        data: {
-          ...formData,
-          entity_location_id: selectedLocationId,
-          day_of_week: selectedDay,
-        },
+      await batchUpdateMutation.mutateAsync({
+        slot_ids: groupSlotIds,
+        entity_location_id: selectedLocationId,
+        days_of_week: selectedDays,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        slot_duration_minutes: formData.slot_duration_minutes,
+        max_appointments_per_slot: formData.max_appointments_per_slot,
+        is_active: formData.is_active,
       })
-      // Toast handled by useUpdateSlotConfig hook
       handleBack()
     } catch {
-      // Error toast handled by useUpdateSlotConfig hook
+      // Error toast handled by hook
     }
   }
 
@@ -158,7 +204,7 @@ export default function EditSlotConfigPage() {
   }
 
   // Error state - slot not found
-  if (!existingSlot && !isLoadingSlot) {
+  if (groupSlots.length === 0 && !isLoadingSlot) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -193,20 +239,22 @@ export default function EditSlotConfigPage() {
         </div>
       </div>
 
-      {/* Current Slot Info */}
-      {existingSlot && (
+      {/* Current Group Info */}
+      {referenceSlot && (
         <Card className="border-blue-200 bg-blue-50/30">
           <CardContent className="pt-4">
             <div className="flex items-center gap-4 text-sm">
-              <Badge variant="outline">{existingSlot.entity_code}</Badge>
-              <Badge variant="secondary">{DAY_OF_WEEK_LABELS[existingSlot.day_of_week]}</Badge>
+              <Badge variant="outline">{referenceSlot.entity_code}</Badge>
+              <Badge variant="secondary">
+                {groupSlots.length} {groupSlots.length === 1 ? 'día' : 'días'}
+              </Badge>
               <span className="font-mono">
-                {existingSlot.start_time} - {existingSlot.end_time}
+                {referenceSlot.start_time} - {referenceSlot.end_time}
               </span>
-              {existingSlot.location_name && (
+              {referenceSlot.location_name && (
                 <span className="text-muted-foreground flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  {existingSlot.location_name}
+                  {referenceSlot.location_name}
                 </span>
               )}
             </div>
@@ -314,20 +362,40 @@ export default function EditSlotConfigPage() {
             </div>
           </div>
 
-          {/* Day Selection (single day for edit) */}
+          {/* Day Selection (multi-day like create page) */}
           <div className="grid gap-2">
-            <Label>{t('dayOfWeek')}</Label>
+            <div className="flex items-center justify-between">
+              <Label>{t('daysOfWeek')}</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAllWeekdays}
+                >
+                  {t('selectWeekdays')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSelection}
+                >
+                  {t('clearSelection')}
+                </Button>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(DAY_OF_WEEK_LABELS).map(([day, label]) => {
                 const dayNum = parseInt(day)
-                const isSelected = selectedDay === dayNum
+                const isSelected = selectedDays.includes(dayNum)
                 return (
                   <Button
                     key={day}
                     type="button"
                     variant={isSelected ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setSelectedDay(dayNum)}
+                    onClick={() => toggleDay(dayNum)}
                     className="min-w-[80px]"
                   >
                     {label}
@@ -335,6 +403,14 @@ export default function EditSlotConfigPage() {
                 )
               })}
             </div>
+            {selectedDays.length === 0 && (
+              <p className="text-sm text-destructive">{t('validation.selectDay')}</p>
+            )}
+            {selectedDays.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {t('selectedDays', { count: selectedDays.length })}
+              </p>
+            )}
           </div>
 
           {/* Time Range */}
@@ -345,7 +421,7 @@ export default function EditSlotConfigPage() {
                 {t('startTime')}
               </Label>
               <TimePicker
-                value={formData.start_time || '08:00'}
+                value={formData.start_time}
                 onChange={(v) => setFormData({ ...formData, start_time: v })}
                 minuteStep={15}
               />
@@ -356,13 +432,13 @@ export default function EditSlotConfigPage() {
                 {t('endTime')}
               </Label>
               <TimePicker
-                value={formData.end_time || '16:00'}
+                value={formData.end_time}
                 onChange={(v) => setFormData({ ...formData, end_time: v })}
                 minuteStep={15}
               />
             </div>
           </div>
-          {(formData.start_time || '08:00') >= (formData.end_time || '16:00') && (
+          {formData.start_time >= formData.end_time && (
             <div className="flex items-center gap-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
               {t('validation.startBeforeEnd')}
@@ -432,6 +508,26 @@ export default function EditSlotConfigPage() {
             />
           </div>
 
+          {/* Change Summary */}
+          {(changeSummary.toCreate > 0 || changeSummary.toDelete > 0) && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="flex flex-wrap gap-3">
+                  {changeSummary.toUpdate > 0 && (
+                    <Badge variant="secondary">{changeSummary.toUpdate} actualizado(s)</Badge>
+                  )}
+                  {changeSummary.toCreate > 0 && (
+                    <Badge variant="default">{changeSummary.toCreate} nuevo(s)</Badge>
+                  )}
+                  {changeSummary.toDelete > 0 && (
+                    <Badge variant="destructive">{changeSummary.toDelete} eliminado(s)</Badge>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-4 pt-4 border-t">
             <Button variant="outline" onClick={handleBack}>
@@ -439,9 +535,9 @@ export default function EditSlotConfigPage() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!selectedLocationId || updateMutation.isPending}
+              disabled={!selectedLocationId || selectedDays.length === 0 || batchUpdateMutation.isPending}
             >
-              {updateMutation.isPending ? (
+              {batchUpdateMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {t('saving')}

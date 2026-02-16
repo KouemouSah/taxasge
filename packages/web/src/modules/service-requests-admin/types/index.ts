@@ -342,6 +342,24 @@ export interface AppointmentSlotConfigUpdate {
   is_active?: boolean
 }
 
+export interface AppointmentSlotConfigGroupUpdate {
+  slot_ids: string[]
+  entity_location_id: string
+  days_of_week: number[]
+  start_time: string
+  end_time: string
+  slot_duration_minutes: number
+  max_appointments_per_slot: number
+  is_active: boolean
+}
+
+export interface AppointmentSlotConfigGroupUpdateResponse {
+  slots: AppointmentSlotConfig[]
+  total_updated: number
+  total_created: number
+  total_deleted: number
+}
+
 export interface SlotConfigFilters {
   entity_code?: string
   city?: string  // Filter by city (Malabo or Bata)

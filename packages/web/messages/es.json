@@ -1680,6 +1680,7 @@
           "deleted": "Horario eliminado exitosamente",
           "errorLoading": "Error al cargar horarios",
           "creating": "Creando...",
+          "saving": "Guardando...",
           "createMultiple": "Crear {count} Horarios",
           "createSuccess": {
             "single": "Horario creado exitosamente",

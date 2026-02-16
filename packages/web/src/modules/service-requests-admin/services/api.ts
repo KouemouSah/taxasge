@@ -35,6 +35,8 @@ import type {
   AppointmentSlotConfigUpdate,
   AppointmentSlotConfigBatchCreate,
   AppointmentSlotConfigBatchResponse,
+  AppointmentSlotConfigGroupUpdate,
+  AppointmentSlotConfigGroupUpdateResponse,
   SlotConfigFilters,
   AppointmentBlockedDate,
   AppointmentBlockedDateCreate,
@@ -331,6 +333,14 @@ export const slotConfigsApi = {
    */
   update: async (slotId: string, data: AppointmentSlotConfigUpdate): Promise<AppointmentSlotConfig> => {
     return fetchClient.put<AppointmentSlotConfig>(`${ADMIN_BASE}/appointments/slot-configs/${slotId}`, data)
+  },
+
+  /**
+   * Batch update slot configurations (reconcile pattern)
+   * BACKEND: PUT /api/v1/admin/service-requests/appointments/slot-configs/batch-update
+   */
+  batchUpdate: async (data: AppointmentSlotConfigGroupUpdate): Promise<AppointmentSlotConfigGroupUpdateResponse> => {
+    return fetchClient.put<AppointmentSlotConfigGroupUpdateResponse>(`${ADMIN_BASE}/appointments/slot-configs/batch-update`, data)
   },
 
   /**

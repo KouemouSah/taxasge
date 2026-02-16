@@ -38,6 +38,7 @@ import type {
   AppointmentSlotConfigCreate,
   AppointmentSlotConfigUpdate,
   AppointmentSlotConfigBatchCreate,
+  AppointmentSlotConfigGroupUpdate,
   BlockedDateFilters,
   AppointmentBlockedDateCreate,
   AppointmentBlockedDateUpdate,
@@ -664,6 +665,33 @@ export function useUpdateSlotConfig() {
       toast({
         title: 'Error',
         description: error.message || 'No se pudo actualizar el horario.',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+export function useBatchUpdateSlotConfig() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (data: AppointmentSlotConfigGroupUpdate) => slotConfigsApi.batchUpdate(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.slotConfigs.all })
+      const parts = []
+      if (result.total_updated > 0) parts.push(`${result.total_updated} actualizado(s)`)
+      if (result.total_created > 0) parts.push(`${result.total_created} creado(s)`)
+      if (result.total_deleted > 0) parts.push(`${result.total_deleted} eliminado(s)`)
+      toast({
+        title: 'Horarios actualizados',
+        description: parts.join(', ') + '.',
+      })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar los horarios.',
         variant: 'destructive',
       })
     },

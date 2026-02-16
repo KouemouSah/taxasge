@@ -1475,6 +1475,7 @@
           "deleted": "Slot deleted successfully",
           "errorLoading": "Error loading slots",
           "creating": "Creating...",
+          "saving": "Saving...",
           "createMultiple": "Create {count} Slots",
           "createSuccess": {
             "single": "Slot created successfully",
