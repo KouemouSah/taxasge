@@ -27,6 +27,7 @@ from app.modules.permissions.services.permission_service import (
     get_permission_service,
 )
 from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.core.cache import invalidate_role_menu_cache
 
 
 router = APIRouter(prefix="/roles", tags=["Roles"])
@@ -500,7 +501,6 @@ async def update_role_menu_config(
 
     # Invalidate cached menus for all agents with this role
     try:
-        from app.core.cache import invalidate_role_menu_cache
         await invalidate_role_menu_cache(str(role_id))
     except Exception:
         pass  # Non-critical — cache will expire naturally (5 min TTL)
