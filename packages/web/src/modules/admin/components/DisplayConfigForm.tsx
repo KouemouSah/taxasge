@@ -423,7 +423,7 @@ export function DisplayConfigForm({
   // Reset state when initialData changes (for edit mode)
   // Compare by serialized value to avoid spurious resets from parent re-renders
   const initialDataKey = useMemo(
-    () => initialData ? JSON.stringify([initialData.workflow_code, initialData.list_columns, initialData.preview_sections]) : '',
+    () => initialData ? JSON.stringify([initialData.workflow_code, initialData.list_columns, initialData.preview_sections, initialData.labels]) : '',
     [initialData]
   );
   useEffect(() => {
@@ -953,9 +953,9 @@ export function DisplayConfigForm({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Tag className="h-4 w-4" />
-                {t('customLabels', { defaultValue: 'Labels Personnalisés' })}
+                {t('customLabels', { defaultValue: 'Labels Personalizados' })}
                 <Badge variant="secondary">
-                  {Object.values(labels).filter((v) => v.trim()).length}
+                  {Object.entries(labels).filter(([k, v]) => v.trim() && selectedColumns.includes(k)).length}
                 </Badge>
               </CardTitle>
               <CardDescription>

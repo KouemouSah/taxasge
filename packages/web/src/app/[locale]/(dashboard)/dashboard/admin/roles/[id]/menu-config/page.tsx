@@ -64,40 +64,48 @@ import { MenuBuilder, type MenuItem, menuConfigToJson } from '@/modules/admin/co
 
 interface JsonEditorState {
   value: string;
-  errors: string[];
+  errors: string[];    // Blocking (invalid JSON) — prevents save
+  warnings: string[];  // Non-blocking (structural hints) — save allowed
   isDirty: boolean;
 }
 
 /**
  * Validate dashboard_config JSON structure
  * Ported from deleted MenuConfigEditor.tsx (git: ea8a317f)
+ *
+ * Returns { errors, warnings }:
+ * - errors: invalid JSON syntax → blocks save
+ * - warnings: missing version/layout/widgets structure → informational, save allowed
+ *   (dashboard_config is free-form JSONB, backend imposes no schema)
  */
-function validateDashboardConfig(json: string): string[] {
+function validateDashboardConfig(json: string): { errors: string[]; warnings: string[] } {
   const errors: string[] = [];
+  const warnings: string[] = [];
   try {
     const config = JSON.parse(json);
     if (typeof config !== 'object' || config === null || Array.isArray(config)) {
-      return ['Must be a JSON object'];
+      return { errors: ['Must be a JSON object'], warnings: [] };
     }
-    // Empty object is valid (no dashboard config)
-    if (Object.keys(config).length === 0) return [];
+    // Empty object is valid
+    if (Object.keys(config).length === 0) return { errors: [], warnings: [] };
 
-    if (!config.version) errors.push('Missing required field: version');
-    if (!config.layout) errors.push('Missing required field: layout');
+    // Structural hints (non-blocking)
+    if (!config.version) warnings.push('Missing field: version');
+    if (!config.layout) warnings.push('Missing field: layout');
     else if (!['grid', 'list', 'custom'].includes(config.layout))
-      errors.push('Invalid layout: must be "grid", "list", or "custom"');
+      warnings.push('layout: expected "grid", "list", or "custom"');
     if (config.widgets !== undefined) {
-      if (!Array.isArray(config.widgets)) errors.push('"widgets" must be an array');
+      if (!Array.isArray(config.widgets)) warnings.push('"widgets" should be an array');
       else config.widgets.forEach((w: Record<string, unknown>, i: number) => {
-        if (!w.id) errors.push(`Widget ${i}: missing "id"`);
-        if (typeof w.visible !== 'boolean') errors.push(`Widget ${i}: "visible" must be boolean`);
-        if (typeof w.position !== 'number') errors.push(`Widget ${i}: "position" must be number`);
+        if (!w.id) warnings.push(`Widget ${i}: missing "id"`);
+        if (typeof w.visible !== 'boolean') warnings.push(`Widget ${i}: "visible" should be boolean`);
+        if (typeof w.position !== 'number') warnings.push(`Widget ${i}: "position" should be number`);
       });
     }
   } catch (e) {
     errors.push(`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`);
   }
-  return errors;
+  return { errors, warnings };
 }
 
 interface MenuBuilderState {
@@ -147,11 +155,13 @@ export default function RoleMenuConfigPage() {
   const [dashboardConfig, setDashboardConfig] = useState<JsonEditorState>({
     value: '{}',
     errors: [],
+    warnings: [],
     isDirty: false,
   });
   const [uiConfig, setUiConfig] = useState<JsonEditorState>({
     value: '{}',
     errors: [],
+    warnings: [],
     isDirty: false,
   });
 
@@ -172,11 +182,13 @@ export default function RoleMenuConfigPage() {
       setDashboardConfig({
         value: config.dashboard_config ? JSON.stringify(config.dashboard_config, null, 2) : '{}',
         errors: [],
+        warnings: [],
         isDirty: false,
       });
       setUiConfig({
         value: config.ui_config ? JSON.stringify(config.ui_config, null, 2) : '{}',
         errors: [],
+        warnings: [],
         isDirty: false,
       });
     }
@@ -199,14 +211,14 @@ export default function RoleMenuConfigPage() {
     type: 'dashboard' | 'ui' = 'ui'
   ) => {
     if (type === 'dashboard') {
-      const errors = validateDashboardConfig(value);
-      setter({ value, errors, isDirty: true });
+      const { errors, warnings } = validateDashboardConfig(value);
+      setter({ value, errors, warnings, isDirty: true });
     } else {
       try {
         JSON.parse(value);
-        setter({ value, errors: [], isDirty: true });
+        setter({ value, errors: [], warnings: [], isDirty: true });
       } catch (e) {
-        setter({ value, errors: [`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`], isDirty: true });
+        setter({ value, errors: [`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`], warnings: [], isDirty: true });
       }
     }
   };
@@ -219,8 +231,11 @@ export default function RoleMenuConfigPage() {
     setter((prev) => {
       try {
         const formatted = JSON.stringify(JSON.parse(prev.value), null, 2);
-        const errors = type === 'dashboard' ? validateDashboardConfig(formatted) : [];
-        return { ...prev, value: formatted, errors };
+        if (type === 'dashboard') {
+          const { errors, warnings } = validateDashboardConfig(formatted);
+          return { ...prev, value: formatted, errors, warnings };
+        }
+        return { ...prev, value: formatted, errors: [], warnings: [] };
       } catch {
         return prev; // Can't format invalid JSON
       }
@@ -275,8 +290,8 @@ export default function RoleMenuConfigPage() {
 
       // Reset dirty flags
       setMenuBuilderState((prev) => ({ ...prev, isDirty: false }));
-      setDashboardConfig((prev) => ({ ...prev, isDirty: false, errors: [] }));
-      setUiConfig((prev) => ({ ...prev, isDirty: false, errors: [] }));
+      setDashboardConfig((prev) => ({ ...prev, isDirty: false, errors: [], warnings: [] }));
+      setUiConfig((prev) => ({ ...prev, isDirty: false, errors: [], warnings: [] }));
     } catch {
       // Error handled by mutation
     }
@@ -357,6 +372,7 @@ export default function RoleMenuConfigPage() {
       setDashboardConfig({
         value: config.dashboard_config ? JSON.stringify(config.dashboard_config, null, 2) : '{}',
         errors: [],
+        warnings: [],
         isDirty: false,
       });
     }
@@ -364,6 +380,7 @@ export default function RoleMenuConfigPage() {
       setUiConfig({
         value: config.ui_config ? JSON.stringify(config.ui_config, null, 2) : '{}',
         errors: [],
+        warnings: [],
         isDirty: false,
       });
     }
@@ -629,6 +646,11 @@ export default function RoleMenuConfigPage() {
                       <AlertCircle className="h-3 w-3" />
                       {dashboardConfig.errors.length} {t('roleConfig.error', { defaultValue: 'erreur(s)' })}
                     </Badge>
+                  ) : dashboardConfig.warnings.length > 0 ? (
+                    <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300">
+                      <AlertCircle className="h-3 w-3" />
+                      {dashboardConfig.warnings.length} hint(s)
+                    </Badge>
                   ) : dashboardConfig.isDirty ? (
                     <Badge variant="secondary">{t('roleConfig.modified')}</Badge>
                   ) : (
@@ -650,6 +672,16 @@ export default function RoleMenuConfigPage() {
                       <li key={i} className="flex items-start gap-1">
                         <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                         {err}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {dashboardConfig.warnings.length > 0 && dashboardConfig.errors.length === 0 && (
+                  <ul className="text-sm text-amber-600 space-y-1">
+                    {dashboardConfig.warnings.map((warn, i) => (
+                      <li key={i} className="flex items-start gap-1">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        {warn}
                       </li>
                     ))}
                   </ul>
