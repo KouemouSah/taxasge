@@ -325,16 +325,16 @@ function WorkflowMappingsTab() {
       .map((mapping) => {
         const subItems: MenuItem['items'] = [];
         if (mapping.include_pending) {
-          subItems.push({ id: `${mapping.menu_group_id}_pending`, titleKey: 'Pendientes', href: '#', icon: 'Clock' });
+          subItems.push({ id: `${mapping.menu_group_id}_pending`, titleKey: t('preview.subPending'), href: '#', icon: 'Clock' });
         }
         if (mapping.include_validation) {
-          subItems.push({ id: `${mapping.menu_group_id}_validation`, titleKey: 'Validación', href: '#', icon: 'CheckSquare' });
+          subItems.push({ id: `${mapping.menu_group_id}_validation`, titleKey: t('preview.subValidation'), href: '#', icon: 'CheckSquare' });
         }
         if (mapping.include_appointments) {
-          subItems.push({ id: `${mapping.menu_group_id}_appointments`, titleKey: 'Citas', href: '#', icon: 'Calendar' });
+          subItems.push({ id: `${mapping.menu_group_id}_appointments`, titleKey: t('preview.subAppointments'), href: '#', icon: 'Calendar' });
         }
         if (mapping.include_history) {
-          subItems.push({ id: `${mapping.menu_group_id}_history`, titleKey: 'Historial', href: '#', icon: 'History' });
+          subItems.push({ id: `${mapping.menu_group_id}_history`, titleKey: t('preview.subHistory'), href: '#', icon: 'History' });
         }
         return {
           id: mapping.menu_group_id,
@@ -344,7 +344,7 @@ function WorkflowMappingsTab() {
           href: subItems.length === 0 ? '#' : undefined,
         };
       });
-  }, [allActiveData?.items]);
+  }, [allActiveData?.items, t]);
 
   // Debounce search input (300ms)
   useEffect(() => {

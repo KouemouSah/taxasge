@@ -10,15 +10,13 @@ Date: 2026-02-01
 from typing import List, Optional, Dict, Any
 import json
 import asyncpg
-import logging
+from loguru import logger
 
 from app.modules.menu_config.models.menu_config import (
     WorkflowDisplayConfigCreate,
     WorkflowDisplayConfigUpdate,
 )
 from app.core.cache import get_cache, CacheKeys
-
-logger = logging.getLogger(__name__)
 
 DISPLAY_CONFIG_CACHE_TTL = 300  # 5 minutes
 
@@ -296,22 +294,18 @@ class DisplayConfigRepository:
         Returns:
             True if deleted, False if not found
         """
-        # Fetch workflow_code before deleting (for cache invalidation)
-        existing = await self.db.fetchval(
-            "SELECT workflow_code FROM workflow_display_config WHERE id = $1",
-            config_id,
-        )
-
-        result = await self.db.execute("""
+        # Atomic DELETE + fetch workflow_code for cache invalidation
+        workflow_code = await self.db.fetchval("""
             DELETE FROM workflow_display_config
             WHERE id = $1
+            RETURNING workflow_code
         """, config_id)
 
-        deleted = "DELETE 1" in result
-        if deleted and existing:
-            await self.invalidate_cache(existing)
+        if workflow_code:
+            await self.invalidate_cache(workflow_code)
+            return True
 
-        return deleted
+        return False
 
     async def find_config_for_workflow(
         self,

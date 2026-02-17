@@ -566,7 +566,7 @@ export function DisplayConfigForm({
     );
   }, []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!selectedWorkflow || selectedColumns.length === 0) {
       return;
     }
@@ -581,12 +581,12 @@ export function DisplayConfigForm({
       preview_sections: selectedSections,
       labels: cleanLabels,
     });
-  };
+  }, [selectedWorkflow, selectedColumns, selectedSections, labels, onSubmit]);
 
   // Expose submit function to parent via callback
   useEffect(() => {
     onSubmitRef?.(handleSubmit);
-  }, [selectedWorkflow, selectedColumns, selectedSections, labels]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onSubmitRef, handleSubmit]);
 
   // Build lookup map: column ID → schema label (for extracted columns)
   const extractedLabelMap = useMemo(() => {

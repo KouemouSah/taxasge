@@ -86,7 +86,7 @@ export function OrphanDetectionPanel() {
     // Collect all unique workflow codes from all entities
     const allWorkflowCodes: Record<string, { entityName: string; entityCode: string }> = {};
     for (const entity of entities) {
-      const codes = ('resolved_workflow_codes' in entity ? entity.resolved_workflow_codes : []) || [];
+      const codes = (entity.resolved_workflow_codes?.length ? entity.resolved_workflow_codes : entity.workflow_codes) ?? [];
       for (const wc of codes) {
         if (!allWorkflowCodes[wc]) {
           allWorkflowCodes[wc] = { entityName: entity.name, entityCode: entity.code };

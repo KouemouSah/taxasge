@@ -31,6 +31,7 @@ from app.modules.menu_config.repositories.workflow_mapping_repository import (
 )
 from app.core.cache import (
     invalidate_workflow_mappings_cache,
+    invalidate_role_menu_cache,
 )
 from app.modules.menu_config.models.menu_config import (
     AgentMenuConfigResponse,
@@ -192,8 +193,9 @@ async def create_workflow_mapping(
 
     created = await repo.create(mapping)
 
-    # Invalidate cache
+    # Invalidate caches: mapping list + per-agent menus
     await invalidate_workflow_mappings_cache()
+    await invalidate_role_menu_cache("_all_")
 
     return WorkflowMenuMappingResponse(**created)
 
@@ -258,8 +260,9 @@ async def update_workflow_mapping(
             detail=f"Mapping with id '{mapping_id}' not found"
         )
 
-    # Invalidate cache
+    # Invalidate caches: mapping list + per-agent menus
     await invalidate_workflow_mappings_cache()
+    await invalidate_role_menu_cache("_all_")
 
     return WorkflowMenuMappingResponse(**updated)
 
@@ -292,8 +295,9 @@ async def delete_workflow_mapping(
             detail=f"Mapping with id '{mapping_id}' not found"
         )
 
-    # Invalidate cache
+    # Invalidate caches: mapping list + per-agent menus
     await invalidate_workflow_mappings_cache()
+    await invalidate_role_menu_cache("_all_")
 
 
 # =============================================================================
@@ -415,6 +419,10 @@ async def create_display_config(
         )
 
     created = await repo.create(config)
+
+    # Invalidate per-agent menus (display_configs are included in AgentMenuConfigResponse)
+    await invalidate_role_menu_cache("_all_")
+
     return WorkflowDisplayConfigResponse(**created)
 
 
@@ -509,6 +517,9 @@ async def update_display_config(
             detail=f"Display config with id '{config_id}' not found"
         )
 
+    # Invalidate per-agent menus
+    await invalidate_role_menu_cache("_all_")
+
     return WorkflowDisplayConfigResponse(**updated)
 
 
@@ -539,6 +550,9 @@ async def delete_display_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Display config with id '{config_id}' not found"
         )
+
+    # Invalidate per-agent menus
+    await invalidate_role_menu_cache("_all_")
 
 
 # =============================================================================

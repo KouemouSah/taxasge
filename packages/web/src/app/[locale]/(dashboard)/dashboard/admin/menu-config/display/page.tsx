@@ -8,7 +8,7 @@
  * @date 2026-02-01
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -96,6 +96,16 @@ export default function DisplayConfigPage() {
     isDeleting,
   } = useDisplayConfigOperations({ page: currentPage, page_size: 10 });
 
+  // P1-7: Reset pagination when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // P1-7: Clear selection when page changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [currentPage]);
+
   const filteredConfigs = configs.filter((config) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -141,9 +151,9 @@ export default function DisplayConfigPage() {
       const succeeded = results.filter(r => r.status === 'fulfilled').length;
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) {
-        toast.warning(`${succeeded} activée(s), ${failed} en erreur`);
+        toast.warning(t('batchActivatedPartial', { succeeded: String(succeeded), failed: String(failed) }));
       } else {
-        toast.success(`${succeeded} config(s) activée(s)`);
+        toast.success(t('batchActivated', { succeeded: String(succeeded) }));
       }
       setSelectedIds(new Set());
     } finally { setBatchAction(null); }
@@ -158,9 +168,9 @@ export default function DisplayConfigPage() {
       const succeeded = results.filter(r => r.status === 'fulfilled').length;
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) {
-        toast.warning(`${succeeded} désactivée(s), ${failed} en erreur`);
+        toast.warning(t('batchDeactivatedPartial', { succeeded: String(succeeded), failed: String(failed) }));
       } else {
-        toast.success(`${succeeded} config(s) désactivée(s)`);
+        toast.success(t('batchDeactivated', { succeeded: String(succeeded) }));
       }
       setSelectedIds(new Set());
     } finally { setBatchAction(null); }
@@ -175,9 +185,9 @@ export default function DisplayConfigPage() {
       const succeeded = results.filter(r => r.status === 'fulfilled').length;
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) {
-        toast.warning(`${succeeded} supprimée(s), ${failed} en erreur`);
+        toast.warning(t('batchDeletedPartial', { succeeded: String(succeeded), failed: String(failed) }));
       } else {
-        toast.success(`${succeeded} config(s) supprimée(s)`);
+        toast.success(t('batchDeleted', { succeeded: String(succeeded) }));
       }
       setSelectedIds(new Set());
       setIsBatchDeleteDialogOpen(false);
@@ -195,7 +205,7 @@ export default function DisplayConfigPage() {
         preview_sections: config.preview_sections,
         labels: config.labels ?? undefined,
       });
-      toast.success(t('messages.created', { defaultValue: 'Config duplicada' }));
+      toast.success(t('duplicated'));
     } catch { /* errors handled by hook */ }
     finally { setDuplicatingId(null); }
   }, [createMutation, t]);
@@ -214,7 +224,7 @@ export default function DisplayConfigPage() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
-            <span>{error instanceof Error ? error.message : 'Error loading configurations'}</span>
+            <span>{error instanceof Error ? error.message : t('messages.loadError')}</span>
           </div>
           <Button variant="outline" className="mt-4" onClick={() => refetch()}>
             {t('actions.retry')}
@@ -254,7 +264,7 @@ export default function DisplayConfigPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('statsTotal')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{total}</div>
@@ -264,18 +274,18 @@ export default function DisplayConfigPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Columns className="h-4 w-4" />
-              Colonnes
+              {t('statsColumns')}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">Dynamique par workflow</div>
+            <div className="text-sm text-muted-foreground">{t('statsColumnsSubtitle')}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Rows className="h-4 w-4" />
-              Sections
+              {t('statsSections')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -295,7 +305,7 @@ export default function DisplayConfigPage() {
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Actualiser
+                {t('refresh')}
               </Button>
               <Button size="sm" asChild>
                 <Link href={`/${locale}/dashboard/admin/menu-config/display/new`}>
@@ -311,7 +321,7 @@ export default function DisplayConfigPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher..."
+                placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -323,23 +333,23 @@ export default function DisplayConfigPage() {
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 p-3 mb-4 bg-muted/50 border rounded-lg">
               <span className="text-sm font-medium">
-                {t('selectedCount', { defaultValue: `${selectedIds.size} seleccionado(s)`, count: selectedIds.size })}
+                {t('selectedCount', { count: selectedIds.size })}
               </span>
               <div className="flex-1" />
               <Button size="sm" variant="outline" onClick={handleBatchActivate} disabled={batchAction !== null}>
                 {batchAction === 'activate' ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
-                {t('bulkActivateBtn', { defaultValue: 'Activar' })}
+                {t('bulkActivateBtn')}
               </Button>
               <Button size="sm" variant="outline" onClick={handleBatchDeactivate} disabled={batchAction !== null}>
                 {batchAction === 'deactivate' ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <X className="mr-1 h-3 w-3" />}
-                {t('bulkDeactivateBtn', { defaultValue: 'Desactivar' })}
+                {t('bulkDeactivateBtn')}
               </Button>
               <Button size="sm" variant="destructive" onClick={() => setIsBatchDeleteDialogOpen(true)} disabled={batchAction !== null}>
                 <Trash2 className="mr-1 h-3 w-3" />
-                {t('bulkDeleteBtn', { defaultValue: 'Eliminar' })}
+                {t('bulkDeleteBtn')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
-                {t('cancel', { defaultValue: 'Cancelar' })}
+                {t('cancelBtn')}
               </Button>
             </div>
           )}
@@ -352,14 +362,14 @@ export default function DisplayConfigPage() {
                     <Checkbox
                       checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
                       onCheckedChange={handleSelectAll}
-                      aria-label="Sélectionner tout"
+                      aria-label={t('selectAll')}
                     />
                   </TableHead>
                   <TableHead>{t('pattern')}</TableHead>
                   <TableHead>{t('listColumns')}</TableHead>
                   <TableHead>{t('previewSections')}</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('tableStatus')}</TableHead>
+                  <TableHead className="text-right">{t('tableActions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -376,7 +386,7 @@ export default function DisplayConfigPage() {
                         <Checkbox
                           checked={selectedIds.has(config.id)}
                           onCheckedChange={(checked) => handleSelectOne(config.id, !!checked)}
-                          aria-label={`Sélectionner ${config.workflow_code}`}
+                          aria-label={t('selectRow', { code: config.workflow_code })}
                         />
                       </TableCell>
                       <TableCell>
@@ -433,7 +443,7 @@ export default function DisplayConfigPage() {
                             size="icon"
                             onClick={() => handleDuplicate(config)}
                             disabled={duplicatingId !== null}
-                            title={t('duplicate', { defaultValue: 'Duplicar' })}
+                            title={t('duplicate')}
                           >
                             {duplicatingId === config.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                           </Button>
@@ -461,7 +471,7 @@ export default function DisplayConfigPage() {
           {pages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-muted-foreground">
-                Page {currentPage} sur {pages}
+                {t('pageOf', { current: currentPage, total: pages })}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -496,13 +506,13 @@ export default function DisplayConfigPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancelBtn')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Supprimer
+              {t('deleteBtn')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -513,23 +523,20 @@ export default function DisplayConfigPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t('confirmBulkDelete', { defaultValue: `¿Eliminar ${selectedIds.size} config(s)?` })}
+              {t('confirmBulkDelete', { count: selectedIds.size })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t('confirmBulkDeleteDescription', {
-                defaultValue: `¿Está seguro de eliminar las ${selectedIds.size} configuraciones seleccionadas? Esta acción es irreversible.`,
-                count: selectedIds.size,
-              })}
+              {t('confirmBulkDeleteDescription', { count: selectedIds.size })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancelBtn')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {batchAction === 'delete' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Supprimer {selectedIds.size} config(s)
+              {t('confirmBulkDeleteAction', { count: selectedIds.size })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

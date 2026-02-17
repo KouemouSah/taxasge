@@ -884,7 +884,11 @@
       "preview": {
         "title": "Aperçu",
         "note": "Ceci est une approximation. Le menu réel dépend du rôle et de l'entité de l'agent.",
-        "empty": "Aucun mapping actif à prévisualiser"
+        "empty": "Aucun mapping actif à prévisualiser",
+        "subPending": "En attente",
+        "subValidation": "Validation",
+        "subAppointments": "Rendez-vous",
+        "subHistory": "Historique"
       },
       "actions": {
         "edit": "Modifier",
@@ -1306,7 +1310,35 @@
           "deleteError": "Erreur lors de la suppression de la configuration"
         },
         "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette configuration ?",
-        "confirmDeleteDescription": "La configuration pour \"{pattern}\" sera définitivement supprimée."
+        "confirmDeleteDescription": "La configuration pour \"{pattern}\" sera définitivement supprimée.",
+        "statsTotal": "Total",
+        "statsColumns": "Colonnes",
+        "statsColumnsSubtitle": "Dynamique par workflow",
+        "statsSections": "Sections",
+        "refresh": "Actualiser",
+        "searchPlaceholder": "Rechercher par code workflow...",
+        "tableStatus": "Statut",
+        "tableActions": "Actions",
+        "selectAll": "Tout sélectionner",
+        "selectRow": "Sélectionner {code}",
+        "cancelBtn": "Annuler",
+        "deleteBtn": "Supprimer",
+        "pageOf": "Page {current} sur {total}",
+        "selectedCount": "{count} sélectionné(s)",
+        "bulkActivateBtn": "Activer",
+        "bulkDeactivateBtn": "Désactiver",
+        "bulkDeleteBtn": "Supprimer",
+        "confirmBulkDelete": "Supprimer {count} configuration(s) ?",
+        "confirmBulkDeleteDescription": "Êtes-vous sûr de vouloir supprimer les {count} configurations sélectionnées ? Cette action est irréversible.",
+        "confirmBulkDeleteAction": "Supprimer {count} config(s)",
+        "batchActivated": "{succeeded} config(s) activée(s)",
+        "batchActivatedPartial": "{succeeded} activée(s), {failed} en erreur",
+        "batchDeactivated": "{succeeded} config(s) désactivée(s)",
+        "batchDeactivatedPartial": "{succeeded} désactivée(s), {failed} en erreur",
+        "batchDeleted": "{succeeded} config(s) supprimée(s)",
+        "batchDeletedPartial": "{succeeded} supprimée(s), {failed} en erreur",
+        "duplicate": "Dupliquer",
+        "duplicated": "Configuration dupliquée avec succès"
       }
     },
     "entities": {

@@ -158,17 +158,19 @@ export default function RoleMenuConfigPage() {
   // Key counter to force child component re-mount on reset
   const [resetKey, setResetKey] = useState(0);
 
-  // Initialize states from fetched data
-  useEffect(() => {
-    if (config) {
+  // Shared state reset helper — used by both init and reset
+  const applyConfigToState = useCallback((source: typeof config, targets: 'all' | 'menu' | 'dashboard' | 'ui' = 'all') => {
+    if (!source) return;
+    if (targets === 'all' || targets === 'menu') {
       setMenuBuilderState({
         menus: [],
-        isAutoMode: config.menu_config === null,
+        isAutoMode: source.menu_config === null,
         isDirty: false,
       });
-      const rawDash = config.dashboard_config
-        ? JSON.stringify(config.dashboard_config, null, 2)
-        : '{}';
+    }
+    if (targets === 'all' || targets === 'dashboard') {
+      const rawDash = source.dashboard_config
+        ? JSON.stringify(source.dashboard_config, null, 2) : '{}';
       setDashboardState({
         config: { version: '1.0', layout: 'grid', widgets: [] },
         isDirty: false,
@@ -176,18 +178,24 @@ export default function RoleMenuConfigPage() {
         rawJson: rawDash,
         rawJsonErrors: [],
       });
-      const rawUi = config.ui_config
-        ? JSON.stringify(config.ui_config, null, 2)
-        : '{}';
+    }
+    if (targets === 'all' || targets === 'ui') {
+      const rawUi = source.ui_config
+        ? JSON.stringify(source.ui_config, null, 2) : '{}';
       setUiState({
-        config: config.ui_config ?? {},
+        config: source.ui_config ?? {},
         isDirty: false,
         showRaw: false,
         rawJson: rawUi,
         rawJsonErrors: [],
       });
     }
-  }, [config]);
+  }, []);
+
+  // Initialize states from fetched data
+  useEffect(() => {
+    applyConfigToState(config);
+  }, [config, applyConfigToState]);
 
   // MenuBuilder onChange callback
   const handleMenuBuilderChange = useCallback((menus: MenuItem[], isAutoMode: boolean) => {
@@ -423,37 +431,7 @@ export default function RoleMenuConfigPage() {
   // Reset configurations
   const handleReset = () => {
     if (!config) return;
-
-    if (resetTarget === 'all' || resetTarget === 'menu') {
-      setMenuBuilderState({
-        menus: [],
-        isAutoMode: config.menu_config === null,
-        isDirty: false,
-      });
-    }
-    if (resetTarget === 'all' || resetTarget === 'dashboard') {
-      const rawDash = config.dashboard_config
-        ? JSON.stringify(config.dashboard_config, null, 2) : '{}';
-      setDashboardState({
-        config: { version: '1.0', layout: 'grid', widgets: [] },
-        isDirty: false,
-        showRaw: false,
-        rawJson: rawDash,
-        rawJsonErrors: [],
-      });
-    }
-    if (resetTarget === 'all' || resetTarget === 'ui') {
-      const rawUi = config.ui_config
-        ? JSON.stringify(config.ui_config, null, 2) : '{}';
-      setUiState({
-        config: config.ui_config ?? {},
-        isDirty: false,
-        showRaw: false,
-        rawJson: rawUi,
-        rawJsonErrors: [],
-      });
-    }
-
+    applyConfigToState(config, resetTarget);
     setResetKey((k) => k + 1);
     setIsResetDialogOpen(false);
     toast.success(t('roleConfig.configReset'));

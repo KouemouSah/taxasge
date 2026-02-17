@@ -937,7 +937,11 @@
       "preview": {
         "title": "Preview",
         "note": "This is an approximation. The actual menu depends on the agent's role and entity.",
-        "empty": "No active mappings to preview"
+        "empty": "No active mappings to preview",
+        "subPending": "Pending",
+        "subValidation": "Validation",
+        "subAppointments": "Appointments",
+        "subHistory": "History"
       },
       "actions": {
         "edit": "Edit",
@@ -1324,7 +1328,35 @@
           "loadError": "Error loading configuration"
         },
         "confirmDelete": "Are you sure you want to delete this configuration?",
-        "confirmDeleteDescription": "The configuration for \"{pattern}\" will be permanently deleted."
+        "confirmDeleteDescription": "The configuration for \"{pattern}\" will be permanently deleted.",
+        "statsTotal": "Total",
+        "statsColumns": "Columns",
+        "statsColumnsSubtitle": "Dynamic per workflow",
+        "statsSections": "Sections",
+        "refresh": "Refresh",
+        "searchPlaceholder": "Search by workflow code...",
+        "tableStatus": "Status",
+        "tableActions": "Actions",
+        "selectAll": "Select all",
+        "selectRow": "Select {code}",
+        "cancelBtn": "Cancel",
+        "deleteBtn": "Delete",
+        "pageOf": "Page {current} of {total}",
+        "selectedCount": "{count} selected",
+        "bulkActivateBtn": "Activate",
+        "bulkDeactivateBtn": "Deactivate",
+        "bulkDeleteBtn": "Delete",
+        "confirmBulkDelete": "Delete {count} configuration(s)?",
+        "confirmBulkDeleteDescription": "Are you sure you want to delete the {count} selected configurations? This action is irreversible.",
+        "confirmBulkDeleteAction": "Delete {count} config(s)",
+        "batchActivated": "{succeeded} config(s) activated",
+        "batchActivatedPartial": "{succeeded} activated, {failed} failed",
+        "batchDeactivated": "{succeeded} config(s) deactivated",
+        "batchDeactivatedPartial": "{succeeded} deactivated, {failed} failed",
+        "batchDeleted": "{succeeded} config(s) deleted",
+        "batchDeletedPartial": "{succeeded} deleted, {failed} failed",
+        "duplicate": "Duplicate",
+        "duplicated": "Configuration duplicated successfully"
       }
     },
     "noResults": "No results found",
