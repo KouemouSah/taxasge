@@ -14,6 +14,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { WorkflowMappingForm } from '@/modules/admin/components/WorkflowMappingForm';
 import { useCreateWorkflowMapping } from '@/modules/admin/hooks/useWorkflowMappings';
 import type {
@@ -46,6 +47,12 @@ export default function WorkflowMappingCreatePage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[
+        { label: 'Admin', href: `/${locale}/dashboard/admin` },
+        { label: 'Menu Config', href: `/${locale}/dashboard/admin/menu-config` },
+        { label: t('workflowMappings.createTitle') },
+      ]} />
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button asChild variant="ghost" size="icon">

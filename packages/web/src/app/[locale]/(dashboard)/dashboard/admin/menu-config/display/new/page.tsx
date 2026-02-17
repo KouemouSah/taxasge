@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useCreateDisplayConfig } from '@/modules/admin/hooks';
 import { DisplayConfigForm } from '@/modules/admin/components/DisplayConfigForm';
@@ -30,12 +31,20 @@ export default function DisplayConfigCreatePage() {
       workflow_code: data.workflow_code,
       list_columns: data.list_columns,
       preview_sections: data.preview_sections,
+      labels: data.labels,
     });
     router.push(`/${locale}/dashboard/admin/menu-config/display`);
   };
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[
+        { label: 'Admin', href: `/${locale}/dashboard/admin` },
+        { label: 'Menu Config', href: `/${locale}/dashboard/admin/menu-config` },
+        { label: 'Display Config', href: `/${locale}/dashboard/admin/menu-config/display` },
+        { label: t('createTitle') },
+      ]} />
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>

@@ -14,6 +14,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { WorkflowMappingForm } from '@/modules/admin/components/WorkflowMappingForm';
 import {
@@ -92,6 +93,12 @@ export default function WorkflowMappingEditPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[
+        { label: 'Admin', href: `/${locale}/dashboard/admin` },
+        { label: 'Menu Config', href: `/${locale}/dashboard/admin/menu-config` },
+        { label: mapping.workflow_pattern },
+      ]} />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

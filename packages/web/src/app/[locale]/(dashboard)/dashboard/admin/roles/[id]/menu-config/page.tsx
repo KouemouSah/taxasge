@@ -45,6 +45,8 @@ import {
   Code,
   AlertCircle,
   CheckCircle,
+  Copy,
+  WrapText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -62,8 +64,40 @@ import { MenuBuilder, type MenuItem, menuConfigToJson } from '@/modules/admin/co
 
 interface JsonEditorState {
   value: string;
-  error: string | null;
+  errors: string[];
   isDirty: boolean;
+}
+
+/**
+ * Validate dashboard_config JSON structure
+ * Ported from deleted MenuConfigEditor.tsx (git: ea8a317f)
+ */
+function validateDashboardConfig(json: string): string[] {
+  const errors: string[] = [];
+  try {
+    const config = JSON.parse(json);
+    if (typeof config !== 'object' || config === null || Array.isArray(config)) {
+      return ['Must be a JSON object'];
+    }
+    // Empty object is valid (no dashboard config)
+    if (Object.keys(config).length === 0) return [];
+
+    if (!config.version) errors.push('Missing required field: version');
+    if (!config.layout) errors.push('Missing required field: layout');
+    else if (!['grid', 'list', 'custom'].includes(config.layout))
+      errors.push('Invalid layout: must be "grid", "list", or "custom"');
+    if (config.widgets !== undefined) {
+      if (!Array.isArray(config.widgets)) errors.push('"widgets" must be an array');
+      else config.widgets.forEach((w: Record<string, unknown>, i: number) => {
+        if (!w.id) errors.push(`Widget ${i}: missing "id"`);
+        if (typeof w.visible !== 'boolean') errors.push(`Widget ${i}: "visible" must be boolean`);
+        if (typeof w.position !== 'number') errors.push(`Widget ${i}: "position" must be number`);
+      });
+    }
+  } catch (e) {
+    errors.push(`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`);
+  }
+  return errors;
 }
 
 interface MenuBuilderState {
@@ -112,12 +146,12 @@ export default function RoleMenuConfigPage() {
   // JSON editor states (for dashboard and UI configs)
   const [dashboardConfig, setDashboardConfig] = useState<JsonEditorState>({
     value: '{}',
-    error: null,
+    errors: [],
     isDirty: false,
   });
   const [uiConfig, setUiConfig] = useState<JsonEditorState>({
     value: '{}',
-    error: null,
+    errors: [],
     isDirty: false,
   });
 
@@ -137,12 +171,12 @@ export default function RoleMenuConfigPage() {
       });
       setDashboardConfig({
         value: config.dashboard_config ? JSON.stringify(config.dashboard_config, null, 2) : '{}',
-        error: null,
+        errors: [],
         isDirty: false,
       });
       setUiConfig({
         value: config.ui_config ? JSON.stringify(config.ui_config, null, 2) : '{}',
-        error: null,
+        errors: [],
         isDirty: false,
       });
     }
@@ -161,20 +195,52 @@ export default function RoleMenuConfigPage() {
   // Handle JSON change with validation
   const handleJsonChange = (
     value: string,
-    setter: React.Dispatch<React.SetStateAction<JsonEditorState>>
+    setter: React.Dispatch<React.SetStateAction<JsonEditorState>>,
+    type: 'dashboard' | 'ui' = 'ui'
   ) => {
+    if (type === 'dashboard') {
+      const errors = validateDashboardConfig(value);
+      setter({ value, errors, isDirty: true });
+    } else {
+      try {
+        JSON.parse(value);
+        setter({ value, errors: [], isDirty: true });
+      } catch (e) {
+        setter({ value, errors: [`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`], isDirty: true });
+      }
+    }
+  };
+
+  // Format JSON in editor
+  const handleFormatJson = (
+    setter: React.Dispatch<React.SetStateAction<JsonEditorState>>,
+    type: 'dashboard' | 'ui' = 'ui'
+  ) => {
+    setter((prev) => {
+      try {
+        const formatted = JSON.stringify(JSON.parse(prev.value), null, 2);
+        const errors = type === 'dashboard' ? validateDashboardConfig(formatted) : [];
+        return { ...prev, value: formatted, errors };
+      } catch {
+        return prev; // Can't format invalid JSON
+      }
+    });
+  };
+
+  // Copy JSON to clipboard
+  const handleCopyJson = async (value: string) => {
     try {
-      JSON.parse(value);
-      setter({ value, error: null, isDirty: true });
+      await navigator.clipboard.writeText(value);
+      toast.success(t('roleConfig.copiedToClipboard', { defaultValue: 'Copié dans le presse-papier' }));
     } catch {
-      setter({ value, error: 'Invalid JSON syntax', isDirty: true });
+      toast.error('Failed to copy');
     }
   };
 
   // Save all configurations
   const handleSaveAll = async () => {
     // Check for JSON errors
-    if (dashboardConfig.error || uiConfig.error) {
+    if (dashboardConfig.errors.length > 0 || uiConfig.errors.length > 0) {
       toast.error(t('roleConfig.fixJsonErrors'));
       return;
     }
@@ -209,8 +275,8 @@ export default function RoleMenuConfigPage() {
 
       // Reset dirty flags
       setMenuBuilderState((prev) => ({ ...prev, isDirty: false }));
-      setDashboardConfig((prev) => ({ ...prev, isDirty: false }));
-      setUiConfig((prev) => ({ ...prev, isDirty: false }));
+      setDashboardConfig((prev) => ({ ...prev, isDirty: false, errors: [] }));
+      setUiConfig((prev) => ({ ...prev, isDirty: false, errors: [] }));
     } catch {
       // Error handled by mutation
     }
@@ -248,7 +314,7 @@ export default function RoleMenuConfigPage() {
 
     const { state, key } = configMap[type];
 
-    if (state.error) {
+    if (state.errors.length > 0) {
       toast.error(t('roleConfig.fixJsonErrors'));
       return;
     }
@@ -290,14 +356,14 @@ export default function RoleMenuConfigPage() {
     if (resetTarget === 'all' || resetTarget === 'dashboard') {
       setDashboardConfig({
         value: config.dashboard_config ? JSON.stringify(config.dashboard_config, null, 2) : '{}',
-        error: null,
+        errors: [],
         isDirty: false,
       });
     }
     if (resetTarget === 'all' || resetTarget === 'ui') {
       setUiConfig({
         value: config.ui_config ? JSON.stringify(config.ui_config, null, 2) : '{}',
-        error: null,
+        errors: [],
         isDirty: false,
       });
     }
@@ -308,7 +374,7 @@ export default function RoleMenuConfigPage() {
 
   // Check if any config has unsaved changes
   const hasUnsavedChanges = menuBuilderState.isDirty || dashboardConfig.isDirty || uiConfig.isDirty;
-  const hasErrors = dashboardConfig.error || uiConfig.error;
+  const hasErrors = dashboardConfig.errors.length > 0 || uiConfig.errors.length > 0;
 
   // Loading state
   if (roleLoading || configLoading) {
@@ -520,19 +586,37 @@ export default function RoleMenuConfigPage() {
                     {t('roleConfig.dashboardConfig.description')}
                   </CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSaveConfig('dashboard')}
-                  disabled={!dashboardConfig.isDirty || !!dashboardConfig.error || updateMutation.isPending}
-                >
-                  {updateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  {t('roleConfig.save')}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFormatJson(setDashboardConfig, 'dashboard')}
+                    title="Format JSON"
+                  >
+                    <WrapText className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyJson(dashboardConfig.value)}
+                    title="Copy"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSaveConfig('dashboard')}
+                    disabled={!dashboardConfig.isDirty || dashboardConfig.errors.length > 0 || updateMutation.isPending}
+                  >
+                    {updateMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    {t('roleConfig.save')}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -540,10 +624,10 @@ export default function RoleMenuConfigPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <Code className="h-4 w-4" />
                   <span>{t('roleConfig.jsonEditor')}</span>
-                  {dashboardConfig.error ? (
+                  {dashboardConfig.errors.length > 0 ? (
                     <Badge variant="destructive" className="gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      {t('roleConfig.error')}
+                      {dashboardConfig.errors.length} {t('roleConfig.error', { defaultValue: 'erreur(s)' })}
                     </Badge>
                   ) : dashboardConfig.isDirty ? (
                     <Badge variant="secondary">{t('roleConfig.modified')}</Badge>
@@ -556,15 +640,19 @@ export default function RoleMenuConfigPage() {
                 </div>
                 <Textarea
                   value={dashboardConfig.value}
-                  onChange={(e) => handleJsonChange(e.target.value, setDashboardConfig)}
+                  onChange={(e) => handleJsonChange(e.target.value, setDashboardConfig, 'dashboard')}
                   className="font-mono text-sm min-h-[300px]"
-                  placeholder='{"widgets": []}'
+                  placeholder='{"version": "1.0", "layout": "grid", "widgets": []}'
                 />
-                {dashboardConfig.error && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-4 w-4" />
-                    {dashboardConfig.error}
-                  </p>
+                {dashboardConfig.errors.length > 0 && (
+                  <ul className="text-sm text-destructive space-y-1">
+                    {dashboardConfig.errors.map((err, i) => (
+                      <li key={i} className="flex items-start gap-1">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        {err}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </CardContent>
@@ -585,19 +673,37 @@ export default function RoleMenuConfigPage() {
                     {t('roleConfig.uiConfig.description')}
                   </CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSaveConfig('ui')}
-                  disabled={!uiConfig.isDirty || !!uiConfig.error || updateMutation.isPending}
-                >
-                  {updateMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  {t('roleConfig.save')}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFormatJson(setUiConfig)}
+                    title="Format JSON"
+                  >
+                    <WrapText className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyJson(uiConfig.value)}
+                    title="Copy"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSaveConfig('ui')}
+                    disabled={!uiConfig.isDirty || uiConfig.errors.length > 0 || updateMutation.isPending}
+                  >
+                    {updateMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    {t('roleConfig.save')}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -605,10 +711,10 @@ export default function RoleMenuConfigPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <Code className="h-4 w-4" />
                   <span>{t('roleConfig.jsonEditor')}</span>
-                  {uiConfig.error ? (
+                  {uiConfig.errors.length > 0 ? (
                     <Badge variant="destructive" className="gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      {t('roleConfig.error')}
+                      {uiConfig.errors.length} {t('roleConfig.error', { defaultValue: 'erreur(s)' })}
                     </Badge>
                   ) : uiConfig.isDirty ? (
                     <Badge variant="secondary">{t('roleConfig.modified')}</Badge>
@@ -625,11 +731,15 @@ export default function RoleMenuConfigPage() {
                   className="font-mono text-sm min-h-[300px]"
                   placeholder='{"theme": "default"}'
                 />
-                {uiConfig.error && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-4 w-4" />
-                    {uiConfig.error}
-                  </p>
+                {uiConfig.errors.length > 0 && (
+                  <ul className="text-sm text-destructive space-y-1">
+                    {uiConfig.errors.map((err, i) => (
+                      <li key={i} className="flex items-start gap-1">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        {err}
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </CardContent>

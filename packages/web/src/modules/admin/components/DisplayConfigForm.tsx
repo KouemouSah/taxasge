@@ -78,6 +78,7 @@ import {
   History,
   Database,
   Filter,
+  Tag,
 } from 'lucide-react';
 import {
   useAllAvailableColumns,
@@ -205,6 +206,7 @@ export interface DisplayConfigFormData {
   workflow_code: string;
   list_columns: string[];
   preview_sections: string[];
+  labels: Record<string, string>;
 }
 
 export interface DisplayConfigFormProps {
@@ -337,6 +339,9 @@ export function DisplayConfigForm({
   const [selectedSections, setSelectedSections] = useState<string[]>(
     initialData?.preview_sections ?? ['info', 'extractedData', 'documents', 'contact']
   );
+  const [labels, setLabels] = useState<Record<string, string>>(
+    initialData?.labels ?? {}
+  );
   const [columnSearch, setColumnSearch] = useState('');
   const [isDirty, setIsDirty] = useState(false);
 
@@ -426,6 +431,7 @@ export function DisplayConfigForm({
       setSelectedWorkflow(initialData.workflow_code);
       setSelectedColumns(initialData.list_columns);
       setSelectedSections(initialData.preview_sections);
+      setLabels(initialData.labels ?? {});
       setIsDirty(false);
     }
   }, [initialDataKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -440,9 +446,11 @@ export function DisplayConfigForm({
         JSON.stringify(selectedColumns) !== JSON.stringify(initialData.list_columns);
       const sectionsChanged =
         JSON.stringify(selectedSections) !== JSON.stringify(initialData.preview_sections);
-      setIsDirty(workflowChanged || columnsChanged || sectionsChanged);
+      const labelsChanged =
+        JSON.stringify(labels) !== JSON.stringify(initialData.labels ?? {});
+      setIsDirty(workflowChanged || columnsChanged || sectionsChanged || labelsChanged);
     }
-  }, [selectedWorkflow, selectedColumns, selectedSections, initialData]);
+  }, [selectedWorkflow, selectedColumns, selectedSections, labels, initialData]);
 
   // Notify parent of dirty state changes
   useEffect(() => {
@@ -526,6 +534,12 @@ export function DisplayConfigForm({
 
   const removeColumn = useCallback((columnId: string) => {
     setSelectedColumns((prev) => prev.filter((c) => c !== columnId));
+    setLabels((prev) => {
+      if (!(columnId in prev)) return prev;
+      const next = { ...prev };
+      delete next[columnId];
+      return next;
+    });
   }, []);
 
   const moveColumn = useCallback((index: number, direction: 'up' | 'down') => {
@@ -555,17 +569,23 @@ export function DisplayConfigForm({
     if (!selectedWorkflow || selectedColumns.length === 0) {
       return;
     }
+    // Only send non-empty labels
+    const cleanLabels: Record<string, string> = {};
+    for (const [key, value] of Object.entries(labels)) {
+      if (value.trim()) cleanLabels[key] = value.trim();
+    }
     await onSubmit({
       workflow_code: selectedWorkflow,
       list_columns: selectedColumns,
       preview_sections: selectedSections,
+      labels: cleanLabels,
     });
   };
 
   // Expose submit function to parent via callback
   useEffect(() => {
     onSubmitRef?.(handleSubmit);
-  }, [selectedWorkflow, selectedColumns, selectedSections]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedWorkflow, selectedColumns, selectedSections, labels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build lookup map: column ID → schema label (for extracted columns)
   const extractedLabelMap = useMemo(() => {
@@ -926,6 +946,45 @@ export function DisplayConfigForm({
             </DndContext>
           </CardContent>
         </Card>
+
+        {/* Labels Override */}
+        {selectedColumns.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                {t('customLabels', { defaultValue: 'Labels Personnalisés' })}
+                <Badge variant="secondary">
+                  {Object.values(labels).filter((v) => v.trim()).length}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                {t('customLabelsDescription', {
+                  defaultValue: 'Personalizar los nombres de columnas mostrados al agente. Dejar vacío para usar el label por defecto.',
+                })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {selectedColumns.map((colId) => (
+                  <div key={colId} className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-[140px] truncate shrink-0" title={colId}>
+                      {colId}
+                    </span>
+                    <Input
+                      value={labels[colId] ?? ''}
+                      onChange={(e) =>
+                        setLabels((prev) => ({ ...prev, [colId]: e.target.value }))
+                      }
+                      placeholder={getColumnLabel(colId)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Bottom Left: Sections */}
         <Card>

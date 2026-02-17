@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import {
   useDisplayConfigOperations,
   AVAILABLE_SECTIONS,
@@ -125,6 +126,12 @@ export default function DisplayConfigPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[
+        { label: 'Admin', href: `/${locale}/dashboard/admin` },
+        { label: 'Menu Config', href: `/${locale}/dashboard/admin/menu-config` },
+        { label: t('title') },
+      ]} />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

@@ -9,7 +9,7 @@
  * @updated 2026-01-31 - Removed unused menu_templates tab
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
@@ -61,6 +61,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import apiClient from '@/core/api/client';
 import type {
   WorkflowMenuMapping,
@@ -115,6 +116,11 @@ export default function MenuConfigPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[
+        { label: 'Admin', href: `/${locale}/dashboard/admin` },
+        { label: 'Menu Config' },
+      ]} />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -177,7 +183,9 @@ function WorkflowMappingsTab() {
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedMapping, setSelectedMapping] = useState<WorkflowMenuMapping | null>(null);
@@ -247,6 +255,15 @@ function WorkflowMappingsTab() {
       toast.error(err instanceof Error ? err.message : 'Erreur de suppression batch');
     },
   });
+
+  // Debounce search input (300ms)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchInput]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -393,8 +410,8 @@ function WorkflowMappingsTab() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9"
               />
             </div>

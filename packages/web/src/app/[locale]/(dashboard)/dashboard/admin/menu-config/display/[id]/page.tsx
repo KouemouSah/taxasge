@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ArrowLeft, LayoutGrid, Save, Loader2, AlertCircle } from 'lucide-react';
 import { useDisplayConfig, useUpdateDisplayConfig } from '@/modules/admin/hooks';
 import { DisplayConfigForm } from '@/modules/admin/components/DisplayConfigForm';
@@ -50,6 +51,7 @@ export default function DisplayConfigEditPage() {
       data: {
         list_columns: data.list_columns,
         preview_sections: data.preview_sections,
+        labels: data.labels,
       },
     });
     setIsDirty(false);
@@ -66,6 +68,7 @@ export default function DisplayConfigEditPage() {
     workflow_code: config.workflow_code,
     list_columns: config.list_columns,
     preview_sections: config.preview_sections,
+    labels: config.labels ?? {},
   } : undefined, [config]);
 
   // Loading state
@@ -99,6 +102,13 @@ export default function DisplayConfigEditPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[
+        { label: 'Admin', href: `/${locale}/dashboard/admin` },
+        { label: 'Menu Config', href: `/${locale}/dashboard/admin/menu-config` },
+        { label: 'Display Config', href: `/${locale}/dashboard/admin/menu-config/display` },
+        { label: config.workflow_code },
+      ]} />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
