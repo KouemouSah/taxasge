@@ -10,7 +10,7 @@ const ENTITY_CODE_MAP: Record<string, string> = {
   'extranjeria': 'EXTRANJERIA',
   'policia': 'POLICIA',
   'minfp': 'MINFP',
-  'itve': 'ITVE',
+  'itv': 'ITV',
   'cnedoge-pasaporte': 'CNEDOGE_PASAPORTE',
   'cnedoge-residencia': 'CNEDOGE_RESIDENCIA',
 }

@@ -87,7 +87,7 @@ const ENTITY_CODE_MAP: Record<string, EntityCode> = {
   'extranjeria': 'EXTRANJERIA',
   'policia': 'POLICIA',
   'minfp': 'MINFP',
-  'itve': 'ITVE',
+  'itv': 'ITV',
   // DGI not yet implemented - uncomment when ready
   // 'dgi': 'DGI',
   // CNEDOGE entities have their own dedicated routes

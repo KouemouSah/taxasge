@@ -22,7 +22,7 @@ export type EntityCode =
   | 'EXTRANJERIA'       // Dirección General de Extranjería
   | 'DGT'               // Dirección General de Tráfico (Licenses, Vehicles)
   | 'OFIVE'             // Oficina de Vehículos (CUVE)
-  | 'ITVE'              // Inspección Técnica de Vehículos
+  | 'ITV'               // Inspección Técnica de Vehículos
   | 'ONRC'              // Oficina Nacional de Registro de Contratos
   | 'MINFP'             // Ministerio de Función Pública
   | 'TESORO'            // Treasury (Trésor)
@@ -65,7 +65,7 @@ export type WorkflowCode =
   | 'RESIDENCIA_DUPLICADO'
   | 'RESIDENCIA_CAMBIO_DATOS'
   | 'RESIDENCIA_REAGRUPACION'
-  // Vehiculo (DGT + OFIVE + ITVE)
+  // Vehiculo (DGT + OFIVE + ITV)
   | 'VEHICULO_PRIMERA_MATRICULACION'
   | 'VEHICULO_TRANSFERENCIA'
   | 'VEHICULO_RENOVACION_CUVE'

@@ -853,8 +853,8 @@ export const ENTITY_CONFIGS: Partial<Record<EntityCode, EntityDashboardConfig>> 
   TESORO: TESORO_CONFIG,
   OFIVE: OFIVE_CONFIG,
   EXTRANJERIA: EXTRANJERIA_CONFIG,
-  ITVE: {
-    entityCode: 'ITVE',
+  ITV: {
+    entityCode: 'ITV',
     titleKey: 'agent.entities.itve.title',
     icon: Car,
     basePath: '/dashboard/agent/itve',
