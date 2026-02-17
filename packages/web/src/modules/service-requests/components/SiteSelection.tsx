@@ -36,14 +36,7 @@ import { cn } from '@/lib/utils'
 // TYPES
 // ============================================================================
 
-interface SiteInfo {
-  id: string
-  entityCode: string
-  city: string
-  locationName: string
-  locationAddress: string | null
-  isMainOffice: boolean
-}
+import type { SiteInfo } from '../types/wizard-session'
 
 interface SiteSelectionProps {
   sessionId: string
@@ -167,9 +160,25 @@ export function SiteSelection({
         setSelectedCity(uniqueCities[0])
       }
 
-      // Auto-select site if only one total
-      if (result.sites.length === 1) {
-        setSelectedSiteId(result.sites[0].id)
+      // Auto-select and auto-save if only one total site
+      if (result.sites.length === 1 && !initialSiteId) {
+        const singleSite = result.sites[0]
+        setSelectedSiteId(singleSite.id)
+        // Auto-save and advance — no need for extra click
+        try {
+          const saveResult = await saveSiteSelection(sessionId, {
+            entityLocationId: singleSite.id,
+            locationName: singleSite.locationName,
+            city: singleSite.city,
+            entityCode: singleSite.entityCode,
+          })
+          if (saveResult.success) {
+            onComplete()
+            return
+          }
+        } catch {
+          // If auto-save fails, fall through to manual selection
+        }
       }
 
       // Restore pre-selected site's city

@@ -90,6 +90,7 @@ def _handle_session_error(e: WizardSessionError):
             "APPOINTMENT_SLOT_TAKEN", "APPOINTMENT_REQUIRED",
             "PAYMENT_FAILED", "VALIDATION_ERRORS",
             "INCOMPLETE_APPOINTMENT_DATA",
+            "MISSING_SITE_SELECTION", "INVALID_SITE_SELECTION",
         }
         http_status = (
             status.HTTP_422_UNPROCESSABLE_ENTITY

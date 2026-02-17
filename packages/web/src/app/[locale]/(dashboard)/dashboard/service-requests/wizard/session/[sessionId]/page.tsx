@@ -453,6 +453,18 @@ export default function SessionWizardPage() {
           return
         }
 
+        // Site selection missing → go back to site_selection step
+        if (errorMsg.includes('sitio de tramitacion') || errorMsg.includes('MISSING_SITE_SELECTION') || errorMsg.includes('INVALID_SITE_SELECTION')) {
+          setPaymentError(locale === 'es'
+            ? 'Debe seleccionar un sitio de tramitación antes de continuar.'
+            : locale === 'fr'
+              ? 'Vous devez sélectionner un site de traitement avant de continuer.'
+              : 'You must select a processing site before continuing.')
+          const siteStepIdx = steps.findIndex(s => s.type === 'site_selection')
+          if (siteStepIdx >= 0) setCurrentStepIndex(siteStepIdx)
+          return
+        }
+
         setPaymentError(errorMsg)
         return
       }
@@ -490,6 +502,17 @@ export default function SessionWizardPage() {
             : 'The selected time slot is no longer available. Please select another.')
         const apptStepIdx = steps.findIndex(s => s.type === 'appointment')
         if (apptStepIdx >= 0) setCurrentStepIndex(apptStepIdx)
+        return
+      }
+      // Site selection missing → go back to site_selection step
+      if (msg.includes('sitio de tramitacion') || msg.includes('MISSING_SITE_SELECTION') || msg.includes('INVALID_SITE_SELECTION')) {
+        setPaymentError(locale === 'es'
+          ? 'Debe seleccionar un sitio de tramitación antes de continuar.'
+          : locale === 'fr'
+            ? 'Vous devez sélectionner un site de traitement avant de continuer.'
+            : 'You must select a processing site before continuing.')
+        const siteStepIdx = steps.findIndex(s => s.type === 'site_selection')
+        if (siteStepIdx >= 0) setCurrentStepIndex(siteStepIdx)
         return
       }
       setPaymentError(msg)
