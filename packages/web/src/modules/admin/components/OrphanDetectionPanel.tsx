@@ -52,7 +52,7 @@ export function OrphanDetectionPanel() {
   const [isOpen, setIsOpen] = useState(false);
 
   // Self-contained data fetches — always see FULL dataset, not parent pagination
-  const { data: mappingsData } = useQuery({
+  const { data: mappingsData, isError: mappingsError } = useQuery({
     queryKey: ['workflow-mappings', 'all'],
     queryFn: async () => {
       const response = await apiClient.get<{ items: WorkflowMenuMapping[] }>(
@@ -63,9 +63,11 @@ export function OrphanDetectionPanel() {
     },
   });
 
-  const { data: displayConfigsData } = useDisplayConfigs({ page: 1, page_size: 999 });
+  const { data: displayConfigsData, isError: displayError } = useDisplayConfigs({ page: 1, page_size: 999 });
 
-  const { data: entitiesData } = useEntitiesWithDetails({ is_active: true });
+  const { data: entitiesData, isError: entitiesError } = useEntitiesWithDetails({ is_active: true });
+
+  const hasDataError = mappingsError || displayError || entitiesError;
 
   // Compute orphans
   const analysis = useMemo(() => {
@@ -138,14 +140,16 @@ export function OrphanDetectionPanel() {
           <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors">
             <CardTitle className="text-base flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {totalIssues > 0 ? (
+                {hasDataError ? (
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                ) : totalIssues > 0 ? (
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                 ) : (
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 )}
                 {t('title', { defaultValue: 'Detección de inconsistencias' })}
-                <Badge variant={totalIssues > 0 ? 'destructive' : 'secondary'} className="text-xs">
-                  {totalIssues}
+                <Badge variant={hasDataError ? 'outline' : totalIssues > 0 ? 'destructive' : 'secondary'} className="text-xs">
+                  {hasDataError ? '?' : totalIssues}
                 </Badge>
               </div>
               <ChevronDown
@@ -156,7 +160,11 @@ export function OrphanDetectionPanel() {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4 pt-0">
-            {totalIssues === 0 ? (
+            {hasDataError ? (
+              <p className="text-sm text-destructive">
+                {t('dataError', { defaultValue: 'Error al cargar datos. Los resultados pueden ser incompletos.' })}
+              </p>
+            ) : totalIssues === 0 ? (
               <p className="text-sm text-green-600">
                 {t('noIssues', { defaultValue: 'Sin inconsistencias. Todos los workflows tienen mapping y display config.' })}
               </p>

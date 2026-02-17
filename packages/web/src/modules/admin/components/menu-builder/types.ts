@@ -59,8 +59,8 @@ export interface ValidationError {
   params?: Record<string, string>; // Interpolation params for translation
 }
 
-// Validation message keys (for i18n)
-export const ValidationKeys = {
+// Validation message keys (for i18n) — used internally by validateMenuItem/validateMenuConfig
+const ValidationKeys = {
   idRequired: 'validation.idRequired',
   titleKeyRequired: 'validation.titleKeyRequired',
   iconRequired: 'validation.iconRequired',

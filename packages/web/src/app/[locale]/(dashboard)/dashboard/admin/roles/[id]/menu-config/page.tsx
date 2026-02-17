@@ -458,7 +458,7 @@ export default function RoleMenuConfigPage() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    URL.revokeObjectURL(url);
     toast.success(t('roleConfig.exportSuccess', { defaultValue: 'Configuración exportada' }));
   }, [menuBuilderState, dashboardState, uiState, config, roleId, role?.code, t]);
 

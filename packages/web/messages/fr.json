@@ -873,6 +873,7 @@
       },
       "orphanDetection": {
         "title": "Détection d'incohérences",
+        "dataError": "Erreur lors du chargement des données. Les résultats peuvent être incomplets.",
         "noIssues": "Aucune incohérence détectée. Tous les workflows ont un mapping et une display config.",
         "workflowsWithoutMapping": "Workflows sans mapping",
         "workflowsWithoutDisplayConfig": "Workflows sans display config",
@@ -1195,6 +1196,9 @@
         "allColumnsSelected": "Toutes les colonnes sont sélectionnées",
         "noColumnsSelected": "Aucune colonne sélectionnée",
         "loadingColumns": "Chargement des colonnes...",
+        "systemColumnsTitle": "Colonnes Système ({count})",
+        "systemColumnsHint": "reference, status, priority, workflow sont déjà visibles dans Informations Générales",
+        "extractedColumnsTitle": "Colonnes Extraites ({count})",
         "preview": "Aperçu",
         "previewDescription": "Aperçu du panneau agent",
         "noExtractedColumnsSelected": "Aucune colonne extraite sélectionnée",

@@ -110,7 +110,7 @@ const INFO_GENERAL_COLUMN_IDS = new Set([
 const DEFAULT_SYSTEM_COLUMNS = ['reference', 'fullName', 'solicitudType'];
 
 /**
- * Section icons mapping
+ * Section icons mapping — module-level constant (created once, not per-render)
  */
 const SECTION_ICONS: Record<string, React.ReactNode> = {
   info: <FileText className="h-4 w-4" />,
@@ -288,6 +288,7 @@ function SortableColumnItem({
           className="h-6 w-6"
           onClick={onMoveUp}
           disabled={index === 0}
+          aria-label={`Move ${label} up`}
         >
           <ChevronUp className="h-3 w-3" />
         </Button>
@@ -298,6 +299,7 @@ function SortableColumnItem({
           className="h-6 w-6"
           onClick={onMoveDown}
           disabled={index === totalCount - 1}
+          aria-label={`Move ${label} down`}
         >
           <ChevronDown className="h-3 w-3" />
         </Button>
@@ -307,6 +309,7 @@ function SortableColumnItem({
           size="icon"
           className="h-6 w-6 text-destructive hover:text-destructive"
           onClick={onRemove}
+          aria-label={`Remove ${label}`}
         >
           <X className="h-3 w-3" />
         </Button>
@@ -798,10 +801,10 @@ export function DisplayConfigForm({
                   {filteredSystemColumns.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Columnas del Sistema ({filteredSystemColumns.length})
+                        {t('systemColumnsTitle', { count: filteredSystemColumns.length })}
                       </p>
                       <p className="text-[10px] text-muted-foreground italic">
-                        reference, status, priority, workflow ya están visibles en Información General
+                        {t('systemColumnsHint')}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {filteredSystemColumns.map((col) => (
@@ -827,7 +830,7 @@ export function DisplayConfigForm({
                   {hasFilteredExtracted && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Columnas Extraídas ({extractedColumns.length})
+                        {t('extractedColumnsTitle', { count: extractedColumns.length })}
                       </p>
                       <div className="space-y-1">
                         {Object.entries(filteredExtractedGroups)

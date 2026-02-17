@@ -140,6 +140,7 @@ function MenuListItem({
             onMoveUp();
           }}
           disabled={!canMoveUp}
+          aria-label={`Move ${item.titleKey || item.id} up`}
         >
           <ChevronUp className="h-3 w-3" />
         </Button>
@@ -152,6 +153,7 @@ function MenuListItem({
             onMoveDown();
           }}
           disabled={!canMoveDown}
+          aria-label={`Move ${item.titleKey || item.id} down`}
         >
           <ChevronDown className="h-3 w-3" />
         </Button>

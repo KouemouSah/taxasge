@@ -926,6 +926,7 @@
       },
       "orphanDetection": {
         "title": "Inconsistency Detection",
+        "dataError": "Error loading data. Results may be incomplete.",
         "noIssues": "No inconsistencies detected. All workflows have a mapping and a display config.",
         "workflowsWithoutMapping": "Workflows without mapping",
         "workflowsWithoutDisplayConfig": "Workflows without display config",
@@ -1248,6 +1249,9 @@
         "allColumnsSelected": "All columns are selected",
         "noColumnsSelected": "No columns selected",
         "loadingColumns": "Loading columns...",
+        "systemColumnsTitle": "System Columns ({count})",
+        "systemColumnsHint": "reference, status, priority, workflow are already visible in General Info",
+        "extractedColumnsTitle": "Extracted Columns ({count})",
         "preview": "Preview",
         "previewDescription": "Agent panel preview",
         "noExtractedColumnsSelected": "No extracted columns selected",

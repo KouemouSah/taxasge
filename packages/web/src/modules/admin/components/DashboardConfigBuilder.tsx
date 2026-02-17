@@ -54,7 +54,10 @@ import type { DashboardConfig, DashboardLayout, WidgetConfig, WidgetSize } from 
 
 // =============================================================================
 // ZOD SCHEMA (exported for reuse in page.tsx)
+// Derived from canonical WidgetSize type to prevent divergence
 // =============================================================================
+
+const WIDGET_SIZES: readonly [WidgetSize, ...WidgetSize[]] = ['small', 'medium', 'large', 'full'];
 
 export const dashboardConfigSchema = z.object({
   version: z.string().default('1.0'),
@@ -63,7 +66,7 @@ export const dashboardConfigSchema = z.object({
     id: z.string().min(1),
     visible: z.boolean(),
     position: z.number().int().nonnegative(),
-    size: z.enum(['small', 'medium', 'large', 'full']),
+    size: z.enum(WIDGET_SIZES),
   })),
 });
 

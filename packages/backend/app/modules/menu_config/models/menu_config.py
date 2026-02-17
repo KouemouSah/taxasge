@@ -5,6 +5,7 @@ These models define the structure for dynamic menu and dashboard configuration
 for agents. Supports both workflow-based (auto-generated) and module-based
 (explicitly configured) menu systems.
 """
+import re
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from uuid import UUID
@@ -131,6 +132,17 @@ class WorkflowMenuMappingBase(BaseModel):
     include_appointments: bool = Field(False, description="Include appointments sub-menu")
     include_history: bool = Field(True, description="Include history sub-menu")
     permission_prefix: Optional[str] = Field(None, max_length=50, description="Permission prefix")
+
+    @field_validator('workflow_pattern')
+    @classmethod
+    def validate_workflow_pattern(cls, v: str) -> str:
+        """Validate workflow_pattern matches expected format: UPPERCASE_LETTERS with optional % wildcard"""
+        if not re.match(r'^[A-Z][A-Z0-9_]*(%)?$', v):
+            raise ValueError(
+                'workflow_pattern must start with uppercase letter, '
+                'contain only A-Z, 0-9, underscore, and optionally end with %'
+            )
+        return v
 
 
 class WorkflowMenuMappingCreate(WorkflowMenuMappingBase):

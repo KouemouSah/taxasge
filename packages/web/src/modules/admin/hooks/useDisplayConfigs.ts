@@ -85,7 +85,7 @@ export function useDisplayConfigs(params?: PaginationParams) {
         throw error;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000, // 5 min — config list changes on admin CRUD
   });
 }
 
@@ -107,7 +107,7 @@ export function useDisplayConfig(id: number, enabled = true) {
       }
     },
     enabled: enabled && id > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 min — same as list; admin edits invalidate via queryClient
   });
 }
 
@@ -129,7 +129,7 @@ export function useDisplayConfigForWorkflow(workflowCode: string, enabled = true
       }
     },
     enabled: enabled && !!workflowCode,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 min — consistent with list/detail TTL
     retry: false, // Don't retry on 404
   });
 }

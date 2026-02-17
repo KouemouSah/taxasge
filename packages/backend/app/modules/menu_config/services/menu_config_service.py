@@ -37,6 +37,16 @@ from app.core.cache import (
 
 
 
+def _ensure_json(data: dict, key: str, default: Any = None) -> None:
+    """Parse a JSONB field from string if needed, or set default if missing/falsy."""
+    val = data.get(key)
+    if val:
+        if isinstance(val, str):
+            data[key] = json.loads(val)
+    elif default is not None:
+        data[key] = default
+
+
 def _build_workflow_indexes() -> tuple:
     """
     Build dynamic indexes from workflow_engine registry.
@@ -313,34 +323,13 @@ class MenuConfigService:
 
         data = dict(result)
 
-        # Parse JSONB fields
-        if data.get('specializations'):
-            if isinstance(data['specializations'], str):
-                data['specializations'] = json.loads(data['specializations'])
-        else:
-            data['specializations'] = []
-
-        if data.get('entity_workflow_codes'):
-            if isinstance(data['entity_workflow_codes'], str):
-                data['entity_workflow_codes'] = json.loads(data['entity_workflow_codes'])
-        else:
-            data['entity_workflow_codes'] = []
-
-        if data.get('role_menu_config'):
-            if isinstance(data['role_menu_config'], str):
-                data['role_menu_config'] = json.loads(data['role_menu_config'])
-
-        if data.get('role_dashboard_config'):
-            if isinstance(data['role_dashboard_config'], str):
-                data['role_dashboard_config'] = json.loads(data['role_dashboard_config'])
-
-        if data.get('menu_overrides'):
-            if isinstance(data['menu_overrides'], str):
-                data['menu_overrides'] = json.loads(data['menu_overrides'])
-
-        if data.get('dashboard_overrides'):
-            if isinstance(data['dashboard_overrides'], str):
-                data['dashboard_overrides'] = json.loads(data['dashboard_overrides'])
+        # Parse JSONB fields (asyncpg may return strings for JSON columns)
+        _ensure_json(data, 'specializations', default=[])
+        _ensure_json(data, 'entity_workflow_codes', default=[])
+        _ensure_json(data, 'role_menu_config')
+        _ensure_json(data, 'role_dashboard_config')
+        _ensure_json(data, 'menu_overrides')
+        _ensure_json(data, 'dashboard_overrides')
 
         # Resolve available workflows
         # Specializations override entity workflows if defined
