@@ -5,11 +5,15 @@
  * Detects inconsistencies between entities.workflow_codes,
  * workflow_menu_mapping patterns, and workflow_display_config codes.
  *
+ * Self-contained: fetches ALL mappings, display configs, and entities
+ * independently to avoid being limited by parent pagination.
+ *
  * @module admin/components
  * @date 2026-02-17
  */
 
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
@@ -22,18 +26,14 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { AlertTriangle, CheckCircle2, ChevronDown, Plus } from 'lucide-react';
+import apiClient from '@/core/api/client';
 import { useEntitiesWithDetails } from '@/modules/cities/hooks';
+import { useDisplayConfigs } from '@/modules/admin/hooks';
 import type { WorkflowMenuMapping } from '@/modules/agent-dashboard/types/menu-config';
-import type { DisplayConfig } from '@/modules/admin/services/menuConfigService';
 
 // =============================================================================
 // TYPES
 // =============================================================================
-
-interface OrphanDetectionPanelProps {
-  mappings: WorkflowMenuMapping[];
-  displayConfigs: DisplayConfig[];
-}
 
 interface OrphanItem {
   workflowCode: string;
@@ -56,22 +56,42 @@ function sqlLikeToRegex(pattern: string): RegExp {
 // COMPONENT
 // =============================================================================
 
-export function OrphanDetectionPanel({
-  mappings,
-  displayConfigs,
-}: OrphanDetectionPanelProps) {
+export function OrphanDetectionPanel() {
   const t = useTranslations('admin.menuConfig.orphanDetection');
   const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Self-contained data fetches — always see FULL dataset, not parent pagination
+  const { data: mappingsData } = useQuery({
+    queryKey: ['workflow-mappings', 'all'],
+    queryFn: async () => {
+      const response = await apiClient.get<{ items: WorkflowMenuMapping[] }>(
+        '/menu-config/workflow-mappings',
+        { params: { page: 1, page_size: 999 } }
+      );
+      return response.data;
+    },
+  });
+
+  const { data: displayConfigsData } = useDisplayConfigs({ page: 1, page_size: 999 });
 
   const { data: entitiesData } = useEntitiesWithDetails({ is_active: true });
 
   // Compute orphans
   const analysis = useMemo(() => {
+    const mappings = mappingsData?.items ?? [];
+    const displayConfigs = displayConfigsData?.items ?? [];
     const entities = entitiesData?.items ?? entitiesData ?? [];
     if (!Array.isArray(entities) || entities.length === 0) {
       return { workflowsNoMapping: [], workflowsNoDisplay: [], mappingsNoWorkflow: [] };
     }
+
+    // Pre-compile regex patterns once (perf: avoid N*M recompilations)
+    const activeMappings = mappings.filter(m => m.is_active);
+    const compiledPatterns = activeMappings.map(m => ({
+      mapping: m,
+      regex: sqlLikeToRegex(m.workflow_pattern),
+    }));
 
     // Collect all unique workflow codes from all entities
     const allWorkflowCodes: Record<string, { entityName: string; entityCode: string }> = {};
@@ -86,13 +106,10 @@ export function OrphanDetectionPanel({
 
     const allCodes = Object.keys(allWorkflowCodes);
 
-    // Active mapping patterns
-    const activeMappings = mappings.filter(m => m.is_active);
-
     // 1. Workflows without any matching mapping
     const workflowsNoMapping: OrphanItem[] = [];
     for (const wc of allCodes) {
-      const hasMatch = activeMappings.some(m => sqlLikeToRegex(m.workflow_pattern).test(wc));
+      const hasMatch = compiledPatterns.some(({ regex }) => regex.test(wc));
       if (!hasMatch) {
         workflowsNoMapping.push({ workflowCode: wc, ...allWorkflowCodes[wc] });
       }
@@ -109,8 +126,7 @@ export function OrphanDetectionPanel({
 
     // 3. Mappings that don't match any workflow
     const mappingsNoWorkflow: { pattern: string; mappingId: number }[] = [];
-    for (const mapping of activeMappings) {
-      const regex = sqlLikeToRegex(mapping.workflow_pattern);
+    for (const { mapping, regex } of compiledPatterns) {
       const hasMatch = allCodes.some(wc => regex.test(wc));
       if (!hasMatch) {
         mappingsNoWorkflow.push({ pattern: mapping.workflow_pattern, mappingId: mapping.id });
@@ -118,7 +134,7 @@ export function OrphanDetectionPanel({
     }
 
     return { workflowsNoMapping, workflowsNoDisplay, mappingsNoWorkflow };
-  }, [entitiesData, mappings, displayConfigs]);
+  }, [mappingsData, displayConfigsData, entitiesData]);
 
   const totalIssues =
     analysis.workflowsNoMapping.length +

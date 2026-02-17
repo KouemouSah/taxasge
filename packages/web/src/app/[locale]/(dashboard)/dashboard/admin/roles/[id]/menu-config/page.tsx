@@ -462,9 +462,11 @@ export default function RoleMenuConfigPage() {
   // Import/Export handlers
   const handleExport = useCallback(() => {
     const exportData = {
-      menu_config: menuBuilderState.isAutoMode ? null : menuBuilderState.menus,
-      dashboard_config: dashboardState.config,
-      ui_config: uiState.config,
+      menu_config: menuBuilderState.isDirty
+        ? (menuBuilderState.isAutoMode ? null : menuBuilderState.menus)
+        : (config?.menu_config ?? null),
+      dashboard_config: dashboardState.isDirty ? dashboardState.config : (config?.dashboard_config ?? {}),
+      ui_config: uiState.isDirty ? uiState.config : (config?.ui_config ?? {}),
       exported_at: new Date().toISOString(),
       role_id: roleId,
       role_code: role?.code ?? 'unknown',
@@ -480,7 +482,7 @@ export default function RoleMenuConfigPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success(t('roleConfig.exportSuccess', { defaultValue: 'Configuration exportée' }));
-  }, [menuBuilderState, dashboardState.config, uiState.config, roleId, role?.code, t]);
+  }, [menuBuilderState, dashboardState, uiState, config, roleId, role?.code, t]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -510,6 +512,14 @@ export default function RoleMenuConfigPage() {
 
   const handleConfirmImport = useCallback(() => {
     if (!pendingImportData) return;
+    // Apply menu_config
+    if ('menu_config' in pendingImportData) {
+      if (pendingImportData.menu_config === null) {
+        setMenuBuilderState({ menus: [], isAutoMode: true, isDirty: true });
+      } else if (Array.isArray(pendingImportData.menu_config)) {
+        setMenuBuilderState({ menus: pendingImportData.menu_config as MenuItem[], isAutoMode: false, isDirty: true });
+      }
+    }
     // Apply dashboard_config
     if (pendingImportData.dashboard_config && typeof pendingImportData.dashboard_config === 'object') {
       const dc = pendingImportData.dashboard_config as DashboardConfig;
@@ -969,7 +979,10 @@ export default function RoleMenuConfigPage() {
       </AlertDialog>
 
       {/* Import Confirmation Dialog */}
-      <AlertDialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+      <AlertDialog open={isImportDialogOpen} onOpenChange={(open) => {
+        setIsImportDialogOpen(open);
+        if (!open) setPendingImportData(null);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

@@ -78,7 +78,7 @@ export default function DisplayConfigPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
-  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
   const createMutation = useCreateDisplayConfig();
 
@@ -135,44 +135,69 @@ export default function DisplayConfigPage() {
   const handleBatchActivate = async () => {
     setIsBatchUpdating(true);
     try {
-      await Promise.all(Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: true })));
-      toast.success(t('bulkActivate', { defaultValue: `${selectedIds.size} config(s) activée(s)` }));
+      const results = await Promise.allSettled(
+        Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: true }))
+      );
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) {
+        toast.warning(`${succeeded} activée(s), ${failed} en erreur`);
+      } else {
+        toast.success(`${succeeded} config(s) activée(s)`);
+      }
       setSelectedIds(new Set());
-    } catch { /* errors handled by hook */ } finally { setIsBatchUpdating(false); }
+    } finally { setIsBatchUpdating(false); }
   };
 
   const handleBatchDeactivate = async () => {
     setIsBatchUpdating(true);
     try {
-      await Promise.all(Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: false })));
-      toast.success(t('bulkDeactivate', { defaultValue: `${selectedIds.size} config(s) désactivée(s)` }));
+      const results = await Promise.allSettled(
+        Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: false }))
+      );
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) {
+        toast.warning(`${succeeded} désactivée(s), ${failed} en erreur`);
+      } else {
+        toast.success(`${succeeded} config(s) désactivée(s)`);
+      }
       setSelectedIds(new Set());
-    } catch { /* errors handled by hook */ } finally { setIsBatchUpdating(false); }
+    } finally { setIsBatchUpdating(false); }
   };
 
   const handleBatchDelete = async () => {
     setIsBatchUpdating(true);
     try {
-      await Promise.all(Array.from(selectedIds).map(id => deleteConfigAsync(id)));
-      toast.success(t('bulkDelete', { defaultValue: `${selectedIds.size} config(s) supprimée(s)` }));
+      const results = await Promise.allSettled(
+        Array.from(selectedIds).map(id => deleteConfigAsync(id))
+      );
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) {
+        toast.warning(`${succeeded} supprimée(s), ${failed} en erreur`);
+      } else {
+        toast.success(`${succeeded} config(s) supprimée(s)`);
+      }
       setSelectedIds(new Set());
       setIsBatchDeleteDialogOpen(false);
-    } catch { /* errors handled by hook */ } finally { setIsBatchUpdating(false); }
+    } finally { setIsBatchUpdating(false); }
   };
 
-  // Clone handler
+  // Clone handler — unique suffix to avoid duplicate workflow_code
   const handleDuplicate = useCallback(async (config: DisplayConfig) => {
-    setIsDuplicating(true);
+    setDuplicatingId(config.id);
     try {
+      const suffix = '_COPY_' + Date.now().toString(36).slice(-4).toUpperCase();
       await createMutation.mutateAsync({
-        workflow_code: config.workflow_code + '_COPY',
+        workflow_code: config.workflow_code + suffix,
         list_columns: config.list_columns,
         preview_sections: config.preview_sections,
         labels: config.labels ?? undefined,
       });
       toast.success(t('messages.created', { defaultValue: 'Config dupliquée' }));
     } catch { /* errors handled by hook */ }
-    finally { setIsDuplicating(false); }
+    finally { setDuplicatingId(null); }
   }, [createMutation, t]);
 
   if (isLoading) {
@@ -327,10 +352,9 @@ export default function DisplayConfigPage() {
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={isAllSelected}
+                      checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
                       onCheckedChange={handleSelectAll}
                       aria-label="Sélectionner tout"
-                      className={isSomeSelected ? 'data-[state=checked]:bg-primary/50' : ''}
                     />
                   </TableHead>
                   <TableHead>{t('pattern')}</TableHead>
@@ -410,10 +434,10 @@ export default function DisplayConfigPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDuplicate(config)}
-                            disabled={isDuplicating}
+                            disabled={duplicatingId !== null}
                             title={t('duplicate', { defaultValue: 'Dupliquer' })}
                           >
-                            {isDuplicating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                            {duplicatingId === config.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                           </Button>
                           <Button
                             variant="ghost"

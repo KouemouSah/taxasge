@@ -76,7 +76,6 @@ import type {
   WorkflowMenuMapping,
   WorkflowMenuMappingListResponse,
 } from '@/modules/agent-dashboard/types/menu-config';
-import { useDisplayConfigs } from '@/modules/admin/hooks';
 import { OrphanDetectionPanel } from '@/modules/admin/components/OrphanDetectionPanel';
 import { MenuPreview } from '@/modules/admin/components/menu-builder/MenuPreview';
 import type { MenuItem } from '@/modules/admin/components/menu-builder/types';
@@ -89,11 +88,12 @@ const PAGE_SIZE = 10;
 
 async function fetchWorkflowMappings(
   page: number,
-  isActive?: boolean
+  isActive?: boolean,
+  pageSize?: number
 ): Promise<WorkflowMenuMappingListResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
-    page_size: PAGE_SIZE.toString(),
+    page_size: (pageSize ?? PAGE_SIZE).toString(),
   });
   if (isActive !== undefined) {
     params.append('is_active', isActive.toString());
@@ -135,9 +135,6 @@ async function createWorkflowMapping(
 
 export default function MenuConfigPage() {
   const locale = useLocale();
-
-  // Fetch display configs for orphan detection
-  const { data: displayConfigData } = useDisplayConfigs({ page: 1, page_size: 100 });
 
   return (
     <div className="space-y-6">
@@ -194,8 +191,7 @@ export default function MenuConfigPage() {
         </Link>
       </div>
 
-      {/* Workflow Mappings (passes display configs for orphan detection) */}
-      <WorkflowMappingsTab displayConfigs={displayConfigData?.items ?? []} />
+      <WorkflowMappingsTab />
     </div>
   );
 }
@@ -204,7 +200,7 @@ export default function MenuConfigPage() {
 // WORKFLOW MAPPINGS TAB
 // =============================================================================
 
-function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/modules/admin/services/menuConfigService').DisplayConfig[] }) {
+function WorkflowMappingsTab() {
   const locale = useLocale();
   const t = useTranslations('admin.menuConfig');
   const queryClient = useQueryClient();
@@ -218,7 +214,7 @@ function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/mod
   // Selection state for batch actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
-  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['workflow-mappings', currentPage, activeFilter],
@@ -226,6 +222,13 @@ function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/mod
       currentPage,
       activeFilter === 'all' ? undefined : activeFilter === 'active'
     ),
+  });
+
+  // Fetch ALL active mappings for preview (not limited by pagination)
+  const { data: allActiveData } = useQuery({
+    queryKey: ['workflow-mappings', 'all-active'],
+    queryFn: () => fetchWorkflowMappings(1, true, 999),
+    staleTime: 60000,
   });
 
   const updateMutation = useMutation({
@@ -252,69 +255,70 @@ function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/mod
     },
   });
 
-  // Batch update mutation (activate/deactivate multiple)
+  // Batch update mutation (activate/deactivate multiple) — allSettled for partial failure resilience
   const batchUpdateMutation = useMutation({
     mutationFn: async ({ ids, data }: { ids: number[]; data: Partial<WorkflowMenuMapping> }) => {
-      await Promise.all(ids.map(id => updateWorkflowMapping(id, data)));
+      const results = await Promise.allSettled(ids.map(id => updateWorkflowMapping(id, data)));
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      return { succeeded, failed };
     },
-    onSuccess: () => {
+    onSuccess: ({ succeeded, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
-      toast.success(`${selectedIds.size} mapping(s) mis à jour`);
+      if (failed > 0) {
+        toast.warning(`${succeeded} mis à jour, ${failed} en erreur`);
+      } else {
+        toast.success(`${succeeded} mapping(s) mis à jour`);
+      }
       setSelectedIds(new Set());
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Erreur de mise à jour batch');
     },
   });
 
-  // Batch delete mutation
+  // Batch delete mutation — allSettled for partial failure resilience
   const batchDeleteMutation = useMutation({
     mutationFn: async (ids: number[]) => {
-      await Promise.all(ids.map(id => deleteWorkflowMapping(id)));
+      const results = await Promise.allSettled(ids.map(id => deleteWorkflowMapping(id)));
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      return { succeeded, failed };
     },
-    onSuccess: () => {
+    onSuccess: ({ succeeded, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
-      toast.success(`${selectedIds.size} mapping(s) supprimé(s)`);
+      if (failed > 0) {
+        toast.warning(`${succeeded} supprimé(s), ${failed} en erreur`);
+      } else {
+        toast.success(`${succeeded} mapping(s) supprimé(s)`);
+      }
       setSelectedIds(new Set());
       setIsBatchDeleteDialogOpen(false);
     },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Erreur de suppression batch');
-    },
   });
 
-  // Clone handler
+  // Clone handler — unique suffix to avoid duplicate menu_group_id
   const handleDuplicate = useCallback(async (mapping: WorkflowMenuMapping) => {
-    setIsDuplicating(true);
+    setDuplicatingId(mapping.id);
     try {
+      const suffix = '_copy_' + Date.now().toString(36).slice(-4);
+      // Destructure to clone all fields, override identifiers
+      const { id: _id, created_at: _ca, updated_at: _ua, ...rest } = mapping;
       const cloneData = {
-        workflow_pattern: mapping.workflow_pattern,
-        menu_group_id: mapping.menu_group_id + '_copy',
-        menu_title_key: mapping.menu_title_key,
-        menu_icon: mapping.menu_icon,
-        display_order: mapping.display_order,
-        include_pending: mapping.include_pending,
-        include_validation: mapping.include_validation,
-        include_appointments: mapping.include_appointments,
-        include_history: mapping.include_history,
-        permission_prefix: mapping.permission_prefix,
+        ...rest,
+        menu_group_id: mapping.menu_group_id + suffix,
         is_active: false,
       };
       await createWorkflowMapping(cloneData);
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
       toast.success(t('actions.duplicateSuccess', { defaultValue: 'Mapping dupliqué' }));
     } catch (err) {
-      toast.error(t('actions.duplicateError', {
-        defaultValue: err instanceof Error ? err.message : 'Erreur lors de la duplication',
-      }));
+      toast.error(err instanceof Error ? err.message : t('actions.duplicateError', { defaultValue: 'Erreur lors de la duplication' }));
     } finally {
-      setIsDuplicating(false);
+      setDuplicatingId(null);
     }
   }, [queryClient, t]);
 
-  // Build preview MenuItems from active mappings
+  // Build preview MenuItems from ALL active mappings (not just current page)
   const previewMenuItems = useMemo((): MenuItem[] => {
-    const activeMappings = (data?.items ?? []).filter(m => m.is_active);
+    const activeMappings = allActiveData?.items ?? [];
     return activeMappings
       .sort((a, b) => a.display_order - b.display_order)
       .map((mapping) => {
@@ -339,7 +343,7 @@ function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/mod
           href: subItems.length === 0 ? '#' : undefined,
         };
       });
-  }, [data?.items]);
+  }, [allActiveData?.items]);
 
   // Debounce search input (300ms)
   useEffect(() => {
@@ -434,10 +438,7 @@ function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/mod
   return (
     <div className="space-y-4">
       {/* Orphan Detection */}
-      <OrphanDetectionPanel
-        mappings={data?.items ?? []}
-        displayConfigs={displayConfigs}
-      />
+      <OrphanDetectionPanel />
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -591,10 +592,9 @@ function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/mod
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={isAllSelected}
+                      checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
                       onCheckedChange={handleSelectAll}
                       aria-label="Sélectionner tout"
-                      className={isSomeSelected ? 'data-[state=checked]:bg-primary/50' : ''}
                     />
                   </TableHead>
                   <TableHead>Pattern Workflow</TableHead>
@@ -663,10 +663,10 @@ function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/mod
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDuplicate(mapping)}
-                            disabled={isDuplicating}
+                            disabled={duplicatingId !== null}
                             title={t('actions.duplicate', { defaultValue: 'Dupliquer' })}
                           >
-                            {isDuplicating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                            {duplicatingId === mapping.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                           </Button>
                           <Button
                             variant="ghost"
