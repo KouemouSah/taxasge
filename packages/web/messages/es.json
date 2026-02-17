@@ -922,6 +922,32 @@
           "description": "Esto descartará todos los cambios no guardados y restaurará la configuración original. Esta acción no se puede deshacer.",
           "cancel": "Cancelar",
           "confirm": "Restablecer"
+        },
+        "copiedToClipboard": "Copiado al portapapeles",
+        "dashboardBuilder": {
+          "widgetList": "Widgets del Dashboard",
+          "widgetListDescription": "Arrastra para reordenar. El orden define la posición en el dashboard.",
+          "layout": "Diseño",
+          "size": "Tamaño",
+          "showAll": "Mostrar Todos",
+          "hideAll": "Ocultar Todos",
+          "resetDefaults": "Restablecer"
+        },
+        "uiForm": {
+          "title": "Preferencias de Interfaz",
+          "description": "Configura el tema, densidad y opciones de interfaz para este rol.",
+          "theme": "Tema",
+          "themeDescription": "Aspecto visual del dashboard",
+          "themeDefault": "Predeterminado",
+          "themeCompact": "Compacto",
+          "tableDensity": "Densidad de Tabla",
+          "tableDensityDescription": "Espaciado entre filas en listas y tablas",
+          "tableDensityComfortable": "Cómodo",
+          "tableDensityCompact": "Compacto",
+          "autoRefreshInterval": "Intervalo de Actualización",
+          "autoRefreshDescription": "Segundos entre actualizaciones automáticas (0 = desactivado)",
+          "additionalJson": "Parámetros Adicionales (JSON)",
+          "additionalJsonDescription": "Claves adicionales almacenadas como JSON libre. No se eliminan al guardar."
         }
       },
       "menuBuilder": {

@@ -3,7 +3,7 @@ Role Models - Pydantic schemas for roles
 
 Updated 2026-01-19: Added menu_config and dashboard_config for dynamic menu system
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field, validator
@@ -67,6 +67,47 @@ class RoleUpdate(BaseModel):
         None,
         description="UI preferences JSON"
     )
+
+
+class WidgetConfigSchema(BaseModel):
+    """Validates a single dashboard widget configuration entry"""
+    id: str = Field(..., min_length=1, max_length=50)
+    visible: bool
+    position: int = Field(..., ge=0)
+    size: Literal['small', 'medium', 'large', 'full']
+
+    class Config:
+        extra = 'allow'
+
+
+class DashboardConfigSchema(BaseModel):
+    """Structured validation for roles.dashboard_config"""
+    version: str = Field(default='1.0', max_length=10)
+    layout: Literal['grid', 'list', 'custom'] = 'grid'
+    widgets: List[WidgetConfigSchema] = Field(default_factory=list)
+
+    class Config:
+        extra = 'allow'
+
+
+class UiConfigSchema(BaseModel):
+    """Structured validation for roles.ui_config"""
+    theme: Optional[Literal['default', 'compact']] = 'default'
+    table_density: Optional[Literal['comfortable', 'compact']] = 'comfortable'
+    auto_refresh_interval: Optional[int] = Field(default=0, ge=0, le=3600)
+
+    class Config:
+        extra = 'allow'
+
+
+class RoleMenuConfigUpdate(BaseModel):
+    """
+    Typed request body for PUT /{role_id}/menu-config.
+    Each field is optional — None means 'no change for this field'.
+    """
+    menu_config: Optional[Dict[str, Any]] = None
+    dashboard_config: Optional[DashboardConfigSchema] = None
+    ui_config: Optional[UiConfigSchema] = None
 
 
 class RoleResponse(RoleBase):

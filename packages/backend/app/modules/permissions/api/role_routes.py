@@ -17,6 +17,7 @@ from app.modules.permissions.models.role import (
     RoleWithPermissionsResponse,
     AssignPermissionsToRoleRequest,
     RemovePermissionsFromRoleRequest,
+    RoleMenuConfigUpdate,
 )
 from app.modules.permissions.services.role_service import (
     RoleService,
@@ -469,7 +470,7 @@ async def get_role_menu_config(
 @require_permission("roles.update")
 async def update_role_menu_config(
     role_id: UUID,
-    data: dict,
+    data: RoleMenuConfigUpdate,
     current_user: UserResponse = Depends(get_current_user),
     role_service: RoleService = Depends(get_role_service),
     permission_service: PermissionService = Depends(get_permission_service),
@@ -481,20 +482,24 @@ async def update_role_menu_config(
 
     Args:
         role_id: Role UUID
-        data: Dict with menu_config and/or dashboard_config and/or ui_config
+        data: RoleMenuConfigUpdate with menu_config, dashboard_config, ui_config
 
     Returns:
-        Updated menu_config and dashboard_config
+        Updated menu_config, dashboard_config, ui_config
 
     Raises:
         404: Role not found
         403: Cannot update system roles
+        422: Validation error on dashboard_config or ui_config
     """
     # Build RoleUpdate with only config fields
+    # Pydantic sub-models → dict for JSONB storage
     update_data = RoleUpdate(
-        menu_config=data.get("menu_config"),
-        dashboard_config=data.get("dashboard_config"),
-        ui_config=data.get("ui_config"),
+        menu_config=data.menu_config,
+        dashboard_config=data.dashboard_config.model_dump(mode='json')
+        if data.dashboard_config is not None else None,
+        ui_config=data.ui_config.model_dump(mode='json')
+        if data.ui_config is not None else None,
     )
 
     updated = await role_service.update_role(str(role_id), update_data)

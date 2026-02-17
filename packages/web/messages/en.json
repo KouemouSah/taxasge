@@ -975,6 +975,32 @@
           "description": "This will discard all unsaved changes and restore the original configuration. This action cannot be undone.",
           "cancel": "Cancel",
           "confirm": "Reset"
+        },
+        "copiedToClipboard": "Copied to clipboard",
+        "dashboardBuilder": {
+          "widgetList": "Dashboard Widgets",
+          "widgetListDescription": "Drag to reorder. The order defines the position on the dashboard.",
+          "layout": "Layout",
+          "size": "Size",
+          "showAll": "Show All",
+          "hideAll": "Hide All",
+          "resetDefaults": "Reset"
+        },
+        "uiForm": {
+          "title": "Interface Preferences",
+          "description": "Configure theme, density and interface options for this role.",
+          "theme": "Theme",
+          "themeDescription": "Visual appearance of the dashboard",
+          "themeDefault": "Default",
+          "themeCompact": "Compact",
+          "tableDensity": "Table Density",
+          "tableDensityDescription": "Spacing between rows in lists and tables",
+          "tableDensityComfortable": "Comfortable",
+          "tableDensityCompact": "Compact",
+          "autoRefreshInterval": "Refresh Interval",
+          "autoRefreshDescription": "Seconds between automatic refreshes (0 = disabled)",
+          "additionalJson": "Additional Parameters (JSON)",
+          "additionalJsonDescription": "Additional keys stored as free-form JSON. Not removed on save."
         }
       },
       "menuBuilder": {

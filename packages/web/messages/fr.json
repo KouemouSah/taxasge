@@ -922,6 +922,32 @@
           "description": "Ceci annulera toutes les modifications non enregistrées et restaurera la configuration originale. Cette action est irréversible.",
           "cancel": "Annuler",
           "confirm": "Réinitialiser"
+        },
+        "copiedToClipboard": "Copié dans le presse-papiers",
+        "dashboardBuilder": {
+          "widgetList": "Widgets du Tableau de Bord",
+          "widgetListDescription": "Glisser pour réordonner. L'ordre définit la position dans le tableau de bord.",
+          "layout": "Disposition",
+          "size": "Taille",
+          "showAll": "Tout Afficher",
+          "hideAll": "Tout Masquer",
+          "resetDefaults": "Réinitialiser"
+        },
+        "uiForm": {
+          "title": "Préférences d'Interface",
+          "description": "Configurer le thème, la densité et les options d'interface pour ce rôle.",
+          "theme": "Thème",
+          "themeDescription": "Apparence visuelle du tableau de bord",
+          "themeDefault": "Par défaut",
+          "themeCompact": "Compact",
+          "tableDensity": "Densité de Tableau",
+          "tableDensityDescription": "Espacement entre les lignes dans les listes et tableaux",
+          "tableDensityComfortable": "Confortable",
+          "tableDensityCompact": "Compact",
+          "autoRefreshInterval": "Intervalle de Rafraîchissement",
+          "autoRefreshDescription": "Secondes entre les rafraîchissements automatiques (0 = désactivé)",
+          "additionalJson": "Paramètres Supplémentaires (JSON)",
+          "additionalJsonDescription": "Clés supplémentaires stockées en JSON libre. Non supprimées lors de l'enregistrement."
         }
       },
       "menuBuilder": {

@@ -2,9 +2,11 @@
  * Role Menu Config Page
  * Admin page for managing role-specific menu, dashboard, and UI configurations
  *
+ * Phase 3: Visual builders for dashboard_config (DnD widget builder) and ui_config (structured form)
+ *
  * @page /dashboard/admin/roles/[id]/menu-config
  * @date 2026-01-25
- * @updated 2026-01-31 - Added visual MenuBuilder for menu configuration
+ * @updated 2026-02-17 - Phase 3: Visual builders for Dashboard and UI tabs
  */
 
 'use client';
@@ -44,7 +46,6 @@ import {
   Palette,
   Code,
   AlertCircle,
-  CheckCircle,
   Copy,
   WrapText,
 } from 'lucide-react';
@@ -57,61 +58,42 @@ import {
   type RoleMenuConfigUpdateRequest,
 } from '@/modules/admin/hooks/useRoleMenuConfig';
 import { MenuBuilder, type MenuItem, menuConfigToJson } from '@/modules/admin/components/menu-builder';
+import { DashboardConfigBuilder } from '@/modules/admin/components/DashboardConfigBuilder';
+import { UiConfigForm } from '@/modules/admin/components/UiConfigForm';
+import type { DashboardConfig } from '@/modules/agent-dashboard/types/menu-config';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-interface JsonEditorState {
-  value: string;
-  errors: string[];    // Blocking (invalid JSON) — prevents save
-  warnings: string[];  // Non-blocking (structural hints) — save allowed
-  isDirty: boolean;
-}
-
-/**
- * Validate dashboard_config JSON structure
- * Ported from deleted MenuConfigEditor.tsx (git: ea8a317f)
- *
- * Returns { errors, warnings }:
- * - errors: invalid JSON syntax → blocks save
- * - warnings: missing version/layout/widgets structure → informational, save allowed
- *   (dashboard_config is free-form JSONB, backend imposes no schema)
- */
-function validateDashboardConfig(json: string): { errors: string[]; warnings: string[] } {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-  try {
-    const config = JSON.parse(json);
-    if (typeof config !== 'object' || config === null || Array.isArray(config)) {
-      return { errors: ['Must be a JSON object'], warnings: [] };
-    }
-    // Empty object is valid
-    if (Object.keys(config).length === 0) return { errors: [], warnings: [] };
-
-    // Structural hints (non-blocking)
-    if (!config.version) warnings.push('Missing field: version');
-    if (!config.layout) warnings.push('Missing field: layout');
-    else if (!['grid', 'list', 'custom'].includes(config.layout))
-      warnings.push('layout: expected "grid", "list", or "custom"');
-    if (config.widgets !== undefined) {
-      if (!Array.isArray(config.widgets)) warnings.push('"widgets" should be an array');
-      else config.widgets.forEach((w: Record<string, unknown>, i: number) => {
-        if (!w.id) warnings.push(`Widget ${i}: missing "id"`);
-        if (typeof w.visible !== 'boolean') warnings.push(`Widget ${i}: "visible" should be boolean`);
-        if (typeof w.position !== 'number') warnings.push(`Widget ${i}: "position" should be number`);
-      });
-    }
-  } catch (e) {
-    errors.push(`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`);
-  }
-  return { errors, warnings };
-}
-
 interface MenuBuilderState {
   menus: MenuItem[];
   isAutoMode: boolean;
   isDirty: boolean;
+}
+
+interface ConfigBuilderState<T> {
+  config: T;
+  isDirty: boolean;
+  showRaw: boolean;
+  rawJson: string;
+  rawJsonErrors: string[];
+}
+
+// =============================================================================
+// RAW JSON VALIDATION (kept for raw JSON toggle)
+// =============================================================================
+
+function validateRawJson(json: string): string[] {
+  try {
+    const parsed = JSON.parse(json);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return ['Must be a JSON object'];
+    }
+    return [];
+  } catch (e) {
+    return [`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`];
+  }
 }
 
 // =============================================================================
@@ -151,18 +133,22 @@ export default function RoleMenuConfigPage() {
     isDirty: false,
   });
 
-  // JSON editor states (for dashboard and UI configs)
-  const [dashboardConfig, setDashboardConfig] = useState<JsonEditorState>({
-    value: '{}',
-    errors: [],
-    warnings: [],
+  // Dashboard config state (visual builder + raw JSON toggle)
+  const [dashboardState, setDashboardState] = useState<ConfigBuilderState<DashboardConfig>>({
+    config: { version: '1.0', layout: 'grid', widgets: [] },
     isDirty: false,
+    showRaw: false,
+    rawJson: '{}',
+    rawJsonErrors: [],
   });
-  const [uiConfig, setUiConfig] = useState<JsonEditorState>({
-    value: '{}',
-    errors: [],
-    warnings: [],
+
+  // UI config state (structured form + raw JSON toggle)
+  const [uiState, setUiState] = useState<ConfigBuilderState<Record<string, unknown>>>({
+    config: {},
     isDirty: false,
+    showRaw: false,
+    rawJson: '{}',
+    rawJsonErrors: [],
   });
 
   // Reset confirmation dialog
@@ -172,24 +158,30 @@ export default function RoleMenuConfigPage() {
   // Initialize states from fetched data
   useEffect(() => {
     if (config) {
-      // Menu config is handled by MenuBuilder - it parses internally
-      // We just track if it's auto mode (null = auto)
       setMenuBuilderState({
         menus: [],
         isAutoMode: config.menu_config === null,
         isDirty: false,
       });
-      setDashboardConfig({
-        value: config.dashboard_config ? JSON.stringify(config.dashboard_config, null, 2) : '{}',
-        errors: [],
-        warnings: [],
+      const rawDash = config.dashboard_config
+        ? JSON.stringify(config.dashboard_config, null, 2)
+        : '{}';
+      setDashboardState({
+        config: { version: '1.0', layout: 'grid', widgets: [] },
         isDirty: false,
+        showRaw: false,
+        rawJson: rawDash,
+        rawJsonErrors: [],
       });
-      setUiConfig({
-        value: config.ui_config ? JSON.stringify(config.ui_config, null, 2) : '{}',
-        errors: [],
-        warnings: [],
+      const rawUi = config.ui_config
+        ? JSON.stringify(config.ui_config, null, 2)
+        : '{}';
+      setUiState({
+        config: config.ui_config ?? {},
         isDirty: false,
+        showRaw: false,
+        rawJson: rawUi,
+        rawJsonErrors: [],
       });
     }
   }, [config]);
@@ -199,63 +191,135 @@ export default function RoleMenuConfigPage() {
     setMenuBuilderState((prev) => ({
       menus,
       isAutoMode,
-      // Mark dirty if we have menus and it changed, or if mode changed
       isDirty: prev.isDirty || menus.length > 0 || prev.isAutoMode !== isAutoMode,
     }));
   }, []);
 
-  // Handle JSON change with validation
-  const handleJsonChange = (
-    value: string,
-    setter: React.Dispatch<React.SetStateAction<JsonEditorState>>,
-    type: 'dashboard' | 'ui' = 'ui'
-  ) => {
-    if (type === 'dashboard') {
-      const { errors, warnings } = validateDashboardConfig(value);
-      setter({ value, errors, warnings, isDirty: true });
-    } else {
-      try {
-        JSON.parse(value);
-        setter({ value, errors: [], warnings: [], isDirty: true });
-      } catch (e) {
-        setter({ value, errors: [`Invalid JSON: ${e instanceof Error ? e.message : 'Parse error'}`], warnings: [], isDirty: true });
-      }
-    }
-  };
+  // Dashboard builder onChange
+  const handleDashboardChange = useCallback((newConfig: DashboardConfig, isDirty: boolean) => {
+    setDashboardState((prev) => ({
+      ...prev,
+      config: newConfig,
+      isDirty,
+      rawJson: JSON.stringify(newConfig, null, 2),
+      rawJsonErrors: [],
+    }));
+  }, []);
 
-  // Format JSON in editor
-  const handleFormatJson = (
-    setter: React.Dispatch<React.SetStateAction<JsonEditorState>>,
-    type: 'dashboard' | 'ui' = 'ui'
-  ) => {
-    setter((prev) => {
-      try {
-        const formatted = JSON.stringify(JSON.parse(prev.value), null, 2);
-        if (type === 'dashboard') {
-          const { errors, warnings } = validateDashboardConfig(formatted);
-          return { ...prev, value: formatted, errors, warnings };
+  // UI form onChange
+  const handleUiChange = useCallback((newConfig: Record<string, unknown>, isDirty: boolean) => {
+    setUiState((prev) => ({
+      ...prev,
+      config: newConfig,
+      isDirty,
+      rawJson: JSON.stringify(newConfig, null, 2),
+      rawJsonErrors: [],
+    }));
+  }, []);
+
+  // Raw JSON change handlers (for raw toggle mode)
+  const handleRawDashboardChange = useCallback((value: string) => {
+    setDashboardState((prev) => ({
+      ...prev,
+      rawJson: value,
+      rawJsonErrors: validateRawJson(value),
+      isDirty: true,
+    }));
+  }, []);
+
+  const handleRawUiChange = useCallback((value: string) => {
+    setUiState((prev) => ({
+      ...prev,
+      rawJson: value,
+      rawJsonErrors: validateRawJson(value),
+      isDirty: true,
+    }));
+  }, []);
+
+  // Toggle between visual and raw JSON
+  const toggleDashboardRaw = useCallback(() => {
+    setDashboardState((prev) => {
+      if (prev.showRaw) {
+        // Switching to visual: if raw JSON is valid, sync config from it
+        if (prev.rawJsonErrors.length === 0) {
+          try {
+            const parsed = JSON.parse(prev.rawJson);
+            return { ...prev, showRaw: false, config: parsed as DashboardConfig };
+          } catch {
+            return prev; // Can't switch with invalid JSON
+          }
         }
-        return { ...prev, value: formatted, errors: [], warnings: [] };
-      } catch {
-        return prev; // Can't format invalid JSON
+        return prev; // Can't switch with errors
       }
+      // Switching to raw: sync raw from current config
+      return { ...prev, showRaw: true, rawJson: JSON.stringify(prev.config, null, 2) };
     });
-  };
+  }, []);
+
+  const toggleUiRaw = useCallback(() => {
+    setUiState((prev) => {
+      if (prev.showRaw) {
+        if (prev.rawJsonErrors.length === 0) {
+          try {
+            const parsed = JSON.parse(prev.rawJson);
+            return { ...prev, showRaw: false, config: parsed as Record<string, unknown> };
+          } catch {
+            return prev;
+          }
+        }
+        return prev;
+      }
+      return { ...prev, showRaw: true, rawJson: JSON.stringify(prev.config, null, 2) };
+    });
+  }, []);
 
   // Copy JSON to clipboard
   const handleCopyJson = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      toast.success(t('roleConfig.copiedToClipboard', { defaultValue: 'Copié dans le presse-papier' }));
+      toast.success(t('roleConfig.copiedToClipboard', { defaultValue: 'Copiado al portapapeles' }));
     } catch {
       toast.error('Failed to copy');
     }
   };
 
+  // Format raw JSON
+  const handleFormatRawJson = useCallback((
+    setter: React.Dispatch<React.SetStateAction<ConfigBuilderState<DashboardConfig>>> |
+            React.Dispatch<React.SetStateAction<ConfigBuilderState<Record<string, unknown>>>>
+  ) => {
+    (setter as React.Dispatch<React.SetStateAction<ConfigBuilderState<unknown>>>)((prev: ConfigBuilderState<unknown>) => {
+      try {
+        const formatted = JSON.stringify(JSON.parse(prev.rawJson), null, 2);
+        return { ...prev, rawJson: formatted, rawJsonErrors: [] };
+      } catch {
+        return prev;
+      }
+    });
+  }, []);
+
+  // Get serialized config for save (respects showRaw mode)
+  const getDashboardForSave = (): Record<string, unknown> | null => {
+    if (!dashboardState.isDirty) return null;
+    if (dashboardState.showRaw) {
+      try { return JSON.parse(dashboardState.rawJson); }
+      catch { return null; }
+    }
+    return dashboardState.config as unknown as Record<string, unknown>;
+  };
+
+  const getUiForSave = (): Record<string, unknown> | null => {
+    if (!uiState.isDirty) return null;
+    if (uiState.showRaw) {
+      try { return JSON.parse(uiState.rawJson); }
+      catch { return null; }
+    }
+    return uiState.config;
+  };
+
   // Save all configurations
   const handleSaveAll = async () => {
-    // Check for JSON errors
-    if (dashboardConfig.errors.length > 0 || uiConfig.errors.length > 0) {
+    if (hasErrors) {
       toast.error(t('roleConfig.fixJsonErrors'));
       return;
     }
@@ -264,23 +328,20 @@ export default function RoleMenuConfigPage() {
       const data: RoleMenuConfigUpdateRequest = {};
 
       if (menuBuilderState.isDirty) {
-        // Auto mode = null, Manual mode = JSON config
         if (menuBuilderState.isAutoMode) {
           data.menu_config = null;
         } else {
-          // Build menu config from MenuBuilder state
           const menuConfigJson = menuConfigToJson(menuBuilderState.menus);
           data.menu_config = JSON.parse(menuConfigJson);
         }
       }
-      if (dashboardConfig.isDirty) {
-        data.dashboard_config = JSON.parse(dashboardConfig.value);
-      }
-      if (uiConfig.isDirty) {
-        data.ui_config = JSON.parse(uiConfig.value);
-      }
 
-      // Only save if there are changes
+      const dashSave = getDashboardForSave();
+      if (dashSave) data.dashboard_config = dashSave;
+
+      const uiSave = getUiForSave();
+      if (uiSave) data.ui_config = uiSave;
+
       if (Object.keys(data).length === 0) {
         toast.info(t('roleConfig.noChanges'));
         return;
@@ -288,10 +349,9 @@ export default function RoleMenuConfigPage() {
 
       await updateMutation.mutateAsync({ roleId, data });
 
-      // Reset dirty flags
       setMenuBuilderState((prev) => ({ ...prev, isDirty: false }));
-      setDashboardConfig((prev) => ({ ...prev, isDirty: false, errors: [], warnings: [] }));
-      setUiConfig((prev) => ({ ...prev, isDirty: false, errors: [], warnings: [] }));
+      setDashboardState((prev) => ({ ...prev, isDirty: false }));
+      setUiState((prev) => ({ ...prev, isDirty: false }));
     } catch {
       // Error handled by mutation
     }
@@ -299,20 +359,17 @@ export default function RoleMenuConfigPage() {
 
   // Save individual configuration
   const handleSaveConfig = async (type: 'menu' | 'dashboard' | 'ui') => {
-    // Menu config uses MenuBuilder, others use JSON editor
     if (type === 'menu') {
       if (!menuBuilderState.isDirty) {
         toast.info(t('roleConfig.noChanges'));
         return;
       }
-
       try {
         const data: RoleMenuConfigUpdateRequest = {
           menu_config: menuBuilderState.isAutoMode
             ? null
             : JSON.parse(menuConfigToJson(menuBuilderState.menus)),
         };
-
         await updateMutation.mutateAsync({ roleId, data });
         setMenuBuilderState((prev) => ({ ...prev, isDirty: false }));
       } catch {
@@ -321,37 +378,40 @@ export default function RoleMenuConfigPage() {
       return;
     }
 
-    // Dashboard and UI configs use JSON editor
-    const configMap = {
-      dashboard: { state: dashboardConfig, key: 'dashboard_config' as const },
-      ui: { state: uiConfig, key: 'ui_config' as const },
-    };
+    if (type === 'dashboard') {
+      if (dashboardState.rawJsonErrors.length > 0) {
+        toast.error(t('roleConfig.fixJsonErrors'));
+        return;
+      }
+      if (!dashboardState.isDirty) {
+        toast.info(t('roleConfig.noChanges'));
+        return;
+      }
+      try {
+        const dashSave = getDashboardForSave();
+        if (!dashSave) return;
+        await updateMutation.mutateAsync({ roleId, data: { dashboard_config: dashSave } });
+        setDashboardState((prev) => ({ ...prev, isDirty: false }));
+      } catch {
+        // Error handled by mutation
+      }
+      return;
+    }
 
-    const { state, key } = configMap[type];
-
-    if (state.errors.length > 0) {
+    // UI
+    if (uiState.rawJsonErrors.length > 0) {
       toast.error(t('roleConfig.fixJsonErrors'));
       return;
     }
-
-    if (!state.isDirty) {
+    if (!uiState.isDirty) {
       toast.info(t('roleConfig.noChanges'));
       return;
     }
-
     try {
-      const data: RoleMenuConfigUpdateRequest = {
-        [key]: JSON.parse(state.value),
-      };
-
-      await updateMutation.mutateAsync({ roleId, data });
-
-      // Reset dirty flag for this config
-      if (type === 'dashboard') {
-        setDashboardConfig((prev) => ({ ...prev, isDirty: false }));
-      } else {
-        setUiConfig((prev) => ({ ...prev, isDirty: false }));
-      }
+      const uiSave = getUiForSave();
+      if (!uiSave) return;
+      await updateMutation.mutateAsync({ roleId, data: { ui_config: uiSave } });
+      setUiState((prev) => ({ ...prev, isDirty: false }));
     } catch {
       // Error handled by mutation
     }
@@ -369,19 +429,25 @@ export default function RoleMenuConfigPage() {
       });
     }
     if (resetTarget === 'all' || resetTarget === 'dashboard') {
-      setDashboardConfig({
-        value: config.dashboard_config ? JSON.stringify(config.dashboard_config, null, 2) : '{}',
-        errors: [],
-        warnings: [],
+      const rawDash = config.dashboard_config
+        ? JSON.stringify(config.dashboard_config, null, 2) : '{}';
+      setDashboardState({
+        config: { version: '1.0', layout: 'grid', widgets: [] },
         isDirty: false,
+        showRaw: false,
+        rawJson: rawDash,
+        rawJsonErrors: [],
       });
     }
     if (resetTarget === 'all' || resetTarget === 'ui') {
-      setUiConfig({
-        value: config.ui_config ? JSON.stringify(config.ui_config, null, 2) : '{}',
-        errors: [],
-        warnings: [],
+      const rawUi = config.ui_config
+        ? JSON.stringify(config.ui_config, null, 2) : '{}';
+      setUiState({
+        config: config.ui_config ?? {},
         isDirty: false,
+        showRaw: false,
+        rawJson: rawUi,
+        rawJsonErrors: [],
       });
     }
 
@@ -389,9 +455,9 @@ export default function RoleMenuConfigPage() {
     toast.success(t('roleConfig.configReset'));
   };
 
-  // Check if any config has unsaved changes
-  const hasUnsavedChanges = menuBuilderState.isDirty || dashboardConfig.isDirty || uiConfig.isDirty;
-  const hasErrors = dashboardConfig.errors.length > 0 || uiConfig.errors.length > 0;
+  // Derived states
+  const hasUnsavedChanges = menuBuilderState.isDirty || dashboardState.isDirty || uiState.isDirty;
+  const hasErrors = dashboardState.rawJsonErrors.length > 0 || uiState.rawJsonErrors.length > 0;
 
   // Loading state
   if (roleLoading || configLoading) {
@@ -462,7 +528,6 @@ export default function RoleMenuConfigPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Unsaved changes indicator */}
           {hasUnsavedChanges && (
             <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300">
               <AlertCircle className="h-3 w-3" />
@@ -470,7 +535,6 @@ export default function RoleMenuConfigPage() {
             </Badge>
           )}
 
-          {/* Reset All button */}
           <Button
             variant="outline"
             onClick={() => {
@@ -483,10 +547,9 @@ export default function RoleMenuConfigPage() {
             {t('roleConfig.reset')}
           </Button>
 
-          {/* Save All button */}
           <Button
             onClick={handleSaveAll}
-            disabled={!hasUnsavedChanges || !!hasErrors || updateMutation.isPending}
+            disabled={!hasUnsavedChanges || hasErrors || updateMutation.isPending}
           >
             {updateMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -535,19 +598,18 @@ export default function RoleMenuConfigPage() {
           <TabsTrigger value="dashboard" className="gap-2">
             <LayoutDashboard className="h-4 w-4" />
             {t('roleConfig.tabs.dashboard')}
-            {dashboardConfig.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
+            {dashboardState.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
           </TabsTrigger>
           <TabsTrigger value="ui" className="gap-2">
             <Palette className="h-4 w-4" />
             {t('roleConfig.tabs.ui')}
-            {uiConfig.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
+            {uiState.isDirty && <Badge variant="secondary" className="h-5 px-1.5">*</Badge>}
           </TabsTrigger>
         </TabsList>
 
         {/* Menu Config Tab - Visual MenuBuilder */}
         <TabsContent value="menu">
           <div className="space-y-4">
-            {/* Header with save button */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -577,7 +639,6 @@ export default function RoleMenuConfigPage() {
               </CardHeader>
             </Card>
 
-            {/* Visual Menu Builder */}
             <MenuBuilder
               initialConfig={config?.menu_config ?? null}
               onChange={handleMenuBuilderChange}
@@ -589,193 +650,200 @@ export default function RoleMenuConfigPage() {
           </div>
         </TabsContent>
 
-        {/* Dashboard Config Tab */}
+        {/* Dashboard Config Tab — Visual Builder + Raw JSON toggle */}
         <TabsContent value="dashboard">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <LayoutDashboard className="h-5 w-5" />
-                    {t('roleConfig.dashboardConfig.title')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('roleConfig.dashboardConfig.description')}
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFormatJson(setDashboardConfig, 'dashboard')}
-                    title="Format JSON"
-                  >
-                    <WrapText className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyJson(dashboardConfig.value)}
-                    title="Copy"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSaveConfig('dashboard')}
-                    disabled={!dashboardConfig.isDirty || dashboardConfig.errors.length > 0 || updateMutation.isPending}
-                  >
-                    {updateMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-2" />
+          <div className="space-y-4">
+            {/* Tab header */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <LayoutDashboard className="h-5 w-5" />
+                      {t('roleConfig.dashboardConfig.title')}
+                    </CardTitle>
+                    <CardDescription>
+                      {t('roleConfig.dashboardConfig.description')}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleDashboardRaw}
+                      disabled={dashboardState.showRaw && dashboardState.rawJsonErrors.length > 0}
+                    >
+                      <Code className="h-4 w-4 mr-1" />
+                      {dashboardState.showRaw ? 'Visual' : 'JSON'}
+                    </Button>
+                    {dashboardState.showRaw && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleFormatRawJson(setDashboardState as React.Dispatch<React.SetStateAction<ConfigBuilderState<DashboardConfig>>>)}
+                          title="Format JSON"
+                        >
+                          <WrapText className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyJson(dashboardState.rawJson)}
+                          title="Copy"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
-                    {t('roleConfig.save')}
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSaveConfig('dashboard')}
+                      disabled={!dashboardState.isDirty || dashboardState.rawJsonErrors.length > 0 || updateMutation.isPending}
+                    >
+                      {updateMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {t('roleConfig.save')}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Code className="h-4 w-4" />
-                  <span>{t('roleConfig.jsonEditor')}</span>
-                  {dashboardConfig.errors.length > 0 ? (
-                    <Badge variant="destructive" className="gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {dashboardConfig.errors.length} {t('roleConfig.error', { defaultValue: 'erreur(s)' })}
-                    </Badge>
-                  ) : dashboardConfig.warnings.length > 0 ? (
-                    <Badge variant="outline" className="gap-1 text-amber-600 border-amber-300">
-                      <AlertCircle className="h-3 w-3" />
-                      {dashboardConfig.warnings.length} hint(s)
-                    </Badge>
-                  ) : dashboardConfig.isDirty ? (
-                    <Badge variant="secondary">{t('roleConfig.modified')}</Badge>
-                  ) : (
-                    <Badge variant="outline" className="gap-1 text-green-600 border-green-300">
-                      <CheckCircle className="h-3 w-3" />
-                      {t('roleConfig.valid')}
-                    </Badge>
-                  )}
-                </div>
-                <Textarea
-                  value={dashboardConfig.value}
-                  onChange={(e) => handleJsonChange(e.target.value, setDashboardConfig, 'dashboard')}
-                  className="font-mono text-sm min-h-[300px]"
-                  placeholder='{"version": "1.0", "layout": "grid", "widgets": []}'
-                />
-                {dashboardConfig.errors.length > 0 && (
-                  <ul className="text-sm text-destructive space-y-1">
-                    {dashboardConfig.errors.map((err, i) => (
-                      <li key={i} className="flex items-start gap-1">
-                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                        {err}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {dashboardConfig.warnings.length > 0 && dashboardConfig.errors.length === 0 && (
-                  <ul className="text-sm text-amber-600 space-y-1">
-                    {dashboardConfig.warnings.map((warn, i) => (
-                      <li key={i} className="flex items-start gap-1">
-                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                        {warn}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+            </Card>
+
+            {/* Visual builder or raw JSON */}
+            {dashboardState.showRaw ? (
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="space-y-2">
+                    <Textarea
+                      value={dashboardState.rawJson}
+                      onChange={(e) => handleRawDashboardChange(e.target.value)}
+                      className="font-mono text-sm min-h-[300px]"
+                      placeholder='{"version": "1.0", "layout": "grid", "widgets": []}'
+                    />
+                    {dashboardState.rawJsonErrors.length > 0 && (
+                      <ul className="text-sm text-destructive space-y-1">
+                        {dashboardState.rawJsonErrors.map((err, i) => (
+                          <li key={i} className="flex items-start gap-1">
+                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                            {err}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <DashboardConfigBuilder
+                initialConfig={config?.dashboard_config ?? null}
+                onChange={handleDashboardChange}
+                isSaving={updateMutation.isPending}
+              />
+            )}
+          </div>
         </TabsContent>
 
-        {/* UI Config Tab */}
+        {/* UI Config Tab — Structured Form + Raw JSON toggle */}
         <TabsContent value="ui">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Palette className="h-5 w-5" />
-                    {t('roleConfig.uiConfig.title')}
-                  </CardTitle>
-                  <CardDescription>
-                    {t('roleConfig.uiConfig.description')}
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFormatJson(setUiConfig)}
-                    title="Format JSON"
-                  >
-                    <WrapText className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyJson(uiConfig.value)}
-                    title="Copy"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSaveConfig('ui')}
-                    disabled={!uiConfig.isDirty || uiConfig.errors.length > 0 || updateMutation.isPending}
-                  >
-                    {updateMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4 mr-2" />
+          <div className="space-y-4">
+            {/* Tab header */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-5 w-5" />
+                      {t('roleConfig.uiConfig.title')}
+                    </CardTitle>
+                    <CardDescription>
+                      {t('roleConfig.uiConfig.description')}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleUiRaw}
+                      disabled={uiState.showRaw && uiState.rawJsonErrors.length > 0}
+                    >
+                      <Code className="h-4 w-4 mr-1" />
+                      {uiState.showRaw ? 'Visual' : 'JSON'}
+                    </Button>
+                    {uiState.showRaw && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleFormatRawJson(setUiState as React.Dispatch<React.SetStateAction<ConfigBuilderState<Record<string, unknown>>>>)}
+                          title="Format JSON"
+                        >
+                          <WrapText className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyJson(uiState.rawJson)}
+                          title="Copy"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
-                    {t('roleConfig.save')}
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSaveConfig('ui')}
+                      disabled={!uiState.isDirty || uiState.rawJsonErrors.length > 0 || updateMutation.isPending}
+                    >
+                      {updateMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {t('roleConfig.save')}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <Code className="h-4 w-4" />
-                  <span>{t('roleConfig.jsonEditor')}</span>
-                  {uiConfig.errors.length > 0 ? (
-                    <Badge variant="destructive" className="gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {uiConfig.errors.length} {t('roleConfig.error', { defaultValue: 'erreur(s)' })}
-                    </Badge>
-                  ) : uiConfig.isDirty ? (
-                    <Badge variant="secondary">{t('roleConfig.modified')}</Badge>
-                  ) : (
-                    <Badge variant="outline" className="gap-1 text-green-600 border-green-300">
-                      <CheckCircle className="h-3 w-3" />
-                      {t('roleConfig.valid')}
-                    </Badge>
-                  )}
-                </div>
-                <Textarea
-                  value={uiConfig.value}
-                  onChange={(e) => handleJsonChange(e.target.value, setUiConfig)}
-                  className="font-mono text-sm min-h-[300px]"
-                  placeholder='{"theme": "default"}'
-                />
-                {uiConfig.errors.length > 0 && (
-                  <ul className="text-sm text-destructive space-y-1">
-                    {uiConfig.errors.map((err, i) => (
-                      <li key={i} className="flex items-start gap-1">
-                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                        {err}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+            </Card>
+
+            {/* Structured form or raw JSON */}
+            {uiState.showRaw ? (
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="space-y-2">
+                    <Textarea
+                      value={uiState.rawJson}
+                      onChange={(e) => handleRawUiChange(e.target.value)}
+                      className="font-mono text-sm min-h-[300px]"
+                      placeholder='{"theme": "default"}'
+                    />
+                    {uiState.rawJsonErrors.length > 0 && (
+                      <ul className="text-sm text-destructive space-y-1">
+                        {uiState.rawJsonErrors.map((err, i) => (
+                          <li key={i} className="flex items-start gap-1">
+                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                            {err}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <UiConfigForm
+                initialConfig={config?.ui_config ?? null}
+                onChange={handleUiChange}
+                isSaving={updateMutation.isPending}
+              />
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
