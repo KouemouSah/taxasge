@@ -358,26 +358,12 @@ class BatchPersistService:
         # Derive entity_code from entities.workflow_codes (BD source of truth).
         # Batch requests use the main office of the first entity that handles
         # this workflow. TODO: add site selection to batch wizard for multi-entity.
-        entity_code = None
-        entity_location_id = None
-        try:
-            from app.modules.service_requests.services.workflow_engine import resolve_workflow_sites
-            sites = await resolve_workflow_sites(db, workflow_code)
-            if sites:
-                # Prefer main office, else first site
-                main_site = next((s for s in sites if s.get("is_main_office")), sites[0])
-                entity_code = main_site["entity_code"]
-                entity_location_id = main_site["id"]
-        except (ValueError, Exception) as e:
-            logger.warning(f"[BatchPersist] Could not resolve entity for {workflow_code}: {e}")
-            # Fallback to workflow's informational entity_code
-            workflow = workflow_engine.get_workflow_by_string(workflow_code)
-            if workflow and hasattr(workflow, 'entity_code') and workflow.entity_code:
-                entity_code = (
-                    workflow.entity_code.value
-                    if hasattr(workflow.entity_code, 'value')
-                    else str(workflow.entity_code)
-                )
+        from app.modules.service_requests.services.workflow_engine import resolve_workflow_sites
+        sites = await resolve_workflow_sites(db, workflow_code)
+        # Prefer main office, else first site
+        main_site = next((s for s in sites if s.get("is_main_office")), sites[0])
+        entity_code = main_site["entity_code"]
+        entity_location_id = main_site["id"]
 
         try:
             async with db.transaction():

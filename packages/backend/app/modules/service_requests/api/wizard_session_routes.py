@@ -28,6 +28,8 @@ from ..models.wizard_session import (
     WizardPersistResult,
     WizardInitiatePaymentRequest,
     WizardInitiatePaymentResponse,
+    SiteSelectionRequest,
+    AppointmentSelectionRequest,
 )
 from ..models.form_config import FormConfigResponse
 from ..models.appointments import (
@@ -691,20 +693,48 @@ async def get_session_available_sites(
 )
 async def save_session_site_selection(
     session_id: str = Path(..., description="The wizard session ID"),
-    body: dict = Body(..., examples=[{
-        "entity_location_id": "550e8400-e29b-41d4-a716-446655440000",
-        "location_name": "CNEDOGE Malabo",
-        "city": "Malabo",
-    }]),
+    body: SiteSelectionRequest = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
 ):
-    """Save site selection in wizard session cache."""
+    """Save site selection in wizard session cache.
+
+    Validates that the entity_location_id exists, is active, and belongs
+    to an entity that handles the session's workflow.
+    """
     try:
+        # Validate location exists and is active
+        location = await db.fetchrow(
+            "SELECT entity_code, location_name, city "
+            "FROM entity_locations WHERE id = $1 AND is_active = TRUE",
+            body.entity_location_id,
+        )
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Entity location not found or inactive.",
+            )
+
+        # Validate the location's entity handles this workflow
+        session = await wizard_session_service._get_session(session_id, current_user.id)
+        workflow_code = session["workflow_code"]
+        handles_workflow = await db.fetchval(
+            "SELECT 1 FROM entities "
+            "WHERE code = $1 AND is_active = TRUE "
+            "AND workflow_codes @> to_jsonb($2::text)",
+            location["entity_code"], workflow_code,
+        )
+        if not handles_workflow:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Location entity '{location['entity_code']}' does not handle workflow '{workflow_code}'.",
+            )
+
         site_data = {
-            "entity_location_id": body.get("entity_location_id"),
-            "location_name": body.get("location_name"),
-            "city": body.get("city"),
-            "entity_code": body.get("entity_code"),
+            "entity_location_id": str(body.entity_location_id),
+            "location_name": body.location_name or location["location_name"],
+            "city": body.city or location["city"],
+            "entity_code": body.entity_code or location["entity_code"],
         }
 
         result = await wizard_session_service.save_site_selection(
@@ -928,24 +958,34 @@ async def get_session_available_slots(
 )
 async def save_session_appointment_selection(
     session_id: str = Path(..., description="The wizard session ID"),
-    body: dict = Body(..., examples=[{
-        "entity_location_id": "550e8400-e29b-41d4-a716-446655440000",
-        "location_name": "CNEDOGE Malabo",
-        "city": "Malabo",
-        "appointment_date": "2026-03-15",
-        "appointment_time": "09:00:00",
-    }]),
+    body: AppointmentSelectionRequest = Body(...),
+    db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
 ):
-    """Save appointment selection in wizard session cache (no real hold)."""
+    """Save appointment selection in wizard session cache (no real hold).
+
+    Validates that entity_location_id exists and is active.
+    """
     try:
+        # Validate location exists
+        location = await db.fetchrow(
+            "SELECT entity_code, location_name, city "
+            "FROM entity_locations WHERE id = $1 AND is_active = TRUE",
+            body.entity_location_id,
+        )
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Entity location not found or inactive.",
+            )
+
         appointment_data = {
-            "entity_location_id": body.get("entity_location_id"),
-            "location_name": body.get("location_name"),
-            "city": body.get("city"),
-            "appointment_date": body.get("appointment_date"),
-            "appointment_time": body.get("appointment_time"),
-            "slot_config_id": body.get("slot_config_id"),
+            "entity_location_id": str(body.entity_location_id),
+            "location_name": body.location_name or location["location_name"],
+            "city": body.city or location["city"],
+            "appointment_date": str(body.appointment_date),
+            "appointment_time": str(body.appointment_time),
+            "slot_config_id": str(body.slot_config_id) if body.slot_config_id else None,
         }
 
         result = await wizard_session_service.save_appointment_data(

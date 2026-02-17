@@ -9,7 +9,7 @@ until payment is initiated. No DB/Firebase writes until user confirms payment.
 """
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, date, time
 from uuid import UUID
 from enum import Enum
 
@@ -408,5 +408,47 @@ class WizardInitiatePaymentResponse(BaseModel):
                 "requires_action": True,
                 "action_type": "redirect",
                 "requires_appointment": True,
+            }
+        }
+
+
+# =============================================================================
+# SITE SELECTION & APPOINTMENT SELECTION REQUEST MODELS
+# =============================================================================
+
+class SiteSelectionRequest(BaseModel):
+    """Request to save site selection (non-appointment workflows)."""
+    entity_location_id: UUID = Field(..., description="FK to entity_locations table")
+    location_name: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    entity_code: Optional[str] = Field(None, max_length=50)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "entity_location_id": "550e8400-e29b-41d4-a716-446655440000",
+                "location_name": "CNEDOGE Malabo",
+                "city": "Malabo",
+            }
+        }
+
+
+class AppointmentSelectionRequest(BaseModel):
+    """Request to save appointment selection in session cache."""
+    entity_location_id: UUID = Field(..., description="FK to entity_locations table")
+    location_name: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=100)
+    appointment_date: date = Field(..., description="Appointment date (YYYY-MM-DD)")
+    appointment_time: time = Field(..., description="Appointment time (HH:MM:SS)")
+    slot_config_id: Optional[UUID] = Field(None, description="FK to appointment_slot_configs")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "entity_location_id": "550e8400-e29b-41d4-a716-446655440000",
+                "location_name": "CNEDOGE Malabo",
+                "city": "Malabo",
+                "appointment_date": "2026-03-15",
+                "appointment_time": "09:00:00",
             }
         }

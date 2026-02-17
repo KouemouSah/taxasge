@@ -175,13 +175,18 @@ class WorkflowEngine:
                 f"Allowed: {workflow.allowed_sub_types}"
             )
 
+        entity_code = (
+            workflow.entity_code.value
+            if hasattr(workflow.entity_code, 'value')
+            else str(workflow.entity_code)
+        )
         context = WorkflowContext(
             service_request_id=service_request_id,
             user_id=user_id,
             workflow_code=workflow_code,
             solicitud_type=solicitud_type,
             sub_type=sub_type,
-            entity_code=workflow.entity_code.value
+            entity_code=entity_code
         )
 
         return context
@@ -1175,10 +1180,15 @@ class WorkflowEngine:
             if category not in result:
                 result[category] = []
 
+            entity_code = (
+                workflow.entity_code.value
+                if hasattr(workflow.entity_code, 'value')
+                else str(workflow.entity_code)
+            )
             result[category].append({
                 "code": workflow.workflow_code.value,
                 "name_es": workflow.service_name_es,
-                "entity_code": workflow.entity_code.value,
+                "entity_code": entity_code,
                 "sub_types": workflow.allowed_sub_types
             })
 

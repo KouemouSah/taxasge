@@ -316,7 +316,15 @@ class WizardSessionService:
 
         # Determine workflow capabilities
         requires_appointment = False
-        entity_code = session.get("entity_code")
+        # entity_code priority: site_selection > appointment_data > session default
+        site_sel = session.get("site_selection")
+        appt_data = session.get("appointment_data")
+        if site_sel and site_sel.get("entity_code"):
+            entity_code = site_sel["entity_code"]
+        elif appt_data and appt_data.get("entity_location_id"):
+            entity_code = session.get("entity_code")  # will be resolved at persist
+        else:
+            entity_code = session.get("entity_code")
         if workflow:
             try:
                 requires_appointment = getattr(workflow, "requires_appointment", False)
