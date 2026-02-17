@@ -14,11 +14,15 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+import json as _json
+from loguru import logger
+
 from asyncpg import Connection
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user, require_admin
 from app.modules.users.models.user import UserResponse
 from app.modules.cities.services.city_service import CityService, EntityService
+from app.core.cache import invalidate_role_menu_cache, invalidate_workflow_mappings_cache
 from app.modules.cities.models.city import (
     CityCreate, CityUpdate, CityResponse, CitySimple, CityListResponse,
     EntityCreate, EntityUpdate, EntityResponse, EntitySimple, EntityListResponse,
@@ -26,6 +30,35 @@ from app.modules.cities.models.city import (
 )
 
 router = APIRouter(tags=["cities"])
+
+
+async def _auto_seed_display_configs(db: Connection, workflow_codes: list) -> int:
+    """Auto-create display configs for workflow codes that don't have one yet.
+    Returns number of configs created."""
+    if not workflow_codes:
+        return 0
+    created = 0
+    for code in workflow_codes:
+        existing = await db.fetchval(
+            "SELECT 1 FROM workflow_display_config WHERE workflow_code = $1", code
+        )
+        if not existing:
+            try:
+                await db.execute("""
+                    INSERT INTO workflow_display_config (
+                        workflow_code, list_columns, preview_sections, labels, is_active
+                    ) VALUES ($1, $2::jsonb, $3::jsonb, '{}'::jsonb, true)
+                """,
+                    code,
+                    _json.dumps(["reference", "fullName", "createdAt", "status", "priority"]),
+                    _json.dumps(["info", "extractedData", "documents", "contact"]),
+                )
+                created += 1
+            except Exception as e:
+                logger.warning(f"Auto-seed display config for {code} failed: {e}")
+    if created:
+        logger.info(f"Auto-seeded {created} display config(s) for entity workflow_codes")
+    return created
 
 
 # ============================================================================
@@ -211,9 +244,15 @@ async def create_entity(
     """
     service = EntityService(db)
     try:
-        return await service.create_entity(data, created_by=current_user.id)
+        result = await service.create_entity(data, created_by=current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    # Auto-seed display configs for new workflow codes + invalidate caches
+    if data.workflow_codes:
+        await _auto_seed_display_configs(db, data.workflow_codes)
+        await invalidate_workflow_mappings_cache()
+        await invalidate_role_menu_cache("_all_")
+    return result
 
 
 @router.patch("/entities/{entity_id}", response_model=EntityResponse)
@@ -229,9 +268,14 @@ async def update_entity(
         entity = await service.update_entity(entity_id, data, updated_by=current_user.id)
         if not entity:
             raise HTTPException(status_code=404, detail="Entity not found")
-        return entity
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    # Auto-seed display configs if workflow_codes changed + invalidate caches
+    if data.workflow_codes is not None:
+        await _auto_seed_display_configs(db, data.workflow_codes)
+        await invalidate_workflow_mappings_cache()
+        await invalidate_role_menu_cache("_all_")
+    return entity
 
 
 @router.delete("/entities/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
