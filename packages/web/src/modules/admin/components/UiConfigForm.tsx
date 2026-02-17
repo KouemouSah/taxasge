@@ -170,14 +170,14 @@ export function UiConfigForm({
     try {
       const parsed = JSON.parse(value);
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        setExtraJsonError('Debe ser un objeto JSON');
+        setExtraJsonError(t('uiForm.mustBeObject', { defaultValue: 'Debe ser un objeto JSON' }));
       } else {
         setExtraJsonError(null);
       }
     } catch (e) {
-      setExtraJsonError(e instanceof Error ? e.message : 'JSON inválido');
+      setExtraJsonError(e instanceof Error ? e.message : t('uiForm.invalidJson', { defaultValue: 'JSON inválido' }));
     }
-  }, []);
+  }, [t]);
 
   const isDisabled = disabled || isSaving;
 

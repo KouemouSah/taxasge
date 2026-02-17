@@ -981,10 +981,27 @@
           "widgetList": "Dashboard Widgets",
           "widgetListDescription": "Drag to reorder. The order defines the position on the dashboard.",
           "layout": "Layout",
+          "layoutGrid": "Grid",
+          "layoutList": "List",
+          "layoutCustom": "Custom",
           "size": "Size",
           "showAll": "Show All",
           "hideAll": "Hide All",
-          "resetDefaults": "Reset"
+          "resetDefaults": "Reset",
+          "widgets": {
+            "urgent_requests": "Urgent Requests",
+            "today_appointments": "Today's Appointments",
+            "workflow_distribution": "Workflow Distribution",
+            "alerts": "Alerts",
+            "system_alerts": "System Alerts",
+            "personal_stats": "Personal Statistics",
+            "team_workload": "Team Workload",
+            "escalations": "Escalations",
+            "pending_payments": "Pending Payments",
+            "anomaly_summary": "Anomaly Summary",
+            "calendar_week": "Weekly Calendar",
+            "calendar_slots": "Calendar Slots"
+          }
         },
         "uiForm": {
           "title": "Interface Preferences",
@@ -1000,7 +1017,9 @@
           "autoRefreshInterval": "Refresh Interval",
           "autoRefreshDescription": "Seconds between automatic refreshes (0 = disabled)",
           "additionalJson": "Additional Parameters (JSON)",
-          "additionalJsonDescription": "Additional keys stored as free-form JSON. Not removed on save."
+          "additionalJsonDescription": "Additional keys stored as free-form JSON. Not removed on save.",
+          "mustBeObject": "Must be a JSON object",
+          "invalidJson": "Invalid JSON"
         }
       },
       "menuBuilder": {

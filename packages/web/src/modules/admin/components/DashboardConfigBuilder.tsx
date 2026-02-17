@@ -68,10 +68,10 @@ export const dashboardConfigSchema = z.object({
 });
 
 // =============================================================================
-// WIDGET LABELS
+// WIDGET LABELS (fallback keys — i18n labels built in component via useMemo)
 // =============================================================================
 
-const WIDGET_LABELS: Record<string, string> = {
+const WIDGET_LABEL_KEYS: Record<string, string> = {
   urgent_requests: 'Solicitudes Urgentes',
   today_appointments: 'Citas de Hoy',
   workflow_distribution: 'Distribución Workflows',
@@ -91,12 +91,6 @@ const SIZE_OPTIONS: { value: WidgetSize; label: string }[] = [
   { value: 'medium', label: 'M' },
   { value: 'large', label: 'L' },
   { value: 'full', label: 'Full' },
-];
-
-const LAYOUT_OPTIONS: { value: DashboardLayout; label: string }[] = [
-  { value: 'grid', label: 'Cuadrícula' },
-  { value: 'list', label: 'Lista' },
-  { value: 'custom', label: 'Personalizado' },
 ];
 
 // =============================================================================
@@ -186,6 +180,7 @@ interface SortableWidgetRowProps {
   row: WidgetRow;
   index: number;
   totalCount: number;
+  label: string;
   onToggleVisible: () => void;
   onChangeSize: (size: WidgetSize) => void;
   onMoveUp: () => void;
@@ -197,6 +192,7 @@ function SortableWidgetRow({
   row,
   index,
   totalCount,
+  label,
   onToggleVisible,
   onChangeSize,
   onMoveUp,
@@ -245,7 +241,7 @@ function SortableWidgetRow({
 
       {/* Widget label */}
       <span className="flex-1 text-sm truncate">
-        {WIDGET_LABELS[row.id] ?? row.id}
+        {label}
       </span>
 
       {/* Size selector */}
@@ -312,6 +308,21 @@ export function DashboardConfigBuilder({
   disabled = false,
 }: DashboardConfigBuilderProps) {
   const t = useTranslations('admin.menuConfig.roleConfig');
+
+  // Build i18n-aware labels (with Spanish fallbacks from WIDGET_LABEL_KEYS)
+  const widgetLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    for (const [id, fallback] of Object.entries(WIDGET_LABEL_KEYS)) {
+      labels[id] = t(`dashboardBuilder.widgets.${id}`, { defaultValue: fallback });
+    }
+    return labels;
+  }, [t]);
+
+  const layoutOptions = useMemo(() => [
+    { value: 'grid' as DashboardLayout, label: t('dashboardBuilder.layoutGrid', { defaultValue: 'Cuadrícula' }) },
+    { value: 'list' as DashboardLayout, label: t('dashboardBuilder.layoutList', { defaultValue: 'Lista' }) },
+    { value: 'custom' as DashboardLayout, label: t('dashboardBuilder.layoutCustom', { defaultValue: 'Personalizado' }) },
+  ], [t]);
 
   // Parse initial config
   const parsed = useMemo(() => parseDashboardConfig(initialConfig), [initialConfig]);
@@ -414,7 +425,7 @@ export function DashboardConfigBuilder({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {LAYOUT_OPTIONS.map((opt) => (
+                {layoutOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value} className="text-xs">
                     {opt.label}
                   </SelectItem>
@@ -456,6 +467,7 @@ export function DashboardConfigBuilder({
                   row={row}
                   index={index}
                   totalCount={widgetRows.length}
+                  label={widgetLabels[row.id] ?? row.id}
                   onToggleVisible={() => handleToggleVisible(row.id)}
                   onChangeSize={(size) => handleChangeSize(row.id, size)}
                   onMoveUp={() => handleMoveUp(index)}

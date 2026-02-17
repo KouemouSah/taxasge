@@ -12,7 +12,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
@@ -101,7 +101,6 @@ function validateRawJson(json: string): string[] {
 // =============================================================================
 
 export default function RoleMenuConfigPage() {
-  const _router = useRouter();
   const params = useParams();
   const locale = useLocale();
   const t = useTranslations('admin.menuConfig');
@@ -154,6 +153,8 @@ export default function RoleMenuConfigPage() {
   // Reset confirmation dialog
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<'menu' | 'dashboard' | 'ui' | 'all'>('all');
+  // Key counter to force child component re-mount on reset
+  const [resetKey, setResetKey] = useState(0);
 
   // Initialize states from fetched data
   useEffect(() => {
@@ -451,6 +452,7 @@ export default function RoleMenuConfigPage() {
       });
     }
 
+    setResetKey((k) => k + 1);
     setIsResetDialogOpen(false);
     toast.success(t('roleConfig.configReset'));
   };
@@ -740,6 +742,7 @@ export default function RoleMenuConfigPage() {
               </Card>
             ) : (
               <DashboardConfigBuilder
+                key={`dash-${resetKey}`}
                 initialConfig={config?.dashboard_config ?? null}
                 onChange={handleDashboardChange}
                 isSaving={updateMutation.isPending}
@@ -838,6 +841,7 @@ export default function RoleMenuConfigPage() {
               </Card>
             ) : (
               <UiConfigForm
+                key={`ui-${resetKey}`}
                 initialConfig={config?.ui_config ?? null}
                 onChange={handleUiChange}
                 isSaving={updateMutation.isPending}

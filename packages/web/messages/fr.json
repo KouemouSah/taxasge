@@ -928,10 +928,27 @@
           "widgetList": "Widgets du Tableau de Bord",
           "widgetListDescription": "Glisser pour réordonner. L'ordre définit la position dans le tableau de bord.",
           "layout": "Disposition",
+          "layoutGrid": "Grille",
+          "layoutList": "Liste",
+          "layoutCustom": "Personnalisé",
           "size": "Taille",
           "showAll": "Tout Afficher",
           "hideAll": "Tout Masquer",
-          "resetDefaults": "Réinitialiser"
+          "resetDefaults": "Réinitialiser",
+          "widgets": {
+            "urgent_requests": "Demandes Urgentes",
+            "today_appointments": "Rendez-vous du Jour",
+            "workflow_distribution": "Distribution Workflows",
+            "alerts": "Alertes",
+            "system_alerts": "Alertes Système",
+            "personal_stats": "Statistiques Personnelles",
+            "team_workload": "Charge de l'Équipe",
+            "escalations": "Escalades",
+            "pending_payments": "Paiements en Attente",
+            "anomaly_summary": "Résumé des Anomalies",
+            "calendar_week": "Calendrier Hebdomadaire",
+            "calendar_slots": "Créneaux du Calendrier"
+          }
         },
         "uiForm": {
           "title": "Préférences d'Interface",
@@ -947,7 +964,9 @@
           "autoRefreshInterval": "Intervalle de Rafraîchissement",
           "autoRefreshDescription": "Secondes entre les rafraîchissements automatiques (0 = désactivé)",
           "additionalJson": "Paramètres Supplémentaires (JSON)",
-          "additionalJsonDescription": "Clés supplémentaires stockées en JSON libre. Non supprimées lors de l'enregistrement."
+          "additionalJsonDescription": "Clés supplémentaires stockées en JSON libre. Non supprimées lors de l'enregistrement.",
+          "mustBeObject": "Doit être un objet JSON",
+          "invalidJson": "JSON invalide"
         }
       },
       "menuBuilder": {

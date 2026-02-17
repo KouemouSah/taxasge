@@ -928,10 +928,27 @@
           "widgetList": "Widgets del Dashboard",
           "widgetListDescription": "Arrastra para reordenar. El orden define la posición en el dashboard.",
           "layout": "Diseño",
+          "layoutGrid": "Cuadrícula",
+          "layoutList": "Lista",
+          "layoutCustom": "Personalizado",
           "size": "Tamaño",
           "showAll": "Mostrar Todos",
           "hideAll": "Ocultar Todos",
-          "resetDefaults": "Restablecer"
+          "resetDefaults": "Restablecer",
+          "widgets": {
+            "urgent_requests": "Solicitudes Urgentes",
+            "today_appointments": "Citas de Hoy",
+            "workflow_distribution": "Distribución Workflows",
+            "alerts": "Alertas",
+            "system_alerts": "Alertas del Sistema",
+            "personal_stats": "Estadísticas Personales",
+            "team_workload": "Carga del Equipo",
+            "escalations": "Escalaciones",
+            "pending_payments": "Pagos Pendientes",
+            "anomaly_summary": "Resumen de Anomalías",
+            "calendar_week": "Calendario Semanal",
+            "calendar_slots": "Slots del Calendario"
+          }
         },
         "uiForm": {
           "title": "Preferencias de Interfaz",
@@ -947,7 +964,9 @@
           "autoRefreshInterval": "Intervalo de Actualización",
           "autoRefreshDescription": "Segundos entre actualizaciones automáticas (0 = desactivado)",
           "additionalJson": "Parámetros Adicionales (JSON)",
-          "additionalJsonDescription": "Claves adicionales almacenadas como JSON libre. No se eliminan al guardar."
+          "additionalJsonDescription": "Claves adicionales almacenadas como JSON libre. No se eliminan al guardar.",
+          "mustBeObject": "Debe ser un objeto JSON",
+          "invalidJson": "JSON inválido"
         }
       },
       "menuBuilder": {
