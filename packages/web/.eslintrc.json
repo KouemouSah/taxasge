@@ -28,37 +28,5 @@
     "@typescript-eslint/no-explicit-any": "warn",
     "react/react-in-jsx-scope": "off",
     "react/prop-types": "off"
-  },
-  "overrides": [
-    {
-      "files": [
-        "src/app/**/dashboard/admin/menu-config/**/*.tsx",
-        "src/app/**/dashboard/admin/roles/*/menu-config/**/*.tsx",
-        "src/modules/admin/components/**/*.tsx"
-      ],
-      "rules": {
-        "react/jsx-no-literals": [
-          "warn",
-          {
-            "noStrings": true,
-            "ignoreProps": true,
-            "allowedStrings": [
-              " ",
-              "—",
-              "-",
-              "/",
-              ":",
-              "(",
-              ")",
-              "×",
-              "%",
-              "#",
-              "...",
-              "·"
-            ]
-          }
-        ]
-      }
-    }
-  ]
+  }
 }
