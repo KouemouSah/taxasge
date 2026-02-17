@@ -11,13 +11,15 @@ User Query
     ↓
 [1] Generate Embedding (Gemini text-embedding-004)
     ↓
-[2] Semantic Search (pgvector + PostgreSQL)
+[2a] Semantic Search - PRIORITY (pgvector + PostgreSQL, legislacion_documents)
     ↓
-[3] Retrieve Services + Context (fiscal_services + relations)
+[2b] Semantic Search - COMPLEMENTARY (pgvector + PostgreSQL, fiscal_services + relations)
+    ↓
+[3] Consolidate & Prioritize Context (PDFs first, then Services)
     ↓
 [4] LLM Generation (Gemini 1.5 Flash) + Context Injection
     ↓
-Response + Citations
+Response + Citations (from both sources)
 ```
 
 ## 🎯 Pourquoi RAG plutôt que Fine-tuning?
@@ -45,6 +47,7 @@ Response + Citations
 - **PostgreSQL**: Base de données principale
 - **pgvector**: Extension pour recherche vectorielle
 - **HNSW Index**: Index pour recherche rapide (<50ms)
+- **Tables**: `fiscal_services` (services fiscaux), `legislacion_documents` (documents législatifs PDF)
 
 ### Infrastructure
 - **Cloud Run**: Hosting backend (autoscale)
@@ -71,14 +74,16 @@ app/modules/chatbot/
 │
 ├── repositories/                  # Data access
 │   ├── __init__.py
-│   └── semantic_search_repository.py  # Vector search
+│   ├── semantic_search_repository.py  # Vector search for fiscal_services
+│   └── legislacion_repository.py      # Vector search for legislacion_documents
 │
 └── api/                          # FastAPI routes
     ├── __init__.py
     └── chatbot_routes.py         # All endpoints
 
 migrations/
-└── 009_add_pgvector_embeddings.sql  # Database setup
+├── 009_add_pgvector_embeddings.sql      # Initial pgvector setup for fiscal_services
+└── 010_add_legislacion_documents_table.sql # Setup for legislacion_documents table
 
 scripts/
 └── populate_embeddings.py        # Embedding population script
@@ -149,10 +154,13 @@ GEMINI_MAX_OUTPUT_TOKENS=2048
 SEMANTIC_SEARCH_TOP_K=5
 SEMANTIC_SEARCH_SIMILARITY_THRESHOLD=0.7
 RAG_MAX_CONTEXT_SERVICES=5
+RAG_MAX_CONTEXT_DOCUMENTS=5  # Max legislative document chunks to retrieve
+MAX_CONTEXT_TOKENS=3000      # Max tokens for the combined context sent to LLM
 ```
 
 ### 5. Génération Embeddings Initiaux
 
+Pour les services fiscaux:
 ```bash
 # Test avec 10 services
 python scripts/populate_embeddings.py --limit 10 --dry-run
@@ -165,6 +173,18 @@ python scripts/populate_embeddings.py --force
 
 # Générer pour un service spécifique
 python scripts/populate_embeddings.py --service-id 42
+```
+
+Pour les documents législatifs PDF:
+```bash
+# Test avec 2 PDFs
+python scripts/populate_pdf_embeddings.py --limit 2 --dry-run
+
+# Générer pour tous les PDFs dans data/legislacion
+python scripts/populate_pdf_embeddings.py
+
+# Forcer régénération de tous les embeddings de PDFs
+python scripts/populate_pdf_embeddings.py --force
 ```
 
 **Monitoring:**

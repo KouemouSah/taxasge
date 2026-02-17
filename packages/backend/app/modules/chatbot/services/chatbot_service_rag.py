@@ -19,6 +19,7 @@ from datetime import datetime
 from app.modules.chatbot.services.embedding_service import embedding_service
 from app.modules.chatbot.services.gemini_service import gemini_service
 from app.modules.chatbot.repositories.semantic_search_repository import SemanticSearchRepository
+from app.modules.chatbot.repositories.legislacion_repository import LegislacionRepository
 from app.config import settings
 
 
@@ -90,23 +91,106 @@ class ChatbotServiceRAG:
                 logger.warning("Failed to generate query embedding, using fallback")
                 return await self._fallback_response(message, conversation_id, language)
 
-            # Step 2: Semantic search for relevant services
-            search_repo = SemanticSearchRepository(db)
-            relevant_services = await search_repo.search_services(
+            # Step 2a: Semantic search for relevant legislative documents (PDFs)
+            legislacion_repo = LegislacionRepository(db)
+            relevant_docs_extended = await legislacion_repo.search_documents( # Renamed variable
                 query_embedding=query_embedding,
-                limit=settings.RAG_MAX_CONTEXT_SERVICES,
+                limit=settings.RAG_EXTENDED_SEARCH_TOP_K, # Changed limit
                 similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
             )
+            logger.info(f"Found {len(relevant_docs_extended)} extended relevant legislative document chunks")
 
-            logger.info(f"Found {len(relevant_services)} relevant services")
+            # Step 2b: Semantic search for relevant fiscal services (DB)
+            search_repo = SemanticSearchRepository(db)
+            relevant_services_extended = await search_repo.search_services( # Renamed variable
+                query_embedding=query_embedding,
+                limit=settings.RAG_EXTENDED_SEARCH_TOP_K, # Changed limit
+                similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
+            )
+            logger.info(f"Found {len(relevant_services_extended)} extended relevant services")
 
-            # Step 3: Generate AI response with context
+            # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD)
+            relevant_docs = [doc for doc in relevant_docs_extended if doc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_DOCUMENTS]
+            relevant_services = [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_SERVICES]
+
+            # Step 3: Consolidate and prioritize context for LLM
+            consolidated_context, context_sources = self._consolidate_context(relevant_docs, relevant_services)
+
+            # --- Fallback Logic (Suggestion 2 & 6 Implementation) ---
+            message_to_llm = message # The message to send to LLM, might be refined by fallback
+            fallback_message = ""
+            did_you_mean_suggestions = []
+
+            # Check for insufficient primary context
+            if len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
+                logger.warning(f"Insufficient primary context found for query: '{message[:50]}...' (length: {len(consolidated_context)})")
+                
+                # Try to generate "Did you mean?" suggestions
+                did_you_mean_suggestions = self._generate_did_you_mean_suggestions(
+                    query=message,
+                    relevant_docs_extended=relevant_docs_extended,
+                    relevant_services_extended=relevant_services_extended,
+                    language=language
+                )
+                
+                if did_you_mean_suggestions:
+                    fallback_message = did_you_mean_suggestions[0] # Take the first "Did you mean?" message
+                    logger.info(f"Using 'Did you mean?' fallback: {fallback_message}")
+                else:
+                    # If no "Did you mean?" suggestions, classify intent for a more guided fallback
+                    intent_classification = await gemini_service.classify_intent(message, language)
+                    intent = intent_classification.get('intent', 'search')
+                    logger.info(f"Intent classified as '{intent}' for fallback.")
+
+                    if intent in ["search", "general", "guide", "document", "calculate"]:
+                        # General clarification if intent is broad or specific but no results
+                        clarification_template = {
+                            "es": "No encontré una respuesta directa a su pregunta. Por favor, intente reformular o añadir más detalles. Por ejemplo, ¿busca información sobre {intent_es}?",
+                            "fr": "Je n'ai pas trouvé de réponse directe à votre question. Veuillez essayer de reformuler ou d'ajouter plus de détails. Par exemple, cherchez-vous des informations sur {intent_fr} ?",
+                            "en": "I couldn't find a direct answer to your question. Please try rephrasing or adding more details. For example, are you looking for information about {intent_en}?"
+                        }
+                        intent_phrases = {
+                            "search": {"es": "un servicio específico", "fr": "un service spécifique", "en": "a specific service"},
+                            "general": {"es": "un tema general", "fr": "un sujet général", "en": "a general topic"},
+                            "guide": {"es": "guías paso a paso", "fr": "des guides étape par étape", "en": "step-by-step guides"},
+                            "document": {"es": "documentos requeridos", "fr": "les documents requis", "en": "required documents"},
+                            "calculate": {"es": "cálculo de costos", "fr": "le calcul des coûts", "en": "cost calculation"}
+                        }
+                        fallback_message = clarification_template.get(language, clarification_template["es"]).format(
+                            intent_es=intent_phrases.get(intent, {}).get("es", "este tema"),
+                            intent_fr=intent_phrases.get(intent, {}).get("fr", "ce sujet"),
+                            intent_en=intent_phrases.get(intent, {}).get("en", "this topic"),
+                        )
+                    else:
+                        # Catch-all if intent is very unusual or unhandled for now
+                        fallback_message = self._fallback_response(message, conversation_id, language).get("message", "")
+            
+            # If a fallback message is generated, we return it directly without calling Gemini for content generation
+            if fallback_message:
+                logger.info("Returning fallback message due to insufficient context.")
+                return {
+                    "message": fallback_message,
+                    "conversation_id": conversation_id,
+                    "suggestions": did_you_mean_suggestions if did_you_mean_suggestions else [],
+                    "related_services": self._format_related_services(relevant_services), # Still show primary services if any
+                    "related_documents": self._format_related_documents(relevant_docs), # Still show primary docs if any
+                    "follow_up_actions": [],
+                    "confidence": 0.1, # Low confidence for fallback
+                    "response_time": (datetime.now() - start_time).total_seconds(),
+                    "sources": [],
+                    "model": "gemini-rag-fallback"
+                }
+
+            # Step 4: Generate AI response with consolidated context
             ai_response = await gemini_service.chat(
                 user_message=message,
-                context_services=relevant_services,
+                context_content=consolidated_context, # New parameter in gemini_service.chat
+                context_services=relevant_services, # Keeping this for _generate_suggestions etc. for now
                 language=language,
                 conversation_history=conversation_history
             )
+            # Override ai_response sources with our consolidated ones
+            ai_response["sources"] = context_sources
 
             # Step 4: Build structured response
             response_time = (datetime.now() - start_time).total_seconds()
@@ -114,8 +198,9 @@ class ChatbotServiceRAG:
             return {
                 "message": ai_response.get("message", ""),
                 "conversation_id": conversation_id,
-                "suggestions": self._generate_suggestions(relevant_services, language),
+                "suggestions": self._generate_suggestions(relevant_docs, relevant_services, language), # Modified to include relevant_docs
                 "related_services": self._format_related_services(relevant_services),
+                "related_documents": self._format_related_documents(relevant_docs), # New field
                 "follow_up_actions": self._generate_follow_up_actions(relevant_services, language),
                 "confidence": ai_response.get("confidence", 0.5),
                 "response_time": response_time,
@@ -161,19 +246,79 @@ class ChatbotServiceRAG:
                 yield {"type": "error", "message": "Failed to process query"}
                 return
 
-            # Semantic search
-            search_repo = SemanticSearchRepository(db)
-            relevant_services = await search_repo.search_services(
+            # Semantic search for relevant legislative documents (PDFs)
+            legislacion_repo = LegislacionRepository(db)
+            relevant_docs_extended = await legislacion_repo.search_documents(
                 query_embedding=query_embedding,
-                limit=settings.RAG_MAX_CONTEXT_SERVICES
+                limit=settings.RAG_EXTENDED_SEARCH_TOP_K,
+                similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
             )
+
+            # Semantic search for relevant fiscal services (DB)
+            search_repo = SemanticSearchRepository(db)
+            relevant_services_extended = await search_repo.search_services(
+                query_embedding=query_embedding,
+                limit=settings.RAG_EXTENDED_SEARCH_TOP_K,
+                similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
+            )
+            
+            # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD)
+            relevant_docs = [doc for doc in relevant_docs_extended if doc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_DOCUMENTS]
+            relevant_services = [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_SERVICES]
+            
+            consolidated_context, context_sources = self._consolidate_context(relevant_docs, relevant_services)
+
+            # --- Fallback Logic (Suggestion 2 & 6 Implementation for stream) ---
+            if len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
+                logger.warning(f"Insufficient primary context found for stream query: '{message[:50]}...' (length: {len(consolidated_context)})")
+
+                did_you_mean_suggestions = self._generate_did_you_mean_suggestions(
+                    query=message,
+                    relevant_docs_extended=relevant_docs_extended,
+                    relevant_services_extended=relevant_services_extended,
+                    language=language
+                )
+                
+                if did_you_mean_suggestions:
+                    fallback_message = did_you_mean_suggestions[0]
+                    logger.info(f"Using 'Did you mean?' fallback for stream: {fallback_message}")
+                else:
+                    intent_classification = await gemini_service.classify_intent(message, language)
+                    intent = intent_classification.get('intent', 'search')
+                    logger.info(f"Intent classified as '{intent}' for stream fallback.")
+
+                    clarification_template = {
+                        "es": "No encontré una respuesta directa a su pregunta. Por favor, intente reformular o añadir más detalles. Por ejemplo, ¿busca información sobre {intent_es}?",
+                        "fr": "Je n'ai pas trouvé de réponse directe à votre question. Veuillez essayer de reformuler ou d'ajouter plus de détails. Par exemple, cherchez-vous des informations sur {intent_fr} ?",
+                        "en": "I couldn't find a direct answer to your question. Please try rephrasing or adding more details. For example, are you looking for information about {intent_en}?"
+                    }
+                    intent_phrases = {
+                        "search": {"es": "un servicio específico", "fr": "un service spécifique", "en": "a specific service"},
+                        "general": {"es": "un tema general", "fr": "un sujet général", "en": "a general topic"},
+                        "guide": {"es": "guías paso a paso", "fr": "des guides étape par étape", "en": "step-by-step guides"},
+                        "document": {"es": "documentos requeridos", "fr": "les documents requis", "en": "required documents"},
+                        "calculate": {"es": "cálculo de costos", "fr": "le calcul des coûts", "en": "cost calculation"}
+                    }
+                    fallback_message = clarification_template.get(language, clarification_template["es"]).format(
+                        intent_es=intent_phrases.get(intent, {}).get("es", "este tema"),
+                        intent_fr=intent_phrases.get(intent, {}).get("fr", "ce sujet"),
+                        intent_en=intent_phrases.get(intent, {}).get("en", "this topic"),
+                    )
+
+                logger.info("Yielding fallback message for stream.")
+                yield {"type": "chunk", "text": fallback_message}
+                yield {"type": "done", "sources": [], "confidence": 0.1, "model": "gemini-rag-fallback", "suggestions": did_you_mean_suggestions}
+                return # Exit early if fallback is used
 
             # Stream AI response
             async for chunk in gemini_service.chat_stream(
                 user_message=message,
-                context_services=relevant_services,
+                context_content=consolidated_context, # New parameter
+                context_services=relevant_services, # Keep for compatibility/future
                 language=language
             ):
+                if chunk.get("type") == "done":
+                    chunk["sources"] = context_sources # Override sources
                 yield chunk
 
         except Exception as e:
@@ -350,32 +495,42 @@ class ChatbotServiceRAG:
 
     def _generate_suggestions(
         self,
+        relevant_docs: List[Dict], # New parameter
         services: List[Dict],
         language: str
     ) -> List[str]:
-        """Generate follow-up suggestions based on retrieved services"""
-        if not services:
-            return []
+        suggestions = []
 
-        suggestions_templates = {
-            "es": [
-                f"Pregunta sobre los documentos requeridos para {services[0]['name_es']}",
-                f"¿Cuánto tiempo tarda el proceso de {services[0]['service_code']}?",
-                "¿Hay servicios relacionados que deba conocer?"
-            ],
-            "fr": [
-                f"Demandez les documents requis pour {services[0]['name_es']}",
-                f"Combien de temps prend le processus {services[0]['service_code']}?",
-                "Y a-t-il des services connexes que je devrais connaître?"
-            ],
-            "en": [
-                f"Ask about required documents for {services[0]['name_es']}",
-                f"How long does the {services[0]['service_code']} process take?",
-                "Are there related services I should know about?"
-            ]
-        }
+        if relevant_docs:
+            top_doc = relevant_docs[0]
+            suggestions.append({
+                "es": f"¿Qué dice el Documento {top_doc.get('document_name', '')} en la página {top_doc.get('page_number', '')} sobre este tema?",
+                "fr": f"Que dit le Document {top_doc.get('document_name', '')} à la page {top_doc.get('page_number', '')} à propos de ce sujet ?",
+                "en": f"What does Document {top_doc.get('document_name', '')} on page {top_doc.get('page_number', '')} say about this topic?"
+            }.get(language, f"What does Document {top_doc.get('document_name', '')} on page {top_doc.get('page_number', '')} say about this topic?"))
+            
+            suggestions.append({
+                "es": f"Explorar otras secciones del Documento {top_doc.get('document_name', '')}",
+                "fr": f"Explorer d'autres sections du Document {top_doc.get('document_name', '')}",
+                "en": f"Explore other sections of Document {top_doc.get('document_name', '')}"
+            }.get(language, f"Explore other sections of Document {top_doc.get('document_name', '')}"))
 
-        return suggestions_templates.get(language, suggestions_templates["es"])[:3]
+        if services:
+            top_service = services[0]
+            suggestions.append({
+                "es": f"Pregunta sobre los documentos requeridos para {top_service.get('name_es', '')}",
+                "fr": f"Demandez les documents requis pour {top_service.get('name_es', '')}",
+                "en": f"Ask about required documents for {top_service.get('name_es', '')}"
+            }.get(language, f"Ask about required documents for {top_service.get('name_es', '')}"))
+            
+            suggestions.append({
+                "es": f"¿Cuánto tiempo tarda el proceso de {top_service.get('service_code', '')}?",
+                "fr": f"Combien de temps prend le processus {top_service.get('service_code', '')}?",
+                "en": f"How long does the {top_service.get('service_code', '')} process take?"
+            }.get(language, f"How long does the {top_service.get('service_code', '')} process take?"))
+
+        # Return a maximum of 3 unique suggestions, prioritizing docs then services
+        return list(dict.fromkeys(suggestions))[:3] # Using dict.fromkeys to preserve order and deduplicate
 
     def _format_related_services(self, services: List[Dict]) -> List[Dict]:
         """Format services for response"""
@@ -387,6 +542,17 @@ class ChatbotServiceRAG:
                 "similarity": round(s.get("similarity", 0), 2)
             }
             for s in services[:5]
+        ]
+
+    def _format_related_documents(self, documents: List[Dict]) -> List[Dict]:
+        """Format legislative documents for response"""
+        return [
+            {
+                "document_name": d["document_name"],
+                "page_number": d["page_number"],
+                "similarity": round(d.get("similarity", 0), 2)
+            }
+            for d in documents[:settings.RAG_MAX_CONTEXT_DOCUMENTS] # Limit to top N documents
         ]
 
     def _generate_follow_up_actions(
@@ -511,6 +677,45 @@ Keep it helpful and concise."""
         }
 
         return steps_templates.get(language, steps_templates["es"])
+
+    def _generate_did_you_mean_suggestions(
+        self,
+        query: str,
+        relevant_docs_extended: List[Dict],
+        relevant_services_extended: List[Dict],
+        language: str
+    ) -> List[str]:
+        """
+        Generates "Did you mean?" suggestions from extended search results
+        that are below the main similarity threshold but above the suggestion threshold.
+        """
+        suggestions = []
+        
+        # Collect potential suggestions from docs
+        for doc in relevant_docs_extended:
+            if settings.SUGGESTION_SIMILARITY_THRESHOLD <= doc.get('similarity', 0) < settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD:
+                doc_name = doc.get('document_name', '')
+                if doc_name and doc_name not in suggestions: # Avoid duplicates
+                    suggestions.append(f"{doc_name}")
+        
+        # Collect potential suggestions from services
+        for svc in relevant_services_extended:
+            if settings.SUGGESTION_SIMILARITY_THRESHOLD <= svc.get('similarity', 0) < settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD:
+                svc_name = svc.get('name_es', '') # Assuming name_es is always present and descriptive enough
+                if svc_name and svc_name not in suggestions: # Avoid duplicates
+                    suggestions.append(f"{svc_name}")
+        
+        if suggestions:
+            # Craft a polite "Did you mean?" question
+            did_you_mean_template = {
+                "es": "No encontré una respuesta directa. ¿Quizás quisiste decir sobre: {suggestions_list}?",
+                "fr": "Je n'ai pas trouvé de réponse directe. Vouliez-vous dire : {suggestions_list} ?",
+                "en": "I couldn't find a direct answer. Did you mean: {suggestions_list}?"
+            }
+            suggestions_list_str = ", ".join(suggestions[:3]) # Limit to top 3 suggestions
+            return [did_you_mean_template.get(language, did_you_mean_template["es"]).format(suggestions_list=suggestions_list_str)]
+        
+        return []
 
 
 # ============================================================================

@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 1. **NEVER build manually with gcloud** - Always push to remote branch and let GitHub Actions handle builds
 2. **Source of Truth Hierarchy**:
-   - Database schema (`.github/docs-internal/database/DATABASE_SCHEMA_REFERENCE.md`) - 77 tables, 25 enums
+   - Database schema : interroge directement la base de données
    - Environment variables (`packages/backend/.env`)
    - Existing code patterns
    - Documentation
@@ -328,7 +328,52 @@ const schema = z.object({
 
 | Plan | Status | Description |
 |------|--------|-------------|
-| `.claude/plans/HISTORY_PAGE_IMPLEMENTATION_PLAN.md` | Phase 2 | Page Historial pour agents CNEDOGE - Timeline des actions sur demandes |
+| `.claude/plans/HISTORY_PAGE_IMPLEMENTATION_PLAN.md` | ✅ COMPLETED | Page Historial pour agents CNEDOGE - Timeline des actions sur demandes |
+| `.claude/plans/DYNAMIC_MENU_ADMIN_UI_IMPROVEMENT.md` | Phase 1 | Amélioration Admin UI - Gestion dynamique des menus |
+
+## Menu Architecture (Agent Dashboards)
+
+### Deux modes de génération de menu
+1. **Workflow-based** (auto): `roles.menu_config = NULL` → généré depuis `entities.workflow_codes` + `workflow_menu_mapping`
+2. **Module-based** (manuel): `roles.menu_config = JSON` → configuration explicite
+
+### Tables clés
+| Table | Usage |
+|-------|-------|
+| `workflow_menu_mapping` | Règles: pattern workflow → structure menu (icône, sous-menus) |
+| `roles.menu_config` | JSONB - Config explicite si non-NULL |
+| `roles.dashboard_config` | JSONB - Config widgets dashboard |
+| `entities.workflow_codes` | Array des workflows gérés par l'entité |
+| `agent_profiles.menu_overrides` | JSONB - Overrides par agent |
+
+### Pages Admin existantes
+- `/admin/menu-config` - Gestion workflow_menu_mapping
+- `/admin/roles/[id]/menu-config` - Config JSON par rôle (à améliorer)
+- `/admin/entities` - CRUD entités + workflow_codes
+
+### Endpoints API
+- `GET /menu-config/me` - Menu de l'agent connecté
+- `GET/POST/PUT/DELETE /menu-config/workflow-mappings` - CRUD mappings
+- `GET/PUT /roles/{id}/menu-config` - Config menu du rôle
+
+## Implementation Patterns (IMPORTANT)
+
+### Avant toute implémentation, TOUJOURS vérifier:
+1. **Endpoints**: Tester avec curl que l'endpoint existe et retourne le bon format
+2. **Tables/Colonnes**: Vérifier schema avec `information_schema.columns`
+3. **Fichiers Frontend**: Confirmer existence avec `ls` ou `Glob`
+4. **Types TypeScript**: Vérifier exports dans les fichiers types
+5. **Permissions**: Vérifier existence dans table `permissions`
+
+### Pattern de vérification SQL
+```sql
+-- Table existe?
+SELECT table_name FROM information_schema.tables WHERE table_name = 'TABLE';
+-- Colonnes?
+SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'TABLE';
+-- Permission existe?
+SELECT name FROM permissions WHERE name = 'permission.name';
+```
 
 ## Git Commit Convention
 ```

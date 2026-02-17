@@ -59,21 +59,22 @@ class GeminiService:
         "es": """Eres un asistente fiscal experto de TaxasGE, la plataforma oficial de servicios fiscales de Guinea Ecuatorial.
 
 REGLAS CRÍTICAS:
-1. SOLO usa información del contexto proporcionado - NUNCA inventes datos
-2. Si un campo no está en el contexto, NO lo menciones
-3. NO mostrar códigos técnicos (T-xxx, PAT-xxx) en el texto
-4. Sé CONCISO - evita repeticiones
-5. Para costos, menciona la moneda (XAF)
-6. NO incluir enlaces URL en la respuesta
-7. Los pasos de procedimiento están en el campo "Procedimientos" del contexto
+1. SOLO usa información del contexto proporcionado - NUNCA inventes datos.
+2. Si un campo no está en el contexto, NO lo menciones.
+3. NO mostrar códigos técnicos (T-xxx, PAT-xxx) en el texto.
+4. Sé CONCISO pero completo, yendo al grano pero proporcionando los detalles necesarios.
+5. Para costos, menciona la moneda (XAF).
+6. NO incluir enlaces URL en la respuesta.
+7. Los pasos de procedimiento están en el campo "Procedimientos" del contexto.
+8. Utiliza un tono amigable y profesional, como un consejero experto. Varía la estructura de tus frases.
+9. Evita las repeticiones y utiliza palabras de transición para fluidizar el discurso.
+10. Comienza siempre con una breve introducción atractiva y termina con una pregunta abierta o una invitación a continuar la conversación, a menos que la respuesta sea una conclusión clara.
 
 FORMATO DE RESPUESTA (usar texto plano, sin markdown):
 
-Comienza SIEMPRE con una breve introducción amigable que conecte con la pregunta del usuario.
-
 Ejemplo de respuesta:
 
-"Claro, te ayudo con información sobre [tema]. Aquí tienes los detalles del servicio más relevante:
+"¡Hola! Claro, con gusto te ayudo a encontrar información sobre [tema]. Aquí tienes los detalles del servicio más relevante que he encontrado:
 
 SERVICIO: [Nombre del servicio]
 
@@ -89,39 +90,35 @@ Procedimiento:
 2. [Paso 2 del contexto]
 3. [Paso 3 del contexto]
 
-Para más información, consulta los detalles del servicio en el menú Servicios.
-
----
-Otras opciones disponibles:
-- [Nombre alternativo] - [costo] XAF
-- [Nombre alternativo] - [costo] XAF
-
-¿Necesitas más detalles sobre alguna opción?"
+Espero que esta información te sea útil. ¿Hay algo más en lo que pueda asistirte hoy?"
 
 IMPORTANTE:
-- Extrae los pasos del procedimiento del campo "Procedimientos" del contexto
-- NO inventes pasos ni documentos - usa SOLO lo que está en el contexto
-- NO incluir enlaces o URLs""",
+- Extrae los pasos del procedimiento del campo "Procedimientos" del contexto.
+- NO inventes pasos ni documentos - usa SOLO lo que está en el contexto.
+- NO incluir enlaces o URLs.
+- Si no hay información relevante, indícalo educadamente y sugiere al usuario que reformule su pregunta.
+""",
 
         "fr": """Vous êtes un assistant fiscal expert de TaxasGE, la plateforme officielle des services fiscaux de Guinée Équatoriale.
 
 RÈGLES CRITIQUES:
-1. Utilisez UNIQUEMENT les informations du contexte fourni - N'INVENTEZ JAMAIS de données
-2. Si un champ n'est pas dans le contexte, NE le mentionnez PAS
-3. NE PAS afficher les codes techniques (T-xxx, PAT-xxx) dans le texte
-4. Soyez CONCIS - évitez les répétitions
-5. Pour les coûts, mentionnez la devise (XAF)
-6. NE PAS inclure de liens URL dans la réponse
-7. Les étapes de procédure sont dans le champ "Procedimientos" du contexte
-8. TRADUISEZ en français les noms de services et documents qui sont en espagnol
+1. Utilisez UNIQUEMENT les informations du contexte fourni - N'INVENTEZ JAMAIS de données.
+2. Si un champ n'est pas dans le contexte, NE le mentionnez PAS.
+3. NE PAS afficher les codes techniques (T-xxx, PAT-xxx) dans le texte.
+4. Soyez CONCIS mais complet, en allant droit au but tout en fournissant les détails nécessaires.
+5. Pour les coûts, mentionnez la devise (XAF).
+6. NE PAS inclure de liens URL dans la réponse.
+7. Les étapes de procédure sont dans le champ "Procedimientos" du contexte.
+8. TRADUISEZ en français les noms de services et documents qui sont en espagnol.
+9. Utilisez un ton amical et professionnel, comme un conseiller expert. Variez la structure de vos phrases.
+10. Évitez les répétitions et utilisez des mots de transition pour fluidifier le discours.
+11. Commencez toujours par une brève introduction engageante et terminez par une question ouverte ou une invitation à poursuivre la conversation, à moins que la réponse soit une conclusion claire.
 
 FORMAT DE RÉPONSE (utiliser texte simple, sans markdown):
 
-Commencez TOUJOURS par une brève introduction amicale qui se connecte à la question de l'utilisateur.
-
 Exemple de réponse:
 
-"Bien sûr, je vous aide avec les informations sur [sujet]. Voici les détails du service le plus pertinent:
+"Bonjour ! Bien sûr, je suis là pour vous aider avec les informations sur [sujet]. Voici les détails du service le plus pertinent que j'ai trouvé :
 
 SERVICE: [Nom du service traduit en français]
 
@@ -137,40 +134,36 @@ Procédure:
 2. [Étape traduite en français]
 3. [Étape traduite en français]
 
-Pour plus d'informations, consultez les détails du service dans le menu Services.
-
----
-Autres options disponibles:
-- [Nom traduit en français] - [coût] XAF
-- [Nom traduit en français] - [coût] XAF
-
-Souhaitez-vous plus de détails sur l'une de ces options?"
+J'espère que ces informations vous seront utiles. Puis-je vous aider avec autre chose aujourd'hui ?"
 
 IMPORTANT:
-- TRADUISEZ tous les noms, documents et procédures de l'espagnol vers le français
-- Extrayez les étapes de la procédure du champ "Procedimientos" du contexte
-- N'INVENTEZ PAS d'étapes ni de documents - utilisez UNIQUEMENT ce qui est dans le contexte
-- NE PAS inclure de liens ou URLs""",
+- TRADUISEZ tous les noms, documents et procédures de l'espagnol vers le français.
+- Extrayez les étapes de la procédure du champ "Procedimientos" du contexte.
+- N'INVENTEZ PAS d'étapes ni de documents - utilisez UNIQUEMENT ce qui est dans le contexte.
+- NE PAS inclure de liens ou URLs.
+- Si aucune information pertinente n'est trouvée, indiquez-le poliment et suggérez à l'utilisateur de reformuler sa question.
+""",
 
         "en": """You are an expert fiscal assistant for TaxasGE, the official fiscal services platform of Equatorial Guinea.
 
 CRITICAL RULES:
-1. ONLY use information from the provided context - NEVER invent data
-2. If a field is not in the context, DO NOT mention it
-3. DO NOT display technical codes (T-xxx, PAT-xxx) in the text
-4. Be CONCISE - avoid repetitions
-5. For costs, mention the currency (XAF)
-6. DO NOT include URL links in the response
-7. Procedure steps are in the "Procedimientos" field of the context
-8. TRANSLATE service names and documents from Spanish to English
+1. ONLY use information from the provided context - NEVER invent data.
+2. If a field is not in the context, DO NOT mention it.
+3. DO NOT display technical codes (T-xxx, PAT-xxx) in the text.
+4. Be CONCISE yet complete, getting straight to the point while providing necessary details.
+5. For costs, mention the currency (XAF).
+6. DO NOT include URL links in the response.
+7. Procedure steps are in the "Procedimientos" field of the context.
+8. TRANSLATE service names and documents from Spanish to English.
+9. Use a friendly and professional tone, like an expert advisor. Vary your sentence structure.
+10. Avoid repetitions and use transition words to make the discourse flow smoothly.
+11. Always start with a brief, engaging introduction and end with an open question or an invitation to continue the conversation, unless the answer is a clear conclusion.
 
 RESPONSE FORMAT (use plain text, no markdown):
 
-ALWAYS start with a brief friendly introduction that connects to the user's question.
-
 Example response:
 
-"Of course, I'll help you with information about [topic]. Here are the details of the most relevant service:
+"Hello! Of course, I'd be happy to help you find information about [topic]. Here are the details of the most relevant service I found:
 
 SERVICE: [Service name translated to English]
 
@@ -186,20 +179,15 @@ Procedure:
 2. [Step translated to English]
 3. [Step translated to English]
 
-For more information, check the service details in the Services menu.
-
----
-Other available options:
-- [Name translated to English] - [cost] XAF
-- [Name translated to English] - [cost] XAF
-
-Would you like more details on any option?"
+I hope this information is useful to you. Is there anything else I can assist you with today?"
 
 IMPORTANT:
-- TRANSLATE all names, documents and procedures from Spanish to English
-- Extract procedure steps from the "Procedimientos" field in the context
-- DO NOT invent steps or documents - use ONLY what is in the context
-- DO NOT include links or URLs"""
+- TRANSLATE all names, documents and procedures from Spanish to English.
+- Extract procedure steps from the "Procedimientos" field in the context.
+- DO NOT invent steps or documents - use ONLY what is in the context.
+- DO NOT include links or URLs.
+- If no relevant information is found, politely state it and suggest the user rephrase their question.
+"""
     }
 
     def __init__(self):
@@ -247,130 +235,12 @@ IMPORTANT:
             logger.error(f"❌ Failed to initialize Gemini service: {e}")
             self.enabled = False
 
-    def _build_context_prompt(
-        self,
-        services: List[Dict[str, Any]],
-        user_query: str,
-        language: str = "es"
-    ) -> str:
-        """
-        Build rich context from retrieved fiscal services
 
-        Args:
-            services: List of relevant fiscal services from semantic search
-            user_query: User's original question
-            language: Response language
-
-        Returns:
-            Formatted context for LLM prompt
-        """
-        if not services:
-            return f"PREGUNTA DEL USUARIO:\n{user_query}\n\nNOTA: No se encontraron servicios relevantes en la base de datos."
-
-        context_parts = []
-
-        # Language-specific headers
-        headers = {
-            "es": "SERVICIOS FISCALES RELEVANTES:",
-            "fr": "SERVICES FISCAUX PERTINENTS:",
-            "en": "RELEVANT FISCAL SERVICES:"
-        }
-        context_parts.append(headers.get(language, headers["es"]))
-
-        # Format each service
-        for idx, service in enumerate(services, 1):
-            context_parts.append(f"\n--- Servicio {idx}: {service['service_code']} ---")
-            context_parts.append(f"Nombre: {service['name_es']}")
-            context_parts.append(f"Tipo: {service.get('service_type', 'N/A')}")
-
-            if service.get('category_name'):
-                hierarchy = [service['category_name']]
-                if service.get('sector_name'):
-                    hierarchy.append(service['sector_name'])
-                if service.get('ministry_name'):
-                    hierarchy.append(service['ministry_name'])
-                context_parts.append(f"Categoría: {' > '.join(hierarchy)}")
-
-            if service.get('description_es'):
-                desc = service['description_es']
-                if len(desc) > 300:
-                    desc = desc[:300] + "..."
-                context_parts.append(f"Descripción: {desc}")
-
-            # Costs
-            if service.get('tasa_expedicion'):
-                context_parts.append(f"Tasa de expedición: {service['tasa_expedicion']} XAF")
-
-            if service.get('tasa_renovacion'):
-                context_parts.append(f"Tasa de renovación: {service['tasa_renovacion']} XAF")
-
-            # Processing time
-            if service.get('processing_time_days'):
-                context_parts.append(f"Tiempo de procesamiento: {service['processing_time_days']} días")
-
-            # Validity period
-            if service.get('validity_period_months'):
-                context_parts.append(f"Periodo de validez: {service['validity_period_months']} meses")
-
-            # Required documents
-            if service.get('required_documents'):
-                try:
-                    docs = json.loads(service['required_documents']) if isinstance(service['required_documents'], str) else service['required_documents']
-                    if docs and len(docs) > 0:
-                        context_parts.append("Documentos requeridos:")
-                        for doc in docs[:5]:  # Limit to 5 documents
-                            doc_name = doc.get('document_name', 'N/A')
-                            is_required = "Obligatorio" if doc.get('is_required_expedition', True) else "Opcional"
-                            context_parts.append(f"  - {doc_name} ({is_required})")
-                except:
-                    pass
-
-            # Procedures with steps
-            if service.get('procedures'):
-                try:
-                    procedures = json.loads(service['procedures']) if isinstance(service['procedures'], str) else service['procedures']
-                    if procedures and len(procedures) > 0:
-                        context_parts.append("Procedimientos:")
-                        for proc in procedures:
-                            proc_name = proc.get('procedure_name', 'N/A')
-                            applies_to = proc.get('applies_to', '')
-                            context_parts.append(f"  Procedimiento: {proc_name}" + (f" ({applies_to})" if applies_to else ""))
-
-                            # Include actual steps
-                            steps = proc.get('steps', [])
-                            if steps and len(steps) > 0:
-                                for step in steps:
-                                    step_num = step.get('step_number', '')
-                                    step_desc = step.get('description', 'N/A')
-                                    context_parts.append(f"    {step_num}. {step_desc}")
-                except Exception as e:
-                    logger.warning(f"Failed to parse procedures: {e}")
-
-            # Legal reference
-            if service.get('legal_reference'):
-                ref = service['legal_reference']
-                if len(ref) > 150:
-                    ref = ref[:150] + "..."
-                context_parts.append(f"Referencia legal: {ref}")
-
-            # Similarity score (for debugging)
-            if service.get('similarity'):
-                context_parts.append(f"[Relevancia: {service['similarity']:.1%}]")
-
-        # Add user query at the end
-        query_headers = {
-            "es": "PREGUNTA DEL USUARIO:",
-            "fr": "QUESTION DE L'UTILISATEUR:",
-            "en": "USER QUESTION:"
-        }
-        context_parts.append(f"\n\n{query_headers.get(language, query_headers['es'])}")
-        context_parts.append(user_query)
-
-        return "\n".join(context_parts)
 
     async def chat(
         self,
         user_message: str,
+        context_content: str, # New parameter for consolidated context
         context_services: List[Dict[str, Any]],
         language: str = "es",
         conversation_history: Optional[List[Dict[str, str]]] = None
@@ -380,7 +250,8 @@ IMPORTANT:
 
         Args:
             user_message: User's question/message
-            context_services: Relevant services from semantic search
+            context_content: Pre-built consolidated context from RAG (PDFs + services)
+            context_services: Relevant services (used for suggestions/related info)
             language: Response language (es/fr/en)
             conversation_history: Previous messages for context
 
@@ -408,18 +279,15 @@ IMPORTANT:
         try:
             # Build prompts
             system_prompt = self.SYSTEM_PROMPTS.get(language, self.SYSTEM_PROMPTS["es"])
-            context_prompt = self._build_context_prompt(
-                context_services,
-                user_message,
-                language
-            )
-
+            # The consolidated context (including system instructions) is passed directly
+            # from chatbot_service_rag.py. We wrap the user message to clarify its role.
+            
             # Build conversation contents for multi-turn chat
             contents = []
 
             # Add conversation history if provided
             if conversation_history:
-                for msg in conversation_history[-10:]:  # Limit to last 10 messages
+                for msg in conversation_history[-settings.RAG_CONVERSATION_HISTORY_LENGTH:]:  # Limit by setting
                     role = "user" if msg.get("role") == "user" else "model"
                     contents.append({
                         "role": role,
@@ -427,8 +295,8 @@ IMPORTANT:
                     })
                 logger.info(f"Including {len(contents)} messages from conversation history")
 
-            # Add current user message with system context
-            full_user_prompt = f"{system_prompt}\n\n{context_prompt}"
+            # Add current user message with system prompt and consolidated context
+            full_user_prompt = f"{system_prompt}\n\n{context_content}\n\nPREGUNTA DEL USUARIO:\n{user_message}"
             contents.append({
                 "role": "user",
                 "parts": [{"text": full_user_prompt}]
@@ -493,6 +361,7 @@ IMPORTANT:
     async def chat_stream(
         self,
         user_message: str,
+        context_content: str, # New parameter for consolidated context
         context_services: List[Dict[str, Any]],
         language: str = "es"
     ) -> AsyncGenerator[Dict[str, Any], None]:
@@ -501,7 +370,8 @@ IMPORTANT:
 
         Args:
             user_message: User's question
-            context_services: Relevant services
+            context_content: Pre-built consolidated context from RAG (PDFs + services)
+            context_services: Relevant services (used for suggestions/related info)
             language: Response language
 
         Yields:
@@ -522,12 +392,9 @@ IMPORTANT:
         try:
             # Build prompts
             system_prompt = self.SYSTEM_PROMPTS.get(language, self.SYSTEM_PROMPTS["es"])
-            context_prompt = self._build_context_prompt(
-                context_services,
-                user_message,
-                language
-            )
-            full_prompt = f"{system_prompt}\n\n{context_prompt}"
+            # The consolidated context (including system instructions) is passed directly
+            # from chatbot_service_rag.py. We wrap the user message to clarify its role.
+            full_prompt = f"{system_prompt}\n\n{context_content}\n\nPREGUNTA DEL USUARIO:\n{user_message}"
 
             # Generate streaming response
             loop = asyncio.get_event_loop()
