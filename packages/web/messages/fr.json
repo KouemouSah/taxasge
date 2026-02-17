@@ -817,15 +817,6 @@
         "type": "Type",
         "entity": "Entité"
       },
-      "actions": {
-        "edit": "Modifier",
-        "delete": "Supprimer",
-        "save": "Enregistrer",
-        "cancel": "Annuler",
-        "create": "Créer",
-        "preview": "Aperçu",
-        "backToList": "Retour à la liste"
-      },
       "mappings": {
         "create": "Créer un Mappage",
         "edit": "Modifier le Mappage"
@@ -879,6 +870,33 @@
         "templateCreateError": "Erreur lors de la création du modèle",
         "templateUpdateError": "Erreur lors de la mise à jour du modèle",
         "templateDeleteError": "Erreur lors de la suppression du modèle"
+      },
+      "orphanDetection": {
+        "title": "Détection d'incohérences",
+        "noIssues": "Aucune incohérence détectée. Tous les workflows ont un mapping et une display config.",
+        "workflowsWithoutMapping": "Workflows sans mapping",
+        "workflowsWithoutDisplayConfig": "Workflows sans display config",
+        "mappingsWithoutWorkflows": "Mappings sans workflows",
+        "createMapping": "Créer mapping",
+        "createDisplayConfig": "Créer display config",
+        "edit": "Modifier"
+      },
+      "preview": {
+        "title": "Aperçu",
+        "note": "Ceci est une approximation. Le menu réel dépend du rôle et de l'entité de l'agent.",
+        "empty": "Aucun mapping actif à prévisualiser"
+      },
+      "actions": {
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "create": "Créer",
+        "preview": "Aperçu",
+        "backToList": "Retour à la liste",
+        "duplicate": "Dupliquer",
+        "duplicateSuccess": "Élément dupliqué avec succès",
+        "duplicateError": "Erreur lors de la duplication"
       },
       "roleConfig": {
         "title": "Configuration du Menu du Rôle",
@@ -967,7 +985,16 @@
           "additionalJsonDescription": "Clés supplémentaires stockées en JSON libre. Non supprimées lors de l'enregistrement.",
           "mustBeObject": "Doit être un objet JSON",
           "invalidJson": "JSON invalide"
-        }
+        },
+        "export": "Exporter",
+        "import": "Importer",
+        "exportSuccess": "Configuration exportée",
+        "importConfirm": "Importer la configuration ?",
+        "importConfirmDescription": "Cela remplacera la configuration actuelle des onglets Dashboard et UI. Les changements ne seront pas sauvegardés tant que vous ne cliquerez pas sur Enregistrer.",
+        "importApply": "Appliquer",
+        "importSuccess": "Configuration importée. N'oubliez pas d'enregistrer.",
+        "importError": "Erreur de lecture du fichier JSON",
+        "importInvalidJson": "Le fichier doit contenir un objet JSON"
       },
       "menuBuilder": {
         "modeTitle": "Mode de Génération du Menu",

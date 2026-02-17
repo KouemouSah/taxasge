@@ -870,15 +870,6 @@
         "type": "Type",
         "entity": "Entity"
       },
-      "actions": {
-        "edit": "Edit",
-        "delete": "Delete",
-        "save": "Save",
-        "cancel": "Cancel",
-        "create": "Create",
-        "preview": "Preview",
-        "backToList": "Back to list"
-      },
       "mappings": {
         "create": "Create Mapping",
         "edit": "Edit Mapping"
@@ -932,6 +923,33 @@
         "templateCreateError": "Error creating template",
         "templateUpdateError": "Error updating template",
         "templateDeleteError": "Error deleting template"
+      },
+      "orphanDetection": {
+        "title": "Inconsistency Detection",
+        "noIssues": "No inconsistencies detected. All workflows have a mapping and a display config.",
+        "workflowsWithoutMapping": "Workflows without mapping",
+        "workflowsWithoutDisplayConfig": "Workflows without display config",
+        "mappingsWithoutWorkflows": "Mappings without workflows",
+        "createMapping": "Create mapping",
+        "createDisplayConfig": "Create display config",
+        "edit": "Edit"
+      },
+      "preview": {
+        "title": "Preview",
+        "note": "This is an approximation. The actual menu depends on the agent's role and entity.",
+        "empty": "No active mappings to preview"
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "cancel": "Cancel",
+        "create": "Create",
+        "preview": "Preview",
+        "backToList": "Back to list",
+        "duplicate": "Duplicate",
+        "duplicateSuccess": "Item duplicated successfully",
+        "duplicateError": "Error duplicating item"
       },
       "roleConfig": {
         "title": "Role Menu Configuration",
@@ -1020,7 +1038,16 @@
           "additionalJsonDescription": "Additional keys stored as free-form JSON. Not removed on save.",
           "mustBeObject": "Must be a JSON object",
           "invalidJson": "Invalid JSON"
-        }
+        },
+        "export": "Export",
+        "import": "Import",
+        "exportSuccess": "Configuration exported",
+        "importConfirm": "Import configuration?",
+        "importConfirmDescription": "This will replace the current Dashboard and UI tab configurations. Changes won't be saved until you click Save.",
+        "importApply": "Apply",
+        "importSuccess": "Configuration imported. Don't forget to save.",
+        "importError": "Error reading JSON file",
+        "importInvalidJson": "The file must contain a JSON object"
       },
       "menuBuilder": {
         "modeTitle": "Menu Generation Mode",

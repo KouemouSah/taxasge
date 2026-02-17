@@ -817,15 +817,6 @@
         "type": "Tipo",
         "entity": "Entidad"
       },
-      "actions": {
-        "edit": "Editar",
-        "delete": "Eliminar",
-        "save": "Guardar",
-        "cancel": "Cancelar",
-        "create": "Crear",
-        "preview": "Vista Previa",
-        "backToList": "Volver a la lista"
-      },
       "mappings": {
         "create": "Crear Mapeo",
         "edit": "Editar Mapeo"
@@ -879,6 +870,33 @@
         "templateCreateError": "Error al crear plantilla",
         "templateUpdateError": "Error al actualizar plantilla",
         "templateDeleteError": "Error al eliminar plantilla"
+      },
+      "orphanDetection": {
+        "title": "Detección de Incohérencias",
+        "noIssues": "Sin incohérencias detectadas. Todos los workflows tienen un mapping y una display config.",
+        "workflowsWithoutMapping": "Workflows sin mapping",
+        "workflowsWithoutDisplayConfig": "Workflows sin display config",
+        "mappingsWithoutWorkflows": "Mappings sin workflows",
+        "createMapping": "Crear mapping",
+        "createDisplayConfig": "Crear display config",
+        "edit": "Editar"
+      },
+      "preview": {
+        "title": "Vista Previa",
+        "note": "Esto es una aproximación. El menú real depende del rol y entidad del agente.",
+        "empty": "Sin mappings activos para previsualizar"
+      },
+      "actions": {
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "create": "Crear",
+        "preview": "Vista Previa",
+        "backToList": "Volver a la lista",
+        "duplicate": "Duplicar",
+        "duplicateSuccess": "Elemento duplicado exitosamente",
+        "duplicateError": "Error al duplicar el elemento"
       },
       "roleConfig": {
         "title": "Configuración de Menú del Rol",
@@ -967,7 +985,16 @@
           "additionalJsonDescription": "Claves adicionales almacenadas como JSON libre. No se eliminan al guardar.",
           "mustBeObject": "Debe ser un objeto JSON",
           "invalidJson": "JSON inválido"
-        }
+        },
+        "export": "Exportar",
+        "import": "Importar",
+        "exportSuccess": "Configuración exportada",
+        "importConfirm": "¿Importar la configuración?",
+        "importConfirmDescription": "Esto reemplazará la configuración actual de las pestañas Dashboard y UI. Los cambios no se guardan hasta que pulse Guardar.",
+        "importApply": "Aplicar",
+        "importSuccess": "Configuración importada. No olvide guardar.",
+        "importError": "Error al leer el archivo JSON",
+        "importInvalidJson": "El archivo debe contener un objeto JSON"
       },
       "menuBuilder": {
         "modeTitle": "Modo de Generación del Menú",

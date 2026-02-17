@@ -48,6 +48,8 @@ import {
   AlertCircle,
   Copy,
   WrapText,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -457,6 +459,86 @@ export default function RoleMenuConfigPage() {
     toast.success(t('roleConfig.configReset'));
   };
 
+  // Import/Export handlers
+  const handleExport = useCallback(() => {
+    const exportData = {
+      menu_config: menuBuilderState.isAutoMode ? null : menuBuilderState.menus,
+      dashboard_config: dashboardState.config,
+      ui_config: uiState.config,
+      exported_at: new Date().toISOString(),
+      role_id: roleId,
+      role_code: role?.code ?? 'unknown',
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const date = new Date().toISOString().slice(0, 10);
+    a.download = `role-config-${role?.code ?? 'unknown'}-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(t('roleConfig.exportSuccess', { defaultValue: 'Configuration exportée' }));
+  }, [menuBuilderState, dashboardState.config, uiState.config, roleId, role?.code, t]);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [pendingImportData, setPendingImportData] = useState<Record<string, unknown> | null>(null);
+
+  const handleImportFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target?.result as string);
+        if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+          toast.error(t('roleConfig.importInvalidJson', { defaultValue: 'Le fichier doit contenir un objet JSON' }));
+          return;
+        }
+        setPendingImportData(data);
+        setIsImportDialogOpen(true);
+      } catch {
+        toast.error(t('roleConfig.importError', { defaultValue: 'Erreur de lecture du fichier JSON' }));
+      }
+    };
+    reader.readAsText(file);
+    // Reset input value to allow re-importing the same file
+    e.target.value = '';
+  }, [t]);
+
+  const handleConfirmImport = useCallback(() => {
+    if (!pendingImportData) return;
+    // Apply dashboard_config
+    if (pendingImportData.dashboard_config && typeof pendingImportData.dashboard_config === 'object') {
+      const dc = pendingImportData.dashboard_config as DashboardConfig;
+      setDashboardState({
+        config: dc,
+        isDirty: true,
+        showRaw: false,
+        rawJson: JSON.stringify(dc, null, 2),
+        rawJsonErrors: [],
+      });
+    }
+    // Apply ui_config
+    if (pendingImportData.ui_config && typeof pendingImportData.ui_config === 'object') {
+      const uc = pendingImportData.ui_config as Record<string, unknown>;
+      setUiState({
+        config: uc,
+        isDirty: true,
+        showRaw: false,
+        rawJson: JSON.stringify(uc, null, 2),
+        rawJsonErrors: [],
+      });
+    }
+    // Force re-mount of visual builders
+    setResetKey((k) => k + 1);
+    setIsImportDialogOpen(false);
+    setPendingImportData(null);
+    toast.success(t('roleConfig.importSuccess', { defaultValue: 'Configuration importée. N\'oubliez pas de sauvegarder.' }));
+  }, [pendingImportData, t]);
+
   // Derived states
   const hasUnsavedChanges = menuBuilderState.isDirty || dashboardState.isDirty || uiState.isDirty;
   const hasErrors = dashboardState.rawJsonErrors.length > 0 || uiState.rawJsonErrors.length > 0;
@@ -536,6 +618,23 @@ export default function RoleMenuConfigPage() {
               {t('menuBuilder.unsavedChanges')}
             </Badge>
           )}
+
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            {t('roleConfig.export', { defaultValue: 'Exportar' })}
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-2" />
+            {t('roleConfig.import', { defaultValue: 'Importar' })}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
 
           <Button
             variant="outline"
@@ -864,6 +963,30 @@ export default function RoleMenuConfigPage() {
             <AlertDialogCancel>{t('roleConfig.resetDialog.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleReset}>
               {t('roleConfig.resetDialog.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Import Confirmation Dialog */}
+      <AlertDialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('roleConfig.importConfirm', { defaultValue: 'Importer la configuration ?' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('roleConfig.importConfirmDescription', {
+                defaultValue: 'Cela remplacera la configuration actuelle des onglets Dashboard et UI. Les changements ne seront pas sauvegardés tant que vous ne cliquerez pas sur Guardar.',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingImportData(null)}>
+              {t('roleConfig.resetDialog.cancel', { defaultValue: 'Annuler' })}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmImport}>
+              {t('roleConfig.importApply', { defaultValue: 'Appliquer' })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

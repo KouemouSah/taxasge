@@ -8,13 +8,14 @@
  * @date 2026-02-01
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -47,12 +48,17 @@ import {
   Columns,
   Rows,
   ArrowLeft,
+  Check,
+  X,
+  Copy,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { toast } from 'sonner';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import {
   useDisplayConfigOperations,
+  useCreateDisplayConfig,
   AVAILABLE_SECTIONS,
 } from '@/modules/admin/hooks';
 import type { DisplayConfig } from '@/modules/admin/services/menuConfigService';
@@ -68,6 +74,13 @@ export default function DisplayConfigPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<DisplayConfig | null>(null);
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const createMutation = useCreateDisplayConfig();
 
   const {
     configs,
@@ -99,6 +112,68 @@ export default function DisplayConfigPage() {
   const handleToggleActive = async (config: DisplayConfig) => {
     await updateConfigAsync(config.id, { is_active: !config.is_active });
   };
+
+  // Bulk selection helpers
+  const isAllSelected = filteredConfigs.length > 0 &&
+    filteredConfigs.every(c => selectedIds.has(c.id));
+  const isSomeSelected = selectedIds.size > 0 && !isAllSelected;
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(filteredConfigs.map(c => c.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: number, checked: boolean) => {
+    const newSet = new Set(selectedIds);
+    if (checked) newSet.add(id); else newSet.delete(id);
+    setSelectedIds(newSet);
+  };
+
+  const handleBatchActivate = async () => {
+    setIsBatchUpdating(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: true })));
+      toast.success(t('bulkActivate', { defaultValue: `${selectedIds.size} config(s) activée(s)` }));
+      setSelectedIds(new Set());
+    } catch { /* errors handled by hook */ } finally { setIsBatchUpdating(false); }
+  };
+
+  const handleBatchDeactivate = async () => {
+    setIsBatchUpdating(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: false })));
+      toast.success(t('bulkDeactivate', { defaultValue: `${selectedIds.size} config(s) désactivée(s)` }));
+      setSelectedIds(new Set());
+    } catch { /* errors handled by hook */ } finally { setIsBatchUpdating(false); }
+  };
+
+  const handleBatchDelete = async () => {
+    setIsBatchUpdating(true);
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => deleteConfigAsync(id)));
+      toast.success(t('bulkDelete', { defaultValue: `${selectedIds.size} config(s) supprimée(s)` }));
+      setSelectedIds(new Set());
+      setIsBatchDeleteDialogOpen(false);
+    } catch { /* errors handled by hook */ } finally { setIsBatchUpdating(false); }
+  };
+
+  // Clone handler
+  const handleDuplicate = useCallback(async (config: DisplayConfig) => {
+    setIsDuplicating(true);
+    try {
+      await createMutation.mutateAsync({
+        workflow_code: config.workflow_code + '_COPY',
+        list_columns: config.list_columns,
+        preview_sections: config.preview_sections,
+        labels: config.labels ?? undefined,
+      });
+      toast.success(t('messages.created', { defaultValue: 'Config dupliquée' }));
+    } catch { /* errors handled by hook */ }
+    finally { setIsDuplicating(false); }
+  }, [createMutation, t]);
 
   if (isLoading) {
     return (
@@ -219,10 +294,45 @@ export default function DisplayConfigPage() {
             </div>
           </div>
 
+          {/* Batch Actions Bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 p-3 mb-4 bg-muted/50 border rounded-lg">
+              <span className="text-sm font-medium">
+                {t('selectedCount', { defaultValue: `${selectedIds.size} sélectionné(s)`, count: selectedIds.size })}
+              </span>
+              <div className="flex-1" />
+              <Button size="sm" variant="outline" onClick={handleBatchActivate} disabled={isBatchUpdating}>
+                {isBatchUpdating && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                <Check className="mr-1 h-3 w-3" />
+                {t('bulkActivateBtn', { defaultValue: 'Activer' })}
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleBatchDeactivate} disabled={isBatchUpdating}>
+                {isBatchUpdating && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                <X className="mr-1 h-3 w-3" />
+                {t('bulkDeactivateBtn', { defaultValue: 'Désactiver' })}
+              </Button>
+              <Button size="sm" variant="destructive" onClick={() => setIsBatchDeleteDialogOpen(true)} disabled={isBatchUpdating}>
+                <Trash2 className="mr-1 h-3 w-3" />
+                {t('bulkDeleteBtn', { defaultValue: 'Supprimer' })}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                {t('cancel', { defaultValue: 'Annuler' })}
+              </Button>
+            </div>
+          )}
+
           <div className="border rounded-md overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Sélectionner tout"
+                      className={isSomeSelected ? 'data-[state=checked]:bg-primary/50' : ''}
+                    />
+                  </TableHead>
                   <TableHead>{t('pattern')}</TableHead>
                   <TableHead>{t('listColumns')}</TableHead>
                   <TableHead>{t('previewSections')}</TableHead>
@@ -233,13 +343,20 @@ export default function DisplayConfigPage() {
               <TableBody>
                 {filteredConfigs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       {t('noConfigsFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredConfigs.map((config) => (
-                    <TableRow key={config.id}>
+                    <TableRow key={config.id} data-state={selectedIds.has(config.id) ? 'selected' : undefined}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(config.id)}
+                          onCheckedChange={(checked) => handleSelectOne(config.id, !!checked)}
+                          aria-label={`Sélectionner ${config.workflow_code}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <code className="text-sm bg-muted px-2 py-1 rounded">
                           {config.workflow_code}
@@ -288,6 +405,15 @@ export default function DisplayConfigPage() {
                             >
                               <Pencil className="h-4 w-4" />
                             </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDuplicate(config)}
+                            disabled={isDuplicating}
+                            title={t('duplicate', { defaultValue: 'Dupliquer' })}
+                          >
+                            {isDuplicating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                           </Button>
                           <Button
                             variant="ghost"
@@ -355,6 +481,33 @@ export default function DisplayConfigPage() {
             >
               {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch Delete Dialog */}
+      <AlertDialog open={isBatchDeleteDialogOpen} onOpenChange={setIsBatchDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('confirmBulkDelete', { defaultValue: `Supprimer ${selectedIds.size} config(s) ?` })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('confirmBulkDeleteDescription', {
+                defaultValue: `Êtes-vous sûr de vouloir supprimer les ${selectedIds.size} configurations sélectionnées ? Cette action est irréversible.`,
+                count: selectedIds.size,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBatchDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBatchUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Supprimer {selectedIds.size} config(s)
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

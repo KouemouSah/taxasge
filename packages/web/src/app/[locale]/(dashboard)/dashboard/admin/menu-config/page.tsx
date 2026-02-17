@@ -9,10 +9,10 @@
  * @updated 2026-01-31 - Removed unused menu_templates tab
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
   Menu,
   Plus,
   Search,
@@ -59,6 +66,8 @@ import {
   X,
   LayoutGrid,
   Settings2,
+  Eye,
+  Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
@@ -67,6 +76,10 @@ import type {
   WorkflowMenuMapping,
   WorkflowMenuMappingListResponse,
 } from '@/modules/agent-dashboard/types/menu-config';
+import { useDisplayConfigs } from '@/modules/admin/hooks';
+import { OrphanDetectionPanel } from '@/modules/admin/components/OrphanDetectionPanel';
+import { MenuPreview } from '@/modules/admin/components/menu-builder/MenuPreview';
+import type { MenuItem } from '@/modules/admin/components/menu-builder/types';
 
 const PAGE_SIZE = 10;
 
@@ -106,6 +119,15 @@ async function deleteWorkflowMapping(id: number): Promise<void> {
   await apiClient.delete(`/menu-config/workflow-mappings/${id}`);
 }
 
+async function createWorkflowMapping(
+  data: Omit<WorkflowMenuMapping, 'id' | 'created_at' | 'updated_at'>
+): Promise<WorkflowMenuMapping> {
+  const response = await apiClient.post<WorkflowMenuMapping>(
+    '/menu-config/workflow-mappings',
+    data
+  );
+  return response.data;
+}
 
 // =============================================================================
 // MAIN PAGE COMPONENT
@@ -113,6 +135,9 @@ async function deleteWorkflowMapping(id: number): Promise<void> {
 
 export default function MenuConfigPage() {
   const locale = useLocale();
+
+  // Fetch display configs for orphan detection
+  const { data: displayConfigData } = useDisplayConfigs({ page: 1, page_size: 100 });
 
   return (
     <div className="space-y-6">
@@ -169,8 +194,8 @@ export default function MenuConfigPage() {
         </Link>
       </div>
 
-      {/* Workflow Mappings */}
-      <WorkflowMappingsTab />
+      {/* Workflow Mappings (passes display configs for orphan detection) */}
+      <WorkflowMappingsTab displayConfigs={displayConfigData?.items ?? []} />
     </div>
   );
 }
@@ -179,8 +204,9 @@ export default function MenuConfigPage() {
 // WORKFLOW MAPPINGS TAB
 // =============================================================================
 
-function WorkflowMappingsTab() {
+function WorkflowMappingsTab({ displayConfigs }: { displayConfigs: import('@/modules/admin/services/menuConfigService').DisplayConfig[] }) {
   const locale = useLocale();
+  const t = useTranslations('admin.menuConfig');
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -192,6 +218,7 @@ function WorkflowMappingsTab() {
   // Selection state for batch actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['workflow-mappings', currentPage, activeFilter],
@@ -255,6 +282,64 @@ function WorkflowMappingsTab() {
       toast.error(err instanceof Error ? err.message : 'Erreur de suppression batch');
     },
   });
+
+  // Clone handler
+  const handleDuplicate = useCallback(async (mapping: WorkflowMenuMapping) => {
+    setIsDuplicating(true);
+    try {
+      const cloneData = {
+        workflow_pattern: mapping.workflow_pattern,
+        menu_group_id: mapping.menu_group_id + '_copy',
+        menu_title_key: mapping.menu_title_key,
+        menu_icon: mapping.menu_icon,
+        display_order: mapping.display_order,
+        include_pending: mapping.include_pending,
+        include_validation: mapping.include_validation,
+        include_appointments: mapping.include_appointments,
+        include_history: mapping.include_history,
+        permission_prefix: mapping.permission_prefix,
+        is_active: false,
+      };
+      await createWorkflowMapping(cloneData);
+      queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
+      toast.success(t('actions.duplicateSuccess', { defaultValue: 'Mapping dupliqué' }));
+    } catch (err) {
+      toast.error(t('actions.duplicateError', {
+        defaultValue: err instanceof Error ? err.message : 'Erreur lors de la duplication',
+      }));
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [queryClient, t]);
+
+  // Build preview MenuItems from active mappings
+  const previewMenuItems = useMemo((): MenuItem[] => {
+    const activeMappings = (data?.items ?? []).filter(m => m.is_active);
+    return activeMappings
+      .sort((a, b) => a.display_order - b.display_order)
+      .map((mapping) => {
+        const subItems: MenuItem['items'] = [];
+        if (mapping.include_pending) {
+          subItems.push({ id: `${mapping.menu_group_id}_pending`, titleKey: 'Pendientes', href: '#', icon: 'Clock' });
+        }
+        if (mapping.include_validation) {
+          subItems.push({ id: `${mapping.menu_group_id}_validation`, titleKey: 'Validación', href: '#', icon: 'CheckSquare' });
+        }
+        if (mapping.include_appointments) {
+          subItems.push({ id: `${mapping.menu_group_id}_appointments`, titleKey: 'Citas', href: '#', icon: 'Calendar' });
+        }
+        if (mapping.include_history) {
+          subItems.push({ id: `${mapping.menu_group_id}_history`, titleKey: 'Historial', href: '#', icon: 'History' });
+        }
+        return {
+          id: mapping.menu_group_id,
+          titleKey: mapping.menu_title_key,
+          icon: mapping.menu_icon,
+          items: subItems.length > 0 ? subItems : undefined,
+          href: subItems.length === 0 ? '#' : undefined,
+        };
+      });
+  }, [data?.items]);
 
   // Debounce search input (300ms)
   useEffect(() => {
@@ -348,6 +433,12 @@ function WorkflowMappingsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Orphan Detection */}
+      <OrphanDetectionPanel
+        mappings={data?.items ?? []}
+        displayConfigs={displayConfigs}
+      />
+
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -391,6 +482,27 @@ function WorkflowMappingsTab() {
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4 mr-2" />
+                    {t('preview.title', { defaultValue: 'Vista Previa' })}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[380px] sm:w-[420px]">
+                  <SheetHeader>
+                    <SheetTitle>{t('preview.title', { defaultValue: 'Vista Previa' })}</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    <MenuPreview menus={previewMenuItems} />
+                    <p className="text-xs text-muted-foreground mt-4 px-1">
+                      {t('preview.note', {
+                        defaultValue: 'Esto es una aproximación. El menú real depende del rol y entidad del agente.',
+                      })}
+                    </p>
+                  </div>
+                </SheetContent>
+              </Sheet>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
@@ -546,6 +658,15 @@ function WorkflowMappingsTab() {
                             <Link href={`/${locale}/dashboard/admin/workflow-mappings/${mapping.id}`}>
                               <Pencil className="h-4 w-4" />
                             </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDuplicate(mapping)}
+                            disabled={isDuplicating}
+                            title={t('actions.duplicate', { defaultValue: 'Dupliquer' })}
+                          >
+                            {isDuplicating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                           </Button>
                           <Button
                             variant="ghost"
