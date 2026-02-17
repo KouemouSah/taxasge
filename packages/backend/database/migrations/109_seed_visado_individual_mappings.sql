@@ -15,11 +15,11 @@ INSERT INTO workflow_menu_mapping (
     include_appointments, include_history, include_escalation,
     permission_prefix, is_active
 ) VALUES
-    ('PRORROGA_VISADO', 'visados', 'agent.nav.visas', 'Globe',
+    ('PRORROGA_VISADO', 'visado', 'agent.nav.visas', 'Globe',
      7, TRUE, TRUE, FALSE, TRUE, TRUE, 'service_requests', TRUE),
-    ('SALIDA_VISADO_VENCIDO', 'visados', 'agent.nav.visas', 'Globe',
+    ('SALIDA_VISADO_VENCIDO', 'visado', 'agent.nav.visas', 'Globe',
      7, TRUE, TRUE, FALSE, TRUE, TRUE, 'service_requests', TRUE),
-    ('PERMANENCIA_EXTRANJERIA', 'visados', 'agent.nav.visas', 'Globe',
+    ('PERMANENCIA_EXTRANJERIA', 'visado', 'agent.nav.visas', 'Globe',
      7, TRUE, TRUE, FALSE, TRUE, TRUE, 'service_requests', TRUE)
 ON CONFLICT (workflow_pattern) DO NOTHING;
 
