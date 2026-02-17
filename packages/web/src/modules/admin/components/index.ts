@@ -14,5 +14,4 @@ export { BackendUnavailableAlert } from "./BackendUnavailableAlert"
 
 // Menu Configuration Components
 export { WorkflowMappingForm } from "./WorkflowMappingForm"
-export { MenuConfigEditor } from "./MenuConfigEditor"
 export { ItemNavigation } from "./ItemNavigation"

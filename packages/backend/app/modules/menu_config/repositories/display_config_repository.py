@@ -114,12 +114,6 @@ class DisplayConfigRepository:
 
         return _row_to_dict(result)
 
-    async def get_by_pattern(self, workflow_pattern: str) -> Optional[Dict[str, Any]]:
-        """
-        DEPRECATED: Use get_by_code instead.
-        Kept for backward compatibility during migration.
-        """
-        return await self.get_by_code(workflow_pattern)
 
     async def get_all(
         self,

@@ -1,54 +1,24 @@
 """
 Menu Configuration Module Permissions
 
-Defines all permissions for menu and dashboard configuration:
-- Menu template management
-- Workflow menu mapping management
-- Role menu configuration
-- Dashboard widget configuration
+Defines all permissions for workflow menu mapping management
+and full admin access to menu/dashboard configuration.
 
 Note: Uses SINGULAR resource names and DOT notation per convention.
       NEVER use colon format (menu:manage is WRONG, use menu.manage)
 
+Note: Role menu config (GET/PUT /roles/{id}/menu-config) uses roles.view
+      and roles.update permissions, not dedicated menu permissions.
+
 Created: 2026-01-19
+Updated: 2026-02-17 - Removed 8 orphaned permissions (templates dropped,
+         role/dashboard config uses roles.* permissions)
 """
 
 MODULE_NAME = "menu"
 
 # Format: (name, resource, action, description_es, is_critical)
 PERMISSIONS = [
-    # =========================================================================
-    # MENU TEMPLATE MANAGEMENT
-    # =========================================================================
-    (
-        "menu.view_templates",
-        "menu",
-        "view_templates",
-        "Ver plantillas de menú",
-        False
-    ),
-    (
-        "menu.create_template",
-        "menu",
-        "create_template",
-        "Crear plantillas de menú",
-        True  # Critical - affects agent UI
-    ),
-    (
-        "menu.update_template",
-        "menu",
-        "update_template",
-        "Actualizar plantillas de menú",
-        True  # Critical - affects agent UI
-    ),
-    (
-        "menu.delete_template",
-        "menu",
-        "delete_template",
-        "Eliminar plantillas de menú",
-        True  # Critical - affects agent UI
-    ),
-
     # =========================================================================
     # WORKFLOW MENU MAPPING MANAGEMENT
     # =========================================================================
@@ -79,42 +49,6 @@ PERMISSIONS = [
         "delete_mapping",
         "Eliminar mapeos de workflow a menú",
         True  # Critical - affects menu generation
-    ),
-
-    # =========================================================================
-    # ROLE MENU CONFIGURATION
-    # =========================================================================
-    (
-        "menu.view_role_config",
-        "menu",
-        "view_role_config",
-        "Ver configuración de menú de roles",
-        False
-    ),
-    (
-        "menu.update_role_config",
-        "menu",
-        "update_role_config",
-        "Actualizar configuración de menú de roles",
-        True  # Critical - affects agent menus
-    ),
-
-    # =========================================================================
-    # DASHBOARD WIDGET CONFIGURATION
-    # =========================================================================
-    (
-        "menu.view_dashboard_config",
-        "menu",
-        "view_dashboard_config",
-        "Ver configuración de dashboard",
-        False
-    ),
-    (
-        "menu.update_dashboard_config",
-        "menu",
-        "update_dashboard_config",
-        "Actualizar configuración de dashboard",
-        True  # Critical - affects agent dashboards
     ),
 
     # =========================================================================

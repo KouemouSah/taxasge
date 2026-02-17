@@ -498,6 +498,13 @@ async def update_role_menu_config(
 
     updated = await role_service.update_role(str(role_id), update_data)
 
+    # Invalidate cached menus for all agents with this role
+    try:
+        from app.core.cache import invalidate_role_menu_cache
+        await invalidate_role_menu_cache(str(role_id))
+    except Exception:
+        pass  # Non-critical — cache will expire naturally (5 min TTL)
+
     return {
         "menu_config": updated.get("menu_config"),
         "dashboard_config": updated.get("dashboard_config"),

@@ -2,6 +2,10 @@
  * Menu Builder Types
  * Local types for the visual menu configuration builder
  *
+ * TECH DEBT: These types duplicate agent-dashboard/types/menu-config.ts
+ * MenuItem ≈ DynamicMenuItem, MenuSubItem ≈ SubMenuItem, MenuConfig ≈ MenuConfig
+ * Unification planned for Phase 2 (requires refactoring all menu-builder components)
+ *
  * @module admin/components/menu-builder
  * @date 2026-01-31
  */
