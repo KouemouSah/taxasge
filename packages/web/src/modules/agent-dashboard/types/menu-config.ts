@@ -85,6 +85,13 @@ export interface DashboardConfig {
 
 export type EntityType = 'workflow' | 'module';
 
+/** Display config for a single workflow (from workflow_display_config table) */
+export interface WorkflowDisplayConfig {
+  list_columns: string[];
+  preview_sections: string[];
+  labels: Record<string, string>;
+}
+
 export interface AgentMenuConfigResponse {
   agent_profile_id: string;
   entity_code: string | null;
@@ -96,6 +103,8 @@ export interface AgentMenuConfigResponse {
   menu_config: MenuConfig;
   dashboard_config: DashboardConfig;
   permissions: string[];
+  /** Display configs keyed by workflow_code — admin-configured column/section preferences */
+  display_configs: Record<string, WorkflowDisplayConfig>;
   /** True if role.menu_config is NOT NULL in DB - for fallback detection */
   has_role_menu_config: boolean;
 }

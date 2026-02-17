@@ -1,13 +1,8 @@
 /**
  * Agent Dashboard Configuration
  *
- * @deprecated entity-menus.ts is deprecated. All menu configuration
- * now comes dynamically from backend API (GET /menu-config/me).
- * These exports are kept only for backward compatibility.
+ * entity-menus.ts has been REMOVED (P0-2).
+ * All menu configuration now comes dynamically from backend API (GET /menu-config/me).
  *
  * @module agent-dashboard/config
  */
-
-export {
-  ENTITY_CONFIGS,
-} from './entity-menus';

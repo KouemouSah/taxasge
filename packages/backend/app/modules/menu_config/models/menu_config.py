@@ -197,6 +197,12 @@ class AgentMenuConfigResponse(BaseModel):
     # Permissions (for frontend filtering)
     permissions: List[str] = Field(default_factory=list)
 
+    # Display configs for agent's workflows (keyed by workflow_code)
+    display_configs: Dict[str, Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Display configurations keyed by workflow_code (list_columns, preview_sections, labels)"
+    )
+
     # Flag indicating if role has menu_config in DB (for frontend fallback detection)
     has_role_menu_config: bool = Field(
         default=False,

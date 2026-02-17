@@ -27,13 +27,17 @@ export default function DisplayConfigCreatePage() {
   const createMutation = useCreateDisplayConfig();
 
   const handleSubmit = async (data: DisplayConfigFormData) => {
-    await createMutation.mutateAsync({
-      workflow_code: data.workflow_code,
-      list_columns: data.list_columns,
-      preview_sections: data.preview_sections,
-      labels: data.labels,
-    });
-    router.push(`/${locale}/dashboard/admin/menu-config/display`);
+    try {
+      await createMutation.mutateAsync({
+        workflow_code: data.workflow_code,
+        list_columns: data.list_columns,
+        preview_sections: data.preview_sections,
+        labels: data.labels,
+      });
+      router.push(`/${locale}/dashboard/admin/menu-config/display`);
+    } catch {
+      // Error already handled by mutation hook toast
+    }
   };
 
   return (

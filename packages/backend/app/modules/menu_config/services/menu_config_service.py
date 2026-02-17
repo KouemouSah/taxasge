@@ -245,6 +245,16 @@ class MenuConfigService:
         perm_repo = UserPermissionRepository(db_connection)
         permissions = await perm_repo.get_all_permission_names(str(user_id))
 
+        # 9. Fetch display configs for agent's workflows (P0-1)
+        display_configs: Dict[str, Dict[str, Any]] = {}
+        if available_workflows:
+            try:
+                from app.modules.menu_config.repositories.display_config_repository import DisplayConfigRepository
+                display_repo = DisplayConfigRepository(db_connection)
+                display_configs = await display_repo.find_configs_for_workflows(available_workflows)
+            except Exception as e:
+                logger.warning(f"Failed to fetch display configs: {e}")
+
         result = AgentMenuConfigResponse(
             agent_profile_id=agent_profile_id,
             entity_code=entity_code,
@@ -256,6 +266,7 @@ class MenuConfigService:
             menu_config=menu_config,
             dashboard_config=dashboard_config,
             permissions=permissions,
+            display_configs=display_configs,
             has_role_menu_config=role_menu_config is not None
         )
 
@@ -281,6 +292,7 @@ class MenuConfigService:
                 ap.specializations,
                 ap.menu_overrides,
                 ap.dashboard_overrides,
+                ap.entity_location_id,
                 e.code as entity_code,
                 e.name as entity_name,
                 e.workflow_codes as entity_workflow_codes,

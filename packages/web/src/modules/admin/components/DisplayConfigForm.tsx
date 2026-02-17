@@ -554,6 +554,7 @@ export function DisplayConfigForm({
       setSelectedColumns((items) => {
         const oldIndex = items.indexOf(active.id as string);
         const newIndex = items.indexOf(over.id as string);
+        if (oldIndex < 0 || newIndex < 0) return items;
         return arrayMove(items, oldIndex, newIndex);
       });
     }

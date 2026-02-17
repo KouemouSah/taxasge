@@ -39,11 +39,8 @@ export type {
 } from './types';
 export { isMenuGroup } from './types';
 
-// Configuration — entity-menus.ts is deprecated, menus come from backend API.
-// These exports are kept for backward compatibility only.
-export {
-  ENTITY_CONFIGS,
-} from './config';
+// Configuration — entity-menus.ts is REMOVED (P0-2).
+// All menu configuration now comes from backend API (GET /menu-config/me).
 
 // Hooks
 export {

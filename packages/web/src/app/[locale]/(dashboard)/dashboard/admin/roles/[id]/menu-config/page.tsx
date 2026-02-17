@@ -59,7 +59,7 @@ import {
   useUpdateRoleMenuConfig,
   type RoleMenuConfigUpdateRequest,
 } from '@/modules/admin/hooks/useRoleMenuConfig';
-import { MenuBuilder, type MenuItem, menuConfigToJson } from '@/modules/admin/components/menu-builder';
+import { MenuBuilder, type MenuItem, menuConfigToJson, validateMenuItemArray } from '@/modules/admin/components/menu-builder';
 import { DashboardConfigBuilder } from '@/modules/admin/components/DashboardConfigBuilder';
 import { UiConfigForm } from '@/modules/admin/components/UiConfigForm';
 import type { DashboardConfig } from '@/modules/agent-dashboard/types/menu-config';
@@ -512,12 +512,15 @@ export default function RoleMenuConfigPage() {
 
   const handleConfirmImport = useCallback(() => {
     if (!pendingImportData) return;
-    // Apply menu_config
+    // Apply menu_config (with structural validation)
     if ('menu_config' in pendingImportData) {
       if (pendingImportData.menu_config === null) {
         setMenuBuilderState({ menus: [], isAutoMode: true, isDirty: true });
-      } else if (Array.isArray(pendingImportData.menu_config)) {
-        setMenuBuilderState({ menus: pendingImportData.menu_config as MenuItem[], isAutoMode: false, isDirty: true });
+      } else if (validateMenuItemArray(pendingImportData.menu_config)) {
+        setMenuBuilderState({ menus: pendingImportData.menu_config, isAutoMode: false, isDirty: true });
+      } else {
+        toast.error(t('roleConfig.importInvalidJson', { defaultValue: 'menu_config debe ser null o un array de MenuItem válidos' }));
+        return;
       }
     }
     // Apply dashboard_config

@@ -1,41 +1,33 @@
 /**
  * Menu Builder Types
- * Local types for the visual menu configuration builder
+ * Re-exports canonical types from agent-dashboard and adds builder-specific types.
  *
- * TECH DEBT: These types duplicate agent-dashboard/types/menu-config.ts
- * MenuItem ≈ DynamicMenuItem, MenuSubItem ≈ SubMenuItem, MenuConfig ≈ MenuConfig
- * Unification planned for Phase 2 (requires refactoring all menu-builder components)
+ * UNIFIED: MenuItem = DynamicMenuItem, MenuSubItem = SubMenuItem
+ * Single source of truth: agent-dashboard/types/menu-config.ts
  *
  * @module admin/components/menu-builder
  * @date 2026-01-31
+ * @updated 2026-02-17 - Unified with agent-dashboard types (P0-6)
  */
 
+import type {
+  DynamicMenuItem,
+  SubMenuItem,
+  MenuConfig as CanonicalMenuConfig,
+} from '@/modules/agent-dashboard/types/menu-config';
+
 // =============================================================================
-// MENU ITEM TYPES (aligned with backend)
+// CANONICAL TYPE RE-EXPORTS (single source of truth)
 // =============================================================================
 
-export interface MenuSubItem {
-  id: string;
-  titleKey: string;
-  href: string;
-  icon: string;
-  permission?: string;
-}
+/** Menu item — alias for DynamicMenuItem (canonical) */
+export type MenuItem = DynamicMenuItem;
 
-export interface MenuItem {
-  id: string;
-  titleKey: string;
-  icon: string;
-  href?: string;
-  permission?: string;
-  items?: MenuSubItem[];
-}
+/** Sub-menu item — alias for SubMenuItem (canonical) */
+export type MenuSubItem = SubMenuItem;
 
-export interface MenuConfig {
-  version: string;
-  source: 'role' | 'workflow' | 'custom';
-  menus: MenuItem[];
-}
+/** Menu config — alias with narrowed source type */
+export type MenuConfig = CanonicalMenuConfig;
 
 // =============================================================================
 // EDITOR STATE TYPES
@@ -116,7 +108,6 @@ export function validateMenuConfig(menus: MenuItem[]): ValidationError[] {
       errors.push({
         field: `menus[${index}].id`,
         message: ValidationKeys.duplicateId,
-        // Store the duplicate ID for interpolation
         params: { id: menu.id },
       } as ValidationError);
     }
@@ -196,4 +187,25 @@ export function parseMenuConfig(json: string | object | null): MenuItem[] {
   } catch {
     return [];
   }
+}
+
+// =============================================================================
+// IMPORT VALIDATION (P0-8)
+// =============================================================================
+
+/** Validates that an unknown value has the shape of a MenuItem */
+export function isValidMenuItem(item: unknown): item is MenuItem {
+  if (!item || typeof item !== 'object') return false;
+  const obj = item as Record<string, unknown>;
+  return (
+    typeof obj.id === 'string' &&
+    typeof obj.titleKey === 'string' &&
+    typeof obj.icon === 'string'
+  );
+}
+
+/** Validates an array of unknown values as MenuItem[] */
+export function validateMenuItemArray(arr: unknown): arr is MenuItem[] {
+  if (!Array.isArray(arr)) return false;
+  return arr.every(isValidMenuItem);
 }

@@ -6,7 +6,7 @@
  *
  * @module dashboard/admin/menu-config
  * @date 2026-01-19
- * @updated 2026-01-31 - Removed unused menu_templates tab
+ * @updated 2026-02-17 - i18n: replaced all hardcoded strings with t() calls
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -135,6 +135,7 @@ async function createWorkflowMapping(
 
 export default function MenuConfigPage() {
   const locale = useLocale();
+  const t = useTranslations('admin.menuConfig');
 
   return (
     <div className="space-y-6">
@@ -147,10 +148,10 @@ export default function MenuConfigPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Menu className="h-8 w-8" />
-          Configuration des Menus
+          {t('page.title')}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Configurer les règles de génération automatique des menus agent
+          {t('page.subtitle')}
         </p>
       </div>
 
@@ -160,14 +161,14 @@ export default function MenuConfigPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Settings2 className="h-5 w-5" />
-              Mappings Workflow → Menu
+              {t('page.navMappingsTitle')}
             </CardTitle>
             <CardDescription>
-              Règles de génération automatique des menus depuis les codes workflow
+              {t('page.navMappingsDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Badge variant="secondary">Section actuelle</Badge>
+            <Badge variant="secondary">{t('page.navCurrentSection')}</Badge>
           </CardContent>
         </Card>
 
@@ -176,15 +177,15 @@ export default function MenuConfigPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <LayoutGrid className="h-5 w-5" />
-                Configuration d&apos;Affichage
+                {t('page.navDisplayTitle')}
               </CardTitle>
               <CardDescription>
-                Personnaliser les colonnes et sections affichées par type de workflow
+                {t('page.navDisplayDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button variant="outline" size="sm">
-                Accéder <ChevronRight className="ml-2 h-4 w-4" />
+                {t('page.navAccess')} <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
@@ -236,10 +237,10 @@ function WorkflowMappingsTab() {
       updateWorkflowMapping(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
-      toast.success('Mapping mis à jour');
+      toast.success(t('page.mappingUpdated'));
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Erreur de mise à jour');
+      toast.error(err instanceof Error ? err.message : t('page.updateError'));
     },
   });
 
@@ -247,11 +248,11 @@ function WorkflowMappingsTab() {
     mutationFn: deleteWorkflowMapping,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
-      toast.success('Mapping supprimé');
+      toast.success(t('page.mappingDeleted'));
       setIsDeleteDialogOpen(false);
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Erreur de suppression');
+      toast.error(err instanceof Error ? err.message : t('page.deleteError'));
     },
   });
 
@@ -266,9 +267,9 @@ function WorkflowMappingsTab() {
     onSuccess: ({ succeeded, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
       if (failed > 0) {
-        toast.warning(`${succeeded} mis à jour, ${failed} en erreur`);
+        toast.warning(t('page.batchUpdatePartial', { succeeded, failed }));
       } else {
-        toast.success(`${succeeded} mapping(s) mis à jour`);
+        toast.success(t('page.batchUpdated', { succeeded }));
       }
       setSelectedIds(new Set());
     },
@@ -285,9 +286,9 @@ function WorkflowMappingsTab() {
     onSuccess: ({ succeeded, failed }) => {
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
       if (failed > 0) {
-        toast.warning(`${succeeded} supprimé(s), ${failed} en erreur`);
+        toast.warning(t('page.batchDeletePartial', { succeeded, failed }));
       } else {
-        toast.success(`${succeeded} mapping(s) supprimé(s)`);
+        toast.success(t('page.batchDeleted', { succeeded }));
       }
       setSelectedIds(new Set());
       setIsBatchDeleteDialogOpen(false);
@@ -425,10 +426,10 @@ function WorkflowMappingsTab() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
-            <span>{error instanceof Error ? error.message : 'Erreur de chargement'}</span>
+            <span>{error instanceof Error ? error.message : t('page.loadError')}</span>
           </div>
           <Button variant="outline" className="mt-4" onClick={() => refetch()}>
-            Réessayer
+            {t('page.retry')}
           </Button>
         </CardContent>
       </Card>
@@ -444,7 +445,7 @@ function WorkflowMappingsTab() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Mappings</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('page.statsTotal')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.total || 0}</div>
@@ -452,7 +453,7 @@ function WorkflowMappingsTab() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Actifs</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('page.statsActive')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
@@ -462,7 +463,7 @@ function WorkflowMappingsTab() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Inactifs</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('page.statsInactive')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-muted-foreground">
@@ -477,9 +478,9 @@ function WorkflowMappingsTab() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Mappings Workflow → Menu</CardTitle>
+              <CardTitle>{t('page.navMappingsTitle')}</CardTitle>
               <CardDescription>
-                Règles de génération automatique des menus depuis les codes workflow
+                {t('page.navMappingsDescription')}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -506,12 +507,12 @@ function WorkflowMappingsTab() {
               </Sheet>
               <Button variant="outline" size="sm" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Actualiser
+                {t('page.refresh')}
               </Button>
               <Button size="sm" asChild>
                 <Link href={`/${locale}/dashboard/admin/workflow-mappings/new`}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouveau Mapping
+                  {t('page.createMapping')}
                 </Link>
               </Button>
             </div>
@@ -522,7 +523,7 @@ function WorkflowMappingsTab() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher..."
+                placeholder={t('page.searchPlaceholder')}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9"
@@ -533,9 +534,9 @@ function WorkflowMappingsTab() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="active">Actifs</SelectItem>
-                <SelectItem value="inactive">Inactifs</SelectItem>
+                <SelectItem value="all">{t('page.filterAll')}</SelectItem>
+                <SelectItem value="active">{t('page.filterActive')}</SelectItem>
+                <SelectItem value="inactive">{t('page.filterInactive')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -544,7 +545,7 @@ function WorkflowMappingsTab() {
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 p-3 mb-4 bg-muted/50 border rounded-lg">
               <span className="text-sm font-medium">
-                {selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}
+                {t('page.batchSelected', { count: selectedIds.size })}
               </span>
               <div className="flex-1" />
               <Button
@@ -555,7 +556,7 @@ function WorkflowMappingsTab() {
               >
                 {batchUpdateMutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 <Check className="mr-1 h-3 w-3" />
-                Activer
+                {t('page.batchActivate')}
               </Button>
               <Button
                 size="sm"
@@ -565,7 +566,7 @@ function WorkflowMappingsTab() {
               >
                 {batchUpdateMutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                 <X className="mr-1 h-3 w-3" />
-                Désactiver
+                {t('page.batchDeactivate')}
               </Button>
               <Button
                 size="sm"
@@ -574,14 +575,14 @@ function WorkflowMappingsTab() {
                 disabled={batchDeleteMutation.isPending}
               >
                 <Trash2 className="mr-1 h-3 w-3" />
-                Supprimer
+                {t('page.batchDelete')}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setSelectedIds(new Set())}
               >
-                Annuler
+                {t('page.batchCancel')}
               </Button>
             </div>
           )}
@@ -594,22 +595,22 @@ function WorkflowMappingsTab() {
                     <Checkbox
                       checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
                       onCheckedChange={handleSelectAll}
-                      aria-label="Sélectionner tout"
+                      aria-label={t('page.selectAll')}
                     />
                   </TableHead>
-                  <TableHead>Pattern Workflow</TableHead>
-                  <TableHead>ID Menu</TableHead>
-                  <TableHead>Icône</TableHead>
-                  <TableHead className="hidden md:table-cell">Options</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('page.tablePattern')}</TableHead>
+                  <TableHead>{t('page.tableMenuId')}</TableHead>
+                  <TableHead>{t('page.tableIcon')}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t('page.tableOptions')}</TableHead>
+                  <TableHead>{t('page.tableStatus')}</TableHead>
+                  <TableHead className="text-right">{t('page.tableActions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredMappings.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      Aucun mapping trouvé
+                      {t('page.noMappingsFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -619,7 +620,7 @@ function WorkflowMappingsTab() {
                         <Checkbox
                           checked={selectedIds.has(mapping.id)}
                           onCheckedChange={(checked) => handleSelectOne(mapping.id, !!checked)}
-                          aria-label={`Sélectionner ${mapping.workflow_pattern}`}
+                          aria-label={t('page.selectRow', { pattern: mapping.workflow_pattern })}
                         />
                       </TableCell>
                       <TableCell>
@@ -635,10 +636,10 @@ function WorkflowMappingsTab() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex gap-1 flex-wrap">
-                          {mapping.include_pending && <Badge variant="secondary" className="text-xs">Pending</Badge>}
-                          {mapping.include_validation && <Badge variant="secondary" className="text-xs">Valid</Badge>}
-                          {mapping.include_appointments && <Badge variant="secondary" className="text-xs">RDV</Badge>}
-                          {mapping.include_history && <Badge variant="secondary" className="text-xs">History</Badge>}
+                          {mapping.include_pending && <Badge variant="secondary" className="text-xs">{t('page.optionPending')}</Badge>}
+                          {mapping.include_validation && <Badge variant="secondary" className="text-xs">{t('page.optionValidation')}</Badge>}
+                          {mapping.include_appointments && <Badge variant="secondary" className="text-xs">{t('page.optionAppointments')}</Badge>}
+                          {mapping.include_history && <Badge variant="secondary" className="text-xs">{t('page.optionHistory')}</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -692,7 +693,7 @@ function WorkflowMappingsTab() {
           {data && data.pages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-muted-foreground">
-                Page {data.page} sur {data.pages}
+                {t('page.pageOf', { page: data.page, pages: data.pages })}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -721,19 +722,19 @@ function WorkflowMappingsTab() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer le Mapping ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('page.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer le mapping &quot;{selectedMapping?.workflow_pattern}&quot; ?
+              {t('page.deleteDescription', { pattern: selectedMapping?.workflow_pattern || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>{t('page.deleteCancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => selectedMapping && deleteMutation.mutate(selectedMapping.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Supprimer
+              {t('page.deleteConfirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -743,20 +744,19 @@ function WorkflowMappingsTab() {
       <AlertDialog open={isBatchDeleteDialogOpen} onOpenChange={setIsBatchDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer {selectedIds.size} Mapping(s) ?</AlertDialogTitle>
+            <AlertDialogTitle>{t('page.batchDeleteTitle', { count: selectedIds.size })}</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer les {selectedIds.size} mappings sélectionnés ?
-              Cette action est irréversible.
+              {t('page.batchDeleteDescription', { count: selectedIds.size })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel>{t('page.deleteCancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => batchDeleteMutation.mutate(Array.from(selectedIds))}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {batchDeleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Supprimer {selectedIds.size} mapping(s)
+              {t('page.batchDeleteConfirm', { count: selectedIds.size })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -764,4 +764,3 @@ function WorkflowMappingsTab() {
     </div>
   );
 }
-

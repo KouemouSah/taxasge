@@ -366,6 +366,39 @@ class DisplayConfigRepository:
 
         return config
 
+    async def find_configs_for_workflows(
+        self,
+        workflow_codes: List[str]
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Batch fetch display configs for multiple workflow codes.
+        Returns dict keyed by workflow_code with config values.
+        Only returns configs for workflows that have an active config.
+        """
+        if not workflow_codes:
+            return {}
+
+        # Build parameterized IN clause
+        placeholders = ', '.join(f'${i+1}' for i in range(len(workflow_codes)))
+        rows = await self.db.fetch(f"""
+            SELECT workflow_code, list_columns, preview_sections, labels
+            FROM workflow_display_config
+            WHERE is_active = true
+              AND workflow_code IN ({placeholders})
+              AND deleted_at IS NULL
+        """, *workflow_codes)
+
+        result: Dict[str, Dict[str, Any]] = {}
+        for row in rows:
+            d = dict(row)
+            wc = d.pop('workflow_code')
+            # Parse JSONB fields if returned as strings
+            for key in ('list_columns', 'preview_sections', 'labels'):
+                if isinstance(d.get(key), str):
+                    d[key] = json.loads(d[key])
+            result[wc] = d
+        return result
+
     @staticmethod
     async def invalidate_cache(workflow_code: str) -> None:
         """Invalidate cached display config for a workflow code."""
