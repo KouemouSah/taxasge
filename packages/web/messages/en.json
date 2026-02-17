@@ -896,8 +896,19 @@
         "includeAppointmentsDescription": "Show appointments sub-menu",
         "includeHistory": "Include History",
         "includeHistoryDescription": "Show history sub-menu",
+        "includeEscalation": "Include Escalations",
+        "includeEscalationDescription": "Show escalations sub-menu",
+        "includeBatch": "Include Batch",
+        "includeBatchDescription": "Show batch requests menu",
         "isActive": "Active",
         "isActiveDescription": "Enable or disable this mapping"
+      },
+      "patternMode": {
+        "select": "Select workflow",
+        "custom": "Custom pattern",
+        "selectPlaceholder": "Select a workflow...",
+        "searchPlaceholder": "Search workflow...",
+        "noResults": "No workflows found"
       },
       "errors": {
         "loadError": "Load error",

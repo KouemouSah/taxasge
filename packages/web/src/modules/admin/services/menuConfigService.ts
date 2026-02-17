@@ -42,6 +42,8 @@ export interface WorkflowMappingCreateRequest {
   include_validation?: boolean;
   include_appointments?: boolean;
   include_history?: boolean;
+  include_escalation?: boolean;
+  include_batch?: boolean;
   permission_prefix?: string;
 }
 
@@ -53,6 +55,8 @@ export interface WorkflowMappingUpdateRequest {
   include_validation?: boolean;
   include_appointments?: boolean;
   include_history?: boolean;
+  include_escalation?: boolean;
+  include_batch?: boolean;
   permission_prefix?: string;
   is_active?: boolean;
 }

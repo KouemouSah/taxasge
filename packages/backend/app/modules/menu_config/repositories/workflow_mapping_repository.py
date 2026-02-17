@@ -42,7 +42,7 @@ class WorkflowMappingRepository:
         result = await self.db.fetchrow("""
             SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                    display_order, include_pending, include_validation,
-                   include_appointments, include_history, permission_prefix,
+                   include_appointments, include_history, include_escalation, include_batch, permission_prefix,
                    is_active, created_at, updated_at
             FROM workflow_menu_mapping
             WHERE id = $1
@@ -63,7 +63,7 @@ class WorkflowMappingRepository:
         result = await self.db.fetchrow("""
             SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                    display_order, include_pending, include_validation,
-                   include_appointments, include_history, permission_prefix,
+                   include_appointments, include_history, include_escalation, include_batch, permission_prefix,
                    is_active, created_at, updated_at
             FROM workflow_menu_mapping
             WHERE workflow_pattern = $1
@@ -92,7 +92,7 @@ class WorkflowMappingRepository:
             query = """
                 SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                        display_order, include_pending, include_validation,
-                       include_appointments, include_history, permission_prefix,
+                       include_appointments, include_history, include_escalation, include_batch, permission_prefix,
                        is_active, created_at, updated_at
                 FROM workflow_menu_mapping
                 WHERE is_active = $1
@@ -104,7 +104,7 @@ class WorkflowMappingRepository:
             query = """
                 SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                        display_order, include_pending, include_validation,
-                       include_appointments, include_history, permission_prefix,
+                       include_appointments, include_history, include_escalation, include_batch, permission_prefix,
                        is_active, created_at, updated_at
                 FROM workflow_menu_mapping
                 ORDER BY display_order, workflow_pattern
@@ -124,7 +124,7 @@ class WorkflowMappingRepository:
         results = await self.db.fetch("""
             SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                    display_order, include_pending, include_validation,
-                   include_appointments, include_history, permission_prefix,
+                   include_appointments, include_history, include_escalation, include_batch, permission_prefix,
                    is_active, created_at, updated_at
             FROM workflow_menu_mapping
             WHERE is_active = true
@@ -169,13 +169,14 @@ class WorkflowMappingRepository:
             INSERT INTO workflow_menu_mapping (
                 workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                 display_order, include_pending, include_validation,
-                include_appointments, include_history, permission_prefix
+                include_appointments, include_history, include_escalation,
+                include_batch, permission_prefix
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                       display_order, include_pending, include_validation,
-                      include_appointments, include_history, permission_prefix,
-                      is_active, created_at, updated_at
+                      include_appointments, include_history, include_escalation,
+                      permission_prefix, is_active, created_at, updated_at
         """,
             mapping.workflow_pattern,
             mapping.menu_group_id,
@@ -186,6 +187,8 @@ class WorkflowMappingRepository:
             mapping.include_validation,
             mapping.include_appointments,
             mapping.include_history,
+            mapping.include_escalation,
+            mapping.include_batch,
             mapping.permission_prefix
         )
 
@@ -246,6 +249,16 @@ class WorkflowMappingRepository:
             update_fields.append(f"include_history = ${param_count}")
             params.append(mapping.include_history)
 
+        if mapping.include_escalation is not None:
+            param_count += 1
+            update_fields.append(f"include_escalation = ${param_count}")
+            params.append(mapping.include_escalation)
+
+        if mapping.include_batch is not None:
+            param_count += 1
+            update_fields.append(f"include_batch = ${param_count}")
+            params.append(mapping.include_batch)
+
         if mapping.permission_prefix is not None:
             param_count += 1
             update_fields.append(f"permission_prefix = ${param_count}")
@@ -268,7 +281,7 @@ class WorkflowMappingRepository:
             WHERE id = ${param_count}
             RETURNING id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                       display_order, include_pending, include_validation,
-                      include_appointments, include_history, permission_prefix,
+                      include_appointments, include_history, include_escalation, include_batch, permission_prefix,
                       is_active, created_at, updated_at
         """
 

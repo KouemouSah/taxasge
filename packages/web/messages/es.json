@@ -843,8 +843,19 @@
         "includeAppointmentsDescription": "Mostrar submenú de citas",
         "includeHistory": "Incluir Historial",
         "includeHistoryDescription": "Mostrar submenú de historial",
+        "includeEscalation": "Incluir Escalaciones",
+        "includeEscalationDescription": "Mostrar submenú de escalaciones",
+        "includeBatch": "Incluir Lotes",
+        "includeBatchDescription": "Mostrar menú de solicitudes por lotes",
         "isActive": "Activo",
         "isActiveDescription": "Activar o desactivar este mapeo"
+      },
+      "patternMode": {
+        "select": "Seleccionar workflow",
+        "custom": "Patrón personalizado",
+        "selectPlaceholder": "Seleccionar un workflow...",
+        "searchPlaceholder": "Buscar workflow...",
+        "noResults": "No se encontraron workflows"
       },
       "errors": {
         "loadError": "Error al cargar",

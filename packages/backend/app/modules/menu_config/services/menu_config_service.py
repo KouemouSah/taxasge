@@ -374,8 +374,9 @@ class MenuConfigService:
             icon="LayoutDashboard"
         ))
 
-        # Track if any workflow group needs appointments
+        # Track if any workflow group needs appointments or batch
         has_appointments = False
+        has_batch = False
 
         # Generate menu for each workflow group
         for category, category_workflows in sorted(workflow_groups.items()):
@@ -391,6 +392,8 @@ class MenuConfigService:
                 # Check if this group needs appointments
                 if mapping.get('include_appointments', False):
                     has_appointments = True
+                if mapping.get('include_batch', False):
+                    has_batch = True
             else:
                 # Default menu generation
                 menu_item = self._create_default_menu(
@@ -409,6 +412,17 @@ class MenuConfigService:
                 href=f"/dashboard/agent/{entity_path}/appointments",
                 icon="Calendar",
                 permission="service_request.view_appointments"
+            ))
+
+        # Add batch requests as SEPARATE top-level menu
+        # Path: /dashboard/agent/{entity}/batch-requests
+        if has_batch:
+            menus.append(MenuItemBase(
+                id="batch-requests",
+                titleKey="agent.nav.batchRequests",
+                href=f"/dashboard/agent/{entity_path}/batch-requests",
+                icon="Layers",
+                permission="service_request.view_batch"
             ))
 
         return MenuConfigResponse(
@@ -534,6 +548,15 @@ class MenuConfigService:
                 href=f"{base_path}/history",
                 icon="History",
                 permission=f"{permission_prefix}.view"
+            ))
+
+        if mapping.get('include_escalation', True):
+            items.append(SubMenuItemWithBadge(
+                id="escalations",
+                titleKey="agent.nav.escalations",
+                href=f"{base_path}/escalations",
+                icon="AlertTriangle",
+                permission=f"{permission_prefix}.view_escalations"
             ))
 
         return MenuItemBase(

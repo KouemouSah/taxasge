@@ -843,8 +843,19 @@
         "includeAppointmentsDescription": "Afficher le sous-menu des rendez-vous",
         "includeHistory": "Inclure Historique",
         "includeHistoryDescription": "Afficher le sous-menu de l'historique",
+        "includeEscalation": "Inclure Escalades",
+        "includeEscalationDescription": "Afficher le sous-menu des escalades",
+        "includeBatch": "Inclure Lots",
+        "includeBatchDescription": "Afficher le menu des demandes par lots",
         "isActive": "Actif",
         "isActiveDescription": "Activer ou désactiver ce mappage"
+      },
+      "patternMode": {
+        "select": "Sélectionner workflow",
+        "custom": "Pattern personnalisé",
+        "selectPlaceholder": "Sélectionner un workflow...",
+        "searchPlaceholder": "Rechercher un workflow...",
+        "noResults": "Aucun workflow trouvé"
       },
       "errors": {
         "loadError": "Erreur de chargement",

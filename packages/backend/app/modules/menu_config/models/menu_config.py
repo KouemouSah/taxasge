@@ -131,6 +131,8 @@ class WorkflowMenuMappingBase(BaseModel):
     include_validation: bool = Field(True, description="Include validation sub-menu")
     include_appointments: bool = Field(False, description="Include appointments sub-menu")
     include_history: bool = Field(True, description="Include history sub-menu")
+    include_escalation: bool = Field(True, description="Include escalation sub-menu")
+    include_batch: bool = Field(False, description="Include batch processing sub-menu")
     permission_prefix: Optional[str] = Field(None, max_length=50, description="Permission prefix")
 
     @field_validator('workflow_pattern')
@@ -159,6 +161,8 @@ class WorkflowMenuMappingUpdate(BaseModel):
     include_validation: Optional[bool] = None
     include_appointments: Optional[bool] = None
     include_history: Optional[bool] = None
+    include_escalation: Optional[bool] = None
+    include_batch: Optional[bool] = None
     permission_prefix: Optional[str] = None
     is_active: Optional[bool] = None
 
