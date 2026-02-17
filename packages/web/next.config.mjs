@@ -172,3 +172,4 @@ const nextConfig = {
 };
 
 export default withNextIntl(nextConfig);
+// deploy trigger 1771369122
