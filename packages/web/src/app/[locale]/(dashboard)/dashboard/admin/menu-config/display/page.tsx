@@ -77,7 +77,7 @@ export default function DisplayConfigPage() {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBatchDeleteDialogOpen, setIsBatchDeleteDialogOpen] = useState(false);
-  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+  const [batchAction, setBatchAction] = useState<'activate' | 'deactivate' | 'delete' | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
   const createMutation = useCreateDisplayConfig();
@@ -133,7 +133,7 @@ export default function DisplayConfigPage() {
   };
 
   const handleBatchActivate = async () => {
-    setIsBatchUpdating(true);
+    setBatchAction('activate');
     try {
       const results = await Promise.allSettled(
         Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: true }))
@@ -146,11 +146,11 @@ export default function DisplayConfigPage() {
         toast.success(`${succeeded} config(s) activée(s)`);
       }
       setSelectedIds(new Set());
-    } finally { setIsBatchUpdating(false); }
+    } finally { setBatchAction(null); }
   };
 
   const handleBatchDeactivate = async () => {
-    setIsBatchUpdating(true);
+    setBatchAction('deactivate');
     try {
       const results = await Promise.allSettled(
         Array.from(selectedIds).map(id => updateConfigAsync(id, { is_active: false }))
@@ -163,11 +163,11 @@ export default function DisplayConfigPage() {
         toast.success(`${succeeded} config(s) désactivée(s)`);
       }
       setSelectedIds(new Set());
-    } finally { setIsBatchUpdating(false); }
+    } finally { setBatchAction(null); }
   };
 
   const handleBatchDelete = async () => {
-    setIsBatchUpdating(true);
+    setBatchAction('delete');
     try {
       const results = await Promise.allSettled(
         Array.from(selectedIds).map(id => deleteConfigAsync(id))
@@ -181,7 +181,7 @@ export default function DisplayConfigPage() {
       }
       setSelectedIds(new Set());
       setIsBatchDeleteDialogOpen(false);
-    } finally { setIsBatchUpdating(false); }
+    } finally { setBatchAction(null); }
   };
 
   // Clone handler — unique suffix to avoid duplicate workflow_code
@@ -195,7 +195,7 @@ export default function DisplayConfigPage() {
         preview_sections: config.preview_sections,
         labels: config.labels ?? undefined,
       });
-      toast.success(t('messages.created', { defaultValue: 'Config dupliquée' }));
+      toast.success(t('messages.created', { defaultValue: 'Config duplicada' }));
     } catch { /* errors handled by hook */ }
     finally { setDuplicatingId(null); }
   }, [createMutation, t]);
@@ -323,25 +323,23 @@ export default function DisplayConfigPage() {
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 p-3 mb-4 bg-muted/50 border rounded-lg">
               <span className="text-sm font-medium">
-                {t('selectedCount', { defaultValue: `${selectedIds.size} sélectionné(s)`, count: selectedIds.size })}
+                {t('selectedCount', { defaultValue: `${selectedIds.size} seleccionado(s)`, count: selectedIds.size })}
               </span>
               <div className="flex-1" />
-              <Button size="sm" variant="outline" onClick={handleBatchActivate} disabled={isBatchUpdating}>
-                {isBatchUpdating && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                <Check className="mr-1 h-3 w-3" />
-                {t('bulkActivateBtn', { defaultValue: 'Activer' })}
+              <Button size="sm" variant="outline" onClick={handleBatchActivate} disabled={batchAction !== null}>
+                {batchAction === 'activate' ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
+                {t('bulkActivateBtn', { defaultValue: 'Activar' })}
               </Button>
-              <Button size="sm" variant="outline" onClick={handleBatchDeactivate} disabled={isBatchUpdating}>
-                {isBatchUpdating && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                <X className="mr-1 h-3 w-3" />
-                {t('bulkDeactivateBtn', { defaultValue: 'Désactiver' })}
+              <Button size="sm" variant="outline" onClick={handleBatchDeactivate} disabled={batchAction !== null}>
+                {batchAction === 'deactivate' ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <X className="mr-1 h-3 w-3" />}
+                {t('bulkDeactivateBtn', { defaultValue: 'Desactivar' })}
               </Button>
-              <Button size="sm" variant="destructive" onClick={() => setIsBatchDeleteDialogOpen(true)} disabled={isBatchUpdating}>
+              <Button size="sm" variant="destructive" onClick={() => setIsBatchDeleteDialogOpen(true)} disabled={batchAction !== null}>
                 <Trash2 className="mr-1 h-3 w-3" />
-                {t('bulkDeleteBtn', { defaultValue: 'Supprimer' })}
+                {t('bulkDeleteBtn', { defaultValue: 'Eliminar' })}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
-                {t('cancel', { defaultValue: 'Annuler' })}
+                {t('cancel', { defaultValue: 'Cancelar' })}
               </Button>
             </div>
           )}
@@ -435,7 +433,7 @@ export default function DisplayConfigPage() {
                             size="icon"
                             onClick={() => handleDuplicate(config)}
                             disabled={duplicatingId !== null}
-                            title={t('duplicate', { defaultValue: 'Dupliquer' })}
+                            title={t('duplicate', { defaultValue: 'Duplicar' })}
                           >
                             {duplicatingId === config.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                           </Button>
@@ -515,11 +513,11 @@ export default function DisplayConfigPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t('confirmBulkDelete', { defaultValue: `Supprimer ${selectedIds.size} config(s) ?` })}
+              {t('confirmBulkDelete', { defaultValue: `¿Eliminar ${selectedIds.size} config(s)?` })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t('confirmBulkDeleteDescription', {
-                defaultValue: `Êtes-vous sûr de vouloir supprimer les ${selectedIds.size} configurations sélectionnées ? Cette action est irréversible.`,
+                defaultValue: `¿Está seguro de eliminar las ${selectedIds.size} configuraciones seleccionadas? Esta acción es irreversible.`,
                 count: selectedIds.size,
               })}
             </AlertDialogDescription>
@@ -530,7 +528,7 @@ export default function DisplayConfigPage() {
               onClick={handleBatchDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isBatchUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {batchAction === 'delete' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Supprimer {selectedIds.size} config(s)
             </AlertDialogAction>
           </AlertDialogFooter>

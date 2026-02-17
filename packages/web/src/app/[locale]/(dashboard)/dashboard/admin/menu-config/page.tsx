@@ -308,9 +308,9 @@ function WorkflowMappingsTab() {
       };
       await createWorkflowMapping(cloneData);
       queryClient.invalidateQueries({ queryKey: ['workflow-mappings'] });
-      toast.success(t('actions.duplicateSuccess', { defaultValue: 'Mapping dupliqué' }));
+      toast.success(t('actions.duplicateSuccess', { defaultValue: 'Mapping duplicado' }));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('actions.duplicateError', { defaultValue: 'Erreur lors de la duplication' }));
+      toast.error(err instanceof Error ? err.message : t('actions.duplicateError', { defaultValue: 'Error al duplicar' }));
     } finally {
       setDuplicatingId(null);
     }
@@ -664,7 +664,7 @@ function WorkflowMappingsTab() {
                             size="icon"
                             onClick={() => handleDuplicate(mapping)}
                             disabled={duplicatingId !== null}
-                            title={t('actions.duplicate', { defaultValue: 'Dupliquer' })}
+                            title={t('actions.duplicate', { defaultValue: 'Duplicar' })}
                           >
                             {duplicatingId === mapping.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                           </Button>

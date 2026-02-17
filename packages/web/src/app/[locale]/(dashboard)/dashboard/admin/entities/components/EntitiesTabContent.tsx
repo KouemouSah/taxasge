@@ -92,23 +92,7 @@ import type {
   EntityFilters,
 } from '@/modules/cities'
 import type { WorkflowMenuMapping } from '@/modules/agent-dashboard/types/menu-config'
-
-// =============================================================================
-// HELPER: Match workflow code against SQL LIKE pattern
-// =============================================================================
-
-/**
- * Convert SQL LIKE pattern to JavaScript RegExp
- * Supports: % (any chars), _ (single char)
- */
-function sqlLikeToRegex(pattern: string): RegExp {
-  // Escape special regex chars except % and _
-  let regexStr = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  // Convert SQL LIKE wildcards to regex
-  regexStr = regexStr.replace(/%/g, '.*')
-  regexStr = regexStr.replace(/_/g, '.')
-  return new RegExp(`^${regexStr}$`, 'i')
-}
+import { sqlLikeToRegex } from '@/core/utils/sql-like'
 
 /**
  * Check if a workflow code matches any mapping pattern

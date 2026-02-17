@@ -480,8 +480,8 @@ export default function RoleMenuConfigPage() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success(t('roleConfig.exportSuccess', { defaultValue: 'Configuration exportée' }));
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    toast.success(t('roleConfig.exportSuccess', { defaultValue: 'Configuración exportada' }));
   }, [menuBuilderState, dashboardState, uiState, config, roleId, role?.code, t]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -496,13 +496,13 @@ export default function RoleMenuConfigPage() {
       try {
         const data = JSON.parse(evt.target?.result as string);
         if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-          toast.error(t('roleConfig.importInvalidJson', { defaultValue: 'Le fichier doit contenir un objet JSON' }));
+          toast.error(t('roleConfig.importInvalidJson', { defaultValue: 'El archivo debe contener un objeto JSON' }));
           return;
         }
         setPendingImportData(data);
         setIsImportDialogOpen(true);
       } catch {
-        toast.error(t('roleConfig.importError', { defaultValue: 'Erreur de lecture du fichier JSON' }));
+        toast.error(t('roleConfig.importError', { defaultValue: 'Error al leer el archivo JSON' }));
       }
     };
     reader.readAsText(file);
@@ -546,7 +546,7 @@ export default function RoleMenuConfigPage() {
     setResetKey((k) => k + 1);
     setIsImportDialogOpen(false);
     setPendingImportData(null);
-    toast.success(t('roleConfig.importSuccess', { defaultValue: 'Configuration importée. N\'oubliez pas de sauvegarder.' }));
+    toast.success(t('roleConfig.importSuccess', { defaultValue: 'Configuración importada. No olvide guardar.' }));
   }, [pendingImportData, t]);
 
   // Derived states
@@ -986,20 +986,20 @@ export default function RoleMenuConfigPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t('roleConfig.importConfirm', { defaultValue: 'Importer la configuration ?' })}
+              {t('roleConfig.importConfirm', { defaultValue: '¿Importar la configuración?' })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t('roleConfig.importConfirmDescription', {
-                defaultValue: 'Cela remplacera la configuration actuelle des onglets Dashboard et UI. Les changements ne seront pas sauvegardés tant que vous ne cliquerez pas sur Guardar.',
+                defaultValue: 'Esto reemplazará la configuración actual de las pestañas Dashboard y UI. Los cambios no se guardarán hasta que pulse Guardar.',
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingImportData(null)}>
-              {t('roleConfig.resetDialog.cancel', { defaultValue: 'Annuler' })}
+              {t('roleConfig.resetDialog.cancel', { defaultValue: 'Cancelar' })}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmImport}>
-              {t('roleConfig.importApply', { defaultValue: 'Appliquer' })}
+              {t('roleConfig.importApply', { defaultValue: 'Aplicar' })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

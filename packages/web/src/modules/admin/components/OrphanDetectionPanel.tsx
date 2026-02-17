@@ -30,6 +30,7 @@ import apiClient from '@/core/api/client';
 import { useEntitiesWithDetails } from '@/modules/cities/hooks';
 import { useDisplayConfigs } from '@/modules/admin/hooks';
 import type { WorkflowMenuMapping } from '@/modules/agent-dashboard/types/menu-config';
+import { sqlLikeToRegex } from '@/core/utils/sql-like';
 
 // =============================================================================
 // TYPES
@@ -39,17 +40,6 @@ interface OrphanItem {
   workflowCode: string;
   entityName?: string;
   entityCode?: string;
-}
-
-// =============================================================================
-// SQL LIKE → REGEX (same as EntitiesTabContent.tsx)
-// =============================================================================
-
-function sqlLikeToRegex(pattern: string): RegExp {
-  let regexStr = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  regexStr = regexStr.replace(/%/g, '.*');
-  regexStr = regexStr.replace(/_/g, '.');
-  return new RegExp(`^${regexStr}$`, 'i');
 }
 
 // =============================================================================
@@ -153,7 +143,7 @@ export function OrphanDetectionPanel() {
                 ) : (
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
                 )}
-                {t('title', { defaultValue: 'Détection d\'incohérences' })}
+                {t('title', { defaultValue: 'Detección de inconsistencias' })}
                 <Badge variant={totalIssues > 0 ? 'destructive' : 'secondary'} className="text-xs">
                   {totalIssues}
                 </Badge>
@@ -168,7 +158,7 @@ export function OrphanDetectionPanel() {
           <CardContent className="space-y-4 pt-0">
             {totalIssues === 0 ? (
               <p className="text-sm text-green-600">
-                {t('noIssues', { defaultValue: 'Aucune incohérence détectée. Tous les workflows ont un mapping et une display config.' })}
+                {t('noIssues', { defaultValue: 'Sin inconsistencias. Todos los workflows tienen mapping y display config.' })}
               </p>
             ) : (
               <>
@@ -176,7 +166,7 @@ export function OrphanDetectionPanel() {
                 {analysis.workflowsNoMapping.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium flex items-center gap-2">
-                      {t('workflowsWithoutMapping', { defaultValue: 'Workflows sans mapping' })}
+                      {t('workflowsWithoutMapping', { defaultValue: 'Workflows sin mapping' })}
                       <Badge variant="outline" className="text-xs">
                         {analysis.workflowsNoMapping.length}
                       </Badge>
@@ -200,7 +190,7 @@ export function OrphanDetectionPanel() {
                           <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
                             <Link href={`/${locale}/dashboard/admin/workflow-mappings/new`}>
                               <Plus className="h-3 w-3 mr-1" />
-                              {t('createMapping', { defaultValue: 'Créer mapping' })}
+                              {t('createMapping', { defaultValue: 'Crear mapping' })}
                             </Link>
                           </Button>
                         </div>
@@ -213,7 +203,7 @@ export function OrphanDetectionPanel() {
                 {analysis.workflowsNoDisplay.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium flex items-center gap-2">
-                      {t('workflowsWithoutDisplayConfig', { defaultValue: 'Workflows sans display config' })}
+                      {t('workflowsWithoutDisplayConfig', { defaultValue: 'Workflows sin display config' })}
                       <Badge variant="outline" className="text-xs">
                         {analysis.workflowsNoDisplay.length}
                       </Badge>
@@ -237,7 +227,7 @@ export function OrphanDetectionPanel() {
                           <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
                             <Link href={`/${locale}/dashboard/admin/menu-config/display/new`}>
                               <Plus className="h-3 w-3 mr-1" />
-                              {t('createDisplayConfig', { defaultValue: 'Créer display config' })}
+                              {t('createDisplayConfig', { defaultValue: 'Crear display config' })}
                             </Link>
                           </Button>
                         </div>
@@ -250,7 +240,7 @@ export function OrphanDetectionPanel() {
                 {analysis.mappingsNoWorkflow.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium flex items-center gap-2">
-                      {t('mappingsWithoutWorkflows', { defaultValue: 'Mappings sans workflows' })}
+                      {t('mappingsWithoutWorkflows', { defaultValue: 'Mappings sin workflows' })}
                       <Badge variant="outline" className="text-xs">
                         {analysis.mappingsNoWorkflow.length}
                       </Badge>
@@ -266,7 +256,7 @@ export function OrphanDetectionPanel() {
                           </code>
                           <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
                             <Link href={`/${locale}/dashboard/admin/workflow-mappings/${item.mappingId}`}>
-                              {t('edit', { defaultValue: 'Éditer' })}
+                              {t('edit', { defaultValue: 'Editar' })}
                             </Link>
                           </Button>
                         </div>
