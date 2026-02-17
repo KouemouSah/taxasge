@@ -118,7 +118,7 @@ export function WorkflowMappingForm({
   isLoading = false,
   mode = 'create',
 }: WorkflowMappingFormProps) {
-  const t = useTranslations('menuConfig');
+  const t = useTranslations('admin.menuConfig');
 
   const form = useForm<WorkflowMappingFormValues>({
     resolver: zodResolver(workflowMappingSchema),

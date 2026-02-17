@@ -225,11 +225,15 @@ class EntityService:
         if new_type == EntityType.DEPARTMENT.value and not new_parent:
             raise ValueError("Departments must have a parent_entity_id")
 
-        # Validate workflow_codes if provided
+        # Validate workflow_codes if provided — only validate NEW codes
+        # (existing codes may reference deactivated workflows and should not block edits)
         if data.workflow_codes:
-            is_valid, invalid_codes = await self.repository.validate_workflow_codes(data.workflow_codes)
-            if not is_valid:
-                raise ValueError(f"Invalid workflow codes: {', '.join(invalid_codes)}")
+            existing_codes = set(existing.get('workflow_codes') or [])
+            new_codes = [c for c in data.workflow_codes if c not in existing_codes]
+            if new_codes:
+                is_valid, invalid_codes = await self.repository.validate_workflow_codes(new_codes)
+                if not is_valid:
+                    raise ValueError(f"Invalid workflow codes: {', '.join(invalid_codes)}")
 
         result = await self.repository.update_entity(entity_id, data, updated_by)
         return EntityResponse(**result) if result else None

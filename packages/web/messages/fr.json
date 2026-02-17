@@ -1199,6 +1199,8 @@
         "systemColumnsTitle": "Colonnes Système ({count})",
         "systemColumnsHint": "reference, status, priority, workflow sont déjà visibles dans Informations Générales",
         "extractedColumnsTitle": "Colonnes Extraites ({count})",
+        "customLabels": "Étiquettes Personnalisées",
+        "customLabelsDescription": "Personnaliser les noms des colonnes affichées. Laisser vide pour utiliser l'étiquette par défaut.",
         "preview": "Aperçu",
         "previewDescription": "Aperçu du panneau agent",
         "noExtractedColumnsSelected": "Aucune colonne extraite sélectionnée",
@@ -3883,7 +3885,12 @@
     "confirmActionDescription": "Êtes-vous sûr d'effectuer cette action sur {count} élément(s)?",
     "deleteSelected": "Supprimer la sélection",
     "confirmDeleteTitle": "Supprimer la sélection?",
-    "confirmDeleteDescription": "Cette action supprimera {count} élément(s). Cette action est irréversible."
+    "confirmDeleteDescription": "Cette action supprimera {count} élément(s). Cette action est irréversible.",
+    "role": "Rôle",
+    "code": "Code",
+    "entityType": "Type d'entité",
+    "name": "Nom",
+    "description": "Description"
   },
   "dashboard": {
     "actionRequired": "Action requise sur les demandes suivantes",

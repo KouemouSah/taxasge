@@ -1252,6 +1252,8 @@
         "systemColumnsTitle": "System Columns ({count})",
         "systemColumnsHint": "reference, status, priority, workflow are already visible in General Info",
         "extractedColumnsTitle": "Extracted Columns ({count})",
+        "customLabels": "Custom Labels",
+        "customLabelsDescription": "Customize the column names displayed. Leave empty to use the default label.",
         "preview": "Preview",
         "previewDescription": "Agent panel preview",
         "noExtractedColumnsSelected": "No extracted columns selected",
@@ -3643,7 +3645,12 @@
     "confirmActionDescription": "Are you sure you want to perform this action on {count} item(s)?",
     "deleteSelected": "Delete selected",
     "confirmDeleteTitle": "Delete selected?",
-    "confirmDeleteDescription": "This action will delete {count} item(s). This action cannot be undone."
+    "confirmDeleteDescription": "This action will delete {count} item(s). This action cannot be undone.",
+    "role": "Role",
+    "code": "Code",
+    "entityType": "Entity Type",
+    "name": "Name",
+    "description": "Description"
   },
   "dashboard": {
     "actionRequired": "Action required on the following requests",

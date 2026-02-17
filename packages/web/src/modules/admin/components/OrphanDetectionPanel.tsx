@@ -57,13 +57,13 @@ export function OrphanDetectionPanel() {
     queryFn: async () => {
       const response = await apiClient.get<{ items: WorkflowMenuMapping[] }>(
         '/menu-config/workflow-mappings',
-        { params: { page: 1, page_size: 999 } }
+        { params: { page: 1, page_size: 100 } }
       );
       return response.data;
     },
   });
 
-  const { data: displayConfigsData, isError: displayError } = useDisplayConfigs({ page: 1, page_size: 999 });
+  const { data: displayConfigsData, isError: displayError } = useDisplayConfigs({ page: 1, page_size: 100 });
 
   const { data: entitiesData, isError: entitiesError } = useEntitiesWithDetails({ is_active: true });
 

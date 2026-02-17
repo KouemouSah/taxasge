@@ -1199,6 +1199,8 @@
         "systemColumnsTitle": "Columnas del Sistema ({count})",
         "systemColumnsHint": "reference, status, priority, workflow ya están visibles en Información General",
         "extractedColumnsTitle": "Columnas Extraídas ({count})",
+        "customLabels": "Etiquetas Personalizadas",
+        "customLabelsDescription": "Personalizar los nombres de las columnas mostradas. Dejar vacío para usar la etiqueta por defecto.",
         "preview": "Vista Previa",
         "previewDescription": "Vista previa del panel del agente",
         "noExtractedColumnsSelected": "Ninguna columna extraída seleccionada",
@@ -3864,7 +3866,12 @@
     "confirmActionDescription": "¿Está seguro de realizar esta acción en {count} elemento(s)?",
     "deleteSelected": "Eliminar seleccionados",
     "confirmDeleteTitle": "¿Eliminar seleccionados?",
-    "confirmDeleteDescription": "Esta acción eliminará {count} elemento(s). Esta acción no se puede deshacer."
+    "confirmDeleteDescription": "Esta acción eliminará {count} elemento(s). Esta acción no se puede deshacer.",
+    "role": "Rol",
+    "code": "Código",
+    "entityType": "Tipo de Entidad",
+    "name": "Nombre",
+    "description": "Descripción"
   },
   "dashboard": {
     "actionRequired": "Acción requerida en las siguientes solicitudes",

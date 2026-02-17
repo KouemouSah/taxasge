@@ -25,7 +25,7 @@ import type {
 export default function WorkflowMappingCreatePage() {
   const router = useRouter();
   const locale = useLocale();
-  const t = useTranslations('menuConfig');
+  const t = useTranslations('admin.menuConfig');
 
   // Create mutation
   const createMutation = useCreateWorkflowMapping();

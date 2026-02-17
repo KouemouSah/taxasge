@@ -29,7 +29,7 @@ export default function WorkflowMappingEditPage() {
   const router = useRouter();
   const params = useParams();
   const locale = useLocale();
-  const t = useTranslations('menuConfig');
+  const t = useTranslations('admin.menuConfig');
 
   // Parse mapping ID from URL params
   const mappingId = params.id ? parseInt(params.id as string, 10) : 0;
