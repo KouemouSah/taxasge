@@ -635,7 +635,6 @@ class ConducirWorkflow(PredefinedWorkflow):
             title_es="Programar Cita",
             description_es="Seleccione una cita en la oficina DGT",
             config={
-                "entity_code": EntityCode.DGT.value,
                 "entity_via_request": True,
                 "use_appointment_module": True,
                 "exam_scheduling": {
@@ -1032,8 +1031,7 @@ class ConducirWorkflow(PredefinedWorkflow):
             "scheduling": {
                 "delay_min_days": 7,
                 "notification_days_before": 3,
-                "locations_from": "entity_locations",
-                "entity_code": EntityCode.DGT.value
+                "locations_from": "entity_locations"
             }
         }
 

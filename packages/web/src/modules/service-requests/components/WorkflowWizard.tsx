@@ -21,6 +21,7 @@ import {
   List,
   ListChecks,
   Calendar,
+  MapPin,
   Settings,
 } from 'lucide-react'
 
@@ -42,6 +43,7 @@ const stepTypeIcons: Record<StepType, React.ComponentType<{ className?: string }
   payment: CreditCard,
   confirmation: CheckCircle,
   appointment: Calendar,
+  site_selection: MapPin,
   custom: Settings,
 }
 

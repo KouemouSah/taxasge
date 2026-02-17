@@ -1543,10 +1543,16 @@ async def get_request_detail_view(
             is_minor_raw = request.form_data.get("is_minor", False)
             is_minor = is_minor_raw is True or is_minor_raw == "true"
 
+            try:
+                wf_code = WorkflowCode(request.workflow_code)
+            except ValueError:
+                from ..workflows.generic_workflow import _GenericCode
+                wf_code = _GenericCode(request.workflow_code)
+
             pdf_context = WorkflowContext(
                 service_request_id=request_id,
                 user_id=current_user.id,
-                workflow_code=WorkflowCode(request.workflow_code),
+                workflow_code=wf_code,
                 solicitud_type=request.solicitud_type,
                 sub_type=request.form_data.get("sub_type") or request.form_data.get("tipo"),
                 motivo=motivo,
@@ -1850,10 +1856,16 @@ async def download_citizen_summary_pdf(
         is_minor_raw = request.form_data.get("is_minor", False)
         is_minor = is_minor_raw is True or is_minor_raw == "true"
 
+        try:
+            wf_code = WorkflowCode(request.workflow_code)
+        except ValueError:
+            from ..workflows.generic_workflow import _GenericCode
+            wf_code = _GenericCode(request.workflow_code)
+
         pdf_context = WorkflowContext(
             service_request_id=request_id,
             user_id=current_user.id,
-            workflow_code=WorkflowCode(request.workflow_code),
+            workflow_code=wf_code,
             solicitud_type=request.solicitud_type,
             sub_type=request.form_data.get("sub_type") or request.form_data.get("tipo"),
             motivo=motivo,

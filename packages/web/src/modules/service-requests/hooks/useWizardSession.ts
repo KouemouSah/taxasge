@@ -78,6 +78,13 @@ export interface UseWizardSessionReturn {
     slotConfigId?: string | null
   }) => Promise<boolean>
 
+  saveSiteData: (data: {
+    entityLocationId: string
+    locationName: string
+    city: string
+    entityCode?: string | null
+  }) => Promise<boolean>
+
   // Payment
   preparePayment: () => Promise<PreparePaymentResult | null>
   /** @deprecated Use initiatePayment() for atomic persist+pay. Kept for free services (amount=0). */
@@ -414,6 +421,50 @@ export function useWizardSession(): UseWizardSessionReturn {
     [session, handleError]
   )
 
+  const saveSiteData = useCallback(
+    async (data: {
+      entityLocationId: string
+      locationName: string
+      city: string
+      entityCode?: string | null
+    }): Promise<boolean> => {
+      if (!session) {
+        setError('No hay sesión activa')
+        return false
+      }
+      try {
+        setIsLoading(true)
+        setError(null)
+        const result = await wizardSessionApi.saveSiteSelection(
+          session.sessionId,
+          data,
+        )
+        if (result.success) {
+          setSession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  siteSelection: {
+                    entityLocationId: data.entityLocationId,
+                    locationName: data.locationName,
+                    city: data.city,
+                    entityCode: data.entityCode ?? null,
+                  },
+                }
+              : null
+          )
+        }
+        return result.success
+      } catch (err) {
+        handleError(err)
+        return false
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [session, handleError]
+  )
+
   // ==========================================================================
   // PAYMENT
   // ==========================================================================
@@ -588,6 +639,9 @@ export function useWizardSession(): UseWizardSessionReturn {
 
     // Appointment
     saveAppointmentData,
+
+    // Site selection
+    saveSiteData,
 
     // Payment
     preparePayment,

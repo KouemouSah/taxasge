@@ -120,6 +120,9 @@ class WizardSessionData(BaseModel):
     # Appointment selection (cached before payment, not a real hold)
     appointment_data: Optional[Dict[str, Any]] = None
 
+    # Site selection (for non-appointment workflows)
+    site_selection: Optional[Dict[str, Any]] = None
+
     # Validation results
     validation_results: Optional[List[Dict[str, Any]]] = None
     has_errors: bool = False
@@ -199,6 +202,9 @@ class WizardSessionResponse(BaseModel):
 
     # Appointment selection (cached in session, not a real hold)
     appointment_data: Optional[Dict[str, Any]] = None
+
+    # Site selection (for non-appointment workflows)
+    site_selection: Optional[Dict[str, Any]] = None
 
     class Config:
         use_enum_values = True

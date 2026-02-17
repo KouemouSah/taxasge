@@ -121,8 +121,14 @@ class WorkloadRepository:
             logger.info(f"Filtering agents by entity_id: {entity_id}")
 
         if entity_location_id:
-            # Match agents at this specific site OR supervisors/floating (NULL location)
-            location_filter = f"AND (ap.entity_location_id = ${len(params) + 1} OR ap.entity_location_id IS NULL)"
+            # Match agents at this specific site
+            # OR root-entity agents with NULL location (e.g., root-level supervisors who see all sites)
+            # Department-level agents MUST have entity_location_id set (even supervisors)
+            location_filter = (
+                f"AND (ap.entity_location_id = ${len(params) + 1}"
+                f" OR (ap.entity_location_id IS NULL"
+                f"     AND EXISTS (SELECT 1 FROM entities e2 WHERE e2.id = ap.entity_id AND e2.parent_entity_id IS NULL)))"
+            )
             params.append(entity_location_id)
             logger.info(f"Filtering agents by entity_location_id: {entity_location_id}")
 

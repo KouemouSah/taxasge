@@ -569,7 +569,6 @@ class PasaporteWorkflow(PredefinedWorkflow):
             title_es="Programar Cita",
             description_es="Seleccione una cita en la oficina CNEDOGE",
             config={
-                "entity_code": EntityCode.CNEDOGE.value,
                 "entity_via_request": True,
                 "use_appointment_module": True,
             }

@@ -1,5 +1,5 @@
 /**
- * ITVE (Vehicle Inspection) Agent Dashboard
+ * ITV (Vehicle Inspection) Agent Dashboard
  * Main dashboard for agents handling ITV renewals
  *
  * @route /[locale]/dashboard/agent/itve
@@ -11,5 +11,5 @@
 import { GenericEntityDashboard } from '@/modules/agent-dashboard';
 
 export default function ItveAgentDashboardPage() {
-  return <GenericEntityDashboard entityCode="ITVE" />;
+  return <GenericEntityDashboard entityCode="ITV" />;
 }

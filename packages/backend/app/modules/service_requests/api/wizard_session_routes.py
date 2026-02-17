@@ -625,6 +625,100 @@ async def initiate_session_payment(
 
 
 # =============================================================================
+# SITE SELECTION (for ALL workflows, before payment)
+# =============================================================================
+
+@router.get(
+    "/{session_id}/available-sites",
+    summary="Get available processing sites for this workflow",
+    description="Returns entity_locations grouped by city for the session's workflow.",
+)
+async def get_session_available_sites(
+    session_id: str = Path(..., description="The wizard session ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+):
+    """Get available sites for a workflow via entities.workflow_codes."""
+    try:
+        session = await wizard_session_service._get_session(session_id, current_user.id)
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+    workflow_code = session["workflow_code"]
+
+    from ..services.workflow_engine import resolve_workflow_sites
+
+    try:
+        sites = await resolve_workflow_sites(db, workflow_code)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Group by city for frontend
+    cities: dict = {}
+    for site in sites:
+        city = site["city"] or "Sin ciudad"
+        if city not in cities:
+            cities[city] = []
+        cities[city].append({
+            "id": str(site["id"]),
+            "entity_code": site["entity_code"],
+            "city": city,
+            "location_name": site["location_name"],
+            "location_address": site.get("location_address"),
+            "is_main_office": site.get("is_main_office", False),
+        })
+
+    return {
+        "workflow_code": workflow_code,
+        "sites": [
+            {"id": str(s["id"]), "entity_code": s["entity_code"],
+             "city": s["city"] or "Sin ciudad",
+             "location_name": s["location_name"],
+             "location_address": s.get("location_address"),
+             "is_main_office": s.get("is_main_office", False)}
+            for s in sites
+        ],
+        "cities": cities,
+        "count": len(sites),
+    }
+
+
+@router.post(
+    "/{session_id}/select-site",
+    summary="Save site selection to session cache",
+    description="Stores the user's site choice for non-appointment workflows.",
+)
+async def save_session_site_selection(
+    session_id: str = Path(..., description="The wizard session ID"),
+    body: dict = Body(..., examples=[{
+        "entity_location_id": "550e8400-e29b-41d4-a716-446655440000",
+        "location_name": "CNEDOGE Malabo",
+        "city": "Malabo",
+    }]),
+    current_user=Depends(get_current_user),
+):
+    """Save site selection in wizard session cache."""
+    try:
+        site_data = {
+            "entity_location_id": body.get("entity_location_id"),
+            "location_name": body.get("location_name"),
+            "city": body.get("city"),
+            "entity_code": body.get("entity_code"),
+        }
+
+        result = await wizard_session_service.save_site_selection(
+            session_id=session_id,
+            user_id=current_user.id,
+            site_data=site_data,
+        )
+
+        return {"success": True, "site_selection": result}
+
+    except WizardSessionError as e:
+        _handle_session_error(e)
+
+
+# =============================================================================
 # APPOINTMENT SELECTION (session-based, before payment)
 # =============================================================================
 

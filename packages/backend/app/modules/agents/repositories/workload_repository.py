@@ -230,8 +230,14 @@ class WorkloadRepository:
         params: list = [ministry_id, max_capacity_percentage]
 
         if entity_location_id:
-            # Filter: agents at this specific site OR supervisors (NULL = sees all)
-            location_filter = "AND (ap.entity_location_id = $3 OR ap.entity_location_id IS NULL)"
+            # Filter: agents at this specific site
+            # OR root-entity agents with NULL location (sees all sites under their entity)
+            # Department-level agents MUST have entity_location_id set (even supervisors)
+            location_filter = (
+                "AND (ap.entity_location_id = $3"
+                " OR (ap.entity_location_id IS NULL"
+                "     AND EXISTS (SELECT 1 FROM entities e2 WHERE e2.id = ap.entity_id AND e2.parent_entity_id IS NULL)))"
+            )
             params.append(entity_location_id)
 
         query = f"""

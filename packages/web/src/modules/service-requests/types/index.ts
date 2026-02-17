@@ -66,6 +66,7 @@ export enum StepType {
   PAYMENT = 'payment',
   CONFIRMATION = 'confirmation',
   APPOINTMENT = 'appointment',
+  SITE_SELECTION = 'site_selection',
   CUSTOM = 'custom',
 }
 
@@ -648,6 +649,7 @@ export function getStepTypeIcon(stepType: StepType): string {
     [StepType.PAYMENT]: 'credit-card',
     [StepType.CONFIRMATION]: 'check-circle',
     [StepType.APPOINTMENT]: 'calendar',
+    [StepType.SITE_SELECTION]: 'map-pin',
     [StepType.CUSTOM]: 'settings',
   }
   return icons[stepType] || 'circle'

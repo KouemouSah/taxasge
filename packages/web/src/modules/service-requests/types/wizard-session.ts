@@ -69,6 +69,14 @@ export interface BackendWizardSessionResponse {
     appointment_time: string
     slot_config_id: string | null
   } | null
+
+  // Site selection (for non-appointment workflows)
+  site_selection: {
+    entity_location_id: string
+    location_name: string
+    city: string
+    entity_code: string | null
+  } | null
 }
 
 export interface BackendRequiredDocument {
@@ -206,6 +214,14 @@ export interface WizardSession {
     appointmentDate: string
     appointmentTime: string
     slotConfigId: string | null
+  } | null
+
+  // Site selection (for non-appointment workflows)
+  siteSelection: {
+    entityLocationId: string
+    locationName: string
+    city: string
+    entityCode: string | null
   } | null
 }
 
@@ -383,7 +399,56 @@ export function transformSession(
           slotConfigId: backend.appointment_data.slot_config_id ?? null,
         }
       : null,
+    siteSelection: backend.site_selection
+      ? {
+          entityLocationId: backend.site_selection.entity_location_id,
+          locationName: backend.site_selection.location_name,
+          city: backend.site_selection.city,
+          entityCode: backend.site_selection.entity_code ?? null,
+        }
+      : null,
   }
+}
+
+// ============================================================================
+// SITE SELECTION TYPES
+// ============================================================================
+
+export interface SiteInfo {
+  id: string
+  entityCode: string
+  city: string
+  locationName: string
+  locationAddress: string | null
+  isMainOffice: boolean
+}
+
+export interface AvailableSitesResponse {
+  workflow_code: string
+  sites: Array<{
+    id: string
+    entity_code: string
+    city: string
+    location_name: string
+    location_address: string | null
+    is_main_office: boolean
+  }>
+  cities: Record<string, Array<{
+    id: string
+    entity_code: string
+    city: string
+    location_name: string
+    location_address: string | null
+    is_main_office: boolean
+  }>>
+  count: number
+}
+
+export interface SiteSelectionData {
+  entityLocationId: string
+  locationName: string
+  city: string
+  entityCode: string | null
 }
 
 function transformRequiredDocument(

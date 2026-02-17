@@ -127,7 +127,7 @@ export default function CreateAgentPage() {
   // Transform data for select components
   // Ministry uses name_es for Spanish (default language)
   const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
-  const entities = entitiesData?.map(e => ({ id: e.id, code: e.code, name: e.name })) || [];
+  const entities = entitiesData?.map(e => ({ id: e.id, code: e.code, name: e.name, entity_type: e.entity_type })) || [];
   const rbacRoles = rbacRolesData || [];
   const workflows = workflowsData || [];
   const router = useRouter();
@@ -178,8 +178,10 @@ export default function CreateAgentPage() {
   const watchCanApproveUnlimited = agentForm.watch('can_approve_unlimited');
   const watchEntityId = agentForm.watch('entity_id');
 
-  // Derive entity_code from selected entity_id for location filtering
-  const selectedEntityCode = entities.find(e => e.id === watchEntityId)?.code;
+  // Derive entity info from selected entity_id
+  const selectedEntity = entities.find(e => e.id === watchEntityId);
+  const selectedEntityCode = selectedEntity?.code;
+  const isDepartmentEntity = selectedEntity?.entity_type === 'department';
 
   // Fetch locations for the selected entity
   const { data: entityLocations, isLoading: isLoadingLocations } = useLocationsByEntity(
@@ -214,6 +216,19 @@ export default function CreateAgentPage() {
 
   const handleAgentSubmit = async (data: AgentFormData) => {
     try {
+      // Validate: department entities MUST have a location
+      if (data.agent_type === AgentType.ENTITY_AGENT && data.entity_id) {
+        const entity = entities.find(e => e.id === data.entity_id);
+        if (entity?.entity_type === 'department' && !data.entity_location_id) {
+          toast({
+            variant: 'destructive',
+            title: 'Site obligatoire',
+            description: 'Les agents de département doivent être assignés à un site spécifique.',
+          });
+          return;
+        }
+      }
+
       const response = await inviteAgentMutation.mutateAsync({
         user: {
           email: data.email,
@@ -226,7 +241,7 @@ export default function CreateAgentPage() {
         is_supervisor: data.is_supervisor,
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id : undefined,
         entity_id: data.agent_type === AgentType.ENTITY_AGENT ? data.entity_id : undefined,
-        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id ? data.entity_location_id : undefined,
+        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id ? data.entity_location_id : null,
         agent_role: data.agent_role,
         rbac_role_id: data.rbac_role_id, // RBAC role for permissions
         can_approve_unlimited: data.can_approve_unlimited,
@@ -602,15 +617,20 @@ export default function CreateAgentPage() {
                     name="entity_location_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Site / Ubicación</FormLabel>
+                        <FormLabel>
+                          Site / Ubicación
+                          {isDepartmentEntity && <span className="text-destructive ml-1">*</span>}
+                        </FormLabel>
                         <Select onValueChange={field.onChange} value={field.value || ''}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Todas las ubicaciones (superviseur)" />
+                              <SelectValue placeholder={isDepartmentEntity ? 'Seleccionar sitio (obligatorio)' : 'Todos los sitios'} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Todas las ubicaciones</SelectItem>
+                            {!isDepartmentEntity && (
+                              <SelectItem value="">Todos los sitios (ve todas las solicitudes)</SelectItem>
+                            )}
                             {isLoadingLocations ? (
                               <SelectItem value="_loading" disabled>Chargement...</SelectItem>
                             ) : !entityLocations || entityLocations.length === 0 ? (
@@ -626,8 +646,9 @@ export default function CreateAgentPage() {
                           </SelectContent>
                         </Select>
                         <FormDescription>
-                          Sélectionnez un site pour limiter l&apos;agent à cette ubicación.
-                          Laissez vide pour un agent superviseur/flottant.
+                          {isDepartmentEntity
+                            ? 'Obligatoire : les agents de département sont liés à un site spécifique.'
+                            : 'Optionnel : sans site = voit toutes les demandes de tous les sites.'}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

@@ -153,9 +153,11 @@ class AgentQueueEventHandler:
                 f"Entity: {entity_code}"
             )
 
-            # Trigger auto-assignment to route to correct entity's agents
-            # CRITICAL: workflow_code determines which entity's agents receive the assignment
-            # e.g., PASAPORTE_NUEVO -> CNEDOGE_PASAPORTE agents
+            # Trigger auto-assignment using entity_code for deterministic routing
+            # CRITICAL: entity_code (not workflow_code) determines the target entity.
+            # For multi-entity workflows (e.g., RESIDENCIA handled by EXTRANJERIA + CNEDOGE),
+            # workflow_code lookup is nondeterministic. entity_code is set at persist time
+            # from PredefinedWorkflow.entity_code and is authoritative.
             from app.modules.assignment.services.auto_assignment_service import AutoAssignmentService
 
             auto_assignment_service = AutoAssignmentService()
@@ -168,9 +170,9 @@ class AgentQueueEventHandler:
                     "entity_code": entity_code,
                 },
                 entity_type="entity",
-                entity_id=None,  # Let workflow_code determine the entity
+                entity_id=None,
                 priority_level=5,
-                workflow_code=workflow_code,  # Route by workflow to correct entity
+                entity_code=entity_code,  # Deterministic: use entity_code, not workflow_code
                 entity_location_id=sr["entity_location_id"],  # Site-based routing
             )
 

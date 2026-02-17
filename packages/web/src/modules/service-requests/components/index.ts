@@ -10,6 +10,7 @@ export { AgentDashboard } from './AgentDashboard'
 export { CitizenSummaryForm } from './CitizenSummaryForm'
 export { RequestDetail } from './RequestDetail'
 export { AppointmentSelection } from './AppointmentSelection'
+export { SiteSelection } from './SiteSelection'
 export { IdentityMismatchBlocker } from './IdentityMismatchBlocker'
 export type { IdentityMismatch, IdentityMismatchBlockerProps } from './IdentityMismatchBlocker'
 

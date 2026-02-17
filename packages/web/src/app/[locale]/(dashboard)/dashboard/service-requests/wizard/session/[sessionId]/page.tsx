@@ -63,6 +63,7 @@ import {
   IdentityMismatchBlocker,
   DocumentUploader,
   AppointmentSelection,
+  SiteSelection,
   DynamicFormRenderer,
   useSessionFormConfig,
   usePrefetchSessionFormConfig,
@@ -104,6 +105,7 @@ const STEP_TYPE_ICONS: Record<string, React.ElementType> = {
   form_review: FileText,
   payment: CreditCard,
   appointment: Calendar,
+  site_selection: MapPin,
   confirmation: CheckCircle,
   validation: FileText,
   custom: Stamp,
@@ -116,7 +118,7 @@ const STEP_TYPE_ICONS: Record<string, React.ElementType> = {
  * shown in the tariff breakdown of the main payment step).
  */
 const RENDERABLE_STEP_TYPES = new Set([
-  'selection', 'document_upload', 'form_review', 'payment', 'appointment', 'confirmation', 'custom',
+  'selection', 'document_upload', 'form_review', 'payment', 'appointment', 'site_selection', 'confirmation', 'custom',
 ])
 
 // ============================================================================
@@ -257,7 +259,7 @@ export default function SessionWizardPage() {
       return []
     }
 
-    return workflowConfig.steps
+    const filtered: WizardStepDef[] = workflowConfig.steps
       .filter((s) => {
         // Only keep steps with renderable types
         if (!RENDERABLE_STEP_TYPES.has(s.stepType)) return false
@@ -282,12 +284,33 @@ export default function SessionWizardPage() {
       })
       .map((s) => ({
         id: s.stepId,
-        type: s.stepType,
+        type: s.stepType as string,
         titleEs: s.titleEs || s.stepId,
         titleFr: s.titleEs || s.stepId, // Backend sends ES only; translations via i18n module
         titleEn: s.titleEs || s.stepId,
         icon: STEP_TYPE_ICONS[s.stepType] || FileText,
       }))
+
+    // Inject site_selection step for non-appointment workflows.
+    // Appointment workflows already handle site selection inside AppointmentSelection.
+    const hasAppointmentStep = filtered.some(s => s.type === 'appointment')
+    const hasSiteSelectionStep = filtered.some(s => s.type === 'site_selection')
+
+    if (!hasAppointmentStep && !hasSiteSelectionStep) {
+      // Insert before payment step
+      const paymentIdx = filtered.findIndex(s => s.type === 'payment')
+      const insertIdx = paymentIdx >= 0 ? paymentIdx : filtered.length
+      filtered.splice(insertIdx, 0, {
+        id: 'site_selection',
+        type: 'site_selection',
+        titleEs: 'Sitio de tramitacion',
+        titleFr: 'Site de traitement',
+        titleEn: 'Processing site',
+        icon: STEP_TYPE_ICONS['site_selection'] || MapPin,
+      })
+    }
+
+    return filtered
   }, [workflowConfig, formValues])
 
   // Clamp step index if steps list shrinks (e.g., condition no longer met)
@@ -1334,6 +1357,25 @@ export default function SessionWizardPage() {
           )}
 
           {/* ============================================================ */}
+          {/* STEP: Site Selection (non-appointment workflows)            */}
+          {/* ============================================================ */}
+          {currentStep.type === 'site_selection' && (
+            <SiteSelection
+              sessionId={session.sessionId}
+              onComplete={() => handleNext()}
+              onBack={() => setCurrentStepIndex((prev) => prev - 1)}
+              locale={locale as 'es' | 'fr' | 'en'}
+              getAvailableSites={(sid) =>
+                wizardSessionApi.getAvailableSites(sid)
+              }
+              saveSiteSelection={(sid, data) =>
+                wizardSessionApi.saveSiteSelection(sid, data)
+              }
+              initialSiteId={session.siteSelection?.entityLocationId ?? null}
+            />
+          )}
+
+          {/* ============================================================ */}
           {/* STEP: Appointment (session-based, BEFORE payment)           */}
           {/* ============================================================ */}
           {currentStep.type === 'appointment' && (
@@ -1362,8 +1404,8 @@ export default function SessionWizardPage() {
         </CardContent>
       </Card>
 
-      {/* Navigation buttons (hidden on appointment + confirmation steps) */}
-      {currentStep.type !== 'appointment' && currentStep.type !== 'confirmation' && (
+      {/* Navigation buttons (hidden on appointment, site_selection + confirmation steps — they have their own nav) */}
+      {currentStep.type !== 'appointment' && currentStep.type !== 'site_selection' && currentStep.type !== 'confirmation' && (
       <div className="flex justify-between">
         <Button
           variant="outline"

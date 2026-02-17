@@ -837,7 +837,13 @@ export const EXTRANJERIA_CONFIG: EntityDashboardConfig = {
 // ALL ENTITY CONFIGS REGISTRY
 // =============================================================================
 
-export const ENTITY_CONFIGS: Record<EntityCode, EntityDashboardConfig> = {
+/**
+ * @deprecated Since 2026-02-14. Menus are now generated dynamically from
+ * PredefinedWorkflow classes via workflow_menu_mapping DB table.
+ * The backend endpoint GET /menu-config/me returns the dynamic menu.
+ * This registry is kept as a fallback only — not exhaustive.
+ */
+export const ENTITY_CONFIGS: Partial<Record<EntityCode, EntityDashboardConfig>> = {
   CNEDOGE: CNEDOGE_CONFIG,
   CNEDOGE_PASAPORTE: CNEDOGE_PASAPORTE_CONFIG,
   CNEDOGE_RESIDENCIA: CNEDOGE_RESIDENCIA_CONFIG,
@@ -930,7 +936,7 @@ export const ENTITY_CONFIGS: Record<EntityCode, EntityDashboardConfig> = {
  * Get entity configuration by code
  */
 export function getEntityConfig(entityCode: EntityCode): EntityDashboardConfig {
-  return ENTITY_CONFIGS[entityCode] || ENTITY_CONFIGS.GENERAL;
+  return ENTITY_CONFIGS[entityCode] || ENTITY_CONFIGS.GENERAL!;
 }
 
 /**

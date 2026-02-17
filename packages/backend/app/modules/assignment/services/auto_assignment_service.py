@@ -67,6 +67,7 @@ class AutoAssignmentService:
         entity_id: Optional[str] = None,
         priority_level: int = 5,
         workflow_code: Optional[str] = None,
+        entity_code: Optional[str] = None,
         entity_location_id: Optional[UUID] = None,
     ) -> Optional[Assignment]:
         """Automatically assign an item to the best available agent
@@ -79,17 +80,17 @@ class AutoAssignmentService:
             entity_type: Entity type for filtering agents
             entity_id: Entity ID (UUID) for filtering agents by entity
             priority_level: Priority 1-10 (default 5)
-            workflow_code: Workflow code to determine entity (e.g., 'PASAPORTE_NUEVO')
+            workflow_code: Workflow code to determine entity (fallback if no entity_code)
+            entity_code: Entity code for deterministic routing (preferred over workflow_code)
             entity_location_id: Specific site UUID for location-based routing (migration 104)
 
         Returns:
             Assignment or None if no agent available
 
         Note:
-            CRITICAL: Either entity_id or workflow_code should be provided
-            to ensure correct routing to the appropriate entity's agents.
-            - PASAPORTE_* workflows -> CNEDOGE_PASAPORTE agents
-            - RESIDENCIA_* workflows -> CNEDOGE_RESIDENCIA agents
+            CRITICAL: Prefer entity_code over workflow_code for routing.
+            For multi-entity workflows (RESIDENCIA handled by EXTRANJERIA + CNEDOGE),
+            workflow_code lookup is nondeterministic. entity_code is authoritative.
         """
         # Get active rules for this entity
         rules = await self.rules_repository.get_active_rules(
@@ -104,8 +105,13 @@ class AutoAssignmentService:
             except (ValueError, TypeError):
                 logger.warning(f"Invalid entity_id format: {entity_id}")
 
-        # Use workflow_code to determine entity if not provided
-        # This is the key fix: route by workflow_code -> entity -> agents
+        # Resolve entity: entity_code (deterministic) > workflow_code (nondeterministic)
+        if not entity_uuid and entity_code:
+            entity_uuid = await self.workload_repository._get_entity_id_by_code(db, entity_code)
+            if entity_uuid:
+                logger.info(f"Resolved entity_code '{entity_code}' to entity_id '{entity_uuid}'")
+
+        # Fallback to workflow_code if no entity resolved yet
         effective_workflow = workflow_code or item_type
 
         # Get available agents filtered by entity + location

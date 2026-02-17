@@ -467,6 +467,106 @@ class WizardSessionApiClient {
   }
 
   // ==========================================================================
+  // SITE SELECTION (for ALL workflows, before payment)
+  // ==========================================================================
+
+  /**
+   * Get available processing sites for a workflow.
+   * GET /wizard-sessions/{sessionId}/available-sites
+   */
+  async getAvailableSites(sessionId: string): Promise<{
+    workflowCode: string
+    sites: Array<{
+      id: string
+      entityCode: string
+      city: string
+      locationName: string
+      locationAddress: string | null
+      isMainOffice: boolean
+    }>
+    cities: Record<string, Array<{
+      id: string
+      entityCode: string
+      city: string
+      locationName: string
+      locationAddress: string | null
+      isMainOffice: boolean
+    }>>
+    count: number
+  }> {
+    const raw = await this.request<{
+      workflow_code: string
+      sites: Array<{
+        id: string
+        entity_code: string
+        city: string
+        location_name: string
+        location_address: string | null
+        is_main_office: boolean
+      }>
+      cities: Record<string, Array<{
+        id: string
+        entity_code: string
+        city: string
+        location_name: string
+        location_address: string | null
+        is_main_office: boolean
+      }>>
+      count: number
+    }>(`/${sessionId}/available-sites`)
+
+    // Transform snake_case → camelCase
+    const transformSite = (s: { id: string; entity_code: string; city: string; location_name: string; location_address: string | null; is_main_office: boolean }) => ({
+      id: s.id,
+      entityCode: s.entity_code,
+      city: s.city,
+      locationName: s.location_name,
+      locationAddress: s.location_address,
+      isMainOffice: s.is_main_office,
+    })
+
+    const transformedCities: Record<string, Array<ReturnType<typeof transformSite>>> = {}
+    for (const [city, sites] of Object.entries(raw.cities)) {
+      transformedCities[city] = sites.map(transformSite)
+    }
+
+    return {
+      workflowCode: raw.workflow_code,
+      sites: raw.sites.map(transformSite),
+      cities: transformedCities,
+      count: raw.count,
+    }
+  }
+
+  /**
+   * Save site selection to session cache.
+   * POST /wizard-sessions/{sessionId}/select-site
+   */
+  async saveSiteSelection(
+    sessionId: string,
+    data: {
+      entityLocationId: string
+      locationName: string
+      city: string
+      entityCode?: string | null
+    },
+  ): Promise<{ success: boolean }> {
+    const raw = await this.request<{ success: boolean }>(
+      `/${sessionId}/select-site`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          entity_location_id: data.entityLocationId,
+          location_name: data.locationName,
+          city: data.city,
+          entity_code: data.entityCode || null,
+        }),
+      }
+    )
+    return raw
+  }
+
+  // ==========================================================================
   // APPOINTMENT SELECTION (session-based, before payment)
   // ==========================================================================
 

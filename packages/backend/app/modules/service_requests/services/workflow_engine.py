@@ -1248,5 +1248,58 @@ async def load_generic_workflows(db) -> int:
     return loaded
 
 
+async def resolve_workflow_sites(db, workflow_code: str) -> List[Dict]:
+    """Resolve available sites for a workflow via entities.workflow_codes.
+
+    Queries entities that declare this workflow_code in their workflow_codes
+    JSONB array, then returns their active entity_locations.
+
+    Returns list of dicts with: id, entity_code, city, location_name,
+    location_address, is_main_office.
+
+    Raises ValueError if no entity declares this workflow or no active sites exist.
+    """
+    rows = await db.fetch(
+        """
+        SELECT
+            el.id, el.entity_code, el.city, el.location_name,
+            el.location_address, el.is_main_office
+        FROM entity_locations el
+        INNER JOIN entities e ON el.entity_code = e.code
+        WHERE e.workflow_codes @> to_jsonb($1::text)
+          AND el.is_active = TRUE
+          AND e.is_active = TRUE
+        ORDER BY el.city, el.is_main_office DESC, el.location_name
+        """,
+        workflow_code,
+    )
+
+    if not rows:
+        raise ValueError(
+            f"No active site found for workflow '{workflow_code}'. "
+            f"Check entities.workflow_codes and entity_locations configuration."
+        )
+
+    return [dict(r) for r in rows]
+
+
+async def resolve_entity_code_from_location(db, entity_location_id: UUID) -> str:
+    """Derive entity_code from an entity_location_id.
+
+    Single PK lookup — O(1).
+    Raises ValueError if location not found or inactive.
+    """
+    entity_code = await db.fetchval(
+        "SELECT entity_code FROM entity_locations "
+        "WHERE id = $1 AND is_active = TRUE",
+        entity_location_id,
+    )
+    if not entity_code:
+        raise ValueError(
+            f"Entity location '{entity_location_id}' not found or inactive."
+        )
+    return entity_code
+
+
 # Auto-register workflows on module import
 register_all_workflows()
