@@ -748,6 +748,57 @@ async def create_workflow(
         except Exception:
             pass  # Will be loaded at next startup
 
+    # Auto-seed mapping + display config so workflow is visible to agents immediately
+    try:
+        # 1. workflow_menu_mapping (pattern = exact code, no wildcard — 1:1)
+        existing_mapping = await db.fetchval(
+            "SELECT 1 FROM workflow_menu_mapping WHERE workflow_pattern = $1",
+            workflow.code,
+        )
+        if not existing_mapping:
+            await db.execute("""
+                INSERT INTO workflow_menu_mapping (
+                    workflow_pattern, menu_group_id, menu_title_key, menu_icon,
+                    display_order, include_pending, include_validation,
+                    include_appointments, include_history, is_active
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+            """,
+                workflow.code,
+                workflow.code.lower(),
+                f"menu.{workflow.code.lower()}",
+                workflow.icon or "file-text",
+                workflow.display_order,
+                True,
+                True,
+                workflow.requires_appointment,
+                True,
+            )
+            logger.info(f"Auto-seeded workflow_menu_mapping for {workflow.code}")
+
+        # 2. workflow_display_config (default system columns)
+        existing_dc = await db.fetchval(
+            "SELECT 1 FROM workflow_display_config WHERE workflow_code = $1",
+            workflow.code,
+        )
+        if not existing_dc:
+            await db.execute("""
+                INSERT INTO workflow_display_config (
+                    workflow_code, list_columns, preview_sections, labels, is_active
+                ) VALUES ($1, $2::jsonb, $3::jsonb, '{}'::jsonb, true)
+            """,
+                workflow.code,
+                json.dumps(["reference", "fullName", "createdAt", "status", "priority"]),
+                json.dumps(["info", "extractedData", "documents", "contact"]),
+            )
+            logger.info(f"Auto-seeded workflow_display_config for {workflow.code}")
+
+        # Invalidate caches so agents see the new workflow immediately
+        from app.core.cache import invalidate_workflow_mappings_cache, invalidate_role_menu_cache
+        await invalidate_workflow_mappings_cache()
+        await invalidate_role_menu_cache("_all_")
+    except Exception as e:
+        logger.warning(f"Auto-seed for {workflow.code} failed (non-blocking): {e}")
+
     return WorkflowResponse.from_row(row)
 
 

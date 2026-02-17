@@ -23,6 +23,7 @@ from ..models.entity_location import (
 )
 from ..services.entity_location_service import EntityLocationService
 from ..repositories.entity_location_repository import EntityLocationRepository
+from app.core.cache import invalidate_role_menu_cache, invalidate_workflow_mappings_cache
 
 
 router = APIRouter(prefix="/entity-locations", tags=["Entity Locations"])
@@ -199,12 +200,16 @@ async def create_entity_location(
     """Create a new entity location."""
     service = EntityLocationService(db)
     try:
-        return await service.create(data, created_by=current_user.id)
+        result = await service.create(data, created_by=current_user.id)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         )
+    # Entity locations affect agent routing → invalidate agent menu caches
+    await invalidate_workflow_mappings_cache()
+    await invalidate_role_menu_cache("_all_")
+    return result
 
 
 @router.put(
@@ -227,6 +232,8 @@ async def update_entity_location(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Entity location not found",
         )
+    await invalidate_workflow_mappings_cache()
+    await invalidate_role_menu_cache("_all_")
     return location
 
 
@@ -255,6 +262,8 @@ async def delete_entity_location(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+    await invalidate_workflow_mappings_cache()
+    await invalidate_role_menu_cache("_all_")
 
 
 @router.patch(
@@ -276,4 +285,6 @@ async def toggle_location_active(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Entity location not found",
         )
+    await invalidate_workflow_mappings_cache()
+    await invalidate_role_menu_cache("_all_")
     return location

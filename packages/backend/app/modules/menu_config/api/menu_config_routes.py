@@ -58,6 +58,94 @@ router = APIRouter(prefix="/menu-config", tags=["Menu Configuration"])
 
 
 # =============================================================================
+# HEALTH CHECK ENDPOINT
+# =============================================================================
+
+@router.get(
+    "/health",
+    summary="Menu config health check",
+    description="Returns orphan counts: workflows without mappings, without display configs, and orphan mappings.",
+)
+async def get_menu_health(
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """Server-side orphan detection — replicates OrphanDetectionPanel logic."""
+    await permission_service.check_permission(
+        current_user.id, "menu.view_mappings", raise_exception=True
+    )
+
+    # 1. All workflow codes referenced by entities
+    entity_rows = await db.fetch("""
+        SELECT code, name, workflow_codes
+        FROM entities
+        WHERE is_active = true AND workflow_codes IS NOT NULL
+    """)
+    all_workflow_codes: set[str] = set()
+    for row in entity_rows:
+        wc = row["workflow_codes"]
+        if isinstance(wc, list):
+            all_workflow_codes.update(wc)
+        elif isinstance(wc, str):
+            import json as _json
+            try:
+                all_workflow_codes.update(_json.loads(wc))
+            except (ValueError, TypeError):
+                pass
+
+    # 2. Active mappings
+    mapping_rows = await db.fetch("""
+        SELECT workflow_pattern FROM workflow_menu_mapping WHERE is_active = true
+    """)
+    patterns = [r["workflow_pattern"] for r in mapping_rows]
+
+    # 3. Active display configs
+    dc_rows = await db.fetch("""
+        SELECT workflow_code FROM workflow_display_config WHERE is_active = true
+    """)
+    dc_codes = {r["workflow_code"] for r in dc_rows}
+
+    # 4. Match workflows against patterns (SQL LIKE logic: % = wildcard)
+    import re as _re
+
+    def _like_to_regex(pattern: str) -> _re.Pattern:
+        escaped = _re.escape(pattern).replace(r"\%", ".*").replace(r"\_", ".")
+        return _re.compile(f"^{escaped}$", _re.IGNORECASE)
+
+    compiled = [_like_to_regex(p) for p in patterns]
+
+    workflows_without_mapping = []
+    workflows_without_display = []
+    for wc in sorted(all_workflow_codes):
+        has_mapping = any(rx.match(wc) for rx in compiled)
+        if not has_mapping:
+            workflows_without_mapping.append(wc)
+        if wc not in dc_codes:
+            workflows_without_display.append(wc)
+
+    # 5. Orphan mappings (patterns matching no entity workflow)
+    orphan_mappings = []
+    for pattern in patterns:
+        rx = _like_to_regex(pattern)
+        if not any(rx.match(wc) for wc in all_workflow_codes):
+            orphan_mappings.append(pattern)
+
+    total = len(workflows_without_mapping) + len(workflows_without_display) + len(orphan_mappings)
+
+    return {
+        "status": "healthy" if total == 0 else "degraded",
+        "total_issues": total,
+        "workflows_without_mapping": workflows_without_mapping,
+        "workflows_without_display_config": workflows_without_display,
+        "orphan_mappings": orphan_mappings,
+        "entity_workflow_count": len(all_workflow_codes),
+        "mapping_count": len(patterns),
+        "display_config_count": len(dc_codes),
+    }
+
+
+# =============================================================================
 # AGENT MENU CONFIG ENDPOINT
 # =============================================================================
 
