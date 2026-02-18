@@ -81,6 +81,9 @@ class EventType(str, Enum):
     REQUEST_ASSIGNED = "request.assigned"
     """Service request assigned to agent"""
 
+    REQUEST_DOCUMENTS_REQUIRED = "request.documents_required"
+    """Agent requested additional/corrected documents from citizen"""
+
     # ==========================================================================
     # VERIFICATION EVENTS
     # ==========================================================================

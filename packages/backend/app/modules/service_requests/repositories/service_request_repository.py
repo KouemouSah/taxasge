@@ -855,6 +855,7 @@ class ServiceRequestRepository:
     # Actions visible to citizens (filtered server-side for security)
     CITIZEN_VISIBLE_ACTIONS = (
         "status_change",
+        "documents_required",
         "agent_action_taken",
         "comment_added",
         "cita_scheduled",
@@ -868,6 +869,7 @@ class ServiceRequestRepository:
     # Human-readable titles for citizen notifications (Spanish)
     _ACTION_TITLES = {
         "status_change": "Cambio de estado",
+        "documents_required": "Documentos requeridos",
         "agent_action_taken": "Acción del agente",
         "comment_added": "Nuevo comentario",
         "cita_scheduled": "Cita programada",

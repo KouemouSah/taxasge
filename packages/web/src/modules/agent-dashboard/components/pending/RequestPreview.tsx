@@ -28,11 +28,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   ChevronLeft,
   ChevronRight,
   Check,
   X,
+  FileQuestion,
   ExternalLink,
   Loader2,
 } from 'lucide-react';
@@ -87,12 +89,15 @@ interface RequestPreviewProps {
   workflowCode?: string;
   onApprove: () => Promise<void>;
   onReject: (reason: string) => Promise<void>;
+  onRequestDocuments: (requestedDocuments: string[], comments: string) => Promise<void>;
   onNavigate: (direction: 'prev' | 'next') => void;
   canNavigatePrev: boolean;
   canNavigateNext: boolean;
-  // External control of reject dialog (for keyboard shortcuts)
+  // External control of dialogs (for keyboard shortcuts)
   showRejectDialog?: boolean;
   onRejectDialogChange?: (open: boolean) => void;
+  showRequestDocsDialog?: boolean;
+  onRequestDocsDialogChange?: (open: boolean) => void;
   // Callback when appointment is created
   onAppointmentCreated?: () => void;
 }
@@ -108,11 +113,14 @@ export function RequestPreview({
   workflowCode,
   onApprove,
   onReject,
+  onRequestDocuments,
   onNavigate,
   canNavigatePrev,
   canNavigateNext,
   showRejectDialog: externalShowRejectDialog,
   onRejectDialogChange,
+  showRequestDocsDialog: externalShowRequestDocsDialog,
+  onRequestDocsDialogChange,
   onAppointmentCreated,
 }: RequestPreviewProps) {
   // History action is read-only (no approve/reject buttons)
@@ -139,13 +147,19 @@ export function RequestPreview({
 
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isRequestingDocs, setIsRequestingDocs] = useState(false);
   const [internalShowRejectDialog, setInternalShowRejectDialog] = useState(false);
+  const [internalShowRequestDocsDialog, setInternalShowRequestDocsDialog] = useState(false);
   const [selectedReasonCode, setSelectedReasonCode] = useState<string>('');
   const [customReason, setCustomReason] = useState('');
+  const [selectedDocCodes, setSelectedDocCodes] = useState<string[]>([]);
+  const [docsComment, setDocsComment] = useState('');
 
   // Use external control if provided, otherwise use internal state
   const showRejectDialog = externalShowRejectDialog ?? internalShowRejectDialog;
   const setShowRejectDialog = onRejectDialogChange ?? setInternalShowRejectDialog;
+  const showRequestDocsDialog = externalShowRequestDocsDialog ?? internalShowRequestDocsDialog;
+  const setShowRequestDocsDialog = onRequestDocsDialogChange ?? setInternalShowRequestDocsDialog;
 
   const entityPath = entityCode.toLowerCase().replace('_', '-');
   const detailUrl = `/${locale}/dashboard/agent/${entityPath}/request/${data.id}`;
@@ -196,6 +210,46 @@ export function RequestPreview({
     } finally {
       setIsRejecting(false);
     }
+  };
+
+  // Handle request documents
+  const handleRequestDocuments = async () => {
+    const hasDocs = selectedDocCodes.length > 0;
+    const hasComment = docsComment.trim().length > 0;
+
+    if (!hasDocs && !hasComment) {
+      toast.error(t('requestDocsAtLeastOne'));
+      return;
+    }
+
+    // Auto-generate comment from selected document names if no custom comment
+    let finalComment = docsComment.trim();
+    if (hasDocs && !hasComment) {
+      const docNames = selectedDocCodes
+        .map((code) => data.documents.find((d) => d.code === code)?.name ?? code)
+        .join(', ');
+      finalComment = `${t('requestDocsAutoComment')}: ${docNames}`;
+    }
+
+    setIsRequestingDocs(true);
+    try {
+      await onRequestDocuments(hasDocs ? selectedDocCodes : [], finalComment);
+      toast.success(t('requestDocsSuccess'));
+      setShowRequestDocsDialog(false);
+      setSelectedDocCodes([]);
+      setDocsComment('');
+    } catch (error) {
+      console.error('Request documents error:', error);
+      toast.error(t('requestDocsError'));
+    } finally {
+      setIsRequestingDocs(false);
+    }
+  };
+
+  const toggleDocCode = (code: string) => {
+    setSelectedDocCodes((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
   };
 
   return (
@@ -295,7 +349,7 @@ export function RequestPreview({
           <div className="flex items-center gap-3">
             <Button
               onClick={handleApprove}
-              disabled={isApproving || isRejecting}
+              disabled={isApproving || isRejecting || isRequestingDocs}
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
               {isApproving ? (
@@ -307,9 +361,19 @@ export function RequestPreview({
               <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-green-700/50 rounded">A</kbd>
             </Button>
             <Button
+              variant="outline"
+              onClick={() => setShowRequestDocsDialog(true)}
+              disabled={isApproving || isRejecting || isRequestingDocs}
+              className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50"
+            >
+              <FileQuestion className="h-4 w-4 mr-2" />
+              {t('requestDocs')}
+              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-amber-100 rounded">D</kbd>
+            </Button>
+            <Button
               variant="destructive"
               onClick={() => setShowRejectDialog(true)}
-              disabled={isApproving || isRejecting}
+              disabled={isApproving || isRejecting || isRequestingDocs}
               className="flex-1"
             >
               <X className="h-4 w-4 mr-2" />
@@ -393,6 +457,73 @@ export function RequestPreview({
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
               {isRejecting ? t('rejecting') : t('confirmReject')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Request Documents Dialog */}
+      <Dialog open={showRequestDocsDialog} onOpenChange={(open) => {
+        setShowRequestDocsDialog(open);
+        if (!open) {
+          setSelectedDocCodes([]);
+          setDocsComment('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('requestDocsTitle')}</DialogTitle>
+            <DialogDescription>
+              {t('requestDocsDescription', { reference: data.reference })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Document checkboxes (optional) */}
+            <div className="space-y-2">
+              <Label>{t('requestDocsSelectLabel')} <span className="text-muted-foreground font-normal">({t('requestDocsOptional')})</span></Label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {data.documents.map((doc) => (
+                  <label
+                    key={doc.code}
+                    className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={selectedDocCodes.includes(doc.code)}
+                      onCheckedChange={() => toggleDocCode(doc.code)}
+                    />
+                    <span className="text-sm">{doc.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Comments textarea */}
+            <div className="space-y-2">
+              <Label>{t('requestDocsCommentLabel')}</Label>
+              <Textarea
+                placeholder={t('requestDocsCommentPlaceholder')}
+                value={docsComment}
+                onChange={(e) => setDocsComment(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRequestDocsDialog(false)}
+              disabled={isRequestingDocs}
+            >
+              {t('cancelReject')}
+            </Button>
+            <Button
+              onClick={handleRequestDocuments}
+              disabled={isRequestingDocs || (selectedDocCodes.length === 0 && !docsComment.trim())}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isRequestingDocs ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {isRequestingDocs ? t('requestDocsSubmitting') : t('requestDocsSubmit')}
             </Button>
           </DialogFooter>
         </DialogContent>

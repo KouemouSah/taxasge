@@ -742,16 +742,21 @@ async def make_decision(
         # Transition to DOSSIER_VALIDE
         new_status = "DOSSIER_VALIDE"
 
+        previous_status = request['status']
         await db.execute("""
             UPDATE service_requests
             SET status = $1,
-                agent_decision = 'approved',
-                agent_comments = $3,
-                validated_by = $4,
                 validated_at = NOW(),
                 updated_at = NOW()
             WHERE id = $2
-        """, new_status, request_id, decision.comments, str(current_user.id))
+        """, new_status, request_id)
+
+        # Record history entry for citizen notification
+        await db.execute("""
+            INSERT INTO service_request_history
+            (service_request_id, action, previous_status, new_status, performed_by, comment)
+            VALUES ($1, 'status_change', $2, $3, $4, $5)
+        """, request_id, previous_status, new_status, current_user.id, decision.comments)
 
         # Complete queue item
         await agent_queue_service.complete_item(
@@ -948,17 +953,22 @@ async def make_decision(
                 detail="Rejection reason is required"
             )
 
+        previous_status = request['status']
         await db.execute("""
             UPDATE service_requests
             SET status = 'REJECTED',
-                agent_decision = 'rejected',
                 rejection_reason = $2,
-                agent_comments = $3,
-                validated_by = $4,
                 validated_at = NOW(),
                 updated_at = NOW()
             WHERE id = $1
-        """, request_id, decision.rejection_reason, decision.comments, str(current_user.id))
+        """, request_id, decision.rejection_reason)
+
+        # Record history entry for citizen notification
+        await db.execute("""
+            INSERT INTO service_request_history
+            (service_request_id, action, previous_status, new_status, performed_by, comment)
+            VALUES ($1, 'status_change', $2, 'REJECTED', $3, $4)
+        """, request_id, previous_status, current_user.id, decision.rejection_reason or decision.comments)
 
         # Complete queue item
         await agent_queue_service.complete_item(
@@ -1010,20 +1020,32 @@ async def make_decision(
         }
 
     elif decision.decision == "request_documents":
-        if not decision.requested_documents:
+        if not decision.requested_documents and not decision.comments:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="List of requested documents is required"
+                detail="Either requested documents or a comment must be provided"
             )
 
+        previous_status = request['status']
         await db.execute("""
             UPDATE service_requests
             SET status = 'DOCUMENTS_REQUIRED',
-                agent_comments = $2,
-                missing_documents = $3,
                 updated_at = NOW()
             WHERE id = $1
-        """, request_id, decision.comments, decision.requested_documents)
+        """, request_id)
+
+        # Build history details (only include requested_documents if provided)
+        history_details = {}
+        if decision.requested_documents:
+            history_details["requested_documents"] = decision.requested_documents
+
+        # Record history entry for citizen notification
+        await db.execute("""
+            INSERT INTO service_request_history
+            (service_request_id, action, previous_status, new_status, performed_by, comment, details)
+            VALUES ($1, 'documents_required', $2, 'DOCUMENTS_REQUIRED', $3, $4, $5::jsonb)
+        """, request_id, previous_status, current_user.id, decision.comments,
+            json.dumps(history_details))
 
         # Release queue item (will be re-queued when documents are uploaded)
         await db.execute("""
@@ -1033,6 +1055,34 @@ async def make_decision(
                 updated_at = NOW()
             WHERE id = $1
         """, str(queue_item['id']))
+
+        # Publish event for citizen notification (email/SMS)
+        try:
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                request['user_id']
+            )
+            if user_info:
+                event_payload = {
+                    "request_id": str(request_id),
+                    "user_id": str(user_info['id']),
+                    "user_email": user_info['email'],
+                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                    "user_phone": user_info['phone_number'],
+                    "preferred_language": user_info['preferred_language'] or 'es',
+                    "workflow_code": request['workflow_code'],
+                    "agent_id": str(current_user.id),
+                    "comments": decision.comments,
+                    "timestamp": datetime.now().isoformat(),
+                }
+                if decision.requested_documents:
+                    event_payload["requested_documents"] = decision.requested_documents
+                EventBus.publish_nowait(
+                    EventType.REQUEST_DOCUMENTS_REQUIRED,
+                    event_payload
+                )
+        except Exception:
+            pass  # Non-blocking
 
         return {
             "message": "Additional documents requested",

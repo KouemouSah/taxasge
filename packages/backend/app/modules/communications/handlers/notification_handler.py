@@ -118,6 +118,13 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         subject_key="notifications.request.completed.subject",
         sms_template_code="REQUEST_COMPLETED"
     ),
+    EventType.REQUEST_DOCUMENTS_REQUIRED: NotificationConfig(
+        template_code="documents_required",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="high",
+        subject_key="notifications.request.documents_required.subject",
+        sms_template_code="DOCUMENTS_REQUIRED"
+    ),
     EventType.REQUEST_CANCELLED: NotificationConfig(
         template_code="request_cancelled",
         channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],

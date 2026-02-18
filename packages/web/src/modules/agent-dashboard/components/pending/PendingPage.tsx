@@ -61,6 +61,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   const [motivo, setMotivo] = useState<'vencimiento' | 'perdida' | 'robo' | 'deterioro' | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showRequestDocsDialog, setShowRequestDocsDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Debounce search
@@ -180,6 +181,30 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     }
   }, [selectedId, selectedIndex, requests, queryClient]);
 
+  // Handle request documents action
+  const handleRequestDocuments = useCallback(async (requestedDocuments: string[], comments: string) => {
+    if (!selectedId) return;
+
+    await agentRequestsApi.makeDecision(selectedId, 'request_documents', {
+      requestedDocuments,
+      comments,
+    });
+
+    // Invalidate queries
+    queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
+    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
+
+    // Select next item
+    if (selectedIndex < requests.length - 1) {
+      setSelectedId(requests[selectedIndex + 1].id);
+    } else if (selectedIndex > 0) {
+      setSelectedId(requests[selectedIndex - 1].id);
+      setSelectedIndex(selectedIndex - 1);
+    } else {
+      setSelectedId(null);
+    }
+  }, [selectedId, selectedIndex, requests, queryClient]);
+
   // Handle appointment created - refresh preview
   const handleAppointmentCreated = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['request-preview'] });
@@ -217,15 +242,26 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
         case 'r':
         case 'R':
           // Open reject dialog with 'R' key (disabled for history/read-only mode)
-          if (action !== 'history' && selectedId && preview && !showRejectDialog) {
+          if (action !== 'history' && selectedId && preview && !showRejectDialog && !showRequestDocsDialog) {
             e.preventDefault();
             setShowRejectDialog(true);
           }
           break;
+        case 'd':
+        case 'D':
+          // Open request documents dialog with 'D' key
+          if (action !== 'history' && selectedId && preview && !showRejectDialog && !showRequestDocsDialog) {
+            e.preventDefault();
+            setShowRequestDocsDialog(true);
+          }
+          break;
         case 'Escape':
-          // Close reject dialog with Escape
+          // Close dialogs with Escape
           if (showRejectDialog) {
             setShowRejectDialog(false);
+          }
+          if (showRequestDocsDialog) {
+            setShowRequestDocsDialog(false);
           }
           break;
       }
@@ -233,7 +269,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNavigate, handleApprove, selectedId, preview, showRejectDialog, isProcessing, action]);
+  }, [handleNavigate, handleApprove, selectedId, preview, showRejectDialog, showRequestDocsDialog, isProcessing, action]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)]">
@@ -373,11 +409,14 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
               workflowCode={selectedWorkflowCode}
               onApprove={handleApprove}
               onReject={handleReject}
+              onRequestDocuments={handleRequestDocuments}
               onNavigate={handleNavigate}
               canNavigatePrev={selectedIndex > 0}
               canNavigateNext={selectedIndex < requests.length - 1}
               showRejectDialog={showRejectDialog}
               onRejectDialogChange={setShowRejectDialog}
+              showRequestDocsDialog={showRequestDocsDialog}
+              onRequestDocsDialogChange={setShowRequestDocsDialog}
               onAppointmentCreated={handleAppointmentCreated}
             />
           ) : (
