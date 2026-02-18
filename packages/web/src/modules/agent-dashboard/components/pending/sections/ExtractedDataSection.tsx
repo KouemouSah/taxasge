@@ -124,8 +124,15 @@ export function ExtractedDataSection({
     </div>
   );
 
+  // Filter out columns with no data (e.g. permiso_residencia.* when citizen submitted a DIP)
+  // This prevents showing rows of "-" for documents the citizen didn't provide
+  const populatedColumns = columns.filter((columnId) => {
+    const value = data[columnId];
+    return value !== null && value !== undefined && value !== '';
+  });
+
   // If no columns configured, show message
-  if (columns.length === 0) {
+  if (populatedColumns.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-3">
@@ -153,7 +160,7 @@ export function ExtractedDataSection({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {columns.map((columnId) => (
+          {populatedColumns.map((columnId) => (
             <Field key={columnId} columnId={columnId} />
           ))}
         </div>
