@@ -63,6 +63,7 @@ import {
   AlertTriangle,
   FileText,
   RefreshCw,
+  ShieldAlert,
 } from 'lucide-react';
 
 // Hooks
@@ -109,12 +110,13 @@ const ENTITY_WORKFLOW_TITLES: Record<string, string> = {
 // CONSTANTS
 // =============================================================================
 
-const VALID_ACTIONS: ActionType[] = ['pending', 'validation', 'appointments', 'history'];
+const VALID_ACTIONS: ActionType[] = ['pending', 'validation', 'appointments', 'escalations', 'history'];
 
 const ACTION_ICONS: Record<ActionType, React.ReactNode> = {
   pending: <Clock className="h-5 w-5" />,
   validation: <CheckCircle className="h-5 w-5" />,
   appointments: <Calendar className="h-5 w-5" />,
+  escalations: <ShieldAlert className="h-5 w-5" />,
   history: <History className="h-5 w-5" />,
 };
 
@@ -122,6 +124,7 @@ const ACTION_COLORS: Record<ActionType, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   validation: 'bg-blue-100 text-blue-800',
   appointments: 'bg-green-100 text-green-800',
+  escalations: 'bg-orange-100 text-orange-800',
   history: 'bg-gray-100 text-gray-800',
 };
 
@@ -287,7 +290,7 @@ export default function UnifiedWorkflowActionPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Accion no valida</AlertTitle>
           <AlertDescription>
-            La accion &quot;{action}&quot; no es valida. Acciones permitidas: pending, validation, appointments, history.
+            La accion &quot;{action}&quot; no es valida. Acciones permitidas: pending, validation, appointments, escalations, history.
           </AlertDescription>
         </Alert>
         <Link href={`/${locale}/dashboard/agent/${entityCode}`}>

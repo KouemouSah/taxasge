@@ -15,7 +15,7 @@ const API_VERSION = '/api/v1';
 // TYPES
 // =============================================================================
 
-export type ActionType = 'pending' | 'validation' | 'appointments' | 'history';
+export type ActionType = 'pending' | 'validation' | 'appointments' | 'history' | 'escalations';
 
 export type SolicitudType = 'expedicion' | 'renovacion';
 

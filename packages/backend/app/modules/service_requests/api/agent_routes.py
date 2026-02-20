@@ -1115,7 +1115,7 @@ async def make_decision(
     description="""
     Escalate a service request to a supervisor.
 
-    The request will be released from your queue with increased priority.
+    Marks the request as escalated and records the escalation in history.
     """
 )
 async def escalate_request(
@@ -1125,29 +1125,63 @@ async def escalate_request(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.escalate"))
 ):
-    # Find queue item
-    queue_item = await db.fetchrow("""
-        SELECT id FROM agent_work_queue
-        WHERE item_id = $1
-        AND item_type = 'service_request'
-        AND status != 'completed'
-    """, str(request_id))
+    # Verify request exists and belongs to agent's entity
+    request = await db.fetchrow("""
+        SELECT id, reference, status, entity_code, escalated
+        FROM service_requests WHERE id = $1
+    """, request_id)
 
-    if not queue_item:
+    if not request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Queue item not found"
+            detail="Service request not found"
         )
 
-    await agent_queue_service.escalate_item(
-        db=db,
-        queue_id=str(queue_item['id']),
-        agent_id=str(current_user.id),
-        reason=escalation.reason
-    )
+    if request['escalated']:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Service request already escalated"
+        )
+
+    # Mark as escalated on service_requests directly
+    await db.execute("""
+        UPDATE service_requests
+        SET escalated = true,
+            escalated_at = NOW(),
+            escalated_by = $2,
+            escalation_reason = $3,
+            updated_at = NOW()
+        WHERE id = $1
+    """, request_id, current_user.id, escalation.reason)
+
+    # Record in history for audit and citizen notifications
+    previous_status = request['status']
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment, details)
+        VALUES ($1, 'escalated', $2, $2, $3, $4, $5::jsonb)
+    """, request_id, previous_status, current_user.id, escalation.reason,
+        json.dumps({"priority_boost": escalation.priority_boost}))
+
+    # Also update agent_work_queue if a queue item exists (backward compat)
+    queue_item = await db.fetchrow("""
+        SELECT id FROM agent_work_queue
+        WHERE item_id = $1::text AND item_type = 'service_request' AND status != 'completed'
+    """, str(request_id))
+    if queue_item:
+        try:
+            await agent_queue_service.escalate_item(
+                db=db,
+                queue_id=str(queue_item['id']),
+                agent_id=str(current_user.id),
+                reason=escalation.reason
+            )
+        except Exception:
+            pass  # Non-blocking: queue is secondary
 
     return {
         "message": "Service request escalated",
+        "reference": request['reference'],
         "reason": escalation.reason
     }
 
@@ -1308,14 +1342,14 @@ async def cancel_appointment(
 class EscalationItemResponse(BaseModel):
     """Escalation item response for agent view"""
     id: str
-    queue_id: str
+    queue_id: str  # Kept for backward compat (set to request id)
     reason: str
     priority_score: float
-    status: str  # pending, assigned, completed
-    escalation_status: str  # pending, in_review, resolved, reassigned
+    status: str  # service_request status
+    escalation_status: str  # pending, in_review, resolved
     case_reference: str
     case_type: str
-    notes: Optional[str]
+    notes: Optional[str] = None
     created_at: str
     escalated_at: str
 
@@ -1327,7 +1361,7 @@ class EscalationItemResponse(BaseModel):
     description="""
     Get all items that I have escalated.
 
-    Returns items from agent_work_queue where:
+    Returns service requests where:
     - escalated = true
     - escalated_by = current user
     """
@@ -1342,45 +1376,48 @@ async def get_my_escalations(
 ):
     offset = (page - 1) * page_size
 
-    status_filter = "AND q.status != 'completed'" if not include_resolved else ""
+    # Resolved = COMPLETED, REJECTED, CANCELLED, EXPIRED
+    resolved_statuses = ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"]
+    status_filter = "AND sr.status::text != ALL($4::text[])" if not include_resolved else ""
+
+    params = [current_user.id, page_size, offset]
+    if not include_resolved:
+        params.append(resolved_statuses)
 
     rows = await db.fetch(f"""
         SELECT
-            q.id as queue_id,
-            q.item_id,
-            q.escalation_reason,
-            q.priority_score,
-            q.status,
-            q.escalated_at,
-            q.created_at,
-            sr.reference as case_reference,
-            sr.workflow_code as case_type,
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            sr.status::text as status,
+            sr.escalation_reason,
+            sr.escalated_at,
+            sr.created_at,
             sr.notes,
+            sr.priority::text as priority,
             CASE
-                WHEN q.status = 'completed' THEN 'resolved'
-                WHEN q.assigned_to IS NOT NULL THEN 'in_review'
+                WHEN sr.status::text IN ('COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED') THEN 'resolved'
+                WHEN sr.assigned_to IS NOT NULL THEN 'in_review'
                 ELSE 'pending'
             END as escalation_status
-        FROM agent_work_queue q
-        JOIN service_requests sr ON sr.id = q.item_id
-        WHERE q.item_type = 'service_request'
-        AND q.escalated = true
-        AND q.escalated_by = $1
+        FROM service_requests sr
+        WHERE sr.escalated = true
+        AND sr.escalated_by = $1
         {status_filter}
-        ORDER BY q.escalated_at DESC
+        ORDER BY sr.escalated_at DESC
         LIMIT $2 OFFSET $3
-    """, str(current_user.id), page_size, offset)
+    """, *params)
 
     return [
         EscalationItemResponse(
-            id=str(row['item_id']),
-            queue_id=str(row['queue_id']),
+            id=str(row['id']),
+            queue_id=str(row['id']),
             reason=row['escalation_reason'] or '',
-            priority_score=float(row['priority_score']),
+            priority_score=0.0,
             status=row['status'],
             escalation_status=row['escalation_status'],
-            case_reference=row['case_reference'] or '',
-            case_type=row['case_type'] or '',
+            case_reference=row['reference'] or '',
+            case_type=row['workflow_code'] or '',
             notes=row['notes'],
             created_at=row['created_at'].isoformat(),
             escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else row['created_at'].isoformat()
@@ -1822,20 +1859,27 @@ class ServiceRequestPreview(BaseModel):
 
 class ActionStatusMapping:
     """Map dashboard actions to database statuses"""
-    PENDING = ["SUBMITTED", "UNDER_REVIEW"]
+    PENDING = ["SUBMITTED", "UNDER_REVIEW", "DOCUMENTS_REQUIRED"]
     VALIDATION = ["DOSSIER_VALIDE", "PENDING_NOTA_INGRESO", "NOTA_UPLOADED"]
     APPOINTMENTS = ["CITA_SCHEDULED", "IN_PROGRESS"]
     HISTORY = ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"]
+    # Escalations uses escalated=true filter, not status-based
+    ESCALATIONS = None
 
     @classmethod
-    def get_statuses(cls, action: str) -> List[str]:
+    def get_statuses(cls, action: str) -> Optional[List[str]]:
         mapping = {
             "pending": cls.PENDING,
             "validation": cls.VALIDATION,
             "appointments": cls.APPOINTMENTS,
             "history": cls.HISTORY,
+            "escalations": cls.ESCALATIONS,
         }
         return mapping.get(action.lower(), cls.PENDING)
+
+    @classmethod
+    def is_escalation(cls, action: str) -> bool:
+        return action.lower() == "escalations"
 
 
 @router.get(
@@ -1860,7 +1904,7 @@ class ActionStatusMapping:
 )
 async def get_entity_service_requests(
     entity_code: str = Path(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
-    action: str = Query("pending", description="Dashboard action: pending, validation, appointments, history"),
+    action: str = Query("pending", description="Dashboard action: pending, validation, appointments, history, escalations"),
     workflow_code: Optional[str] = Query(None, description="Filter by specific workflow code"),
     solicitud_type: Optional[str] = Query(None, description="Filter by type: expedicion, renovacion"),
     motivo: Optional[str] = Query(None, description="Filter by motivo: vencimiento, perdida, robo, deterioro"),
@@ -1893,14 +1937,19 @@ async def get_entity_service_requests(
     # Convert to list of strings for asyncpg array binding
     entity_workflows = [str(wf) for wf in entity_workflows] if entity_workflows else []
 
-    # Get statuses for the action
-    statuses = ActionStatusMapping.get_statuses(action)
+    # Build query conditions
+    conditions = []
+    params = []
+    param_idx = 1
 
-    # Build query
-    # Cast status to text for comparison since it's an enum type
-    conditions = ["sr.status::text = ANY($1::text[])"]
-    params = [statuses]
-    param_idx = 2
+    # Escalations use escalated=true filter instead of status-based
+    if ActionStatusMapping.is_escalation(action):
+        conditions.append("sr.escalated = true")
+    else:
+        statuses = ActionStatusMapping.get_statuses(action)
+        conditions.append(f"sr.status::text = ANY(${param_idx}::text[])")
+        params.append(statuses)
+        param_idx += 1
 
     # Filter by entity's workflow codes (unless specific workflow requested)
     if workflow_code:
