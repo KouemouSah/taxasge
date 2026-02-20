@@ -50,6 +50,7 @@ from app.modules.permissions.middleware import permission_required
 
 import json
 import logging
+from app.core.events import EventBus, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -1158,6 +1159,187 @@ async def resolve_escalation(
     logger.info(f"Escalation {queue_id} resolved by {current_user.email}: {request_data.resolution_notes}")
 
     return {"message": "Escalation resolved", "queue_id": str(queue_id)}
+
+
+# ============================================================================
+# SUPERVISOR DIRECT ACTIONS (approve / reject bypassing agent)
+# ============================================================================
+
+class SupervisorApproveRequest(BaseModel):
+    """Supervisor approves an escalated request directly"""
+    notes: Optional[str] = Field(None, max_length=500)
+
+
+class SupervisorRejectRequest(BaseModel):
+    """Supervisor rejects an escalated request directly"""
+    rejection_reason: str = Field(..., min_length=5, max_length=500)
+
+
+@router.post("/escalations/{queue_id}/approve")
+async def supervisor_approve(
+    queue_id: UUID,
+    request_data: SupervisorApproveRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.resolve"))
+):
+    """
+    **Supervisor approves an escalated service request directly**
+
+    Bypasses the agent: status → DOSSIER_VALIDE, escalated → false.
+    Publishes REQUEST_APPROVED event for citizen notification.
+    """
+    request = await db.fetchrow("""
+        SELECT id, reference, status, escalated, user_id, workflow_code
+        FROM service_requests WHERE id = $1
+    """, queue_id)
+
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service request not found"
+        )
+    if not request['escalated']:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Service request is not escalated"
+        )
+
+    previous_status = request['status']
+
+    # Approve + de-escalate in one update
+    await db.execute("""
+        UPDATE service_requests
+        SET status = 'DOSSIER_VALIDE',
+            escalated = false,
+            escalated_at = NULL,
+            escalated_by = NULL,
+            escalation_reason = NULL,
+            validated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+    """, queue_id)
+
+    # Record in history — action = supervisor_approve (distinct from agent status_change)
+    comment = request_data.notes or "Aprobado directamente por supervisor"
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment)
+        VALUES ($1, 'supervisor_approve', $2, 'DOSSIER_VALIDE', $3, $4)
+    """, queue_id, previous_status, UUID(current_user.id), comment)
+
+    # Publish event for citizen notification (email/SMS)
+    try:
+        user_info = await db.fetchrow(
+            "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+            request['user_id']
+        )
+        if user_info:
+            EventBus.publish_nowait(EventType.REQUEST_APPROVED, {
+                "request_id": str(queue_id),
+                "user_id": str(user_info['id']),
+                "user_email": user_info['email'],
+                "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                "user_phone": user_info['phone_number'],
+                "preferred_language": user_info['preferred_language'] or 'es',
+                "workflow_code": request['workflow_code'],
+                "agent_id": str(current_user.id),
+                "timestamp": datetime.now().isoformat(),
+            })
+    except Exception:
+        pass  # Non-blocking
+
+    logger.info(f"Supervisor {current_user.email} approved escalation {queue_id} directly")
+
+    return {
+        "message": "Service request approved by supervisor",
+        "queue_id": str(queue_id),
+        "new_status": "DOSSIER_VALIDE"
+    }
+
+
+@router.post("/escalations/{queue_id}/reject")
+async def supervisor_reject(
+    queue_id: UUID,
+    request_data: SupervisorRejectRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db = Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.resolve"))
+):
+    """
+    **Supervisor rejects an escalated service request directly**
+
+    Bypasses the agent: status → REJECTED, escalated → false.
+    Publishes REQUEST_REJECTED event for citizen notification.
+    """
+    request = await db.fetchrow("""
+        SELECT id, reference, status, escalated, user_id, workflow_code
+        FROM service_requests WHERE id = $1
+    """, queue_id)
+
+    if not request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Service request not found"
+        )
+    if not request['escalated']:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Service request is not escalated"
+        )
+
+    previous_status = request['status']
+
+    # Reject + de-escalate in one update
+    await db.execute("""
+        UPDATE service_requests
+        SET status = 'REJECTED',
+            rejection_reason = $2,
+            escalated = false,
+            escalated_at = NULL,
+            escalated_by = NULL,
+            escalation_reason = NULL,
+            validated_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+    """, queue_id, request_data.rejection_reason)
+
+    # Record in history — action = supervisor_reject
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment)
+        VALUES ($1, 'supervisor_reject', $2, 'REJECTED', $3, $4)
+    """, queue_id, previous_status, UUID(current_user.id), request_data.rejection_reason)
+
+    # Publish event for citizen notification (email/SMS)
+    try:
+        user_info = await db.fetchrow(
+            "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+            request['user_id']
+        )
+        if user_info:
+            EventBus.publish_nowait(EventType.REQUEST_REJECTED, {
+                "request_id": str(queue_id),
+                "user_id": str(user_info['id']),
+                "user_email": user_info['email'],
+                "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                "user_phone": user_info['phone_number'],
+                "preferred_language": user_info['preferred_language'] or 'es',
+                "workflow_code": request['workflow_code'],
+                "agent_id": str(current_user.id),
+                "reason": request_data.rejection_reason,
+                "timestamp": datetime.now().isoformat(),
+            })
+    except Exception:
+        pass  # Non-blocking
+
+    logger.info(f"Supervisor {current_user.email} rejected escalation {queue_id}: {request_data.rejection_reason}")
+
+    return {
+        "message": "Service request rejected by supervisor",
+        "queue_id": str(queue_id),
+        "new_status": "REJECTED"
+    }
 
 
 @router.get("/rules/effectiveness/report", response_model=List[RuleEffectivenessItem])
