@@ -205,6 +205,48 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     }
   }, [selectedId, selectedIndex, requests, queryClient]);
 
+  // Handle escalation
+  const handleEscalate = useCallback(async (reason: string, priorityBoost: number) => {
+    if (!selectedId) return;
+
+    await agentRequestsApi.escalate(selectedId, reason, priorityBoost);
+
+    // Invalidate queries
+    queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
+    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
+
+    // Select next item
+    if (selectedIndex < requests.length - 1) {
+      setSelectedId(requests[selectedIndex + 1].id);
+    } else if (selectedIndex > 0) {
+      setSelectedId(requests[selectedIndex - 1].id);
+      setSelectedIndex(selectedIndex - 1);
+    } else {
+      setSelectedId(null);
+    }
+  }, [selectedId, selectedIndex, requests, queryClient]);
+
+  // Handle resolve escalation (de-escalate)
+  const handleResolveEscalation = useCallback(async () => {
+    if (!selectedId) return;
+
+    await agentRequestsApi.resolveEscalation(selectedId);
+
+    // Invalidate queries — item will disappear from escalations list
+    queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
+    queryClient.invalidateQueries({ queryKey: ['request-preview'] });
+
+    // Select next item
+    if (selectedIndex < requests.length - 1) {
+      setSelectedId(requests[selectedIndex + 1].id);
+    } else if (selectedIndex > 0) {
+      setSelectedId(requests[selectedIndex - 1].id);
+      setSelectedIndex(selectedIndex - 1);
+    } else {
+      setSelectedId(null);
+    }
+  }, [selectedId, selectedIndex, requests, queryClient]);
+
   // Handle appointment created - refresh preview
   const handleAppointmentCreated = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['request-preview'] });
@@ -410,6 +452,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
               onApprove={handleApprove}
               onReject={handleReject}
               onRequestDocuments={handleRequestDocuments}
+              onEscalate={handleEscalate}
+              onResolveEscalation={action === 'escalations' ? handleResolveEscalation : undefined}
               onNavigate={handleNavigate}
               canNavigatePrev={selectedIndex > 0}
               canNavigateNext={selectedIndex < requests.length - 1}
@@ -418,6 +462,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
               showRequestDocsDialog={showRequestDocsDialog}
               onRequestDocsDialogChange={setShowRequestDocsDialog}
               onAppointmentCreated={handleAppointmentCreated}
+              escalationReason={selectedRequest?.escalationReason}
+              escalatedAt={selectedRequest?.escalatedAt}
             />
           ) : (
             <div className="flex items-center justify-center h-full">

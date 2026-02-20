@@ -3361,7 +3361,16 @@
     "workflow": "Procédure",
     "beneficiaries": "Bénéficiaires",
     "amount": "Montant",
-    "status": "Statut",
+    "status": {
+      "DRAFT": "Brouillon",
+      "UPLOADING": "Téléversement",
+      "CLASSIFYING": "Classification",
+      "REVIEW": "En révision",
+      "PAYMENT_PENDING": "Paiement en attente",
+      "PAID": "Payé",
+      "IN_PROGRESS": "En cours",
+      "COMPLETED": "Terminé"
+    },
     "date": "Date",
     "actions": "Actions",
     "noBatches": "Vous n'avez pas de demandes en lot",
@@ -3518,16 +3527,6 @@
       "retry": "Réessayer",
       "switchToCash": "Payer en espèces",
       "sessionExpired": "La session a expiré. Veuillez créer un nouveau lot."
-    },
-    "status": {
-      "DRAFT": "Brouillon",
-      "UPLOADING": "Téléversement",
-      "CLASSIFYING": "Classification",
-      "REVIEW": "En révision",
-      "PAYMENT_PENDING": "Paiement en attente",
-      "PAID": "Payé",
-      "IN_PROGRESS": "En cours",
-      "COMPLETED": "Terminé"
     },
     "itemStatus": {
       "PENDING": "En attente",
@@ -6059,6 +6058,38 @@
           "fraudSuspected": "Fraude suspectée",
           "docFalse": "Document falsifié",
           "other": "Autre motif"
+        },
+        "escalate": "Escalader",
+        "escalating": "En cours...",
+        "escalateTitle": "Escalader la Demande",
+        "escalateDescription": "Escalader la demande {reference} au superviseur pour examen.",
+        "escalateSelectReason": "Motif d'escalade",
+        "escalateSelectReasonPlaceholder": "Sélectionnez un motif...",
+        "escalateReasonPlaceholder": "Décrivez le motif en détail (min. 10 caractères)...",
+        "escalateReasonRequired": "Sélectionnez un motif d'escalade",
+        "escalateCustomReasonRequired": "Précisez le motif détaillé",
+        "escalateReasonTooShort": "Le motif doit contenir au moins 10 caractères",
+        "escalateAdditionalDetails": "Détails supplémentaires (optionnel)",
+        "escalatePriority": "Niveau d'urgence",
+        "escalatePriorityNormal": "Normal",
+        "escalatePriorityHigh": "Haute",
+        "escalatePriorityCritical": "Critique",
+        "confirmEscalate": "Confirmer l'escalade",
+        "escalateSuccess": "Demande escaladée au superviseur",
+        "escalateError": "Erreur lors de l'escalade",
+        "escalateReasons": {
+          "documentSuspect": "Document suspect ou frauduleux",
+          "needsSupervisor": "Nécessite une décision du superviseur",
+          "specialCase": "Cas spécial hors procédure",
+          "complexValidation": "Validation complexe nécessitant une expertise",
+          "other": "Autre motif"
+        },
+        "escalationBanner": {
+          "title": "Demande escaladée",
+          "since": "Escaladée le {date}",
+          "resolve": "Résoudre",
+          "resolved": "Escalade résolue",
+          "resolveError": "Erreur lors de la résolution de l'escalade"
         }
       },
       "extractedFields": {

@@ -12,7 +12,7 @@
 import React from 'react';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
-import { Clock, AlertTriangle, AlertCircle, FileStack } from 'lucide-react';
+import { Clock, AlertTriangle, AlertCircle, FileStack, ShieldAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ServiceRequestListItem, SlaStatus, Priority } from '../../services/agent-requests-api';
@@ -116,6 +116,17 @@ function formatStatus(status: string): string {
   return statusMap[status] || status;
 }
 
+function formatTimeAgo(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHours < 1) return 'Hace <1h';
+  if (diffHours < 24) return `Hace ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `Hace ${diffDays}d`;
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -208,6 +219,19 @@ export function RequestListItem({
       {/* Citizen name / fullName */}
       {showColumn('fullName') && (
         <p className="text-sm truncate">{item.citizenName}</p>
+      )}
+
+      {/* Escalation info (only shown when escalation data present) */}
+      {item.escalationReason && (
+        <div className="flex items-center gap-1.5 mt-1">
+          <ShieldAlert className="h-3 w-3 text-orange-500 flex-shrink-0" />
+          <span className="text-xs text-orange-600 truncate">{item.escalationReason}</span>
+          {item.escalatedAt && (
+            <span className="text-[10px] text-muted-foreground flex-shrink-0">
+              {formatTimeAgo(item.escalatedAt)}
+            </span>
+          )}
+        </div>
       )}
 
       {/* Additional info row for createdAt when solicitudType is also shown */}

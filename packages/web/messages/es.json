@@ -3340,7 +3340,16 @@
     "workflow": "Trámite",
     "beneficiaries": "Beneficiarios",
     "amount": "Importe",
-    "status": "Estado",
+    "status": {
+      "DRAFT": "Borrador",
+      "UPLOADING": "Subiendo documentos",
+      "CLASSIFYING": "Clasificando",
+      "REVIEW": "En revisión",
+      "PAYMENT_PENDING": "Pendiente de pago",
+      "PAID": "Pagado",
+      "IN_PROGRESS": "En proceso",
+      "COMPLETED": "Completado"
+    },
     "date": "Fecha",
     "actions": "Acciones",
     "noBatches": "No tiene solicitudes en lote",
@@ -3497,16 +3506,6 @@
       "retry": "Reintentar",
       "switchToCash": "Pagar en efectivo",
       "sessionExpired": "La sesión ha expirado. Por favor inicie un nuevo lote."
-    },
-    "status": {
-      "DRAFT": "Borrador",
-      "UPLOADING": "Subiendo documentos",
-      "CLASSIFYING": "Clasificando",
-      "REVIEW": "En revisión",
-      "PAYMENT_PENDING": "Pendiente de pago",
-      "PAID": "Pagado",
-      "IN_PROGRESS": "En proceso",
-      "COMPLETED": "Completado"
     },
     "itemStatus": {
       "PENDING": "Pendiente",
@@ -5921,6 +5920,38 @@
           "fraudSuspected": "Sospecha de fraude",
           "docFalse": "Documento falso",
           "other": "Otro motivo"
+        },
+        "escalate": "Escalar",
+        "escalating": "Escalando...",
+        "escalateTitle": "Escalar Solicitud",
+        "escalateDescription": "Escalar la solicitud {reference} al supervisor para revisión.",
+        "escalateSelectReason": "Motivo de escalación",
+        "escalateSelectReasonPlaceholder": "Seleccione un motivo...",
+        "escalateReasonPlaceholder": "Describa el motivo con detalle (mín. 10 caracteres)...",
+        "escalateReasonRequired": "Seleccione un motivo de escalación",
+        "escalateCustomReasonRequired": "Especifique el motivo detallado",
+        "escalateReasonTooShort": "El motivo debe tener al menos 10 caracteres",
+        "escalateAdditionalDetails": "Detalles adicionales (opcional)",
+        "escalatePriority": "Nivel de urgencia",
+        "escalatePriorityNormal": "Normal",
+        "escalatePriorityHigh": "Alta",
+        "escalatePriorityCritical": "Crítica",
+        "confirmEscalate": "Confirmar escalación",
+        "escalateSuccess": "Solicitud escalada al supervisor",
+        "escalateError": "Error al escalar la solicitud",
+        "escalateReasons": {
+          "documentSuspect": "Documento sospechoso o fraudulento",
+          "needsSupervisor": "Necesita decisión del supervisor",
+          "specialCase": "Caso especial fuera de procedimiento",
+          "complexValidation": "Validación compleja requiere experiencia",
+          "other": "Otro motivo"
+        },
+        "escalationBanner": {
+          "title": "Solicitud escalada",
+          "since": "Escalada el {date}",
+          "resolve": "Resolver",
+          "resolved": "Escalación resuelta",
+          "resolveError": "Error al resolver la escalación"
         }
       },
       "extractedFields": {
@@ -6060,7 +6091,6 @@
       "treasuryAudit": "Auditoría Tesorería",
       "declarationsAudit": "Auditoría Declaraciones",
       "requestsAudit": "Auditoría Solicitudes",
-      "ministryDashboard": "Panel del Ministerio",
       "myEscalations": "Mis Escalaciones",
       "escalate": "Escalar",
       "escalations": "Escalaciones",

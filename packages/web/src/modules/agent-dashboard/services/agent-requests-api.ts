@@ -43,6 +43,9 @@ export interface ServiceRequestListItem {
   // Batch context
   batchId?: string | null;
   batchReference?: string | null;
+  // Escalation context (only populated for action=escalations)
+  escalationReason?: string | null;
+  escalatedAt?: string | null;
 }
 
 export interface ServiceRequestListResponse {
@@ -195,6 +198,8 @@ interface BackendServiceRequestListItem {
   sla_status: string;
   batch_id?: string | null;
   batch_reference?: string | null;
+  escalation_reason?: string | null;
+  escalated_at?: string | null;
 }
 
 interface BackendServiceRequestListResponse {
@@ -274,6 +279,8 @@ function transformServiceRequestItem(item: BackendServiceRequestListItem): Servi
     slaStatus: (item.sla_status || 'on_track') as SlaStatus,
     batchId: item.batch_id,
     batchReference: item.batch_reference,
+    escalationReason: item.escalation_reason,
+    escalatedAt: item.escalated_at,
   };
 }
 
@@ -467,6 +474,15 @@ class AgentRequestsApiClient {
         reason,
         priority_boost: priorityBoost,
       }),
+    });
+  }
+
+  /**
+   * Resolve (de-escalate) a service request
+   */
+  async resolveEscalation(requestId: string): Promise<{ message: string }> {
+    return this.request(`/${requestId}/resolve-escalation`, {
+      method: 'POST',
     });
   }
 

@@ -3121,7 +3121,16 @@
     "workflow": "Procedure",
     "beneficiaries": "Beneficiaries",
     "amount": "Amount",
-    "status": "Status",
+    "status": {
+      "DRAFT": "Draft",
+      "UPLOADING": "Uploading",
+      "CLASSIFYING": "Classifying",
+      "REVIEW": "Under review",
+      "PAYMENT_PENDING": "Payment pending",
+      "PAID": "Paid",
+      "IN_PROGRESS": "In progress",
+      "COMPLETED": "Completed"
+    },
     "date": "Date",
     "actions": "Actions",
     "noBatches": "You have no batch requests",
@@ -3278,16 +3287,6 @@
       "retry": "Retry",
       "switchToCash": "Pay with cash",
       "sessionExpired": "Session has expired. Please start a new batch."
-    },
-    "status": {
-      "DRAFT": "Draft",
-      "UPLOADING": "Uploading",
-      "CLASSIFYING": "Classifying",
-      "REVIEW": "Under review",
-      "PAYMENT_PENDING": "Payment pending",
-      "PAID": "Paid",
-      "IN_PROGRESS": "In progress",
-      "COMPLETED": "Completed"
     },
     "itemStatus": {
       "PENDING": "Pending",
@@ -5819,6 +5818,38 @@
           "fraudSuspected": "Suspected fraud",
           "docFalse": "Falsified document",
           "other": "Other reason"
+        },
+        "escalate": "Escalate",
+        "escalating": "Escalating...",
+        "escalateTitle": "Escalate Request",
+        "escalateDescription": "Escalate request {reference} to supervisor for review.",
+        "escalateSelectReason": "Escalation reason",
+        "escalateSelectReasonPlaceholder": "Select a reason...",
+        "escalateReasonPlaceholder": "Describe the reason in detail (min. 10 characters)...",
+        "escalateReasonRequired": "Select an escalation reason",
+        "escalateCustomReasonRequired": "Specify the detailed reason",
+        "escalateReasonTooShort": "The reason must be at least 10 characters",
+        "escalateAdditionalDetails": "Additional details (optional)",
+        "escalatePriority": "Urgency level",
+        "escalatePriorityNormal": "Normal",
+        "escalatePriorityHigh": "High",
+        "escalatePriorityCritical": "Critical",
+        "confirmEscalate": "Confirm escalation",
+        "escalateSuccess": "Request escalated to supervisor",
+        "escalateError": "Error escalating the request",
+        "escalateReasons": {
+          "documentSuspect": "Suspicious or fraudulent document",
+          "needsSupervisor": "Needs supervisor decision",
+          "specialCase": "Special case outside standard procedure",
+          "complexValidation": "Complex validation requiring expertise",
+          "other": "Other reason"
+        },
+        "escalationBanner": {
+          "title": "Escalated request",
+          "since": "Escalated on {date}",
+          "resolve": "Resolve",
+          "resolved": "Escalation resolved",
+          "resolveError": "Error resolving escalation"
         }
       },
       "extractedFields": {

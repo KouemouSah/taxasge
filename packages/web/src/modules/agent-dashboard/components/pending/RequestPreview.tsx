@@ -37,6 +37,7 @@ import {
   FileQuestion,
   ExternalLink,
   Loader2,
+  ShieldAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RequestInfoSection } from './sections/RequestInfoSection';
@@ -77,6 +78,14 @@ const REJECTION_REASONS = [
   { code: 'AUTRE', labelKey: 'other' },
 ] as const;
 
+const ESCALATION_REASONS = [
+  { code: 'DOCUMENT_SUSPECT', labelKey: 'documentSuspect' },
+  { code: 'NEEDS_SUPERVISOR_DECISION', labelKey: 'needsSupervisor' },
+  { code: 'SPECIAL_CASE', labelKey: 'specialCase' },
+  { code: 'COMPLEX_VALIDATION', labelKey: 'complexValidation' },
+  { code: 'OTHER', labelKey: 'other' },
+] as const;
+
 // =============================================================================
 // PROPS
 // =============================================================================
@@ -90,6 +99,8 @@ interface RequestPreviewProps {
   onApprove: () => Promise<void>;
   onReject: (reason: string) => Promise<void>;
   onRequestDocuments: (requestedDocuments: string[], comments: string) => Promise<void>;
+  onEscalate?: (reason: string, priorityBoost: number) => Promise<void>;
+  onResolveEscalation?: () => Promise<void>;
   onNavigate: (direction: 'prev' | 'next') => void;
   canNavigatePrev: boolean;
   canNavigateNext: boolean;
@@ -100,6 +111,9 @@ interface RequestPreviewProps {
   onRequestDocsDialogChange?: (open: boolean) => void;
   // Callback when appointment is created
   onAppointmentCreated?: () => void;
+  // Escalation context (passed from list item for banner display)
+  escalationReason?: string | null;
+  escalatedAt?: string | null;
 }
 
 // =============================================================================
@@ -114,6 +128,8 @@ export function RequestPreview({
   onApprove,
   onReject,
   onRequestDocuments,
+  onEscalate,
+  onResolveEscalation,
   onNavigate,
   canNavigatePrev,
   canNavigateNext,
@@ -122,9 +138,12 @@ export function RequestPreview({
   showRequestDocsDialog: externalShowRequestDocsDialog,
   onRequestDocsDialogChange,
   onAppointmentCreated,
+  escalationReason,
+  escalatedAt,
 }: RequestPreviewProps) {
   // History action is read-only (no approve/reject buttons)
   const isReadOnly = action === 'history';
+  const isEscalationView = action === 'escalations';
   const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
 
@@ -148,12 +167,18 @@ export function RequestPreview({
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isRequestingDocs, setIsRequestingDocs] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
   const [internalShowRejectDialog, setInternalShowRejectDialog] = useState(false);
   const [internalShowRequestDocsDialog, setInternalShowRequestDocsDialog] = useState(false);
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [selectedReasonCode, setSelectedReasonCode] = useState<string>('');
   const [customReason, setCustomReason] = useState('');
   const [selectedDocCodes, setSelectedDocCodes] = useState<string[]>([]);
   const [docsComment, setDocsComment] = useState('');
+  const [escalationReasonCode, setEscalationReasonCode] = useState<string>('');
+  const [escalationCustomReason, setEscalationCustomReason] = useState('');
+  const [escalationPriorityBoost, setEscalationPriorityBoost] = useState(10);
 
   // Use external control if provided, otherwise use internal state
   const showRejectDialog = externalShowRejectDialog ?? internalShowRejectDialog;
@@ -246,6 +271,44 @@ export function RequestPreview({
     }
   };
 
+  // Handle escalation
+  const handleEscalate = async () => {
+    if (!escalationReasonCode) {
+      toast.error(t('escalateReasonRequired'));
+      return;
+    }
+    if (escalationReasonCode === 'OTHER' && !escalationCustomReason.trim()) {
+      toast.error(t('escalateCustomReasonRequired'));
+      return;
+    }
+
+    const selectedReason = ESCALATION_REASONS.find(r => r.code === escalationReasonCode);
+    const predefinedLabel = selectedReason ? t(`escalateReasons.${selectedReason.labelKey}`) : '';
+    const finalReason = escalationReasonCode === 'OTHER'
+      ? escalationCustomReason.trim()
+      : `${predefinedLabel}${escalationCustomReason.trim() ? ` - ${escalationCustomReason.trim()}` : ''}`;
+
+    if (finalReason.length < 10) {
+      toast.error(t('escalateReasonTooShort'));
+      return;
+    }
+
+    setIsEscalating(true);
+    try {
+      await onEscalate?.(finalReason, escalationPriorityBoost);
+      toast.success(t('escalateSuccess'));
+      setShowEscalateDialog(false);
+      setEscalationReasonCode('');
+      setEscalationCustomReason('');
+      setEscalationPriorityBoost(10);
+    } catch (error) {
+      console.error('Escalate error:', error);
+      toast.error(t('escalateError'));
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
   const toggleDocCode = (code: string) => {
     setSelectedDocCodes((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
@@ -286,6 +349,50 @@ export function RequestPreview({
           </Button>
         </Link>
       </div>
+
+      {/* Escalation Banner (only in escalation view) */}
+      {isEscalationView && escalationReason && (
+        <div className="mx-3 mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-start gap-2">
+            <ShieldAlert className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-orange-800">{t('escalationBanner.title')}</p>
+              <p className="text-sm text-orange-700 mt-0.5">{escalationReason}</p>
+              {escalatedAt && (
+                <p className="text-xs text-orange-500 mt-1">
+                  {t('escalationBanner.since', { date: new Date(escalatedAt).toLocaleString() })}
+                </p>
+              )}
+            </div>
+            {onResolveEscalation && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-orange-300 text-orange-700 hover:bg-orange-100 flex-shrink-0"
+                onClick={async () => {
+                  setIsResolving(true);
+                  try {
+                    await onResolveEscalation();
+                    toast.success(t('escalationBanner.resolved'));
+                  } catch {
+                    toast.error(t('escalationBanner.resolveError'));
+                  } finally {
+                    setIsResolving(false);
+                  }
+                }}
+                disabled={isResolving}
+              >
+                {isResolving ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <Check className="h-3 w-3 mr-1" />
+                )}
+                {t('escalationBanner.resolve')}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Content - Sections rendered based on display config */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -373,7 +480,7 @@ export function RequestPreview({
             <Button
               variant="destructive"
               onClick={() => setShowRejectDialog(true)}
-              disabled={isApproving || isRejecting || isRequestingDocs}
+              disabled={isApproving || isRejecting || isRequestingDocs || isEscalating}
               className="flex-1"
             >
               <X className="h-4 w-4 mr-2" />
@@ -381,6 +488,21 @@ export function RequestPreview({
               <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-red-700/50 rounded">R</kbd>
             </Button>
           </div>
+          {onEscalate && (
+            <div className="mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowEscalateDialog(true)}
+                disabled={isApproving || isRejecting || isRequestingDocs || isEscalating}
+                className="w-full border-orange-400 text-orange-600 hover:bg-orange-50"
+              >
+                <ShieldAlert className="h-4 w-4 mr-2" />
+                {t('escalate')}
+                <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-orange-100 rounded">E</kbd>
+              </Button>
+            </div>
+          )}
           <p className="text-[10px] text-muted-foreground text-center mt-2">
             {t('keyboardHint')}
           </p>
@@ -524,6 +646,104 @@ export function RequestPreview({
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
               {isRequestingDocs ? t('requestDocsSubmitting') : t('requestDocsSubmit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Escalation Dialog */}
+      <Dialog open={showEscalateDialog} onOpenChange={(open) => {
+        setShowEscalateDialog(open);
+        if (!open) {
+          setEscalationReasonCode('');
+          setEscalationCustomReason('');
+          setEscalationPriorityBoost(10);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-orange-500" />
+              {t('escalateTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('escalateDescription', { reference: data.reference })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Predefined escalation reasons */}
+            <div className="space-y-2">
+              <Label>{t('escalateSelectReason')}</Label>
+              <Select value={escalationReasonCode} onValueChange={setEscalationReasonCode}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('escalateSelectReasonPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {ESCALATION_REASONS.map((reason) => (
+                    <SelectItem key={reason.code} value={reason.code}>
+                      {t(`escalateReasons.${reason.labelKey}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom reason / additional details */}
+            <div className="space-y-2">
+              <Label>
+                {escalationReasonCode === 'OTHER'
+                  ? t('escalateCustomReasonRequired')
+                  : t('escalateAdditionalDetails')}
+              </Label>
+              <Textarea
+                placeholder={t('escalateReasonPlaceholder')}
+                value={escalationCustomReason}
+                onChange={(e) => setEscalationCustomReason(e.target.value)}
+                rows={3}
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">
+                {escalationCustomReason.length}/500
+              </p>
+            </div>
+
+            {/* Priority boost */}
+            <div className="space-y-2">
+              <Label>{t('escalatePriority')}</Label>
+              <Select
+                value={String(escalationPriorityBoost)}
+                onValueChange={(v) => setEscalationPriorityBoost(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">{t('escalatePriorityNormal')}</SelectItem>
+                  <SelectItem value="25">{t('escalatePriorityHigh')}</SelectItem>
+                  <SelectItem value="50">{t('escalatePriorityCritical')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEscalateDialog(false)}
+              disabled={isEscalating}
+            >
+              {t('cancelReject')}
+            </Button>
+            <Button
+              onClick={handleEscalate}
+              disabled={isEscalating || !escalationReasonCode || (escalationReasonCode === 'OTHER' && !escalationCustomReason.trim())}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isEscalating ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldAlert className="h-4 w-4 mr-2" />
+              )}
+              {isEscalating ? t('escalating') : t('confirmEscalate')}
             </Button>
           </DialogFooter>
         </DialogContent>

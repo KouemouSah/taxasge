@@ -1186,6 +1186,52 @@ async def escalate_request(
     }
 
 
+@router.post(
+    "/{request_id}/resolve-escalation",
+    summary="Resolve escalation on a service request",
+    description="""
+    Marks the escalated service request as resolved (de-escalates).
+    The request returns to normal processing flow.
+    """,
+)
+async def resolve_escalation(
+    request_id: UUID = Path(..., description="Service request ID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: User = Depends(get_current_user),
+):
+    """Resolve (de-escalate) a service request."""
+    request = await db.fetchrow(
+        "SELECT id, reference, status, escalated FROM service_requests WHERE id = $1",
+        request_id
+    )
+    if not request:
+        raise HTTPException(status_code=404, detail="Service request not found")
+    if not request['escalated']:
+        raise HTTPException(status_code=409, detail="Service request is not escalated")
+
+    await db.execute("""
+        UPDATE service_requests
+        SET escalated = false,
+            escalated_at = NULL,
+            escalated_by = NULL,
+            escalation_reason = NULL,
+            updated_at = NOW()
+        WHERE id = $1
+    """, request_id)
+
+    # Record in history
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment)
+        VALUES ($1, 'escalation_resolved', $2, $2, $3, 'Escalación resuelta')
+    """, request_id, request['status'], current_user.id)
+
+    return {
+        "message": "Escalation resolved",
+        "reference": request['reference'],
+    }
+
+
 # ═══════════════════════════════════════════════════════════════
 # APPOINTMENT MANAGEMENT
 # ═══════════════════════════════════════════════════════════════
@@ -1779,6 +1825,9 @@ class ServiceRequestListItem(BaseModel):
     # Batch context (if created from batch submission)
     batch_id: Optional[str] = None
     batch_reference: Optional[str] = None
+    # Escalation context (only populated for action=escalations)
+    escalation_reason: Optional[str] = None
+    escalated_at: Optional[str] = None
 
 
 class ServiceRequestListResponse(BaseModel):
@@ -2011,6 +2060,13 @@ async def get_entity_service_requests(
     params.append(page_size)
     params.append(offset)
 
+    # Escalation columns only when needed (avoid returning nulls for normal actions)
+    escalation_select = ""
+    escalation_order = ""
+    if ActionStatusMapping.is_escalation(action):
+        escalation_select = ",\n            sr.escalation_reason,\n            sr.escalated_at as escalated_at_ts"
+        escalation_order = "sr.escalated_at DESC NULLS LAST,"
+
     query = f"""
         SELECT
             sr.id,
@@ -2034,11 +2090,13 @@ async def get_entity_service_requests(
             u.email,
             sr.batch_id,
             (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference
+            {escalation_select}
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
         WHERE {where_clause}
         ORDER BY
+            {escalation_order}
             CASE sr.priority
                 WHEN 'URGENT' THEN 1
                 WHEN 'HIGH' THEN 2
@@ -2069,7 +2127,7 @@ async def get_entity_service_requests(
 
         citizen_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
 
-        items.append(ServiceRequestListItem(
+        item = ServiceRequestListItem(
             id=str(row['id']),
             reference=row['reference'] or '',
             workflow_code=row['workflow_code'],
@@ -2086,7 +2144,12 @@ async def get_entity_service_requests(
             sla_status=sla_status,
             batch_id=str(row['batch_id']) if row.get('batch_id') else None,
             batch_reference=row.get('batch_reference'),
-        ))
+        )
+        # Add escalation fields when available
+        if 'escalation_reason' in row.keys():
+            item.escalation_reason = row['escalation_reason']
+            item.escalated_at = row['escalated_at_ts'].isoformat() if row.get('escalated_at_ts') else None
+        items.append(item)
 
     return ServiceRequestListResponse(
         items=items,
