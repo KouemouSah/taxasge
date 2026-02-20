@@ -8,7 +8,7 @@
  * @date 2026-01-19
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -123,6 +123,7 @@ export default function PendingEscalationsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedEscalation, setSelectedEscalation] = useState<Escalation | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false);
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
@@ -131,6 +132,13 @@ export default function PendingEscalationsPage() {
   const [approveNotes, setApproveNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState('');
+
+  // Focus management: ref to a stable element for focus restoration after dialogs close
+  const refreshBtnRef = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useCallback(() => {
+    // After dialog close, return focus to the refresh button (always present)
+    requestAnimationFrame(() => refreshBtnRef.current?.focus());
+  }, []);
 
   // Fetch pending escalations - uses GET /supervisor/escalations?status_filter=pending
   const { data: escalations, isLoading, isError, error, refetch } = useQuery<Escalation[]>({
@@ -170,6 +178,7 @@ export default function PendingEscalationsPage() {
       setSelectedEscalation(null);
       setResolutionNotes('');
       toast.success(t('escalations.resolved') || 'Escalation resolved');
+      restoreFocus();
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
@@ -190,6 +199,7 @@ export default function PendingEscalationsPage() {
       setSelectedEscalation(null);
       setSelectedAgentId('');
       toast.success(t('escalations.reassign') || 'Escalation assigned');
+      restoreFocus();
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
@@ -211,6 +221,7 @@ export default function PendingEscalationsPage() {
       setSelectedEscalation(null);
       setApproveNotes('');
       toast.success(t('escalations.approved'));
+      restoreFocus();
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
@@ -232,6 +243,7 @@ export default function PendingEscalationsPage() {
       setSelectedEscalation(null);
       setRejectionReason('');
       toast.success(t('escalations.rejected'));
+      restoreFocus();
     },
     onError: (err: unknown) => {
       toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
@@ -333,7 +345,7 @@ export default function PendingEscalationsPage() {
                 <SelectItem value="low">{t('escalations.low')}</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={() => refetch()}>
+            <Button ref={refreshBtnRef} variant="outline" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               {tCommon('refresh')}
             </Button>
@@ -402,8 +414,11 @@ export default function PendingEscalationsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setSelectedEscalation(esc)}
-                            title={tCommon('view')}
+                            aria-label={`${tCommon('view')} ${esc.case_reference || ''}`}
+                            onClick={() => {
+                              setSelectedEscalation(esc);
+                              setIsDetailsDialogOpen(true);
+                            }}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -411,11 +426,11 @@ export default function PendingEscalationsPage() {
                             variant="outline"
                             size="sm"
                             className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            aria-label={`${t('escalations.approve')} ${esc.case_reference || ''}`}
                             onClick={() => {
                               setSelectedEscalation(esc);
                               setIsApproveDialogOpen(true);
                             }}
-                            title={t('escalations.approve')}
                           >
                             <ThumbsUp className="h-4 w-4" />
                           </Button>
@@ -423,33 +438,33 @@ export default function PendingEscalationsPage() {
                             variant="outline"
                             size="sm"
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            aria-label={`${t('escalations.reject')} ${esc.case_reference || ''}`}
                             onClick={() => {
                               setSelectedEscalation(esc);
                               setIsRejectDialogOpen(true);
                             }}
-                            title={t('escalations.reject')}
                           >
                             <XCircle className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
+                            aria-label={`${t('escalations.resolve')} ${esc.case_reference || ''}`}
                             onClick={() => {
                               setSelectedEscalation(esc);
                               setIsResolveDialogOpen(true);
                             }}
-                            title={t('escalations.resolve')}
                           >
                             <CheckCircle className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
+                            aria-label={`${t('escalations.reassign')} ${esc.case_reference || ''}`}
                             onClick={() => {
                               setSelectedEscalation(esc);
                               setIsReassignDialogOpen(true);
                             }}
-                            title={t('escalations.reassign')}
                           >
                             <UserCheck className="h-4 w-4" />
                           </Button>
@@ -465,10 +480,19 @@ export default function PendingEscalationsPage() {
       </Card>
 
       {/* View Details Dialog */}
-      <Dialog open={!!selectedEscalation && !isResolveDialogOpen && !isReassignDialogOpen && !isApproveDialogOpen && !isRejectDialogOpen} onOpenChange={() => setSelectedEscalation(null)}>
+      <Dialog open={isDetailsDialogOpen} onOpenChange={(open) => {
+        setIsDetailsDialogOpen(open);
+        if (!open) {
+          setSelectedEscalation(null);
+          restoreFocus();
+        }
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{t('escalations.details')}</DialogTitle>
+            <DialogDescription>
+              {selectedEscalation?.case_reference || ''}
+            </DialogDescription>
           </DialogHeader>
           {selectedEscalation && (
             <div className="space-y-4">
@@ -514,26 +538,35 @@ export default function PendingEscalationsPage() {
             </div>
           )}
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setSelectedEscalation(null)}>
+            <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
               {tCommon('close')}
             </Button>
             <Button
               variant="default"
               className="bg-green-600 hover:bg-green-700"
-              onClick={() => setIsApproveDialogOpen(true)}
+              onClick={() => {
+                setIsDetailsDialogOpen(false);
+                setIsApproveDialogOpen(true);
+              }}
             >
               <ThumbsUp className="h-4 w-4 mr-2" />
               {t('escalations.approve')}
             </Button>
             <Button
               variant="destructive"
-              onClick={() => setIsRejectDialogOpen(true)}
+              onClick={() => {
+                setIsDetailsDialogOpen(false);
+                setIsRejectDialogOpen(true);
+              }}
             >
               <XCircle className="h-4 w-4 mr-2" />
               {t('escalations.reject')}
             </Button>
             <Button
-              onClick={() => setIsResolveDialogOpen(true)}
+              onClick={() => {
+                setIsDetailsDialogOpen(false);
+                setIsResolveDialogOpen(true);
+              }}
             >
               {t('escalations.resolve')}
             </Button>
@@ -544,7 +577,10 @@ export default function PendingEscalationsPage() {
       {/* Resolve Dialog */}
       <Dialog open={isResolveDialogOpen} onOpenChange={(open) => {
         setIsResolveDialogOpen(open);
-        if (!open) setResolutionNotes('');
+        if (!open) {
+          setResolutionNotes('');
+          restoreFocus();
+        }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -582,7 +618,10 @@ export default function PendingEscalationsPage() {
       {/* Approve Dialog */}
       <Dialog open={isApproveDialogOpen} onOpenChange={(open) => {
         setIsApproveDialogOpen(open);
-        if (!open) setApproveNotes('');
+        if (!open) {
+          setApproveNotes('');
+          restoreFocus();
+        }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -631,7 +670,10 @@ export default function PendingEscalationsPage() {
       {/* Reject Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={(open) => {
         setIsRejectDialogOpen(open);
-        if (!open) setRejectionReason('');
+        if (!open) {
+          setRejectionReason('');
+          restoreFocus();
+        }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -683,7 +725,10 @@ export default function PendingEscalationsPage() {
       {/* Assign Dialog */}
       <Dialog open={isReassignDialogOpen} onOpenChange={(open) => {
         setIsReassignDialogOpen(open);
-        if (!open) setSelectedAgentId('');
+        if (!open) {
+          setSelectedAgentId('');
+          restoreFocus();
+        }
       }}>
         <DialogContent>
           <DialogHeader>
