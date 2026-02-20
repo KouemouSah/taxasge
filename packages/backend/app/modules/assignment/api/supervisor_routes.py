@@ -48,6 +48,7 @@ from app.core.database import get_db_connection
 # Permission middleware - use permission_required dependency instead of decorator
 from app.modules.permissions.middleware import permission_required
 
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -113,14 +114,32 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
 # REQUEST/RESPONSE SCHEMAS
 # ============================================================================
 
+class DashboardTeamStats(BaseModel):
+    activeAgents: int = 0
+    totalAgents: int = 0
+    utilizationRate: float = 0.0
+
+class DashboardEscalationStats(BaseModel):
+    pending: int = 0
+    resolvedToday: int = 0
+    avgResolutionTime: float = 0.0
+
+class DashboardAssignmentStats(BaseModel):
+    pending: int = 0
+    inProgress: int = 0
+    completedToday: int = 0
+
+class DashboardPerformanceStats(BaseModel):
+    avgResponseTime: float = 0.0
+    slaCompliance: float = 0.0
+    qualityScore: float = 0.0
+
 class DashboardResponse(BaseModel):
-    """Supervisor dashboard data"""
-    summary: Dict[str, Any]
-    pending_assignments: List[Assignment]
-    overdue_assignments: List[Assignment]
-    agent_workloads: List[AgentWorkload]
-    recent_assignments: List[Assignment]
-    performance_alerts: List[Dict[str, Any]]
+    """Supervisor dashboard data — aligned with frontend SupervisorDashboardStats"""
+    team: DashboardTeamStats
+    escalations: DashboardEscalationStats
+    assignments: DashboardAssignmentStats
+    performance: DashboardPerformanceStats
 
 
 class AgentListItem(BaseModel):
@@ -197,74 +216,74 @@ async def get_dashboard(
     Migration 048: Uses agent_profiles for context instead of deprecated roles
     """
 
-    # Get agent context from agent_profiles
-    # Admin sees all (no filtering by ministry/entity)
-    if current_user.role == "admin":
-        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
-    else:
-        agent_ctx = await get_agent_context(current_user.id, db)
-
-    assignment_repo = get_assignment_repository(db)
-    workload_repo = get_workload_repository(db)
-
     try:
-        # Get summary stats
-        all_assignments = await assignment_repo.get_active_assignments(None)
-        pending = [a for a in all_assignments if a.status == AssignmentStatus.assigned]
-        in_progress = [a for a in all_assignments if a.status == AssignmentStatus.in_progress]
-        overdue = await assignment_repo.get_overdue_assignments()
+        # --- Team stats ---
+        team_row = await db.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE ap.is_active = true) as total_agents,
+                COUNT(*) FILTER (WHERE ap.is_active = true AND aw.workload_status = 'available') as active_agents,
+                COALESCE(AVG(aw.capacity_percentage) FILTER (WHERE ap.is_active = true), 0) as avg_capacity
+            FROM agent_profiles ap
+            LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+        """)
 
-        # Get agent workloads - now uses unified 'agent' role
-        # Agents are filtered by ministry_id in the workload repository
-        available_agents = await workload_repo.get_available_agents(
-            db=db,
-            max_workload_pct=100.0
-        )
+        # --- Escalation stats from service_requests ---
+        esc_row = await db.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE escalated = true) as pending,
+                (SELECT COUNT(*) FROM service_request_history
+                 WHERE action = 'escalation_resolved'
+                 AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today
+            FROM service_requests
+            WHERE escalated = true
+        """)
 
-        # Get recent assignments (last 20)
-        recent_assignments = all_assignments[:20]
+        # --- Assignment stats ---
+        asgn_row = await db.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'assigned') as pending,
+                COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+                COUNT(*) FILTER (WHERE status = 'completed' AND updated_at > NOW() - INTERVAL '24 hours') as completed_today
+            FROM assignments
+        """)
 
-        # Generate performance alerts
-        # Note: available_agents returns AgentWorkload objects now (Migration 054)
-        performance_alerts = []
-        for agent_workload in available_agents:
-            # AgentWorkload object has capacity_percentage computed
-            if agent_workload.capacity_percentage > 80:
-                performance_alerts.append({
-                    "type": "overloaded",
-                    "agent_profile_id": str(agent_workload.agent_profile_id),
-                    "message": f"Agent at {agent_workload.capacity_percentage:.0f}% capacity",
-                    "severity": "high"
-                })
+        # --- Performance (simplified) ---
+        perf_row = await db.fetchrow("""
+            SELECT
+                COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - assigned_at)) / 3600), 0) as avg_response_hours,
+                COALESCE(
+                    COUNT(*) FILTER (WHERE completed_at IS NOT NULL AND completed_at < deadline) * 100.0
+                    / NULLIF(COUNT(*) FILTER (WHERE completed_at IS NOT NULL), 0),
+                    100.0
+                ) as sla_compliance
+            FROM assignments
+            WHERE completed_at > NOW() - INTERVAL '30 days'
+        """)
 
-        # Build summary - available_agents is List[AgentWorkload]
-        summary = {
-            "total_agents": len(available_agents),
-            "total_assignments": len(all_assignments),
-            "pending_count": len(pending),
-            "in_progress_count": len(in_progress),
-            "overdue_count": len(overdue),
-            "avg_capacity": sum(a.capacity_percentage for a in available_agents) / max(len(available_agents), 1),
-            "alerts_count": len(performance_alerts),
-            "entity_type": agent_ctx.get("entity_type"),
-            "entity_id": str(agent_ctx.get("ministry_id") or agent_ctx.get("entity_id") or "")
-        }
-
-        # available_agents is already List[AgentWorkload] - no need to fetch again
         response = DashboardResponse(
-            summary=summary,
-            pending_assignments=pending[:10],
-            overdue_assignments=overdue,
-            agent_workloads=available_agents,
-            recent_assignments=recent_assignments,
-            performance_alerts=performance_alerts
+            team=DashboardTeamStats(
+                activeAgents=team_row['active_agents'] or 0,
+                totalAgents=team_row['total_agents'] or 0,
+                utilizationRate=round(float(team_row['avg_capacity'] or 0), 1),
+            ),
+            escalations=DashboardEscalationStats(
+                pending=esc_row['pending'] or 0,
+                resolvedToday=esc_row['resolved_today'] or 0,
+                avgResolutionTime=0.0,
+            ),
+            assignments=DashboardAssignmentStats(
+                pending=asgn_row['pending'] or 0,
+                inProgress=asgn_row['in_progress'] or 0,
+                completedToday=asgn_row['completed_today'] or 0,
+            ),
+            performance=DashboardPerformanceStats(
+                avgResponseTime=round(float(perf_row['avg_response_hours'] or 0), 1),
+                slaCompliance=round(float(perf_row['sla_compliance'] or 100), 1),
+                qualityScore=0.0,  # Not yet computed
+            ),
         )
 
-        logger.info(
-            f"Dashboard loaded for supervisor {current_user.email} - "
-            f"Entity: {agent_ctx.get('entity_type')}/{agent_ctx.get('ministry_id') or agent_ctx.get('entity_id')}"
-        )
-
+        logger.info(f"Dashboard loaded for supervisor {current_user.email}")
         return response
 
     except Exception as e:
@@ -901,22 +920,12 @@ async def list_escalations(
     _: None = Depends(permission_required("escalations.view"))
 ):
     """
-    **List all escalated items for supervisor review**
+    **List all escalated service requests for supervisor review**
 
-    Permissions:
-    - Requires: escalations.view
-
-    Returns:
-    - Escalated queue items with agent info
-    - Sorted by escalation time (most recent first)
-    - Filters by ministry/entity for non-admin users
-
-    Query Parameters:
-    - status_filter: Filter by escalation_status
-    - include_resolved: Include completed items
-    - page, page_size: Pagination
+    Reads from service_requests WHERE escalated = true.
+    Scoped to supervisor's entity workflow_codes.
     """
-    # Get agent context
+    # Get agent context for scoping
     if current_user.role == "admin":
         agent_ctx = {"ministry_id": None, "entity_id": None}
     else:
@@ -924,76 +933,91 @@ async def list_escalations(
 
     offset = (page - 1) * page_size
 
-    # Build status filter
-    status_where = ""
+    # Build conditions
+    conditions = ["sr.escalated = true"]
+    params: list = []
+    param_idx = 1
+
+    # Status filter (pending = no assignee, in_review = has assignee)
     if status_filter == "pending":
-        status_where = "AND q.assigned_to IS NULL AND q.status != 'completed'"
+        conditions.append("sr.assigned_to IS NULL")
     elif status_filter == "in_review":
-        status_where = "AND q.assigned_to IS NOT NULL AND q.status != 'completed'"
+        conditions.append("sr.assigned_to IS NOT NULL")
     elif status_filter == "resolved":
-        status_where = "AND q.status = 'completed'"
-    elif not include_resolved:
-        status_where = "AND q.status != 'completed'"
+        # Resolved = no longer escalated but was resolved recently
+        conditions[0] = "sr.escalated = false"
+        conditions.append("""EXISTS (
+            SELECT 1 FROM service_request_history h
+            WHERE h.service_request_id = sr.id
+            AND h.action = 'escalation_resolved'
+            AND h.performed_at > NOW() - INTERVAL '7 days'
+        )""")
 
-    # Ministry filter for non-admin
-    ministry_filter = ""
-    params = [page_size, offset]
-    param_idx = 3
+    # Scope to entity's workflow_codes
+    if agent_ctx.get("entity_id"):
+        entity = await db.fetchrow(
+            "SELECT workflow_codes FROM entities WHERE id = $1",
+            agent_ctx["entity_id"]
+        )
+        if entity and entity['workflow_codes']:
+            wf_codes = entity['workflow_codes']
+            if isinstance(wf_codes, str):
+                wf_codes = json.loads(wf_codes)
+            conditions.append(f"sr.workflow_code = ANY(${param_idx})")
+            params.append([str(c) for c in wf_codes])
+            param_idx += 1
 
-    if agent_ctx.get("ministry_id"):
-        ministry_filter = f"AND q.ministry_id = ${param_idx}"
-        params.insert(0, agent_ctx["ministry_id"])
-        param_idx += 1
+    where_clause = " AND ".join(conditions)
+    params.extend([page_size, offset])
 
     query = f"""
         SELECT
-            q.id as queue_id,
-            q.item_id,
-            q.escalation_reason,
-            q.priority_score,
-            q.status,
-            q.escalated_at,
-            q.created_at,
-            q.assigned_to,
-            sr.reference as case_reference,
-            sr.workflow_code as case_type,
-            escalator.full_name as escalated_by_name,
-            escalator.email as escalated_by_email,
-            assignee.full_name as assigned_to_name,
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            sr.status,
+            sr.priority,
+            sr.escalation_reason,
+            sr.escalated_at,
+            sr.escalated_by,
+            sr.assigned_to,
+            sr.created_at,
+            escalator.first_name as esc_first, escalator.last_name as esc_last,
+            escalator.email as esc_email,
+            assignee.first_name as asgn_first, assignee.last_name as asgn_last,
             CASE
-                WHEN q.status = 'completed' THEN 'resolved'
-                WHEN q.assigned_to IS NOT NULL THEN 'in_review'
+                WHEN sr.escalated = false THEN 'resolved'
+                WHEN sr.assigned_to IS NOT NULL THEN 'in_review'
                 ELSE 'pending'
             END as escalation_status
-        FROM agent_work_queue q
-        JOIN service_requests sr ON sr.id = q.item_id
-        LEFT JOIN users escalator ON escalator.id = q.escalated_by
-        LEFT JOIN users assignee ON assignee.id = q.assigned_to
-        WHERE q.item_type = 'service_request'
-        AND q.escalated = true
-        {ministry_filter}
-        {status_where}
-        ORDER BY q.escalated_at DESC
-        LIMIT ${param_idx - 1} OFFSET ${param_idx}
+        FROM service_requests sr
+        LEFT JOIN users escalator ON escalator.id = sr.escalated_by
+        LEFT JOIN users assignee ON assignee.id = sr.assigned_to
+        WHERE {where_clause}
+        ORDER BY sr.escalated_at DESC NULLS LAST
+        LIMIT ${param_idx} OFFSET ${param_idx + 1}
     """
 
     rows = await db.fetch(query, *params)
 
+    # Map priority enum to numeric score for frontend badge colors
+    PRIORITY_SCORES = {'URGENT': 90.0, 'HIGH': 70.0, 'NORMAL': 40.0, 'LOW': 10.0}
+
     return [
         EscalationListItem(
-            id=row['item_id'],
-            queue_id=row['queue_id'],
+            id=row['id'],
+            queue_id=row['id'],  # Frontend uses queue_id for mutations — map to sr.id
             reason=row['escalation_reason'] or '',
-            priority_score=float(row['priority_score']),
+            priority_score=PRIORITY_SCORES.get(str(row['priority']), 40.0),
             status=row['status'],
             escalation_status=row['escalation_status'],
-            case_reference=row['case_reference'] or '',
-            case_type=row['case_type'] or '',
-            escalated_by_name=row['escalated_by_name'] or 'Unknown',
-            escalated_by_email=row['escalated_by_email'] or '',
+            case_reference=row['reference'] or '',
+            case_type=row['workflow_code'] or '',
+            escalated_by_name=f"{row['esc_first'] or ''} {row['esc_last'] or ''}".strip() or 'Unknown',
+            escalated_by_email=row['esc_email'] or '',
             escalated_at=row['escalated_at'] or row['created_at'],
             created_at=row['created_at'],
-            assigned_to_name=row['assigned_to_name']
+            assigned_to_name=(f"{row['asgn_first'] or ''} {row['asgn_last'] or ''}".strip() or None) if row['assigned_to'] else None
         )
         for row in rows
     ]
@@ -1006,36 +1030,23 @@ async def get_escalation_stats(
     _: None = Depends(permission_required("escalations.view"))
 ):
     """
-    **Get escalation statistics**
+    **Get escalation statistics from service_requests**
 
     Returns counts of escalations by status.
     """
-    # Get agent context
-    if current_user.role == "admin":
-        agent_ctx = {"ministry_id": None}
-    else:
-        agent_ctx = await get_agent_context(str(current_user.id), db)
-
-    ministry_filter = ""
-    params = []
-
-    if agent_ctx.get("ministry_id"):
-        ministry_filter = "AND ministry_id = $1"
-        params.append(agent_ctx["ministry_id"])
-
-    query = f"""
+    query = """
         SELECT
-            COUNT(*) FILTER (WHERE assigned_to IS NULL AND status != 'completed') as pending,
-            COUNT(*) FILTER (WHERE assigned_to IS NOT NULL AND status != 'completed') as in_review,
-            COUNT(*) FILTER (WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '24 hours') as resolved_today,
-            COUNT(*) as total
-        FROM agent_work_queue
-        WHERE item_type = 'service_request'
-        AND escalated = true
-        {ministry_filter}
+            COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NULL) as pending,
+            COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NOT NULL) as in_review,
+            (SELECT COUNT(*) FROM service_request_history
+             WHERE action = 'escalation_resolved'
+             AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today,
+            COUNT(*) FILTER (WHERE escalated = true) as total
+        FROM service_requests
+        WHERE escalated = true
     """
 
-    row = await db.fetchrow(query, *params)
+    row = await db.fetchrow(query)
 
     return EscalationStatsResponse(
         pending=row['pending'] or 0,
@@ -1054,29 +1065,36 @@ async def assign_escalation(
     _: None = Depends(permission_required("escalations.assign"))
 ):
     """
-    **Assign an escalated item to an agent (or self)**
+    **Assign an escalated service request to an agent (or self)**
 
-    If agent_id is not provided, assigns to current user.
+    queue_id is actually the service_request.id (frontend compatibility).
     """
     target_agent = agent_id or UUID(current_user.id)
 
     result = await db.fetchrow("""
-        UPDATE agent_work_queue
+        UPDATE service_requests
         SET assigned_to = $2,
             assigned_at = NOW(),
-            status = 'assigned',
             updated_at = NOW()
         WHERE id = $1
         AND escalated = true
-        AND status = 'pending'
-        RETURNING id
-    """, str(queue_id), str(target_agent))
+        RETURNING id, reference
+    """, queue_id, target_agent)
 
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Escalation not found or already assigned"
+            detail="Escalated request not found"
         )
+
+    # Record in history
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment)
+        VALUES ($1, 'escalation_assigned', (SELECT status FROM service_requests WHERE id = $1),
+                (SELECT status FROM service_requests WHERE id = $1), $2,
+                'Escalación asignada a agente')
+    """, queue_id, UUID(current_user.id))
 
     logger.info(f"Escalation {queue_id} assigned to {target_agent} by {current_user.email}")
 
@@ -1097,49 +1115,47 @@ async def resolve_escalation(
     _: None = Depends(permission_required("escalations.resolve"))
 ):
     """
-    **Resolve an escalation**
+    **Resolve an escalation on a service request**
 
-    Marks the queue item as completed and adds resolution note to service_request.
+    queue_id is actually service_request.id (frontend compatibility).
+    De-escalates the request and records resolution notes in history.
     """
-    # Get the queue item first to find the service request
-    queue_item = await db.fetchrow("""
-        SELECT item_id FROM agent_work_queue
-        WHERE id = $1 AND escalated = true
-    """, str(queue_id))
+    # Find the escalated service request
+    request = await db.fetchrow("""
+        SELECT id, reference, status, escalated
+        FROM service_requests WHERE id = $1
+    """, queue_id)
 
-    if not queue_item:
+    if not request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Escalation not found"
+            detail="Service request not found"
         )
-
-    # Update queue item as completed
-    result = await db.fetchrow("""
-        UPDATE agent_work_queue
-        SET status = 'completed',
-            completed_at = NOW(),
-            completed_by = $2,
-            updated_at = NOW()
-        WHERE id = $1
-        AND escalated = true
-        RETURNING id, item_id
-    """, str(queue_id), str(current_user.id))
-
-    if not result:
+    if not request['escalated']:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Failed to update escalation"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Service request is not escalated"
         )
 
-    # Add resolution notes to service_request
+    # De-escalate
     await db.execute("""
         UPDATE service_requests
-        SET notes = COALESCE(notes, '') || E'\n[ESCALATION RESOLVED] ' || $2,
+        SET escalated = false,
+            escalated_at = NULL,
+            escalated_by = NULL,
+            escalation_reason = NULL,
             updated_at = NOW()
         WHERE id = $1
-    """, result['item_id'], request_data.resolution_notes)
+    """, queue_id)
 
-    logger.info(f"Escalation {queue_id} resolved by {current_user.email}")
+    # Record resolution in history with notes
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment)
+        VALUES ($1, 'escalation_resolved', $2, $2, $3, $4)
+    """, queue_id, request['status'], UUID(current_user.id), request_data.resolution_notes)
+
+    logger.info(f"Escalation {queue_id} resolved by {current_user.email}: {request_data.resolution_notes}")
 
     return {"message": "Escalation resolved", "queue_id": str(queue_id)}
 
