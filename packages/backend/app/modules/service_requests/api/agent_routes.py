@@ -4998,6 +4998,151 @@ async def get_appointment_detail(
     }
 
 
+@router.post(
+    "/appointments/{reservation_id}/cancel",
+    summary="Cancel an appointment reservation",
+    description="Cancel an existing appointment reservation by reservation ID."
+)
+async def cancel_appointment_by_reservation(
+    reservation_id: UUID = Path(..., description="Appointment reservation ID"),
+    reason: Optional[str] = Body(None, embed=True),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.schedule_appointment"))
+):
+    # Find the reservation
+    reservation = await db.fetchrow("""
+        SELECT ar.id, ar.service_request_id, ar.status, ar.appointment_date, ar.appointment_time,
+               el.location_name, sr.user_id, sr.workflow_code
+        FROM appointment_reservations ar
+        JOIN service_requests sr ON ar.service_request_id = sr.id
+        LEFT JOIN entity_locations el ON ar.entity_location_id = el.id
+        WHERE ar.id = $1
+    """, reservation_id)
+
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Appointment reservation not found")
+
+    if reservation['status'] == 'cancelled':
+        raise HTTPException(status_code=409, detail="Appointment already cancelled")
+
+    # Cancel the reservation
+    await db.execute("""
+        UPDATE appointment_reservations
+        SET status = 'cancelled',
+            cancelled_at = NOW(),
+            cancelled_by = $2,
+            cancellation_reason = $3,
+            updated_at = NOW()
+        WHERE id = $1
+    """, reservation_id, current_user.id, reason or "Agent cancellation")
+
+    # Release corresponding hold if exists
+    await db.execute("""
+        UPDATE appointment_holds
+        SET status = 'released', released_at = NOW(), updated_at = NOW()
+        WHERE service_request_id = $1 AND status = 'confirmed'
+    """, reservation['service_request_id'])
+
+    # Record in history
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment)
+        VALUES ($1, 'appointment_cancelled', 'CITA_SCHEDULED', 'CITA_SCHEDULED', $2, $3)
+    """, reservation['service_request_id'], current_user.id,
+        reason or "Appointment cancelled by agent")
+
+    # Publish cancellation event (non-blocking)
+    try:
+        user_info = await db.fetchrow(
+            "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+            reservation['user_id']
+        )
+        if user_info:
+            EventBus.publish_nowait(
+                EventType.APPOINTMENT_CANCELLED,
+                {
+                    "request_id": str(reservation['service_request_id']),
+                    "user_id": str(user_info['id']),
+                    "user_email": user_info['email'],
+                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                    "user_phone": user_info['phone_number'],
+                    "preferred_language": user_info['preferred_language'] or 'es',
+                    "workflow_code": reservation['workflow_code'],
+                    "appointment_date": str(reservation['appointment_date']),
+                    "appointment_time": str(reservation['appointment_time']) if reservation['appointment_time'] else None,
+                    "location": reservation['location_name'],
+                    "reason": reason or "Agent cancellation",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+    except Exception:
+        pass
+
+    return {"message": "Appointment cancelled"}
+
+
+@router.post(
+    "/appointments/{reservation_id}/complete",
+    summary="Mark appointment as completed",
+    description="Mark an appointment as completed after the citizen has been attended."
+)
+async def complete_appointment_by_reservation(
+    reservation_id: UUID = Path(..., description="Appointment reservation ID"),
+    notes: Optional[str] = Body(None, embed=True),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.schedule_appointment"))
+):
+    # Find the reservation
+    reservation = await db.fetchrow("""
+        SELECT ar.id, ar.service_request_id, ar.status,
+               sr.status::text as sr_status
+        FROM appointment_reservations ar
+        JOIN service_requests sr ON ar.service_request_id = sr.id
+        WHERE ar.id = $1
+    """, reservation_id)
+
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Appointment reservation not found")
+
+    if reservation['status'] == 'completed':
+        raise HTTPException(status_code=409, detail="Appointment already completed")
+
+    if reservation['status'] == 'cancelled':
+        raise HTTPException(status_code=409, detail="Cannot complete a cancelled appointment")
+
+    # Mark as completed
+    await db.execute("""
+        UPDATE appointment_reservations
+        SET status = 'completed',
+            completed_at = NOW(),
+            completed_by = $2,
+            completion_notes = $3,
+            updated_at = NOW()
+        WHERE id = $1
+    """, reservation_id, current_user.id, notes)
+
+    # Update service request status to IN_PROGRESS
+    sr_status = reservation['sr_status']
+    if sr_status in ('CITA_SCHEDULED',):
+        await db.execute("""
+            UPDATE service_requests
+            SET status = 'IN_PROGRESS', updated_at = NOW()
+            WHERE id = $1
+        """, reservation['service_request_id'])
+
+    # Record in history
+    await db.execute("""
+        INSERT INTO service_request_history
+        (service_request_id, action, previous_status, new_status, performed_by, comment)
+        VALUES ($1, 'appointment_completed', $2, 'IN_PROGRESS', $3, $4)
+    """, reservation['service_request_id'], sr_status, current_user.id,
+        notes or "Appointment completed")
+
+    return {"message": "Appointment completed"}
+
+
 # ═══════════════════════════════════════════════════════════════
 # SINGLE REQUEST HISTORY ENDPOINT
 # ═══════════════════════════════════════════════════════════════
