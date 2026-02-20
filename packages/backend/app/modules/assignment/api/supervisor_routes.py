@@ -51,6 +51,7 @@ from app.modules.permissions.middleware import permission_required
 import json
 import logging
 from app.core.events import EventBus, EventType
+from app.modules.service_requests.models.enums import ServiceRequestStatus
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,27 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
         "entity_type": entity_type,
         "ministry_code": result.get("ministry_code"),
     }
+
+
+async def _get_supervisor_workflow_scope(agent_ctx: Dict[str, Any], db) -> Optional[list]:
+    """
+    Returns the list of workflow_codes this supervisor can see, or None for admin (no filter).
+    Used to scope ALL supervisor queries to their entity.
+    """
+    entity_id = agent_ctx.get("entity_id")
+    if not entity_id:
+        return None  # Admin or no entity → see everything
+
+    entity = await db.fetchrow(
+        "SELECT workflow_codes FROM entities WHERE id = $1", entity_id
+    )
+    if not entity or not entity['workflow_codes']:
+        return []  # Entity without workflows → see nothing
+
+    wf_codes = entity['workflow_codes']
+    if isinstance(wf_codes, str):
+        wf_codes = json.loads(wf_codes)
+    return [str(c) for c in wf_codes]
 
 
 # ============================================================================
@@ -217,49 +239,108 @@ async def get_dashboard(
     Migration 048: Uses agent_profiles for context instead of deprecated roles
     """
 
+    # Resolve scope: which workflow_codes this supervisor manages
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
+    # wf_scope = None → admin (no filter) | [] → empty entity | [...] → scoped
+
     try:
-        # --- Team stats ---
-        team_row = await db.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE ap.is_active = true) as total_agents,
-                COUNT(*) FILTER (WHERE ap.is_active = true AND aw.workload_status = 'available') as active_agents,
-                COALESCE(AVG(aw.capacity_percentage) FILTER (WHERE ap.is_active = true), 0) as avg_capacity
-            FROM agent_profiles ap
-            LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
-        """)
+        # --- Team stats (scoped to entity) ---
+        if wf_scope is not None and agent_ctx.get("entity_id"):
+            team_row = await db.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE ap.is_active = true) as total_agents,
+                    COUNT(*) FILTER (WHERE ap.is_active = true AND COALESCE(aw.workload_status, 'available') = 'available') as active_agents,
+                    COALESCE(AVG(COALESCE(aw.capacity_percentage, 0)) FILTER (WHERE ap.is_active = true), 0) as avg_capacity
+                FROM agent_profiles ap
+                LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                WHERE ap.entity_id = $1
+            """, agent_ctx["entity_id"])
+        else:
+            team_row = await db.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE ap.is_active = true) as total_agents,
+                    COUNT(*) FILTER (WHERE ap.is_active = true AND COALESCE(aw.workload_status, 'available') = 'available') as active_agents,
+                    COALESCE(AVG(COALESCE(aw.capacity_percentage, 0)) FILTER (WHERE ap.is_active = true), 0) as avg_capacity
+                FROM agent_profiles ap
+                LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+            """)
 
-        # --- Escalation stats from service_requests ---
-        esc_row = await db.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE escalated = true) as pending,
-                (SELECT COUNT(*) FROM service_request_history
-                 WHERE action = 'escalation_resolved'
-                 AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today
-            FROM service_requests
-            WHERE escalated = true
-        """)
+        # --- Escalation stats (scoped to entity's workflow_codes) ---
+        if wf_scope is not None:
+            esc_row = await db.fetchrow("""
+                SELECT
+                    COUNT(*) as pending,
+                    (SELECT COUNT(*) FROM service_request_history h
+                     JOIN service_requests sr2 ON sr2.id = h.service_request_id
+                     WHERE h.action = 'escalation_resolved'
+                     AND h.performed_at > NOW() - INTERVAL '24 hours'
+                     AND sr2.workflow_code = ANY($1)) as resolved_today
+                FROM service_requests
+                WHERE escalated = true AND workflow_code = ANY($1)
+            """, wf_scope)
+        else:
+            esc_row = await db.fetchrow("""
+                SELECT
+                    COUNT(*) as pending,
+                    (SELECT COUNT(*) FROM service_request_history
+                     WHERE action = 'escalation_resolved'
+                     AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today
+                FROM service_requests
+                WHERE escalated = true
+            """)
 
-        # --- Assignment stats ---
-        asgn_row = await db.fetchrow("""
-            SELECT
-                COUNT(*) FILTER (WHERE status = 'assigned') as pending,
-                COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
-                COUNT(*) FILTER (WHERE status = 'completed' AND updated_at > NOW() - INTERVAL '24 hours') as completed_today
-            FROM assignments
-        """)
+        # --- Assignment stats (scoped via service_requests join) ---
+        if wf_scope is not None:
+            asgn_row = await db.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE a.status = 'assigned') as pending,
+                    COUNT(*) FILTER (WHERE a.status = 'in_progress') as in_progress,
+                    COUNT(*) FILTER (WHERE a.status = 'completed' AND a.completed_at > NOW() - INTERVAL '24 hours') as completed_today
+                FROM assignments a
+                JOIN service_requests sr ON sr.id::text = a.item_id
+                WHERE sr.workflow_code = ANY($1)
+            """, wf_scope)
+        else:
+            asgn_row = await db.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'assigned') as pending,
+                    COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+                    COUNT(*) FILTER (WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '24 hours') as completed_today
+                FROM assignments
+            """)
 
-        # --- Performance (simplified) ---
-        perf_row = await db.fetchrow("""
-            SELECT
-                COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - assigned_at)) / 3600), 0) as avg_response_hours,
-                COALESCE(
-                    COUNT(*) FILTER (WHERE completed_at IS NOT NULL AND completed_at < deadline) * 100.0
-                    / NULLIF(COUNT(*) FILTER (WHERE completed_at IS NOT NULL), 0),
-                    100.0
-                ) as sla_compliance
-            FROM assignments
-            WHERE completed_at > NOW() - INTERVAL '30 days'
-        """)
+        # --- Performance (scoped, last 30 days) ---
+        if wf_scope is not None:
+            perf_row = await db.fetchrow("""
+                SELECT
+                    COALESCE(AVG(EXTRACT(EPOCH FROM (a.completed_at - a.assigned_at)) / 3600), 0) as avg_response_hours,
+                    COALESCE(
+                        COUNT(*) FILTER (WHERE a.completed_at IS NOT NULL AND a.completed_at < a.deadline) * 100.0
+                        / NULLIF(COUNT(*) FILTER (WHERE a.completed_at IS NOT NULL), 0),
+                        100.0
+                    ) as sla_compliance
+                FROM assignments a
+                JOIN service_requests sr ON sr.id::text = a.item_id
+                WHERE a.completed_at > NOW() - INTERVAL '30 days'
+                AND sr.workflow_code = ANY($1)
+            """, wf_scope)
+        else:
+            perf_row = await db.fetchrow("""
+                SELECT
+                    COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - assigned_at)) / 3600), 0) as avg_response_hours,
+                    COALESCE(
+                        COUNT(*) FILTER (WHERE completed_at IS NOT NULL AND completed_at < deadline) * 100.0
+                        / NULLIF(COUNT(*) FILTER (WHERE completed_at IS NOT NULL), 0),
+                        100.0
+                    ) as sla_compliance
+                FROM assignments
+                WHERE completed_at > NOW() - INTERVAL '30 days'
+            """)
 
         response = DashboardResponse(
             team=DashboardTeamStats(
@@ -1035,19 +1116,40 @@ async def get_escalation_stats(
 
     Returns counts of escalations by status.
     """
-    query = """
-        SELECT
-            COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NULL) as pending,
-            COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NOT NULL) as in_review,
-            (SELECT COUNT(*) FROM service_request_history
-             WHERE action = 'escalation_resolved'
-             AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today,
-            COUNT(*) FILTER (WHERE escalated = true) as total
-        FROM service_requests
-        WHERE escalated = true
-    """
+    # Scope to entity
+    if current_user.role == "admin":
+        agent_ctx = {"entity_id": None}
+    else:
+        agent_ctx = await get_agent_context(str(current_user.id), db)
 
-    row = await db.fetchrow(query)
+    wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
+
+    if wf_scope is not None:
+        row = await db.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NULL) as pending,
+                COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NOT NULL) as in_review,
+                (SELECT COUNT(*) FROM service_request_history h
+                 JOIN service_requests sr2 ON sr2.id = h.service_request_id
+                 WHERE h.action = 'escalation_resolved'
+                 AND h.performed_at > NOW() - INTERVAL '24 hours'
+                 AND sr2.workflow_code = ANY($1)) as resolved_today,
+                COUNT(*) FILTER (WHERE escalated = true) as total
+            FROM service_requests
+            WHERE escalated = true AND workflow_code = ANY($1)
+        """, wf_scope)
+    else:
+        row = await db.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NULL) as pending,
+                COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NOT NULL) as in_review,
+                (SELECT COUNT(*) FROM service_request_history
+                 WHERE action = 'escalation_resolved'
+                 AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today,
+                COUNT(*) FILTER (WHERE escalated = true) as total
+            FROM service_requests
+            WHERE escalated = true
+        """)
 
     return EscalationStatsResponse(
         pending=row['pending'] or 0,
@@ -1094,7 +1196,7 @@ async def assign_escalation(
         (service_request_id, action, previous_status, new_status, performed_by, comment)
         VALUES ($1, 'escalation_assigned', (SELECT status FROM service_requests WHERE id = $1),
                 (SELECT status FROM service_requests WHERE id = $1), $2,
-                'Escalación asignada a agente')
+                'escalation_assigned')
     """, queue_id, UUID(current_user.id))
 
     logger.info(f"Escalation {queue_id} assigned to {target_agent} by {current_user.email}")
@@ -1206,11 +1308,12 @@ async def supervisor_approve(
         )
 
     previous_status = request['status']
+    approved_status = ServiceRequestStatus.DOSSIER_VALIDE.value
 
     # Approve + de-escalate in one update
     await db.execute("""
         UPDATE service_requests
-        SET status = 'DOSSIER_VALIDE',
+        SET status = $2,
             escalated = false,
             escalated_at = NULL,
             escalated_by = NULL,
@@ -1218,15 +1321,15 @@ async def supervisor_approve(
             validated_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
-    """, queue_id)
+    """, queue_id, approved_status)
 
     # Record in history — action = supervisor_approve (distinct from agent status_change)
-    comment = request_data.notes or "Aprobado directamente por supervisor"
+    comment = request_data.notes or "supervisor_approve"
     await db.execute("""
         INSERT INTO service_request_history
         (service_request_id, action, previous_status, new_status, performed_by, comment)
-        VALUES ($1, 'supervisor_approve', $2, 'DOSSIER_VALIDE', $3, $4)
-    """, queue_id, previous_status, UUID(current_user.id), comment)
+        VALUES ($1, 'supervisor_approve', $2, $3, $4, $5)
+    """, queue_id, previous_status, approved_status, UUID(current_user.id), comment)
 
     # Publish event for citizen notification (email/SMS)
     try:
@@ -1246,15 +1349,15 @@ async def supervisor_approve(
                 "agent_id": str(current_user.id),
                 "timestamp": datetime.now().isoformat(),
             })
-    except Exception:
-        pass  # Non-blocking
+    except Exception as e:
+        logger.warning(f"Failed to publish REQUEST_APPROVED event for {queue_id}: {e}")
 
     logger.info(f"Supervisor {current_user.email} approved escalation {queue_id} directly")
 
     return {
         "message": "Service request approved by supervisor",
         "queue_id": str(queue_id),
-        "new_status": "DOSSIER_VALIDE"
+        "new_status": approved_status
     }
 
 
@@ -1289,12 +1392,13 @@ async def supervisor_reject(
         )
 
     previous_status = request['status']
+    rejected_status = ServiceRequestStatus.REJECTED.value
 
     # Reject + de-escalate in one update
     await db.execute("""
         UPDATE service_requests
-        SET status = 'REJECTED',
-            rejection_reason = $2,
+        SET status = $2,
+            rejection_reason = $3,
             escalated = false,
             escalated_at = NULL,
             escalated_by = NULL,
@@ -1302,14 +1406,14 @@ async def supervisor_reject(
             validated_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
-    """, queue_id, request_data.rejection_reason)
+    """, queue_id, rejected_status, request_data.rejection_reason)
 
     # Record in history — action = supervisor_reject
     await db.execute("""
         INSERT INTO service_request_history
         (service_request_id, action, previous_status, new_status, performed_by, comment)
-        VALUES ($1, 'supervisor_reject', $2, 'REJECTED', $3, $4)
-    """, queue_id, previous_status, UUID(current_user.id), request_data.rejection_reason)
+        VALUES ($1, 'supervisor_reject', $2, $3, $4, $5)
+    """, queue_id, previous_status, rejected_status, UUID(current_user.id), request_data.rejection_reason)
 
     # Publish event for citizen notification (email/SMS)
     try:
@@ -1330,15 +1434,15 @@ async def supervisor_reject(
                 "reason": request_data.rejection_reason,
                 "timestamp": datetime.now().isoformat(),
             })
-    except Exception:
-        pass  # Non-blocking
+    except Exception as e:
+        logger.warning(f"Failed to publish REQUEST_REJECTED event for {queue_id}: {e}")
 
     logger.info(f"Supervisor {current_user.email} rejected escalation {queue_id}: {request_data.rejection_reason}")
 
     return {
         "message": "Service request rejected by supervisor",
         "queue_id": str(queue_id),
-        "new_status": "REJECTED"
+        "new_status": rejected_status
     }
 
 

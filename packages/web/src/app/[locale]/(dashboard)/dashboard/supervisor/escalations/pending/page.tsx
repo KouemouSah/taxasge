@@ -62,6 +62,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
+import { getApiErrorMessage } from '@/core/api/errors';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -170,8 +171,8 @@ export default function PendingEscalationsPage() {
       setResolutionNotes('');
       toast.success(t('escalations.resolved') || 'Escalation resolved');
     },
-    onError: (err: Error) => {
-      toast.error(err.message || tCommon('error'));
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
     },
   });
 
@@ -190,8 +191,8 @@ export default function PendingEscalationsPage() {
       setSelectedAgentId('');
       toast.success(t('escalations.reassign') || 'Escalation assigned');
     },
-    onError: (err: Error) => {
-      toast.error(err.message || tCommon('error'));
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
     },
   });
 
@@ -211,8 +212,8 @@ export default function PendingEscalationsPage() {
       setApproveNotes('');
       toast.success(t('escalations.approved'));
     },
-    onError: (err: Error) => {
-      toast.error(err.message || tCommon('error'));
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
     },
   });
 
@@ -232,8 +233,8 @@ export default function PendingEscalationsPage() {
       setRejectionReason('');
       toast.success(t('escalations.rejected'));
     },
-    onError: (err: Error) => {
-      toast.error(err.message || tCommon('error'));
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
     },
   });
 
@@ -347,7 +348,7 @@ export default function PendingEscalationsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t('escalations.priority')}</TableHead>
-                <TableHead>Reference</TableHead>
+                <TableHead>{t('escalations.reference')}</TableHead>
                 <TableHead>{t('escalations.escalatedBy')}</TableHead>
                 <TableHead>{t('escalations.reason')}</TableHead>
                 <TableHead>{t('escalations.escalatedAt')}</TableHead>
@@ -359,7 +360,7 @@ export default function PendingEscalationsPage() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                    {tCommon('noData')} - No pending escalations
+                    {t('escalations.noPending')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -397,7 +398,7 @@ export default function PendingEscalationsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1 flex-wrap">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -467,13 +468,13 @@ export default function PendingEscalationsPage() {
       <Dialog open={!!selectedEscalation && !isResolveDialogOpen && !isReassignDialogOpen && !isApproveDialogOpen && !isRejectDialogOpen} onOpenChange={() => setSelectedEscalation(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Escalation Details</DialogTitle>
+            <DialogTitle>{t('escalations.details')}</DialogTitle>
           </DialogHeader>
           {selectedEscalation && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-muted-foreground">Reference</Label>
+                  <Label className="text-muted-foreground">{t('escalations.reference')}</Label>
                   <p className="font-medium">{selectedEscalation.case_reference || 'N/A'}</p>
                 </div>
                 <div>
@@ -492,11 +493,11 @@ export default function PendingEscalationsPage() {
                   <p>{new Date(selectedEscalation.escalated_at).toLocaleString(locale)}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Case Type</Label>
+                  <Label className="text-muted-foreground">{t('escalations.caseType')}</Label>
                   <p>{selectedEscalation.case_type}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Status</Label>
+                  <Label className="text-muted-foreground">{tCommon('status')}</Label>
                   <Badge variant="outline">{selectedEscalation.escalation_status}</Badge>
                 </div>
               </div>
@@ -506,7 +507,7 @@ export default function PendingEscalationsPage() {
               </div>
               {selectedEscalation.assigned_to_name && (
                 <div>
-                  <Label className="text-muted-foreground">Assigned To</Label>
+                  <Label className="text-muted-foreground">{t('escalations.assignedTo')}</Label>
                   <p className="mt-1">{selectedEscalation.assigned_to_name}</p>
                 </div>
               )}
@@ -541,21 +542,24 @@ export default function PendingEscalationsPage() {
       </Dialog>
 
       {/* Resolve Dialog */}
-      <Dialog open={isResolveDialogOpen} onOpenChange={setIsResolveDialogOpen}>
+      <Dialog open={isResolveDialogOpen} onOpenChange={(open) => {
+        setIsResolveDialogOpen(open);
+        if (!open) setResolutionNotes('');
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('escalations.resolve')}</DialogTitle>
             <DialogDescription>
-              Resolve escalation for: {selectedEscalation?.case_reference || selectedEscalation?.id}
+              {t('escalations.resolveDescription', { reference: selectedEscalation?.case_reference || selectedEscalation?.id || '' })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Resolution Notes *</Label>
+              <Label>{t('escalations.resolutionNotes')} *</Label>
               <Textarea
                 value={resolutionNotes}
                 onChange={(e) => setResolutionNotes(e.target.value)}
-                placeholder="Describe how the escalation was resolved (minimum 5 characters)..."
+                placeholder={t('escalations.resolutionNotesPlaceholder')}
                 rows={4}
               />
             </div>
@@ -677,20 +681,23 @@ export default function PendingEscalationsPage() {
       </Dialog>
 
       {/* Assign Dialog */}
-      <Dialog open={isReassignDialogOpen} onOpenChange={setIsReassignDialogOpen}>
+      <Dialog open={isReassignDialogOpen} onOpenChange={(open) => {
+        setIsReassignDialogOpen(open);
+        if (!open) setSelectedAgentId('');
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('escalations.reassign')}</DialogTitle>
             <DialogDescription>
-              Assign case to an agent: {selectedEscalation?.case_reference || selectedEscalation?.id}
+              {t('escalations.reassignDescription', { reference: selectedEscalation?.case_reference || selectedEscalation?.id || '' })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Select Agent</Label>
+              <Label>{t('escalations.selectAgent')}</Label>
               <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select an agent..." />
+                  <SelectValue placeholder={t('escalations.selectAgentPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {agents?.map((agent) => (

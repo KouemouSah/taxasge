@@ -1198,6 +1198,7 @@ async def resolve_escalation(
     request_id: UUID = Path(..., description="Service request ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user: User = Depends(get_current_user),
+    _=Depends(permission_required("service_request.escalate")),
 ):
     """Resolve (de-escalate) a service request."""
     request = await db.fetchrow(
@@ -2060,11 +2061,10 @@ async def get_entity_service_requests(
     params.append(page_size)
     params.append(offset)
 
-    # Escalation columns only when needed (avoid returning nulls for normal actions)
-    escalation_select = ""
+    # Always select escalation columns so UI can show escalation indicator in any view
+    escalation_select = ",\n            sr.escalation_reason,\n            sr.escalated_at as escalated_at_ts"
     escalation_order = ""
     if ActionStatusMapping.is_escalation(action):
-        escalation_select = ",\n            sr.escalation_reason,\n            sr.escalated_at as escalated_at_ts"
         escalation_order = "sr.escalated_at DESC NULLS LAST,"
 
     query = f"""
@@ -3404,22 +3404,34 @@ async def get_team_workload_widget(
 
 
 # ═══════════════════════════════════════════════════════════════
-# WIDGET: ESCALATIONS (Uses v_pending_escalations)
+# WIDGET: ESCALATIONS (reads service_requests WHERE escalated = true)
 # For supervisors only
 # ═══════════════════════════════════════════════════════════════
 
+# Map service_request priority enum to widget escalation levels
+_PRIORITY_TO_LEVEL = {
+    'URGENT': 'critical',
+    'HIGH': 'high',
+    'NORMAL': 'medium',
+    'LOW': 'low',
+}
+
+
 class EscalationItem(BaseModel):
-    """Escalation item"""
-    payment_id: str
-    payment_reference: str
-    service_request_reference: Optional[str] = None
+    """Escalation item from service_requests"""
+    request_id: str
+    reference: str
+    workflow_code: Optional[str] = None
     total_amount: Optional[float] = None
     escalation_level: str  # low/medium/high/critical
     escalation_reason: Optional[str] = None
     escalated_at: str
     hours_since_escalation: Optional[float] = None
-    original_agent_name: Optional[str] = None
-    escalated_to_name: Optional[str] = None
+    escalated_by_name: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    # Backward-compat aliases (frontend may reference old field names)
+    payment_id: Optional[str] = None
+    payment_reference: Optional[str] = None
 
 
 class EscalationsWidgetResponse(BaseModel):
@@ -3443,76 +3455,86 @@ async def get_escalations_widget(
     _=Depends(permission_required("agent.view_escalations"))
 ):
     """
-    Get pending escalations from v_pending_escalations.
-    Only for supervisors.
+    Get pending escalations from service_requests WHERE escalated = true.
+    Scoped to entity's workflow_codes. Only for supervisors.
     """
-    conn = db
-    # Build query based on entity filter
+    conditions = ["sr.escalated = true"]
+    params: list = []
+    param_idx = 1
+
+    # Scope to entity's workflow_codes
     if entity_code:
-        # Get entity's ministry_id
-        entity = await conn.fetchrow(
-            "SELECT ministry_id FROM entities WHERE code = $1",
+        entity = await db.fetchrow(
+            "SELECT workflow_codes FROM entities WHERE code = $1",
             entity_code
         )
-        ministry_id = entity['ministry_id'] if entity else None
+        if entity and entity['workflow_codes']:
+            wf_codes = entity['workflow_codes']
+            if isinstance(wf_codes, str):
+                wf_codes = json.loads(wf_codes)
+            conditions.append(f"sr.workflow_code = ANY(${param_idx})")
+            params.append([str(c) for c in wf_codes])
+            param_idx += 1
 
-        rows = await conn.fetch("""
-            SELECT
-                payment_id::text,
-                payment_reference,
-                service_request_reference,
-                total_amount,
-                escalation_level::text,
-                escalation_reason,
-                escalated_at,
-                hours_since_escalation,
-                original_agent_name,
-                escalated_to_name
-            FROM v_pending_escalations
-            WHERE ($1::int IS NULL OR ministry_id = $1)
-            ORDER BY priority_order ASC, escalated_at ASC
-            LIMIT $2
-        """, ministry_id, limit)
-    else:
-        rows = await conn.fetch("""
-            SELECT
-                payment_id::text,
-                payment_reference,
-                service_request_reference,
-                total_amount,
-                escalation_level::text,
-                escalation_reason,
-                escalated_at,
-                hours_since_escalation,
-                original_agent_name,
-                escalated_to_name
-            FROM v_pending_escalations
-            ORDER BY priority_order ASC, escalated_at ASC
-            LIMIT $1
-        """, limit)
+    where_clause = " AND ".join(conditions)
+    params.append(limit)
+
+    rows = await db.fetch(f"""
+        SELECT
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            sr.priority,
+            sr.escalation_reason,
+            sr.escalated_at,
+            sr.escalated_by,
+            sr.assigned_to,
+            ROUND(EXTRACT(EPOCH FROM (NOW() - sr.escalated_at)) / 3600, 2) as hours_since_escalation,
+            esc_user.first_name || ' ' || esc_user.last_name as escalated_by_name,
+            asgn_user.first_name || ' ' || asgn_user.last_name as assigned_to_name,
+            sp.total_amount
+        FROM service_requests sr
+        LEFT JOIN users esc_user ON esc_user.id = sr.escalated_by
+        LEFT JOIN users asgn_user ON asgn_user.id = sr.assigned_to
+        LEFT JOIN service_payments sp ON sp.service_request_id = sr.id
+            AND sp.status != 'cancelled'
+        WHERE {where_clause}
+        ORDER BY
+            CASE sr.priority
+                WHEN 'URGENT' THEN 1 WHEN 'HIGH' THEN 2
+                WHEN 'NORMAL' THEN 3 ELSE 4
+            END ASC,
+            sr.escalated_at ASC
+        LIMIT ${param_idx}
+    """, *params)
 
     items = []
     critical_count = 0
     high_count = 0
 
     for row in rows:
-        level = row['escalation_level'] or 'medium'
+        level = _PRIORITY_TO_LEVEL.get(str(row['priority']), 'medium')
         if level == 'critical':
             critical_count += 1
         elif level == 'high':
             high_count += 1
 
+        ref = row['reference'] or 'N/A'
+        req_id = str(row['id'])
         items.append(EscalationItem(
-            payment_id=row['payment_id'],
-            payment_reference=row['payment_reference'] or 'N/A',
-            service_request_reference=row['service_request_reference'],
+            request_id=req_id,
+            reference=ref,
+            workflow_code=row['workflow_code'],
             total_amount=float(row['total_amount']) if row['total_amount'] else None,
             escalation_level=level,
             escalation_reason=row['escalation_reason'],
             escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else '',
             hours_since_escalation=float(row['hours_since_escalation']) if row['hours_since_escalation'] else None,
-            original_agent_name=row['original_agent_name'],
-            escalated_to_name=row['escalated_to_name']
+            escalated_by_name=row['escalated_by_name'],
+            assigned_to_name=row['assigned_to_name'],
+            # Backward-compat: populate old field names
+            payment_id=req_id,
+            payment_reference=ref,
         ))
 
     return EscalationsWidgetResponse(

@@ -348,21 +348,25 @@ export function useTeamWorkload(
 }
 
 // =============================================================================
-// ESCALATIONS WIDGET (uses v_pending_escalations)
+// ESCALATIONS WIDGET (reads service_requests WHERE escalated = true)
 // For supervisors only
 // =============================================================================
 
 export interface EscalationItem {
-  payment_id: string;
-  payment_reference: string;
-  service_request_reference: string | null;
+  request_id: string;
+  reference: string;
+  workflow_code: string | null;
   total_amount: number | null;
   escalation_level: 'low' | 'medium' | 'high' | 'critical';
   escalation_reason: string | null;
   escalated_at: string;
   hours_since_escalation: number | null;
-  original_agent_name: string | null;
-  escalated_to_name: string | null;
+  escalated_by_name: string | null;
+  assigned_to_name: string | null;
+  /** @deprecated backward-compat alias for request_id */
+  payment_id: string;
+  /** @deprecated backward-compat alias for reference */
+  payment_reference: string;
 }
 
 export interface EscalationsWidgetData {

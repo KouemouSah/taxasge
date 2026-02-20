@@ -1,17 +1,17 @@
 /**
  * EscalationsWidget
  * Displays pending escalations for supervisors
- * Uses v_pending_escalations database view
+ * Reads from service_requests WHERE escalated = true
  *
  * @module agent-dashboard/components/widgets
- * @date 2026-01-26
+ * @date 2026-02-21
  */
 
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -66,7 +66,11 @@ export function EscalationsWidget({
   className,
 }: EscalationsWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('supervisor.escalations');
+  const tCommon = useTranslations('common');
   const { data, isLoading, isError } = useEscalations(entityCode, { limit });
+
+  const title = t('title');
 
   // Loading state
   if (isLoading) {
@@ -75,7 +79,7 @@ export function EscalationsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ArrowUpCircle className="h-5 w-5 text-orange-600" />
-            Escalaciones
+            {title}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -96,12 +100,12 @@ export function EscalationsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ArrowUpCircle className="h-5 w-5 text-orange-600" />
-            Escalaciones
+            {title}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar escalaciones
+            {tCommon('error')}
           </p>
         </CardContent>
       </Card>
@@ -121,7 +125,7 @@ export function EscalationsWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <ArrowUpCircle className="h-5 w-5 text-orange-600" />
-            Escalaciones
+            {title}
             {total_escalations > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {total_escalations}
@@ -131,12 +135,12 @@ export function EscalationsWidget({
           <div className="flex gap-1">
             {critical_count > 0 && (
               <Badge className="bg-red-500 text-white text-xs">
-                {critical_count} crítico{critical_count > 1 ? 's' : ''}
+                {critical_count} {t('critical')}
               </Badge>
             )}
             {high_count > 0 && (
               <Badge className="bg-orange-500 text-white text-xs">
-                {high_count} alto{high_count > 1 ? 's' : ''}
+                {high_count} {t('high')}
               </Badge>
             )}
           </div>
@@ -146,19 +150,19 @@ export function EscalationsWidget({
         {items.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <ArrowUpCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Sin escalaciones pendientes</p>
+            <p className="text-sm">{t('noPending')}</p>
           </div>
         ) : (
           <div className="space-y-2">
             {items.map((item) => (
               <EscalationRow
-                key={item.payment_id}
+                key={item.request_id}
                 item={item}
               />
             ))}
-            <Link href={`/${locale}/dashboard/supervisor/escalations`}>
+            <Link href={`/${locale}/dashboard/supervisor/escalations/pending`}>
               <Button variant="ghost" size="sm" className="w-full mt-2">
-                Ver todas las escalaciones
+                {t('viewAll')}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
@@ -178,6 +182,7 @@ interface EscalationRowProps {
 }
 
 function EscalationRow({ item }: EscalationRowProps) {
+  const t = useTranslations('supervisor.escalations');
   const level = item.escalation_level || 'medium';
   const hoursAgo = item.hours_since_escalation
     ? Math.round(item.hours_since_escalation)
@@ -201,10 +206,10 @@ function EscalationRow({ item }: EscalationRowProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-sm">
-              {item.payment_reference}
+              {item.reference}
             </span>
             <Badge className={`${LEVEL_COLORS[level]} text-xs`}>
-              {level}
+              {t(level)}
             </Badge>
           </div>
 
@@ -215,16 +220,16 @@ function EscalationRow({ item }: EscalationRowProps) {
           )}
 
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            {item.total_amount && (
+            {item.total_amount != null && item.total_amount > 0 && (
               <span className="flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />
                 {item.total_amount.toLocaleString()} XAF
               </span>
             )}
-            {item.original_agent_name && (
+            {item.escalated_by_name && (
               <span className="flex items-center gap-1">
                 <User className="h-3 w-3" />
-                {item.original_agent_name}
+                {item.escalated_by_name}
               </span>
             )}
             {hoursAgo !== null && (

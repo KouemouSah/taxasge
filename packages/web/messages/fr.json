@@ -396,6 +396,17 @@
     "delete": "Supprimer",
     "edit": "Modifier",
     "error": "Erreur",
+    "errors": {
+      "badRequest": "Requête invalide",
+      "unauthorized": "Session expirée, veuillez vous reconnecter",
+      "forbidden": "Vous n'avez pas la permission pour cette action",
+      "notFound": "Ressource introuvable",
+      "conflict": "Conflit : l'opération ne peut pas être complétée",
+      "validationError": "Erreur de validation des données envoyées",
+      "tooManyRequests": "Trop de requêtes, réessayez plus tard",
+      "serverError": "Erreur du serveur, réessayez plus tard",
+      "serviceUnavailable": "Service temporairement indisponible"
+    },
     "filter": "Filtrer",
     "filterBy": "Filtrer par",
     "fiscalServices": {
@@ -6236,6 +6247,30 @@
       "fp": "Fonction Publique",
       "visas": "Visas et Permis"
     },
+    "escalation": {
+      "subtitle": "Escalader un dossier vers votre superviseur pour examen",
+      "formTitle": "Détails de l'Escalade",
+      "formDescription": "Fournissez les détails sur la raison pour laquelle ce dossier nécessite l'attention du superviseur",
+      "selectCase": "Sélectionner un dossier",
+      "selectCasePlaceholder": "Sélectionner un dossier à escalader...",
+      "noQueueItems": "Aucun dossier actif trouvé. Vous ne pouvez escalader que les dossiers qui vous sont assignés.",
+      "selectReasonPlaceholder": "Sélectionner le motif d'escalade...",
+      "priorityDescription": "Quelle est l'urgence de cette escalade ? Des valeurs plus élevées déplacent le dossier plus haut dans la file.",
+      "warningTitle": "Important",
+      "warningMessage": "Les escalades doivent être utilisées lorsque vous avez véritablement besoin de l'assistance du superviseur. Des escalades inutiles fréquentes peuvent affecter vos indicateurs de performance.",
+      "created": "Escalade créée avec succès",
+      "fillRequired": "Veuillez remplir tous les champs obligatoires",
+      "reasons": {
+        "complex_case": "Dossier complexe nécessitant l'examen du superviseur",
+        "policy_exception": "Exception de politique nécessaire",
+        "technical_issue": "Problème technique bloquant la progression",
+        "customer_complaint": "Escalade pour plainte du citoyen",
+        "fraud_suspicion": "Suspicion de fraude ou d'irrégularité",
+        "urgent_deadline": "Délai urgent - nécessite une attention immédiate",
+        "missing_documentation": "Documentation critique manquante",
+        "other": "Autre (préciser dans les notes)"
+      }
+    },
     "batch": {
       "menuTitle": "Lots",
       "title": "Lots de l'Entité",
@@ -6505,7 +6540,19 @@
       "critical": "Critique",
       "high": "Haute",
       "medium": "Moyenne",
-      "low": "Basse"
+      "low": "Basse",
+      "reference": "Référence",
+      "noPending": "Aucune escalade en attente",
+      "details": "Détails de l'Escalade",
+      "caseType": "Type de dossier",
+      "assignedTo": "Assigné à",
+      "resolveDescription": "Résoudre l'escalade pour : {reference}",
+      "resolutionNotes": "Notes de résolution",
+      "resolutionNotesPlaceholder": "Décrivez comment l'escalade a été résolue (min. 5 caractères)...",
+      "reassignDescription": "Assigner le dossier à un agent : {reference}",
+      "selectAgent": "Sélectionner un agent",
+      "selectAgentPlaceholder": "Sélectionner un agent...",
+      "viewAll": "Voir toutes les escalades"
     },
     "stats": {
       "teamPending": "En Attente de l'Équipe",

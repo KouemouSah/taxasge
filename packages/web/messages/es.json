@@ -396,6 +396,17 @@
     "delete": "Eliminar",
     "edit": "Editar",
     "error": "Error",
+    "errors": {
+      "badRequest": "Solicitud inválida",
+      "unauthorized": "Sesión expirada, inicie sesión de nuevo",
+      "forbidden": "No tiene permiso para esta acción",
+      "notFound": "Recurso no encontrado",
+      "conflict": "Conflicto: la operación no puede completarse",
+      "validationError": "Error de validación en los datos enviados",
+      "tooManyRequests": "Demasiadas solicitudes, intente de nuevo más tarde",
+      "serverError": "Error del servidor, intente de nuevo más tarde",
+      "serviceUnavailable": "Servicio temporalmente no disponible"
+    },
     "filter": "Filtrar",
     "filterBy": "Filtrar por",
     "fiscalServices": {
@@ -6098,6 +6109,30 @@
       "fp": "Función Pública",
       "visas": "Visados y Permisos"
     },
+    "escalation": {
+      "subtitle": "Escalar un caso a su supervisor para revisión",
+      "formTitle": "Detalles de la Escalación",
+      "formDescription": "Proporcione los detalles sobre por qué este caso necesita atención del supervisor",
+      "selectCase": "Seleccionar caso",
+      "selectCasePlaceholder": "Seleccionar un caso a escalar...",
+      "noQueueItems": "No se encontraron casos activos. Solo puede escalar casos asignados a usted.",
+      "selectReasonPlaceholder": "Seleccionar motivo de escalación...",
+      "priorityDescription": "¿Qué tan urgente es esta escalación? Valores más altos mueven el caso más arriba en la cola.",
+      "warningTitle": "Importante",
+      "warningMessage": "Las escalaciones deben usarse cuando genuinamente necesita asistencia del supervisor. Escalaciones innecesarias frecuentes pueden afectar sus métricas de rendimiento.",
+      "created": "Escalación creada exitosamente",
+      "fillRequired": "Complete todos los campos obligatorios",
+      "reasons": {
+        "complex_case": "Caso complejo que requiere revisión del supervisor",
+        "policy_exception": "Excepción de política necesaria",
+        "technical_issue": "Problema técnico bloqueando el progreso",
+        "customer_complaint": "Escalación por queja del ciudadano",
+        "fraud_suspicion": "Sospecha de fraude o irregularidad",
+        "urgent_deadline": "Plazo urgente - requiere atención inmediata",
+        "missing_documentation": "Documentación crítica faltante",
+        "other": "Otro (especificar en notas)"
+      }
+    },
     "batch": {
       "menuTitle": "Lotes",
       "title": "Lotes de la Entidad",
@@ -6389,7 +6424,19 @@
       "critical": "Crítica",
       "high": "Alta",
       "medium": "Media",
-      "low": "Baja"
+      "low": "Baja",
+      "reference": "Referencia",
+      "noPending": "No hay escalaciones pendientes",
+      "details": "Detalles de la Escalación",
+      "caseType": "Tipo de trámite",
+      "assignedTo": "Asignado a",
+      "resolveDescription": "Resolver escalación para: {reference}",
+      "resolutionNotes": "Notas de resolución",
+      "resolutionNotesPlaceholder": "Describa cómo se resolvió la escalación (mín. 5 caracteres)...",
+      "reassignDescription": "Asignar caso a un agente: {reference}",
+      "selectAgent": "Seleccionar agente",
+      "selectAgentPlaceholder": "Seleccionar un agente...",
+      "viewAll": "Ver todas las escalaciones"
     },
     "stats": {
       "teamPending": "Pendientes del Equipo",

@@ -396,6 +396,17 @@
     "delete": "Delete",
     "edit": "Edit",
     "error": "Error",
+    "errors": {
+      "badRequest": "Invalid request",
+      "unauthorized": "Session expired, please log in again",
+      "forbidden": "You don't have permission for this action",
+      "notFound": "Resource not found",
+      "conflict": "Conflict: the operation cannot be completed",
+      "validationError": "Validation error in the submitted data",
+      "tooManyRequests": "Too many requests, please try again later",
+      "serverError": "Server error, please try again later",
+      "serviceUnavailable": "Service temporarily unavailable"
+    },
     "filter": "Filter",
     "filterBy": "Filter by",
     "fiscalServices": {
@@ -5996,6 +6007,30 @@
       "fp": "Public Function",
       "visas": "Visas & Permits"
     },
+    "escalation": {
+      "subtitle": "Escalate a case to your supervisor for review",
+      "formTitle": "Escalation Details",
+      "formDescription": "Provide details about why this case needs supervisor attention",
+      "selectCase": "Select Case",
+      "selectCasePlaceholder": "Select a case to escalate...",
+      "noQueueItems": "No active queue items found. You can only escalate cases that are currently assigned to you.",
+      "selectReasonPlaceholder": "Select escalation reason...",
+      "priorityDescription": "How urgent is this escalation? Higher values move the item up in the queue.",
+      "warningTitle": "Important",
+      "warningMessage": "Escalations should be used when you genuinely need supervisor assistance. Frequent unnecessary escalations may affect your performance metrics.",
+      "created": "Escalation created successfully",
+      "fillRequired": "Please fill in all required fields",
+      "reasons": {
+        "complex_case": "Complex case requiring supervisor review",
+        "policy_exception": "Policy exception needed",
+        "technical_issue": "Technical issue blocking progress",
+        "customer_complaint": "Customer complaint escalation",
+        "fraud_suspicion": "Suspected fraud or irregularity",
+        "urgent_deadline": "Urgent deadline - requires immediate attention",
+        "missing_documentation": "Missing critical documentation",
+        "other": "Other (specify in notes)"
+      }
+    },
     "batch": {
       "menuTitle": "Batches",
       "title": "Entity Batches",
@@ -6265,7 +6300,19 @@
       "critical": "Critical",
       "high": "High",
       "medium": "Medium",
-      "low": "Low"
+      "low": "Low",
+      "reference": "Reference",
+      "noPending": "No pending escalations",
+      "details": "Escalation Details",
+      "caseType": "Case Type",
+      "assignedTo": "Assigned To",
+      "resolveDescription": "Resolve escalation for: {reference}",
+      "resolutionNotes": "Resolution Notes",
+      "resolutionNotesPlaceholder": "Describe how the escalation was resolved (min. 5 characters)...",
+      "reassignDescription": "Assign case to an agent: {reference}",
+      "selectAgent": "Select Agent",
+      "selectAgentPlaceholder": "Select an agent...",
+      "viewAll": "View all escalations"
     },
     "stats": {
       "teamPending": "Team Pending",
