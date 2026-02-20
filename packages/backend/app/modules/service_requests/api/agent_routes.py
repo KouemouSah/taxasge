@@ -1036,15 +1036,29 @@ async def make_decision(
 
         # Build history details (only include requested_documents if provided)
         history_details = {}
+        doc_names = []
         if decision.requested_documents:
             history_details["requested_documents"] = decision.requested_documents
+            # Resolve document codes to human-readable names for auto-comment
+            if decision.requested_documents:
+                name_rows = await db.fetch("""
+                    SELECT code, name_es FROM document_templates
+                    WHERE code = ANY($1::text[])
+                """, decision.requested_documents)
+                name_map = {r['code']: r['name_es'] for r in name_rows}
+                doc_names = [name_map.get(c, c) for c in decision.requested_documents]
+
+        # Auto-generate comment from document names if no explicit comment provided
+        history_comment = decision.comments
+        if not history_comment and doc_names:
+            history_comment = f"Se requiere volver a enviar: {', '.join(doc_names)}"
 
         # Record history entry for citizen notification
         await db.execute("""
             INSERT INTO service_request_history
             (service_request_id, action, previous_status, new_status, performed_by, comment, details)
             VALUES ($1, 'documents_required', $2, 'DOCUMENTS_REQUIRED', $3, $4, $5::jsonb)
-        """, request_id, previous_status, current_user.id, decision.comments,
+        """, request_id, previous_status, current_user.id, history_comment,
             json.dumps(history_details))
 
         # Release queue item (will be re-queued when documents are uploaded)
@@ -1072,7 +1086,7 @@ async def make_decision(
                     "preferred_language": user_info['preferred_language'] or 'es',
                     "workflow_code": request['workflow_code'],
                     "agent_id": str(current_user.id),
-                    "comments": decision.comments,
+                    "comments": history_comment,
                     "timestamp": datetime.now().isoformat(),
                 }
                 if decision.requested_documents:
