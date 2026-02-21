@@ -6751,7 +6751,11 @@
       "bulkConfirm": "Confirmer l'action groupée",
       "bulkConfirmDescription": "Cette action sera appliquée à {count} escalades sélectionnées. Continuer ?",
       "bulkSuccess": "{count} escalades traitées avec succès",
-      "bulkPartial": "{processed} traitées, {failed} échouées"
+      "bulkPartial": "{processed} traitées, {failed} échouées",
+      "noResolved": "Aucune escalation résolue",
+      "resolvedAt": "Résolu le",
+      "resolvedBy": "Résolu par",
+      "selectToView": "Sélectionner une escalation pour voir les détails"
     },
     "stats": {
       "teamPending": "En Attente de l'Équipe",
@@ -6775,6 +6779,23 @@
       "good": "Bon",
       "average": "Moyen",
       "needsImprovement": "À améliorer"
+    },
+    "reports": {
+      "title": "Rapports",
+      "description": "Rapports et métriques de l'équipe",
+      "overview": "Vue d'ensemble",
+      "workloadTab": "Charge de travail",
+      "exportsTab": "Exportations",
+      "topAgents": "Meilleurs Agents",
+      "rulesEffectiveness": "Efficacité des Règles",
+      "timesApplied": "Applications",
+      "matchRate": "Taux de correspondance",
+      "effectivenessScore": "Score",
+      "capacityDistribution": "Distribution de Capacité",
+      "exportPeriod": "Période d'exportation",
+      "selectPeriod": "Sélectionner une période",
+      "downloadCsv": "Télécharger CSV",
+      "noRules": "Aucune règle avec suffisamment d'applications"
     }
   },
   "verification": {

@@ -33,6 +33,7 @@ import {
   ArrowRight,
   Settings2,
   BarChart2,
+  FileBarChart,
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
 
@@ -189,7 +190,7 @@ export default function SupervisorDashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {/* Team Management */}
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader>
@@ -263,6 +264,30 @@ export default function SupervisorDashboardPage() {
             <Link href={`/${locale}/dashboard/supervisor/escalations/pending`}>
               <Button variant="default" className="w-full bg-orange-500 hover:bg-orange-600">
                 {t('nav.pendingEscalations')}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href={`/${locale}/dashboard/supervisor/escalations/resolved`}>
+              <Button variant="ghost" size="sm" className="w-full mt-2">
+                {t('nav.resolvedEscalations')}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Reports */}
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileBarChart className="h-5 w-5 text-teal-500" />
+              {t('nav.reports')}
+            </CardTitle>
+            <CardDescription>{t('reports.description', { defaultValue: 'Informes y métricas' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={`/${locale}/dashboard/supervisor/reports`}>
+              <Button variant="outline" className="w-full">
+                {t('nav.reports')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

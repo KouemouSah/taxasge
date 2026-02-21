@@ -6511,7 +6511,11 @@
       "bulkConfirm": "Confirm bulk action",
       "bulkConfirmDescription": "This action will be applied to {count} selected escalations. Continue?",
       "bulkSuccess": "{count} escalations processed successfully",
-      "bulkPartial": "{processed} processed, {failed} failed"
+      "bulkPartial": "{processed} processed, {failed} failed",
+      "noResolved": "No resolved escalations",
+      "resolvedAt": "Resolved on",
+      "resolvedBy": "Resolved by",
+      "selectToView": "Select an escalation to view details"
     },
     "stats": {
       "teamPending": "Team Pending",
@@ -6535,6 +6539,23 @@
       "good": "Good",
       "average": "Average",
       "needsImprovement": "Needs Improvement"
+    },
+    "reports": {
+      "title": "Reports",
+      "description": "Team reports and metrics",
+      "overview": "Overview",
+      "workloadTab": "Workload",
+      "exportsTab": "Exports",
+      "topAgents": "Top Agents",
+      "rulesEffectiveness": "Rules Effectiveness",
+      "timesApplied": "Applications",
+      "matchRate": "Match Rate",
+      "effectivenessScore": "Score",
+      "capacityDistribution": "Capacity Distribution",
+      "exportPeriod": "Export Period",
+      "selectPeriod": "Select period",
+      "downloadCsv": "Download CSV",
+      "noRules": "No rules with enough applications"
     }
   },
   "verification": {
