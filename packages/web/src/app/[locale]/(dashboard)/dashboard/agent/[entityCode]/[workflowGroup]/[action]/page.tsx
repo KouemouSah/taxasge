@@ -4,7 +4,8 @@
  *
  * This single page handles all entities:
  *   - ALL entities including cnedoge-pasaporte and cnedoge-residencia
- *   - Entity-specific filters (solicitudType/motivo, workflowCode) driven by config
+ *   - Entity-specific filters driven by declarative config (entity-filters.ts)
+ *   - Zero entity-name branching in this component
  *
  * @route /[locale]/dashboard/agent/[entityCode]/[workflowGroup]/[action]
  * @date 2026-01-30
@@ -71,84 +72,18 @@ import { useEntityServiceRequests, type ActionType } from '@/modules/agent-dashb
 
 // Split View for pending action
 import { PendingPage } from '@/modules/agent-dashboard/components/pending/PendingPage';
-// Validation and History pages (same as CNEDOGE)
+// Validation and History pages
 import { ValidationPage } from '@/modules/agent-dashboard/components/validation';
 import { HistoryPage } from '@/modules/agent-dashboard/components/history';
 import { GenericFilteredList } from '@/modules/agent-dashboard/components/GenericFilteredList';
 import { slugToEntityCode } from '@/modules/agent-dashboard/utils';
-import type { EntityCode } from '@/modules/agent-dashboard/types';
 
-// =============================================================================
-// ENTITY-SPECIFIC FILTER CONFIGURATIONS
-// =============================================================================
-
-// Workflow codes per entity (for HistoryPage stats + API filtering)
-const ENTITY_WORKFLOW_CODES: Record<string, string[]> = {
-  CNEDOGE_PASAPORTE: ['PASAPORTE_NUEVO', 'PASAPORTE_RENOVACION'],
-  CNEDOGE_RESIDENCIA: [
-    'RESIDENCIA_PRIMERA_VEZ',
-    'RESIDENCIA_RENOVACION',
-    'RESIDENCIA_DUPLICADO',
-    'RESIDENCIA_CAMBIO_DATOS',
-    'RESIDENCIA_REAGRUPACION',
-  ],
-};
-
-// Residencia workflow options for dropdown filter
-const RESIDENCIA_WORKFLOW_OPTIONS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'RESIDENCIA_PRIMERA_VEZ', label: 'Primera Vez' },
-  { value: 'RESIDENCIA_RENOVACION', label: 'Renovacion' },
-  { value: 'RESIDENCIA_DUPLICADO', label: 'Duplicado' },
-  { value: 'RESIDENCIA_CAMBIO_DATOS', label: 'Cambio de Datos' },
-  { value: 'RESIDENCIA_REAGRUPACION', label: 'Reagrupacion' },
-];
-
-// Get type label for the table "Tipo" column (entity-aware)
-function getTypeLabel(
-  entityCode: string,
-  workflowCode: string,
-  solicitudType?: string,
-  motivo?: string | null,
-): string {
-  if (entityCode === 'CNEDOGE_PASAPORTE') {
-    if (solicitudType === 'expedicion') return 'Nuevo';
-    if (solicitudType === 'renovacion' && motivo) {
-      const labels: Record<string, string> = {
-        VENCIMIENTO: 'Renovacion',
-        PERDIDA: 'Perdida',
-        ROBO: 'Robo',
-        DETERIORO: 'Deterioro',
-      };
-      return labels[motivo.toUpperCase()] || 'Renovacion';
-    }
-    return solicitudType || '-';
-  }
-  if (entityCode === 'CNEDOGE_RESIDENCIA') {
-    const labels: Record<string, string> = {
-      RESIDENCIA_PRIMERA_VEZ: 'Primera Vez',
-      RESIDENCIA_RENOVACION: 'Renovacion',
-      RESIDENCIA_DUPLICADO: 'Duplicado',
-      RESIDENCIA_CAMBIO_DATOS: 'Cambio Datos',
-      RESIDENCIA_REAGRUPACION: 'Reagrupacion',
-    };
-    return labels[workflowCode] || workflowCode;
-  }
-  // Generic: format workflowCode to readable text
-  return workflowCode?.replace(/_/g, ' ') || '-';
-}
-
-// Maps entityCode to workflow group titleKey
-const ENTITY_WORKFLOW_TITLES: Record<string, string> = {
-  'dgt': 'agent.nav.driverLicenses',
-  'ofive': 'agent.nav.vehicles',
-  'onrc': 'agent.nav.contracts',
-  'extranjeria': 'agent.nav.residences',
-  'policia': 'agent.nav.certificates',
-  'minfp': 'agent.nav.civilServants',
-  'itve': 'agent.nav.inspections',
-  // 'dgi': 'agent.nav.declarations', // Not yet implemented
-};
+// Declarative entity config (filters, type labels, workflow codes)
+import {
+  ENTITY_FILTER_CONFIGS,
+  ENTITY_WORKFLOW_TITLES,
+  resolveTypeLabel,
+} from '@/modules/agent-dashboard/config/entity-filters';
 
 // =============================================================================
 // CONSTANTS
@@ -225,21 +160,40 @@ export default function UnifiedWorkflowActionPage() {
   // Validate action — standard actions get dedicated components, others get GenericFilteredList
   const isStandardAction = STANDARD_ACTIONS.includes(action as ActionType);
   const currentAction = isStandardAction ? (action as ActionType) : 'pending';
-  const isValidAction = isStandardAction; // For backward compat with the rest of the component
+  const isValidAction = isStandardAction;
 
-  // Entity-specific config
-  const entityWorkflowCodes = ENTITY_WORKFLOW_CODES[ENTITY_CODE];
-  const isPasaporte = ENTITY_CODE === 'CNEDOGE_PASAPORTE';
-  const isResidencia = ENTITY_CODE === 'CNEDOGE_RESIDENCIA';
+  // Entity-specific config (from declarative config file — no entity-name branching)
+  const entityConfig = ENTITY_FILTER_CONFIGS[ENTITY_CODE];
 
-  // Filter state
+  // Filter state — generic Record for entity-specific filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [solicitudType, setSolicitudType] = useState<string>('all');
-  const [motivo, setMotivo] = useState<string>('all');
-  const [workflowCode, setWorkflowCode] = useState<string>('all');
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [priority, setPriority] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 20;
+
+  // Handle entity-specific filter change (with cascading reset for dependent filters)
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterValues(prev => {
+      const next = { ...prev, [key]: value };
+      // Reset dependent filters when parent value changes
+      if (entityConfig?.filters) {
+        for (const filter of entityConfig.filters) {
+          if (filter.showWhen?.filterKey === key && value !== filter.showWhen.value) {
+            next[filter.key] = 'all';
+          }
+        }
+      }
+      return next;
+    });
+    setCurrentPage(1);
+  };
+
+  // Extract filter value (returns undefined for 'all' or unset)
+  const getFilterValue = (key: string): string | undefined => {
+    const val = filterValues[key];
+    return val && val !== 'all' ? val : undefined;
+  };
 
   // Fetch service requests
   const {
@@ -256,9 +210,9 @@ export default function UnifiedWorkflowActionPage() {
     action: currentAction,
     search: searchTerm || undefined,
     priority: priority !== 'all' ? (priority as 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT') : undefined,
-    solicitudType: isPasaporte && solicitudType !== 'all' ? (solicitudType as 'expedicion' | 'renovacion') : undefined,
-    motivo: isPasaporte && motivo !== 'all' ? (motivo as 'vencimiento' | 'perdida' | 'robo' | 'deterioro') : undefined,
-    workflowCode: isResidencia && workflowCode !== 'all' ? workflowCode : undefined,
+    solicitudType: getFilterValue('solicitudType') as 'expedicion' | 'renovacion' | undefined,
+    motivo: getFilterValue('motivo') as 'vencimiento' | 'perdida' | 'robo' | 'deterioro' | undefined,
+    workflowCode: getFilterValue('workflowCode'),
     page: currentPage,
     pageSize,
     enabled: isValidAction,
@@ -266,10 +220,10 @@ export default function UnifiedWorkflowActionPage() {
 
   // Formatted workflow group name
   const formattedWorkflowGroup = useMemo(() => {
-    const titleKey = ENTITY_WORKFLOW_TITLES[entityCode];
+    const titleKey = ENTITY_WORKFLOW_TITLES[ENTITY_CODE];
     if (titleKey) {
       try {
-        return t(titleKey.replace('agent.nav.', 'nav.'));
+        return t(titleKey);
       } catch {
         // Fallback to formatted workflowGroup
       }
@@ -279,11 +233,10 @@ export default function UnifiedWorkflowActionPage() {
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-  }, [workflowGroup, entityCode, t]);
+  }, [workflowGroup, ENTITY_CODE, t]);
 
   // Handle row click - save all request IDs for navigation
   const handleRowClick = (requestId: string) => {
-    // Store all request IDs in sessionStorage for prev/next navigation
     const requestIds = requests.map(r => r.id);
     sessionStorage.setItem('agent-request-ids', JSON.stringify(requestIds));
     router.push(`/${locale}/dashboard/agent/${entityCode}/request/${requestId}`);
@@ -292,9 +245,7 @@ export default function UnifiedWorkflowActionPage() {
   // Reset filters
   const handleResetFilters = () => {
     setSearchTerm('');
-    setSolicitudType('all');
-    setMotivo('all');
-    setWorkflowCode('all');
+    setFilterValues({});
     setPriority('all');
     setCurrentPage(1);
   };
@@ -316,7 +267,7 @@ export default function UnifiedWorkflowActionPage() {
     return <PendingPage entityCode={ENTITY_CODE} />;
   }
 
-  // Use ValidationPage for validation action (same as CNEDOGE)
+  // Use ValidationPage for validation action
   if (currentAction === 'validation') {
     return (
       <ValidationPage
@@ -327,12 +278,12 @@ export default function UnifiedWorkflowActionPage() {
     );
   }
 
-  // Use HistoryPage for history action (same as CNEDOGE with stats)
+  // Use HistoryPage for history action
   if (currentAction === 'history') {
     return (
       <HistoryPage
         entityCode={ENTITY_CODE}
-        workflowCodes={entityWorkflowCodes}
+        workflowCodes={entityConfig?.workflowCodes}
         basePath={`/dashboard/agent/${entityCode}`}
       />
     );
@@ -380,14 +331,14 @@ export default function UnifiedWorkflowActionPage() {
       <div className="space-y-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error al cargar datos</AlertTitle>
+          <AlertTitle>{t('table.loadError')}</AlertTitle>
           <AlertDescription>
-            {error?.message || 'No se pudieron cargar las solicitudes. Intente nuevamente.'}
+            {error?.message || t('table.loadErrorDesc')}
           </AlertDescription>
         </Alert>
         <Button onClick={() => refetch()} variant="outline">
           <RefreshCw className="mr-2 h-4 w-4" />
-          Reintentar
+          {t('table.retry')}
         </Button>
       </div>
     );
@@ -415,7 +366,7 @@ export default function UnifiedWorkflowActionPage() {
                 {formattedWorkflowGroup} - {t(`nav.${currentAction}`)}
               </h1>
               <p className="text-muted-foreground">
-                {total} solicitudes encontradas
+                {t('table.found', { count: total })}
               </p>
             </div>
           </div>
@@ -427,7 +378,7 @@ export default function UnifiedWorkflowActionPage() {
           disabled={isFetching}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-          Actualizar
+          {t('table.refresh')}
         </Button>
       </div>
 
@@ -436,7 +387,7 @@ export default function UnifiedWorkflowActionPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Filter className="h-4 w-4" />
-            Filtros
+            {t('filters.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -446,7 +397,7 @@ export default function UnifiedWorkflowActionPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por referencia o nombre..."
+                  placeholder={t('filters.search')}
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -457,70 +408,33 @@ export default function UnifiedWorkflowActionPage() {
               </div>
             </div>
 
-            {/* Pasaporte: Solicitud Type filter */}
-            {isPasaporte && (
-              <Select
-                value={solicitudType}
-                onValueChange={(value) => {
-                  setSolicitudType(value);
-                  if (value !== 'renovacion') setMotivo('all');
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los tipos</SelectItem>
-                  <SelectItem value="expedicion">Expedicion</SelectItem>
-                  <SelectItem value="renovacion">Renovacion</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+            {/* Entity-specific filters (declarative from config) */}
+            {entityConfig?.filters.map((filter) => {
+              // Check conditional visibility
+              if (filter.showWhen) {
+                const depValue = filterValues[filter.showWhen.filterKey];
+                if (depValue !== filter.showWhen.value) return null;
+              }
 
-            {/* Pasaporte: Motivo filter (only for renovacion) */}
-            {isPasaporte && solicitudType === 'renovacion' && (
-              <Select
-                value={motivo}
-                onValueChange={(value) => {
-                  setMotivo(value);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Motivo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los motivos</SelectItem>
-                  <SelectItem value="vencimiento">Vencimiento</SelectItem>
-                  <SelectItem value="perdida">Perdida</SelectItem>
-                  <SelectItem value="robo">Robo</SelectItem>
-                  <SelectItem value="deterioro">Deterioro</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* Residencia: Workflow Type filter */}
-            {isResidencia && (
-              <Select
-                value={workflowCode}
-                onValueChange={(value) => {
-                  setWorkflowCode(value);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Tipo de residencia" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESIDENCIA_WORKFLOW_OPTIONS.map((wf) => (
-                    <SelectItem key={wf.value} value={wf.value}>
-                      {wf.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+              return (
+                <Select
+                  key={filter.key}
+                  value={filterValues[filter.key] || 'all'}
+                  onValueChange={(value) => handleFilterChange(filter.key, value)}
+                >
+                  <SelectTrigger className={filter.width}>
+                    <SelectValue placeholder={t(filter.placeholderKey)} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filter.options.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {t(opt.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })}
 
             {/* Priority */}
             <Select
@@ -531,14 +445,14 @@ export default function UnifiedWorkflowActionPage() {
               }}
             >
               <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Prioridad" />
+                <SelectValue placeholder={t('filters.priority')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="URGENT">Urgente</SelectItem>
-                <SelectItem value="HIGH">Alta</SelectItem>
-                <SelectItem value="NORMAL">Normal</SelectItem>
-                <SelectItem value="LOW">Baja</SelectItem>
+                <SelectItem value="all">{t('filters.allPriorities')}</SelectItem>
+                <SelectItem value="URGENT">{t('filters.urgent')}</SelectItem>
+                <SelectItem value="HIGH">{t('filters.high')}</SelectItem>
+                <SelectItem value="NORMAL">{t('filters.normal')}</SelectItem>
+                <SelectItem value="LOW">{t('filters.low')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -549,7 +463,7 @@ export default function UnifiedWorkflowActionPage() {
               onClick={handleResetFilters}
               className="text-muted-foreground"
             >
-              Limpiar filtros
+              {t('filters.clear')}
             </Button>
           </div>
         </CardContent>
@@ -560,10 +474,10 @@ export default function UnifiedWorkflowActionPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Solicitudes
+            {t('table.requests')}
           </CardTitle>
           <CardDescription>
-            Haga clic en una fila para ver los detalles
+            {t('table.clickToView')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -571,10 +485,10 @@ export default function UnifiedWorkflowActionPage() {
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
               {ACTION_ICONS[currentAction]}
               <p className="mt-4 text-lg font-medium">
-                No hay solicitudes
+                {t('table.noRequests')}
               </p>
               <p className="text-sm">
-                No se encontraron solicitudes con los filtros seleccionados
+                {t('table.noRequestsFiltered')}
               </p>
             </div>
           ) : (
@@ -582,14 +496,14 @@ export default function UnifiedWorkflowActionPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[140px]">Referencia</TableHead>
-                    <TableHead>Solicitante</TableHead>
-                    <TableHead className="w-[120px]">Tipo</TableHead>
-                    <TableHead className="w-[100px]">Prioridad</TableHead>
-                    <TableHead className="w-[120px]">Estado</TableHead>
-                    <TableHead className="w-[80px]">SLA</TableHead>
-                    <TableHead className="w-[160px]">Fecha</TableHead>
-                    <TableHead className="w-[80px]">Acciones</TableHead>
+                    <TableHead className="w-[140px]">{t('table.reference')}</TableHead>
+                    <TableHead>{t('table.applicant')}</TableHead>
+                    <TableHead className="w-[120px]">{t('table.tipo')}</TableHead>
+                    <TableHead className="w-[100px]">{t('table.priority')}</TableHead>
+                    <TableHead className="w-[120px]">{t('table.status')}</TableHead>
+                    <TableHead className="w-[80px]">{t('table.sla')}</TableHead>
+                    <TableHead className="w-[160px]">{t('table.date')}</TableHead>
+                    <TableHead className="w-[80px]">{t('table.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -614,7 +528,7 @@ export default function UnifiedWorkflowActionPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {getTypeLabel(ENTITY_CODE, request.workflowCode, request.solicitudType, request.motivo)}
+                          {resolveTypeLabel(ENTITY_CODE, request, t)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -636,7 +550,11 @@ export default function UnifiedWorkflowActionPage() {
                             <AlertCircle className="h-4 w-4" />
                           )}
                           <span className="text-xs capitalize">
-                            {request.slaStatus === 'on_track' ? 'OK' : request.slaStatus === 'at_risk' ? 'Riesgo' : 'Vencido'}
+                            {request.slaStatus === 'on_track'
+                              ? t('table.slaOk')
+                              : request.slaStatus === 'at_risk'
+                                ? t('table.slaAtRisk')
+                                : t('table.slaViolated')}
                           </span>
                         </div>
                       </TableCell>
@@ -664,7 +582,11 @@ export default function UnifiedWorkflowActionPage() {
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, total)} de {total}
+                    {t('table.showing', {
+                      from: ((currentPage - 1) * pageSize) + 1,
+                      to: Math.min(currentPage * pageSize, total),
+                      total,
+                    })}
                   </p>
                   <Pagination>
                     <PaginationContent>
