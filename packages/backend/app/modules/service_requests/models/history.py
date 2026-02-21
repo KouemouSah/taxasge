@@ -60,6 +60,15 @@ class HistoryActionType(str, Enum):
     VALIDATION_FAILED = "validation_failed"
     VALIDATION_BLOCKED = "validation_blocked"
 
+    # Escalation actions
+    ESCALATED = "escalated"
+    ESCALATION_RESOLVED = "escalation_resolved"
+    ESCALATION_ASSIGNED = "escalation_assigned"
+    SUPERVISOR_APPROVE = "supervisor_approve"
+    SUPERVISOR_REJECT = "supervisor_reject"
+    ESCALATION_SLA_ESCALATED = "escalation_sla_escalated"
+    ESCALATION_SLA_EXPIRED = "escalation_sla_expired"
+
 
 class HistoryEntrySource(str, Enum):
     """

@@ -358,15 +358,11 @@ export interface EscalationItem {
   workflow_code: string | null;
   total_amount: number | null;
   escalation_level: 'low' | 'medium' | 'high' | 'critical';
-  escalation_reason: string | null;
+  escalation_reason: string;           // guaranteed by CHECK constraint
   escalated_at: string;
-  hours_since_escalation: number | null;
-  escalated_by_name: string | null;
-  assigned_to_name: string | null;
-  /** @deprecated backward-compat alias for request_id */
-  payment_id: string;
-  /** @deprecated backward-compat alias for reference */
-  payment_reference: string;
+  hours_since_escalation: number;      // always computed from escalated_at
+  escalated_by_name: string;           // guaranteed by CHECK + INNER JOIN
+  assigned_to_name: string | null;     // truly optional (not yet assigned)
 }
 
 export interface EscalationsWidgetData {

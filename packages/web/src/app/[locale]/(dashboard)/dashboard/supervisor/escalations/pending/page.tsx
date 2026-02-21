@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Loader2,
   AlertCircle,
@@ -132,6 +133,10 @@ export default function PendingEscalationsPage() {
   const [approveNotes, setApproveNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<'resolve' | 'approve' | 'reject' | 'assign' | null>(null);
+  const [bulkNotes, setBulkNotes] = useState('');
 
   // Focus management: ref to a stable element for focus restoration after dialogs close
   const refreshBtnRef = useRef<HTMLButtonElement>(null);
@@ -250,6 +255,38 @@ export default function PendingEscalationsPage() {
     },
   });
 
+  // Bulk action mutation
+  const bulkMutation = useMutation({
+    mutationFn: async ({ action, ids, notes }: { action: string; ids: string[]; notes: string }) => {
+      const body: Record<string, unknown> = {
+        request_ids: ids,
+        action,
+      };
+      if (action === 'resolve') body.resolution_notes = notes;
+      if (action === 'approve') body.notes = notes || undefined;
+      if (action === 'reject') body.rejection_reason = notes;
+      const response = await apiClient.post('/supervisor/escalations/bulk-action', body);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['supervisor', 'escalations'] });
+      queryClient.invalidateQueries({ queryKey: ['supervisor', 'dashboard'] });
+      setIsBulkDialogOpen(false);
+      setSelectedIds(new Set());
+      setBulkAction(null);
+      setBulkNotes('');
+      if (data.failed?.length > 0) {
+        toast.warning(t('escalations.bulkPartial', { processed: data.processed, failed: data.failed.length }));
+      } else {
+        toast.success(t('escalations.bulkSuccess', { count: data.processed }));
+      }
+      restoreFocus();
+    },
+    onError: (err: unknown) => {
+      toast.error(getApiErrorMessage(err, tCommon('error'), tCommon));
+    },
+  });
+
   // Filter escalations
   const filteredEscalations = escalations?.filter((esc) => {
     const matchesSearch =
@@ -260,6 +297,24 @@ export default function PendingEscalationsPage() {
     const matchesPriority = priorityFilter === 'all' || priorityLevel === priorityFilter;
     return matchesSearch && matchesPriority;
   });
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (!filteredEscalations) return;
+    if (selectedIds.size === filteredEscalations.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredEscalations.map(e => e.queue_id)));
+    }
+  };
 
   // Loading state
   if (isLoading) {
@@ -353,12 +408,65 @@ export default function PendingEscalationsPage() {
         </CardContent>
       </Card>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="py-3 flex items-center justify-between">
+            <span className="text-sm font-medium">
+              {t('escalations.selected', { count: selectedIds.size })}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setBulkAction('resolve'); setBulkNotes(''); setIsBulkDialogOpen(true); }}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                {t('escalations.bulkResolve')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                onClick={() => { setBulkAction('approve'); setBulkNotes(''); setIsBulkDialogOpen(true); }}
+              >
+                <ThumbsUp className="h-4 w-4 mr-1" />
+                {t('escalations.bulkApprove')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => { setBulkAction('reject'); setBulkNotes(''); setIsBulkDialogOpen(true); }}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                {t('escalations.bulkReject')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                {tCommon('cancel')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Escalations Table */}
       <Card>
         <CardContent className="pt-6">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={filteredEscalations && filteredEscalations.length > 0 && selectedIds.size === filteredEscalations.length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label={t('escalations.selectAll')}
+                  />
+                </TableHead>
                 <TableHead>{t('escalations.priority')}</TableHead>
                 <TableHead>{t('escalations.reference')}</TableHead>
                 <TableHead>{t('escalations.escalatedBy')}</TableHead>
@@ -370,7 +478,7 @@ export default function PendingEscalationsPage() {
             <TableBody>
               {filteredEscalations?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
                     {t('escalations.noPending')}
                   </TableCell>
@@ -380,6 +488,13 @@ export default function PendingEscalationsPage() {
                   const priorityLevel = getPriorityLevel(esc.priority_score);
                   return (
                     <TableRow key={esc.queue_id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(esc.queue_id)}
+                          onCheckedChange={() => toggleSelect(esc.queue_id)}
+                          aria-label={`Select ${esc.case_reference || esc.queue_id}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <Badge className={PRIORITY_COLORS[priorityLevel]}>
                           {t(`escalations.${priorityLevel}`)}
@@ -764,6 +879,71 @@ export default function PendingEscalationsPage() {
             >
               {assignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {t('escalations.reassign')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Action Confirm Dialog */}
+      <Dialog open={isBulkDialogOpen} onOpenChange={(open) => {
+        setIsBulkDialogOpen(open);
+        if (!open) {
+          setBulkNotes('');
+          restoreFocus();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('escalations.bulkConfirm')}</DialogTitle>
+            <DialogDescription>
+              {t('escalations.bulkConfirmDescription', { count: selectedIds.size })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(bulkAction === 'resolve' || bulkAction === 'reject') && (
+              <div>
+                <Label>
+                  {bulkAction === 'resolve' ? t('escalations.resolutionNotes') : t('escalations.rejectionReason')} *
+                </Label>
+                <Textarea
+                  value={bulkNotes}
+                  onChange={(e) => setBulkNotes(e.target.value)}
+                  placeholder={bulkAction === 'resolve' ? t('escalations.resolutionNotesPlaceholder') : t('escalations.rejectionReasonPlaceholder')}
+                  rows={4}
+                />
+              </div>
+            )}
+            {bulkAction === 'approve' && (
+              <div>
+                <Label>{t('escalations.approveNotes')}</Label>
+                <Textarea
+                  value={bulkNotes}
+                  onChange={(e) => setBulkNotes(e.target.value)}
+                  placeholder={t('escalations.approveNotesPlaceholder')}
+                  rows={3}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkDialogOpen(false)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              onClick={() => bulkAction && bulkMutation.mutate({
+                action: bulkAction,
+                ids: Array.from(selectedIds),
+                notes: bulkNotes,
+              })}
+              disabled={
+                bulkMutation.isPending ||
+                ((bulkAction === 'resolve' || bulkAction === 'reject') && bulkNotes.trim().length < 5)
+              }
+              variant={bulkAction === 'reject' ? 'destructive' : bulkAction === 'approve' ? 'default' : 'default'}
+              className={bulkAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              {bulkMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {bulkAction && t(`escalations.bulk${bulkAction.charAt(0).toUpperCase() + bulkAction.slice(1)}`)}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -6436,7 +6436,18 @@
       "reassignDescription": "Asignar caso a un agente: {reference}",
       "selectAgent": "Seleccionar agente",
       "selectAgentPlaceholder": "Seleccionar un agente...",
-      "viewAll": "Ver todas las escalaciones"
+      "viewAll": "Ver todas las escalaciones",
+      "selectAll": "Seleccionar todo",
+      "selected": "{count} seleccionadas",
+      "bulkActions": "Acciones en lote",
+      "bulkResolve": "Resolver seleccionadas",
+      "bulkApprove": "Aprobar seleccionadas",
+      "bulkReject": "Rechazar seleccionadas",
+      "bulkAssign": "Asignar seleccionadas",
+      "bulkConfirm": "Confirmar acción en lote",
+      "bulkConfirmDescription": "Esta acción se aplicará a {count} escalaciones seleccionadas. ¿Continuar?",
+      "bulkSuccess": "{count} escalaciones procesadas correctamente",
+      "bulkPartial": "{processed} procesadas, {failed} fallidas"
     },
     "stats": {
       "teamPending": "Pendientes del Equipo",

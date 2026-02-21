@@ -19,6 +19,7 @@ from app.database.connection import get_database
 from app.core.events import EventBus, EventType
 from app.config import get_settings
 from app.modules.payments.services.payment_sla_service import PaymentSLAService
+from app.modules.service_requests.services.escalation_sla_service import EscalationSLAService
 
 router = APIRouter(prefix="/cron", tags=["Cron Jobs (Internal)"])
 
@@ -198,5 +199,38 @@ async def payment_sla_check(
 
     return {
         "message": "Payment SLA check completed",
+        **results
+    }
+
+
+@router.post(
+    "/escalation-sla-check",
+    summary="Check escalation SLA and send notifications",
+    description="""
+    Called every 2 hours by Cloud Scheduler to monitor open escalations
+    pending supervisor resolution.
+
+    Three tiers:
+    1. 4h warning: Email entity supervisors with table of pending escalations
+    2. 24h escalation: Email admins, boost priority to URGENT
+    3. 72h expiration: Auto-resolve escalation, email admin notification
+    """
+)
+async def escalation_sla_check(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth)
+):
+    """Run escalation SLA checks: warning, escalation, expiration."""
+    sla_service = EscalationSLAService()
+    results = await sla_service.run_sla_check(db)
+
+    logger.info(
+        f"Escalation SLA check: {results['warnings_sent']} warnings, "
+        f"{results['escalations_sent']} escalations, "
+        f"{results['expirations_processed']} expirations"
+    )
+
+    return {
+        "message": "Escalation SLA check completed",
         **results
     }

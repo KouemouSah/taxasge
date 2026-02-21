@@ -7,7 +7,7 @@ Date: 2025-11-16
 Version: 1.0 - Initial implementation
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Literal, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -1247,6 +1247,8 @@ async def resolve_escalation(
             escalated_at = NULL,
             escalated_by = NULL,
             escalation_reason = NULL,
+            escalation_sla_warning_sent = false,
+            escalation_sla_escalated = false,
             updated_at = NOW()
         WHERE id = $1
     """, queue_id)
@@ -1318,6 +1320,8 @@ async def supervisor_approve(
             escalated_at = NULL,
             escalated_by = NULL,
             escalation_reason = NULL,
+            escalation_sla_warning_sent = false,
+            escalation_sla_escalated = false,
             validated_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
@@ -1403,6 +1407,8 @@ async def supervisor_reject(
             escalated_at = NULL,
             escalated_by = NULL,
             escalation_reason = NULL,
+            escalation_sla_warning_sent = false,
+            escalation_sla_escalated = false,
             validated_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
@@ -1443,6 +1449,185 @@ async def supervisor_reject(
         "message": "Service request rejected by supervisor",
         "queue_id": str(queue_id),
         "new_status": rejected_status
+    }
+
+
+# ============================================================================
+# BULK ESCALATION ACTIONS
+# ============================================================================
+
+class BulkEscalationAction(BaseModel):
+    """Request body for bulk escalation operations"""
+    request_ids: List[UUID] = Field(..., min_length=1, max_length=50)
+    action: Literal['resolve', 'assign', 'approve', 'reject']
+    resolution_notes: Optional[str] = Field(None, max_length=500)
+    agent_id: Optional[UUID] = None
+    notes: Optional[str] = Field(None, max_length=500)
+    rejection_reason: Optional[str] = Field(None, max_length=500)
+
+
+@router.post("/escalations/bulk-action")
+async def bulk_escalation_action(
+    body: BulkEscalationAction,
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.resolve"))
+):
+    """
+    **Bulk action on multiple escalated service requests**
+
+    Supports: resolve, assign, approve, reject.
+    All request_ids must be escalated and within the supervisor's entity scope.
+    Returns processed count and any individual failures.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Validate conditional required fields
+    if body.action == 'resolve' and (not body.resolution_notes or len(body.resolution_notes.strip()) < 5):
+        raise HTTPException(status_code=422, detail="resolution_notes required (min 5 chars) for resolve action")
+    if body.action == 'assign' and not body.agent_id:
+        raise HTTPException(status_code=422, detail="agent_id required for assign action")
+    if body.action == 'reject' and (not body.rejection_reason or len(body.rejection_reason.strip()) < 5):
+        raise HTTPException(status_code=422, detail="rejection_reason required (min 5 chars) for reject action")
+
+    # Get supervisor's entity scope (workflow_codes they manage)
+    supervisor_entity = await db.fetchrow("""
+        SELECT e.id, e.workflow_codes
+        FROM agent_profiles ap
+        JOIN entities e ON e.code = ap.entity_code
+        WHERE ap.user_id = $1
+    """, UUID(current_user.id))
+
+    if not supervisor_entity or not supervisor_entity['workflow_codes']:
+        raise HTTPException(status_code=403, detail="No entity scope found for supervisor")
+
+    workflow_codes = supervisor_entity['workflow_codes']
+
+    # Verify all IDs are escalated and in scope
+    valid_rows = await db.fetch("""
+        SELECT id, reference, status
+        FROM service_requests
+        WHERE id = ANY($1::uuid[])
+          AND escalated = true
+          AND workflow_code = ANY($2::text[])
+    """, body.request_ids, workflow_codes)
+
+    valid_ids = {row['id'] for row in valid_rows}
+    failed = [str(rid) for rid in body.request_ids if rid not in valid_ids]
+
+    if not valid_ids:
+        raise HTTPException(status_code=404, detail="No valid escalated requests found in scope")
+
+    valid_id_list = list(valid_ids)
+    performer_id = UUID(current_user.id)
+    processed = 0
+
+    if body.action == 'resolve':
+        # Bulk de-escalate
+        result = await db.fetch("""
+            UPDATE service_requests
+            SET escalated = false,
+                escalated_at = NULL,
+                escalated_by = NULL,
+                escalation_reason = NULL,
+                escalation_sla_warning_sent = false,
+                escalation_sla_escalated = false,
+                updated_at = NOW()
+            WHERE id = ANY($1::uuid[])
+              AND escalated = true
+            RETURNING id, reference, status
+        """, valid_id_list)
+        processed = len(result)
+
+        # Batch history insert
+        for row in result:
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, previous_status, new_status, performed_by, comment)
+                VALUES ($1, 'escalation_resolved', $2, $2, $3, $4)
+            """, row['id'], row['status'], performer_id, body.resolution_notes)
+
+    elif body.action == 'assign':
+        # Bulk assign to agent
+        result = await db.fetch("""
+            UPDATE service_requests
+            SET assigned_to = $2,
+                assigned_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ANY($1::uuid[])
+              AND escalated = true
+            RETURNING id, reference, status
+        """, valid_id_list, body.agent_id)
+        processed = len(result)
+
+        for row in result:
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, previous_status, new_status, performed_by, comment)
+                VALUES ($1, 'escalation_assigned', $2, $2, $3, 'bulk_escalation_assigned')
+            """, row['id'], row['status'], performer_id)
+
+    elif body.action == 'approve':
+        approved_status = ServiceRequestStatus.DOSSIER_VALIDE.value
+        result = await db.fetch("""
+            UPDATE service_requests
+            SET status = $2,
+                escalated = false,
+                escalated_at = NULL,
+                escalated_by = NULL,
+                escalation_reason = NULL,
+                escalation_sla_warning_sent = false,
+                escalation_sla_escalated = false,
+                validated_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ANY($1::uuid[])
+              AND escalated = true
+            RETURNING id, reference, status
+        """, valid_id_list, approved_status)
+        processed = len(result)
+
+        for row in result:
+            comment = body.notes or "supervisor_approve"
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, previous_status, new_status, performed_by, comment)
+                VALUES ($1, 'supervisor_approve', $2, $3, $4, $5)
+            """, row['id'], row['status'], approved_status, performer_id, comment)
+
+    elif body.action == 'reject':
+        rejected_status = ServiceRequestStatus.REJECTED.value
+        result = await db.fetch("""
+            UPDATE service_requests
+            SET status = $2,
+                rejection_reason = $3,
+                escalated = false,
+                escalated_at = NULL,
+                escalated_by = NULL,
+                escalation_reason = NULL,
+                escalation_sla_warning_sent = false,
+                escalation_sla_escalated = false,
+                validated_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ANY($1::uuid[])
+              AND escalated = true
+            RETURNING id, reference, status
+        """, valid_id_list, rejected_status, body.rejection_reason)
+        processed = len(result)
+
+        for row in result:
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, previous_status, new_status, performed_by, comment)
+                VALUES ($1, 'supervisor_reject', $2, $3, $4, $5)
+            """, row['id'], row['status'], rejected_status, performer_id, body.rejection_reason)
+
+    logger.info(f"Bulk escalation {body.action}: {processed} processed, {len(failed)} failed by {current_user.email}")
+
+    return {
+        "message": f"Bulk {body.action} completed",
+        "processed": processed,
+        "failed": failed,
+        "total_requested": len(body.request_ids)
     }
 
 

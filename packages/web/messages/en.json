@@ -6312,7 +6312,18 @@
       "reassignDescription": "Assign case to an agent: {reference}",
       "selectAgent": "Select Agent",
       "selectAgentPlaceholder": "Select an agent...",
-      "viewAll": "View all escalations"
+      "viewAll": "View all escalations",
+      "selectAll": "Select all",
+      "selected": "{count} selected",
+      "bulkActions": "Bulk actions",
+      "bulkResolve": "Resolve selected",
+      "bulkApprove": "Approve selected",
+      "bulkReject": "Reject selected",
+      "bulkAssign": "Assign selected",
+      "bulkConfirm": "Confirm bulk action",
+      "bulkConfirmDescription": "This action will be applied to {count} selected escalations. Continue?",
+      "bulkSuccess": "{count} escalations processed successfully",
+      "bulkPartial": "{processed} processed, {failed} failed"
     },
     "stats": {
       "teamPending": "Team Pending",

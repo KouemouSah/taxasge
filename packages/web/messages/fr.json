@@ -6552,7 +6552,18 @@
       "reassignDescription": "Assigner le dossier à un agent : {reference}",
       "selectAgent": "Sélectionner un agent",
       "selectAgentPlaceholder": "Sélectionner un agent...",
-      "viewAll": "Voir toutes les escalades"
+      "viewAll": "Voir toutes les escalades",
+      "selectAll": "Tout sélectionner",
+      "selected": "{count} sélectionnées",
+      "bulkActions": "Actions groupées",
+      "bulkResolve": "Résoudre la sélection",
+      "bulkApprove": "Approuver la sélection",
+      "bulkReject": "Rejeter la sélection",
+      "bulkAssign": "Assigner la sélection",
+      "bulkConfirm": "Confirmer l'action groupée",
+      "bulkConfirmDescription": "Cette action sera appliquée à {count} escalades sélectionnées. Continuer ?",
+      "bulkSuccess": "{count} escalades traitées avec succès",
+      "bulkPartial": "{processed} traitées, {failed} échouées"
     },
     "stats": {
       "teamPending": "En Attente de l'Équipe",

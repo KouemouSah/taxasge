@@ -1216,6 +1216,8 @@ async def resolve_escalation(
             escalated_at = NULL,
             escalated_by = NULL,
             escalation_reason = NULL,
+            escalation_sla_warning_sent = false,
+            escalation_sla_escalated = false,
             updated_at = NOW()
         WHERE id = $1
     """, request_id)
@@ -1224,7 +1226,7 @@ async def resolve_escalation(
     await db.execute("""
         INSERT INTO service_request_history
         (service_request_id, action, previous_status, new_status, performed_by, comment)
-        VALUES ($1, 'escalation_resolved', $2, $2, $3, 'Escalación resuelta')
+        VALUES ($1, 'escalation_resolved', $2, $2, $3, 'escalation_resolved')
     """, request_id, request['status'], current_user.id)
 
     return {
@@ -3418,20 +3420,20 @@ _PRIORITY_TO_LEVEL = {
 
 
 class EscalationItem(BaseModel):
-    """Escalation item from service_requests"""
+    """Escalation item from service_requests.
+    When escalated=true, escalation_reason/escalated_at/escalated_by are guaranteed
+    non-null by CHECK constraint chk_escalation_fields_populated (migration 114).
+    """
     request_id: str
     reference: str
     workflow_code: Optional[str] = None
-    total_amount: Optional[float] = None
-    escalation_level: str  # low/medium/high/critical
-    escalation_reason: Optional[str] = None
-    escalated_at: str
-    hours_since_escalation: Optional[float] = None
-    escalated_by_name: Optional[str] = None
-    assigned_to_name: Optional[str] = None
-    # Backward-compat aliases (frontend may reference old field names)
-    payment_id: Optional[str] = None
-    payment_reference: Optional[str] = None
+    total_amount: Optional[float] = None        # LEFT JOIN payment — truly optional
+    escalation_level: str                        # always computed from priority
+    escalation_reason: str                       # guaranteed by CHECK constraint
+    escalated_at: str                            # guaranteed by CHECK constraint
+    hours_since_escalation: float = 0.0          # always computed from escalated_at
+    escalated_by_name: str                       # guaranteed by CHECK + INNER JOIN
+    assigned_to_name: Optional[str] = None       # truly optional (not yet assigned)
 
 
 class EscalationsWidgetResponse(BaseModel):
@@ -3494,7 +3496,7 @@ async def get_escalations_widget(
             asgn_user.first_name || ' ' || asgn_user.last_name as assigned_to_name,
             sp.total_amount
         FROM service_requests sr
-        LEFT JOIN users esc_user ON esc_user.id = sr.escalated_by
+        JOIN users esc_user ON esc_user.id = sr.escalated_by
         LEFT JOIN users asgn_user ON asgn_user.id = sr.assigned_to
         LEFT JOIN service_payments sp ON sp.service_request_id = sr.id
             AND sp.status != 'cancelled'
@@ -3519,22 +3521,17 @@ async def get_escalations_widget(
         elif level == 'high':
             high_count += 1
 
-        ref = row['reference'] or 'N/A'
-        req_id = str(row['id'])
         items.append(EscalationItem(
-            request_id=req_id,
-            reference=ref,
+            request_id=str(row['id']),
+            reference=row['reference'] or 'N/A',
             workflow_code=row['workflow_code'],
             total_amount=float(row['total_amount']) if row['total_amount'] else None,
             escalation_level=level,
             escalation_reason=row['escalation_reason'],
-            escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else '',
-            hours_since_escalation=float(row['hours_since_escalation']) if row['hours_since_escalation'] else None,
+            escalated_at=row['escalated_at'].isoformat(),
+            hours_since_escalation=float(row['hours_since_escalation']),
             escalated_by_name=row['escalated_by_name'],
             assigned_to_name=row['assigned_to_name'],
-            # Backward-compat: populate old field names
-            payment_id=req_id,
-            payment_reference=ref,
         ))
 
     return EscalationsWidgetResponse(
