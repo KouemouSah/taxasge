@@ -52,36 +52,8 @@ import apiClient from '@/core/api/client';
 import Link from 'next/link';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es, fr, enUS } from 'date-fns/locale';
-
-interface Escalation {
-  id: string;
-  queue_id: string;
-  reason: string;
-  priority_score: number;
-  status: string;
-  escalation_status: 'pending' | 'in_review' | 'resolved' | 'reassigned';
-  case_reference: string;
-  case_type: string;
-  escalated_by_name: string;
-  escalated_by_email: string;
-  escalated_at: string;
-  created_at: string;
-  assigned_to_name?: string;
-}
-
-const getPriorityLevel = (score: number): 'low' | 'medium' | 'high' | 'critical' => {
-  if (score >= 80) return 'critical';
-  if (score >= 60) return 'high';
-  if (score >= 40) return 'medium';
-  return 'low';
-};
-
-const PRIORITY_COLORS = {
-  low: 'bg-gray-100 text-gray-800',
-  medium: 'bg-yellow-100 text-yellow-800',
-  high: 'bg-orange-100 text-orange-800',
-  critical: 'bg-red-100 text-red-800',
-};
+import type { Escalation } from '../../types';
+import { getPriorityLevel, PRIORITY_COLORS } from '../../types';
 
 export default function ResolvedEscalationsPage() {
   const locale = useLocale();

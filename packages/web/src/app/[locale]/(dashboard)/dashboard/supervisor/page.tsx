@@ -36,29 +36,7 @@ import {
   FileBarChart,
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
-
-interface SupervisorDashboardStats {
-  team: {
-    activeAgents: number;
-    totalAgents: number;
-    utilizationRate: number;
-  };
-  escalations: {
-    pending: number;
-    resolvedToday: number;
-    avgResolutionTime: number;
-  };
-  assignments: {
-    pending: number;
-    inProgress: number;
-    completedToday: number;
-  };
-  performance: {
-    avgResponseTime: number;
-    slaCompliance: number;
-    qualityScore: number;
-  };
-}
+import type { SupervisorDashboardStats } from './types';
 
 export default function SupervisorDashboardPage() {
   const router = useRouter();

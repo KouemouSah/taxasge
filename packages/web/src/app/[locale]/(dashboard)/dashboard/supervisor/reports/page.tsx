@@ -60,68 +60,42 @@ import {
 import { toast } from 'sonner';
 import apiClient from '@/core/api/client';
 import Link from 'next/link';
+import type {
+  SupervisorDashboardStats,
+  AgentListItem,
+  RuleEffectivenessItem,
+  WorkloadBalanceResponse,
+} from '../types';
+import { getBalanceColor, getBalanceBadgeKey, WORKLOAD_STATUS_COLORS } from '../types';
 
-// Types aligned with backend
-interface DashboardStats {
-  team: { activeAgents: number; totalAgents: number; utilizationRate: number };
-  escalations: { pending: number; resolvedToday: number; avgResolutionTime: number };
-  assignments: { pending: number; inProgress: number; completedToday: number };
-  performance: { avgResponseTime: number; slaCompliance: number; qualityScore: number };
+// =============================================================================
+// ERROR CARD — reusable per-tab error component
+// =============================================================================
+
+function TabErrorCard({ error, onRetry, tCommon }: { error: Error | null; onRetry: () => void; tCommon: (key: string) => string }) {
+  return (
+    <Card className="border-destructive/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-destructive">
+          <AlertCircle className="h-5 w-5" />
+          {tCommon('error')}
+        </CardTitle>
+        <CardDescription>
+          {error?.message || tCommon('errorGeneric')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button variant="outline" onClick={onRetry}>
+          {tCommon('retry')}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
-interface AgentListItem {
-  agent_id: string;
-  agent_name: string;
-  agent_email: string;
-  current_assignments: number;
-  capacity_percentage: number;
-  workload_status: string;
-  availability: string;
-  success_rate: number;
-}
-
-interface RuleEffectivenessItem {
-  rule_id: string;
-  rule_name: string;
-  priority: number;
-  times_applied: number;
-  times_matched: number;
-  success_rate: number;
-  effectiveness_score: number;
-  application_rate: number;
-  last_applied_at: string | null;
-}
-
-interface WorkloadBalanceReport {
-  total_agents: number;
-  available_agents: number;
-  busy_agents: number;
-  overloaded_agents: number;
-  total_assignments: number;
-  avg_assignments_per_agent: number;
-  balance_score: number;
-  rebalancing_needed: boolean;
-}
-
-interface WorkloadBalanceResponse {
-  report: WorkloadBalanceReport;
-  agents: AgentListItem[];
-  recommendations: Array<{ type: string; message: string; priority: string }>;
-}
-
-function getBalanceColor(score: number): string {
-  if (score >= 80) return 'text-green-600';
-  if (score >= 60) return 'text-blue-600';
-  if (score >= 40) return 'text-yellow-600';
-  return 'text-red-600';
-}
-
-function getBalanceBadgeKey(score: number): { color: string; key: string } {
-  if (score >= 80) return { color: 'bg-green-100 text-green-800', key: 'workload.excellent' };
-  if (score >= 60) return { color: 'bg-blue-100 text-blue-800', key: 'workload.good' };
-  if (score >= 40) return { color: 'bg-yellow-100 text-yellow-800', key: 'workload.moderate' };
-  return { color: 'bg-red-100 text-red-800', key: 'workload.poor' };
-}
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
 export default function SupervisorReportsPage() {
   const locale = useLocale();
@@ -132,8 +106,15 @@ export default function SupervisorReportsPage() {
   const [exportPeriod, setExportPeriod] = useState('30');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Fetch dashboard stats
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+  // --- Queries ---
+
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+    error: statsErr,
+    refetch: refetchStats,
+  } = useQuery<SupervisorDashboardStats>({
     queryKey: ['supervisor', 'dashboard', 'reports'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/dashboard');
@@ -141,8 +122,13 @@ export default function SupervisorReportsPage() {
     },
   });
 
-  // Fetch agents
-  const { data: agents } = useQuery<AgentListItem[]>({
+  const {
+    data: agents,
+    isLoading: agentsLoading,
+    isError: agentsError,
+    error: agentsErr,
+    refetch: refetchAgents,
+  } = useQuery<AgentListItem[]>({
     queryKey: ['supervisor', 'agents', 'reports'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/agents');
@@ -150,20 +136,30 @@ export default function SupervisorReportsPage() {
     },
   });
 
-  // Fetch rules effectiveness
-  const { data: rulesReport } = useQuery<RuleEffectivenessItem[]>({
+  const {
+    data: rulesReport,
+    isLoading: rulesLoading,
+    isError: rulesError,
+    error: rulesErr,
+    refetch: refetchRules,
+  } = useQuery<RuleEffectivenessItem[]>({
     queryKey: ['supervisor', 'rules-effectiveness'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/rules/effectiveness/report', {
-        params: { min_applications: 5 }
+        params: { min_applications: 5 },
       });
       return response.data;
     },
     enabled: activeTab === 'overview',
   });
 
-  // Fetch workload balance
-  const { data: workload } = useQuery<WorkloadBalanceResponse>({
+  const {
+    data: workload,
+    isLoading: workloadLoading,
+    isError: workloadError,
+    error: workloadErr,
+    refetch: refetchWorkload,
+  } = useQuery<WorkloadBalanceResponse>({
     queryKey: ['supervisor', 'workload-balance', 'reports'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/workload/balance');
@@ -172,7 +168,8 @@ export default function SupervisorReportsPage() {
     enabled: activeTab === 'workload',
   });
 
-  // Export handler
+  // --- Export handler ---
+
   const handleExport = async () => {
     setIsExporting(true);
     try {
@@ -197,21 +194,25 @@ export default function SupervisorReportsPage() {
     }
   };
 
-  // Top agents by success rate
+  // --- Derived data ---
+
   const topAgents = agents
-    ?.filter(a => a.success_rate > 0)
+    ?.filter((a) => a.success_rate > 0)
     .sort((a, b) => b.success_rate - a.success_rate)
     .slice(0, 5);
 
-  // Capacity distribution
-  const capacityBuckets = agents ? [
-    { range: '0-25%', count: agents.filter(a => a.capacity_percentage <= 25).length, color: 'bg-green-500' },
-    { range: '25-50%', count: agents.filter(a => a.capacity_percentage > 25 && a.capacity_percentage <= 50).length, color: 'bg-blue-500' },
-    { range: '50-75%', count: agents.filter(a => a.capacity_percentage > 50 && a.capacity_percentage <= 75).length, color: 'bg-yellow-500' },
-    { range: '75-100%', count: agents.filter(a => a.capacity_percentage > 75).length, color: 'bg-red-500' },
-  ] : [];
+  const capacityBuckets = agents
+    ? [
+        { range: '0-25%', count: agents.filter((a) => a.capacity_percentage <= 25).length, color: 'bg-green-500' },
+        { range: '25-50%', count: agents.filter((a) => a.capacity_percentage > 25 && a.capacity_percentage <= 50).length, color: 'bg-blue-500' },
+        { range: '50-75%', count: agents.filter((a) => a.capacity_percentage > 50 && a.capacity_percentage <= 75).length, color: 'bg-yellow-500' },
+        { range: '75-100%', count: agents.filter((a) => a.capacity_percentage > 75).length, color: 'bg-red-500' },
+      ]
+    : [];
 
-  if (statsLoading) {
+  // --- Global loading (only for initial page load) ---
+
+  if (statsLoading && agentsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
@@ -234,10 +235,10 @@ export default function SupervisorReportsPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <FileBarChart className="h-6 w-6" />
-            {t('reports.title', { defaultValue: 'Informes' })}
+            {t('reports.title')}
           </h1>
           <p className="text-muted-foreground">
-            {t('reports.description', { defaultValue: 'Informes y métricas del equipo' })}
+            {t('reports.description')}
           </p>
         </div>
       </div>
@@ -245,61 +246,67 @@ export default function SupervisorReportsPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">
-            {t('reports.overview', { defaultValue: 'Vista General' })}
-          </TabsTrigger>
-          <TabsTrigger value="workload">
-            {t('reports.workloadTab', { defaultValue: 'Carga de Trabajo' })}
-          </TabsTrigger>
-          <TabsTrigger value="exports">
-            {t('reports.exportsTab', { defaultValue: 'Exportaciones' })}
-          </TabsTrigger>
+          <TabsTrigger value="overview">{t('reports.overview')}</TabsTrigger>
+          <TabsTrigger value="workload">{t('reports.workloadTab')}</TabsTrigger>
+          <TabsTrigger value="exports">{t('reports.exportsTab')}</TabsTrigger>
         </TabsList>
 
         {/* =============== TAB 1: OVERVIEW =============== */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Per-tab error: stats */}
+          {statsError && (
+            <TabErrorCard error={statsErr as Error} onRetry={() => refetchStats()} tCommon={tCommon} />
+          )}
+
           {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('stats.teamActive', { defaultValue: 'Agentes Activos' })}</CardTitle>
-                <Users className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.team.activeAgents || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  / {stats?.team.totalAgents || 0} {t('team.totalAgents', { defaultValue: 'total' })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('stats.slaCompliance', { defaultValue: 'SLA Compliance' })}</CardTitle>
-                <Target className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.performance.slaCompliance || 0}%</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('stats.avgResponseTime', { defaultValue: 'Tiempo Resp.' })}</CardTitle>
-                <Clock className="h-4 w-4 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.performance.avgResponseTime || 0}h</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t('stats.qualityScore', { defaultValue: 'Calidad' })}</CardTitle>
-                <TrendingUp className="h-4 w-4 text-purple-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.performance.qualityScore || 0}%</div>
-              </CardContent>
-            </Card>
-          </div>
+          {stats && (
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{t('stats.teamActive', { defaultValue: 'Agentes Activos' })}</CardTitle>
+                  <Users className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.team.activeAgents}</div>
+                  <p className="text-xs text-muted-foreground">
+                    / {stats.team.totalAgents} {t('team.totalAgents', { defaultValue: 'total' })}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{t('stats.slaCompliance', { defaultValue: 'SLA Compliance' })}</CardTitle>
+                  <Target className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.performance.slaCompliance}%</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{t('stats.avgResponseTime', { defaultValue: 'Tiempo Resp.' })}</CardTitle>
+                  <Clock className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.performance.avgResponseTime}h</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{t('stats.qualityScore', { defaultValue: 'Calidad' })}</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.performance.qualityScore}%</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Per-tab error: agents */}
+          {agentsError && (
+            <TabErrorCard error={agentsErr as Error} onRetry={() => refetchAgents()} tCommon={tCommon} />
+          )}
 
           {/* Top Agents + Rules Effectiveness side by side */}
           <div className="grid gap-6 lg:grid-cols-2">
@@ -308,11 +315,13 @@ export default function SupervisorReportsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5 text-yellow-500" />
-                  {t('reports.topAgents', { defaultValue: 'Mejores Agentes' })}
+                  {t('reports.topAgents')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {!topAgents?.length ? (
+                {agentsLoading ? (
+                  <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : !topAgents?.length ? (
                   <p className="text-center text-muted-foreground py-4">{tCommon('noData')}</p>
                 ) : (
                   <Table>
@@ -326,15 +335,15 @@ export default function SupervisorReportsPage() {
                     </TableHeader>
                     <TableBody>
                       {topAgents.map((agent, i) => (
-                        <TableRow key={agent.agent_id}>
+                        <TableRow key={agent.agent_profile_id || agent.agent_id}>
                           <TableCell className="font-medium">{i + 1}</TableCell>
                           <TableCell>
                             <p className="font-medium">{agent.agent_name}</p>
                             <p className="text-xs text-muted-foreground">{agent.agent_email}</p>
                           </TableCell>
                           <TableCell>
-                            <span className={agent.success_rate >= 0.8 ? 'text-green-600 font-medium' : 'text-yellow-600'}>
-                              {(agent.success_rate * 100).toFixed(0)}%
+                            <span className={agent.success_rate >= 80 ? 'text-green-600 font-medium' : 'text-yellow-600'}>
+                              {agent.success_rate.toFixed(0)}%
                             </span>
                           </TableCell>
                           <TableCell>{agent.current_assignments}</TableCell>
@@ -351,21 +360,26 @@ export default function SupervisorReportsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-indigo-500" />
-                  {t('reports.rulesEffectiveness', { defaultValue: 'Eficacia de Reglas' })}
+                  {t('reports.rulesEffectiveness')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {!rulesReport?.length ? (
+                {rulesError ? (
+                  <TabErrorCard error={rulesErr as Error} onRetry={() => refetchRules()} tCommon={tCommon} />
+                ) : rulesLoading ? (
+                  <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : !rulesReport?.length ? (
                   <p className="text-center text-muted-foreground py-4">
-                    {t('reports.noRules', { defaultValue: 'No hay reglas con suficientes aplicaciones' })}
+                    {t('reports.noRules')}
                   </p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('rules.title', { defaultValue: 'Regla' })}</TableHead>
-                        <TableHead>{t('reports.timesApplied', { defaultValue: 'Aplicaciones' })}</TableHead>
-                        <TableHead>{t('reports.effectivenessScore', { defaultValue: 'Puntuación' })}</TableHead>
+                        <TableHead>{t('reports.timesApplied')}</TableHead>
+                        <TableHead>{t('reports.matchRate')}</TableHead>
+                        <TableHead>{t('reports.effectivenessScore')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -376,6 +390,7 @@ export default function SupervisorReportsPage() {
                             <p className="text-xs text-muted-foreground">P{rule.priority}</p>
                           </TableCell>
                           <TableCell>{rule.times_applied}</TableCell>
+                          <TableCell>{rule.application_rate.toFixed(0)}%</TableCell>
                           <TableCell>
                             <span className={rule.effectiveness_score >= 80 ? 'text-green-600 font-medium' : rule.effectiveness_score >= 50 ? 'text-yellow-600' : 'text-red-600'}>
                               {rule.effectiveness_score.toFixed(0)}%
@@ -393,13 +408,15 @@ export default function SupervisorReportsPage() {
 
         {/* =============== TAB 2: WORKLOAD =============== */}
         <TabsContent value="workload" className="space-y-6">
-          {!workload ? (
+          {workloadError ? (
+            <TabErrorCard error={workloadErr as Error} onRetry={() => refetchWorkload()} tCommon={tCommon} />
+          ) : workloadLoading || !workload ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <>
-              {/* Balance Score */}
+              {/* Balance Score + Capacity Distribution */}
               <div className="grid gap-4 md:grid-cols-3">
                 <Card className="md:col-span-1">
                   <CardHeader>
@@ -420,7 +437,7 @@ export default function SupervisorReportsPage() {
 
                 <Card className="md:col-span-2">
                   <CardHeader>
-                    <CardTitle>{t('reports.capacityDistribution', { defaultValue: 'Distribución de Capacidad' })}</CardTitle>
+                    <CardTitle>{t('reports.capacityDistribution')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -452,8 +469,8 @@ export default function SupervisorReportsPage() {
                       {workload.recommendations.map((rec, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm">
                           <AlertCircle className={`h-4 w-4 mt-0.5 shrink-0 ${
-                            rec.priority === 'high' ? 'text-red-500' :
-                            rec.priority === 'medium' ? 'text-yellow-500' : 'text-blue-500'
+                            rec.priority === 'urgent' ? 'text-red-500' :
+                            rec.priority === 'high' ? 'text-orange-500' : 'text-blue-500'
                           }`} />
                           <span>{rec.message}</span>
                         </li>
@@ -485,7 +502,7 @@ export default function SupervisorReportsPage() {
                       {workload.agents
                         .sort((a, b) => b.capacity_percentage - a.capacity_percentage)
                         .map((agent) => (
-                          <TableRow key={agent.agent_id}>
+                          <TableRow key={agent.agent_profile_id || agent.agent_id}>
                             <TableCell>
                               <p className="font-medium">{agent.agent_name}</p>
                             </TableCell>
@@ -500,8 +517,8 @@ export default function SupervisorReportsPage() {
                             </TableCell>
                             <TableCell>{agent.current_assignments}</TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {agent.workload_status}
+                              <Badge className={`text-xs ${WORKLOAD_STATUS_COLORS[agent.workload_status] || ''}`}>
+                                {t(`workload.status.${agent.workload_status}`, { defaultValue: agent.workload_status })}
                               </Badge>
                             </TableCell>
                           </TableRow>
@@ -520,7 +537,7 @@ export default function SupervisorReportsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Download className="h-5 w-5" />
-                {t('reports.exportsTab', { defaultValue: 'Exportaciones' })}
+                {t('reports.exportsTab')}
               </CardTitle>
               <CardDescription>
                 {t('reports.exportDescription', { defaultValue: 'Exportar datos de asignaciones en formato CSV' })}
@@ -530,7 +547,7 @@ export default function SupervisorReportsPage() {
               <div className="flex gap-4 items-end">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">
-                    {t('reports.exportPeriod', { defaultValue: 'Período de exportación' })}
+                    {t('reports.exportPeriod')}
                   </label>
                   <Select value={exportPeriod} onValueChange={setExportPeriod}>
                     <SelectTrigger className="w-48">
@@ -550,7 +567,7 @@ export default function SupervisorReportsPage() {
                   ) : (
                     <Download className="h-4 w-4 mr-2" />
                   )}
-                  {t('reports.downloadCsv', { defaultValue: 'Descargar CSV' })}
+                  {t('reports.downloadCsv')}
                 </Button>
               </div>
 
