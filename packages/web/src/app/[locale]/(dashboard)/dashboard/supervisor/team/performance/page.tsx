@@ -459,7 +459,6 @@ export default function TeamPerformancePage() {
               <div className="flex items-end gap-1 h-32">
                 {trends.data_points.map((point) => {
                   const maxProcessed = Math.max(...trends.data_points.map(p => p.processed), 1);
-                  const height = (point.processed / maxProcessed) * 100;
                   return (
                     <div
                       key={point.period}
