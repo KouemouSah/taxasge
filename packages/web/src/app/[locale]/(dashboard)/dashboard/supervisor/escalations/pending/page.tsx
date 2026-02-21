@@ -9,7 +9,6 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -68,52 +67,10 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { es, fr, enUS } from 'date-fns/locale';
-
-// Aligned with backend EscalationListItem from supervisor_routes.py
-interface Escalation {
-  id: string;  // item_id (service_request id)
-  queue_id: string;
-  reason: string;
-  priority_score: number;
-  status: string;
-  escalation_status: 'pending' | 'in_review' | 'resolved' | 'reassigned';
-  case_reference: string;
-  case_type: string;
-  escalated_by_name: string;
-  escalated_by_email: string;
-  escalated_at: string;
-  created_at: string;
-  assigned_to_name?: string;
-}
-
-// Aligned with backend AgentListItem from supervisor_routes.py
-interface Agent {
-  agent_id: string;
-  agent_name: string;
-  agent_email: string;
-  current_assignments: number;
-  capacity_percentage: number;
-  workload_status: string;
-  availability: string;
-}
-
-// Priority thresholds based on priority_score (0-100+)
-const getPriorityLevel = (score: number): 'low' | 'medium' | 'high' | 'critical' => {
-  if (score >= 80) return 'critical';
-  if (score >= 60) return 'high';
-  if (score >= 40) return 'medium';
-  return 'low';
-};
-
-const PRIORITY_COLORS = {
-  low: 'bg-gray-100 text-gray-800',
-  medium: 'bg-yellow-100 text-yellow-800',
-  high: 'bg-orange-100 text-orange-800',
-  critical: 'bg-red-100 text-red-800',
-};
+import type { Escalation, AgentListItem } from '../../types';
+import { getPriorityLevel, PRIORITY_COLORS } from '../../types';
 
 export default function PendingEscalationsPage() {
-  const _router = useRouter();
   const locale = useLocale();
   const queryClient = useQueryClient();
   const t = useTranslations('supervisor');
@@ -158,7 +115,7 @@ export default function PendingEscalationsPage() {
   });
 
   // Fetch available agents for reassignment - uses GET /supervisor/agents
-  const { data: agents } = useQuery<Agent[]>({
+  const { data: agents } = useQuery<AgentListItem[]>({
     queryKey: ['supervisor', 'agents', 'available'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/agents', {
@@ -861,7 +818,7 @@ export default function PendingEscalationsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {agents?.map((agent) => (
-                    <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                    <SelectItem key={agent.agent_profile_id} value={agent.agent_profile_id}>
                       {agent.agent_name} ({agent.capacity_percentage.toFixed(0)}%) - {agent.workload_status}
                     </SelectItem>
                   ))}

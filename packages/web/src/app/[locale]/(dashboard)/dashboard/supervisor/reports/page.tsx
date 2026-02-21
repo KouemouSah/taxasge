@@ -66,7 +66,7 @@ import type {
   RuleEffectivenessItem,
   WorkloadBalanceResponse,
 } from '../types';
-import { getBalanceColor, getBalanceBadgeKey, WORKLOAD_STATUS_COLORS } from '../types';
+import { getBalanceColor, getBalanceBadgeKey, WORKLOAD_STATUS_COLORS, formatSuccessRate, getSuccessRateColor } from '../types';
 
 // =============================================================================
 // ERROR CARD — reusable per-tab error component
@@ -297,7 +297,11 @@ export default function SupervisorReportsPage() {
                   <TrendingUp className="h-4 w-4 text-purple-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.performance.qualityScore}%</div>
+                  <div className="text-2xl font-bold">
+                    {stats.performance.qualityScore > 0
+                      ? `${stats.performance.qualityScore}%`
+                      : <span className="text-muted-foreground">N/A</span>}
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -342,8 +346,8 @@ export default function SupervisorReportsPage() {
                             <p className="text-xs text-muted-foreground">{agent.agent_email}</p>
                           </TableCell>
                           <TableCell>
-                            <span className={agent.success_rate >= 80 ? 'text-green-600 font-medium' : 'text-yellow-600'}>
-                              {agent.success_rate.toFixed(0)}%
+                            <span className={`${getSuccessRateColor(agent.success_rate)} ${agent.success_rate >= 0.8 ? 'font-medium' : ''}`}>
+                              {formatSuccessRate(agent.success_rate)}
                             </span>
                           </TableCell>
                           <TableCell>{agent.current_assignments}</TableCell>

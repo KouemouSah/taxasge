@@ -38,66 +38,8 @@ import {
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
 import Link from 'next/link';
-
-// Aligned with backend models
-interface WorkloadBalanceReport {
-  balance_score: number;
-  total_agents: number;
-  available_agents: number;
-  overloaded_agents: number;
-  underutilized_agents: number;
-  avg_capacity_percentage: number;
-  min_capacity_percentage: number;
-  max_capacity_percentage: number;
-  std_dev_capacity: number;
-  rebalancing_needed: boolean;
-}
-
-interface AgentListItem {
-  agent_id: string;
-  agent_name: string;
-  agent_email: string;
-  current_assignments: number;
-  capacity_percentage: number;
-  workload_status: string;
-  availability: string;
-  specializations?: string[];
-  avg_processing_time_hours?: number;
-  success_rate: number;
-}
-
-interface Recommendation {
-  type: string;
-  priority: string;
-  message: string;
-}
-
-interface WorkloadBalanceResponse {
-  report: WorkloadBalanceReport;
-  agents: AgentListItem[];
-  recommendations: Recommendation[];
-}
-
-const WORKLOAD_STATUS_COLORS: Record<string, string> = {
-  available: 'bg-green-100 text-green-800',
-  normal: 'bg-blue-100 text-blue-800',
-  busy: 'bg-yellow-100 text-yellow-800',
-  overloaded: 'bg-red-100 text-red-800',
-  unavailable: 'bg-gray-100 text-gray-800',
-};
-
-function getBalanceColor(score: number): string {
-  if (score >= 80) return 'text-green-600';
-  if (score >= 60) return 'text-yellow-600';
-  return 'text-red-600';
-}
-
-function getBalanceLabelKey(score: number): string {
-  if (score >= 80) return 'workload.excellent';
-  if (score >= 60) return 'workload.good';
-  if (score >= 40) return 'workload.moderate';
-  return 'workload.poor';
-}
+import type { WorkloadBalanceResponse } from '../../types';
+import { WORKLOAD_STATUS_COLORS, getBalanceColor, getBalanceBadgeKey } from '../../types';
 
 export default function TeamWorkloadPage() {
   const locale = useLocale();
@@ -237,7 +179,7 @@ export default function TeamWorkloadPage() {
                 <p className={`text-4xl font-bold ${getBalanceColor(report.balance_score)}`}>
                   {report.balance_score.toFixed(0)}
                 </p>
-                <p className="text-sm text-muted-foreground">{t(getBalanceLabelKey(report.balance_score))}</p>
+                <p className="text-sm text-muted-foreground">{t(getBalanceBadgeKey(report.balance_score).key)}</p>
               </div>
             </div>
           </CardHeader>
@@ -267,13 +209,13 @@ export default function TeamWorkloadPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t('team.avgCapacity') || 'Avg Capacity'}</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('team.avgAssignments') || 'Avg Assignments'}</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{report.avg_capacity_percentage.toFixed(0)}%</div>
+              <div className="text-2xl font-bold">{report.avg_assignments_per_agent.toFixed(1)}</div>
               <p className="text-xs text-muted-foreground">
-                {report.min_capacity_percentage.toFixed(0)}% - {report.max_capacity_percentage.toFixed(0)}%
+                {report.min_assignments} - {report.max_assignments}
               </p>
             </CardContent>
           </Card>
@@ -291,13 +233,13 @@ export default function TeamWorkloadPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{t('workload.underutilized') || 'Underutilized'}</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('workload.unavailableAgents') || 'Unavailable'}</CardTitle>
               <BarChart3 className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{report.underutilized_agents}</div>
+              <div className="text-2xl font-bold text-blue-600">{report.unavailable_agents}</div>
               <p className="text-xs text-muted-foreground">
-                {t('workload.canTakeMore') || 'Can take more work'}
+                {t('workload.unavailableAgents') || 'Unavailable'}
               </p>
             </CardContent>
           </Card>
@@ -367,7 +309,7 @@ export default function TeamWorkloadPage() {
         <CardContent>
           <div className="space-y-4">
             {agents.map((agent) => (
-              <div key={agent.agent_id} className="space-y-2">
+              <div key={agent.agent_profile_id} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div>

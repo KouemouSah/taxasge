@@ -74,57 +74,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { es, fr, enUS } from 'date-fns/locale';
 
 // ============================================================================
-// TYPES - Aligned with backend assignment_rule.py
+// TYPES & CONSTANTS — imported from shared supervisor types
 // ============================================================================
 
-type RuleType = 'round_robin' | 'load_balance' | 'specialization' | 'priority_based';
-
-interface AssignmentRule {
-  id: string;
-  name: string;
-  description: string | null;
-  rule_type: RuleType;
-  criteria: Record<string, unknown>;  // Dict[str, Any] from backend
-  priority: number;  // 1-100
-  is_active: boolean;
-  created_at: string;
-  updated_at: string | null;
-  created_by: string | null;
-}
-
-interface _PaginatedResponse {
-  items: AssignmentRule[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
-const RULE_TYPE_LABELS: Record<RuleType, { label: string; description: string; color: string }> = {
-  round_robin: {
-    label: 'Round Robin',
-    description: 'Distribute equally among agents',
-    color: 'bg-blue-100 text-blue-800',
-  },
-  load_balance: {
-    label: 'Load Balance',
-    description: 'Assign based on current workload',
-    color: 'bg-green-100 text-green-800',
-  },
-  specialization: {
-    label: 'Specialization',
-    description: 'Match agent skills to task type',
-    color: 'bg-purple-100 text-purple-800',
-  },
-  priority_based: {
-    label: 'Priority Based',
-    description: 'Route high-priority items first',
-    color: 'bg-orange-100 text-orange-800',
-  },
-};
+import type { AssignmentRule } from '../../types';
+import { RULE_TYPE_LABELS } from '../../types';
 
 const PAGE_SIZE = 10;
 

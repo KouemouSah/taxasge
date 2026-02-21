@@ -1,8 +1,11 @@
 /**
  * Shared types and helpers for Supervisor pages
- * Aligned with backend supervisor_routes.py response models
+ * Aligned with backend supervisor_routes.py + agent_workload.py response models
  *
  * Single source of truth — all supervisor pages import from here.
+ *
+ * IMPORTANT: success_rate from backend is 0.0-1.0 (ratio).
+ * Display as percentage: (success_rate * 100).toFixed(0)%
  */
 
 // =============================================================================
@@ -11,8 +14,8 @@
 
 /** Backend: AgentListItem (supervisor_routes.py:168-180) */
 export interface AgentListItem {
-  agent_profile_id: string;
-  agent_id: string | null; // DEPRECATED: backward compat
+  agent_profile_id: string; // PRIMARY KEY — use this for all API calls
+  agent_id: string | null; // DEPRECATED: user_id, kept for backward compat
   agent_name: string;
   agent_email: string;
   current_assignments: number;
@@ -21,7 +24,7 @@ export interface AgentListItem {
   availability: 'available' | 'on_leave' | 'sick_leave' | 'training' | 'mission' | 'temporarily_unavailable';
   specializations?: string[];
   avg_processing_time_hours?: number;
-  success_rate: number;
+  success_rate: number; // 0.0-1.0
 }
 
 /** Backend: AgentAssignmentItem (supervisor_routes.py) */
@@ -32,6 +35,40 @@ export interface AgentAssignmentItem {
   workflow_code: string | null;
   status: string;
   assigned_at: string | null;
+}
+
+/** Backend: AgentAssignmentStats (assignment_repository.py) */
+export interface AgentStats {
+  agent_id: string;
+  period_days: number;
+  total_assignments: number;
+  completed_assignments: number;
+  pending_assignments: number;
+  rejected_assignments: number;
+  avg_processing_time_hours: number;
+  success_rate: number; // 0.0-1.0
+  quality_score_avg: number; // 0.0-1.0
+  deadline_compliance_rate: number; // 0.0-1.0
+  by_status: Record<string, number>;
+  by_type: Record<string, number>;
+}
+
+/** Backend: AgentTrendsResponse (supervisor_routes.py) */
+export interface TrendPoint {
+  period: string;
+  processed: number;
+  approved: number;
+  rejected: number;
+  avg_processing_hours: number;
+  sla_compliance_pct: number;
+}
+
+export interface AgentTrendsResponse {
+  agent_id: string;
+  agent_name: string;
+  period_days: number;
+  granularity: string;
+  data_points: TrendPoint[];
 }
 
 // =============================================================================
@@ -87,7 +124,10 @@ export interface SupervisorDashboardStats {
 // WORKLOAD
 // =============================================================================
 
-/** Backend: WorkloadBalanceReport (supervisor_routes.py:196) */
+/**
+ * Backend: WorkloadBalanceReport (agent_workload.py:80-100)
+ * Fields aligned with actual Pydantic model — NO fictitious fields.
+ */
 export interface WorkloadBalanceReport {
   balance_score: number;
   total_agents: number;
@@ -100,7 +140,6 @@ export interface WorkloadBalanceReport {
   min_assignments: number;
   max_assignments: number;
   rebalancing_needed: boolean;
-  rebalancing_recommendation: string | null;
 }
 
 export interface WorkloadRecommendation {
@@ -116,8 +155,23 @@ export interface WorkloadBalanceResponse {
 }
 
 // =============================================================================
-// RULES EFFECTIVENESS
+// RULES
 // =============================================================================
+
+export type RuleType = 'round_robin' | 'load_balance' | 'specialization' | 'priority_based';
+
+export interface AssignmentRule {
+  id: string;
+  name: string;
+  description: string | null;
+  rule_type: RuleType;
+  criteria: Record<string, unknown>;
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string | null;
+  created_by: string | null;
+}
 
 /** Backend: RuleEffectivenessItem (supervisor_routes.py:183-193) */
 export interface RuleEffectivenessItem {
@@ -128,7 +182,7 @@ export interface RuleEffectivenessItem {
   times_matched: number;
   success_rate: number;
   effectiveness_score: number;
-  application_rate: number; // (times_applied / times_matched) * 100
+  application_rate: number;
   last_applied_at: string | null;
 }
 
@@ -144,6 +198,22 @@ export const WORKLOAD_STATUS_COLORS: Record<string, string> = {
   unavailable: 'bg-gray-100 text-gray-800',
 };
 
+export const AVAILABILITY_COLORS: Record<string, string> = {
+  available: 'bg-green-100 text-green-800',
+  on_leave: 'bg-purple-100 text-purple-800',
+  sick_leave: 'bg-orange-100 text-orange-800',
+  training: 'bg-blue-100 text-blue-800',
+  mission: 'bg-indigo-100 text-indigo-800',
+  temporarily_unavailable: 'bg-gray-100 text-gray-800',
+};
+
+export const RULE_TYPE_LABELS: Record<RuleType, { label: string; description: string; color: string }> = {
+  round_robin: { label: 'Round Robin', description: 'Distribute equally among agents', color: 'bg-blue-100 text-blue-800' },
+  load_balance: { label: 'Load Balance', description: 'Assign based on current workload', color: 'bg-green-100 text-green-800' },
+  specialization: { label: 'Specialization', description: 'Match agent skills to task type', color: 'bg-purple-100 text-purple-800' },
+  priority_based: { label: 'Priority Based', description: 'Route high-priority items first', color: 'bg-orange-100 text-orange-800' },
+};
+
 export function getBalanceColor(score: number): string {
   if (score >= 80) return 'text-green-600';
   if (score >= 60) return 'text-blue-600';
@@ -156,4 +226,25 @@ export function getBalanceBadgeKey(score: number): { color: string; key: string 
   if (score >= 60) return { color: 'bg-blue-100 text-blue-800', key: 'workload.good' };
   if (score >= 40) return { color: 'bg-yellow-100 text-yellow-800', key: 'workload.moderate' };
   return { color: 'bg-red-100 text-red-800', key: 'workload.poor' };
+}
+
+/**
+ * success_rate helpers — backend returns 0.0-1.0
+ * Use these to display consistently across all pages.
+ */
+export function formatSuccessRate(rate: number): string {
+  return `${(rate * 100).toFixed(0)}%`;
+}
+
+export function getSuccessRateColor(rate: number): string {
+  if (rate >= 0.8) return 'text-green-600';
+  if (rate >= 0.6) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
+export function getPerformanceBadge(rate: number): { color: string; key: string } {
+  if (rate >= 0.9) return { color: 'bg-green-100 text-green-800', key: 'performance.excellent' };
+  if (rate >= 0.8) return { color: 'bg-blue-100 text-blue-800', key: 'performance.good' };
+  if (rate >= 0.7) return { color: 'bg-yellow-100 text-yellow-800', key: 'performance.average' };
+  return { color: 'bg-red-100 text-red-800', key: 'performance.needsImprovement' };
 }

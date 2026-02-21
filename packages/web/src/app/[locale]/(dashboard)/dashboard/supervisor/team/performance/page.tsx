@@ -52,67 +52,8 @@ import {
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
 import Link from 'next/link';
-
-// Aligned with backend AgentTrendsResponse
-interface TrendPoint {
-  period: string;
-  processed: number;
-  approved: number;
-  rejected: number;
-  avg_processing_hours: number;
-  sla_compliance_pct: number;
-}
-
-interface AgentTrendsResponse {
-  agent_id: string;
-  agent_name: string;
-  period_days: number;
-  granularity: string;
-  data_points: TrendPoint[];
-}
-
-// Aligned with backend AgentListItem
-interface AgentListItem {
-  agent_id: string;
-  agent_name: string;
-  agent_email: string;
-  current_assignments: number;
-  capacity_percentage: number;
-  workload_status: string;
-  availability: string;
-  specializations?: string[];
-  avg_processing_time_hours?: number;
-  success_rate: number;
-}
-
-// Aligned with backend AgentAssignmentStats
-interface AgentStats {
-  agent_id: string;
-  period_days: number;
-  total_assignments: number;
-  completed_assignments: number;
-  pending_assignments: number;
-  rejected_assignments: number;
-  avg_processing_time_hours: number;
-  success_rate: number;
-  quality_score_avg: number;
-  deadline_compliance_rate: number;
-  by_status: Record<string, number>;
-  by_type: Record<string, number>;
-}
-
-function getPerformanceColor(rate: number): string {
-  if (rate >= 0.9) return 'text-green-600';
-  if (rate >= 0.7) return 'text-yellow-600';
-  return 'text-red-600';
-}
-
-function getPerformanceBadgeKey(rate: number): { color: string; key: string } {
-  if (rate >= 0.9) return { color: 'bg-green-100 text-green-800', key: 'performance.excellent' };
-  if (rate >= 0.8) return { color: 'bg-blue-100 text-blue-800', key: 'performance.good' };
-  if (rate >= 0.7) return { color: 'bg-yellow-100 text-yellow-800', key: 'performance.average' };
-  return { color: 'bg-red-100 text-red-800', key: 'performance.needsImprovement' };
-}
+import type { AgentListItem, AgentStats, AgentTrendsResponse } from '../../types';
+import { getSuccessRateColor, getPerformanceBadge } from '../../types';
 
 export default function TeamPerformancePage() {
   const locale = useLocale();
@@ -233,7 +174,7 @@ export default function TeamPerformancePage() {
             <Target className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getPerformanceColor(teamAvgSuccessRate)}`}>
+            <div className={`text-2xl font-bold ${getSuccessRateColor(teamAvgSuccessRate)}`}>
               {(teamAvgSuccessRate * 100).toFixed(0)}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -298,12 +239,12 @@ export default function TeamPerformancePage() {
                 </TableRow>
               ) : (
                 agents?.map((agent) => {
-                  const performanceBadge = getPerformanceBadgeKey(agent.success_rate);
+                  const performanceBadge = getPerformanceBadge(agent.success_rate);
                   return (
                     <TableRow
-                      key={agent.agent_id}
-                      className={`cursor-pointer ${selectedAgentId === agent.agent_id ? 'bg-muted/50' : ''}`}
-                      onClick={() => setSelectedAgentId(agent.agent_id)}
+                      key={agent.agent_profile_id}
+                      className={`cursor-pointer ${selectedAgentId === agent.agent_profile_id ? 'bg-muted/50' : ''}`}
+                      onClick={() => setSelectedAgentId(agent.agent_profile_id)}
                     >
                       <TableCell>
                         <div>
@@ -312,7 +253,7 @@ export default function TeamPerformancePage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={getPerformanceColor(agent.success_rate)}>
+                        <span className={getSuccessRateColor(agent.success_rate)}>
                           {(agent.success_rate * 100).toFixed(0)}%
                         </span>
                       </TableCell>
@@ -335,7 +276,7 @@ export default function TeamPerformancePage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedAgentId(agent.agent_id);
+                            setSelectedAgentId(agent.agent_profile_id);
                           }}
                         >
                           {t('performance.viewStats') || 'View Stats'}
@@ -357,7 +298,7 @@ export default function TeamPerformancePage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>
-                  {agents?.find(a => a.agent_id === selectedAgentId)?.agent_name || 'Agent'} - {t('performance.detailedStats') || 'Detailed Statistics'}
+                  {agents?.find(a => a.agent_profile_id === selectedAgentId)?.agent_name || 'Agent'} - {t('performance.detailedStats') || 'Detailed Statistics'}
                 </CardTitle>
                 <CardDescription>
                   {t('performance.period') || 'Period'}: {periodDays} {t('performance.days') || 'days'}
@@ -392,7 +333,7 @@ export default function TeamPerformancePage() {
                   </div>
                   <div className="p-4 border rounded-lg">
                     <p className="text-sm text-muted-foreground">{t('performance.deadlineCompliance') || 'Deadline Compliance'}</p>
-                    <p className={`text-2xl font-bold ${getPerformanceColor(agentStats.deadline_compliance_rate)}`}>
+                    <p className={`text-2xl font-bold ${getSuccessRateColor(agentStats.deadline_compliance_rate)}`}>
                       {(agentStats.deadline_compliance_rate * 100).toFixed(0)}%
                     </p>
                   </div>

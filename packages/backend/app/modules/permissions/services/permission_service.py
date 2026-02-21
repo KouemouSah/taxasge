@@ -178,7 +178,7 @@ class PermissionService:
             perm_prefix = permission_name.split('.')[0] if '.' in permission_name else permission_name
 
             # Generic permissions that ALL supervisors can access
-            generic_prefixes = ['agent', 'assignment', 'dashboard', 'reports', 'stats', 'workload']
+            generic_prefixes = ['agent', 'assignment', 'dashboard', 'escalations', 'reports', 'rules', 'stats', 'workload']
             if perm_prefix in generic_prefixes:
                 return True
 

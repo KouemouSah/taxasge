@@ -67,46 +67,8 @@ import { toast } from 'sonner';
 import apiClient from '@/core/api/client';
 import Link from 'next/link';
 import { Progress } from '@/components/ui/progress';
-
-// Aligned with backend AgentListItem from supervisor_routes.py
-interface AgentListItem {
-  agent_id: string;
-  agent_name: string;
-  agent_email: string;
-  current_assignments: number;
-  capacity_percentage: number;
-  workload_status: 'available' | 'normal' | 'busy' | 'overloaded' | 'unavailable';
-  availability: 'available' | 'on_leave' | 'sick_leave' | 'training' | 'mission' | 'temporarily_unavailable';
-  specializations?: string[];
-  avg_processing_time_hours?: number;
-  success_rate: number;
-}
-
-interface AgentAssignmentItem {
-  assignment_id: string;
-  request_id: string;
-  request_reference: string | null;
-  workflow_code: string | null;
-  status: string;
-  assigned_at: string | null;
-}
-
-const WORKLOAD_STATUS_COLORS: Record<string, string> = {
-  available: 'bg-green-100 text-green-800',
-  normal: 'bg-blue-100 text-blue-800',
-  busy: 'bg-yellow-100 text-yellow-800',
-  overloaded: 'bg-red-100 text-red-800',
-  unavailable: 'bg-gray-100 text-gray-800',
-};
-
-const AVAILABILITY_COLORS: Record<string, string> = {
-  available: 'bg-green-100 text-green-800',
-  on_leave: 'bg-purple-100 text-purple-800',
-  sick_leave: 'bg-orange-100 text-orange-800',
-  training: 'bg-blue-100 text-blue-800',
-  mission: 'bg-indigo-100 text-indigo-800',
-  temporarily_unavailable: 'bg-gray-100 text-gray-800',
-};
+import type { AgentListItem, AgentAssignmentItem } from '../../types';
+import { WORKLOAD_STATUS_COLORS, AVAILABILITY_COLORS, formatSuccessRate, getSuccessRateColor } from '../../types';
 
 export default function TeamAgentsPage() {
   const locale = useLocale();
@@ -123,9 +85,9 @@ export default function TeamAgentsPage() {
 
   // Fetch source agent assignments when dialog opens
   const { data: sourceAssignments, isLoading: assignmentsLoading } = useQuery<AgentAssignmentItem[]>({
-    queryKey: ['supervisor', 'agent-assignments', sourceAgent?.agent_id],
+    queryKey: ['supervisor', 'agent-assignments', sourceAgent?.agent_profile_id],
     queryFn: async () => {
-      const response = await apiClient.get(`/supervisor/agents/${sourceAgent!.agent_id}/assignments`);
+      const response = await apiClient.get(`/supervisor/agents/${sourceAgent!.agent_profile_id}/assignments`);
       return response.data;
     },
     enabled: !!sourceAgent && reassignDialogOpen,
@@ -340,7 +302,7 @@ export default function TeamAgentsPage() {
                   document.body.removeChild(a);
                   URL.revokeObjectURL(url);
                 } catch {
-                  // silently fail - toast could be added later
+                  toast.error(t('team.exportError', { defaultValue: 'Error al exportar CSV' }));
                 }
               }}
             >
@@ -379,7 +341,7 @@ export default function TeamAgentsPage() {
                 </TableRow>
               ) : (
                 filteredAgents?.map((agent) => (
-                  <TableRow key={agent.agent_id}>
+                  <TableRow key={agent.agent_profile_id}>
                     <TableCell>
                       <div>
                         <p className="font-medium">{agent.agent_name}</p>
@@ -425,8 +387,8 @@ export default function TeamAgentsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className={agent.success_rate >= 0.8 ? 'text-green-600' : agent.success_rate >= 0.6 ? 'text-yellow-600' : 'text-red-600'}>
-                        {(agent.success_rate * 100).toFixed(0)}%
+                      <span className={getSuccessRateColor(agent.success_rate)}>
+                        {formatSuccessRate(agent.success_rate)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -441,11 +403,13 @@ export default function TeamAgentsPage() {
                             {t('team.reassign', { defaultValue: 'Reasignar' })}
                           </Button>
                         )}
-                        <Link href={`/${locale}/dashboard/supervisor/team/agents/${agent.agent_id}`}>
-                          <Button variant="ghost" size="sm">
-                            {tCommon('viewDetails') || 'View'}
-                          </Button>
-                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toast.info(`${agent.agent_name} — ${agent.current_assignments} assignments, ${formatSuccessRate(agent.success_rate)} success rate`)}
+                        >
+                          {tCommon('viewDetails') || 'View'}
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -478,10 +442,10 @@ export default function TeamAgentsPage() {
               </SelectTrigger>
               <SelectContent>
                 {agents?.filter(a =>
-                  a.agent_id !== sourceAgent?.agent_id &&
+                  a.agent_profile_id !== sourceAgent?.agent_profile_id &&
                   a.availability === 'available'
                 ).map(a => (
-                  <SelectItem key={a.agent_id} value={a.agent_id}>
+                  <SelectItem key={a.agent_profile_id} value={a.agent_profile_id}>
                     {a.agent_name} ({a.capacity_percentage.toFixed(0)}%)
                   </SelectItem>
                 ))}
