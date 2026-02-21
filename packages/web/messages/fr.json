@@ -925,6 +925,16 @@
         "duplicateSuccess": "Élément dupliqué avec succès",
         "duplicateError": "Erreur lors de la duplication"
       },
+      "customSubItems": "Sous-menus personnalisés",
+      "addSubItem": "Ajouter sous-menu",
+      "editSubItem": "Modifier sous-menu",
+      "subItemId": "Identifiant",
+      "subItemTitleKey": "Clé de titre (i18n)",
+      "subItemIcon": "Icône",
+      "subItemAction": "Action (segment URL)",
+      "subItemFilterParams": "Paramètres de filtre",
+      "subItemDisplayOrder": "Ordre d'affichage",
+      "addFilterParam": "Ajouter filtre",
       "page": {
         "title": "Configuration des Menus",
         "subtitle": "Configurer les règles de génération automatique des menus agent",
@@ -5983,7 +5993,13 @@
         "slots": "créneaux",
         "loadError": "Erreur lors du chargement des horaires",
         "scheduleAppointment": "Planifier un rendez-vous"
-      }
+      },
+      "personalStats": "Mes Statistiques",
+      "personalStatsError": "Erreur de chargement des statistiques",
+      "urgentRequests": "Demandes Urgentes",
+      "noUrgentRequests": "Aucune demande urgente",
+      "todayAppointments": "Rendez-vous du Jour",
+      "noActiveRequests": "Aucune demande active"
     },
     "pending": {
       "title": "Dossiers en Attente",
@@ -6245,7 +6261,17 @@
       "escalations": "Escalades",
       "createEscalation": "Nouvelle Escalade",
       "fp": "Fonction Publique",
-      "visas": "Visas et Permis"
+      "visas": "Visas et Permis",
+      "completed": "Terminés",
+      "requests": "demandes",
+      "searchPlaceholder": "Rechercher par référence ou nom...",
+      "noRequests": "Aucune demande",
+      "reference": "Référence",
+      "citizen": "Demandeur",
+      "priority": "Priorité",
+      "status": "Statut",
+      "date": "Date",
+      "actions": "Actions"
     },
     "escalation": {
       "subtitle": "Escalader un dossier vers votre superviseur pour examen",
@@ -6328,7 +6354,33 @@
       "srStatus_COMPLETED": "Terminée",
       "srStatus_EXPIRED": "Expirée",
       "srStatus_PROCESSING": "En traitement",
-      "showing": "Affichage de {count} sur {total}"
+      "showing": "Affichage de {count} sur {total}",
+      "statuses": {
+        "SUBMITTED": "Soumise",
+        "UNDER_REVIEW": "En Révision",
+        "APPROVED": "Approuvée",
+        "REJECTED": "Rejetée",
+        "COMPLETED": "Terminée",
+        "CANCELLED": "Annulée",
+        "PAID": "Payée",
+        "DOSSIER_VALIDE": "Dossier Validé",
+        "IN_PROGRESS": "En Cours",
+        "EXPIRED": "Expirée"
+      },
+      "rejectionReasons": {
+        "INCOMPLETE_DOCUMENTS": "Documents Incomplets",
+        "INVALID_INFORMATION": "Informations Invalides",
+        "DUPLICATE_REQUEST": "Demande en Double",
+        "EXPIRED_DOCUMENTS": "Documents Expirés",
+        "OTHER": "Autre Motif"
+      }
+    },
+    "history": {
+      "allStatuses": "Tous les statuts",
+      "completed": "Terminés",
+      "rejected": "Rejetés",
+      "expired": "Expirés",
+      "filterByStatus": "Filtrer par statut"
     },
     "pages": {
       "underConstruction": {

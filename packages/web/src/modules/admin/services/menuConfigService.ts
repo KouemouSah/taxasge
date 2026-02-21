@@ -20,6 +20,7 @@ import type {
   WorkflowMenuMapping,
   WorkflowMenuMappingListResponse,
   AgentMenuConfigResponse,
+  CustomSubItem,
 } from '@/modules/agent-dashboard/types/menu-config';
 
 // =============================================================================
@@ -44,6 +45,7 @@ export interface WorkflowMappingCreateRequest {
   include_history?: boolean;
   include_escalation?: boolean;
   include_batch?: boolean;
+  custom_sub_items?: CustomSubItem[];
   permission_prefix?: string;
 }
 
@@ -57,6 +59,7 @@ export interface WorkflowMappingUpdateRequest {
   include_history?: boolean;
   include_escalation?: boolean;
   include_batch?: boolean;
+  custom_sub_items?: CustomSubItem[];
   permission_prefix?: string;
   is_active?: boolean;
 }

@@ -25,6 +25,20 @@ export type Priority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
 export type SlaStatus = 'on_track' | 'at_risk' | 'violated';
 
+/** Normalize backend SLA values (warning/breached) to canonical SlaStatus */
+function normalizeSlaStatus(raw: string | null | undefined): SlaStatus {
+  switch (raw) {
+    case 'at_risk':
+    case 'warning':
+      return 'at_risk';
+    case 'violated':
+    case 'breached':
+      return 'violated';
+    default:
+      return 'on_track';
+  }
+}
+
 export interface ServiceRequestListItem {
   id: string;
   reference: string;
@@ -58,6 +72,7 @@ export interface ServiceRequestListResponse {
 
 export interface ServiceRequestFilters {
   action?: ActionType;
+  status?: string;
   workflowCode?: string;
   solicitudType?: SolicitudType;
   motivo?: RenovacionMotivo;
@@ -157,7 +172,7 @@ export interface ServiceRequestPreview {
   // SLA
   slaDeadline?: string | null;
   slaRemainingHours?: number | null;
-  slaStatus: 'on_track' | 'warning' | 'breached';
+  slaStatus: SlaStatus;
   // Extracted data
   extractedData: RequestPreviewExtractedData;
   // Documents
@@ -276,7 +291,7 @@ function transformServiceRequestItem(item: BackendServiceRequestListItem): Servi
     createdAt: item.created_at,
     assignedTo: item.assigned_to,
     slaDeadline: item.sla_deadline,
-    slaStatus: (item.sla_status || 'on_track') as SlaStatus,
+    slaStatus: normalizeSlaStatus(item.sla_status),
     batchId: item.batch_id,
     batchReference: item.batch_reference,
     escalationReason: item.escalation_reason,
@@ -297,7 +312,7 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     priority: (data.priority || 'NORMAL') as Priority,
     slaDeadline: data.sla_deadline,
     slaRemainingHours: data.sla_remaining_hours,
-    slaStatus: (data.sla_status || 'on_track') as 'on_track' | 'warning' | 'breached',
+    slaStatus: normalizeSlaStatus(data.sla_status),
     // Dynamic pass-through: backend already returns only configured columns
     extractedData: data.extracted_data ?? {},
     documents: data.documents.map(doc => ({
@@ -389,6 +404,7 @@ class AgentRequestsApiClient {
     const params = new URLSearchParams();
 
     if (filters.action) params.append('action', filters.action);
+    if (filters.status) params.append('status', filters.status);
     if (filters.workflowCode) params.append('workflow_code', filters.workflowCode);
     if (filters.solicitudType) params.append('solicitud_type', filters.solicitudType);
     if (filters.motivo) params.append('motivo', filters.motivo);

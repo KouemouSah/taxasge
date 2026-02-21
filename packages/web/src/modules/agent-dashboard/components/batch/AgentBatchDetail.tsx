@@ -71,19 +71,6 @@ const SR_STATUS_COLORS: Record<string, string> = {
   EXPIRED: 'bg-gray-200 text-gray-600',
 }
 
-const SR_STATUS_LABELS: Record<string, string> = {
-  SUBMITTED: 'Enviado',
-  submitted: 'Enviado',
-  PENDING_REVIEW: 'Pendiente de revisión',
-  pending_review: 'Pendiente de revisión',
-  UNDER_REVIEW: 'En revisión',
-  DOSSIER_VALIDE: 'Dossier validado',
-  APPROVED: 'Aprobado',
-  REJECTED: 'Rechazado',
-  COMPLETED: 'Completado',
-  EXPIRED: 'Expirado',
-}
-
 const REJECTION_REASONS = [
   'documents_incomplete',
   'documents_invalid',
@@ -91,14 +78,6 @@ const REJECTION_REASONS = [
   'payment_issue',
   'other',
 ]
-
-const REJECTION_REASON_LABELS: Record<string, string> = {
-  documents_incomplete: 'Documentos incompletos',
-  documents_invalid: 'Documentos inválidos',
-  identity_mismatch: 'Discrepancia de identidad',
-  payment_issue: 'Problema de pago',
-  other: 'Otro motivo',
-}
 
 interface AgentBatchDetailProps {
   entityCode: string
@@ -359,7 +338,7 @@ export function AgentBatchDetail({ entityCode, batchId, basePath }: AgentBatchDe
                   <TableCell>
                     {item.sr_status ? (
                       <Badge className={SR_STATUS_COLORS[item.sr_status] || 'bg-gray-100'}>
-                        {SR_STATUS_LABELS[item.sr_status] || item.sr_status}
+                        {t(`batch.statuses.${item.sr_status}` as Parameters<typeof t>[0], { defaultValue: item.sr_status })}
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground">-</span>
@@ -415,7 +394,7 @@ export function AgentBatchDetail({ entityCode, batchId, basePath }: AgentBatchDe
                   <SelectContent>
                     {REJECTION_REASONS.map((reason) => (
                       <SelectItem key={reason} value={reason}>
-                        {REJECTION_REASON_LABELS[reason] || reason.replace(/_/g, ' ')}
+                        {t(`batch.rejectionReasons.${reason}` as Parameters<typeof t>[0], { defaultValue: reason.replace(/_/g, ' ') })}
                       </SelectItem>
                     ))}
                   </SelectContent>

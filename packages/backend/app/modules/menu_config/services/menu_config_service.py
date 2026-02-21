@@ -559,6 +559,32 @@ class MenuConfigService:
                 permission=f"{permission_prefix}.view_escalations"
             ))
 
+        # Custom sub-items from JSONB (dynamic, admin-configurable)
+        custom_items = mapping.get('custom_sub_items', [])
+        if isinstance(custom_items, str):
+            import json
+            custom_items = json.loads(custom_items)
+
+        # Sort custom items by display_order
+        sorted_custom = sorted(
+            [ci for ci in custom_items if ci.get('is_active', True)],
+            key=lambda x: x.get('display_order', 0)
+        )
+        for ci in sorted_custom:
+            filter_params = ci.get('filter_params', {})
+            query_string = '&'.join(f"{k}={v}" for k, v in filter_params.items()) if filter_params else ''
+            href = f"{base_path}/{ci['action']}"
+            if query_string:
+                href += f"?{query_string}"
+
+            items.append(SubMenuItemWithBadge(
+                id=ci['id'],
+                titleKey=ci['title_key'],
+                href=href,
+                icon=ci.get('icon', 'FileText'),
+                permission=f"{permission_prefix}.view"
+            ))
+
         return MenuItemBase(
             id=mapping['menu_group_id'],
             titleKey=mapping['menu_title_key'],

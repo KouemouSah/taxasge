@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   Target,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { usePersonalStats } from '../../hooks/useWidgetData';
 
 // =============================================================================
@@ -37,6 +38,7 @@ interface PersonalStatsWidgetProps {
 // =============================================================================
 
 export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = usePersonalStats();
 
   // Loading state
@@ -46,7 +48,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-600" />
-            Mis Estadísticas
+            {t('widgets.myStats', { defaultValue: 'Mis Estadísticas' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -67,12 +69,12 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-600" />
-            Mis Estadísticas
+            {t('widgets.myStats', { defaultValue: 'Mis Estadísticas' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar estadísticas
+            {t('widgets.statsError', { defaultValue: 'Error al cargar estadísticas' })}
           </p>
         </CardContent>
       </Card>
@@ -97,10 +99,10 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-600" />
-            Mis Estadísticas
+            {t('widgets.myStats', { defaultValue: 'Mis Estadísticas' })}
           </CardTitle>
           <Badge variant="outline" className="text-xs">
-            {data?.period_label || 'Este mes'}
+            {data?.period_label || t('widgets.thisMonth', { defaultValue: 'Este mes' })}
           </Badge>
         </div>
       </CardHeader>
@@ -112,7 +114,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Target className="h-4 w-4" />
-                Procesadas
+                {t('widgets.processed', { defaultValue: 'Procesadas' })}
               </div>
               <p className="text-2xl font-bold">
                 {stats.current_month_processed}
@@ -123,7 +125,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                Aprobadas
+                {t('widgets.approved', { defaultValue: 'Aprobadas' })}
               </div>
               <p className="text-2xl font-bold text-green-600">
                 {stats.current_month_approved}
@@ -134,7 +136,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <XCircle className="h-4 w-4 text-red-600" />
-                Rechazadas
+                {t('widgets.rejected', { defaultValue: 'Rechazadas' })}
               </div>
               <p className="text-2xl font-bold text-red-600">
                 {stats.current_month_rejected}
@@ -145,7 +147,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                Tiempo Prom.
+                {t('widgets.avgTime', { defaultValue: 'Tiempo Prom.' })}
               </div>
               <p className="text-2xl font-bold">
                 {stats.avg_processing_minutes
@@ -163,7 +165,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
                   slaPercentage >= 90 ? 'text-green-600' :
                   slaPercentage >= 70 ? 'text-yellow-600' : 'text-red-600'
                 }`} />
-                Cumplimiento SLA
+                {t('widgets.slaCompliance', { defaultValue: 'Cumplimiento SLA' })}
               </span>
               <span className="font-medium">
                 {slaPercentage.toFixed(1)}%
@@ -183,7 +185,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-blue-600" />
-                Tasa de Aprobación
+                {t('widgets.approvalRate', { defaultValue: 'Tasa de Aprobación' })}
               </span>
               <span className="font-medium">
                 {approvalRate.toFixed(1)}%

@@ -10,7 +10,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,7 @@ export function TodayAppointmentsWidget({
   className,
 }: TodayAppointmentsWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = useTodayAppointments(entityCode);
 
   // Loading state
@@ -54,7 +55,7 @@ export function TodayAppointmentsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-green-600" />
-            Citas de Hoy
+            {t('widgets.todayAppointments', { defaultValue: 'Citas de Hoy' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -75,12 +76,12 @@ export function TodayAppointmentsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-green-600" />
-            Citas de Hoy
+            {t('widgets.todayAppointments', { defaultValue: 'Citas de Hoy' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar datos
+            {t('widgets.loadError', { defaultValue: 'Error al cargar datos' })}
           </p>
         </CardContent>
       </Card>
@@ -100,7 +101,7 @@ export function TodayAppointmentsWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-green-600" />
-            Citas de Hoy
+            {t('widgets.todayAppointments', { defaultValue: 'Citas de Hoy' })}
             {total_today > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {total_today}
@@ -110,12 +111,12 @@ export function TodayAppointmentsWidget({
           <div className="flex gap-1 text-xs">
             {upcoming_count > 0 && (
               <Badge className="bg-blue-100 text-blue-800">
-                {upcoming_count} pendiente{upcoming_count > 1 ? 's' : ''}
+                {upcoming_count} {t('widgets.pending', { defaultValue: 'pendiente' })}{upcoming_count > 1 ? 's' : ''}
               </Badge>
             )}
             {completed_today > 0 && (
               <Badge className="bg-green-100 text-green-800">
-                {completed_today} completada{completed_today > 1 ? 's' : ''}
+                {completed_today} {t('widgets.completed', { defaultValue: 'completada' })}{completed_today > 1 ? 's' : ''}
               </Badge>
             )}
           </div>
@@ -125,7 +126,7 @@ export function TodayAppointmentsWidget({
         {items.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Sin citas programadas para hoy</p>
+            <p className="text-sm">{t('widgets.noAppointmentsToday', { defaultValue: 'Sin citas programadas para hoy' })}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -141,7 +142,7 @@ export function TodayAppointmentsWidget({
               href={`/${locale}/dashboard/agent/cnedoge-pasaporte/pasaportes/appointments`}
             >
               <Button variant="ghost" size="sm" className="w-full mt-2">
-                Ver todas las citas
+                {t('widgets.viewAllAppointments', { defaultValue: 'Ver todas las citas' })}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

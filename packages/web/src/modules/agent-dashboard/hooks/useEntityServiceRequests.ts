@@ -17,6 +17,7 @@ import {
 export interface UseEntityServiceRequestsOptions {
   entityCode: string;
   action?: ActionType;
+  status?: string;
   workflowCode?: string;
   solicitudType?: 'expedicion' | 'renovacion';
   motivo?: 'vencimiento' | 'perdida' | 'robo' | 'deterioro';
@@ -31,6 +32,7 @@ export function useEntityServiceRequests(options: UseEntityServiceRequestsOption
   const {
     entityCode,
     action = 'pending',
+    status,
     workflowCode,
     solicitudType,
     motivo,
@@ -43,6 +45,7 @@ export function useEntityServiceRequests(options: UseEntityServiceRequestsOption
 
   const filters: ServiceRequestFilters = {
     action,
+    status,
     workflowCode,
     solicitudType,
     motivo,

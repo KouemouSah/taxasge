@@ -10,7 +10,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,7 @@ export function UrgentRequestsWidget({
   className,
 }: UrgentRequestsWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = useUrgentRequests(entityCode, { limit });
 
   // Loading state
@@ -72,7 +73,7 @@ export function UrgentRequestsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-500" />
-            Solicitudes Urgentes
+            {t('widgets.urgentRequests', { defaultValue: 'Solicitudes Urgentes' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -93,12 +94,12 @@ export function UrgentRequestsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-500" />
-            Solicitudes Urgentes
+            {t('widgets.urgentRequests', { defaultValue: 'Solicitudes Urgentes' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar datos
+            {t('widgets.loadError', { defaultValue: 'Error al cargar datos' })}
           </p>
         </CardContent>
       </Card>
@@ -120,7 +121,7 @@ export function UrgentRequestsWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-500" />
-            Solicitudes Urgentes
+            {t('widgets.urgentRequests', { defaultValue: 'Solicitudes Urgentes' })}
             {totalCount > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {totalCount}
@@ -145,7 +146,7 @@ export function UrgentRequestsWidget({
         {items.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Sin solicitudes urgentes</p>
+            <p className="text-sm">{t('widgets.noUrgentRequests', { defaultValue: 'Sin solicitudes urgentes' })}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -162,7 +163,7 @@ export function UrgentRequestsWidget({
                 href={`/${locale}/dashboard/agent/cnedoge-pasaporte/pasaportes/pending`}
               >
                 <Button variant="ghost" size="sm" className="w-full mt-2">
-                  Ver todas ({totalCount})
+                  {t('widgets.viewAll', { defaultValue: 'Ver todas' })} ({totalCount})
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
@@ -185,6 +186,7 @@ interface RequestRowProps {
 }
 
 function RequestRow({ item, entityCode, locale }: RequestRowProps) {
+  const t = useTranslations('agent');
   // Build entity base path
   const entityPath = entityCode.toLowerCase().replace('_', '-');
 
@@ -208,7 +210,7 @@ function RequestRow({ item, entityCode, locale }: RequestRowProps) {
             {item.priority}
           </Badge>
           {item.assigned_to && (
-            <span title="Asignado">
+            <span title={t('widgets.assigned', { defaultValue: 'Asignado' })}>
               <User className="h-4 w-4 text-blue-500" />
             </span>
           )}

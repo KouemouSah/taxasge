@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { useTranslations } from 'next-intl';
 import {
   Users,
   UserCheck,
@@ -61,6 +62,7 @@ export function TeamWorkloadWidget({
   maxMembers = 5,
   className,
 }: TeamWorkloadWidgetProps) {
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = useTeamWorkload(entityCode);
 
   // Loading state
@@ -70,7 +72,7 @@ export function TeamWorkloadWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-5 w-5 text-purple-600" />
-            Carga del Equipo
+            {t('widgets.teamWorkload', { defaultValue: 'Carga del Equipo' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -91,12 +93,12 @@ export function TeamWorkloadWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-5 w-5 text-purple-600" />
-            Carga del Equipo
+            {t('widgets.teamWorkload', { defaultValue: 'Carga del Equipo' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar datos del equipo
+            {t('widgets.teamLoadError', { defaultValue: 'Error al cargar datos del equipo' })}
           </p>
         </CardContent>
       </Card>
@@ -118,7 +120,7 @@ export function TeamWorkloadWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-5 w-5 text-purple-600" />
-            Carga del Equipo
+            {t('widgets.teamWorkload', { defaultValue: 'Carga del Equipo' })}
           </CardTitle>
           <div className="flex gap-1">
             <Badge className="bg-green-100 text-green-800 text-xs">
@@ -138,14 +140,14 @@ export function TeamWorkloadWidget({
         {members.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Sin agentes en el equipo</p>
+            <p className="text-sm">{t('widgets.noTeamAgents', { defaultValue: 'Sin agentes en el equipo' })}</p>
           </div>
         ) : (
           <div className="space-y-4">
             {/* Summary Stats */}
             <div className="flex items-center justify-between text-sm pb-2 border-b">
               <span className="text-muted-foreground">
-                Capacidad promedio
+                {t('widgets.avgCapacity', { defaultValue: 'Capacidad promedio' })}
               </span>
               <span className="font-medium flex items-center gap-2">
                 <Activity className="h-4 w-4" />
@@ -163,7 +165,7 @@ export function TeamWorkloadWidget({
             {/* Show more indicator */}
             {members.length > maxMembers && (
               <p className="text-xs text-center text-muted-foreground pt-2">
-                +{members.length - maxMembers} agentes más
+                +{members.length - maxMembers} {t('widgets.moreAgents', { defaultValue: 'agentes más' })}
               </p>
             )}
           </div>
@@ -182,6 +184,7 @@ interface TeamMemberRowProps {
 }
 
 function TeamMemberRow({ member }: TeamMemberRowProps) {
+  const t = useTranslations('agent');
   const capacityValue = member.capacity_percentage ?? 0;
   const loadLevel = member.load_level || 'normal';
 
@@ -206,7 +209,7 @@ function TeamMemberRow({ member }: TeamMemberRowProps) {
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          {member.current_month_processed} procesadas
+          {member.current_month_processed} {t('widgets.processed', { defaultValue: 'procesadas' })}
         </span>
         {member.sla_respect_percentage !== null && (
           <span className={

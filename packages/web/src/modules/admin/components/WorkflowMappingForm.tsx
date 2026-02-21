@@ -8,7 +8,7 @@
 
 'use client';
 
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, type ChangeEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -66,13 +66,30 @@ import {
   Truck,
   AlertTriangle,
   Layers,
+  Plus,
+  Trash2,
+  Pencil,
+  CheckCircle2,
+  History,
+  Clock,
+  UserCheck,
+  BadgeCheck,
+  BarChart3,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWorkflowCodesGrouped } from '@/modules/admin/hooks/useWorkflowCodes';
 import { sqlLikeToRegex } from '@/core/utils/sql-like';
 import apiClient from '@/core/api/client';
-import type { WorkflowMenuMapping } from '@/modules/agent-dashboard/types/menu-config';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import type { WorkflowMenuMapping, CustomSubItem } from '@/modules/agent-dashboard/types/menu-config';
 import type {
   WorkflowMappingCreateRequest,
   WorkflowMappingUpdateRequest,
@@ -97,6 +114,12 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Settings,
   AlertTriangle,
   Layers,
+  BarChart3,
+  CheckCircle2,
+  History,
+  Clock,
+  UserCheck,
+  BadgeCheck,
 };
 
 const ICON_OPTIONS = Object.keys(ICON_MAP).map((name) => ({
@@ -249,6 +272,23 @@ export function WorkflowMappingForm({
   );
   const [comboOpen, setComboOpen] = useState(false);
 
+  // Custom sub-items state (managed outside react-hook-form for complex nested JSONB)
+  const [customSubItems, setCustomSubItems] = useState<CustomSubItem[]>(
+    mapping?.custom_sub_items ?? []
+  );
+  const [subItemDialogOpen, setSubItemDialogOpen] = useState(false);
+  const [editingSubItem, setEditingSubItem] = useState<CustomSubItem | null>(null);
+  const [subItemForm, setSubItemForm] = useState({
+    id: '',
+    title_key: '',
+    icon: 'CheckCircle2',
+    action: '',
+    filter_key: '',
+    filter_value: '',
+    display_order: 50,
+    is_active: true,
+  });
+
   // Fetch workflows grouped by category
   const { grouped, categories, workflows } = useWorkflowCodesGrouped();
 
@@ -340,7 +380,76 @@ export function WorkflowMappingForm({
   );
 
   const handleSubmit = (values: WorkflowMappingFormValues) => {
-    onSubmit(values);
+    onSubmit({ ...values, custom_sub_items: customSubItems });
+  };
+
+  const openAddSubItemDialog = () => {
+    setEditingSubItem(null);
+    setSubItemForm({
+      id: '',
+      title_key: '',
+      icon: 'CheckCircle2',
+      action: '',
+      filter_key: 'status',
+      filter_value: '',
+      display_order: customSubItems.length > 0
+        ? Math.max(...customSubItems.map(i => i.display_order)) + 10
+        : 50,
+      is_active: true,
+    });
+    setSubItemDialogOpen(true);
+  };
+
+  const openEditSubItemDialog = (item: CustomSubItem) => {
+    setEditingSubItem(item);
+    const filterEntries = Object.entries(item.filter_params);
+    setSubItemForm({
+      id: item.id,
+      title_key: item.title_key,
+      icon: item.icon,
+      action: item.action,
+      filter_key: filterEntries[0]?.[0] ?? 'status',
+      filter_value: filterEntries[0]?.[1] ?? '',
+      display_order: item.display_order,
+      is_active: item.is_active,
+    });
+    setSubItemDialogOpen(true);
+  };
+
+  const handleSaveSubItem = () => {
+    const id = subItemForm.id.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const action = subItemForm.action.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+    if (!id || !action || !subItemForm.title_key) return;
+
+    const newItem: CustomSubItem = {
+      id,
+      title_key: subItemForm.title_key,
+      icon: subItemForm.icon,
+      action,
+      filter_params: subItemForm.filter_key && subItemForm.filter_value
+        ? { [subItemForm.filter_key]: subItemForm.filter_value }
+        : {},
+      display_order: subItemForm.display_order,
+      is_active: subItemForm.is_active,
+    };
+
+    if (editingSubItem) {
+      setCustomSubItems(prev => prev.map(i => i.id === editingSubItem.id ? newItem : i));
+    } else {
+      if (customSubItems.some(i => i.id === id)) return; // Duplicate ID guard
+      setCustomSubItems(prev => [...prev, newItem]);
+    }
+    setSubItemDialogOpen(false);
+  };
+
+  const handleDeleteSubItem = (itemId: string) => {
+    setCustomSubItems(prev => prev.filter(i => i.id !== itemId));
+  };
+
+  const handleToggleSubItem = (itemId: string) => {
+    setCustomSubItems(prev =>
+      prev.map(i => i.id === itemId ? { ...i, is_active: !i.is_active } : i)
+    );
   };
 
   return (
@@ -751,6 +860,87 @@ export function WorkflowMappingForm({
               />
             </div>
 
+            {/* ============================================= */}
+            {/* Custom sub-items (JSONB)                      */}
+            {/* ============================================= */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">
+                  {t('fields.customSubItems', { defaultValue: 'Sous-menus personnalisés' })}
+                </h4>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={openAddSubItemDialog}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {t('fields.addSubItem', { defaultValue: 'Ajouter' })}
+                </Button>
+              </div>
+
+              {customSubItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  {t('fields.noCustomSubItems', { defaultValue: 'Aucun sous-menu personnalisé' })}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {customSubItems
+                    .sort((a, b) => a.display_order - b.display_order)
+                    .map((item) => {
+                      const ItemIcon = ICON_MAP[item.icon];
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            'flex items-center justify-between rounded-lg border p-3',
+                            !item.is_active && 'opacity-50'
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            {ItemIcon && <ItemIcon className="h-4 w-4 text-muted-foreground" />}
+                            <div>
+                              <div className="text-sm font-medium">{item.title_key}</div>
+                              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                <span className="font-mono">/{item.action}</span>
+                                {Object.entries(item.filter_params).map(([k, v]) => (
+                                  <Badge key={k} variant="outline" className="text-[10px]">
+                                    {k}={v}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Switch
+                              checked={item.is_active}
+                              onCheckedChange={() => handleToggleSubItem(item.id)}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditSubItemDialog(item)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteSubItem(item.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
             {/* Is active switch */}
             <FormField
               control={form.control}
@@ -791,6 +981,131 @@ export function WorkflowMappingForm({
           </Button>
         </div>
       </form>
+
+      {/* Sub-item add/edit dialog */}
+      <Dialog open={subItemDialogOpen} onOpenChange={setSubItemDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSubItem
+                ? t('fields.editSubItem', { defaultValue: 'Modifier le sous-menu' })
+                : t('fields.addSubItem', { defaultValue: 'Ajouter un sous-menu' })}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>{t('fields.subItemId', { defaultValue: 'ID (unique)' })}</Label>
+              <Input
+                value={subItemForm.id}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSubItemForm(prev => ({ ...prev, id: e.target.value }))
+                }
+                placeholder="completed"
+                disabled={!!editingSubItem}
+                className="font-mono"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('fields.subItemTitleKey', { defaultValue: 'Clé de titre (i18n)' })}</Label>
+              <Input
+                value={subItemForm.title_key}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSubItemForm(prev => ({ ...prev, title_key: e.target.value }))
+                }
+                placeholder="agent.nav.completed"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('fields.subItemAction', { defaultValue: 'Action (segment URL)' })}</Label>
+              <Input
+                value={subItemForm.action}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSubItemForm(prev => ({ ...prev, action: e.target.value }))
+                }
+                placeholder="completed"
+                className="font-mono"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('fields.subItemIcon', { defaultValue: 'Icône' })}</Label>
+              <Select
+                value={subItemForm.icon}
+                onValueChange={(v) => setSubItemForm(prev => ({ ...prev, icon: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    <div className="flex items-center gap-2">
+                      <IconPreview iconName={subItemForm.icon} />
+                      <span>{subItemForm.icon}</span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {ICON_OPTIONS.map((icon) => (
+                    <SelectItem key={icon.value} value={icon.value}>
+                      <div className="flex items-center gap-2">
+                        <IconPreview iconName={icon.value} />
+                        <span>{icon.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
+                <Label>{t('fields.subItemFilterKey', { defaultValue: 'Filtre (clé)' })}</Label>
+                <Input
+                  value={subItemForm.filter_key}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setSubItemForm(prev => ({ ...prev, filter_key: e.target.value }))
+                  }
+                  placeholder="status"
+                  className="font-mono"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>{t('fields.subItemFilterValue', { defaultValue: 'Filtre (valeur)' })}</Label>
+                <Input
+                  value={subItemForm.filter_value}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setSubItemForm(prev => ({ ...prev, filter_value: e.target.value }))
+                  }
+                  placeholder="DOSSIER_VALIDE"
+                  className="font-mono"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('fields.subItemOrder', { defaultValue: 'Ordre d\'affichage' })}</Label>
+              <Input
+                type="number"
+                min={0}
+                value={subItemForm.display_order}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSubItemForm(prev => ({ ...prev, display_order: parseInt(e.target.value) || 0 }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSubItemDialogOpen(false)}
+            >
+              {t('actions.cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveSubItem}
+              disabled={!subItemForm.id || !subItemForm.action || !subItemForm.title_key}
+            >
+              {editingSubItem ? t('actions.save') : t('actions.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 }

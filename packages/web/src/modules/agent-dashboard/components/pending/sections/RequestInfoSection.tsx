@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Clock, AlertTriangle, AlertCircle, Baby, FileStack } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Priority } from '../../../services/agent-requests-api';
+import type { Priority, SlaStatus } from '../../../services/agent-requests-api';
 
 // =============================================================================
 // PROPS
@@ -27,7 +27,7 @@ interface RequestInfoSectionProps {
   motivo?: string | null;
   priority: Priority;
   status: string;
-  slaStatus: 'on_track' | 'warning' | 'breached';
+  slaStatus: SlaStatus;
   slaRemainingHours?: number | null;
   isMinor: boolean;
   batchReference?: string | null;
@@ -51,12 +51,12 @@ const SLA_STYLES: Record<string, { bg: string; text: string; icon: React.ReactNo
     text: 'text-green-700',
     icon: <Clock className="h-4 w-4" />,
   },
-  warning: {
+  at_risk: {
     bg: 'bg-orange-100',
     text: 'text-orange-700',
     icon: <AlertTriangle className="h-4 w-4" />,
   },
-  breached: {
+  violated: {
     bg: 'bg-red-100',
     text: 'text-red-700',
     icon: <AlertCircle className="h-4 w-4" />,

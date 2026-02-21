@@ -1957,6 +1957,7 @@ class ActionStatusMapping:
 async def get_entity_service_requests(
     entity_code: str = Path(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
     action: str = Query("pending", description="Dashboard action: pending, validation, appointments, history, escalations"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Direct status filter (overrides action). For custom sub-menus."),
     workflow_code: Optional[str] = Query(None, description="Filter by specific workflow code"),
     solicitud_type: Optional[str] = Query(None, description="Filter by type: expedicion, renovacion"),
     motivo: Optional[str] = Query(None, description="Filter by motivo: vencimiento, perdida, robo, deterioro"),
@@ -1994,8 +1995,13 @@ async def get_entity_service_requests(
     params = []
     param_idx = 1
 
+    # Direct status filter (for custom sub-items like "Completados")
+    if status_filter:
+        conditions.append(f"sr.status::text = ${param_idx}")
+        params.append(status_filter)
+        param_idx += 1
     # Escalations use escalated=true filter instead of status-based
-    if ActionStatusMapping.is_escalation(action):
+    elif ActionStatusMapping.is_escalation(action):
         conditions.append("sr.escalated = true")
     else:
         statuses = ActionStatusMapping.get_statuses(action)

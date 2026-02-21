@@ -11,7 +11,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -105,6 +105,7 @@ function formatAmount(amount: number | null): string {
 
 export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = useAnomalySummary();
 
   // Loading state
@@ -114,7 +115,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-red-600" />
-            Anomalías
+            {t('widgets.anomalies', { defaultValue: 'Anomalías' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -135,12 +136,12 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-red-600" />
-            Anomalías
+            {t('widgets.anomalies', { defaultValue: 'Anomalías' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar anomalías
+            {t('widgets.anomalyError', { defaultValue: 'Error al cargar anomalías' })}
           </p>
         </CardContent>
       </Card>
@@ -160,7 +161,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-red-600" />
-            Anomalías
+            {t('widgets.anomalies', { defaultValue: 'Anomalías' })}
             {total_open > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {total_open}
@@ -178,7 +179,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
         {total_amount_affected && total_amount_affected > 0 && (
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
             <DollarSign className="h-3 w-3" />
-            Monto afectado: {formatAmount(total_amount_affected)} XAF
+            {t('widgets.amountAffected', { defaultValue: 'Monto afectado' })}: {formatAmount(total_amount_affected)} XAF
           </p>
         )}
       </CardHeader>
@@ -186,7 +187,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
         {items.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500 opacity-75" />
-            <p className="text-sm">Sin anomalías detectadas</p>
+            <p className="text-sm">{t('widgets.noAnomalies', { defaultValue: 'Sin anomalías detectadas' })}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -198,7 +199,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
             ))}
             <Link href={`/${locale}/dashboard/agent/treasury/anomalies`}>
               <Button variant="ghost" size="sm" className="w-full mt-2">
-                Ver todas las anomalías
+                {t('widgets.viewAllAnomalies', { defaultValue: 'Ver todas las anomalías' })}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

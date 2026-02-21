@@ -134,7 +134,10 @@ export function useAgentPersonalStats(periodDays: number = 30): UseAgentPersonal
     refetch,
   } = useQuery<AgentPersonalStats, Error>({
     queryKey: [AGENT_PERSONAL_STATS_QUERY_KEY, agentProfileId, periodDays],
-    queryFn: () => fetchAgentPersonalStats(agentProfileId!, periodDays),
+    queryFn: () => {
+      if (!agentProfileId) throw new Error('Agent profile ID required');
+      return fetchAgentPersonalStats(agentProfileId, periodDays);
+    },
     enabled: !!agentProfileId,
     staleTime: 60 * 1000, // 1 minute
     refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes

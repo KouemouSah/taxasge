@@ -11,7 +11,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,6 +71,7 @@ export function PendingPaymentsWidget({
   className,
 }: PendingPaymentsWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = usePendingPayments({
     workflowCode,
     limit,
@@ -83,7 +84,7 @@ export function PendingPaymentsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-600" />
-            Pagos Pendientes
+            {t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -104,12 +105,12 @@ export function PendingPaymentsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-600" />
-            Pagos Pendientes
+            {t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar pagos pendientes
+            {t('widgets.pendingPaymentsError', { defaultValue: 'Error al cargar pagos pendientes' })}
           </p>
         </CardContent>
       </Card>
@@ -129,7 +130,7 @@ export function PendingPaymentsWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-600" />
-            Pagos Pendientes
+            {t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' })}
             {total_pending > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {total_pending}
@@ -144,7 +145,7 @@ export function PendingPaymentsWidget({
         </div>
         {avg_waiting_hours != null && avg_waiting_hours > 0 && (
           <p className="text-xs text-muted-foreground mt-1">
-            Tiempo promedio de espera: {Math.round(avg_waiting_hours)}h
+            {t('widgets.avgWaitingTime', { defaultValue: 'Tiempo promedio de espera' })}: {Math.round(avg_waiting_hours)}h
           </p>
         )}
       </CardHeader>
@@ -152,7 +153,7 @@ export function PendingPaymentsWidget({
         {items.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Sin pagos pendientes de validación</p>
+            <p className="text-sm">{t('widgets.noPendingPayments', { defaultValue: 'Sin pagos pendientes de validación' })}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -161,7 +162,7 @@ export function PendingPaymentsWidget({
             ))}
             <Link href={`/${locale}/dashboard/agent/treasury/pending`}>
               <Button variant="ghost" size="sm" className="w-full mt-2">
-                Ver todos los pagos
+                {t('widgets.viewAllPayments', { defaultValue: 'Ver todos los pagos' })}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>

@@ -13,7 +13,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams, useRouter, notFound } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, notFound } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
@@ -74,6 +74,7 @@ import { PendingPage } from '@/modules/agent-dashboard/components/pending/Pendin
 // Validation and History pages (same as CNEDOGE)
 import { ValidationPage } from '@/modules/agent-dashboard/components/validation';
 import { HistoryPage } from '@/modules/agent-dashboard/components/history';
+import { GenericFilteredList } from '@/modules/agent-dashboard/components/GenericFilteredList';
 import type { EntityCode } from '@/modules/agent-dashboard/types';
 
 // =============================================================================
@@ -110,7 +111,8 @@ const ENTITY_WORKFLOW_TITLES: Record<string, string> = {
 // CONSTANTS
 // =============================================================================
 
-const VALID_ACTIONS: ActionType[] = ['pending', 'validation', 'appointments', 'escalations', 'history'];
+// Standard actions with dedicated components
+const STANDARD_ACTIONS: ActionType[] = ['pending', 'validation', 'appointments', 'escalations', 'history'];
 
 const ACTION_ICONS: Record<ActionType, React.ReactNode> = {
   pending: <Clock className="h-5 w-5" />,
@@ -167,6 +169,8 @@ export default function UnifiedWorkflowActionPage() {
   const t = useTranslations('agent');
   const tCommon = useTranslations('common');
 
+  const searchParams = useSearchParams();
+
   // Extract route params
   const entityCode = (params?.entityCode as string) || '';
   const workflowGroup = (params?.workflowGroup as string) || '';
@@ -180,9 +184,10 @@ export default function UnifiedWorkflowActionPage() {
     notFound();
   }
 
-  // Validate action
-  const isValidAction = VALID_ACTIONS.includes(action as ActionType);
-  const currentAction = isValidAction ? (action as ActionType) : 'pending';
+  // Validate action — standard actions get dedicated components, others get GenericFilteredList
+  const isStandardAction = STANDARD_ACTIONS.includes(action as ActionType);
+  const currentAction = isStandardAction ? (action as ActionType) : 'pending';
+  const isValidAction = isStandardAction; // For backward compat with the rest of the component
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -282,24 +287,15 @@ export default function UnifiedWorkflowActionPage() {
     );
   }
 
-  // Invalid action - show error
-  if (!isValidAction) {
+  // Non-standard action — render GenericFilteredList (for custom sub-items like "Completados")
+  if (!isStandardAction) {
     return (
-      <div className="space-y-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Accion no valida</AlertTitle>
-          <AlertDescription>
-            La accion &quot;{action}&quot; no es valida. Acciones permitidas: pending, validation, appointments, escalations, history.
-          </AlertDescription>
-        </Alert>
-        <Link href={`/${locale}/dashboard/agent/${entityCode}`}>
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al panel
-          </Button>
-        </Link>
-      </div>
+      <GenericFilteredList
+        entityCode={ENTITY_CODE}
+        entityUrlCode={entityCode}
+        action={action}
+        searchParams={searchParams}
+      />
     );
   }
 
@@ -602,7 +598,7 @@ export default function UnifiedWorkflowActionPage() {
 
       {/* Quick Navigation */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {VALID_ACTIONS.map((actionItem) => (
+        {STANDARD_ACTIONS.map((actionItem) => (
           <Link
             key={actionItem}
             href={`/${locale}/dashboard/agent/${entityCode}/${workflowGroup}/${actionItem}`}

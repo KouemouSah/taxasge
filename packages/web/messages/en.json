@@ -978,6 +978,16 @@
         "duplicateSuccess": "Item duplicated successfully",
         "duplicateError": "Error duplicating item"
       },
+      "customSubItems": "Custom sub-menus",
+      "addSubItem": "Add sub-menu",
+      "editSubItem": "Edit sub-menu",
+      "subItemId": "Identifier",
+      "subItemTitleKey": "Title key (i18n)",
+      "subItemIcon": "Icon",
+      "subItemAction": "Action (URL segment)",
+      "subItemFilterParams": "Filter parameters",
+      "subItemDisplayOrder": "Display order",
+      "addFilterParam": "Add filter",
       "page": {
         "title": "Menu Configuration",
         "subtitle": "Configure automatic menu generation rules for agents",
@@ -5743,7 +5753,13 @@
         "slots": "slots",
         "loadError": "Error loading slots",
         "scheduleAppointment": "Schedule an appointment"
-      }
+      },
+      "personalStats": "My Stats",
+      "personalStatsError": "Error loading stats",
+      "urgentRequests": "Urgent Requests",
+      "noUrgentRequests": "No urgent requests",
+      "todayAppointments": "Today's Appointments",
+      "noActiveRequests": "No active requests"
     },
     "pending": {
       "title": "Pending Requests",
@@ -6005,7 +6021,17 @@
       "escalations": "Escalations",
       "createEscalation": "New Escalation",
       "fp": "Public Function",
-      "visas": "Visas & Permits"
+      "visas": "Visas & Permits",
+      "completed": "Completed",
+      "requests": "requests",
+      "searchPlaceholder": "Search by reference or name...",
+      "noRequests": "No requests found",
+      "reference": "Reference",
+      "citizen": "Applicant",
+      "priority": "Priority",
+      "status": "Status",
+      "date": "Date",
+      "actions": "Actions"
     },
     "escalation": {
       "subtitle": "Escalate a case to your supervisor for review",
@@ -6088,7 +6114,33 @@
       "srStatus_COMPLETED": "Completed",
       "srStatus_EXPIRED": "Expired",
       "srStatus_PROCESSING": "Processing",
-      "showing": "Showing {count} of {total}"
+      "showing": "Showing {count} of {total}",
+      "statuses": {
+        "SUBMITTED": "Submitted",
+        "UNDER_REVIEW": "Under Review",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "COMPLETED": "Completed",
+        "CANCELLED": "Cancelled",
+        "PAID": "Paid",
+        "DOSSIER_VALIDE": "File Validated",
+        "IN_PROGRESS": "In Progress",
+        "EXPIRED": "Expired"
+      },
+      "rejectionReasons": {
+        "INCOMPLETE_DOCUMENTS": "Incomplete Documents",
+        "INVALID_INFORMATION": "Invalid Information",
+        "DUPLICATE_REQUEST": "Duplicate Request",
+        "EXPIRED_DOCUMENTS": "Expired Documents",
+        "OTHER": "Other Reason"
+      }
+    },
+    "history": {
+      "allStatuses": "All statuses",
+      "completed": "Completed",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "filterByStatus": "Filter by status"
     },
     "pages": {
       "underConstruction": {

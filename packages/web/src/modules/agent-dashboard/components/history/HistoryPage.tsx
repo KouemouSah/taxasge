@@ -569,7 +569,7 @@ export function HistoryPage({
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Estado" />
@@ -578,17 +578,29 @@ export function HistoryPage({
                 <SelectItem value="all">
                   {t('common.all', { defaultValue: 'Todos' })}
                 </SelectItem>
-                <SelectItem value="DRAFT">
-                  {t('status.draft', { defaultValue: 'Borrador' })}
-                </SelectItem>
                 <SelectItem value="SUBMITTED">
                   {t('status.submitted', { defaultValue: 'Enviada' })}
                 </SelectItem>
                 <SelectItem value="UNDER_REVIEW">
                   {t('status.under_review', { defaultValue: 'En Revisión' })}
                 </SelectItem>
+                <SelectItem value="DOSSIER_VALIDE">
+                  {t('status.dossier_valide', { defaultValue: 'Dossier Validado' })}
+                </SelectItem>
+                <SelectItem value="APPROVED">
+                  {t('status.approved', { defaultValue: 'Aprobada' })}
+                </SelectItem>
                 <SelectItem value="COMPLETED">
                   {t('status.completed', { defaultValue: 'Completada' })}
+                </SelectItem>
+                <SelectItem value="REJECTED">
+                  {t('status.rejected', { defaultValue: 'Rechazada' })}
+                </SelectItem>
+                <SelectItem value="CANCELLED">
+                  {t('status.cancelled', { defaultValue: 'Cancelada' })}
+                </SelectItem>
+                <SelectItem value="EXPIRED">
+                  {t('status.expired', { defaultValue: 'Expirada' })}
                 </SelectItem>
               </SelectContent>
             </Select>

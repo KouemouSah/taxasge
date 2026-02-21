@@ -110,6 +110,20 @@ export interface AgentMenuConfigResponse {
 }
 
 // =============================================================================
+// CUSTOM SUB-ITEM (JSONB on workflow_menu_mapping)
+// =============================================================================
+
+export interface CustomSubItem {
+  id: string;
+  title_key: string;
+  icon: string;
+  action: string;
+  filter_params: Record<string, string>;
+  display_order: number;
+  is_active: boolean;
+}
+
+// =============================================================================
 // WORKFLOW MENU MAPPING (Admin)
 // =============================================================================
 
@@ -126,6 +140,7 @@ export interface WorkflowMenuMapping {
   include_history: boolean;
   include_escalation: boolean;
   include_batch: boolean;
+  custom_sub_items: CustomSubItem[];
   permission_prefix?: string;
   is_active: boolean;
   created_at: string;

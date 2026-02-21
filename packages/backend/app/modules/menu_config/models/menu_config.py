@@ -5,6 +5,7 @@ These models define the structure for dynamic menu and dashboard configuration
 for agents. Supports both workflow-based (auto-generated) and module-based
 (explicitly configured) menu systems.
 """
+import json
 import re
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
@@ -105,8 +106,40 @@ class DashboardConfigResponse(DashboardConfigBase):
 
 
 # =============================================================================
+# CUSTOM SUB-ITEM MODEL (for dynamic admin-configurable sub-menus)
+# =============================================================================
+
+class CustomSubItem(BaseModel):
+    """
+    A custom sub-menu item stored in workflow_menu_mapping.custom_sub_items JSONB.
+    Allows admins to add new sub-menus via the UI without SQL migrations.
+    """
+    id: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-z][a-z0-9_-]*$',
+                    description="Unique ID (also used as route segment)")
+    title_key: str = Field(..., min_length=1, max_length=100,
+                          description="i18n key for title (e.g., agent.nav.completed)")
+    icon: str = Field(..., min_length=1, max_length=50,
+                     description="Lucide icon name")
+    action: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-z][a-z0-9_-]*$',
+                       description="Route segment: /{workflowGroup}/{action}")
+    filter_params: Dict[str, Any] = Field(default_factory=dict,
+                                          description="API filter params passed as query string")
+    display_order: int = Field(0, ge=0, description="Display order within sub-menu list")
+    is_active: bool = Field(True, description="Toggle activation")
+
+
+# =============================================================================
 # WORKFLOW MENU MAPPING MODELS
 # =============================================================================
+
+# Valid Lucide icon names for menu_icon validation
+VALID_MENU_ICONS = {
+    'Plane', 'Globe', 'Car', 'Truck', 'FileSignature', 'Briefcase',
+    'Building2', 'FileText', 'CreditCard', 'Users', 'Shield',
+    'Settings', 'AlertTriangle', 'Layers', 'BarChart3', 'CheckCircle2',
+    'History', 'Clock', 'UserCheck', 'BadgeCheck',
+}
+
 
 class WorkflowMenuMappingBase(BaseModel):
     """Base workflow menu mapping"""
@@ -133,6 +166,8 @@ class WorkflowMenuMappingBase(BaseModel):
     include_history: bool = Field(True, description="Include history sub-menu")
     include_escalation: bool = Field(True, description="Include escalation sub-menu")
     include_batch: bool = Field(False, description="Include batch processing sub-menu")
+    custom_sub_items: List[CustomSubItem] = Field(default_factory=list,
+                                                   description="Dynamic custom sub-menu items (JSONB)")
     permission_prefix: Optional[str] = Field(None, max_length=50, description="Permission prefix")
 
     @field_validator('workflow_pattern')
@@ -144,6 +179,22 @@ class WorkflowMenuMappingBase(BaseModel):
                 'workflow_pattern must start with uppercase letter, '
                 'contain only A-Z, 0-9, underscore, and optionally end with %'
             )
+        return v
+
+    @field_validator('menu_icon')
+    @classmethod
+    def validate_menu_icon(cls, v: str) -> str:
+        """Validate menu_icon is a known Lucide icon name"""
+        if v not in VALID_MENU_ICONS:
+            raise ValueError(f'Invalid icon: {v}. Valid: {sorted(VALID_MENU_ICONS)}')
+        return v
+
+    @field_validator('custom_sub_items', mode='before')
+    @classmethod
+    def parse_custom_sub_items(cls, v: Any) -> Any:
+        """Parse custom_sub_items from JSON string if needed (asyncpg returns str for JSONB)"""
+        if isinstance(v, str):
+            return json.loads(v)
         return v
 
 
@@ -163,8 +214,25 @@ class WorkflowMenuMappingUpdate(BaseModel):
     include_history: Optional[bool] = None
     include_escalation: Optional[bool] = None
     include_batch: Optional[bool] = None
+    custom_sub_items: Optional[List[CustomSubItem]] = None
     permission_prefix: Optional[str] = None
     is_active: Optional[bool] = None
+
+    @field_validator('menu_icon')
+    @classmethod
+    def validate_menu_icon(cls, v: Optional[str]) -> Optional[str]:
+        """Validate menu_icon is a known Lucide icon name"""
+        if v is not None and v not in VALID_MENU_ICONS:
+            raise ValueError(f'Invalid icon: {v}. Valid: {sorted(VALID_MENU_ICONS)}')
+        return v
+
+    @field_validator('custom_sub_items', mode='before')
+    @classmethod
+    def parse_custom_sub_items(cls, v: Any) -> Any:
+        """Parse custom_sub_items from JSON string if needed"""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
 
 class WorkflowMenuMappingResponse(WorkflowMenuMappingBase):

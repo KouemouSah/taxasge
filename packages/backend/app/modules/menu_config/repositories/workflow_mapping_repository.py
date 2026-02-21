@@ -42,8 +42,8 @@ class WorkflowMappingRepository:
         result = await self.db.fetchrow("""
             SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                    display_order, include_pending, include_validation,
-                   include_appointments, include_history, include_escalation, include_batch, permission_prefix,
-                   is_active, created_at, updated_at
+                   include_appointments, include_history, include_escalation, include_batch,
+                   custom_sub_items, permission_prefix, is_active, created_at, updated_at
             FROM workflow_menu_mapping
             WHERE id = $1
         """, mapping_id)
@@ -63,8 +63,8 @@ class WorkflowMappingRepository:
         result = await self.db.fetchrow("""
             SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                    display_order, include_pending, include_validation,
-                   include_appointments, include_history, include_escalation, include_batch, permission_prefix,
-                   is_active, created_at, updated_at
+                   include_appointments, include_history, include_escalation, include_batch,
+                   custom_sub_items, permission_prefix, is_active, created_at, updated_at
             FROM workflow_menu_mapping
             WHERE workflow_pattern = $1
         """, workflow_pattern)
@@ -124,8 +124,8 @@ class WorkflowMappingRepository:
         results = await self.db.fetch("""
             SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                    display_order, include_pending, include_validation,
-                   include_appointments, include_history, include_escalation, include_batch, permission_prefix,
-                   is_active, created_at, updated_at
+                   include_appointments, include_history, include_escalation, include_batch,
+                   custom_sub_items, permission_prefix, is_active, created_at, updated_at
             FROM workflow_menu_mapping
             WHERE is_active = true
             ORDER BY display_order, workflow_pattern
@@ -165,18 +165,23 @@ class WorkflowMappingRepository:
         Returns:
             Created mapping dict
         """
+        import json
+        custom_sub_items_json = json.dumps(
+            [item.model_dump() for item in mapping.custom_sub_items]
+        ) if mapping.custom_sub_items else '[]'
+
         result = await self.db.fetchrow("""
             INSERT INTO workflow_menu_mapping (
                 workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                 display_order, include_pending, include_validation,
                 include_appointments, include_history, include_escalation,
-                include_batch, permission_prefix
+                include_batch, custom_sub_items, permission_prefix
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13)
             RETURNING id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                       display_order, include_pending, include_validation,
-                      include_appointments, include_history, include_escalation,
-                      permission_prefix, is_active, created_at, updated_at
+                      include_appointments, include_history, include_escalation, include_batch,
+                      custom_sub_items, permission_prefix, is_active, created_at, updated_at
         """,
             mapping.workflow_pattern,
             mapping.menu_group_id,
@@ -189,6 +194,7 @@ class WorkflowMappingRepository:
             mapping.include_history,
             mapping.include_escalation,
             mapping.include_batch,
+            custom_sub_items_json,
             mapping.permission_prefix
         )
 
@@ -259,6 +265,14 @@ class WorkflowMappingRepository:
             update_fields.append(f"include_batch = ${param_count}")
             params.append(mapping.include_batch)
 
+        if mapping.custom_sub_items is not None:
+            import json
+            param_count += 1
+            update_fields.append(f"custom_sub_items = ${param_count}::jsonb")
+            params.append(json.dumps(
+                [item.model_dump() for item in mapping.custom_sub_items]
+            ))
+
         if mapping.permission_prefix is not None:
             param_count += 1
             update_fields.append(f"permission_prefix = ${param_count}")
@@ -281,8 +295,8 @@ class WorkflowMappingRepository:
             WHERE id = ${param_count}
             RETURNING id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                       display_order, include_pending, include_validation,
-                      include_appointments, include_history, include_escalation, include_batch, permission_prefix,
-                      is_active, created_at, updated_at
+                      include_appointments, include_history, include_escalation, include_batch,
+                      custom_sub_items, permission_prefix, is_active, created_at, updated_at
         """
 
         result = await self.db.fetchrow(query, *params)

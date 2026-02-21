@@ -10,7 +10,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -78,6 +78,7 @@ export function AlertsWidget({
   className,
 }: AlertsWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = useSystemAlerts(entityCode);
 
   // Loading state
@@ -87,7 +88,7 @@ export function AlertsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Bell className="h-5 w-5 text-yellow-600" />
-            Alertas
+            {t('widgets.alerts', { defaultValue: 'Alertas' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -108,12 +109,12 @@ export function AlertsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Bell className="h-5 w-5 text-yellow-600" />
-            Alertas
+            {t('widgets.alerts', { defaultValue: 'Alertas' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar alertas
+            {t('widgets.alertsError', { defaultValue: 'Error al cargar alertas' })}
           </p>
         </CardContent>
       </Card>
@@ -135,7 +136,7 @@ export function AlertsWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Bell className="h-5 w-5 text-yellow-600" />
-            Alertas
+            {t('widgets.alerts', { defaultValue: 'Alertas' })}
             {items.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {items.length}
@@ -160,7 +161,7 @@ export function AlertsWidget({
         {items.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500 opacity-75" />
-            <p className="text-sm">Sin alertas activas</p>
+            <p className="text-sm">{t('widgets.noActiveAlerts', { defaultValue: 'Sin alertas activas' })}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -173,7 +174,7 @@ export function AlertsWidget({
             ))}
             {remainingCount > 0 && (
               <Button variant="ghost" size="sm" className="w-full mt-2">
-                Ver {remainingCount} más
+                {t('widgets.viewMore', { defaultValue: 'Ver {count} más', count: remainingCount })}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             )}

@@ -10,7 +10,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,7 @@ export function CalendarWeekWidget({
   className,
 }: CalendarWeekWidgetProps) {
   const locale = useLocale();
+  const t = useTranslations('agent');
   const [weekOffset, setWeekOffset] = useState(0);
   const { data, isLoading, isError } = useCalendarWeek(entityCode, { weekOffset });
 
@@ -67,7 +68,7 @@ export function CalendarWeekWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-indigo-600" />
-            Calendario Semanal
+            {t('widgets.weeklyCalendar', { defaultValue: 'Calendario Semanal' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -88,12 +89,12 @@ export function CalendarWeekWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-indigo-600" />
-            Calendario Semanal
+            {t('widgets.weeklyCalendar', { defaultValue: 'Calendario Semanal' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar calendario
+            {t('widgets.calendarError', { defaultValue: 'Error al cargar calendario' })}
           </p>
         </CardContent>
       </Card>
@@ -117,10 +118,10 @@ export function CalendarWeekWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Calendar className="h-5 w-5 text-indigo-600" />
-            Calendario Semanal
+            {t('widgets.weeklyCalendar', { defaultValue: 'Calendario Semanal' })}
             {total_week > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {total_week} cita{total_week > 1 ? 's' : ''}
+                {total_week} {t('widgets.appointment', { defaultValue: 'cita' })}{total_week > 1 ? 's' : ''}
               </Badge>
             )}
           </CardTitle>
@@ -151,14 +152,14 @@ export function CalendarWeekWidget({
                 className="text-xs"
                 onClick={() => setWeekOffset(0)}
               >
-                Hoy
+                {t('widgets.today', { defaultValue: 'Hoy' })}
               </Button>
             )}
           </div>
         </div>
         {today_count > 0 && (
           <p className="text-xs text-muted-foreground mt-1">
-            {today_count} cita{today_count > 1 ? 's' : ''} hoy
+            {today_count} {t('widgets.appointment', { defaultValue: 'cita' })}{today_count > 1 ? 's' : ''} {t('widgets.today', { defaultValue: 'hoy' }).toLowerCase()}
           </p>
         )}
       </CardHeader>

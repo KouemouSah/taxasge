@@ -11,6 +11,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslations } from 'next-intl';
 import { BarChart3 } from 'lucide-react';
 import { useWorkflowDistribution } from '../../hooks/useWidgetData';
 import type { EntityCode } from '../../types';
@@ -47,6 +48,7 @@ export function WorkflowDistributionWidget({
   entityCode,
   className,
 }: WorkflowDistributionWidgetProps) {
+  const t = useTranslations('agent');
   const { data, isLoading, isError } = useWorkflowDistribution(entityCode);
 
   // Loading state
@@ -56,7 +58,7 @@ export function WorkflowDistributionWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-blue-600" />
-            Distribución por Tipo
+            {t('widgets.distributionByType', { defaultValue: 'Distribución por Tipo' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -83,12 +85,12 @@ export function WorkflowDistributionWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-blue-600" />
-            Distribución por Tipo
+            {t('widgets.distributionByType', { defaultValue: 'Distribución por Tipo' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Error al cargar datos
+            {t('widgets.loadError', { defaultValue: 'Error al cargar datos' })}
           </p>
         </CardContent>
       </Card>
@@ -103,7 +105,7 @@ export function WorkflowDistributionWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-blue-600" />
-            Distribución por Tipo
+            {t('widgets.distributionByType', { defaultValue: 'Distribución por Tipo' })}
           </CardTitle>
           <span className="text-sm text-muted-foreground">
             Total: {total}
@@ -114,7 +116,7 @@ export function WorkflowDistributionWidget({
         {items.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Sin solicitudes activas</p>
+            <p className="text-sm">{t('widgets.noActiveRequests', { defaultValue: 'Sin solicitudes activas' })}</p>
           </div>
         ) : (
           <div className="space-y-4">
