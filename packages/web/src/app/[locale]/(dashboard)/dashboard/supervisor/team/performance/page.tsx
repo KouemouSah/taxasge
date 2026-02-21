@@ -1,0 +1,518 @@
+'use client';
+
+/**
+ * Team Performance Page - Supervisor View
+ * View performance metrics for all team agents
+ *
+ * Backend endpoints:
+ * - GET /supervisor/agents - List agents
+ * - GET /supervisor/agents/{agent_id}/stats - Get agent stats
+ *
+ * @route /[locale]/dashboard/supervisor/team/performance
+ * @date 2026-01-19
+ */
+
+import React, { useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Loader2,
+  AlertCircle,
+  ArrowLeft,
+  RefreshCw,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  Target,
+  Award,
+} from 'lucide-react';
+import apiClient from '@/core/api/client';
+import Link from 'next/link';
+
+// Aligned with backend AgentTrendsResponse
+interface TrendPoint {
+  period: string;
+  processed: number;
+  approved: number;
+  rejected: number;
+  avg_processing_hours: number;
+  sla_compliance_pct: number;
+}
+
+interface AgentTrendsResponse {
+  agent_id: string;
+  agent_name: string;
+  period_days: number;
+  granularity: string;
+  data_points: TrendPoint[];
+}
+
+// Aligned with backend AgentListItem
+interface AgentListItem {
+  agent_id: string;
+  agent_name: string;
+  agent_email: string;
+  current_assignments: number;
+  capacity_percentage: number;
+  workload_status: string;
+  availability: string;
+  specializations?: string[];
+  avg_processing_time_hours?: number;
+  success_rate: number;
+}
+
+// Aligned with backend AgentAssignmentStats
+interface AgentStats {
+  agent_id: string;
+  period_days: number;
+  total_assignments: number;
+  completed_assignments: number;
+  pending_assignments: number;
+  rejected_assignments: number;
+  avg_processing_time_hours: number;
+  success_rate: number;
+  quality_score_avg: number;
+  deadline_compliance_rate: number;
+  by_status: Record<string, number>;
+  by_type: Record<string, number>;
+}
+
+function getPerformanceColor(rate: number): string {
+  if (rate >= 0.9) return 'text-green-600';
+  if (rate >= 0.7) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
+function getPerformanceBadgeKey(rate: number): { color: string; key: string } {
+  if (rate >= 0.9) return { color: 'bg-green-100 text-green-800', key: 'performance.excellent' };
+  if (rate >= 0.8) return { color: 'bg-blue-100 text-blue-800', key: 'performance.good' };
+  if (rate >= 0.7) return { color: 'bg-yellow-100 text-yellow-800', key: 'performance.average' };
+  return { color: 'bg-red-100 text-red-800', key: 'performance.needsImprovement' };
+}
+
+export default function TeamPerformancePage() {
+  const locale = useLocale();
+  const t = useTranslations('supervisor');
+  const tCommon = useTranslations('common');
+
+  const [periodDays, setPeriodDays] = useState('30');
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  // Fetch agents list
+  const { data: agents, isLoading: agentsLoading } = useQuery<AgentListItem[]>({
+    queryKey: ['supervisor', 'agents', 'performance'],
+    queryFn: async () => {
+      const response = await apiClient.get('/supervisor/agents', {
+        params: { include_unavailable: true }
+      });
+      return response.data;
+    },
+  });
+
+  // Fetch agent trends
+  const { data: trends } = useQuery<AgentTrendsResponse>({
+    queryKey: ['supervisor', 'agent', selectedAgentId, 'trends', periodDays],
+    queryFn: async () => {
+      const response = await apiClient.get(`/supervisor/agents/${selectedAgentId}/trends`, {
+        params: {
+          period_days: parseInt(periodDays),
+          granularity: parseInt(periodDays) <= 14 ? 'daily' : parseInt(periodDays) <= 90 ? 'weekly' : 'monthly',
+        }
+      });
+      return response.data;
+    },
+    enabled: !!selectedAgentId,
+  });
+
+  // Fetch selected agent stats
+  const { data: agentStats, isLoading: statsLoading, refetch: refetchStats } = useQuery<AgentStats>({
+    queryKey: ['supervisor', 'agent', selectedAgentId, 'stats', periodDays],
+    queryFn: async () => {
+      const response = await apiClient.get(`/supervisor/agents/${selectedAgentId}/stats`, {
+        params: { period_days: parseInt(periodDays) }
+      });
+      return response.data;
+    },
+    enabled: !!selectedAgentId,
+  });
+
+  // Calculate team averages
+  const teamAvgSuccessRate = agents?.length
+    ? agents.reduce((sum, a) => sum + a.success_rate, 0) / agents.length
+    : 0;
+  const teamAvgProcessingTime = agents?.length
+    ? agents.reduce((sum, a) => sum + (a.avg_processing_time_hours || 0), 0) / agents.length
+    : 0;
+
+  // Loading state
+  if (agentsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">{tCommon('loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href={`/${locale}/dashboard/supervisor`}>
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <TrendingUp className="h-6 w-6" />
+              {t('nav.teamPerformance') || 'Team Performance'}
+            </h1>
+            <p className="text-muted-foreground">
+              {t('performance.description') || 'Monitor and analyze team performance metrics'}
+            </p>
+          </div>
+        </div>
+        <Select value={periodDays} onValueChange={setPeriodDays}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">{t('performance.last7days', { defaultValue: 'Last 7 days' })}</SelectItem>
+            <SelectItem value="30">{t('performance.last30days', { defaultValue: 'Last 30 days' })}</SelectItem>
+            <SelectItem value="90">{t('performance.last90days', { defaultValue: 'Last 90 days' })}</SelectItem>
+            <SelectItem value="365">{t('performance.lastYear', { defaultValue: 'Last year' })}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Team Overview Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('performance.teamSize') || 'Team Size'}</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{agents?.length || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {t('performance.activeAgents') || 'Active agents'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('performance.avgSuccessRate') || 'Avg Success Rate'}</CardTitle>
+            <Target className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${getPerformanceColor(teamAvgSuccessRate)}`}>
+              {(teamAvgSuccessRate * 100).toFixed(0)}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t('performance.teamAverage') || 'Team average'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('performance.avgProcessingTime') || 'Avg Processing'}</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{teamAvgProcessingTime.toFixed(1)}h</div>
+            <p className="text-xs text-muted-foreground">
+              {t('performance.perAssignment') || 'Per assignment'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t('performance.topPerformers') || 'Top Performers'}</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {agents?.filter(a => a.success_rate >= 0.9).length || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t('performance.above90') || 'Above 90% success'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Team Performance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('performance.agentMetrics') || 'Agent Metrics'}</CardTitle>
+          <CardDescription>
+            {t('performance.agentMetricsDescription') || 'Click on an agent to view detailed statistics'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('team.agent') || 'Agent'}</TableHead>
+                <TableHead>{t('performance.successRate') || 'Success Rate'}</TableHead>
+                <TableHead>{t('performance.processingTime') || 'Avg Processing'}</TableHead>
+                <TableHead>{t('team.assignments') || 'Current Load'}</TableHead>
+                <TableHead>{t('performance.rating') || 'Rating'}</TableHead>
+                <TableHead className="text-right">{tCommon('actions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {agents?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    {tCommon('noData')}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                agents?.map((agent) => {
+                  const performanceBadge = getPerformanceBadgeKey(agent.success_rate);
+                  return (
+                    <TableRow
+                      key={agent.agent_id}
+                      className={`cursor-pointer ${selectedAgentId === agent.agent_id ? 'bg-muted/50' : ''}`}
+                      onClick={() => setSelectedAgentId(agent.agent_id)}
+                    >
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{agent.agent_name}</p>
+                          <p className="text-xs text-muted-foreground">{agent.agent_email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={getPerformanceColor(agent.success_rate)}>
+                          {(agent.success_rate * 100).toFixed(0)}%
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {agent.avg_processing_time_hours
+                          ? `${agent.avg_processing_time_hours.toFixed(1)}h`
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {agent.current_assignments} ({agent.capacity_percentage.toFixed(0)}%)
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={performanceBadge.color}>
+                          {t(performanceBadge.key, { defaultValue: performanceBadge.key.split('.')[1] })}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAgentId(agent.agent_id);
+                          }}
+                        >
+                          {t('performance.viewStats') || 'View Stats'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Selected Agent Details */}
+      {selectedAgentId && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>
+                  {agents?.find(a => a.agent_id === selectedAgentId)?.agent_name || 'Agent'} - {t('performance.detailedStats') || 'Detailed Statistics'}
+                </CardTitle>
+                <CardDescription>
+                  {t('performance.period') || 'Period'}: {periodDays} {t('performance.days') || 'days'}
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetchStats()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {tCommon('refresh')}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : agentStats ? (
+              <div className="space-y-6">
+                {/* Stats Grid */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t('performance.totalAssignments') || 'Total Assignments'}</p>
+                    <p className="text-2xl font-bold">{agentStats.total_assignments}</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t('performance.completed') || 'Completed'}</p>
+                    <p className="text-2xl font-bold text-green-600">{agentStats.completed_assignments}</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t('performance.qualityScore') || 'Quality Score'}</p>
+                    <p className="text-2xl font-bold">{(agentStats.quality_score_avg * 100).toFixed(0)}%</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-muted-foreground">{t('performance.deadlineCompliance') || 'Deadline Compliance'}</p>
+                    <p className={`text-2xl font-bold ${getPerformanceColor(agentStats.deadline_compliance_rate)}`}>
+                      {(agentStats.deadline_compliance_rate * 100).toFixed(0)}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* By Status */}
+                {agentStats.by_status && Object.keys(agentStats.by_status).length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">{t('performance.byStatus') || 'By Status'}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(agentStats.by_status).map(([status, count]) => (
+                        <Badge key={status} variant="outline">
+                          {status}: {count}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* By Type */}
+                {agentStats.by_type && Object.keys(agentStats.by_type).length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2">{t('performance.byType') || 'By Type'}</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(agentStats.by_type).map(([type, count]) => (
+                        <Badge key={type} variant="secondary">
+                          {type}: {count}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                <p>{t('performance.noStats') || 'No statistics available for this period'}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Trends Chart */}
+      {selectedAgentId && trends && trends.data_points.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              {t('performance.trends', { defaultValue: 'Performance Trends' })}
+            </CardTitle>
+            <CardDescription>
+              {t('performance.trendsDescription', {
+                defaultValue: '{name} - {granularity} trend over {days} days',
+                name: trends.agent_name,
+                granularity: trends.granularity,
+                days: trends.period_days,
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Bar chart */}
+              <div className="flex items-end gap-1 h-32">
+                {trends.data_points.map((point) => {
+                  const maxProcessed = Math.max(...trends.data_points.map(p => p.processed), 1);
+                  const height = (point.processed / maxProcessed) * 100;
+                  return (
+                    <div
+                      key={point.period}
+                      className="flex-1 flex flex-col items-center gap-1"
+                      title={`${point.period}: ${point.processed} (${point.approved} ${t('performance.approvedLabel', { defaultValue: 'approved' })}, ${point.rejected} ${t('performance.rejectedLabel', { defaultValue: 'rejected' })})`}
+                    >
+                      <div className="w-full flex flex-col items-stretch">
+                        <div
+                          className="bg-green-500 rounded-t"
+                          style={{ height: `${(point.approved / maxProcessed) * 100}px` }}
+                        />
+                        <div
+                          className="bg-red-400"
+                          style={{ height: `${(point.rejected / maxProcessed) * 100}px` }}
+                        />
+                        <div
+                          className="bg-blue-300 rounded-b"
+                          style={{ height: `${Math.max(((point.processed - point.approved - point.rejected) / maxProcessed) * 100, 0)}px` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Labels */}
+              <div className="flex gap-1">
+                {trends.data_points.map((point) => (
+                  <div key={point.period} className="flex-1 text-center">
+                    <span className="text-[9px] text-muted-foreground">
+                      {point.period.replace(/^\d{4}-/, '')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {/* Legend */}
+              <div className="flex gap-4 text-xs text-muted-foreground justify-center">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-green-500" />
+                  {t('performance.approvedLabel', { defaultValue: 'Approved' })}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-red-400" />
+                  {t('performance.rejectedLabel', { defaultValue: 'Rejected' })}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-blue-300" />
+                  {t('performance.otherLabel', { defaultValue: 'Other' })}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

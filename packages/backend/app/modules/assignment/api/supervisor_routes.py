@@ -1706,3 +1706,507 @@ async def get_rules_effectiveness(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate effectiveness report"
         )
+
+
+# ============================================================================
+# ENDPOINTS - WORKLOAD REBALANCE
+# ============================================================================
+
+class RebalanceDetail(BaseModel):
+    from_agent_name: str
+    to_agent_name: str
+    request_id: str
+    workflow_code: str
+
+class RebalanceResult(BaseModel):
+    reassignments_made: int
+    details: List[RebalanceDetail]
+    message: str
+
+
+@router.post("/workload/rebalance", response_model=RebalanceResult)
+async def rebalance_workload(
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.manage_workload"))
+):
+    """
+    Automatically rebalance workload by moving assignments from
+    overloaded agents to underloaded agents.
+    """
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    try:
+        # Get current workload distribution
+        query = """
+            SELECT
+                ap.id as agent_profile_id,
+                u.full_name as agent_name,
+                COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress', 'pending_review')) as active_count,
+                ap.max_concurrent_assignments
+            FROM agent_profiles ap
+            JOIN users u ON ap.user_id = u.id
+            LEFT JOIN assignments a ON a.agent_profile_id = ap.id
+                AND a.status IN ('assigned', 'in_progress', 'pending_review')
+            WHERE ap.is_active = true
+                AND ap.availability = 'available'
+        """
+        params = []
+        entity_id = agent_ctx.get("entity_id")
+        if entity_id:
+            query += " AND ap.entity_id = $1"
+            params.append(entity_id)
+
+        query += " GROUP BY ap.id, u.full_name, ap.max_concurrent_assignments ORDER BY active_count DESC"
+        agents = await db.fetch(query, *params)
+
+        if len(agents) < 2:
+            return RebalanceResult(reassignments_made=0, details=[], message="Not enough agents for rebalancing")
+
+        # Find overloaded and underloaded agents
+        avg_load = sum(a['active_count'] for a in agents) / len(agents)
+        overloaded = [a for a in agents if a['active_count'] > avg_load + 1]
+        underloaded = [a for a in agents if a['active_count'] < avg_load - 0.5]
+
+        if not overloaded or not underloaded:
+            return RebalanceResult(reassignments_made=0, details=[], message="Workload is already balanced")
+
+        details = []
+        for over_agent in overloaded:
+            excess = int(over_agent['active_count'] - avg_load)
+            if excess <= 0:
+                continue
+
+            # Get reassignable assignments (oldest first, only 'assigned' status)
+            reassign_query = """
+                SELECT a.id, a.item_id, a.item_type,
+                       sr.workflow_code
+                FROM assignments a
+                LEFT JOIN service_requests sr ON a.item_id = sr.id::text
+                WHERE a.agent_profile_id = $1
+                    AND a.status = 'assigned'
+                ORDER BY a.assigned_at ASC
+                LIMIT $2
+            """
+            to_reassign = await db.fetch(reassign_query, over_agent['agent_profile_id'], excess)
+
+            for assignment in to_reassign:
+                if not underloaded:
+                    break
+                target = underloaded[0]
+
+                # Reassign
+                await db.execute(
+                    """
+                    UPDATE assignments
+                    SET agent_profile_id = $1, status = 'assigned',
+                        updated_at = NOW()
+                    WHERE id = $2
+                    """,
+                    target['agent_profile_id'], assignment['id']
+                )
+
+                details.append(RebalanceDetail(
+                    from_agent_name=over_agent['agent_name'],
+                    to_agent_name=target['agent_name'],
+                    request_id=str(assignment['item_id']),
+                    workflow_code=assignment.get('workflow_code') or assignment.get('item_type') or 'unknown'
+                ))
+
+                # Update target load tracking
+                target_count = target['active_count'] + 1
+                if target_count >= avg_load:
+                    underloaded.pop(0)
+
+        logger.info(
+            f"Workload rebalanced: {len(details)} reassignments by supervisor {current_user.email}"
+        )
+
+        return RebalanceResult(
+            reassignments_made=len(details),
+            details=details,
+            message=f"{len(details)} assignments rebalanced successfully"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error rebalancing workload: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to rebalance workload"
+        )
+
+
+# ============================================================================
+# ENDPOINTS - AGENT TRENDS
+# ============================================================================
+
+class AgentTrendPoint(BaseModel):
+    period: str  # "2026-02-01" or "2026-W07"
+    processed: int = 0
+    approved: int = 0
+    rejected: int = 0
+    avg_processing_hours: float = 0.0
+    sla_compliance_pct: float = 0.0
+
+class AgentTrendsResponse(BaseModel):
+    agent_id: str
+    agent_name: str
+    period_days: int
+    granularity: str  # "daily" | "weekly" | "monthly"
+    data_points: List[AgentTrendPoint]
+
+
+@router.get("/agents/{agent_profile_id}/trends", response_model=AgentTrendsResponse)
+async def get_agent_trends(
+    agent_profile_id: UUID,
+    period_days: int = Query(30, ge=7, le=365),
+    granularity: str = Query("weekly", pattern="^(daily|weekly|monthly)$"),
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_performance"))
+):
+    """
+    Get agent performance trends over time with configurable granularity.
+    """
+    if current_user.role == "admin":
+        agent_ctx = {"is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    try:
+        # Get agent name
+        agent_row = await db.fetchrow(
+            """
+            SELECT u.full_name
+            FROM agent_profiles ap
+            JOIN users u ON ap.user_id = u.id
+            WHERE ap.id = $1
+            """,
+            agent_profile_id
+        )
+        if not agent_row:
+            raise HTTPException(status_code=404, detail="Agent not found")
+
+        # Build date truncation based on granularity
+        if granularity == "daily":
+            trunc = "day"
+            fmt = "YYYY-MM-DD"
+        elif granularity == "weekly":
+            trunc = "week"
+            fmt = 'IYYY-"W"IW'
+        else:  # monthly
+            trunc = "month"
+            fmt = "YYYY-MM"
+
+        query = f"""
+            SELECT
+                TO_CHAR(DATE_TRUNC('{trunc}', a.assigned_at), '{fmt}') as period,
+                COUNT(*) as processed,
+                COUNT(*) FILTER (WHERE a.status = 'completed') as approved,
+                COUNT(*) FILTER (WHERE a.status = 'rejected') as rejected,
+                COALESCE(AVG(a.processing_duration_hours) FILTER (WHERE a.status = 'completed'), 0) as avg_processing_hours,
+                COALESCE(
+                    COUNT(*) FILTER (WHERE a.deadline_met = true)::float /
+                    NULLIF(COUNT(*) FILTER (WHERE a.deadline IS NOT NULL AND a.status = 'completed'), 0),
+                    0
+                ) as sla_compliance_pct
+            FROM assignments a
+            WHERE a.agent_profile_id = $1
+                AND a.assigned_at >= NOW() - MAKE_INTERVAL(days => $2)
+            GROUP BY DATE_TRUNC('{trunc}', a.assigned_at)
+            ORDER BY DATE_TRUNC('{trunc}', a.assigned_at) ASC
+        """
+        rows = await db.fetch(query, agent_profile_id, period_days)
+
+        data_points = [
+            AgentTrendPoint(
+                period=row['period'],
+                processed=row['processed'],
+                approved=row['approved'],
+                rejected=row['rejected'],
+                avg_processing_hours=float(row['avg_processing_hours']),
+                sla_compliance_pct=float(row['sla_compliance_pct']) * 100
+            )
+            for row in rows
+        ]
+
+        return AgentTrendsResponse(
+            agent_id=str(agent_profile_id),
+            agent_name=agent_row['full_name'],
+            period_days=period_days,
+            granularity=granularity,
+            data_points=data_points
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching agent trends: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch agent trends"
+        )
+
+
+# ============================================================================
+# ENDPOINTS - BULK REASSIGN
+# ============================================================================
+
+class AgentAssignmentItem(BaseModel):
+    """Minimal assignment info for reassign modal"""
+    assignment_id: UUID
+    request_id: str
+    request_reference: Optional[str] = None
+    workflow_code: Optional[str] = None
+    status: str
+    assigned_at: Optional[datetime] = None
+
+
+class BulkReassignRequest(BaseModel):
+    """Request body for bulk reassignment"""
+    assignment_ids: List[UUID] = Field(..., min_length=1, max_length=50)
+    target_agent_id: UUID
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+class BulkReassignResult(BaseModel):
+    """Result of bulk reassignment"""
+    reassigned: int
+    failed: int
+    details: List[Dict[str, Any]]
+
+
+@router.get("/agents/{agent_profile_id}/assignments", response_model=List[AgentAssignmentItem])
+async def get_agent_assignments(
+    agent_profile_id: UUID,
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_workload"))
+):
+    """
+    Get active assignments for a specific agent (for reassign modal).
+    """
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    rows = await db.fetch("""
+        SELECT
+            a.id as assignment_id,
+            a.item_id::text as request_id,
+            sr.reference as request_reference,
+            sr.workflow_code,
+            a.status,
+            a.assigned_at
+        FROM assignments a
+        LEFT JOIN service_requests sr ON a.item_id = sr.id
+        WHERE a.agent_profile_id = $1
+          AND a.status IN ('assigned', 'in_progress')
+        ORDER BY a.assigned_at DESC
+    """, agent_profile_id)
+
+    return [dict(row) for row in rows]
+
+
+@router.post("/bulk/reassign", response_model=BulkReassignResult)
+async def bulk_reassign(
+    body: BulkReassignRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_workload"))
+):
+    """
+    Bulk reassign assignments from one agent to another.
+    """
+    logger = logging.getLogger(__name__)
+
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    # Verify target agent exists
+    target = await db.fetchrow("""
+        SELECT ap.id, u.full_name
+        FROM agent_profiles ap
+        JOIN users u ON ap.user_id = u.id
+        WHERE ap.id = $1
+    """, body.target_agent_id)
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Target agent not found")
+
+    performer_id = UUID(current_user.id)
+    reassigned = 0
+    failed = 0
+    details = []
+
+    for assignment_id in body.assignment_ids:
+        try:
+            row = await db.fetchrow("""
+                UPDATE assignments
+                SET agent_profile_id = $2,
+                    reassigned_at = NOW(),
+                    reassignment_reason = 'supervisor_bulk_reassign',
+                    reassignment_notes = $3,
+                    reassigned_to_profile_id = $2,
+                    assigned_by_profile_id = (
+                        SELECT id FROM agent_profiles WHERE user_id = $4 LIMIT 1
+                    ),
+                    updated_at = NOW()
+                WHERE id = $1
+                  AND status IN ('assigned', 'in_progress')
+                RETURNING id, item_id
+            """, assignment_id, body.target_agent_id, body.reason or 'Supervisor bulk reassign', performer_id)
+
+            if row:
+                # Update service_request assigned_to
+                await db.execute("""
+                    UPDATE service_requests
+                    SET assigned_to = (SELECT user_id FROM agent_profiles WHERE id = $2),
+                        updated_at = NOW()
+                    WHERE id = $1
+                """, row['item_id'], body.target_agent_id)
+
+                # History entry
+                await db.execute("""
+                    INSERT INTO service_request_history
+                    (service_request_id, action, performed_by, comment)
+                    VALUES ($1, 'bulk_reassigned', $2, $3)
+                """, row['item_id'], performer_id, f"Bulk reassigned to {target['full_name']}")
+
+                reassigned += 1
+                details.append({"assignment_id": str(assignment_id), "status": "reassigned"})
+            else:
+                failed += 1
+                details.append({"assignment_id": str(assignment_id), "status": "not_found_or_completed"})
+        except Exception as e:
+            logger.error(f"Bulk reassign error for {assignment_id}: {e}")
+            failed += 1
+            details.append({"assignment_id": str(assignment_id), "status": "error"})
+
+    logger.info(f"Bulk reassign by {current_user.email}: {reassigned} reassigned, {failed} failed")
+
+    return BulkReassignResult(
+        reassigned=reassigned,
+        failed=failed,
+        details=details
+    )
+
+
+# ============================================================================
+# ENDPOINTS - EXPORT ASSIGNMENTS
+# ============================================================================
+
+@router.get("/export/assignments")
+async def export_assignments(
+    format: str = Query("csv", pattern="^(csv)$"),
+    period_days: int = Query(30, ge=1, le=365),
+    agent_id: Optional[UUID] = None,
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_workload"))
+):
+    """
+    Export assignment data as CSV.
+    """
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    if not agent_ctx.get("is_supervisor") and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    try:
+        query = """
+            SELECT
+                a.assigned_at::date as assignment_date,
+                u.full_name as agent_name,
+                sr.reference as request_reference,
+                sr.workflow_code,
+                a.status,
+                COALESCE(a.processing_duration_hours, 0) as processing_hours,
+                CASE WHEN a.deadline_met = true THEN 'Yes'
+                     WHEN a.deadline_met = false THEN 'No'
+                     ELSE 'N/A' END as sla_met
+            FROM assignments a
+            JOIN agent_profiles ap ON a.agent_profile_id = ap.id
+            JOIN users u ON ap.user_id = u.id
+            LEFT JOIN service_requests sr ON a.item_id = sr.id::text
+            WHERE a.assigned_at >= NOW() - MAKE_INTERVAL(days => $1)
+        """
+        params: list = [period_days]
+        idx = 2
+
+        entity_id = agent_ctx.get("entity_id")
+        if entity_id:
+            query += f" AND ap.entity_id = ${idx}"
+            params.append(entity_id)
+            idx += 1
+
+        if agent_id:
+            query += f" AND a.agent_profile_id = ${idx}"
+            params.append(agent_id)
+            idx += 1
+
+        query += " ORDER BY a.assigned_at DESC"
+
+        rows = await db.fetch(query, *params)
+
+        # Generate CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Date", "Agent", "Reference", "Workflow", "Status", "Processing Hours", "SLA Met"])
+        for row in rows:
+            writer.writerow([
+                str(row['assignment_date']),
+                row['agent_name'],
+                row.get('request_reference') or '',
+                row.get('workflow_code') or '',
+                row['status'],
+                f"{row['processing_hours']:.1f}",
+                row['sla_met']
+            ])
+
+        output.seek(0)
+        filename = f"assignments_export_{datetime.now().strftime('%Y%m%d')}.csv"
+
+        logger.info(f"Assignments exported by supervisor {current_user.email}: {len(rows)} rows")
+
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting assignments: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to export assignments"
+        )

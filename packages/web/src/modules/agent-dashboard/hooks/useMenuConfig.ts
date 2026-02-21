@@ -160,17 +160,6 @@ export function useMenuConfig(): UseMenuConfigReturn {
     });
   }, [data?.menu_config?.menus, locale]);
 
-  // Debug logging
-  if (typeof window !== 'undefined' && data) {
-    console.log('[useMenuConfig] Loaded:', {
-      entityCode: data.entity_code,
-      entityType: data.entity_type,
-      menuCount: data.menu_config?.menus?.length || 0,
-      permissionsCount: data.permissions?.length || 0,
-      source: data.menu_config?.source,
-    });
-  }
-
   return {
     isLoading,
     isError,
@@ -241,10 +230,9 @@ export async function prefetchAgentMenuConfig(
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
     });
-    console.log('[prefetchAgentMenuConfig] Menu config prefetched successfully');
-  } catch (error) {
+    // Prefetch successful
+  } catch {
     // Don't throw - prefetch failures shouldn't break the login flow
-    console.warn('[prefetchAgentMenuConfig] Failed to prefetch:', error);
   }
 }
 

@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { FileStack, Search, RefreshCw, ArrowLeft } from 'lucide-react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import {
   agentRequestsApi,
@@ -82,8 +83,8 @@ export function AgentBatchList({ entityCode, basePath }: AgentBatchListProps) {
       })
       setBatches(result.batches)
       setTotal(result.total)
-    } catch (err) {
-      console.error('[AgentBatchList] fetch error:', err)
+    } catch {
+      toast.error(tBatch('loadError', { defaultValue: 'Error al cargar los lotes' }))
     } finally {
       setIsLoading(false)
     }

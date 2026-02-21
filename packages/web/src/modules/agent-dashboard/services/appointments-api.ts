@@ -371,7 +371,6 @@ class AgentAppointmentsApiClient {
     };
 
     const url = `${this.baseUrl}${endpoint}`;
-    console.log(`[AgentAppointmentsApi] ${options.method || 'GET'} ${url}`);
 
     const response = await fetch(url, {
       ...options,

@@ -372,7 +372,6 @@ class AgentRequestsApiClient {
     };
 
     const url = absoluteUrl ? endpoint : `${this.baseUrl}${endpoint}`;
-    console.log(`[AgentRequestsApi] ${options.method || 'GET'} ${url}`);
 
     const response = await fetch(url, {
       ...options,

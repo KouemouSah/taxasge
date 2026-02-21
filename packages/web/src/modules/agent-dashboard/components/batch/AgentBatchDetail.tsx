@@ -103,8 +103,8 @@ export function AgentBatchDetail({ entityCode, batchId, basePath }: AgentBatchDe
     try {
       const result = await agentRequestsApi.getEntityBatchDetail(entityCode, batchId)
       setBatch(result)
-    } catch (err) {
-      console.error('[AgentBatchDetail] fetch error:', err)
+    } catch {
+      toast.error(t('batch.loadError', { defaultValue: 'Error al cargar el lote' }))
     } finally {
       setIsLoading(false)
     }

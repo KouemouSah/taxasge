@@ -211,6 +211,7 @@ const TimelineEntry: React.FC<{
   locale: 'es' | 'fr' | 'en';
   isLast: boolean;
 }> = ({ entry, locale, isLast }) => {
+  const t = useTranslations();
   const colorClass = getHistoryActionColor(entry.action);
   const date = new Date(entry.performedAt);
   const details = entry.details || {};
@@ -274,13 +275,13 @@ const TimelineEntry: React.FC<{
               <div className="mt-2 p-2 bg-muted/50 rounded-md text-xs space-y-1">
                 {!!details.document_code && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Documento:</span>
+                    <span className="text-muted-foreground">{t('history.documentLabel', { defaultValue: 'Documento:' })}</span>
                     <span className="font-medium">{String(details.document_name || details.document_code)}</span>
                   </div>
                 )}
                 {details.extraction_confidence !== undefined && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Confianza:</span>
+                    <span className="text-muted-foreground">{t('history.confidenceLabel', { defaultValue: 'Confianza:' })}</span>
                     <Badge className={`text-[10px] px-1.5 ${getConfidenceColor(Number(details.extraction_confidence))}`}>
                       {Math.round(Number(details.extraction_confidence) * 100)}%
                     </Badge>
@@ -288,7 +289,7 @@ const TimelineEntry: React.FC<{
                 )}
                 {!!details.risk_level && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Riesgo:</span>
+                    <span className="text-muted-foreground">{t('history.riskLabel', { defaultValue: 'Riesgo:' })}</span>
                     <Badge className={`text-[10px] px-1.5 ${getRiskLevelColor(String(details.risk_level))}`}>
                       {String(details.risk_level)}
                     </Badge>
@@ -296,13 +297,13 @@ const TimelineEntry: React.FC<{
                 )}
                 {!!details.processor && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Procesador:</span>
+                    <span className="text-muted-foreground">{t('history.processorLabel', { defaultValue: 'Procesador:' })}</span>
                     <span>{String(details.processor)}</span>
                   </div>
                 )}
                 {!!details.has_error && !!details.error_message && (
                   <div className="text-red-600 mt-1">
-                    Error: {String(details.error_message)}
+                    {t('history.errorPrefix', { defaultValue: 'Error:' })} {String(details.error_message)}
                   </div>
                 )}
               </div>
@@ -313,19 +314,19 @@ const TimelineEntry: React.FC<{
               <div className="mt-2 p-2 bg-muted/50 rounded-md text-xs space-y-1">
                 {!!details.agent_name && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Agente:</span>
+                    <span className="text-muted-foreground">{t('history.agentLabel', { defaultValue: 'Agente:' })}</span>
                     <span className="font-medium">{String(details.agent_name)}</span>
                   </div>
                 )}
                 {!!details.reassigned_to_name && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Reasignado a:</span>
+                    <span className="text-muted-foreground">{t('history.reassignedToLabel', { defaultValue: 'Reasignado a:' })}</span>
                     <span className="font-medium">{String(details.reassigned_to_name)}</span>
                   </div>
                 )}
                 {!!details.assignment_method && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Método:</span>
+                    <span className="text-muted-foreground">{t('history.methodLabel', { defaultValue: 'Método:' })}</span>
                     <Badge variant="outline" className="text-[10px] px-1.5">
                       {String(details.assignment_method)}
                     </Badge>
@@ -333,7 +334,7 @@ const TimelineEntry: React.FC<{
                 )}
                 {!!details.reassignment_reason && (
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Motivo:</span>
+                    <span className="text-muted-foreground">{t('history.reasonLabel', { defaultValue: 'Motivo:' })}</span>
                     <span>{String(details.reassignment_reason)}</span>
                   </div>
                 )}
@@ -344,10 +345,10 @@ const TimelineEntry: React.FC<{
             {!isOcrEntry && !isAssignmentEntry && entry.details && Object.keys(entry.details).length > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
                 {!!details.document_code && (
-                  <span>Doc: {String(details.document_code)}</span>
+                  <span>{t('history.docPrefix', { defaultValue: 'Doc:' })} {String(details.document_code)}</span>
                 )}
                 {!!details.agent_name && (
-                  <span>Agent: {String(details.agent_name)}</span>
+                  <span>{t('history.agentLabel', { defaultValue: 'Agente:' })} {String(details.agent_name)}</span>
                 )}
               </div>
             )}
@@ -364,7 +365,7 @@ const TimelineEntry: React.FC<{
         {entry.performedBy && (
           <p className="text-xs text-muted-foreground mt-1">
             {entry.performedBy.isSystem ? (
-              <span className="italic">Sistema</span>
+              <span className="italic">{t('history.system', { defaultValue: 'Sistema' })}</span>
             ) : (
               entry.performedBy.fullName
             )}
@@ -572,7 +573,7 @@ export function HistoryPage({
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-[200px]">
                 <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Estado" />
+                <SelectValue placeholder={t('history.statusPlaceholder', { defaultValue: 'Estado' })} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
@@ -625,7 +626,7 @@ export function HistoryPage({
                   </label>
                   <Select value={actionTypeFilter} onValueChange={setActionTypeFilter}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
+                      <SelectValue placeholder={t('history.allPlaceholder', { defaultValue: 'Todos' })} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
@@ -919,7 +920,7 @@ export function HistoryPage({
                             key={day.date || idx}
                             className="flex-1 bg-blue-500 rounded-t hover:bg-blue-600 transition-colors"
                             style={{ height: `${Math.max(height, 5)}%` }}
-                            title={`${day.date}: ${day.actions} acciones`}
+                            title={t('history.actionsTooltip', { defaultValue: '{date}: {count} acciones', date: day.date, count: day.actions })}
                           />
                         );
                       })}

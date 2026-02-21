@@ -144,7 +144,10 @@ export function DocumentsSection({
                               // Fallback to icon if image fails to load
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
-                              target.parentElement!.innerHTML = '<div class="h-12 w-12 flex items-center justify-center"><svg class="h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg></div>';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<div class="h-12 w-12 flex items-center justify-center"><svg class="h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg></div>';
+                              }
                             }}
                           />
                         </div>
@@ -187,7 +190,7 @@ export function DocumentsSection({
                 className="ml-4"
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
-                Abrir en nueva pestaña
+                {t('openInNewTab', { defaultValue: 'Abrir en nueva pestaña' })}
               </Button>
             </DialogTitle>
           </DialogHeader>
