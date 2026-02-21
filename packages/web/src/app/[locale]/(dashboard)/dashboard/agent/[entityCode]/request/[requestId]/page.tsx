@@ -1,19 +1,19 @@
 /**
- * CNEDOGE Pasaporte - Agent Request Detail Page
+ * Generic Agent Request Detail Page
  *
  * Dynamic detail view for service requests with:
  * - Tab RESUMEN: Form data displayed according to workflow schema
  * - Tab DOCUMENTOS: List of uploaded documents with preview
  * - Tab TRAITEMENT: Agent verification checklist and actions
  *
- * @module agent/cnedoge-pasaporte/request/[requestId]
+ * @module agent/[entityCode]/request/[requestId]
  */
 
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -146,6 +146,8 @@ export default function AgentRequestDetailPage() {
   const queryClient = useQueryClient();
 
   const requestId = params.requestId as string;
+  const entitySlug = (params.entityCode as string) || '';
+  const locale = useLocale();
 
   // State
   const [activeTab, setActiveTab] = useState('resumen');
@@ -181,7 +183,7 @@ export default function AgentRequestDetailPage() {
   const hasNext = currentIndex >= 0 && currentIndex < requestIds.length - 1;
 
   const navigateTo = useCallback((targetId: string) => {
-    const basePath = `/dashboard/agent/cnedoge-pasaporte/request/${targetId}`;
+    const basePath = `/${locale}/dashboard/agent/${entitySlug}/request/${targetId}`;
     router.push(basePath);
   }, [router]);
 
