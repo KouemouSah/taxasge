@@ -92,7 +92,8 @@ class WorkflowMappingRepository:
             query = """
                 SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                        display_order, include_pending, include_validation,
-                       include_appointments, include_history, include_escalation, include_batch, permission_prefix,
+                       include_appointments, include_history, include_escalation, include_batch,
+                       custom_sub_items, permission_prefix,
                        is_active, created_at, updated_at
                 FROM workflow_menu_mapping
                 WHERE is_active = $1
@@ -104,7 +105,8 @@ class WorkflowMappingRepository:
             query = """
                 SELECT id, workflow_pattern, menu_group_id, menu_title_key, menu_icon,
                        display_order, include_pending, include_validation,
-                       include_appointments, include_history, include_escalation, include_batch, permission_prefix,
+                       include_appointments, include_history, include_escalation, include_batch,
+                       custom_sub_items, permission_prefix,
                        is_active, created_at, updated_at
                 FROM workflow_menu_mapping
                 ORDER BY display_order, workflow_pattern
