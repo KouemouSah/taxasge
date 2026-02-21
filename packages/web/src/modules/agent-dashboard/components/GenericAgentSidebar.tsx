@@ -66,6 +66,11 @@ import {
   FileSignature,
   // Batch icons
   FileStack,
+  // Supervisor menu icons
+  BarChart2,
+  Settings2,
+  ListChecks,
+  FileBarChart,
   type LucideIcon,
 } from 'lucide-react';
 import { clearAuthData } from '@/core/auth/storage';
@@ -134,6 +139,13 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
   // Batch
   FileStack,
+
+  // Supervisor
+  Users,
+  BarChart2,
+  Settings2,
+  ListChecks,
+  FileBarChart,
 };
 
 /**
@@ -353,8 +365,14 @@ export function GenericAgentSidebar({
             );
           })()}
 
-          {/* Supervisor navigation — only visible for supervisors */}
-          {context?.isSupervisor && (
+          {/* Supervisor navigation — for entity supervisors whose menu_config
+              does NOT already include /supervisor/ paths (i.e. workflow-based agents
+              with is_supervisor=true). Supervisors with the "supervisor" RBAC role
+              already get these links from the dynamic menu above. */}
+          {context?.isSupervisor && !dynamicMenuItems.some((item) =>
+            item.href?.includes('/supervisor') ||
+            item.items?.some((sub) => sub.href?.includes('/supervisor'))
+          ) && (
             <>
               {!collapsed && (
                 <div className="px-3 pt-4 pb-1">
