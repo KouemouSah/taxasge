@@ -1,9 +1,11 @@
 /**
- * Workflow Group Landing Page - CNEDOGE Residencia
+ * Generic Workflow Group Landing Page
  * Redirects to the pending view for the workflow group
  *
- * @route /[locale]/dashboard/agent/cnedoge-residencia/[workflowGroup]
- * @date 2026-01-25
+ * Replaces: cnedoge-pasaporte/[workflowGroup]/page.tsx, cnedoge-residencia/[workflowGroup]/page.tsx
+ *
+ * @route /[locale]/dashboard/agent/[entityCode]/[workflowGroup]
+ * @date 2026-02-21
  */
 
 'use client';
@@ -17,12 +19,12 @@ export default function WorkflowGroupPage() {
   const router = useRouter();
   const locale = useLocale();
   const params = useParams();
+  const entityCode = params.entityCode as string;
   const workflowGroup = params.workflowGroup as string;
 
   useEffect(() => {
-    // Redirect to pending view by default
-    router.replace(`/${locale}/dashboard/agent/cnedoge-residencia/${workflowGroup}/pending`);
-  }, [router, locale, workflowGroup]);
+    router.replace(`/${locale}/dashboard/agent/${entityCode}/${workflowGroup}/pending`);
+  }, [router, locale, entityCode, workflowGroup]);
 
   return (
     <div className="flex items-center justify-center h-64">

@@ -83,16 +83,18 @@ import type { EntityCode } from '@/modules/agent-dashboard/types';
 
 // Maps URL entityCode to database ENTITY_CODE
 const ENTITY_CODE_MAP: Record<string, EntityCode> = {
+  'cnedoge': 'CNEDOGE',
+  'cnedoge-pasaporte': 'CNEDOGE_PASAPORTE',
+  'cnedoge-residencia': 'CNEDOGE_RESIDENCIA',
   'dgt': 'DGT',
+  'dgi': 'DGI',
   'ofive': 'OFIVE',
   'onrc': 'ONRC',
   'extranjeria': 'EXTRANJERIA',
   'policia': 'POLICIA',
   'minfp': 'MINFP',
   'itv': 'ITV',
-  // DGI not yet implemented - uncomment when ready
-  // 'dgi': 'DGI',
-  // CNEDOGE entities have their own dedicated routes
+  'itve': 'ITV',
 };
 
 // Maps entityCode to workflow group titleKey
