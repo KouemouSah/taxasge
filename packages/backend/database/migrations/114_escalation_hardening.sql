@@ -48,8 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_sr_escalated_workflow
 -- ============================================================================
 
 ALTER TABLE service_requests
-    ADD COLUMN IF NOT EXISTS escalation_sla_warning_sent BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS escalation_sla_escalated BOOLEAN DEFAULT FALSE;
+    ADD COLUMN IF NOT EXISTS escalation_sla_warning_sent BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS escalation_sla_escalated BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Partial index for SLA cron (pending escalations not yet warned)
 CREATE INDEX IF NOT EXISTS idx_sr_escalation_sla_pending

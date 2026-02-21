@@ -322,14 +322,13 @@ class EscalationSLAService:
         return [r["email"] for r in rows]
 
     async def _get_admin_emails(self, db) -> List[str]:
-        """Get admin user emails."""
+        """Get admin user emails via users.role_id → roles.id (direct FK)."""
         rows = await db.fetch("""
             SELECT DISTINCT u.email
             FROM users u
-            JOIN user_roles ur ON ur.user_id = u.id
-            JOIN roles r ON r.id = ur.role_id
+            JOIN roles r ON r.id = u.role_id
             WHERE r.code = 'admin'
-              AND u.is_active = true
+              AND u.status = 'active'
               AND u.email IS NOT NULL
         """)
         return [r["email"] for r in rows]
