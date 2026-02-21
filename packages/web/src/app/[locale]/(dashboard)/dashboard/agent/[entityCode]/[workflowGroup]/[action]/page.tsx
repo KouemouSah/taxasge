@@ -13,7 +13,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
@@ -69,6 +69,7 @@ import {
 
 // Hooks
 import { useEntityServiceRequests, type ActionType } from '@/modules/agent-dashboard/hooks';
+import useMenuConfig from '@/modules/agent-dashboard/hooks/useMenuConfig';
 
 // Split View for pending action
 import { PendingPage } from '@/modules/agent-dashboard/components/pending/PendingPage';
@@ -78,10 +79,10 @@ import { HistoryPage } from '@/modules/agent-dashboard/components/history';
 import { GenericFilteredList } from '@/modules/agent-dashboard/components/GenericFilteredList';
 import { slugToEntityCode } from '@/modules/agent-dashboard/utils';
 
-// Declarative entity config (filters, type labels, workflow codes)
+// Declarative entity config — backend-driven via availableWorkflows
 import {
-  ENTITY_FILTER_CONFIGS,
   ENTITY_WORKFLOW_TITLES,
+  buildEffectiveFilters,
   resolveTypeLabel,
 } from '@/modules/agent-dashboard/config/entity-filters';
 
@@ -162,8 +163,14 @@ export default function UnifiedWorkflowActionPage() {
   const currentAction = isStandardAction ? (action as ActionType) : 'pending';
   const isValidAction = isStandardAction;
 
-  // Entity-specific config (from declarative config file — no entity-name branching)
-  const entityConfig = ENTITY_FILTER_CONFIGS[ENTITY_CODE];
+  // Backend-driven: get availableWorkflows from menu config API
+  const { availableWorkflows } = useMenuConfig();
+
+  // Build effective filters from backend workflows + optional static config
+  const effectiveFilters = useMemo(
+    () => buildEffectiveFilters(ENTITY_CODE, availableWorkflows),
+    [ENTITY_CODE, availableWorkflows],
+  );
 
   // Filter state — generic Record for entity-specific filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,21 +180,19 @@ export default function UnifiedWorkflowActionPage() {
   const pageSize = 20;
 
   // Handle entity-specific filter change (with cascading reset for dependent filters)
-  const handleFilterChange = (key: string, value: string) => {
+  const handleFilterChange = useCallback((key: string, value: string) => {
     setFilterValues(prev => {
       const next = { ...prev, [key]: value };
       // Reset dependent filters when parent value changes
-      if (entityConfig?.filters) {
-        for (const filter of entityConfig.filters) {
-          if (filter.showWhen?.filterKey === key && value !== filter.showWhen.value) {
-            next[filter.key] = 'all';
-          }
+      for (const filter of effectiveFilters) {
+        if (filter.showWhen?.filterKey === key && value !== filter.showWhen.value) {
+          next[filter.key] = 'all';
         }
       }
       return next;
     });
     setCurrentPage(1);
-  };
+  }, [effectiveFilters]);
 
   // Extract filter value (returns undefined for 'all' or unset)
   const getFilterValue = (key: string): string | undefined => {
@@ -283,7 +288,7 @@ export default function UnifiedWorkflowActionPage() {
     return (
       <HistoryPage
         entityCode={ENTITY_CODE}
-        workflowCodes={entityConfig?.workflowCodes}
+        workflowCodes={availableWorkflows.length > 0 ? availableWorkflows : undefined}
         basePath={`/dashboard/agent/${entityCode}`}
       />
     );
@@ -408,8 +413,8 @@ export default function UnifiedWorkflowActionPage() {
               </div>
             </div>
 
-            {/* Entity-specific filters (declarative from config) */}
-            {entityConfig?.filters.map((filter) => {
+            {/* Entity-specific filters (backend-driven + optional static config) */}
+            {effectiveFilters.map((filter) => {
               // Check conditional visibility
               if (filter.showWhen) {
                 const depValue = filterValues[filter.showWhen.filterKey];
@@ -426,9 +431,9 @@ export default function UnifiedWorkflowActionPage() {
                     <SelectValue placeholder={t(filter.placeholderKey)} />
                   </SelectTrigger>
                   <SelectContent>
-                    {filter.options.map((opt) => (
+                    {filter.options?.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
-                        {t(opt.labelKey)}
+                        {opt.isRawLabel ? opt.labelKey : t(opt.labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>
