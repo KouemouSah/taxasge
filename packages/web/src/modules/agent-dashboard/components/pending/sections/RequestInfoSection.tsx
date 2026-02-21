@@ -125,7 +125,7 @@ export function RequestInfoSection({
             {isMinor && (
               <Badge className="bg-purple-100 text-purple-700">
                 <Baby className="h-3 w-3 mr-1" />
-                Menor
+                {t('minor', { defaultValue: 'Menor' })}
               </Badge>
             )}
             <Badge className={cn(priorityStyle.bg, priorityStyle.text)}>

@@ -48,7 +48,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-600" />
-            {t('widgets.myStats', { defaultValue: 'Mis Estadísticas' })}
+            {t('widgets.personalStats', { defaultValue: 'Mis Estadísticas' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -69,7 +69,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-600" />
-            {t('widgets.myStats', { defaultValue: 'Mis Estadísticas' })}
+            {t('widgets.personalStats', { defaultValue: 'Mis Estadísticas' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -99,7 +99,7 @@ export function PersonalStatsWidget({ className }: PersonalStatsWidgetProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-blue-600" />
-            {t('widgets.myStats', { defaultValue: 'Mis Estadísticas' })}
+            {t('widgets.personalStats', { defaultValue: 'Mis Estadísticas' })}
           </CardTitle>
           <Badge variant="outline" className="text-xs">
             {data?.period_label || t('widgets.thisMonth', { defaultValue: 'Este mes' })}
