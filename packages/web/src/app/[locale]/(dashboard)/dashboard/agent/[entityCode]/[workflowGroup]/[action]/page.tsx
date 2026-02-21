@@ -13,7 +13,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams, useRouter, useSearchParams, notFound } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
@@ -75,27 +75,10 @@ import { PendingPage } from '@/modules/agent-dashboard/components/pending/Pendin
 import { ValidationPage } from '@/modules/agent-dashboard/components/validation';
 import { HistoryPage } from '@/modules/agent-dashboard/components/history';
 import { GenericFilteredList } from '@/modules/agent-dashboard/components/GenericFilteredList';
+import { slugToEntityCode } from '@/modules/agent-dashboard/utils';
 import type { EntityCode } from '@/modules/agent-dashboard/types';
 
-// =============================================================================
-// ENTITY MAPPING
-// =============================================================================
 
-// Maps URL entityCode to database ENTITY_CODE
-const ENTITY_CODE_MAP: Record<string, EntityCode> = {
-  'cnedoge': 'CNEDOGE',
-  'cnedoge-pasaporte': 'CNEDOGE_PASAPORTE',
-  'cnedoge-residencia': 'CNEDOGE_RESIDENCIA',
-  'dgt': 'DGT',
-  'dgi': 'DGI',
-  'ofive': 'OFIVE',
-  'onrc': 'ONRC',
-  'extranjeria': 'EXTRANJERIA',
-  'policia': 'POLICIA',
-  'minfp': 'MINFP',
-  'itv': 'ITV',
-  'itve': 'ITV',
-};
 
 // Maps entityCode to workflow group titleKey
 const ENTITY_WORKFLOW_TITLES: Record<string, string> = {
@@ -178,13 +161,8 @@ export default function UnifiedWorkflowActionPage() {
   const workflowGroup = (params?.workflowGroup as string) || '';
   const action = (params?.action as string) || '';
 
-  // Map URL entityCode to database ENTITY_CODE
-  const ENTITY_CODE = ENTITY_CODE_MAP[entityCode];
-
-  // If entity not found in map, show 404
-  if (!ENTITY_CODE) {
-    notFound();
-  }
+  // Convert URL slug to database entity code (deterministic: lower-kebab → UPPER_SNAKE)
+  const ENTITY_CODE = slugToEntityCode(entityCode);
 
   // Validate action — standard actions get dedicated components, others get GenericFilteredList
   const isStandardAction = STANDARD_ACTIONS.includes(action as ActionType);

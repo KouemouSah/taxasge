@@ -2,24 +2,13 @@
 
 import { useParams } from 'next/navigation'
 import { AgentBatchDetail } from '@/modules/agent-dashboard/components/batch'
-
-const ENTITY_CODE_MAP: Record<string, string> = {
-  'dgt': 'DGT',
-  'ofive': 'OFIVE',
-  'onrc': 'ONRC',
-  'extranjeria': 'EXTRANJERIA',
-  'policia': 'POLICIA',
-  'minfp': 'MINFP',
-  'itv': 'ITV',
-  'cnedoge-pasaporte': 'CNEDOGE_PASAPORTE',
-  'cnedoge-residencia': 'CNEDOGE_RESIDENCIA',
-}
+import { slugToEntityCode } from '@/modules/agent-dashboard/utils'
 
 export default function AgentBatchDetailPage() {
   const params = useParams()
   const entitySlug = (params?.entityCode as string) || ''
   const batchId = (params?.batchId as string) || ''
-  const entityCode = ENTITY_CODE_MAP[entitySlug] || entitySlug.toUpperCase().replace(/-/g, '_')
+  const entityCode = slugToEntityCode(entitySlug)
 
   return (
     <AgentBatchDetail
