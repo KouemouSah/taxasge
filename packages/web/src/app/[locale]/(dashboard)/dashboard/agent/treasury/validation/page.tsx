@@ -58,7 +58,7 @@ import {
   ChevronRight,
   ArrowLeft,
 } from 'lucide-react';
-import { usePendingPayments, usePaymentActions } from '@/modules/treasury/hooks';
+import { usePendingPayments, usePaymentActions, useTreasuryLocations } from '@/modules/treasury/hooks';
 import {
   PaymentMethodBadge,
   WorkflowStatusBadge,
@@ -105,6 +105,10 @@ export default function TreasuryValidationPage() {
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [slaFilter, setSlaFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+
+  // Treasury locations for filter dropdown
+  const { data: locations } = useTreasuryLocations();
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -125,6 +129,7 @@ export default function TreasuryValidationPage() {
   const { data: paymentsData, isLoading, error, refetch } = usePendingPayments({
     status: statusFilter !== 'all' ? statusFilter : undefined,
     method: methodFilter !== 'all' ? methodFilter : undefined,
+    entityLocationId: locationFilter !== 'all' ? locationFilter : undefined,
     page,
     pageSize: PAGE_SIZE,
   });
@@ -302,7 +307,7 @@ export default function TreasuryValidationPage() {
           <CardTitle className="text-lg">Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -353,6 +358,23 @@ export default function TreasuryValidationPage() {
                 <SelectItem value="breached">Vencido</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Location Filter */}
+            {locations && locations.length > 0 && (
+              <Select value={locationFilter} onValueChange={(v) => { setLocationFilter(v); setPage(1); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las sedes</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.location_name} ({loc.city})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -470,6 +492,7 @@ export default function TreasuryValidationPage() {
                       )}
                       <TableHead>Referencia</TableHead>
                       <TableHead>Servicio</TableHead>
+                      <TableHead>Sede</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead>Metodo</TableHead>
                       <TableHead>Agente</TableHead>
@@ -514,6 +537,9 @@ export default function TreasuryValidationPage() {
                               </p>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {payment.locationName || '-'}
                         </TableCell>
                         <TableCell className="font-bold">
                           {formatCurrency(payment.totalAmount)}

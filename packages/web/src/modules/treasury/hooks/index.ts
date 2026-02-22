@@ -64,6 +64,8 @@ export {
   KPI_STATS_QUERY_KEY,
   AGENT_PERFORMANCE_QUERY_KEY,
 } from './useKPIs';
+// Location filter
+export { useTreasuryLocations } from './useTreasuryLocations';
 // Phase 5 - Analytics
 export {
   useAnalyticsReport,

@@ -160,6 +160,10 @@ export const treasuryApi = {
     if (params.agentProfileId) {
       queryParams.agent_profile_id = params.agentProfileId;
     }
+    // Filter by entity_location (site)
+    if (params.entityLocationId) {
+      queryParams.entity_location_id = params.entityLocationId;
+    }
 
     const response = await fetchClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/pending`,

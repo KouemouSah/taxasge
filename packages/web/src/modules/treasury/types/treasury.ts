@@ -118,6 +118,8 @@ export interface PendingPayment {
   // Assigned agent info (for supervisor view)
   assignedAgentId?: string;
   assignedAgentName?: string;
+  // Site info
+  locationName?: string;
 }
 
 export interface PendingPaymentsListResponse {
@@ -136,6 +138,8 @@ export interface PendingPaymentsParams {
   pageSize?: number;
   // Filter by assigned agent (supervisor only)
   agentProfileId?: string;
+  // Filter by entity_location (site)
+  entityLocationId?: string;
 }
 
 // =============================================================================
