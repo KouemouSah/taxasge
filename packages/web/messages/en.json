@@ -6554,7 +6554,8 @@
       "priority": "Priority",
       "status": "Status",
       "date": "Date",
-      "actions": "Actions"
+      "actions": "Actions",
+      "myTransactions": "My Transactions"
     },
     "escalation": {
       "subtitle": "Escalate a case to your supervisor for review",
@@ -6818,7 +6819,24 @@
       "reports": "Reports",
       "dailyReport": "Daily Report",
       "weeklyReport": "Weekly Report",
-      "exportReport": "Export Report"
+      "exportReport": "Export Report",
+      "treasuryOverview": "Treasury Overview",
+      "payments": "Payments",
+      "validation": "Validation",
+      "reconciliation": "Reconciliation",
+      "transactions": "Transactions",
+      "stats": "Statistics",
+      "analytics": "Analytics",
+      "agentStats": "Agent Statistics",
+      "sla": "SLA",
+      "audit": "Audit",
+      "anomalies": "Anomalies",
+      "exports": "Exports",
+      "assignmentsList": "Assignments List",
+      "manualAssignment": "Manual Assignment",
+      "settings": "Settings",
+      "banks": "Banks",
+      "paymentMethods": "Payment Methods"
     },
     "team": {
       "title": "Team Management",

@@ -4355,20 +4355,56 @@ async def get_treasury_dashboard_stats(
         )
     """, user_id) or False
 
-    # Resolve location filter: agent's own location or explicit filter (supervisor)
+    # Resolve agent profile for non-supervisors
+    current_agent_profile_id = None
     location_filter_id = None
     if not is_supervisor:
-        # Non-supervisor: auto-scope by agent's location
-        location_filter_id = await db.fetchval("""
-            SELECT entity_location_id FROM agent_profiles
+        row = await db.fetchrow("""
+            SELECT id, entity_location_id FROM agent_profiles
             WHERE user_id = $1::uuid AND is_active = true
         """, user_id)
+        if row:
+            current_agent_profile_id = str(row["id"])
+            location_filter_id = str(row["entity_location_id"]) if row["entity_location_id"] else None
+        else:
+            # No agent profile — return zeros
+            return TreasuryDashboardStatsResponse(
+                pending_validation_count=0,
+                unreconciled_count=0,
+                today_validated_count=0,
+                today_validated_amount=0.0,
+                currency="XAF",
+            )
     elif entity_location_id:
         # Supervisor: optional explicit filter
         location_filter_id = entity_location_id
 
-    # Build location-aware queries
-    if location_filter_id:
+    # Build scoped queries
+    if current_agent_profile_id:
+        # Non-supervisor agent: scope by assigned_agent_id (their own payments only)
+        agent_id = current_agent_profile_id
+        logger.info(f"[Treasury Stats] Scoping by agent: {agent_id}")
+
+        pending_count = await db.fetchval("""
+            SELECT COUNT(*)
+            FROM service_payments
+            WHERE workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
+              AND requires_agent_validation = true
+              AND assigned_agent_id = $1::uuid
+        """, agent_id)
+
+        today_stats = await db.fetchrow("""
+            SELECT
+                COUNT(*) AS validated_count,
+                COALESCE(SUM(total_amount), 0) AS validated_amount
+            FROM service_payments
+            WHERE workflow_status IN ('approved_by_agent', 'completed')
+              AND validated_at >= CURRENT_DATE
+              AND validated_at < CURRENT_DATE + INTERVAL '1 day'
+              AND assigned_agent_id = $1::uuid
+        """, agent_id)
+    elif location_filter_id:
+        # Supervisor with location filter
         loc_id = str(location_filter_id)
         logger.info(f"[Treasury Stats] Scoping by location: {location_filter_id}")
 
@@ -4393,6 +4429,7 @@ async def get_treasury_dashboard_stats(
               AND sr_loc.entity_location_id = $1::uuid
         """, loc_id)
     else:
+        # Supervisor without filter: global stats
         pending_count = await db.fetchval("""
             SELECT COUNT(*)
             FROM service_payments
@@ -4410,12 +4447,15 @@ async def get_treasury_dashboard_stats(
               AND validated_at < CURRENT_DATE + INTERVAL '1 day'
         """)
 
-    # Unreconciled bank transactions — global (not location-scoped)
-    unreconciled_count = await db.fetchval("""
-        SELECT COUNT(*)
-        FROM bank_transactions
-        WHERE status = 'unreconciled'
-    """)
+    # Unreconciled bank transactions — supervisor-only metric
+    if is_supervisor:
+        unreconciled_count = await db.fetchval("""
+            SELECT COUNT(*)
+            FROM bank_transactions
+            WHERE status = 'unreconciled'
+        """)
+    else:
+        unreconciled_count = 0
 
     return TreasuryDashboardStatsResponse(
         pending_validation_count=pending_count or 0,

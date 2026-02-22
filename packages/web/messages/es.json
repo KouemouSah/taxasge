@@ -6656,7 +6656,8 @@
       "priority": "Prioridad",
       "status": "Estado",
       "date": "Fecha",
-      "actions": "Acciones"
+      "actions": "Acciones",
+      "myTransactions": "Mis Transacciones"
     },
     "escalation": {
       "subtitle": "Escalar un caso a su supervisor para revisión",
@@ -6920,7 +6921,24 @@
       "reports": "Informes",
       "dailyReport": "Informe Diario",
       "weeklyReport": "Informe Semanal",
-      "exportReport": "Exportar Informe"
+      "exportReport": "Exportar Informe",
+      "treasuryOverview": "Vista General Tesorería",
+      "payments": "Pagos",
+      "validation": "Validación",
+      "reconciliation": "Conciliación",
+      "transactions": "Transacciones",
+      "stats": "Estadísticas",
+      "analytics": "Analíticas",
+      "agentStats": "Estadísticas por Agente",
+      "sla": "SLA",
+      "audit": "Auditoría",
+      "anomalies": "Anomalías",
+      "exports": "Exportaciones",
+      "assignmentsList": "Lista de Asignaciones",
+      "manualAssignment": "Asignación Manual",
+      "settings": "Configuración",
+      "banks": "Bancos",
+      "paymentMethods": "Métodos de Pago"
     },
     "team": {
       "title": "Gestión del Equipo",
