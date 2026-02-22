@@ -105,12 +105,27 @@ class PaymentAssignmentHandler:
                 logger.info(f"Payment {payment_id} already assigned, skipping")
                 return
 
-            # 2. Get entity_location_id from service_request for site-based routing
-            entity_location_id = None
-            if service_request_id:
-                entity_location_id = await conn.fetchval("""
-                    SELECT entity_location_id FROM service_requests WHERE id = $1::uuid
-                """, service_request_id)
+            # 2. Resolve TESORO location (explicit choice > city auto-resolution > fallback)
+            treasury_location_id = payload.get("treasury_location_id")
+
+            if not treasury_location_id and service_request_id:
+                # Auto-resolve: SR's entity_location → city → matching TESORO location
+                treasury_location_id = await conn.fetchval("""
+                    SELECT tel.id
+                    FROM service_requests sr
+                    JOIN entity_locations sr_el ON sr_el.id = sr.entity_location_id
+                    JOIN entity_locations tel ON tel.city = sr_el.city
+                        AND tel.entity_code = $2
+                        AND tel.is_active = true
+                    WHERE sr.id = $1::uuid
+                    LIMIT 1
+                """, service_request_id, self.TREASURY_ENTITY_CODE)
+
+            if treasury_location_id:
+                logger.info(
+                    f"TESORO location resolved: {treasury_location_id} "
+                    f"(explicit={'treasury_location_id' in (payload or {})})"
+                )
 
             # 3. Auto-assign via AutoAssignmentService (site-based routing with fallback)
             assignment_service = AutoAssignmentService()
@@ -120,7 +135,7 @@ class PaymentAssignmentHandler:
                 item_type="payment_validation",
                 item_data={"amount": amount, "payment_method": payment_method},
                 entity_code=self.TREASURY_ENTITY_CODE,
-                entity_location_id=entity_location_id,
+                entity_location_id=treasury_location_id,
                 priority_level=5,
             )
 
@@ -144,7 +159,7 @@ class PaymentAssignmentHandler:
             logger.info(
                 f"Payment {payment_id} auto-assigned to Treasury agent "
                 f"(agent_profile_id: {agent_profile_id}). "
-                f"Assignment ID: {assignment.id}, location_id: {entity_location_id}"
+                f"Assignment ID: {assignment.id}, treasury_location_id: {treasury_location_id}"
             )
 
         except Exception as e:

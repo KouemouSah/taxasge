@@ -1532,6 +1532,7 @@ class WizardSessionService:
         user_email: Optional[str] = None,
         user_phone: Optional[str] = None,
         user_name: Optional[str] = None,
+        treasury_location_id: Optional[str] = None,
     ) -> WizardInitiatePaymentResponse:
         """
         Atomically persist session to database AND initiate payment.
@@ -1710,6 +1711,10 @@ class WizardSessionService:
 
                 # Step C: Build PaymentContext and call processor
                 logger.info(f"[WizardSession] Step C: initiating {payment_method} payment...")
+                payment_metadata = {}
+                if treasury_location_id:
+                    payment_metadata["treasury_location_id"] = treasury_location_id
+
                 payment_context = PaymentContext(
                     service_request_id=str(service_request_id),
                     user_id=str(user_id_uuid),
@@ -1723,6 +1728,7 @@ class WizardSessionService:
                     workflow_code=workflow_code,
                     service_name=workflow.service_name_es if workflow else None,
                     reference_number=reference,
+                    metadata=payment_metadata,
                 )
 
                 payment_result = await payment_processor_registry.initiate_payment(db, payment_context)

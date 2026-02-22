@@ -452,6 +452,7 @@ class WizardSessionApiClient {
     sessionId: string,
     paymentMethod: string,
     phoneNumber?: string,
+    treasuryLocationId?: string,
   ): Promise<InitiatePaymentResult> {
     const raw = await this.request<BackendInitiatePaymentResponse>(
       `/${sessionId}/initiate-payment`,
@@ -460,6 +461,7 @@ class WizardSessionApiClient {
         body: JSON.stringify({
           payment_method: paymentMethod,
           phone_number: phoneNumber || null,
+          treasury_location_id: treasuryLocationId || null,
         }),
       }
     )

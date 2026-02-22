@@ -90,7 +90,7 @@ export interface UseWizardSessionReturn {
   /** @deprecated Use initiatePayment() for atomic persist+pay. Kept for free services (amount=0). */
   persistAndPay: (paymentId?: string) => Promise<PersistResult | null>
   /** Atomically persist session + initiate payment in one call. */
-  initiatePayment: (paymentMethod: string, phoneNumber?: string) => Promise<InitiatePaymentResult | null>
+  initiatePayment: (paymentMethod: string, phoneNumber?: string, treasuryLocationId?: string) => Promise<InitiatePaymentResult | null>
 
   // Utility
   clearError: () => void
@@ -538,7 +538,8 @@ export function useWizardSession(): UseWizardSessionReturn {
   const initiatePayment = useCallback(
     async (
       paymentMethod: string,
-      phoneNumber?: string
+      phoneNumber?: string,
+      treasuryLocationId?: string
     ): Promise<InitiatePaymentResult | null> => {
       if (!session) {
         setError('No hay sesión activa')
@@ -551,6 +552,7 @@ export function useWizardSession(): UseWizardSessionReturn {
           session.sessionId,
           paymentMethod,
           phoneNumber,
+          treasuryLocationId,
         )
         if (result.success) {
           setSession((prev) =>

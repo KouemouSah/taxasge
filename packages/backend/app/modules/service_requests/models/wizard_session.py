@@ -356,6 +356,7 @@ class WizardInitiatePaymentRequest(BaseModel):
     """Request to atomically persist session + initiate payment."""
     payment_method: str = Field(..., description="Payment method: mobile_money, card, bank_transfer, cash, check")
     phone_number: Optional[str] = Field(None, description="Phone number (required for mobile_money)")
+    treasury_location_id: Optional[str] = Field(None, description="Treasury office location ID for cash/check payments")
 
     class Config:
         json_schema_extra = {

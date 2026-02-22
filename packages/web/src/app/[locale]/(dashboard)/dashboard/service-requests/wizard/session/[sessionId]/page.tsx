@@ -84,6 +84,7 @@ import type {
 import { wizardSessionApi } from '@/modules/service-requests/services/wizard-session-api'
 import { serviceRequestsApi } from '@/modules/service-requests/services/api'
 import type { CitizenSummaryResponse } from '@/modules/service-requests/types'
+import { useLocationsByEntity } from '@/modules/entity-locations/hooks'
 
 // ============================================================================
 // WIZARD STEPS (computed from session state)
@@ -214,6 +215,25 @@ export default function SessionWizardPage() {
   const [paymentPhone, setPaymentPhone] = useState('')
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [treasuryLocationId, setTreasuryLocationId] = useState<string | null>(null)
+
+  // Treasury location selector for cash/check payments
+  const isManualPayment = selectedPaymentMethod === 'cash' || selectedPaymentMethod === 'check'
+  const { data: treasuryLocations } = useLocationsByEntity('TESORO', isManualPayment)
+
+  // Auto-select treasury location matching citizen's city
+  useEffect(() => {
+    if (!treasuryLocations?.length || treasuryLocationId) return
+    const citizenCity = session?.appointmentData?.city || session?.siteSelection?.city
+    if (citizenCity) {
+      const match = treasuryLocations.find(loc => loc.city === citizenCity)
+      if (match) setTreasuryLocationId(match.id)
+    }
+    // If no city match, default to first location
+    if (!treasuryLocationId && treasuryLocations.length === 1) {
+      setTreasuryLocationId(treasuryLocations[0].id)
+    }
+  }, [treasuryLocations, treasuryLocationId, session?.appointmentData?.city, session?.siteSelection?.city])
 
   // Identity mismatch blocker state
   const [identityMismatches, setIdentityMismatches] = useState<IdentityMismatch[]>([])
@@ -430,7 +450,8 @@ export default function SessionWizardPage() {
       // Single atomic call: persist session + initiate payment
       const result = await initiatePayment(
         selectedPaymentMethod,
-        selectedPaymentMethod === 'mobile_money' ? paymentPhone.trim() : undefined
+        selectedPaymentMethod === 'mobile_money' ? paymentPhone.trim() : undefined,
+        isManualPayment ? (treasuryLocationId ?? undefined) : undefined
       )
 
       if (!result?.success) {
@@ -528,6 +549,8 @@ export default function SessionWizardPage() {
     router,
     locale,
     steps,
+    isManualPayment,
+    treasuryLocationId,
   ])
 
   const handleNext = useCallback(async () => {
@@ -1291,6 +1314,42 @@ export default function SessionWizardPage() {
                           )
                         })}
                       </div>
+
+                      {/* Treasury office selector for cash/check */}
+                      {isManualPayment && treasuryLocations && treasuryLocations.length > 0 && (
+                        <div className="space-y-2">
+                          <Label htmlFor="treasury-location">
+                            <MapPin className="inline-block mr-1 h-4 w-4" />
+                            {locale === 'es'
+                              ? 'Oficina de pago'
+                              : locale === 'fr'
+                                ? 'Bureau de paiement'
+                                : 'Payment office'}
+                          </Label>
+                          <select
+                            id="treasury-location"
+                            value={treasuryLocationId || ''}
+                            onChange={(e) => setTreasuryLocationId(e.target.value || null)}
+                            className="flex h-10 w-full max-w-[400px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            <option value="">
+                              {locale === 'es' ? 'Seleccione una oficina' : locale === 'fr' ? 'Sélectionnez un bureau' : 'Select an office'}
+                            </option>
+                            {treasuryLocations.map((loc) => (
+                              <option key={loc.id} value={loc.id}>
+                                {loc.location_name} — {loc.city}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-muted-foreground">
+                            {locale === 'es'
+                              ? 'Oficina del Tesoro donde realizará el pago'
+                              : locale === 'fr'
+                                ? 'Bureau du Trésor où vous effectuerez le paiement'
+                                : 'Treasury office where you will make the payment'}
+                          </p>
+                        </div>
+                      )}
 
                       {/* Phone number for mobile money */}
                       {selectedPaymentMethod === 'mobile_money' && (

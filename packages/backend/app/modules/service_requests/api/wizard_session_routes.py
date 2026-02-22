@@ -611,6 +611,7 @@ async def initiate_session_payment(
             user_email=current_user.email,
             user_phone=getattr(current_user, "phone_number", None),
             user_name=f"{getattr(current_user, 'first_name', '') or ''} {getattr(current_user, 'last_name', '') or ''}".strip(),
+            treasury_location_id=body.treasury_location_id,
         )
 
         logger.info(

@@ -117,6 +117,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     "user_email": context.user_email,
                     "user_phone": context.user_phone,
                     "preferred_language": "es",
+                    "treasury_location_id": context.metadata.get("treasury_location_id"),
                 })
                 logger.info(f"PAYMENT_MANUAL_PENDING event published for payment {payment_id}")
             except Exception as e:
