@@ -5462,6 +5462,48 @@
       "title": "Reconciliacion Bancaria",
       "description": "Vincular transacciones bancarias con pagos del sistema"
     },
+    "reconciliationPage": {
+      "infoTitle": "Reconciliacion Bancaria",
+      "infoDescription": "Las transacciones bancarias llegan via webhook desde BANGE. Relacione cada transaccion con su pago correspondiente en el sistema.",
+      "loadError": "Error al cargar las transacciones",
+      "searchTitle": "Buscar Transacciones",
+      "searchPlaceholder": "Buscar por referencia, nombre, cuenta...",
+      "tableTitle": "Transacciones Sin Reconciliar",
+      "tableDescription": "Transacciones bancarias pendientes de vincular con pagos del sistema",
+      "allReconciled": "Todo reconciliado",
+      "allReconciledDescription": "No hay transacciones pendientes de reconciliar.",
+      "reconcileButton": "Reconciliar",
+      "status": {
+        "unreconciled": "Sin reconciliar",
+        "reconciled": "Reconciliado",
+        "failed": "Fallido"
+      },
+      "table": {
+        "bankReference": "Referencia Banco",
+        "accountHolder": "Titular",
+        "amount": "Monto",
+        "bank": "Banco",
+        "status": "Estado",
+        "date": "Fecha",
+        "actions": "Acciones"
+      },
+      "dialog": {
+        "title": "Reconciliar Transaccion",
+        "description": "Ingrese la referencia de pago del sistema para vincular con esta transaccion bancaria.",
+        "bankReferenceLabel": "Referencia Banco",
+        "amountLabel": "Monto",
+        "accountHolderLabel": "Titular",
+        "accountNumberLabel": "Cuenta",
+        "paymentReferenceLabel": "Referencia de Pago",
+        "paymentReferencePlaceholder": "Ej: PAY-2024-000123",
+        "paymentReferenceHint": "Ingrese la referencia del pago en el sistema TaxasGE",
+        "reconciling": "Reconciliando...",
+        "confirmButton": "Confirmar Reconciliacion"
+      }
+    },
+    "anomaliesPage": {
+      "description": "Descripcion"
+    },
     "transactions": {
       "title": "Historial de Transacciones",
       "description": "Registro completo de pagos procesados",
@@ -5934,6 +5976,148 @@
         "weak": "Debil",
         "moderate": "Moderada",
         "strong": "Fuerte"
+      }
+    },
+    "banksPage": {
+      "refresh": "Actualizar",
+      "addBank": "Agregar Banco",
+      "infoTitle": "Configuracion Bancaria",
+      "infoDescription": "Configure las integraciones con bancos para recibir pagos via Mobile Money y webhooks. Los credenciales API se almacenan de forma segura en Google Secret Manager.",
+      "loadError": "Error al cargar las configuraciones",
+      "configuredBanks": "Bancos Configurados",
+      "configuredBanksDescription": "Lista de bancos integrados con el sistema de pagos",
+      "emptyTitle": "Sin configuraciones",
+      "emptyDescription": "No hay bancos configurados. Agregue uno para comenzar.",
+      "supported": "Soportado",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "edit": "Editar",
+      "cancel": "Cancelar",
+      "saving": "Guardando...",
+      "saveChanges": "Guardar Cambios",
+      "createBank": "Crear Banco",
+      "table": {
+        "code": "Codigo",
+        "name": "Nombre",
+        "treasuryAccount": "Cuenta Tesoreria",
+        "webhooks": "Webhooks",
+        "directIntegration": "Integracion Directa",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "dialog": {
+        "editTitle": "Editar Banco",
+        "createTitle": "Agregar Banco",
+        "editDescription": "Modifique la configuracion del banco.",
+        "createDescription": "Configure un nuevo banco para integracion de pagos."
+      },
+      "form": {
+        "bankCode": "Codigo del Banco",
+        "bankCodePlaceholder": "Ej: BANGE",
+        "bankName": "Nombre del Banco",
+        "bankNamePlaceholder": "Ej: Banco Nacional de Guinea Ecuatorial",
+        "treasuryAccount": "Cuenta de Tesoreria",
+        "treasuryAccountPlaceholder": "Ej: GE12345678901234",
+        "apiEndpoint": "URL de API (opcional)",
+        "bankActive": "Banco Activo",
+        "bankActiveDescription": "Habilitar este banco para procesar pagos",
+        "supportsWebhooks": "Soporta Webhooks",
+        "supportsWebhooksDescription": "Puede recibir notificaciones de pago via webhook",
+        "directIntegration": "Integracion Directa",
+        "directIntegrationDescription": "Puede iniciar pagos via API"
+      }
+    },
+    "paymentMethodsPage": {
+      "loadError": "Error al cargar metodos de pago",
+      "processorBangeApi": "BANGE API",
+      "processorManual": "Manual",
+      "requiresAgent": "Requiere Agente",
+      "automatic": "Automatico",
+      "noFees": "Sin comision",
+      "toast": {
+        "error": "Error",
+        "requiredFields": "Codigo y nombre son requeridos",
+        "updated": "Actualizado",
+        "updatedDescription": "Metodo {name} actualizado correctamente",
+        "created": "Creado",
+        "createdDescription": "Metodo {name} creado correctamente",
+        "saveError": "Error al guardar",
+        "deleted": "Eliminado",
+        "deletedDescription": "Metodo de pago eliminado correctamente",
+        "deleteError": "Error al eliminar",
+        "activated": "Activado",
+        "activatedDescription": "Metodo activado correctamente",
+        "deactivated": "Desactivado",
+        "deactivatedDescription": "Metodo desactivado correctamente",
+        "toggleError": "Error al cambiar estado"
+      },
+      "icons": {
+        "smartphone": "Smartphone",
+        "credit_card": "Tarjeta",
+        "building_2": "Banco",
+        "banknote": "Efectivo",
+        "file_text": "Documento"
+      },
+      "form": {
+        "code": "Codigo",
+        "codePlaceholder": "nuevo_metodo",
+        "name": "Nombre",
+        "namePlaceholder": "Nuevo Metodo",
+        "processor": "Procesador",
+        "processorBangeApi": "BANGE API (Automatico)",
+        "processorManual": "Manual (Agente)",
+        "icon": "Icono",
+        "options": "Opciones",
+        "requiresPhone": "Requiere numero de telefono",
+        "requiresRedirect": "Requiere redireccion a gateway",
+        "requiresAgentValidation": "Requiere validacion de agente",
+        "feesPercentage": "Comision %",
+        "feesFixed": "Comision Fija (XAF)",
+        "minAmount": "Monto Minimo (XAF)",
+        "maxAmount": "Monto Maximo (XAF)",
+        "noLimit": "Sin limite"
+      }
+    },
+    "analyticsPage": {
+      "min": "Min",
+      "max": "Max"
+    },
+    "slaPage": {
+      "loadError": "Error al cargar las estadisticas SLA",
+      "paymentsInProcess": "Pagos en proceso",
+      "processingTime": "De procesamiento",
+      "requireImmediate": "Requieren atencion inmediata",
+      "performanceLevel": {
+        "excellent": "Excelente",
+        "good": "Bueno",
+        "improvable": "Mejorable",
+        "critical": "Critico"
+      },
+      "distribution": {
+        "title": "Distribucion de Estados SLA",
+        "description": "Clasificacion de pagos pendientes por estado de cumplimiento SLA"
+      },
+      "byPaymentMethod": {
+        "title": "SLA por Metodo de Pago",
+        "description": "Desglose de cumplimiento SLA por cada metodo de pago",
+        "method": "Metodo de Pago",
+        "total": "Total",
+        "compliance": "Cumplimiento"
+      },
+      "units": {
+        "min": "min",
+        "h": "h",
+        "m": "m"
+      }
+    },
+    "statsPage": {
+      "units": {
+        "min": "min"
+      }
+    },
+    "agentsPage": {
+      "units": {
+        "min": "min"
       }
     },
     "common": {

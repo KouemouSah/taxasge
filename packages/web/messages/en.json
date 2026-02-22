@@ -5360,6 +5360,48 @@
       "title": "Bank Reconciliation",
       "description": "Match bank transactions with system payments"
     },
+    "reconciliationPage": {
+      "infoTitle": "Bank Reconciliation",
+      "infoDescription": "Bank transactions arrive via webhook from BANGE. Match each transaction with its corresponding payment in the system.",
+      "loadError": "Error loading transactions",
+      "searchTitle": "Search Transactions",
+      "searchPlaceholder": "Search by reference, name, account...",
+      "tableTitle": "Unreconciled Transactions",
+      "tableDescription": "Bank transactions pending matching with system payments",
+      "allReconciled": "All reconciled",
+      "allReconciledDescription": "There are no transactions pending reconciliation.",
+      "reconcileButton": "Reconcile",
+      "status": {
+        "unreconciled": "Unreconciled",
+        "reconciled": "Reconciled",
+        "failed": "Failed"
+      },
+      "table": {
+        "bankReference": "Bank Reference",
+        "accountHolder": "Account Holder",
+        "amount": "Amount",
+        "bank": "Bank",
+        "status": "Status",
+        "date": "Date",
+        "actions": "Actions"
+      },
+      "dialog": {
+        "title": "Reconcile Transaction",
+        "description": "Enter the system payment reference to match with this bank transaction.",
+        "bankReferenceLabel": "Bank Reference",
+        "amountLabel": "Amount",
+        "accountHolderLabel": "Account Holder",
+        "accountNumberLabel": "Account",
+        "paymentReferenceLabel": "Payment Reference",
+        "paymentReferencePlaceholder": "E.g.: PAY-2024-000123",
+        "paymentReferenceHint": "Enter the payment reference from the TaxasGE system",
+        "reconciling": "Reconciling...",
+        "confirmButton": "Confirm Reconciliation"
+      }
+    },
+    "anomaliesPage": {
+      "description": "Description"
+    },
     "transactions": {
       "title": "Transaction History",
       "description": "Complete record of processed payments",
@@ -5832,6 +5874,148 @@
         "weak": "Weak",
         "moderate": "Moderate",
         "strong": "Strong"
+      }
+    },
+    "banksPage": {
+      "refresh": "Refresh",
+      "addBank": "Add Bank",
+      "infoTitle": "Bank Configuration",
+      "infoDescription": "Configure bank integrations to receive payments via Mobile Money and webhooks. API credentials are stored securely in Google Secret Manager.",
+      "loadError": "Error loading configurations",
+      "configuredBanks": "Configured Banks",
+      "configuredBanksDescription": "List of banks integrated with the payment system",
+      "emptyTitle": "No configurations",
+      "emptyDescription": "No banks configured. Add one to get started.",
+      "supported": "Supported",
+      "active": "Active",
+      "inactive": "Inactive",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "saveChanges": "Save Changes",
+      "createBank": "Create Bank",
+      "table": {
+        "code": "Code",
+        "name": "Name",
+        "treasuryAccount": "Treasury Account",
+        "webhooks": "Webhooks",
+        "directIntegration": "Direct Integration",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "dialog": {
+        "editTitle": "Edit Bank",
+        "createTitle": "Add Bank",
+        "editDescription": "Modify the bank configuration.",
+        "createDescription": "Configure a new bank for payment integration."
+      },
+      "form": {
+        "bankCode": "Bank Code",
+        "bankCodePlaceholder": "E.g.: BANGE",
+        "bankName": "Bank Name",
+        "bankNamePlaceholder": "E.g.: Banco Nacional de Guinea Ecuatorial",
+        "treasuryAccount": "Treasury Account",
+        "treasuryAccountPlaceholder": "E.g.: GE12345678901234",
+        "apiEndpoint": "API URL (optional)",
+        "bankActive": "Bank Active",
+        "bankActiveDescription": "Enable this bank to process payments",
+        "supportsWebhooks": "Supports Webhooks",
+        "supportsWebhooksDescription": "Can receive payment notifications via webhook",
+        "directIntegration": "Direct Integration",
+        "directIntegrationDescription": "Can initiate payments via API"
+      }
+    },
+    "paymentMethodsPage": {
+      "loadError": "Error loading payment methods",
+      "processorBangeApi": "BANGE API",
+      "processorManual": "Manual",
+      "requiresAgent": "Requires Agent",
+      "automatic": "Automatic",
+      "noFees": "No fees",
+      "toast": {
+        "error": "Error",
+        "requiredFields": "Code and name are required",
+        "updated": "Updated",
+        "updatedDescription": "Method {name} updated successfully",
+        "created": "Created",
+        "createdDescription": "Method {name} created successfully",
+        "saveError": "Error saving",
+        "deleted": "Deleted",
+        "deletedDescription": "Payment method deleted successfully",
+        "deleteError": "Error deleting",
+        "activated": "Activated",
+        "activatedDescription": "Method activated successfully",
+        "deactivated": "Deactivated",
+        "deactivatedDescription": "Method deactivated successfully",
+        "toggleError": "Error changing status"
+      },
+      "icons": {
+        "smartphone": "Smartphone",
+        "credit_card": "Card",
+        "building_2": "Bank",
+        "banknote": "Cash",
+        "file_text": "Document"
+      },
+      "form": {
+        "code": "Code",
+        "codePlaceholder": "new_method",
+        "name": "Name",
+        "namePlaceholder": "New Method",
+        "processor": "Processor",
+        "processorBangeApi": "BANGE API (Automatic)",
+        "processorManual": "Manual (Agent)",
+        "icon": "Icon",
+        "options": "Options",
+        "requiresPhone": "Requires phone number",
+        "requiresRedirect": "Requires redirect to gateway",
+        "requiresAgentValidation": "Requires agent validation",
+        "feesPercentage": "Fee %",
+        "feesFixed": "Fixed Fee (XAF)",
+        "minAmount": "Minimum Amount (XAF)",
+        "maxAmount": "Maximum Amount (XAF)",
+        "noLimit": "No limit"
+      }
+    },
+    "analyticsPage": {
+      "min": "Min",
+      "max": "Max"
+    },
+    "slaPage": {
+      "loadError": "Error loading SLA statistics",
+      "paymentsInProcess": "Payments in process",
+      "processingTime": "Processing time",
+      "requireImmediate": "Require immediate attention",
+      "performanceLevel": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "improvable": "Needs improvement",
+        "critical": "Critical"
+      },
+      "distribution": {
+        "title": "SLA Status Distribution",
+        "description": "Classification of pending payments by SLA compliance status"
+      },
+      "byPaymentMethod": {
+        "title": "SLA by Payment Method",
+        "description": "SLA compliance breakdown by payment method",
+        "method": "Payment Method",
+        "total": "Total",
+        "compliance": "Compliance"
+      },
+      "units": {
+        "min": "min",
+        "h": "h",
+        "m": "m"
+      }
+    },
+    "statsPage": {
+      "units": {
+        "min": "min"
+      }
+    },
+    "agentsPage": {
+      "units": {
+        "min": "min"
       }
     },
     "common": {

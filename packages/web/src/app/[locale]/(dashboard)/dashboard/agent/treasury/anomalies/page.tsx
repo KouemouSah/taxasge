@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,6 +104,7 @@ function StatusBadge({ status, label }: { status: AnomalyStatus; label: string }
 
 export default function TreasuryAnomaliesPage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
   const { toast } = useToast();
 
   // View state: 'list' or 'detail'
@@ -163,7 +164,7 @@ export default function TreasuryAnomaliesPage() {
   }, [anomalyData?.anomalies, searchTerm]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-GQ', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -174,7 +175,7 @@ export default function TreasuryAnomaliesPage() {
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return '-';
-    return new Intl.NumberFormat('es-GQ', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'XAF',
       minimumFractionDigits: 0,
@@ -315,7 +316,7 @@ export default function TreasuryAnomaliesPage() {
 
                 {selectedAnomaly.description && (
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm text-muted-foreground mb-1">{t('anomaliesPage.description')}</p>
                     <p className="text-sm bg-muted p-3 rounded-lg">{selectedAnomaly.description}</p>
                   </div>
                 )}

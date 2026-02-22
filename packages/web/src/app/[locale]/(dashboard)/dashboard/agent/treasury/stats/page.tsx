@@ -7,7 +7,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,24 +82,23 @@ const METHOD_COLORS: Record<string, string> = {
   bange_wallet: '#ec4899',
 };
 
-const METHOD_LABELS: Record<string, string> = {
-  mobile_money: 'Mobile Money',
-  card: 'Tarjeta',
-  bank_transfer: 'Transferencia',
-  cash: 'Efectivo',
-  check: 'Cheque',
-  bange_wallet: 'BANGE Wallet',
-};
+// METHOD_LABELS removed - use t('methodLabels.KEY') instead
+
+// Locale mapping for Intl formatters
+const LOCALE_MAP: Record<string, string> = { es: 'es-GQ', fr: 'fr-FR', en: 'en-US' };
 
 export default function TreasuryStatsPage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
 
   const [period, setPeriod] = useState<KPIPeriod>('month');
 
   const { data: kpiData, isLoading, error, refetch } = useKPIs({ period });
 
+  const intlLocale = LOCALE_MAP[locale] || 'es-GQ';
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-GQ', {
+    return new Intl.NumberFormat(intlLocale, {
       style: 'currency',
       currency: 'XAF',
       minimumFractionDigits: 0,
@@ -108,7 +107,7 @@ export default function TreasuryStatsPage() {
   };
 
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('es-GQ').format(num);
+    return new Intl.NumberFormat(intlLocale).format(num);
   };
 
   const getTrendIcon = (trend?: string) => {
@@ -167,7 +166,7 @@ export default function TreasuryStatsPage() {
 
   // Prepare chart data for payment methods (Doughnut Chart)
   const paymentMethodChartData = {
-    labels: kpiData?.byPaymentMethod.map((m) => METHOD_LABELS[m.method] || m.method) || [],
+    labels: kpiData?.byPaymentMethod.map((m) => t(`methodLabels.${m.method}` as Parameters<typeof t>[0])) || [],
     datasets: [
       {
         data: kpiData?.byPaymentMethod.map((m) => m.amount) || [],
@@ -466,7 +465,7 @@ export default function TreasuryStatsPage() {
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: METHOD_COLORS[method.method] || '#6b7280' }}
                           />
-                          {METHOD_LABELS[method.method] || method.method}
+                          {t(`methodLabels.${method.method}` as Parameters<typeof t>[0])}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{formatNumber(method.count)}</TableCell>
@@ -478,7 +477,7 @@ export default function TreasuryStatsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {method.avgProcessingMinutes ? `${method.avgProcessingMinutes.toFixed(0)} min` : '-'}
+                        {method.avgProcessingMinutes ? `${method.avgProcessingMinutes.toFixed(0)} ${t('statsPage.units.min')}` : '-'}
                       </TableCell>
                     </TableRow>
                   ))}

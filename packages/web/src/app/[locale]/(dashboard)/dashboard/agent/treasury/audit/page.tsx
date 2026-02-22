@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,6 +95,7 @@ function ActionBadge({ action, label }: { action: AgentActionType; label: string
 
 export default function TreasuryAuditPage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -134,7 +135,7 @@ export default function TreasuryAuditPage() {
   }, [auditData?.entries, searchTerm]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-GQ', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

@@ -147,11 +147,11 @@ export default function BankConfigurationsPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Actualizar
+            {t('banksPage.refresh')}
           </Button>
           <Button onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
-            Agregar Banco
+            {t('banksPage.addBank')}
           </Button>
         </div>
       </div>
@@ -161,10 +161,9 @@ export default function BankConfigurationsPage() {
         <CardContent className="flex items-start gap-3 py-4">
           <Shield className="h-5 w-5 text-blue-500 mt-0.5" />
           <div>
-            <p className="font-medium text-blue-900">Configuracion Bancaria</p>
+            <p className="font-medium text-blue-900">{t('banksPage.infoTitle')}</p>
             <p className="text-sm text-blue-700">
-              Configure las integraciones con bancos para recibir pagos via Mobile Money y webhooks.
-              Los credenciales API se almacenan de forma segura en Google Secret Manager.
+              {t('banksPage.infoDescription')}
             </p>
           </div>
         </CardContent>
@@ -175,7 +174,7 @@ export default function BankConfigurationsPage() {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-700">Error al cargar las configuraciones</p>
+            <p className="text-red-700">{t('banksPage.loadError')}</p>
           </CardContent>
         </Card>
       )}
@@ -185,7 +184,7 @@ export default function BankConfigurationsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Bancos Configurados
+            {t('banksPage.configuredBanks')}
             {configurations && configurations.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {configurations.length}
@@ -193,7 +192,7 @@ export default function BankConfigurationsPage() {
             )}
           </CardTitle>
           <CardDescription>
-            Lista de bancos integrados con el sistema de pagos
+            {t('banksPage.configuredBanksDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -204,13 +203,13 @@ export default function BankConfigurationsPage() {
           ) : !configurations || configurations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold">Sin configuraciones</h3>
+              <h3 className="text-lg font-semibold">{t('banksPage.emptyTitle')}</h3>
               <p className="text-muted-foreground mb-4">
-                No hay bancos configurados. Agregue uno para comenzar.
+                {t('banksPage.emptyDescription')}
               </p>
               <Button onClick={openCreateDialog}>
                 <Plus className="mr-2 h-4 w-4" />
-                Agregar Banco
+                {t('banksPage.addBank')}
               </Button>
             </div>
           ) : (
@@ -218,13 +217,13 @@ export default function BankConfigurationsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Codigo</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Cuenta Tesoreria</TableHead>
-                    <TableHead>Webhooks</TableHead>
-                    <TableHead>Integracion Directa</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead>{t('banksPage.table.code')}</TableHead>
+                    <TableHead>{t('banksPage.table.name')}</TableHead>
+                    <TableHead>{t('banksPage.table.treasuryAccount')}</TableHead>
+                    <TableHead>{t('banksPage.table.webhooks')}</TableHead>
+                    <TableHead>{t('banksPage.table.directIntegration')}</TableHead>
+                    <TableHead>{t('banksPage.table.status')}</TableHead>
+                    <TableHead className="text-right">{t('banksPage.table.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -241,7 +240,7 @@ export default function BankConfigurationsPage() {
                         {config.supportsWebhooks ? (
                           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
                             <Webhook className="h-3 w-3 mr-1" />
-                            Soportado
+                            {t('banksPage.supported')}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -250,7 +249,7 @@ export default function BankConfigurationsPage() {
                       <TableCell>
                         {config.supportsDirectIntegration ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            Activo
+                            {t('banksPage.active')}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -260,12 +259,12 @@ export default function BankConfigurationsPage() {
                         {config.isActive ? (
                           <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
                             <CheckCircle className="h-3 w-3 mr-1" />
-                            Activo
+                            {t('banksPage.active')}
                           </Badge>
                         ) : (
                           <Badge variant="secondary">
                             <XCircle className="h-3 w-3 mr-1" />
-                            Inactivo
+                            {t('banksPage.inactive')}
                           </Badge>
                         )}
                       </TableCell>
@@ -275,7 +274,7 @@ export default function BankConfigurationsPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => openEditDialog(config)}
-                            title="Editar"
+                            title={t('banksPage.edit')}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -296,22 +295,22 @@ export default function BankConfigurationsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              {editingConfig ? 'Editar Banco' : 'Agregar Banco'}
+              {editingConfig ? t('banksPage.dialog.editTitle') : t('banksPage.dialog.createTitle')}
             </DialogTitle>
             <DialogDescription>
               {editingConfig
-                ? 'Modifique la configuracion del banco.'
-                : 'Configure un nuevo banco para integracion de pagos.'}
+                ? t('banksPage.dialog.editDescription')
+                : t('banksPage.dialog.createDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             {/* Bank Code */}
             <div className="space-y-2">
-              <Label htmlFor="bankCode">Codigo del Banco *</Label>
+              <Label htmlFor="bankCode">{t('banksPage.form.bankCode')} *</Label>
               <Input
                 id="bankCode"
-                placeholder="Ej: BANGE"
+                placeholder={t('banksPage.form.bankCodePlaceholder')}
                 value={formData.bankCode}
                 onChange={(e) => setFormData({ ...formData, bankCode: e.target.value.toUpperCase() })}
                 disabled={!!editingConfig}
@@ -321,10 +320,10 @@ export default function BankConfigurationsPage() {
 
             {/* Bank Name */}
             <div className="space-y-2">
-              <Label htmlFor="bankName">Nombre del Banco *</Label>
+              <Label htmlFor="bankName">{t('banksPage.form.bankName')} *</Label>
               <Input
                 id="bankName"
-                placeholder="Ej: Banco Nacional de Guinea Ecuatorial"
+                placeholder={t('banksPage.form.bankNamePlaceholder')}
                 value={formData.bankName}
                 onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
               />
@@ -332,10 +331,10 @@ export default function BankConfigurationsPage() {
 
             {/* Treasury Account */}
             <div className="space-y-2">
-              <Label htmlFor="treasuryAccountNumber">Cuenta de Tesoreria *</Label>
+              <Label htmlFor="treasuryAccountNumber">{t('banksPage.form.treasuryAccount')} *</Label>
               <Input
                 id="treasuryAccountNumber"
-                placeholder="Ej: GE12345678901234"
+                placeholder={t('banksPage.form.treasuryAccountPlaceholder')}
                 value={formData.treasuryAccountNumber}
                 onChange={(e) => setFormData({ ...formData, treasuryAccountNumber: e.target.value })}
                 className="font-mono"
@@ -344,7 +343,7 @@ export default function BankConfigurationsPage() {
 
             {/* API Endpoint */}
             <div className="space-y-2">
-              <Label htmlFor="apiEndpoint">URL de API (opcional)</Label>
+              <Label htmlFor="apiEndpoint">{t('banksPage.form.apiEndpoint')}</Label>
               <Input
                 id="apiEndpoint"
                 placeholder="https://api.bank.com/v1"
@@ -357,9 +356,9 @@ export default function BankConfigurationsPage() {
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Banco Activo</Label>
+                  <Label>{t('banksPage.form.bankActive')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Habilitar este banco para procesar pagos
+                    {t('banksPage.form.bankActiveDescription')}
                   </p>
                 </div>
                 <Switch
@@ -370,9 +369,9 @@ export default function BankConfigurationsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Soporta Webhooks</Label>
+                  <Label>{t('banksPage.form.supportsWebhooks')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Puede recibir notificaciones de pago via webhook
+                    {t('banksPage.form.supportsWebhooksDescription')}
                   </p>
                 </div>
                 <Switch
@@ -385,9 +384,9 @@ export default function BankConfigurationsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Integracion Directa</Label>
+                  <Label>{t('banksPage.form.directIntegration')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    Puede iniciar pagos via API
+                    {t('banksPage.form.directIntegrationDescription')}
                   </p>
                 </div>
                 <Switch
@@ -406,18 +405,18 @@ export default function BankConfigurationsPage() {
               onClick={() => setIsDialogOpen(false)}
               disabled={isSaving}
             >
-              Cancelar
+              {t('banksPage.cancel')}
             </Button>
             <Button onClick={handleSubmit} disabled={isSaving || !isFormValid}>
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
+                  {t('banksPage.saving')}
                 </>
               ) : (
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  {editingConfig ? 'Guardar Cambios' : 'Crear Banco'}
+                  {editingConfig ? t('banksPage.saveChanges') : t('banksPage.createBank')}
                 </>
               )}
             </Button>

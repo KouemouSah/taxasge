@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,8 +101,12 @@ function StatusBadge({ status, label }: { status: ExportStatus; label: string })
   );
 }
 
+// Locale mapping for Intl formatters
+const LOCALE_MAP: Record<string, string> = { es: 'es-GQ', fr: 'fr-FR', en: 'en-US' };
+
 export default function TreasuryExportsPage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
   const { toast } = useToast();
 
   // Filters
@@ -140,9 +144,11 @@ export default function TreasuryExportsPage() {
   const total = exportData?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
+  const intlLocale = LOCALE_MAP[locale] || 'es-GQ';
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('es-GQ', {
+    return new Date(dateString).toLocaleDateString(intlLocale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -153,7 +159,7 @@ export default function TreasuryExportsPage() {
 
   const formatCurrency = (amount?: number) => {
     if (!amount) return '-';
-    return new Intl.NumberFormat('es-GQ', {
+    return new Intl.NumberFormat(intlLocale, {
       style: 'currency',
       currency: 'XAF',
       minimumFractionDigits: 0,

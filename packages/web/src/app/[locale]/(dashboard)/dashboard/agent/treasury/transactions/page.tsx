@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,7 @@ interface TransactionFilters {
 
 export default function TreasuryTransactionsPage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
 
   // Filters state
   const [filters, setFilters] = useState<TransactionFilters>({
@@ -81,7 +82,7 @@ export default function TreasuryTransactionsPage() {
   }, [paymentsData?.payments, searchTerm]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-GQ', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'XAF',
       minimumFractionDigits: 0,
@@ -89,7 +90,7 @@ export default function TreasuryTransactionsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-GQ', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

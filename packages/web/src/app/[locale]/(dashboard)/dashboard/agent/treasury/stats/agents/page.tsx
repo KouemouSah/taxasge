@@ -7,7 +7,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,15 +62,21 @@ ChartJS.register(
   Legend
 );
 
+// Locale mapping for Intl formatters
+const LOCALE_MAP: Record<string, string> = { es: 'es-GQ', fr: 'fr-FR', en: 'en-US' };
+
 export default function TreasuryAgentPerformancePage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
 
   const [period, setPeriod] = useState<KPIPeriod>('month');
 
   const { data: agentData, isLoading, error, refetch } = useAgentPerformance({ period });
 
+  const intlLocale = LOCALE_MAP[locale] || 'es-GQ';
+
   const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('es-GQ').format(num);
+    return new Intl.NumberFormat(intlLocale).format(num);
   };
 
   const getPerformanceBadge = (rate: number) => {
@@ -324,7 +330,7 @@ export default function TreasuryAgentPerformancePage() {
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Clock className="h-4 w-4 text-muted-foreground" />
-                              {agent.avgProcessingMinutes.toFixed(1)} min
+                              {agent.avgProcessingMinutes.toFixed(1)} {t('agentsPage.units.min')}
                             </div>
                           </TableCell>
                           <TableCell>

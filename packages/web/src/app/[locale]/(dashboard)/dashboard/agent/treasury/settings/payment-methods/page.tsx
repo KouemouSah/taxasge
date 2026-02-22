@@ -89,13 +89,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   'file-text': FileText,
 };
 
-const availableIcons = [
-  { value: 'smartphone', label: 'Smartphone' },
-  { value: 'credit-card', label: 'Tarjeta' },
-  { value: 'building-2', label: 'Banco' },
-  { value: 'banknote', label: 'Efectivo' },
-  { value: 'file-text', label: 'Documento' },
-];
+// Icon labels are resolved via i18n in the component
+const availableIconValues = ['smartphone', 'credit-card', 'building-2', 'banknote', 'file-text'] as const;
 
 // Default protected methods that cannot be deleted
 const PROTECTED_METHODS = new Set(['mobile_money', 'card', 'bank_transfer', 'cash', 'check']);
@@ -181,8 +176,8 @@ export default function PaymentMethodsPage() {
   const handleSubmit = async () => {
     if (!formData.code || !formData.labelEs) {
       toast({
-        title: 'Error',
-        description: 'Código y nombre en español son requeridos',
+        title: t('paymentMethodsPage.toast.error'),
+        description: t('paymentMethodsPage.toast.requiredFields'),
         variant: 'destructive',
       });
       return;
@@ -205,8 +200,8 @@ export default function PaymentMethodsPage() {
         };
         await updateMutation.mutateAsync({ code: editingMethod.code, update });
         toast({
-          title: 'Actualizado',
-          description: `Método ${formData.labelEs} actualizado correctamente`,
+          title: t('paymentMethodsPage.toast.updated'),
+          description: t('paymentMethodsPage.toast.updatedDescription', { name: formData.labelEs }),
         });
       } else {
         // Create
@@ -225,15 +220,15 @@ export default function PaymentMethodsPage() {
         };
         await createMutation.mutateAsync(create);
         toast({
-          title: 'Creado',
-          description: `Método ${formData.labelEs} creado correctamente`,
+          title: t('paymentMethodsPage.toast.created'),
+          description: t('paymentMethodsPage.toast.createdDescription', { name: formData.labelEs }),
         });
       }
       handleCloseDialog();
     } catch (err) {
       toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Error al guardar',
+        title: t('paymentMethodsPage.toast.error'),
+        description: err instanceof Error ? err.message : t('paymentMethodsPage.toast.saveError'),
         variant: 'destructive',
       });
     }
@@ -245,14 +240,14 @@ export default function PaymentMethodsPage() {
     try {
       await deleteMutation.mutateAsync(deletingCode);
       toast({
-        title: 'Eliminado',
-        description: 'Método de pago eliminado correctamente',
+        title: t('paymentMethodsPage.toast.deleted'),
+        description: t('paymentMethodsPage.toast.deletedDescription'),
       });
       setDeletingCode(null);
     } catch (err) {
       toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Error al eliminar',
+        title: t('paymentMethodsPage.toast.error'),
+        description: err instanceof Error ? err.message : t('paymentMethodsPage.toast.deleteError'),
         variant: 'destructive',
       });
     }
@@ -262,13 +257,13 @@ export default function PaymentMethodsPage() {
     try {
       await toggleActiveMutation.mutateAsync({ code, isActive: !currentActive });
       toast({
-        title: currentActive ? 'Desactivado' : 'Activado',
-        description: `Método ${currentActive ? 'desactivado' : 'activado'} correctamente`,
+        title: currentActive ? t('paymentMethodsPage.toast.deactivated') : t('paymentMethodsPage.toast.activated'),
+        description: currentActive ? t('paymentMethodsPage.toast.deactivatedDescription') : t('paymentMethodsPage.toast.activatedDescription'),
       });
     } catch (err) {
       toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Error al cambiar estado',
+        title: t('paymentMethodsPage.toast.error'),
+        description: err instanceof Error ? err.message : t('paymentMethodsPage.toast.toggleError'),
         variant: 'destructive',
       });
     }
@@ -293,7 +288,7 @@ export default function PaymentMethodsPage() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
-            <span>Error al cargar métodos de pago: {error.message}</span>
+            <span>{t('paymentMethodsPage.loadError')}: {error.message}</span>
           </div>
         </CardContent>
       </Card>
@@ -357,17 +352,17 @@ export default function PaymentMethodsPage() {
                     <Badge
                       variant={method.processorType === 'bange_api' ? 'default' : 'secondary'}
                     >
-                      {method.processorType === 'bange_api' ? 'BANGE API' : 'Manual'}
+                      {method.processorType === 'bange_api' ? t('paymentMethodsPage.processorBangeApi') : t('paymentMethodsPage.processorManual')}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {method.requiresAgentValidation ? (
                       <Badge variant="outline" className="text-orange-600 border-orange-300">
-                        Requiere Agente
+                        {t('paymentMethodsPage.requiresAgent')}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-green-600 border-green-300">
-                        Automático
+                        {t('paymentMethodsPage.automatic')}
                       </Badge>
                     )}
                   </TableCell>
@@ -381,7 +376,7 @@ export default function PaymentMethodsPage() {
                         <span>{method.feesFixed.toLocaleString()} XAF</span>
                       )}
                       {method.feesPercentage === 0 && method.feesFixed === 0 && (
-                        <span className="text-muted-foreground">Sin comisión</span>
+                        <span className="text-muted-foreground">{t('paymentMethodsPage.noFees')}</span>
                       )}
                     </div>
                   </TableCell>
@@ -443,7 +438,7 @@ export default function PaymentMethodsPage() {
             {!editingMethod && (
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="code" className="text-right">
-                  Código *
+                  {t('paymentMethodsPage.form.code')} *
                 </Label>
                 <Input
                   id="code"
@@ -451,7 +446,7 @@ export default function PaymentMethodsPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, code: e.target.value.toLowerCase().replace(/[^a-z_]/g, '') })
                   }
-                  placeholder="nuevo_metodo"
+                  placeholder={t('paymentMethodsPage.form.codePlaceholder')}
                   className="col-span-3"
                 />
               </div>
@@ -460,20 +455,20 @@ export default function PaymentMethodsPage() {
             {/* Label (Spanish only - translations managed via entity_translations) */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="labelEs" className="text-right">
-                Nombre *
+                {t('paymentMethodsPage.form.name')} *
               </Label>
               <Input
                 id="labelEs"
                 value={formData.labelEs}
                 onChange={(e) => setFormData({ ...formData, labelEs: e.target.value })}
-                placeholder="Nuevo Método"
+                placeholder={t('paymentMethodsPage.form.namePlaceholder')}
                 className="col-span-3"
               />
             </div>
 
             {/* Processor Type & Icon */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Procesador</Label>
+              <Label className="text-right">{t('paymentMethodsPage.form.processor')}</Label>
               <Select
                 value={formData.processorType}
                 onValueChange={(value: 'bange_api' | 'manual') =>
@@ -484,14 +479,14 @@ export default function PaymentMethodsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bange_api">BANGE API (Automático)</SelectItem>
-                  <SelectItem value="manual">Manual (Agente)</SelectItem>
+                  <SelectItem value="bange_api">{t('paymentMethodsPage.form.processorBangeApi')}</SelectItem>
+                  <SelectItem value="manual">{t('paymentMethodsPage.form.processorManual')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Icono</Label>
+              <Label className="text-right">{t('paymentMethodsPage.form.icon')}</Label>
               <Select
                 value={formData.icon}
                 onValueChange={(value) => setFormData({ ...formData, icon: value })}
@@ -500,11 +495,11 @@ export default function PaymentMethodsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableIcons.map((icon) => (
-                    <SelectItem key={icon.value} value={icon.value}>
+                  {availableIconValues.map((iconValue) => (
+                    <SelectItem key={iconValue} value={iconValue}>
                       <div className="flex items-center gap-2">
-                        {getIcon(icon.value)}
-                        <span>{icon.label}</span>
+                        {getIcon(iconValue)}
+                        <span>{t(`paymentMethodsPage.icons.${iconValue.replace(/-/g, '_')}`)}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -514,7 +509,7 @@ export default function PaymentMethodsPage() {
 
             {/* Checkboxes */}
             <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">Opciones</Label>
+              <Label className="text-right pt-2">{t('paymentMethodsPage.form.options')}</Label>
               <div className="col-span-3 space-y-3">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -525,7 +520,7 @@ export default function PaymentMethodsPage() {
                     }
                   />
                   <Label htmlFor="requiresPhone" className="font-normal">
-                    Requiere número de teléfono
+                    {t('paymentMethodsPage.form.requiresPhone')}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -537,7 +532,7 @@ export default function PaymentMethodsPage() {
                     }
                   />
                   <Label htmlFor="requiresRedirect" className="font-normal">
-                    Requiere redirección a gateway
+                    {t('paymentMethodsPage.form.requiresRedirect')}
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -549,7 +544,7 @@ export default function PaymentMethodsPage() {
                     }
                   />
                   <Label htmlFor="requiresAgentValidation" className="font-normal">
-                    Requiere validación de agente
+                    {t('paymentMethodsPage.form.requiresAgentValidation')}
                   </Label>
                 </div>
               </div>
@@ -557,7 +552,7 @@ export default function PaymentMethodsPage() {
 
             {/* Fees */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Comisión %</Label>
+              <Label className="text-right">{t('paymentMethodsPage.form.feesPercentage')}</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -571,7 +566,7 @@ export default function PaymentMethodsPage() {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Comisión Fija (XAF)</Label>
+              <Label className="text-right">{t('paymentMethodsPage.form.feesFixed')}</Label>
               <Input
                 type="number"
                 step="1"
@@ -584,26 +579,26 @@ export default function PaymentMethodsPage() {
 
             {/* Amount limits */}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Monto Mínimo (XAF)</Label>
+              <Label className="text-right">{t('paymentMethodsPage.form.minAmount')}</Label>
               <Input
                 type="number"
                 step="1"
                 min="0"
                 value={formData.minAmount}
                 onChange={(e) => setFormData({ ...formData, minAmount: e.target.value })}
-                placeholder="Sin límite"
+                placeholder={t('paymentMethodsPage.form.noLimit')}
                 className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Monto Máximo (XAF)</Label>
+              <Label className="text-right">{t('paymentMethodsPage.form.maxAmount')}</Label>
               <Input
                 type="number"
                 step="1"
                 min="0"
                 value={formData.maxAmount}
                 onChange={(e) => setFormData({ ...formData, maxAmount: e.target.value })}
-                placeholder="Sin límite"
+                placeholder={t('paymentMethodsPage.form.noLimit')}
                 className="col-span-3"
               />
             </div>

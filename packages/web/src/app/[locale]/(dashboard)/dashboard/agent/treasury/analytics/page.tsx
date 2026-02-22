@@ -602,8 +602,8 @@ export default function TreasuryAnalyticsPage() {
                           <TableHead className="text-right">{t('analytics.mean')}</TableHead>
                           <TableHead className="text-right">{t('analytics.median')}</TableHead>
                           <TableHead className="text-right">{t('analytics.std')}</TableHead>
-                          <TableHead className="text-right">Min</TableHead>
-                          <TableHead className="text-right">Max</TableHead>
+                          <TableHead className="text-right">{t('analyticsPage.min')}</TableHead>
+                          <TableHead className="text-right">{t('analyticsPage.max')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
