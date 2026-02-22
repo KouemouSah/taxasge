@@ -34,6 +34,7 @@ import type { DynamicMenuItem, SubMenuItem } from '@/modules/agent-dashboard/typ
 
 export default function TreasuryDashboardPage() {
   const t = useTranslations('treasury');
+  const tMenu = useTranslations();  // No namespace — resolves menu titleKeys like 'agent.nav.validation'
   const locale = useLocale();
   const { data: stats, isLoading, error } = useTreasuryStats();
   const { menuConfig, dashboardConfig, isLoading: menuLoading } = useMenuConfig();
@@ -202,7 +203,7 @@ export default function TreasuryDashboardPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <ActionIcon className="h-5 w-5 text-primary" />
-                    {t.has(titleKey) ? t(titleKey) : titleKey}
+                    {tMenu.has(titleKey) ? tMenu(titleKey) : titleKey}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

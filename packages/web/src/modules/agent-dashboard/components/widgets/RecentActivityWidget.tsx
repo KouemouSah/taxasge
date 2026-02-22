@@ -18,7 +18,7 @@ import apiClient from '@/core/api/client';
 import type { EntityCode } from '../../types';
 
 interface RecentActivityWidgetProps {
-  entityCode: EntityCode;
+  entityCode?: EntityCode;
   limit?: number;
   className?: string;
 }

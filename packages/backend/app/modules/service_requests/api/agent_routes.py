@@ -3607,17 +3607,52 @@ class PendingPaymentsWidgetResponse(BaseModel):
 )
 async def get_pending_payments_widget(
     workflow_code: Optional[str] = Query(None, description="Filter by workflow code"),
+    workflow_status: Optional[str] = Query(None, description="Filter by workflow status (e.g. locked_by_agent, completed)"),
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db=Depends(get_database),
     _=Depends(permission_required("treasury.view_pending"))
 ):
     """
-    Get pending payment validations from v_pending_payment_validations.
-    For treasury agents.
+    Get payment validations for treasury widget.
+    Without workflow_status: uses v_pending_payment_validations (pending only).
+    With workflow_status: queries service_payments directly for that status.
     """
     conn = db
-    if workflow_code:
+
+    if workflow_status:
+        # Direct query for specific status (in_progress, completed, etc.)
+        base_query = """
+            SELECT
+                sp.id::text AS payment_id,
+                sp.payment_reference,
+                sr.reference AS request_reference,
+                sr.workflow_code,
+                COALESCE(u.full_name, u.first_name || ' ' || u.last_name) AS user_name,
+                sp.payment_method::text,
+                sp.total_amount,
+                sp.currency,
+                EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
+                NULL AS assigned_to_name,
+                sp.created_at
+            FROM service_payments sp
+            LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+            LEFT JOIN users u ON u.id = sp.user_id
+            WHERE sp.workflow_status = $1
+        """
+        params: list = [workflow_status]
+        param_idx = 2
+
+        if workflow_code:
+            base_query += f" AND sr.workflow_code = ${param_idx}"
+            params.append(workflow_code)
+            param_idx += 1
+
+        base_query += f" ORDER BY sp.created_at DESC LIMIT ${param_idx}"
+        params.append(limit)
+
+        rows = await conn.fetch(base_query, *params)
+    elif workflow_code:
         rows = await conn.fetch("""
             SELECT
                 payment_id::text,
@@ -5470,3 +5505,58 @@ async def export_request_history(
             "Content-Length": str(len(content)),
         }
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# WIDGET: RECENT ACTIVITY
+# Shows recent actions performed by the current agent
+# ═══════════════════════════════════════════════════════════════
+
+class RecentActivityItem(BaseModel):
+    """A single recent activity entry"""
+    id: str
+    action_type: str
+    item_type: str = "service_request"
+    reference: str
+    created_at: str
+
+
+@router.get(
+    "/dashboard/widgets/recent-activity",
+    response_model=List[RecentActivityItem],
+    summary="Get recent actions by current agent"
+)
+async def get_recent_activity_widget(
+    limit: int = Query(5, ge=1, le=20, description="Number of recent actions to return"),
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_database),
+    _=Depends(permission_required("service_request.view"))
+):
+    """
+    Get the most recent actions performed by the current agent
+    from service_request_history.
+    """
+    user_id = UUID(str(current_user.id))
+
+    rows = await db.fetch("""
+        SELECT
+            h.id::text AS id,
+            h.action AS action_type,
+            COALESCE(sr.reference, 'REQ-?') AS reference,
+            h.performed_at
+        FROM service_request_history h
+        LEFT JOIN service_requests sr ON sr.id = h.service_request_id
+        WHERE h.performed_by = $1
+        ORDER BY h.performed_at DESC
+        LIMIT $2
+    """, user_id, limit)
+
+    return [
+        RecentActivityItem(
+            id=row["id"],
+            action_type=row["action_type"],
+            reference=row["reference"],
+            created_at=row["performed_at"].isoformat() if row["performed_at"] else "",
+        )
+        for row in rows
+    ]

@@ -3175,13 +3175,6 @@ async def get_pending_payments(
             # Default: only manual validation methods
             where_clauses.append("sp.payment_method IN ('cash', 'check')")
 
-        # Get agent's entity_location_id for site-based filtering
-        agent_location_id = None
-        if current_agent_profile_id:
-            agent_location_id = await db.fetchval("""
-                SELECT entity_location_id FROM agent_profiles WHERE id = $1
-            """, current_agent_profile_id)
-
         # Agent-based filtering
         if is_supervisor:
             # Supervisor can filter by specific agent or see all
@@ -3198,17 +3191,12 @@ async def get_pending_payments(
                 logger.info(f"[Treasury] Supervisor filtering by location: {entity_location_id}")
         else:
             # Regular agent sees only their assigned payments
+            # (site scoping is handled by assignment routing — no need for sr.entity_location_id filter)
             if current_agent_profile_id:
                 where_clauses.append(f"sp.assigned_agent_id = ${param_idx}::uuid")
                 params.append(str(current_agent_profile_id))
                 param_idx += 1
                 logger.info(f"[Treasury] Agent filtering by own profile: {current_agent_profile_id}")
-                # Site-bound agents also filter by location
-                if agent_location_id:
-                    where_clauses.append(f"sr.entity_location_id = ${param_idx}::uuid")
-                    params.append(str(agent_location_id))
-                    param_idx += 1
-                    logger.info(f"[Treasury] Agent site-scoped to location: {agent_location_id}")
             else:
                 # User has permission but no agent profile - show nothing
                 logger.warning(f"[Treasury] User {user_id} has no agent_profile, showing empty results")
@@ -3257,9 +3245,10 @@ async def get_pending_payments(
         rows = await db.fetch(query, *params)
         logger.info(f"[Treasury] Found {len(rows)} payments")
 
-        # Get total count
+        # Get total count (must include same JOINs as main query for sr.* references in where_sql)
         count_query = f"""
             SELECT COUNT(*) FROM service_payments sp
+            LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
             WHERE {where_sql}
         """
         total = await db.fetchval(count_query, *params[:param_idx-1])
@@ -4378,63 +4367,54 @@ async def get_treasury_dashboard_stats(
         # Supervisor: optional explicit filter
         location_filter_id = entity_location_id
 
-    # Build location join + filter
-    location_join = ""
-    location_where = ""
-    location_params: list = []
+    # Build location-aware queries
     if location_filter_id:
-        location_join = "JOIN service_requests sr_loc ON sr_loc.id = sp.service_request_id"
-        location_where = f"AND sr_loc.entity_location_id = ${{loc_idx}}::uuid"
-        location_params = [str(location_filter_id)]
+        loc_id = str(location_filter_id)
         logger.info(f"[Treasury Stats] Scoping by location: {location_filter_id}")
 
-    # Get pending validation count (payments awaiting agent review)
-    pending_query = f"""
-        SELECT COUNT(*)
-        FROM service_payments sp
-        {location_join}
-        WHERE sp.workflow_status IN (
-            'submitted',
-            'pending_agent_review',
-            'docs_resubmitted'
-        )
-          AND sp.requires_agent_validation = true
-          {location_where.replace('${loc_idx}', '$1') if location_filter_id else ''}
-    """
-    pending_count = await db.fetchval(pending_query, *location_params) if location_filter_id else await db.fetchval("""
-        SELECT COUNT(*)
-        FROM service_payments
-        WHERE workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
-          AND requires_agent_validation = true
-    """)
+        pending_count = await db.fetchval("""
+            SELECT COUNT(*)
+            FROM service_payments sp
+            JOIN service_requests sr_loc ON sr_loc.id = sp.service_request_id
+            WHERE sp.workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
+              AND sp.requires_agent_validation = true
+              AND sr_loc.entity_location_id = $1::uuid
+        """, loc_id)
 
-    # Get unreconciled bank transactions count (global — not location-scoped)
+        today_stats = await db.fetchrow("""
+            SELECT
+                COUNT(*) AS validated_count,
+                COALESCE(SUM(sp.total_amount), 0) AS validated_amount
+            FROM service_payments sp
+            JOIN service_requests sr_loc ON sr_loc.id = sp.service_request_id
+            WHERE sp.workflow_status IN ('approved_by_agent', 'completed')
+              AND sp.validated_at >= CURRENT_DATE
+              AND sp.validated_at < CURRENT_DATE + INTERVAL '1 day'
+              AND sr_loc.entity_location_id = $1::uuid
+        """, loc_id)
+    else:
+        pending_count = await db.fetchval("""
+            SELECT COUNT(*)
+            FROM service_payments
+            WHERE workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
+              AND requires_agent_validation = true
+        """)
+
+        today_stats = await db.fetchrow("""
+            SELECT
+                COUNT(*) AS validated_count,
+                COALESCE(SUM(total_amount), 0) AS validated_amount
+            FROM service_payments
+            WHERE workflow_status IN ('approved_by_agent', 'completed')
+              AND validated_at >= CURRENT_DATE
+              AND validated_at < CURRENT_DATE + INTERVAL '1 day'
+        """)
+
+    # Unreconciled bank transactions — global (not location-scoped)
     unreconciled_count = await db.fetchval("""
         SELECT COUNT(*)
         FROM bank_transactions
         WHERE status = 'unreconciled'
-    """)
-
-    # Get today's validated payments (approved or completed today)
-    today_query = f"""
-        SELECT
-            COUNT(*) AS validated_count,
-            COALESCE(SUM(sp.total_amount), 0) AS validated_amount
-        FROM service_payments sp
-        {location_join}
-        WHERE sp.workflow_status IN ('approved_by_agent', 'completed')
-          AND sp.validated_at >= CURRENT_DATE
-          AND sp.validated_at < CURRENT_DATE + INTERVAL '1 day'
-          {location_where.replace('${loc_idx}', '$1') if location_filter_id else ''}
-    """
-    today_stats = await db.fetchrow(today_query, *location_params) if location_filter_id else await db.fetchrow("""
-        SELECT
-            COUNT(*) AS validated_count,
-            COALESCE(SUM(total_amount), 0) AS validated_amount
-        FROM service_payments
-        WHERE workflow_status IN ('approved_by_agent', 'completed')
-          AND validated_at >= CURRENT_DATE
-          AND validated_at < CURRENT_DATE + INTERVAL '1 day'
     """)
 
     return TreasuryDashboardStatsResponse(

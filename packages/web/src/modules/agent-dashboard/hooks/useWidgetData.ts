@@ -421,17 +421,18 @@ export interface PendingPaymentsWidgetData {
 
 export function usePendingPayments(options?: {
   workflowCode?: string;
+  statusFilter?: string;
   limit?: number;
   enabled?: boolean;
 }) {
-  const { workflowCode, limit = 10, enabled = true } = options || {};
+  const { workflowCode, statusFilter, limit = 10, enabled = true } = options || {};
 
   return useQuery<PendingPaymentsWidgetData>({
-    queryKey: [...widgetQueryKeys.all, 'pending-payments', workflowCode],
+    queryKey: [...widgetQueryKeys.all, 'pending-payments', workflowCode, statusFilter],
     queryFn: async () => {
       const response = await apiClient.get<PendingPaymentsWidgetData>(
         '/agent/service-requests/dashboard/widgets/pending-payments',
-        { params: { workflow_code: workflowCode, limit } }
+        { params: { workflow_code: workflowCode, workflow_status: statusFilter, limit } }
       );
       return response.data;
     },

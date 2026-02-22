@@ -32,6 +32,8 @@ import type { PendingPaymentItem } from '../../hooks/useWidgetData';
 
 interface PendingPaymentsWidgetProps {
   workflowCode?: string;
+  statusFilter?: string;
+  title?: string;
   limit?: number;
   className?: string;
 }
@@ -67,6 +69,8 @@ function getWaitingStatus(hours: number | null): {
 
 export function PendingPaymentsWidget({
   workflowCode,
+  statusFilter,
+  title,
   limit = 5,
   className,
 }: PendingPaymentsWidgetProps) {
@@ -74,8 +78,11 @@ export function PendingPaymentsWidget({
   const t = useTranslations('agent');
   const { data, isLoading, isError } = usePendingPayments({
     workflowCode,
+    statusFilter,
     limit,
   });
+
+  const widgetTitle = title || t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' });
 
   // Loading state
   if (isLoading) {
@@ -84,7 +91,7 @@ export function PendingPaymentsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-600" />
-            {t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' })}
+            {widgetTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -105,7 +112,7 @@ export function PendingPaymentsWidget({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-600" />
-            {t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' })}
+            {widgetTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -130,7 +137,7 @@ export function PendingPaymentsWidget({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-emerald-600" />
-            {t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' })}
+            {widgetTitle}
             {total_pending > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {total_pending}
