@@ -1,14 +1,19 @@
 /**
  * Treasury Dashboard Overview
- * Main dashboard for Treasury Agents showing stats and quick actions
+ * Main dashboard for Treasury Agents showing stats and quick actions.
+ *
+ * Quick actions are derived from the dynamic menu_config (roles.menu_config JSON).
+ * Stats cards are kept as-is (API-driven, TESORO-specific).
+ * Widgets section uses DynamicDashboard + WidgetRegistry from dashboard_config.
  */
 
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   CreditCard,
@@ -18,19 +23,20 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
-  History,
-  BarChart3,
-  ShieldAlert,
-  FileSpreadsheet,
-  Activity,
-  TrendingUp,
 } from 'lucide-react';
 import { useTreasuryStats } from '@/modules/treasury/hooks';
+import { useMenuConfig } from '@/modules/agent-dashboard/hooks/useMenuConfig';
+import { DynamicDashboard } from '@/modules/agent-dashboard/components/DynamicDashboard';
+import { renderWidget } from '@/modules/agent-dashboard/components/widgets/WidgetRegistry';
+import { getIconComponent } from '@/modules/agent-dashboard/utils/menu-helpers';
+import type { EntityCode } from '@/modules/agent-dashboard/types';
+import type { DynamicMenuItem, SubMenuItem } from '@/modules/agent-dashboard/types/menu-config';
 
 export default function TreasuryDashboardPage() {
   const t = useTranslations('treasury');
   const locale = useLocale();
   const { data: stats, isLoading, error } = useTreasuryStats();
+  const { menuConfig, dashboardConfig, isLoading: menuLoading } = useMenuConfig();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-GQ', {
@@ -39,6 +45,28 @@ export default function TreasuryDashboardPage() {
       minimumFractionDigits: 0,
     }).format(amount);
   };
+
+  // Derive quick actions from menu_config (replaces 9 hardcoded cards)
+  const quickActions = useMemo(() => {
+    if (!menuConfig?.menus) return [];
+
+    const actions: (DynamicMenuItem | SubMenuItem)[] = [];
+    for (const menu of menuConfig.menus) {
+      // Skip dashboard itself and settings
+      if (menu.id === 'dashboard' || menu.id === 'settings') continue;
+
+      if (menu.items?.length) {
+        // Group: take up to 2 sub-items as quick actions
+        for (const item of menu.items.slice(0, 2)) {
+          actions.push(item);
+        }
+      } else if (menu.href) {
+        // Direct link item
+        actions.push(menu);
+      }
+    }
+    return actions;
+  }, [menuConfig]);
 
   return (
     <div className="space-y-6">
@@ -60,9 +88,8 @@ export default function TreasuryDashboardPage() {
         </Card>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats Cards (API-driven, TESORO-specific — kept as-is) */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Pending Validation */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -86,7 +113,6 @@ export default function TreasuryDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Unreconciled Transactions */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -110,7 +136,6 @@ export default function TreasuryDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Today Validated */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -134,7 +159,6 @@ export default function TreasuryDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Today Amount */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -159,197 +183,51 @@ export default function TreasuryDashboardPage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Validation */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              {t('nav.validation')}
-            </CardTitle>
-            <CardDescription>
-              {t('validation.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/validation`}>
-              <Button className="w-full">
-                {t('actions.goToValidation')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+      {/* Quick Actions (derived from menu_config — dynamic) */}
+      {menuLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : quickActions.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {quickActions.map((action) => {
+            const ActionIcon = getIconComponent(action.icon);
+            const href = action.href?.startsWith('/')
+              ? `/${locale}${action.href}`
+              : action.href || '#';
+            const titleKey = action.titleKey;
 
-        {/* Reconciliation */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <RefreshCw className="h-5 w-5 text-blue-500" />
-              {t('nav.reconciliation')}
-            </CardTitle>
-            <CardDescription>
-              {t('reconciliation.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/reconciliation`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.goToReconciliation')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+            return (
+              <Card key={action.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ActionIcon className="h-5 w-5 text-primary" />
+                    {t.has(titleKey) ? t(titleKey) : titleKey}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Link href={href}>
+                    <Button variant="outline" className="w-full">
+                      {t.has('actions.view') ? t('actions.view') : 'Ver'}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : null}
 
-        {/* Transactions */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-purple-500" />
-              {t('nav.transactions')}
-            </CardTitle>
-            <CardDescription>
-              {t('transactions.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/transactions`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.viewHistory')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Audit */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5 text-orange-500" />
-              {t('nav.audit')}
-            </CardTitle>
-            <CardDescription>
-              {t('audit.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/audit`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.viewAudit')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* SLA Stats */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-indigo-500" />
-              {t('nav.slaStats')}
-            </CardTitle>
-            <CardDescription>
-              {t('sla.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/stats/sla`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.viewStats')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Anomalies */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-red-500" />
-              {t('nav.anomalies')}
-            </CardTitle>
-            <CardDescription>
-              {t('anomalies.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/anomalies`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.viewAnomalies')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Exports */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-green-600" />
-              {t('nav.exports')}
-            </CardTitle>
-            <CardDescription>
-              {t('exports.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/exports`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.viewExports')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* KPIs Dashboard */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-500" />
-              {t('nav.stats')}
-            </CardTitle>
-            <CardDescription>
-              {t('kpis.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/stats`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.viewKPIs')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Analytics */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-violet-500" />
-              {t('nav.analytics')}
-            </CardTitle>
-            <CardDescription>
-              {t('analytics.description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/agent/treasury/analytics`}>
-              <Button variant="outline" className="w-full">
-                {t('actions.viewAnalytics')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Widgets (from dashboard_config — dynamic) */}
+      {dashboardConfig && dashboardConfig.widgets?.length > 0 && (
+        <DynamicDashboard
+          config={dashboardConfig}
+          renderWidget={(widget) =>
+            renderWidget(widget.id, 'TESORO' as EntityCode, widget)
+          }
+        />
+      )}
     </div>
   );
 }
