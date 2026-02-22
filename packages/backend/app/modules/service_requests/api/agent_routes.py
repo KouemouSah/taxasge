@@ -2053,8 +2053,20 @@ async def get_entity_service_requests(
         params.append(priority.upper())
         param_idx += 1
 
-    # Agent filter (supervisor team view — filter by specific assigned agent)
-    if agent_id:
+    # Scope: non-supervisors only see their own assigned requests
+    is_supervisor_row = await db.fetchval(
+        "SELECT is_supervisor FROM agent_profiles WHERE user_id = $1 AND is_active = true",
+        current_user.id
+    )
+    is_supervisor = is_supervisor_row is True
+
+    if not is_supervisor:
+        # Force filter to only show requests assigned to current agent
+        conditions.append(f"sr.assigned_to = ${param_idx}")
+        params.append(current_user.id)
+        param_idx += 1
+    elif agent_id:
+        # Supervisor team view — optional filter by specific assigned agent
         conditions.append(f"sr.assigned_to::text = ${param_idx}")
         params.append(agent_id)
         param_idx += 1

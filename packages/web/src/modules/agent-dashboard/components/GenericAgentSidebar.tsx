@@ -73,6 +73,9 @@ import {
   FileBarChart,
   type LucideIcon,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '@/core/api/client';
+import { Badge } from '@/components/ui/badge';
 import { clearAuthData } from '@/core/auth/storage';
 import { useToast } from '@/hooks/use-toast';
 import type { DynamicMenuItem, SubMenuItem } from '../types/menu-config';
@@ -198,6 +201,16 @@ export function GenericAgentSidebar({
     context,
     getBasePath,
   } = useAgentDashboard();
+
+  // Escalation count badge for supervisors (poll every 30s)
+  const { data: escalationCountData } = useQuery<{ count: number }>({
+    queryKey: ['supervisor', 'escalations', 'count'],
+    queryFn: () => apiClient.get('/supervisor/escalations/count').then(r => r.data),
+    enabled: !!context?.isSupervisor,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+  const escalationCount = escalationCountData?.count ?? 0;
 
   // Resolve entity icon from backend string → Lucide component
   const EntityIcon = getIconComponent(entityIcon || 'FileText');
@@ -334,6 +347,7 @@ export function GenericAgentSidebar({
               expandedGroups,
               toggleGroup,
               getTitle,
+              badgeCounts: { 'supervisor-escalations': escalationCount },
             }))
           ) : !isLoading ? (
             /* No menus available and not loading — show minimal fallback */
@@ -441,6 +455,7 @@ function renderDynamicMenuItem(
     expandedGroups: Set<string>;
     toggleGroup: (id: string) => void;
     getTitle: (key: string) => string;
+    badgeCounts?: Record<string, number>;
   }
 ): React.ReactNode {
   const { pathname, collapsed, getTitle } = options;
@@ -467,14 +482,16 @@ function renderDynamicMenuGroup(
     expandedGroups: Set<string>;
     toggleGroup: (id: string) => void;
     getTitle: (key: string) => string;
+    badgeCounts?: Record<string, number>;
   }
 ): React.ReactNode {
-  const { pathname, collapsed, expandedGroups, toggleGroup, getTitle } = options;
+  const { pathname, collapsed, expandedGroups, toggleGroup, getTitle, badgeCounts } = options;
   const GroupIcon = getIconComponent(group.icon);
   const isExpanded = expandedGroups.has(group.id);
   const hasActiveChild = group.items.some(
     (sub) => pathname === sub.href || pathname?.startsWith(sub.href + '/')
   );
+  const badgeCount = badgeCounts?.[group.id] ?? 0;
 
   return (
     <div key={group.id} className="pt-2">
@@ -482,7 +499,7 @@ function renderDynamicMenuGroup(
       <button
         onClick={() => toggleGroup(group.id)}
         className={cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm w-full transition-all hover:bg-accent',
+          'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm w-full transition-all hover:bg-accent',
           hasActiveChild
             ? 'text-primary font-medium'
             : 'text-muted-foreground hover:text-foreground'
@@ -495,6 +512,11 @@ function renderDynamicMenuGroup(
             <span className="flex-1 text-left truncate">
               {getTitle(group.titleKey)}
             </span>
+            {badgeCount > 0 && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0 mr-1">
+                {badgeCount}
+              </Badge>
+            )}
             <ChevronDown
               className={cn(
                 'h-4 w-4 transition-transform duration-200',
@@ -502,6 +524,9 @@ function renderDynamicMenuGroup(
               )}
             />
           </>
+        )}
+        {collapsed && badgeCount > 0 && (
+          <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-destructive" />
         )}
       </button>
 

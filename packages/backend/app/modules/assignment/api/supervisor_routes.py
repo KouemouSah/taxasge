@@ -279,7 +279,13 @@ async def get_dashboard(
                      JOIN service_requests sr2 ON sr2.id = h.service_request_id
                      WHERE h.action = 'escalation_resolved'
                      AND h.performed_at > NOW() - INTERVAL '24 hours'
-                     AND sr2.workflow_code = ANY($1)) as resolved_today
+                     AND sr2.workflow_code = ANY($1)) as resolved_today,
+                    (SELECT AVG(EXTRACT(EPOCH FROM (h2.performed_at - sr3.escalated_at)) / 3600.0)
+                     FROM service_request_history h2
+                     JOIN service_requests sr3 ON sr3.id = h2.service_request_id
+                     WHERE h2.action = 'escalation_resolved'
+                     AND h2.performed_at > NOW() - INTERVAL '30 days'
+                     AND sr3.workflow_code = ANY($1)) as avg_resolution_hours
                 FROM service_requests
                 WHERE escalated = true AND workflow_code = ANY($1)
             """, wf_scope)
@@ -289,7 +295,12 @@ async def get_dashboard(
                     COUNT(*) as pending,
                     (SELECT COUNT(*) FROM service_request_history
                      WHERE action = 'escalation_resolved'
-                     AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today
+                     AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today,
+                    (SELECT AVG(EXTRACT(EPOCH FROM (h2.performed_at - sr3.escalated_at)) / 3600.0)
+                     FROM service_request_history h2
+                     JOIN service_requests sr3 ON sr3.id = h2.service_request_id
+                     WHERE h2.action = 'escalation_resolved'
+                     AND h2.performed_at > NOW() - INTERVAL '30 days') as avg_resolution_hours
                 FROM service_requests
                 WHERE escalated = true
             """)
@@ -342,6 +353,31 @@ async def get_dashboard(
                 WHERE completed_at > NOW() - INTERVAL '30 days'
             """)
 
+        # --- Quality score (composite: SLA + acceptance rate + response time) ---
+        sla_pct = float(perf_row['sla_compliance'] or 100) / 100.0
+        avg_resp_hours = float(perf_row['avg_response_hours'] or 0)
+        # Acceptance rate: ratio of non-rejected to total resolved (last 30 days)
+        if wf_scope is not None:
+            quality_row = await db.fetchrow("""
+                SELECT COALESCE(AVG(CASE WHEN sr.status = 'rejected' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
+                FROM service_requests sr
+                JOIN assignments a ON a.item_id = sr.id::text
+                WHERE sr.workflow_code = ANY($1)
+                AND sr.updated_at >= NOW() - INTERVAL '30 days'
+                AND sr.status IN ('completed', 'approved', 'rejected')
+            """, wf_scope)
+        else:
+            quality_row = await db.fetchrow("""
+                SELECT COALESCE(AVG(CASE WHEN status = 'rejected' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
+                FROM service_requests
+                WHERE updated_at >= NOW() - INTERVAL '30 days'
+                AND status IN ('completed', 'approved', 'rejected')
+            """)
+        acceptance_rate = float(quality_row['acceptance_rate'] or 1.0)
+        # Penalty: response time > 48h = max penalty
+        response_penalty = min(avg_resp_hours / 48.0, 1.0) if avg_resp_hours > 0 else 0.0
+        quality_score = round((0.5 * sla_pct + 0.25 * acceptance_rate + 0.25 * (1.0 - response_penalty)) * 100, 1)
+
         response = DashboardResponse(
             team=DashboardTeamStats(
                 activeAgents=team_row['active_agents'] or 0,
@@ -351,7 +387,7 @@ async def get_dashboard(
             escalations=DashboardEscalationStats(
                 pending=esc_row['pending'] or 0,
                 resolvedToday=esc_row['resolved_today'] or 0,
-                avgResolutionTime=0.0,
+                avgResolutionTime=round(float(esc_row['avg_resolution_hours'] or 0), 1),
             ),
             assignments=DashboardAssignmentStats(
                 pending=asgn_row['pending'] or 0,
@@ -359,9 +395,9 @@ async def get_dashboard(
                 completedToday=asgn_row['completed_today'] or 0,
             ),
             performance=DashboardPerformanceStats(
-                avgResponseTime=round(float(perf_row['avg_response_hours'] or 0), 1),
+                avgResponseTime=round(avg_resp_hours, 1),
                 slaCompliance=round(float(perf_row['sla_compliance'] or 100), 1),
-                qualityScore=0.0,  # Not yet computed
+                qualityScore=quality_score,
             ),
         )
 
@@ -374,6 +410,43 @@ async def get_dashboard(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load dashboard"
         )
+
+
+# ============================================================================
+# ENDPOINTS - ESCALATION COUNT (LIGHTWEIGHT FOR BADGE)
+# ============================================================================
+
+@router.get("/escalations/count")
+async def get_escalation_count(
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+):
+    """Lightweight endpoint to get pending escalation count for sidebar badge."""
+    if current_user.role == "admin":
+        count = await db.fetchval(
+            "SELECT COUNT(*) FROM service_requests WHERE escalated = true"
+        )
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+        entity_id = agent_ctx.get("entity_id") if agent_ctx else None
+        if entity_id:
+            # Get entity's workflow_codes for scoping
+            wf_codes = await db.fetchval(
+                "SELECT workflow_codes FROM entities WHERE id = $1", entity_id
+            )
+            if wf_codes:
+                if isinstance(wf_codes, str):
+                    wf_codes = json.loads(wf_codes)
+                count = await db.fetchval(
+                    "SELECT COUNT(*) FROM service_requests WHERE escalated = true AND workflow_code = ANY($1)",
+                    wf_codes
+                )
+            else:
+                count = 0
+        else:
+            count = 0
+
+    return {"count": count or 0}
 
 
 # ============================================================================
@@ -1747,18 +1820,21 @@ async def rebalance_workload(
 
     try:
         # Get current workload distribution
+        # availability is on agent_workloads, not agent_profiles
         query = """
             SELECT
                 ap.id as agent_profile_id,
+                ap.user_id,
                 u.full_name as agent_name,
-                COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress', 'pending_review')) as active_count,
-                ap.max_concurrent_assignments
+                COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress', 'pending_review')) as active_count
             FROM agent_profiles ap
             JOIN users u ON ap.user_id = u.id
+            LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
             LEFT JOIN assignments a ON a.agent_profile_id = ap.id
                 AND a.status IN ('assigned', 'in_progress', 'pending_review')
             WHERE ap.is_active = true
-                AND ap.availability = 'available'
+                AND ap.is_supervisor = false
+                AND COALESCE(aw.availability::text, 'available') = 'available'
         """
         params = []
         entity_id = agent_ctx.get("entity_id")
@@ -1766,7 +1842,7 @@ async def rebalance_workload(
             query += " AND ap.entity_id = $1"
             params.append(entity_id)
 
-        query += " GROUP BY ap.id, u.full_name, ap.max_concurrent_assignments ORDER BY active_count DESC"
+        query += " GROUP BY ap.id, ap.user_id, u.full_name ORDER BY active_count DESC"
         agents = await db.fetch(query, *params)
 
         if len(agents) < 2:
@@ -1780,52 +1856,89 @@ async def rebalance_workload(
         if not overloaded or not underloaded:
             return RebalanceResult(reassignments_made=0, details=[], message="Workload is already balanced")
 
+        # Build mutable load tracker for underloaded agents
+        under_loads = {a['agent_profile_id']: a['active_count'] for a in underloaded}
+
         details = []
         for over_agent in overloaded:
             excess = int(over_agent['active_count'] - avg_load)
             if excess <= 0:
                 continue
 
-            # Get reassignable assignments (oldest first, only 'assigned' status)
-            reassign_query = """
+            # Get movable assignments sorted by mobility score (lowest = easiest to move)
+            # Only move 'assigned' status (never move in_progress work)
+            # Mobility: LOW priority = easy to move, URGENT/HIGH = avoid
+            # Note: sla_deadline is on agent_work_queue, not service_requests
+            # Use submitted_at + workflows.sla_hours as proxy for SLA pressure
+            movable = await db.fetch("""
                 SELECT a.id, a.item_id, a.item_type,
-                       sr.workflow_code
+                       sr.workflow_code, sr.priority::text as priority,
+                       CASE
+                           WHEN sr.priority::text = 'URGENT' THEN 100
+                           WHEN sr.priority::text = 'HIGH' THEN 70
+                           WHEN sr.submitted_at IS NOT NULL AND w.sla_hours IS NOT NULL
+                                AND sr.submitted_at + (w.sla_hours * interval '1 hour') < NOW() + INTERVAL '4 hours' THEN 80
+                           WHEN sr.priority::text = 'NORMAL' THEN 30
+                           ELSE 10
+                       END as mobility_score
                 FROM assignments a
-                LEFT JOIN service_requests sr ON a.item_id = sr.id::text
+                LEFT JOIN service_requests sr ON a.item_id = sr.id
+                LEFT JOIN workflows w ON w.code = sr.workflow_code
                 WHERE a.agent_profile_id = $1
                     AND a.status = 'assigned'
-                ORDER BY a.assigned_at ASC
+                ORDER BY mobility_score ASC, a.assigned_at ASC
                 LIMIT $2
-            """
-            to_reassign = await db.fetch(reassign_query, over_agent['agent_profile_id'], excess)
+            """, over_agent['agent_profile_id'], excess)
 
-            for assignment in to_reassign:
-                if not underloaded:
+            for assignment in movable:
+                # Find best underloaded target
+                best_target = None
+                for ua in underloaded:
+                    current_load = under_loads.get(ua['agent_profile_id'], ua['active_count'])
+                    if current_load < avg_load:
+                        best_target = ua
+                        break
+
+                if not best_target:
                     break
-                target = underloaded[0]
 
-                # Reassign
-                await db.execute(
-                    """
+                # Reassign assignment (reassignment_reason enum: workload_imbalance)
+                await db.execute("""
                     UPDATE assignments
                     SET agent_profile_id = $1, status = 'assigned',
+                        reassigned_at = NOW(),
+                        reassignment_reason = 'workload_imbalance'::reassignment_reason_enum,
                         updated_at = NOW()
                     WHERE id = $2
-                    """,
-                    target['agent_profile_id'], assignment['id']
-                )
+                """, best_target['agent_profile_id'], assignment['id'])
+
+                # Update service_requests.assigned_to
+                if assignment['item_id']:
+                    await db.execute("""
+                        UPDATE service_requests SET assigned_to = (
+                            SELECT user_id FROM agent_profiles WHERE id = $1
+                        ) WHERE id = $2
+                    """, best_target['agent_profile_id'], assignment['item_id'])
+
+                    # Insert history for traceability
+                    await db.execute("""
+                        INSERT INTO service_request_history
+                        (service_request_id, action, performed_by, comment)
+                        VALUES ($1, 'rebalanced', $2, $3)
+                    """, assignment['item_id'], current_user.id,
+                        f"Workload rebalance: {over_agent['agent_name']} → {best_target['agent_name']}")
 
                 details.append(RebalanceDetail(
                     from_agent_name=over_agent['agent_name'],
-                    to_agent_name=target['agent_name'],
+                    to_agent_name=best_target['agent_name'],
                     request_id=str(assignment['item_id']),
                     workflow_code=assignment.get('workflow_code') or assignment.get('item_type') or 'unknown'
                 ))
 
-                # Update target load tracking
-                target_count = target['active_count'] + 1
-                if target_count >= avg_load:
-                    underloaded.pop(0)
+                # Update target load tracker
+                under_loads[best_target['agent_profile_id']] = under_loads.get(
+                    best_target['agent_profile_id'], best_target['active_count']
+                ) + 1
 
         logger.info(
             f"Workload rebalanced: {len(details)} reassignments by supervisor {current_user.email}"
@@ -2113,6 +2226,79 @@ async def bulk_reassign(
         failed=failed,
         details=details
     )
+
+
+# ============================================================================
+# ENDPOINTS - SINGLE REQUEST REASSIGN (SUPERVISOR TAKEOVER)
+# ============================================================================
+
+class ReassignRequestBody(BaseModel):
+    target_agent_id: UUID
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+@router.post("/requests/{request_id}/reassign")
+async def reassign_request(
+    request_id: UUID,
+    body: ReassignRequestBody,
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.assign"))
+):
+    """
+    Reassign a single service request to another agent.
+    Used by supervisors for takeover or manual reassignment.
+    """
+    if current_user.role == "admin":
+        agent_ctx = {"is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+    if not agent_ctx or not agent_ctx.get("is_supervisor"):
+        raise HTTPException(status_code=403, detail="Supervisor access required")
+
+    # Verify target agent exists
+    target = await db.fetchrow(
+        "SELECT ap.id, u.full_name FROM agent_profiles ap JOIN users u ON u.id = ap.user_id WHERE ap.user_id = $1 AND ap.is_active = true",
+        body.target_agent_id
+    )
+    if not target:
+        raise HTTPException(status_code=404, detail="Target agent not found")
+
+    # Map reason to valid reassignment_reason_enum value
+    reason_comment = body.reason or "supervisor_reassign"
+    enum_reason = 'supervisor_decision'  # Valid enum: supervisor_decision
+
+    # Update assignment
+    assignment = await db.fetchrow("""
+        UPDATE assignments SET
+            agent_profile_id = $1,
+            reassigned_at = NOW(),
+            reassignment_reason = $2::reassignment_reason_enum,
+            status = 'assigned'
+        WHERE item_id = $3
+        AND status IN ('assigned', 'in_progress', 'pending_review')
+        RETURNING id, item_id
+    """, target['id'], enum_reason, request_id)
+
+    if not assignment:
+        raise HTTPException(status_code=404, detail="No active assignment found for this request")
+
+    # Update service_request.assigned_to
+    await db.execute(
+        "UPDATE service_requests SET assigned_to = $1 WHERE id = $2",
+        body.target_agent_id, request_id
+    )
+
+    # Insert history
+    await db.execute("""
+        INSERT INTO service_request_history (service_request_id, action, performed_by, comment)
+        VALUES ($1, 'reassigned', $2, $3)
+    """, request_id, current_user.id,
+        f"Reassigned to {target['full_name']} by supervisor ({reason_comment})")
+
+    logger.info(f"Request {request_id} reassigned to {body.target_agent_id} by {current_user.id}")
+
+    return {"success": True, "assignment_id": str(assignment["id"]), "target_agent_name": target['full_name']}
 
 
 # ============================================================================

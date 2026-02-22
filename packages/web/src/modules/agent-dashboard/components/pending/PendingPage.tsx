@@ -14,7 +14,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Filter, Users } from 'lucide-react';
+import { RefreshCw, Filter, Users, UserCheck } from 'lucide-react';
 import apiClient from '@/core/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -276,6 +276,22 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     queryClient.invalidateQueries({ queryKey: ['request-preview'] });
   }, [queryClient]);
 
+  // Handle supervisor takeover (reassign to self)
+  const handleTakeover = useCallback(async () => {
+    if (!selectedId || !context?.userId) return;
+    setIsProcessing(true);
+    try {
+      await apiClient.post(`/supervisor/requests/${selectedId}/reassign`, {
+        target_agent_id: context.userId,
+        reason: 'supervisor_takeover',
+      });
+      queryClient.invalidateQueries({ queryKey: ['entity-service-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['request-preview'] });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [selectedId, context?.userId, queryClient]);
+
   // Keyboard navigation and shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -486,6 +502,26 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
 
         {/* Right Column - Preview (65%) */}
         <div className="w-[65%] overflow-y-auto border rounded-lg bg-card">
+          {/* Supervisor takeover bar */}
+          {isSupervisor && selectedId && selectedRequest && selectedRequest.assignedTo !== context?.userId && (
+            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b">
+              <span className="text-xs text-blue-700">
+                {selectedRequest.assignedAgentName
+                  ? `Asignado a: ${selectedRequest.assignedAgentName}`
+                  : 'Sin asignar'}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTakeover}
+                disabled={isProcessing}
+                className="text-xs h-7"
+              >
+                <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                Prendre en charge
+              </Button>
+            </div>
+          )}
           {previewLoading ? (
             <PreviewSkeleton />
           ) : previewError ? (
