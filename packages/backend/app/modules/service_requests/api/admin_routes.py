@@ -2671,7 +2671,7 @@ async def create_supplement(
         data.effective_from,
         data.effective_to,
         data.is_active,
-        current_user.get("id")
+        current_user.id
     )
     return TariffSupplementResponse(**dict(row))
 
@@ -2728,7 +2728,7 @@ async def update_supplement(
         )
 
     # Add updated_by and updated_at
-    params.append(current_user.get("id"))
+    params.append(current_user.id)
     updates.append(f"updated_by = ${len(params)}")
     updates.append("updated_at = now()")
 
@@ -3134,7 +3134,7 @@ async def get_pending_payments(
     from loguru import logger
 
     try:
-        user_id = current_user.get("id") or current_user.get("user_id")
+        user_id = current_user.id
         logger.info(f"[Treasury] get_pending_payments called by user {user_id}: method={payment_method}, status={workflow_status}, page={page}")
 
         # Check if user is a supervisor (has treasury.view_all permission or supervisor_tesoro role)
@@ -4338,7 +4338,7 @@ async def get_treasury_dashboard_stats(
     """Get aggregated statistics for Treasury Agent dashboard"""
     from loguru import logger
 
-    user_id = current_user.get("id") or current_user.get("user_id")
+    user_id = current_user.id
 
     # Check if user is a supervisor
     is_supervisor = await db.fetchval("""
@@ -5651,7 +5651,7 @@ async def add_anomaly_comment(
         from_status=None,
         to_status=None,
         comment=comment,
-        performed_by_name=current_user.get("full_name"),
+        performed_by_name=f"{current_user.first_name} {current_user.last_name}".strip(),
         performed_at=row["performed_at"].isoformat(),
     )
 
@@ -6100,7 +6100,7 @@ async def generate_treasury_export(
             currency=updated_row["currency"] or "XAF",
             file_name=updated_row["file_name"],
             file_size_bytes=updated_row["file_size_bytes"],
-            requested_by_name=current_user.get("full_name"),
+            requested_by_name=f"{current_user.first_name} {current_user.last_name}".strip(),
             requested_at=updated_row["requested_at"].isoformat(),
             completed_at=updated_row["completed_at"].isoformat() if updated_row["completed_at"] else None,
         )
@@ -6126,7 +6126,7 @@ async def generate_treasury_export(
             status=error_row["status"],
             progress_percentage=error_row["progress_percentage"] or 0,
             error_message=error_row["error_message"],
-            requested_by_name=current_user.get("full_name"),
+            requested_by_name=f"{current_user.first_name} {current_user.last_name}".strip(),
             requested_at=error_row["requested_at"].isoformat(),
         )
 
