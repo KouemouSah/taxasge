@@ -3611,7 +3611,7 @@ async def get_pending_payments_widget(
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db=Depends(get_database),
-    _=Depends(permission_required("treasury.view_pending"))
+    _=Depends(permission_required("treasury.view_payment"))
 ):
     """
     Get payment validations for treasury widget.
@@ -3754,7 +3754,7 @@ class AnomalySummaryWidgetResponse(BaseModel):
 async def get_anomaly_summary_widget(
     current_user: User = Depends(get_current_user),
     db=Depends(get_database),
-    _=Depends(permission_required("treasury.view_anomalies"))
+    _=Depends(permission_required("treasury_anomaly.view"))
 ):
     """
     Get anomaly summary from v_anomaly_summary.
