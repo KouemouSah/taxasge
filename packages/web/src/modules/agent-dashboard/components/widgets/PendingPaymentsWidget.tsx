@@ -170,7 +170,7 @@ export function PendingPaymentsWidget({
             {items.map((item) => (
               <PaymentRow key={item.payment_id} item={item} locale={locale} />
             ))}
-            <Link href={`/${locale}/dashboard/agent/treasury/pending`}>
+            <Link href={`/${locale}/dashboard/agent/treasury/validation`}>
               <Button variant="ghost" size="sm" className="w-full mt-2">
                 {t('widgets.viewAllPayments', { defaultValue: 'Ver todos los pagos' })}
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -198,7 +198,7 @@ function PaymentRow({ item, locale }: PaymentRowProps) {
 
   return (
     <Link
-      href={`/${locale}/dashboard/agent/treasury/payment/${item.payment_id}`}
+      href={`/${locale}/dashboard/agent/treasury/validation/${item.payment_id}`}
       className="block"
     >
       <div
