@@ -93,7 +93,7 @@ export function BatchDetail({ batchId }: BatchDetailProps) {
 
   const formatAmount = (amount: number | null) =>
     amount !== null
-      ? new Intl.NumberFormat('es-GQ', {
+      ? new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ', {
           style: 'currency',
           currency: batch.currency,
           minimumFractionDigits: 0,

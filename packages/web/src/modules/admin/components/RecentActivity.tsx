@@ -13,7 +13,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +23,7 @@ import type { AuditLog } from '@/modules/audit-logs-admin/types'
 
 export default function RecentActivity() {
   const t = useTranslations('admin.dashboard')
+  const locale = useLocale()
   const [activities, setActivities] = useState<AuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -77,17 +78,21 @@ export default function RecentActivity() {
   }
 
   const formatTimeAgo = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return t('timeJustNow') || 'Just now'
-    if (diffMins < 60) return `${diffMins}m`
-    if (diffHours < 24) return `${diffHours}h`
-    return `${diffDays}d`
+    try {
+      const now = Date.now()
+      const date = new Date(timestamp).getTime()
+      const diffSec = Math.floor((now - date) / 1000)
+      const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' })
+      if (diffSec < 60) return rtf.format(-diffSec, 'second')
+      const diffMin = Math.floor(diffSec / 60)
+      if (diffMin < 60) return rtf.format(-diffMin, 'minute')
+      const diffHrs = Math.floor(diffMin / 60)
+      if (diffHrs < 24) return rtf.format(-diffHrs, 'hour')
+      const diffDays = Math.floor(diffHrs / 24)
+      return rtf.format(-diffDays, 'day')
+    } catch {
+      return timestamp
+    }
   }
 
   const getUserInitials = (userId: string) => {

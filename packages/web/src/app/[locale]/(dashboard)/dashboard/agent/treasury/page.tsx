@@ -32,6 +32,8 @@ import { getIconComponent } from '@/modules/agent-dashboard/utils/menu-helpers';
 import type { EntityCode } from '@/modules/agent-dashboard/types';
 import type { DynamicMenuItem, SubMenuItem } from '@/modules/agent-dashboard/types/menu-config';
 
+const TREASURY_ENTITY_CODE: EntityCode = 'TESORO';
+
 export default function TreasuryDashboardPage() {
   const t = useTranslations('treasury');
   const tMenu = useTranslations();  // No namespace — resolves menu titleKeys like 'agent.nav.validation'
@@ -40,7 +42,8 @@ export default function TreasuryDashboardPage() {
   const { menuConfig, dashboardConfig, isLoading: menuLoading } = useMenuConfig();
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-GQ', {
+    const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
+    return new Intl.NumberFormat(intlLocale, {
       style: 'currency',
       currency: 'XAF',
       minimumFractionDigits: 0,
@@ -225,7 +228,7 @@ export default function TreasuryDashboardPage() {
         <DynamicDashboard
           config={dashboardConfig}
           renderWidget={(widget) =>
-            renderWidget(widget.id, 'TESORO' as EntityCode, widget)
+            renderWidget(widget.id, TREASURY_ENTITY_CODE, widget)
           }
         />
       )}

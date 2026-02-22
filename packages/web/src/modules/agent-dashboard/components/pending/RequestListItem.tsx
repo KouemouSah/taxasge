@@ -116,15 +116,22 @@ function formatStatus(status: string): string {
   return statusMap[status] || status;
 }
 
-function formatTimeAgo(dateString: string): string {
-  const now = new Date();
-  const date = new Date(dateString);
-  const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (diffHours < 1) return 'Hace <1h';
-  if (diffHours < 24) return `Hace ${diffHours}h`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `Hace ${diffDays}d`;
+function formatTimeAgo(dateString: string, locale: string = 'es'): string {
+  try {
+    const now = Date.now();
+    const date = new Date(dateString).getTime();
+    const diffSec = Math.floor((now - date) / 1000);
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' });
+    if (diffSec < 60) return rtf.format(-diffSec, 'second');
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return rtf.format(-diffMin, 'minute');
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return rtf.format(-diffHours, 'hour');
+    const diffDays = Math.floor(diffHours / 24);
+    return rtf.format(-diffDays, 'day');
+  } catch {
+    return dateString;
+  }
 }
 
 // =============================================================================
@@ -239,7 +246,7 @@ export function RequestListItem({
           <span className="text-xs text-orange-600 truncate">{item.escalationReason}</span>
           {item.escalatedAt && (
             <span className="text-[10px] text-muted-foreground flex-shrink-0">
-              {formatTimeAgo(item.escalatedAt)}
+              {formatTimeAgo(item.escalatedAt, locale)}
             </span>
           )}
         </div>

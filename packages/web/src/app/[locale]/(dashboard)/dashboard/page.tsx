@@ -95,8 +95,9 @@ function formatDate(dateStr: string, locale: string): string {
   }
 }
 
-function formatAmount(amount: number): string {
-  return amount.toLocaleString('fr-FR')
+function formatAmount(amount: number, locale: string = 'es'): string {
+  const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
+  return amount.toLocaleString(intlLocale)
 }
 
 /** Locale-aware relative time using Intl.RelativeTimeFormat */
@@ -368,7 +369,7 @@ export default function DashboardPage() {
             <CardContent>
               {isLoading ? <Skeleton className="h-8 w-24" /> : (
                 <div className="text-2xl font-bold">
-                  {formatAmount(stats.totalPaid)} <span className="text-sm font-normal text-muted-foreground">FCFA</span>
+                  {formatAmount(stats.totalPaid, locale)} <span className="text-sm font-normal text-muted-foreground">FCFA</span>
                 </div>
               )}
             </CardContent>
@@ -528,7 +529,7 @@ export default function DashboardPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right text-sm">
-                            {req.totalAmount ? `${formatAmount(req.totalAmount)} FCFA` : '—'}
+                            {req.totalAmount ? `${formatAmount(req.totalAmount, locale)} FCFA` : '—'}
                           </TableCell>
                           <TableCell className="text-right">
                             <Link href={`/${locale}/dashboard/service-requests/${req.id}`}>
@@ -578,7 +579,7 @@ export default function DashboardPage() {
                           <TableCell className="font-mono text-sm">{pay.requestReference}</TableCell>
                           <TableCell className="text-sm">{pay.workflowLabel}</TableCell>
                           <TableCell className="font-semibold text-sm">
-                            {formatAmount(pay.amount)} {pay.currency}
+                            {formatAmount(pay.amount, locale)} {pay.currency}
                           </TableCell>
                           <TableCell className="text-sm">{formatDate(pay.createdAt, locale)}</TableCell>
                           <TableCell className="text-sm capitalize">

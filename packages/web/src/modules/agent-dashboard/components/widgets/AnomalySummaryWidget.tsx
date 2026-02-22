@@ -90,9 +90,10 @@ const ANOMALY_TYPE_KEYS: string[] = [
 // HELPER FUNCTIONS
 // =============================================================================
 
-function formatAmount(amount: number | null): string {
+function formatAmount(amount: number | null, locale: string = 'es'): string {
   if (amount === null) return '--';
-  return new Intl.NumberFormat('es-GQ', {
+  const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
+  return new Intl.NumberFormat(intlLocale, {
     style: 'decimal',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
@@ -179,7 +180,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
         {total_amount_affected && total_amount_affected > 0 && (
           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
             <DollarSign className="h-3 w-3" />
-            {t('widgets.amountAffected', { defaultValue: 'Monto afectado' })}: {formatAmount(total_amount_affected)} XAF
+            {t('widgets.amountAffected', { defaultValue: 'Monto afectado' })}: {formatAmount(total_amount_affected, locale)} XAF
           </p>
         )}
       </CardHeader>
@@ -196,6 +197,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
                 key={`${item.anomaly_type}-${item.severity}-${index}`}
                 item={item}
                 t={t}
+                locale={locale}
               />
             ))}
             <Link href={`/${locale}/dashboard/agent/treasury/anomalies`}>
@@ -218,9 +220,10 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
 interface AnomalyRowProps {
   item: AnomalySummaryItem;
   t: (key: string, values?: Record<string, string>) => string;
+  locale: string;
 }
 
-function AnomalyRow({ item, t }: AnomalyRowProps) {
+function AnomalyRow({ item, t, locale }: AnomalyRowProps) {
   const severity = item.severity || 'medium';
   const style = SEVERITY_STYLES[severity] || SEVERITY_STYLES.medium;
   const typeLabel = ANOMALY_TYPE_KEYS.includes(item.anomaly_type)
@@ -254,7 +257,7 @@ function AnomalyRow({ item, t }: AnomalyRowProps) {
           </Badge>
           {item.total_affected && item.total_affected > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
-              {formatAmount(item.total_affected)} XAF
+              {formatAmount(item.total_affected, locale)} XAF
             </p>
           )}
         </div>

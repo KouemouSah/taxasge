@@ -9,7 +9,7 @@
 'use client';
 
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Activity, CheckCircle, XCircle, Eye, Clock } from 'lucide-react';
@@ -42,16 +42,22 @@ function getActionIcon(actionType: string): React.ReactNode {
   return ACTION_ICONS[actionType] || ACTION_ICONS.default;
 }
 
-function formatTimeAgo(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 60) return `${diffMin}m`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h`;
-  const diffD = Math.floor(diffH / 24);
-  return `${diffD}d`;
+function formatTimeAgo(dateStr: string, locale: string = 'es'): string {
+  try {
+    const now = Date.now();
+    const date = new Date(dateStr).getTime();
+    const diffSec = Math.floor((now - date) / 1000);
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' });
+    if (diffSec < 60) return rtf.format(-diffSec, 'second');
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return rtf.format(-diffMin, 'minute');
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return rtf.format(-diffH, 'hour');
+    const diffD = Math.floor(diffH / 24);
+    return rtf.format(-diffD, 'day');
+  } catch {
+    return dateStr;
+  }
 }
 
 export function RecentActivityWidget({
@@ -59,6 +65,7 @@ export function RecentActivityWidget({
   className,
 }: RecentActivityWidgetProps) {
   const t = useTranslations('agent');
+  const locale = useLocale();
 
   const { data, isLoading } = useQuery<ActivityItem[]>({
     queryKey: ['widget', 'recent-activity'],
@@ -134,7 +141,7 @@ export function RecentActivityWidget({
                 </div>
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {formatTimeAgo(item.created_at)}
+                  {formatTimeAgo(item.created_at, locale)}
                 </span>
               </div>
             ))}

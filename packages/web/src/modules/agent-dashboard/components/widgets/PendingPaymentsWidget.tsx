@@ -43,9 +43,10 @@ interface PendingPaymentsWidgetProps {
 // HELPER FUNCTIONS
 // =============================================================================
 
-function formatAmount(amount: number | null): string {
+function formatAmount(amount: number | null, locale: string = 'es'): string {
   if (amount === null) return '--';
-  return new Intl.NumberFormat('es-GQ', {
+  const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
+  return new Intl.NumberFormat(intlLocale, {
     style: 'decimal',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
@@ -148,7 +149,7 @@ export function PendingPaymentsWidget({
           </CardTitle>
           {total_amount && (
             <Badge className="bg-emerald-100 text-emerald-800">
-              {formatAmount(total_amount)} XAF
+              {formatAmount(total_amount, locale)} XAF
             </Badge>
           )}
         </div>
@@ -232,7 +233,7 @@ function PaymentRow({ item, locale }: PaymentRowProps) {
 
           <div className="flex flex-col items-end gap-1 ml-3">
             <span className="font-medium text-sm">
-              {formatAmount(item.total_amount)} {item.currency}
+              {formatAmount(item.total_amount, locale)} {item.currency}
             </span>
             <span className={`flex items-center gap-1 text-xs ${waitingStatus.color}`}>
               {isLongWait && <AlertCircle className="h-3 w-3" />}
