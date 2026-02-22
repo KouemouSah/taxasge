@@ -232,14 +232,26 @@ class ReceiptService:
     # Template directory
     TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
-    # Treasury information
-    TREASURY_INFO = {
+    # Treasury information (fallback when no location data available)
+    TREASURY_INFO_DEFAULT = {
         "name": "Tesoro Publico",
         "ministry": "Ministerio de Hacienda, Economia y Planificacion",
         "address": "Malabo, Guinea Ecuatorial",
         "phone": "+240 333 09 XX XX",
         "nif": "GE-MHEP-001",
     }
+
+    def _get_treasury_info(self, service_data: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+        """Build treasury info dynamically from service_data location."""
+        info = dict(self.TREASURY_INFO_DEFAULT)
+        if service_data:
+            city = service_data.get("city")
+            location_address = service_data.get("location_address")
+            if location_address:
+                info["address"] = location_address
+            elif city:
+                info["address"] = f"{city}, Guinea Ecuatorial"
+        return info
 
     # Verification URL base - resolved dynamically from settings
     @property
@@ -607,7 +619,7 @@ class ReceiptService:
             validated_by=validated_by,
             validated_by_name=validated_by_name,
             validated_at=validated_at_str,
-            treasury=self.TREASURY_INFO,
+            treasury=self._get_treasury_info(service_data),
             # QR code with secure verification URL
             verification_url=verification_url,
             qr_code_base64=qr_code_base64,

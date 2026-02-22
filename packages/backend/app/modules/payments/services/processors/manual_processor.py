@@ -248,10 +248,12 @@ class ManualValidationProcessor(PaymentProcessorBase):
             if not user_data:
                 user_data = {"email": "N/A", "first_name": "", "last_name": ""}
 
-            # 4. Get service request data for receipt (workflow_code, entity_code, solicitud_type)
+            # 4. Get service request data for receipt (workflow_code, entity_code, solicitud_type, location)
             service_query = """
-                SELECT sr.id, sr.reference, sr.workflow_code, sr.solicitud_type, sr.entity_code
+                SELECT sr.id, sr.reference, sr.workflow_code, sr.solicitud_type, sr.entity_code,
+                       el.location_name, el.city, el.address as location_address
                 FROM service_requests sr
+                LEFT JOIN entity_locations el ON el.id = sr.entity_location_id
                 WHERE sr.id = $1
             """
             service_data = await db.fetchrow(service_query, payment["service_request_id"])
