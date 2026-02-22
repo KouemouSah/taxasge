@@ -3167,10 +3167,10 @@ async def get_pending_payments(
                 JOIN permissions p ON p.id = up.permission_id
                 WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
                 UNION
-                SELECT 1 FROM roles r
+                SELECT 1 FROM users u
+                JOIN roles r ON u.role_id = r.id
                 JOIN role_permissions rp ON rp.role_id = r.id
                 JOIN permissions p ON p.id = rp.permission_id
-                JOIN users u ON u.role = r.code
                 WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
             )
         """, user_id) or False
@@ -4754,10 +4754,10 @@ async def get_treasury_dashboard_stats(
             JOIN permissions p ON p.id = up.permission_id
             WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
             UNION
-            SELECT 1 FROM roles r
+            SELECT 1 FROM users u
+            JOIN roles r ON u.role_id = r.id
             JOIN role_permissions rp ON rp.role_id = r.id
             JOIN permissions p ON p.id = rp.permission_id
-            JOIN users u ON u.role = r.code
             WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
         )
     """, user_id) or False

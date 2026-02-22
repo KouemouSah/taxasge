@@ -196,9 +196,8 @@ export default function TreasuryDashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {quickActions.map((action) => {
             const ActionIcon = getIconComponent(action.icon);
-            const href = action.href?.startsWith('/')
-              ? `/${locale}${action.href}`
-              : action.href || '#';
+            // href is already locale-prefixed by useMenuConfig hook
+            const href = action.href || '#';
             const titleKey = action.titleKey;
 
             return (

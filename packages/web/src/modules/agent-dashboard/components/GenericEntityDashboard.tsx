@@ -12,7 +12,7 @@
 
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+// useLocale removed - hrefs are already locale-prefixed by useAgentDashboard hook
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -71,7 +71,7 @@ export function GenericEntityDashboard({
 }: GenericEntityDashboardProps) {
   const t = useTranslations('agent');
   const tCommon = useTranslations('common');
-  const locale = useLocale();
+  // locale removed - hrefs already locale-prefixed by hooks
 
   // Entity access verification (security check)
   const {
@@ -311,7 +311,7 @@ export function GenericEntityDashboard({
                   <CardContent className="pt-4 pb-4 flex flex-col items-center justify-center text-center h-full">
                     <ActionIcon className="h-8 w-8 text-primary mb-2" />
                     <span className="text-sm font-medium">{getTitle(action.titleKey)}</span>
-                    <Link href={`/${locale}${action.href}`} className="mt-2">
+                    <Link href={action.href} className="mt-2">
                       <Button variant="outline" size="sm" className="w-full">
                         {tCommon('view')}
                         <ArrowRight className="ml-1 h-3 w-3" />
