@@ -292,40 +292,6 @@ export const agentWorkloadApi = {
     return fetchClient.get<AgentPerformance>(`${AGENTS_BASE}/profiles/${profileId}/performance`);
   },
 
-  /**
-   * Get available agents for ministry
-   * BACKEND: GET /api/v1/agents/ministries/{ministry_id}/available-agents
-   */
-  getAvailableAgents: async (ministryId: number, maxCapacity?: number): Promise<AgentWorkload[]> => {
-    const params = new URLSearchParams();
-    if (maxCapacity) params.append('max_capacity_percentage', String(maxCapacity));
-
-    const queryString = params.toString();
-    const url = `${AGENTS_BASE}/ministries/${ministryId}/available-agents${queryString ? `?${queryString}` : ''}`;
-
-    return fetchClient.get<AgentWorkload[]>(url);
-  },
-
-  /**
-   * Check workload rebalancing needs
-   * BACKEND: GET /api/v1/agents/ministries/{ministry_id}/workload-rebalancing
-   */
-  checkRebalancing: async (ministryId: number, threshold?: number): Promise<{
-    needs_rebalancing: boolean;
-    recommendations: Array<{
-      from_agent: string;
-      to_agent: string;
-      reason: string;
-    }>;
-  }> => {
-    const params = new URLSearchParams();
-    if (threshold) params.append('threshold_percentage', String(threshold));
-
-    const queryString = params.toString();
-    const url = `${AGENTS_BASE}/ministries/${ministryId}/workload-rebalancing${queryString ? `?${queryString}` : ''}`;
-
-    return fetchClient.get(url);
-  },
 };
 
 // =============================================================================

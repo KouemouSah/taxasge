@@ -10,7 +10,7 @@
 'use client';
 
 import React from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Clock, AlertTriangle, AlertCircle, FileStack, ShieldAlert, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -138,6 +138,7 @@ export function RequestListItem({
   displayColumns = [...DEFAULT_LIST_COLUMNS],
 }: RequestListItemProps) {
   const locale = useLocale();
+  const t = useTranslations('agent.pending');
   const priorityStyle = PRIORITY_STYLES[item.priority] || PRIORITY_STYLES.NORMAL;
   const slaStyle = SLA_STYLES[item.slaStatus] || SLA_STYLES.on_track;
 
@@ -226,7 +227,7 @@ export function RequestListItem({
         <div className="flex items-center gap-1 mt-1">
           <User className="h-3 w-3 text-blue-500 flex-shrink-0" />
           <span className="text-xs text-blue-600 truncate">
-            {item.assignedAgentName || 'Sin asignar'}
+            {item.assignedAgentName || t('teamView.unassigned')}
           </span>
         </div>
       )}

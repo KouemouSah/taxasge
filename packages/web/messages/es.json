@@ -6142,6 +6142,11 @@
         "selectAll": "Seleccione ubicación, fecha y hora",
         "bookSuccess": "Cita programada correctamente",
         "bookError": "Error al programar la cita"
+      },
+      "teamView": {
+        "assignedTo": "Asignado a: {name}",
+        "unassigned": "Sin asignar",
+        "takeover": "Tomar a cargo"
       }
     },
     "accessDenied": {

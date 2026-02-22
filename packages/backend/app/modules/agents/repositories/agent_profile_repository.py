@@ -197,7 +197,18 @@ class AgentProfileRepository:
                     WHEN pe.workflow_codes IS NOT NULL AND jsonb_array_length(pe.workflow_codes) > 0
                     THEN pe.workflow_codes
                     ELSE '[]'::jsonb
-                END as available_workflows_jsonb
+                END as available_workflows_jsonb,
+                -- Child entity codes (for parent entities like CNEDOGE)
+                ARRAY(
+                    SELECT ce.code FROM entities ce
+                    WHERE ce.parent_entity_id = e.id AND ce.is_active = true
+                ) as child_entity_codes,
+                -- Ministry entities (all entities under the same ministry)
+                ARRAY(
+                    SELECT me.code FROM entities me
+                    WHERE me.ministry_id = COALESCE(e.ministry_id, ap.ministry_id)
+                    AND me.is_active = true
+                ) as ministry_entities
             FROM agent_profiles ap
             JOIN users u ON ap.user_id = u.id
             LEFT JOIN entities e ON ap.entity_id = e.id

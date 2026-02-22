@@ -152,6 +152,10 @@ class AgentProfileWithDetails(AgentProfileResponse):
     # Available workflows (inherited from entity or explicit specializations)
     available_workflows: List[str] = Field(default_factory=list)
 
+    # Entity hierarchy (derived from DB, no hardcode)
+    child_entity_codes: List[str] = Field(default_factory=list)
+    ministry_entities: List[str] = Field(default_factory=list)
+
     # Workload info (if joined)
     current_assignments: Optional[int] = None
     capacity_percentage: Optional[Decimal] = None

@@ -420,6 +420,7 @@ async def get_dashboard(
 async def get_escalation_count(
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_db_connection),
+    _: None = Depends(permission_required("escalations.view")),
 ):
     """Lightweight endpoint to get pending escalation count for sidebar badge."""
     if current_user.role == "admin":

@@ -4,6 +4,7 @@
  *
  * @module agent-dashboard/hooks
  * @date 2026-01-18
+ * @updated 2026-02-22 - Replaced hardcoded ENTITY_HIERARCHY/MINISTRY_ENTITIES with backend-derived data
  *
  * Security: Prevents unauthorized access to entity dashboards
  * An agent should only access dashboards for their assigned entity or ministry
@@ -14,7 +15,6 @@
 import { useMemo } from 'react';
 import { useAgentProfile } from './useAgentDashboard';
 import type { EntityCode, MinistryCode } from '../types';
-import { MINISTRY_ENTITIES } from '../types';
 
 // =============================================================================
 // TYPES
@@ -40,30 +40,6 @@ export interface EntityAccessResult {
 }
 
 // =============================================================================
-// ENTITY HIERARCHY
-// Defines parent-child relationships between entities
-// =============================================================================
-
-const ENTITY_HIERARCHY: Record<EntityCode, EntityCode[]> = {
-  // CNEDOGE parent can access child departments
-  CNEDOGE: ['CNEDOGE', 'CNEDOGE_PASAPORTE', 'CNEDOGE_RESIDENCIA'],
-  CNEDOGE_PASAPORTE: ['CNEDOGE_PASAPORTE'],
-  CNEDOGE_RESIDENCIA: ['CNEDOGE_RESIDENCIA'],
-
-  // Other entities are standalone
-  DGT: ['DGT'],
-  ONRC: ['ONRC'],
-  MINFP: ['MINFP'],
-  TESORO: ['TESORO'],
-  OFIVE: ['OFIVE'],
-  EXTRANJERIA: ['EXTRANJERIA'],
-  ITV: ['ITV'],
-  DGI: ['DGI'],
-  POLICIA: ['POLICIA'],
-  GENERAL: ['GENERAL'],
-};
-
-// =============================================================================
 // HOOK
 // =============================================================================
 
@@ -75,6 +51,9 @@ const ENTITY_HIERARCHY: Record<EntityCode, EntityCode[]> = {
  * 2. Agent's entity must match the requested entity (or be a parent)
  * 3. Ministry agents can access all entities under their ministry
  * 4. Supervisors have the same entity restrictions but more permissions within
+ *
+ * Entity hierarchy and ministry mappings are derived from the backend profile
+ * (child_entity_codes, ministry_entities) — no frontend hardcoding.
  *
  * @param requestedEntityCode - The entity dashboard being accessed
  * @returns EntityAccessResult with access decision and details
@@ -120,15 +99,21 @@ export function useEntityAccess(requestedEntityCode: EntityCode): EntityAccessRe
     const isMinistryAgent = agentProfile.agent_type === 'ministry_agent';
     const isSupervisor = agentProfile.is_supervisor;
 
-    // Calculate allowed entities
+    // Calculate allowed entities from backend-derived data
     let allowedEntities: EntityCode[] = [];
 
-    if (isMinistryAgent && agentMinistryCode && MINISTRY_ENTITIES[agentMinistryCode]) {
-      // Ministry agent: can access all entities under their ministry
-      allowedEntities = MINISTRY_ENTITIES[agentMinistryCode];
-    } else if (agentEntityCode && ENTITY_HIERARCHY[agentEntityCode]) {
-      // Entity agent: can access their entity and child entities
-      allowedEntities = ENTITY_HIERARCHY[agentEntityCode];
+    if (isMinistryAgent && agentProfile.ministry_entities?.length) {
+      // Ministry agent: backend returns all entities under the ministry
+      allowedEntities = agentProfile.ministry_entities as EntityCode[];
+    } else if (agentEntityCode) {
+      // Entity agent: own entity + child entities from backend
+      allowedEntities = [agentEntityCode];
+      if (agentProfile.child_entity_codes?.length) {
+        allowedEntities = [
+          ...allowedEntities,
+          ...(agentProfile.child_entity_codes as EntityCode[]),
+        ];
+      }
     }
 
     // Check access

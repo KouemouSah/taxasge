@@ -6280,6 +6280,11 @@
         "selectAll": "Sélectionnez lieu, date et heure",
         "bookSuccess": "Rendez-vous programmé avec succès",
         "bookError": "Erreur lors de la programmation du RDV"
+      },
+      "teamView": {
+        "assignedTo": "Assigné à : {name}",
+        "unassigned": "Non assigné",
+        "takeover": "Prendre en charge"
       }
     },
     "accessDenied": {

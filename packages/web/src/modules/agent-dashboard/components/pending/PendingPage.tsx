@@ -507,8 +507,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
             <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b">
               <span className="text-xs text-blue-700">
                 {selectedRequest.assignedAgentName
-                  ? `Asignado a: ${selectedRequest.assignedAgentName}`
-                  : 'Sin asignar'}
+                  ? t('teamView.assignedTo', { name: selectedRequest.assignedAgentName })
+                  : t('teamView.unassigned')}
               </span>
               <Button
                 variant="outline"
@@ -518,7 +518,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
                 className="text-xs h-7"
               >
                 <UserCheck className="h-3.5 w-3.5 mr-1.5" />
-                Prendre en charge
+                {t('teamView.takeover')}
               </Button>
             </div>
           )}

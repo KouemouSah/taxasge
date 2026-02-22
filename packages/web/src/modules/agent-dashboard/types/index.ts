@@ -39,14 +39,7 @@ export type MinistryCode =
   | 'M-009'   // MINISTERIO DE INTERIOR Y COOPERACIONES LOCALES - DGT, CNEDOGE
   | 'M-007';  // MINISTERIO DE HACIENDA ECONOMIA PLANIFICACIÓN E INVERSIONES - TESORO, DGI
 
-/**
- * Mapping of ministry to its child entities
- * Used by ministry_agent to aggregate menus from all entities
- */
-export const MINISTRY_ENTITIES: Record<MinistryCode, EntityCode[]> = {
-  'M-009': ['CNEDOGE', 'CNEDOGE_PASAPORTE', 'CNEDOGE_RESIDENCIA', 'DGT', 'EXTRANJERIA'],
-  'M-007': ['TESORO', 'DGI'],
-};
+// MINISTRY_ENTITIES mapping removed — now derived from backend (AgentProfileWithDetails.ministry_entities)
 
 // =============================================================================
 // WORKFLOW CODES - Must match backend WorkflowCode enum

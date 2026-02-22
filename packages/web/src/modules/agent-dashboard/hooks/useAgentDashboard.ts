@@ -19,8 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocale } from 'next-intl';
 import { getAuthData } from '@/core/auth/storage';
 import apiClient from '@/core/api/client';
-import type { AgentDashboardContext, EntityCode, MenuItem, MinistryCode } from '../types';
-import { MINISTRY_ENTITIES } from '../types';
+import type { AgentDashboardContext, EntityCode, MenuItem } from '../types';
 import type { AgentMenuConfigResponse, DynamicMenuItem } from '../types/menu-config';
 import { FEATURE_DYNAMIC_MENUS } from '@/core/config/features';
 
@@ -43,6 +42,9 @@ interface AgentProfileResponse {
   entity_name?: string;
   ministry_code?: string;
   ministry_name?: string;
+  // Entity hierarchy (derived from DB)
+  child_entity_codes?: string[];
+  ministry_entities?: string[];
 }
 
 // =============================================================================
@@ -255,12 +257,13 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
 
   // Determine if this is a ministry_agent (supervisor over ministry entities)
   const isMinistryAgent = agentProfile?.agent_type === 'ministry_agent';
-  const ministryCode = agentProfile?.ministry_code as MinistryCode | undefined;
 
-  // Get ministry entities if ministry_agent
-  const ministryEntities: EntityCode[] = isMinistryAgent && ministryCode && MINISTRY_ENTITIES[ministryCode]
-    ? MINISTRY_ENTITIES[ministryCode]
-    : [];
+  // Get ministry entities from backend profile (no hardcoded mapping)
+  const ministryEntities: EntityCode[] = (
+    isMinistryAgent && agentProfile?.ministry_entities?.length
+      ? agentProfile.ministry_entities
+      : []
+  ) as EntityCode[];
 
   // Legacy menuItems: always empty — dynamic menus from API are the sole source of truth.
   const menuItems: MenuItem[] = useMemo(() => [], []);

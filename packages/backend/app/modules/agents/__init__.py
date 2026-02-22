@@ -1,5 +1,5 @@
-"""Ministry Agents Module - Agent management and work assignment"""
+"""Agents Module - Agent profile management and work assignment"""
 
-from app.modules.agents.api.agent_routes import router as agent_router
+from app.modules.agents.api.profile_routes import router as agent_profile_router
 
-__all__ = ["agent_router"]
+__all__ = ["agent_profile_router"]

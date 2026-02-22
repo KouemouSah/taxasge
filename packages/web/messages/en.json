@@ -6040,6 +6040,11 @@
         "selectAll": "Select location, date and time",
         "bookSuccess": "Appointment scheduled successfully",
         "bookError": "Error scheduling appointment"
+      },
+      "teamView": {
+        "assignedTo": "Assigned to: {name}",
+        "unassigned": "Unassigned",
+        "takeover": "Take over"
       }
     },
     "accessDenied": {
