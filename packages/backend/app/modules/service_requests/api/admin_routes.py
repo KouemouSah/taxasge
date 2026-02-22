@@ -3074,6 +3074,8 @@ class PendingPaymentResponse(BaseModel):
     # Assigned agent info (for supervisor view)
     assigned_agent_id: Optional[str] = None
     assigned_agent_name: Optional[str] = None
+    # Site info
+    location_name: Optional[str] = None
 
 
 class PendingPaymentsListResponse(BaseModel):
@@ -3120,6 +3122,7 @@ async def get_pending_payments(
         description="Filter by workflow status"
     ),
     agent_profile_id: Optional[str] = Query(None, description="(Supervisor only) Filter by assigned agent_profile_id"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by entity_location (site)"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
@@ -3172,6 +3175,13 @@ async def get_pending_payments(
             # Default: only manual validation methods
             where_clauses.append("sp.payment_method IN ('cash', 'check')")
 
+        # Get agent's entity_location_id for site-based filtering
+        agent_location_id = None
+        if current_agent_profile_id:
+            agent_location_id = await db.fetchval("""
+                SELECT entity_location_id FROM agent_profiles WHERE id = $1
+            """, current_agent_profile_id)
+
         # Agent-based filtering
         if is_supervisor:
             # Supervisor can filter by specific agent or see all
@@ -3180,6 +3190,12 @@ async def get_pending_payments(
                 params.append(agent_profile_id)
                 param_idx += 1
                 logger.info(f"[Treasury] Supervisor filtering by agent_profile_id: {agent_profile_id}")
+            # Supervisor can optionally filter by location
+            if entity_location_id:
+                where_clauses.append(f"sr.entity_location_id = ${param_idx}::uuid")
+                params.append(entity_location_id)
+                param_idx += 1
+                logger.info(f"[Treasury] Supervisor filtering by location: {entity_location_id}")
         else:
             # Regular agent sees only their assigned payments
             if current_agent_profile_id:
@@ -3187,6 +3203,12 @@ async def get_pending_payments(
                 params.append(str(current_agent_profile_id))
                 param_idx += 1
                 logger.info(f"[Treasury] Agent filtering by own profile: {current_agent_profile_id}")
+                # Site-bound agents also filter by location
+                if agent_location_id:
+                    where_clauses.append(f"sr.entity_location_id = ${param_idx}::uuid")
+                    params.append(str(agent_location_id))
+                    param_idx += 1
+                    logger.info(f"[Treasury] Agent site-scoped to location: {agent_location_id}")
             else:
                 # User has permission but no agent profile - show nothing
                 logger.warning(f"[Treasury] User {user_id} has no agent_profile, showing empty results")
@@ -3217,12 +3239,14 @@ async def get_pending_payments(
                 sp.created_at,
                 EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
                 sp.assigned_agent_id,
-                COALESCE(assigned_user.full_name, assigned_user.first_name || ' ' || assigned_user.last_name) AS assigned_agent_name
+                COALESCE(assigned_user.full_name, assigned_user.first_name || ' ' || assigned_user.last_name) AS assigned_agent_name,
+                el_site.location_name AS location_name
             FROM service_payments sp
             LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN users u ON u.id = sp.user_id
             LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
             LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
+            LEFT JOIN entity_locations el_site ON el_site.id = sr.entity_location_id
             WHERE {where_sql}
             ORDER BY sp.created_at ASC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -3270,6 +3294,7 @@ async def get_pending_payments(
                     hours_waiting=float(row["hours_waiting"] or 0),
                     assigned_agent_id=str(row["assigned_agent_id"]) if row["assigned_agent_id"] else None,
                     assigned_agent_name=row["assigned_agent_name"],
+                    location_name=row.get("location_name"),
                 )
                 payments.append(payment)
             except Exception as row_error:
@@ -4316,24 +4341,74 @@ class TreasuryDashboardStatsResponse(BaseModel):
     """
 )
 async def get_treasury_dashboard_stats(
+    entity_location_id: Optional[str] = Query(None, description="Filter by entity_location (site)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required_any("treasury.validate_payment", "treasury_stat.view"))
 ):
     """Get aggregated statistics for Treasury Agent dashboard"""
+    from loguru import logger
+
+    user_id = current_user.get("id") or current_user.get("user_id")
+
+    # Check if user is a supervisor
+    is_supervisor = await db.fetchval("""
+        SELECT EXISTS(
+            SELECT 1 FROM user_permissions up
+            JOIN permissions p ON p.id = up.permission_id
+            WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
+            UNION
+            SELECT 1 FROM roles r
+            JOIN role_permissions rp ON rp.role_id = r.id
+            JOIN permissions p ON p.id = rp.permission_id
+            JOIN users u ON u.role = r.code
+            WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
+        )
+    """, user_id) or False
+
+    # Resolve location filter: agent's own location or explicit filter (supervisor)
+    location_filter_id = None
+    if not is_supervisor:
+        # Non-supervisor: auto-scope by agent's location
+        location_filter_id = await db.fetchval("""
+            SELECT entity_location_id FROM agent_profiles
+            WHERE user_id = $1::uuid AND is_active = true
+        """, user_id)
+    elif entity_location_id:
+        # Supervisor: optional explicit filter
+        location_filter_id = entity_location_id
+
+    # Build location join + filter
+    location_join = ""
+    location_where = ""
+    location_params: list = []
+    if location_filter_id:
+        location_join = "JOIN service_requests sr_loc ON sr_loc.id = sp.service_request_id"
+        location_where = f"AND sr_loc.entity_location_id = ${{loc_idx}}::uuid"
+        location_params = [str(location_filter_id)]
+        logger.info(f"[Treasury Stats] Scoping by location: {location_filter_id}")
+
     # Get pending validation count (payments awaiting agent review)
-    pending_count = await db.fetchval("""
+    pending_query = f"""
         SELECT COUNT(*)
-        FROM service_payments
-        WHERE workflow_status IN (
+        FROM service_payments sp
+        {location_join}
+        WHERE sp.workflow_status IN (
             'submitted',
             'pending_agent_review',
             'docs_resubmitted'
         )
+          AND sp.requires_agent_validation = true
+          {location_where.replace('${loc_idx}', '$1') if location_filter_id else ''}
+    """
+    pending_count = await db.fetchval(pending_query, *location_params) if location_filter_id else await db.fetchval("""
+        SELECT COUNT(*)
+        FROM service_payments
+        WHERE workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
           AND requires_agent_validation = true
     """)
 
-    # Get unreconciled bank transactions count
+    # Get unreconciled bank transactions count (global — not location-scoped)
     unreconciled_count = await db.fetchval("""
         SELECT COUNT(*)
         FROM bank_transactions
@@ -4341,7 +4416,18 @@ async def get_treasury_dashboard_stats(
     """)
 
     # Get today's validated payments (approved or completed today)
-    today_stats = await db.fetchrow("""
+    today_query = f"""
+        SELECT
+            COUNT(*) AS validated_count,
+            COALESCE(SUM(sp.total_amount), 0) AS validated_amount
+        FROM service_payments sp
+        {location_join}
+        WHERE sp.workflow_status IN ('approved_by_agent', 'completed')
+          AND sp.validated_at >= CURRENT_DATE
+          AND sp.validated_at < CURRENT_DATE + INTERVAL '1 day'
+          {location_where.replace('${loc_idx}', '$1') if location_filter_id else ''}
+    """
+    today_stats = await db.fetchrow(today_query, *location_params) if location_filter_id else await db.fetchrow("""
         SELECT
             COUNT(*) AS validated_count,
             COALESCE(SUM(total_amount), 0) AS validated_amount
@@ -4358,6 +4444,32 @@ async def get_treasury_dashboard_stats(
         today_validated_amount=float(today_stats["validated_amount"] or 0),
         currency="XAF",
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY LOCATIONS (for site filter dropdown)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/treasury/locations",
+    summary="Get TESORO entity locations",
+    description="List active entity_locations for TESORO entity (for site filter dropdowns).",
+)
+async def get_treasury_locations(
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.validate_payment"))
+):
+    """Get active entity locations for the TESORO entity."""
+    rows = await db.fetch("""
+        SELECT el.id, el.location_name, el.city
+        FROM entity_locations el
+        JOIN entities e ON e.id = el.entity_id
+        WHERE e.code = 'TESORO' AND el.is_active = true
+        ORDER BY el.city, el.location_name
+    """)
+    return [dict(r) for r in rows]
 
 
 # ═══════════════════════════════════════════════════════════════

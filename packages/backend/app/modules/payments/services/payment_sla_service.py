@@ -118,7 +118,9 @@ class PaymentSLAService:
         warned_payments = await db.fetch("""
             UPDATE service_payments sp
             SET sla_warning_sent = true
-            FROM service_requests sr, users u
+            FROM service_requests sr
+            JOIN users u ON u.id = sp.user_id
+            LEFT JOIN entity_locations el ON el.id = sr.entity_location_id
             WHERE sp.service_request_id = sr.id
               AND sp.user_id = u.id
               AND sp.payment_method IN ('cash', 'check')
@@ -131,7 +133,8 @@ class PaymentSLAService:
                 sp.id, sp.payment_reference, sp.total_amount, sp.currency,
                 sp.payment_method, sp.created_at,
                 sr.reference as sr_reference, sr.workflow_code,
-                u.first_name as citizen_first_name, u.last_name as citizen_last_name
+                u.first_name as citizen_first_name, u.last_name as citizen_last_name,
+                el.location_name as location_name
         """, warning_threshold)
 
         if not warned_payments:
@@ -170,7 +173,9 @@ class PaymentSLAService:
             UPDATE service_payments sp
             SET sla_escalated = true,
                 workflow_status = 'escalated_supervisor'
-            FROM service_requests sr, users u
+            FROM service_requests sr
+            JOIN users u ON u.id = sp.user_id
+            LEFT JOIN entity_locations el ON el.id = sr.entity_location_id
             WHERE sp.service_request_id = sr.id
               AND sp.user_id = u.id
               AND sp.payment_method IN ('cash', 'check')
@@ -185,7 +190,8 @@ class PaymentSLAService:
                 sp.payment_method, sp.created_at,
                 sr.reference as sr_reference, sr.workflow_code,
                 u.first_name as citizen_first_name, u.last_name as citizen_last_name,
-                u.email as citizen_email
+                u.email as citizen_email,
+                el.location_name as location_name
         """, escalation_threshold)
 
         if not escalated_payments:
@@ -348,11 +354,13 @@ class PaymentSLAService:
             hours_elapsed = self._hours_since(p["created_at"])
             workflow_label = WORKFLOW_LABELS.get(p["workflow_code"], p["workflow_code"])
             citizen_name = f"{p['citizen_first_name'] or ''} {p['citizen_last_name'] or ''}".strip()
+            location = p.get("location_name") or "-"
             rows_html += f"""
             <tr>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{p['sr_reference']}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{citizen_name}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{workflow_label}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb;">{location}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{p['total_amount']:,.0f} {p['currency']}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{p['payment_method']}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{created}</td>
@@ -363,7 +371,7 @@ class PaymentSLAService:
             title="Pagos pendientes de validacion",
             subtitle=f"{len(payments)} pago(s) en efectivo/cheque pendiente(s) de validacion desde hace mas de {SLA_WARNING_HOURS} horas.",
             intro="Los siguientes pagos requieren su atencion urgente:",
-            table_headers=["Referencia", "Ciudadano", "Servicio", "Monto", "Metodo", "Fecha", "Espera"],
+            table_headers=["Referencia", "Ciudadano", "Servicio", "Sede", "Monto", "Metodo", "Fecha", "Espera"],
             table_rows=rows_html,
             action_text="Por favor, valide o rechace estos pagos lo antes posible.",
             color="#f59e0b",  # amber/warning
@@ -381,12 +389,14 @@ class PaymentSLAService:
             days_elapsed = self._days_since(p["created_at"])
             workflow_label = WORKFLOW_LABELS.get(p["workflow_code"], p["workflow_code"])
             citizen_name = f"{p['citizen_first_name'] or ''} {p['citizen_last_name'] or ''}".strip()
+            location = p.get("location_name") or "-"
             rows_html += f"""
             <tr>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{p['sr_reference']}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{citizen_name}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{p['citizen_email']}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{workflow_label}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb;">{location}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{p['total_amount']:,.0f} {p['currency']}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;">{created}</td>
                 <td style="padding:8px;border:1px solid #e5e7eb;color:#dc2626;font-weight:bold;">{days_elapsed}j</td>
@@ -396,7 +406,7 @@ class PaymentSLAService:
             title="ESCALATION: Pagos sin validar",
             subtitle=f"{len(payments)} pago(s) sin validar desde hace mas de {SLA_ESCALATION_DAYS} dias.",
             intro="Los siguientes pagos han superado el plazo maximo de validacion y han sido escalados:",
-            table_headers=["Referencia", "Ciudadano", "Email", "Servicio", "Monto", "Fecha", "Espera"],
+            table_headers=["Referencia", "Ciudadano", "Email", "Servicio", "Sede", "Monto", "Fecha", "Espera"],
             table_rows=rows_html,
             action_text=f"Si estos pagos no se validan antes de {SLA_EXPIRATION_DAYS} dias, seran expirados automaticamente y el ciudadano sera notificado.",
             color="#dc2626",  # red/critical
