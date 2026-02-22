@@ -243,15 +243,73 @@ export function usePaymentActions() {
     },
   });
 
+  // Escalate payment to supervisor
+  const escalatePayment = useMutation<
+    PaymentActionResponse,
+    Error,
+    { paymentId: string; reason: string; level?: string }
+  >({
+    mutationFn: ({ paymentId, reason, level }) =>
+      treasuryApi.escalatePayment(paymentId, { reason, level }),
+    onSuccess: (data) => {
+      invalidatePayments();
+      if (data.success === false) {
+        toast({
+          title: tCommon('error'),
+          description: data.error || data.messageEs || 'Error al escalar el pago',
+          variant: 'destructive',
+        });
+        return;
+      }
+      showSuccess(data.messageEs || tTreasury('escalation.success'));
+    },
+    onError: (error) => {
+      showError(error, 'escalateFailed');
+    },
+  });
+
+  // Validate all payments in a batch
+  const validateBatchPayments = useMutation<
+    { success: boolean; paymentsValidated: number; batchReference?: string; error?: string },
+    Error,
+    { batchId: string; comment?: string }
+  >({
+    mutationFn: ({ batchId, comment }) =>
+      treasuryApi.validateBatchPayments(batchId, comment),
+    onSuccess: (data) => {
+      invalidatePayments();
+      if (!data.success) {
+        toast({
+          title: tCommon('error'),
+          description: data.error || 'Error al validar el lote',
+          variant: 'destructive',
+        });
+        return;
+      }
+      showSuccess(
+        tTreasury('batch.validateSuccess', {
+          count: data.paymentsValidated,
+          reference: data.batchReference || '',
+        })
+      );
+    },
+    onError: (error) => {
+      showError(error, 'validateFailed');
+    },
+  });
+
   return {
     // Single actions
     validatePayment,
     rejectPayment,
+    escalatePayment,
     isValidating: validatePayment.isPending,
     isRejecting: rejectPayment.isPending,
+    isEscalating: escalatePayment.isPending,
     // Batch actions
     validateBatch,
     rejectBatch,
+    validateBatchPayments,
     isValidatingBatch: validateBatch.isPending,
     isRejectingBatch: rejectBatch.isPending,
     isBatchProcessing: validateBatch.isPending || rejectBatch.isPending,

@@ -120,6 +120,15 @@ export interface PendingPayment {
   assignedAgentName?: string;
   // Site info
   locationName?: string;
+  // Batch info (for batch payment grouping)
+  batchId?: string;
+  batchReference?: string;
+  batchTotalItems?: number;
+  // Escalation info
+  escalationLevel?: string;
+  escalationReason?: string;
+  escalatedAt?: string;
+  slaEscalated?: boolean;
 }
 
 export interface PendingPaymentsListResponse {
@@ -152,6 +161,18 @@ export interface PaymentValidationRequest {
 
 export interface PaymentRejectionRequest {
   reason: string;
+}
+
+export interface PaymentEscalationRequest {
+  reason: string;
+  level?: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface BatchValidateResponse {
+  success: boolean;
+  paymentsValidated: number;
+  batchReference?: string;
+  error?: string;
 }
 
 export interface PaymentActionResponse {

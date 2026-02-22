@@ -3047,6 +3047,20 @@ class PaymentRejectionRequest(BaseModel):
     reason: str = Field(..., min_length=10, max_length=500, description="Rejection reason")
 
 
+class PaymentEscalationRequest(BaseModel):
+    """Request model for manual payment escalation to supervisor."""
+    reason: str = Field(..., min_length=10, max_length=500, description="Escalation reason")
+    level: str = Field("medium", description="Escalation level: low, medium, high, critical")
+
+
+class BatchValidateResponse(BaseModel):
+    """Response for batch payment validation."""
+    success: bool
+    payments_validated: int
+    batch_reference: Optional[str] = None
+    error: Optional[str] = None
+
+
 class PendingPaymentResponse(BaseModel):
     """Response for a pending payment."""
     payment_id: str
@@ -3076,6 +3090,15 @@ class PendingPaymentResponse(BaseModel):
     assigned_agent_name: Optional[str] = None
     # Site info
     location_name: Optional[str] = None
+    # Batch info (for batch payment grouping)
+    batch_id: Optional[str] = None
+    batch_reference: Optional[str] = None
+    batch_total_items: Optional[int] = None
+    # Escalation info
+    escalation_level: Optional[str] = None
+    escalation_reason: Optional[str] = None
+    escalated_at: Optional[str] = None
+    sla_escalated: Optional[bool] = None
 
 
 class PendingPaymentsListResponse(BaseModel):
@@ -3228,13 +3251,21 @@ async def get_pending_payments(
                 EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
                 sp.assigned_agent_id,
                 COALESCE(assigned_user.full_name, assigned_user.first_name || ' ' || assigned_user.last_name) AS assigned_agent_name,
-                el_site.location_name AS location_name
+                el_site.location_name AS location_name,
+                sp.batch_id,
+                br.reference AS batch_reference,
+                br.total_items AS batch_total_items,
+                sp.escalation_level::text AS escalation_level,
+                sp.escalation_reason,
+                sp.escalated_at,
+                sp.sla_escalated
             FROM service_payments sp
             LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN users u ON u.id = sp.user_id
             LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
             LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
             LEFT JOIN entity_locations el_site ON el_site.id = sr.entity_location_id
+            LEFT JOIN batch_requests br ON br.id = sp.batch_id
             WHERE {where_sql}
             ORDER BY sp.created_at ASC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -3284,6 +3315,13 @@ async def get_pending_payments(
                     assigned_agent_id=str(row["assigned_agent_id"]) if row["assigned_agent_id"] else None,
                     assigned_agent_name=row["assigned_agent_name"],
                     location_name=row.get("location_name"),
+                    batch_id=str(row["batch_id"]) if row["batch_id"] else None,
+                    batch_reference=row["batch_reference"],
+                    batch_total_items=row["batch_total_items"],
+                    escalation_level=row["escalation_level"],
+                    escalation_reason=row["escalation_reason"],
+                    escalated_at=row["escalated_at"].isoformat() if row["escalated_at"] else None,
+                    sla_escalated=row["sla_escalated"],
                 )
                 payments.append(payment)
             except Exception as row_error:
@@ -3307,6 +3345,138 @@ async def get_pending_payments(
         logger.error(f"[Treasury] Error in get_pending_payments: {type(e).__name__}: {e}")
         import traceback
         logger.error(f"[Treasury] Traceback: {traceback.format_exc()}")
+        raise
+
+
+# ═══════════════════════════════════════════════════════════════
+# MY ESCALATIONS (must be before {payment_id} to avoid path conflict)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/treasury/payments/my-escalations",
+    response_model=PendingPaymentsListResponse,
+    summary="Get payments escalated by current agent",
+    description="""
+    Get list of payments that the current agent has escalated.
+
+    **Permissions:**
+    - Requires 'treasury.validate_payment' permission
+    """
+)
+async def get_my_payment_escalations(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.validate_payment"))
+):
+    """Get payments escalated by the current agent"""
+    from loguru import logger
+
+    agent_profile_id = await get_agent_profile_id(db, current_user.id)
+    if not agent_profile_id:
+        no_agent_profile()
+
+    try:
+        offset = (page - 1) * limit
+
+        rows = await db.fetch("""
+            SELECT
+                sp.id AS payment_id,
+                sp.payment_reference,
+                sp.service_request_id,
+                sr.reference AS request_reference,
+                sr.workflow_code,
+                sp.user_id,
+                u.first_name || ' ' || u.last_name AS user_name,
+                u.email AS user_email,
+                sp.payment_method,
+                sp.total_amount,
+                sp.base_amount,
+                sp.penalties,
+                sp.discounts,
+                sp.currency,
+                sp.calculation_details,
+                sp.workflow_status,
+                sp.sla_target_date,
+                sr.submitted_at,
+                sp.created_at,
+                EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
+                sp.assigned_agent_id,
+                COALESCE(assigned_user.full_name, assigned_user.first_name || ' ' || assigned_user.last_name) AS assigned_agent_name,
+                el_site.location_name AS location_name,
+                sp.batch_id,
+                br.reference AS batch_reference,
+                br.total_items AS batch_total_items,
+                sp.escalation_level::text AS escalation_level,
+                sp.escalation_reason,
+                sp.escalated_at,
+                sp.sla_escalated
+            FROM service_payments sp
+            LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+            LEFT JOIN users u ON u.id = sp.user_id
+            LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
+            LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
+            LEFT JOIN entity_locations el_site ON el_site.id = sr.entity_location_id
+            LEFT JOIN batch_requests br ON br.id = sp.batch_id
+            WHERE sp.assigned_agent_id = $1
+              AND sp.escalated_to_agent_id IS NOT NULL
+            ORDER BY sp.escalated_at DESC NULLS LAST, sp.created_at DESC
+            LIMIT $2 OFFSET $3
+        """, agent_profile_id, limit, offset)
+
+        total = await db.fetchval("""
+            SELECT COUNT(*) FROM service_payments
+            WHERE assigned_agent_id = $1
+              AND escalated_to_agent_id IS NOT NULL
+        """, agent_profile_id)
+
+        payments = []
+        for row in rows:
+            payment = PendingPaymentResponse(
+                payment_id=str(row["payment_id"]),
+                payment_reference=row["payment_reference"],
+                service_request_id=str(row["service_request_id"]) if row["service_request_id"] else None,
+                request_reference=row["request_reference"],
+                workflow_code=row["workflow_code"],
+                user_id=str(row["user_id"]),
+                user_name=row["user_name"],
+                user_email=row["user_email"],
+                payment_method=row["payment_method"],
+                total_amount=float(row["total_amount"]),
+                base_amount=float(row["base_amount"]) if row["base_amount"] else None,
+                penalties=float(row["penalties"]) if row["penalties"] else None,
+                discounts=float(row["discounts"]) if row["discounts"] else None,
+                currency=row["currency"],
+                calculation_details=json.loads(row["calculation_details"]) if isinstance(row["calculation_details"], str) else row["calculation_details"],
+                workflow_status=row["workflow_status"],
+                submitted_at=row["submitted_at"].isoformat() if row["submitted_at"] else None,
+                sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
+                created_at=row["created_at"].isoformat(),
+                hours_waiting=float(row["hours_waiting"] or 0),
+                assigned_agent_id=str(row["assigned_agent_id"]) if row["assigned_agent_id"] else None,
+                assigned_agent_name=row["assigned_agent_name"],
+                location_name=row.get("location_name"),
+                batch_id=str(row["batch_id"]) if row["batch_id"] else None,
+                batch_reference=row["batch_reference"],
+                batch_total_items=row["batch_total_items"],
+                escalation_level=row["escalation_level"],
+                escalation_reason=row["escalation_reason"],
+                escalated_at=row["escalated_at"].isoformat() if row["escalated_at"] else None,
+                sla_escalated=row["sla_escalated"],
+            )
+            payments.append(payment)
+
+        return PendingPaymentsListResponse(
+            payments=payments,
+            total=total or 0,
+            page=page,
+            page_size=limit
+        )
+
+    except Exception as e:
+        logger.error(f"[Treasury] Error getting escalations: {e}", exc_info=True)
         raise
 
 
@@ -3348,10 +3518,18 @@ async def get_payment_details(
             sp.workflow_status,
             sp.sla_target_date,
             sp.created_at,
-            EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting
+            EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600 AS hours_waiting,
+            sp.batch_id,
+            br.reference AS batch_reference,
+            br.total_items AS batch_total_items,
+            sp.escalation_level::text AS escalation_level,
+            sp.escalation_reason,
+            sp.escalated_at,
+            sp.sla_escalated
         FROM service_payments sp
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
         LEFT JOIN users u ON u.id = sp.user_id
+        LEFT JOIN batch_requests br ON br.id = sp.batch_id
         WHERE sp.id = $1::uuid
     """
     row = await db.fetchrow(query, payment_id)
@@ -3382,6 +3560,13 @@ async def get_payment_details(
         sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
         created_at=row["created_at"].isoformat(),
         hours_waiting=float(row["hours_waiting"] or 0),
+        batch_id=str(row["batch_id"]) if row["batch_id"] else None,
+        batch_reference=row["batch_reference"],
+        batch_total_items=row["batch_total_items"],
+        escalation_level=row["escalation_level"],
+        escalation_reason=row["escalation_reason"],
+        escalated_at=row["escalated_at"].isoformat() if row["escalated_at"] else None,
+        sla_escalated=row["sla_escalated"],
     )
 
 
@@ -3612,6 +3797,228 @@ async def reject_payment(
         status="rejected",
         message_es="Pago rechazado."
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# BATCH PAYMENT VALIDATION
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post(
+    "/treasury/batch/{batch_id}/validate",
+    response_model=BatchValidateResponse,
+    summary="Validate all payments in a batch",
+    description="""
+    Validate (approve) all pending payments in a batch atomically.
+
+    **Behavior:**
+    - Finds all service_payments with given batch_id that are pending_agent_review
+    - Validates them all atomically via fan_out_batch_completion
+    - Updates service_requests and batch_requests status
+
+    **Permissions:**
+    - Requires 'treasury.validate_payment' permission
+    """
+)
+async def validate_batch_payments(
+    batch_id: str = Path(..., description="Batch UUID"),
+    body: PaymentValidationRequest = Body(default=PaymentValidationRequest()),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.validate_payment"))
+):
+    """Validate all payments in a batch atomically"""
+    from datetime import datetime
+    from uuid import UUID as UUIDType
+    from loguru import logger
+
+    agent_profile_id = await get_agent_profile_id(db, current_user.id)
+    if not agent_profile_id:
+        no_agent_profile()
+
+    try:
+        # 1. Check batch exists and has pending payments
+        batch = await db.fetchrow("""
+            SELECT br.id, br.reference, br.total_items, br.status
+            FROM batch_requests br
+            WHERE br.id = $1::uuid
+        """, batch_id)
+
+        if not batch:
+            raise TreasuryError(
+                error_code=TreasuryErrorCode.PAYMENT_NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail_override=f"Lote no encontrado: {batch_id}"
+            )
+
+        # 2. Count pending payments in this batch
+        pending_count = await db.fetchval("""
+            SELECT COUNT(*) FROM service_payments
+            WHERE batch_id = $1::uuid
+              AND workflow_status = 'pending_agent_review'
+        """, batch_id)
+
+        if pending_count == 0:
+            return BatchValidateResponse(
+                success=False,
+                payments_validated=0,
+                batch_reference=batch["reference"],
+                error="No hay pagos pendientes de validación en este lote."
+            )
+
+        # 3. Use fan_out_batch_completion for atomic validation
+        from app.modules.batch_requests.services.batch_persist_service import BatchPersistService
+        result = await BatchPersistService.fan_out_batch_completion(
+            db=db,
+            batch_id=UUIDType(batch_id),
+            paid_at=datetime.utcnow(),
+            agent_profile_id=str(agent_profile_id),
+        )
+
+        logger.info(
+            f"[Treasury] Batch {batch['reference']} validated by agent {agent_profile_id}: "
+            f"payments={result.get('payments_updated', 0)}, requests={result.get('requests_updated', 0)}"
+        )
+
+        return BatchValidateResponse(
+            success=True,
+            payments_validated=result.get("payments_updated", 0),
+            batch_reference=batch["reference"],
+        )
+
+    except TreasuryError:
+        raise
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"[Treasury] Error validating batch {batch_id}: {e}", exc_info=True)
+        raise
+
+
+# ═══════════════════════════════════════════════════════════════
+# MANUAL PAYMENT ESCALATION
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post(
+    "/treasury/payments/{payment_id}/escalate",
+    response_model=PaymentActionResponse,
+    summary="Escalate payment to supervisor",
+    description="""
+    Manually escalate a payment to the TESORO supervisor.
+
+    **Behavior:**
+    - Sets workflow_status to 'escalated_supervisor'
+    - Records escalation reason, level, and timestamp
+    - Assigns to TESORO supervisor
+
+    **Permissions:**
+    - Requires 'treasury.validate_payment' permission
+    """
+)
+async def escalate_payment(
+    payment_id: str = Path(..., description="Payment UUID"),
+    body: PaymentEscalationRequest = ...,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.validate_payment"))
+):
+    """Manually escalate a payment to supervisor"""
+    from datetime import datetime
+    from loguru import logger
+
+    agent_profile_id = await get_agent_profile_id(db, current_user.id)
+    if not agent_profile_id:
+        no_agent_profile()
+
+    try:
+        # 1. Verify payment exists and is in escalatable state
+        payment = await db.fetchrow("""
+            SELECT id, workflow_status, service_request_id
+            FROM service_payments WHERE id = $1::uuid
+        """, payment_id)
+
+        if not payment:
+            payment_not_found(payment_id)
+
+        escalatable_statuses = ("pending_agent_review", "agent_reviewing")
+        if payment["workflow_status"] not in escalatable_statuses:
+            raise TreasuryError(
+                error_code=TreasuryErrorCode.INVALID_PAYMENT_STATUS,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail_override=f"El pago no se puede escalar (estado: {payment['workflow_status']})"
+            )
+
+        # 2. Validate escalation level
+        valid_levels = ("low", "medium", "high", "critical")
+        level = body.level if body.level in valid_levels else "medium"
+
+        # 3. Find TESORO supervisor
+        supervisor_id = await db.fetchval("""
+            SELECT ap.id FROM agent_profiles ap
+            JOIN entities e ON e.id = ap.entity_id
+            WHERE e.code = 'TESORO' AND ap.is_supervisor = true AND ap.is_active = true
+            LIMIT 1
+        """)
+
+        if not supervisor_id:
+            logger.warning("[Treasury] No active TESORO supervisor found for escalation")
+
+        # 4. Update payment
+        await db.execute("""
+            UPDATE service_payments
+            SET workflow_status = 'escalated_supervisor',
+                escalated_to_agent_id = $2,
+                escalation_level = $3::escalation_level,
+                escalation_reason = $4,
+                escalated_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $1::uuid
+        """, payment_id, supervisor_id, level, body.reason)
+
+        logger.info(
+            f"[Treasury] Payment {payment_id} escalated to supervisor {supervisor_id} "
+            f"by agent {agent_profile_id} (level={level}, reason={body.reason[:50]}...)"
+        )
+
+        # 5. Send email notification to supervisor (non-blocking)
+        try:
+            if supervisor_id:
+                sup_user = await db.fetchrow("""
+                    SELECT u.email, u.first_name, u.last_name, u.preferred_language
+                    FROM agent_profiles ap
+                    JOIN users u ON u.id = ap.user_id
+                    WHERE ap.id = $1
+                """, supervisor_id)
+
+                if sup_user:
+                    from app.core.events import EventBus, EventType
+                    EventBus.publish_nowait(
+                        EventType.PAYMENT_MANUAL_ESCALATED,
+                        {
+                            "payment_id": payment_id,
+                            "escalation_reason": body.reason,
+                            "escalation_level": level,
+                            "supervisor_email": sup_user["email"],
+                            "supervisor_name": f"{sup_user['first_name']} {sup_user['last_name']}",
+                            "agent_name": f"{current_user.first_name} {current_user.last_name}".strip(),
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+        except Exception as e:
+            logger.warning(f"[Treasury] Failed to send escalation notification: {e}")
+
+        return PaymentActionResponse(
+            success=True,
+            payment_id=payment_id,
+            status="escalated_supervisor",
+            message_es="Pago escalado al supervisor correctamente."
+        )
+
+    except TreasuryError:
+        raise
+    except Exception as e:
+        logger.error(f"[Treasury] Error escalating payment {payment_id}: {e}", exc_info=True)
+        raise
 
 
 # ═══════════════════════════════════════════════════════════════

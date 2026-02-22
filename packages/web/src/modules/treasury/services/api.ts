@@ -223,6 +223,62 @@ export const treasuryApi = {
     return toCamelCase<PaymentActionResponse>(response);
   },
 
+  /**
+   * Escalate payment to supervisor
+   * BACKEND: POST /api/v1/admin/service-requests/treasury/payments/{id}/escalate
+   */
+  escalatePayment: async (
+    paymentId: string,
+    request: { reason: string; level?: string }
+  ): Promise<PaymentActionResponse> => {
+    const response = await fetchClient.post<Record<string, unknown>>(
+      `${TREASURY_BASE}/payments/${paymentId}/escalate`,
+      { reason: request.reason, level: request.level || 'medium' }
+    );
+    return toCamelCase<PaymentActionResponse>(response);
+  },
+
+  /**
+   * Validate all payments in a batch
+   * BACKEND: POST /api/v1/admin/service-requests/treasury/batch/{batchId}/validate
+   */
+  validateBatchPayments: async (
+    batchId: string,
+    comment?: string
+  ): Promise<{ success: boolean; paymentsValidated: number; batchReference?: string; error?: string }> => {
+    const response = await fetchClient.post<Record<string, unknown>>(
+      `${TREASURY_BASE}/batch/${batchId}/validate`,
+      comment ? { comment } : {}
+    );
+    return toCamelCase<{ success: boolean; paymentsValidated: number; batchReference?: string; error?: string }>(response);
+  },
+
+  /**
+   * Get payments escalated by current agent
+   * BACKEND: GET /api/v1/admin/service-requests/treasury/payments/my-escalations
+   */
+  getMyEscalations: async (
+    params: { page?: number; pageSize?: number } = {}
+  ): Promise<PendingPaymentsListResponse> => {
+    const queryParams: Record<string, string | number | undefined> = {
+      page: params.page || 1,
+      limit: params.pageSize || 20,
+    };
+
+    const response = await fetchClient.get<Record<string, unknown>>(
+      `${TREASURY_BASE}/payments/my-escalations`,
+      queryParams
+    );
+
+    const payments = (response.payments as Record<string, unknown>[]) || [];
+    return {
+      payments: payments.map(transformPayment),
+      total: (response.total as number) || 0,
+      page: (response.page as number) || 1,
+      pageSize: (response.page_size as number) || 20,
+    };
+  },
+
   // -------------------------------------------------------------------------
   // Bank Transactions (Reconciliation)
   // -------------------------------------------------------------------------

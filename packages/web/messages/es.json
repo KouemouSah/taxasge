@@ -5286,7 +5286,8 @@
       "lockFailed": "No se pudo bloquear el pago.",
       "validateFailed": "No se pudo validar el pago.",
       "rejectFailed": "No se pudo rechazar el pago.",
-      "unlockFailed": "No se pudo desbloquear el pago."
+      "unlockFailed": "No se pudo desbloquear el pago.",
+      "escalateFailed": "No se pudo escalar el pago."
     },
     "actions": {
       "goToValidation": "Ir a Validacion",
@@ -5326,6 +5327,7 @@
         "pendingReview": "Pendiente revision",
         "validated": "Validados",
         "rejected": "Rechazados",
+        "escalated": "Escalados",
         "allMethods": "Todos los metodos",
         "cash": "Efectivo",
         "check": "Cheque",
@@ -6145,6 +6147,34 @@
         "showing": "Mostrando {from} a {to} de {total}",
         "noData": "Sin datos"
       }
+    },
+    "escalation": {
+      "dialogTitle": "Escalar Pago al Supervisor",
+      "dialogDescription": "Este pago sera escalado a su supervisor para revision. Indique el nivel de urgencia y el motivo.",
+      "level": "Nivel de urgencia",
+      "levels": {
+        "low": "Bajo",
+        "medium": "Medio",
+        "high": "Alto",
+        "critical": "Critico"
+      },
+      "reason": "Motivo de la escalacion",
+      "reasonPlaceholder": "Describa detalladamente por que escala este pago (minimo 10 caracteres)...",
+      "confirm": "Confirmar Escalacion",
+      "escalate": "Escalar",
+      "escalating": "Escalando...",
+      "success": "Pago escalado exitosamente al supervisor",
+      "pageTitle": "Mis Escalaciones",
+      "pageDescription": "Pagos que ha escalado a su supervisor",
+      "noEscalations": "Sin escalaciones",
+      "noEscalationsDescription": "No tiene pagos escalados actualmente.",
+      "escalatedAt": "Escalado el",
+      "escalationLevel": "Nivel",
+      "status": "Estado"
+    },
+    "batch": {
+      "validateAll": "Validar todo el lote",
+      "validateSuccess": "{count} pago(s) del lote validados. Ref: {reference}"
     }
   },
   "agent": {

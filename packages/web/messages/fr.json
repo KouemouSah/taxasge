@@ -5424,7 +5424,8 @@
       "lockFailed": "Impossible de verrouiller le paiement.",
       "validateFailed": "Impossible de valider le paiement.",
       "rejectFailed": "Impossible de rejeter le paiement.",
-      "unlockFailed": "Impossible de deverrouiller le paiement."
+      "unlockFailed": "Impossible de deverrouiller le paiement.",
+      "escalateFailed": "Impossible d'escalader le paiement."
     },
     "actions": {
       "goToValidation": "Aller a la Validation",
@@ -5464,6 +5465,7 @@
         "pendingReview": "En attente de revision",
         "validated": "Valides",
         "rejected": "Rejetes",
+        "escalated": "Escalades",
         "allMethods": "Toutes les methodes",
         "cash": "Especes",
         "check": "Cheque",
@@ -6283,6 +6285,34 @@
         "showing": "Affichage {from} a {to} sur {total}",
         "noData": "Aucune donnee"
       }
+    },
+    "escalation": {
+      "dialogTitle": "Escalader le Paiement au Superviseur",
+      "dialogDescription": "Ce paiement sera escalade a votre superviseur pour revision. Indiquez le niveau d'urgence et le motif.",
+      "level": "Niveau d'urgence",
+      "levels": {
+        "low": "Bas",
+        "medium": "Moyen",
+        "high": "Eleve",
+        "critical": "Critique"
+      },
+      "reason": "Motif de l'escalade",
+      "reasonPlaceholder": "Decrivez en detail pourquoi vous escaladez ce paiement (minimum 10 caracteres)...",
+      "confirm": "Confirmer l'Escalade",
+      "escalate": "Escalader",
+      "escalating": "Escalade en cours...",
+      "success": "Paiement escalade avec succes au superviseur",
+      "pageTitle": "Mes Escalades",
+      "pageDescription": "Paiements que vous avez escalades a votre superviseur",
+      "noEscalations": "Aucune escalade",
+      "noEscalationsDescription": "Vous n'avez aucun paiement escalade actuellement.",
+      "escalatedAt": "Escalade le",
+      "escalationLevel": "Niveau",
+      "status": "Statut"
+    },
+    "batch": {
+      "validateAll": "Valider tout le lot",
+      "validateSuccess": "{count} paiement(s) du lot valides. Ref: {reference}"
     }
   },
   "agent": {

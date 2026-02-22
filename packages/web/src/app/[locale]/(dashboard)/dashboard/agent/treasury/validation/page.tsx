@@ -51,12 +51,14 @@ import {
   Search,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Clock,
   RefreshCw,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
+  Package,
 } from 'lucide-react';
 import { usePendingPayments, usePaymentActions, useTreasuryLocations } from '@/modules/treasury/hooks';
 import {
@@ -112,6 +114,12 @@ export default function TreasuryValidationPage() {
   const [batchComment, setBatchComment] = useState('');
   const [batchRejectReason, setBatchRejectReason] = useState('');
 
+  // Escalation dialog
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
+  const [escalatePaymentId, setEscalatePaymentId] = useState<string | null>(null);
+  const [escalateReason, setEscalateReason] = useState('');
+  const [escalateLevel, setEscalateLevel] = useState<string>('medium');
+
   // Reset selection when filters change
   useEffect(() => {
     setSelectedIds(new Set());
@@ -130,9 +138,12 @@ export default function TreasuryValidationPage() {
   // Actions
   const {
     validatePayment,
+    escalatePayment,
     validateBatch,
     rejectBatch,
+    validateBatchPayments,
     isValidating,
+    isEscalating,
     isBatchProcessing,
   } = usePaymentActions();
 
@@ -255,6 +266,31 @@ export default function TreasuryValidationPage() {
     setShowBatchRejectDialog(true);
   };
 
+  // Escalation: Opens dialog
+  const handleSingleEscalate = (paymentId: string) => {
+    setEscalatePaymentId(paymentId);
+    setEscalateReason('');
+    setEscalateLevel('medium');
+    setShowEscalateDialog(true);
+  };
+
+  const handleEscalateConfirm = async () => {
+    if (!escalatePaymentId || !escalateReason.trim()) return;
+    await escalatePayment.mutateAsync({
+      paymentId: escalatePaymentId,
+      reason: escalateReason,
+      level: escalateLevel,
+    });
+    setShowEscalateDialog(false);
+    setEscalatePaymentId(null);
+    setEscalateReason('');
+  };
+
+  // Batch-level validate (all payments in a batch at once)
+  const handleBatchLevelValidate = async (batchId: string) => {
+    await validateBatchPayments.mutateAsync({ batchId });
+  };
+
   // Calculate total amount of selected payments
   const selectedTotalAmount = useMemo(() => {
     return filteredPayments
@@ -320,6 +356,7 @@ export default function TreasuryValidationPage() {
               <SelectContent>
                 <SelectItem value="all">{t('validationPage.filters.allStatuses')}</SelectItem>
                 <SelectItem value="pending_agent_review">{t('validationPage.filters.pendingReview')}</SelectItem>
+                <SelectItem value="escalated_supervisor">{t('validationPage.filters.escalated')}</SelectItem>
                 <SelectItem value="completed">{t('validationPage.filters.validated')}</SelectItem>
                 <SelectItem value="rejected_by_agent">{t('validationPage.filters.rejected')}</SelectItem>
               </SelectContent>
@@ -517,7 +554,15 @@ export default function TreasuryValidationPage() {
                           </TableCell>
                         )}
                         <TableCell className="font-mono text-sm">
-                          {payment.paymentReference}
+                          <div className="flex items-center gap-1.5">
+                            {payment.paymentReference}
+                            {payment.batchReference && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-normal border-blue-300 text-blue-700 bg-blue-50">
+                                <Package className="h-3 w-3 mr-0.5" />
+                                {payment.batchReference}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div>
@@ -569,7 +614,8 @@ export default function TreasuryValidationPage() {
                                     e.stopPropagation();
                                     handleSingleValidate(payment.id);
                                   }}
-                                  disabled={isValidating || isBatchProcessing}
+                                  disabled={isValidating || isBatchProcessing || isEscalating}
+                                  title={t('validationPage.buttons.validate')}
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </Button>
@@ -581,11 +627,41 @@ export default function TreasuryValidationPage() {
                                     e.stopPropagation();
                                     handleSingleReject(payment.id);
                                   }}
-                                  disabled={isValidating || isBatchProcessing}
+                                  disabled={isValidating || isBatchProcessing || isEscalating}
+                                  title={t('validationPage.buttons.reject')}
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSingleEscalate(payment.id);
+                                  }}
+                                  disabled={isValidating || isBatchProcessing || isEscalating}
+                                  title={t('escalation.escalate')}
+                                >
+                                  <AlertTriangle className="h-4 w-4" />
+                                </Button>
                               </>
+                            )}
+                            {/* Batch-level validate button */}
+                            {payment.batchId && payment.workflowStatus === 'pending_agent_review' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleBatchLevelValidate(payment.batchId!);
+                                }}
+                                disabled={isValidating || isBatchProcessing}
+                                title={t('batch.validateAll')}
+                              >
+                                <Package className="h-4 w-4" />
+                              </Button>
                             )}
                             <Button
                               variant="ghost"
@@ -755,6 +831,65 @@ export default function TreasuryValidationPage() {
                 </>
               ) : (
                 t('validationPage.dialogs.rejectConfirm', { count: selectedIds.size })
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Escalation Dialog */}
+      <AlertDialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {t('escalation.dialogTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>{t('escalation.dialogDescription')}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="escalateLevel">{t('escalation.level')}</Label>
+                  <Select value={escalateLevel} onValueChange={setEscalateLevel}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">{t('escalation.levels.low')}</SelectItem>
+                      <SelectItem value="medium">{t('escalation.levels.medium')}</SelectItem>
+                      <SelectItem value="high">{t('escalation.levels.high')}</SelectItem>
+                      <SelectItem value="critical">{t('escalation.levels.critical')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="escalateReason">{t('escalation.reason')}</Label>
+                  <Textarea
+                    id="escalateReason"
+                    placeholder={t('escalation.reasonPlaceholder')}
+                    value={escalateReason}
+                    onChange={(e) => setEscalateReason(e.target.value)}
+                    rows={3}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isEscalating}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEscalateConfirm}
+              disabled={isEscalating || escalateReason.trim().length < 10}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isEscalating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('validationPage.selection.processing')}
+                </>
+              ) : (
+                t('escalation.confirm')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

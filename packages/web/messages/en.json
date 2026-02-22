@@ -5184,7 +5184,8 @@
       "lockFailed": "Unable to lock the payment.",
       "validateFailed": "Unable to validate the payment.",
       "rejectFailed": "Unable to reject the payment.",
-      "unlockFailed": "Unable to unlock the payment."
+      "unlockFailed": "Unable to unlock the payment.",
+      "escalateFailed": "Could not escalate the payment."
     },
     "actions": {
       "goToValidation": "Go to Validation",
@@ -5224,6 +5225,7 @@
         "pendingReview": "Pending review",
         "validated": "Validated",
         "rejected": "Rejected",
+        "escalated": "Escalated",
         "allMethods": "All methods",
         "cash": "Cash",
         "check": "Check",
@@ -6043,6 +6045,34 @@
         "showing": "Showing {from} to {to} of {total}",
         "noData": "No data"
       }
+    },
+    "escalation": {
+      "dialogTitle": "Escalate Payment to Supervisor",
+      "dialogDescription": "This payment will be escalated to your supervisor for review. Indicate the urgency level and reason.",
+      "level": "Urgency level",
+      "levels": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical"
+      },
+      "reason": "Escalation reason",
+      "reasonPlaceholder": "Describe in detail why you are escalating this payment (minimum 10 characters)...",
+      "confirm": "Confirm Escalation",
+      "escalate": "Escalate",
+      "escalating": "Escalating...",
+      "success": "Payment successfully escalated to supervisor",
+      "pageTitle": "My Escalations",
+      "pageDescription": "Payments you have escalated to your supervisor",
+      "noEscalations": "No escalations",
+      "noEscalationsDescription": "You have no escalated payments currently.",
+      "escalatedAt": "Escalated on",
+      "escalationLevel": "Level",
+      "status": "Status"
+    },
+    "batch": {
+      "validateAll": "Validate entire batch",
+      "validateSuccess": "{count} payment(s) in batch validated. Ref: {reference}"
     }
   },
   "agent": {

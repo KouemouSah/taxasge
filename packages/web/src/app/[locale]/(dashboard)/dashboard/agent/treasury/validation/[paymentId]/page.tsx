@@ -26,6 +26,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ArrowLeft,
   ArrowRight,
   ChevronLeft,
@@ -105,6 +112,9 @@ export default function PaymentDetailPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [showValidateConfirm, setShowValidateConfirm] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showEscalateConfirm, setShowEscalateConfirm] = useState(false);
+  const [escalateReason, setEscalateReason] = useState('');
+  const [escalateLevel, setEscalateLevel] = useState('medium');
 
   // Fetch current payment details
   const { data: payment, isLoading: isLoadingPayment, error: paymentError } = useQuery({
@@ -123,8 +133,10 @@ export default function PaymentDetailPage() {
   const {
     validatePayment,
     rejectPayment,
+    escalatePayment,
     isValidating,
     isRejecting,
+    isEscalating,
   } = usePaymentActions();
 
   // Calculate navigation (prev/next)
@@ -197,8 +209,24 @@ export default function PaymentDetailPage() {
     }
   };
 
+  const handleEscalate = async () => {
+    if (!escalateReason.trim()) return;
+    try {
+      await escalatePayment.mutateAsync({
+        paymentId,
+        reason: escalateReason,
+        level: escalateLevel,
+      });
+      setShowEscalateConfirm(false);
+      setEscalateReason('');
+      goBack();
+    } catch {
+      // Error is handled by the hook
+    }
+  };
+
   const isActionable = payment?.workflowStatus === 'pending_agent_review';
-  const isAnyLoading = isValidating || isRejecting;
+  const isAnyLoading = isValidating || isRejecting || isEscalating;
 
   // Loading state
   if (isLoadingPayment) {
@@ -534,6 +562,25 @@ export default function PaymentDetailPage() {
                       </>
                     )}
                   </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                    onClick={() => setShowEscalateConfirm(true)}
+                    disabled={isAnyLoading}
+                  >
+                    {isEscalating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t('escalation.escalating')}
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        {t('escalation.escalate')}
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -662,6 +709,65 @@ export default function PaymentDetailPage() {
                 </>
               ) : (
                 t('detail.confirmRejectionButton')
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Escalation Confirmation Dialog */}
+      <AlertDialog open={showEscalateConfirm} onOpenChange={setShowEscalateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {t('escalation.dialogTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>{t('escalation.dialogDescription')}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="escalateLevel">{t('escalation.level')}</Label>
+                  <Select value={escalateLevel} onValueChange={setEscalateLevel}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">{t('escalation.levels.low')}</SelectItem>
+                      <SelectItem value="medium">{t('escalation.levels.medium')}</SelectItem>
+                      <SelectItem value="high">{t('escalation.levels.high')}</SelectItem>
+                      <SelectItem value="critical">{t('escalation.levels.critical')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="escalateReason">{t('escalation.reason')}</Label>
+                  <Textarea
+                    id="escalateReason"
+                    placeholder={t('escalation.reasonPlaceholder')}
+                    value={escalateReason}
+                    onChange={(e) => setEscalateReason(e.target.value)}
+                    rows={3}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isEscalating}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEscalate}
+              disabled={isEscalating || escalateReason.trim().length < 10}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isEscalating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('escalation.escalating')}
+                </>
+              ) : (
+                t('escalation.confirm')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

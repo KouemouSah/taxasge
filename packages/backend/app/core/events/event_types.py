@@ -51,6 +51,9 @@ class EventType(str, Enum):
     PAYMENT_CASH_REJECTED = "payment.manual.rejected"
     """@deprecated Use PAYMENT_MANUAL_REJECTED - Cash/Check payment rejected by agent"""
 
+    PAYMENT_MANUAL_ESCALATED = "payment.manual.escalated"
+    """Manual payment escalated to supervisor by Treasury agent"""
+
     PAYMENT_REFUNDED = "payment.refunded"
     """Payment refunded"""
 
