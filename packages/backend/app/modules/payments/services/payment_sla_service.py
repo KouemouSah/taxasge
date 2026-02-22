@@ -301,7 +301,7 @@ class PaymentSLAService:
             FROM agent_profiles ap
             JOIN users u ON u.id = ap.user_id
             JOIN entities e ON e.id = ap.entity_id
-            WHERE ap.entity_code = 'TESORO'
+            WHERE e.code = 'TESORO'
               AND ap.is_active = true
               AND u.email IS NOT NULL
         """)
@@ -313,7 +313,8 @@ class PaymentSLAService:
             SELECT DISTINCT u.email
             FROM agent_profiles ap
             JOIN users u ON u.id = ap.user_id
-            WHERE ap.entity_code = 'TESORO'
+            JOIN entities e ON e.id = ap.entity_id
+            WHERE e.code = 'TESORO'
               AND ap.is_active = true
               AND ap.is_supervisor = true
               AND u.email IS NOT NULL
