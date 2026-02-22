@@ -24,6 +24,7 @@ import { PendingPaymentsWidget } from './PendingPaymentsWidget';
 import { AnomalySummaryWidget } from './AnomalySummaryWidget';
 import { CalendarWeekWidget } from './CalendarWeekWidget';
 import { CalendarSlotsWidget } from './CalendarSlotsWidget';
+import { RecentActivityWidget } from './RecentActivityWidget';
 
 // =============================================================================
 // TYPES
@@ -85,8 +86,24 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
   pending_payments: ({ className }) => (
     <PendingPaymentsWidget className={className} />
   ),
+  in_progress_payments: ({ className }) => (
+    <PendingPaymentsWidget className={className} />
+  ),
+  completed_payments: ({ className }) => (
+    <PendingPaymentsWidget className={className} />
+  ),
   anomaly_summary: ({ className }) => (
     <AnomalySummaryWidget className={className} />
+  ),
+
+  // Escalation aliases
+  my_escalations: ({ entityCode, className }) => (
+    <EscalationsWidget entityCode={entityCode} className={className} />
+  ),
+
+  // Activity widget
+  recent_activity: ({ entityCode, className }) => (
+    <RecentActivityWidget entityCode={entityCode} className={className} />
   ),
 
   // Calendar widgets
