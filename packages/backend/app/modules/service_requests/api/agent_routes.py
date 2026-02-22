@@ -1828,6 +1828,8 @@ class ServiceRequestListItem(BaseModel):
     # Batch context (if created from batch submission)
     batch_id: Optional[str] = None
     batch_reference: Optional[str] = None
+    # Assigned agent name (for supervisor team view)
+    assigned_agent_name: Optional[str] = None
     # Escalation context (only populated for action=escalations)
     escalation_reason: Optional[str] = None
     escalated_at: Optional[str] = None
@@ -1963,6 +1965,7 @@ async def get_entity_service_requests(
     motivo: Optional[str] = Query(None, description="Filter by motivo: vencimiento, perdida, robo, deterioro"),
     search: Optional[str] = Query(None, description="Search reference or citizen name"),
     priority: Optional[str] = Query(None, description="Filter by priority"),
+    agent_id: Optional[str] = Query(None, description="Filter by assigned agent ID (supervisor team view)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
@@ -2050,6 +2053,12 @@ async def get_entity_service_requests(
         params.append(priority.upper())
         param_idx += 1
 
+    # Agent filter (supervisor team view — filter by specific assigned agent)
+    if agent_id:
+        conditions.append(f"sr.assigned_to::text = ${param_idx}")
+        params.append(agent_id)
+        param_idx += 1
+
     where_clause = " AND ".join(conditions)
 
     # Count total
@@ -2097,11 +2106,13 @@ async def get_entity_service_requests(
             u.last_name,
             u.email,
             sr.batch_id,
-            (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference
+            (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference,
+            COALESCE(assigned_u.full_name, assigned_u.first_name || ' ' || assigned_u.last_name) as assigned_agent_name
             {escalation_select}
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
+        LEFT JOIN users assigned_u ON assigned_u.id = sr.assigned_to::uuid
         WHERE {where_clause}
         ORDER BY
             {escalation_order}
@@ -2148,6 +2159,7 @@ async def get_entity_service_requests(
             submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
             created_at=row['created_at'].isoformat(),
             assigned_to=str(row['assigned_to']) if row['assigned_to'] else None,
+            assigned_agent_name=row.get('assigned_agent_name'),
             sla_deadline=row['sla_deadline'].isoformat() if row['sla_deadline'] else None,
             sla_status=sla_status,
             batch_id=str(row['batch_id']) if row.get('batch_id') else None,

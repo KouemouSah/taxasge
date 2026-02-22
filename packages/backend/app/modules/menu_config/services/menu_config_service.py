@@ -226,7 +226,8 @@ class MenuConfigService:
             menu_config = await self._generate_workflow_menus(
                 available_workflows,
                 entity_code,
-                db_connection
+                db_connection,
+                is_supervisor=agent_data.get('is_supervisor', False),
             )
             logger.debug(f"Generated workflow menus for entity: {entity_code}")
 
@@ -343,7 +344,8 @@ class MenuConfigService:
         self,
         workflows: List[str],
         entity_code: str,
-        db_connection
+        db_connection,
+        is_supervisor: bool = False,
     ) -> MenuConfigResponse:
         """Generate menus from workflow codes using mapping rules"""
 
@@ -425,11 +427,98 @@ class MenuConfigService:
                 permission="service_request.view_batch"
             ))
 
+        # Add supervisor section if is_supervisor
+        if is_supervisor:
+            menus.extend(self._get_supervisor_menu_items())
+
         return MenuConfigResponse(
             version="1.0",
             source="workflow",
             menus=menus
         )
+
+    def _get_supervisor_menu_items(self) -> List[MenuItemBase]:
+        """Generate supervisor-specific menu items for entity supervisors.
+
+        These items are appended to workflow-based menus when the agent
+        has is_supervisor=true, providing team management, escalations,
+        assignment rules and reporting tools.
+        """
+        return [
+            MenuItemBase(
+                id="supervisor-dashboard",
+                titleKey="supervisor.nav.dashboard",
+                href="/dashboard/supervisor",
+                icon="LayoutDashboard",
+            ),
+            MenuItemBase(
+                id="supervisor-team",
+                titleKey="supervisor.nav.team",
+                icon="Users",
+                items=[
+                    SubMenuItemWithBadge(
+                        id="agents",
+                        titleKey="supervisor.nav.agents",
+                        href="/dashboard/supervisor/team/agents",
+                        icon="User",
+                        permission="agent.view",
+                    ),
+                    SubMenuItemWithBadge(
+                        id="workload",
+                        titleKey="supervisor.nav.workloadBalance",
+                        href="/dashboard/supervisor/team/workload",
+                        icon="BarChart2",
+                        permission="agent.view_workload",
+                    ),
+                    SubMenuItemWithBadge(
+                        id="performance",
+                        titleKey="supervisor.nav.performance",
+                        href="/dashboard/supervisor/team/performance",
+                        icon="TrendingUp",
+                        permission="agent.view_performance",
+                    ),
+                ],
+            ),
+            MenuItemBase(
+                id="supervisor-escalations",
+                titleKey="supervisor.nav.escalations",
+                icon="AlertTriangle",
+                items=[
+                    SubMenuItemWithBadge(
+                        id="pending",
+                        titleKey="supervisor.nav.pendingEscalations",
+                        href="/dashboard/supervisor/escalations/pending",
+                        icon="Clock",
+                    ),
+                    SubMenuItemWithBadge(
+                        id="resolved",
+                        titleKey="supervisor.nav.resolvedEscalations",
+                        href="/dashboard/supervisor/escalations/resolved",
+                        icon="CheckCircle",
+                    ),
+                ],
+            ),
+            MenuItemBase(
+                id="supervisor-rules",
+                titleKey="supervisor.nav.assignments",
+                icon="Settings2",
+                items=[
+                    SubMenuItemWithBadge(
+                        id="rules",
+                        titleKey="supervisor.nav.rules",
+                        href="/dashboard/supervisor/assignments/rules",
+                        icon="ListChecks",
+                        permission="rules.view",
+                    ),
+                ],
+            ),
+            MenuItemBase(
+                id="supervisor-reports",
+                titleKey="supervisor.nav.reports",
+                href="/dashboard/supervisor/reports",
+                icon="FileBarChart",
+            ),
+        ]
 
     def _derive_entity_icon(self, workflow_codes: List[str]) -> Optional[str]:
         """

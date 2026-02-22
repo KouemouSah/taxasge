@@ -181,7 +181,6 @@ export function GenericAgentSidebar({
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('agent');
-  const tSupervisor = useTranslations('supervisor');
   const tDashboard = useTranslations('dashboard');
   const { toast } = useToast();
 
@@ -365,54 +364,6 @@ export function GenericAgentSidebar({
             );
           })()}
 
-          {/* Supervisor navigation — for entity supervisors whose menu_config
-              does NOT already include /supervisor/ paths (i.e. workflow-based agents
-              with is_supervisor=true). Supervisors with the "supervisor" RBAC role
-              already get these links from the dynamic menu above. */}
-          {context?.isSupervisor && !dynamicMenuItems.some((item) =>
-            item.href?.includes('/supervisor') ||
-            item.items?.some((sub) => sub.href?.includes('/supervisor'))
-          ) && (
-            <>
-              {!collapsed && (
-                <div className="px-3 pt-4 pb-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Supervisor
-                  </p>
-                </div>
-              )}
-              {collapsed && <div className="border-t mx-2 my-2" />}
-              {[
-                { href: `/${locale}/dashboard/supervisor`, icon: LayoutDashboard, titleKey: 'dashboard.title' },
-                { href: `/${locale}/dashboard/supervisor/team/agents`, icon: Users, titleKey: 'nav.team' },
-                { href: `/${locale}/dashboard/supervisor/escalations/pending`, icon: AlertTriangle, titleKey: 'nav.escalations' },
-                { href: `/${locale}/dashboard/supervisor/reports`, icon: BarChart3, titleKey: 'nav.reports' },
-              ].map((item) => {
-                const isActive = item.href === `/${locale}/dashboard/supervisor`
-                  ? pathname === item.href
-                  : pathname?.startsWith(item.href);
-                const Icon = item.icon;
-                const label = (() => { try { return tSupervisor(item.titleKey); } catch { return item.titleKey.split('.').pop() || ''; } })();
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent',
-                      isActive
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-muted-foreground hover:text-foreground',
-                      collapsed && 'justify-center px-2'
-                    )}
-                    title={collapsed ? label : undefined}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    {!collapsed && <span>{label}</span>}
-                  </Link>
-                );
-              })}
-            </>
-          )}
         </nav>
       </ScrollArea>
 

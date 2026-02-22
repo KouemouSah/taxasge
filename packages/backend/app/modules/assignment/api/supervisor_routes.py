@@ -413,11 +413,13 @@ async def list_agents(
     workload_repo = get_workload_repository(db)
 
     try:
-        # Get agents - uses unified 'agent' role with agent_profiles (Migration 054)
+        # Get agents - scoped by entity_id for entity supervisors
         max_capacity = 100.0 if include_unavailable else 80.0
+        entity_id = agent_ctx.get("entity_id")
         agents_workloads = await workload_repo.get_available_agents(
             db=db,
-            max_workload_pct=max_capacity
+            max_workload_pct=max_capacity,
+            entity_id=entity_id,
         )
 
         # Build response - agents_workloads is List[AgentWorkload]
@@ -437,7 +439,7 @@ async def list_agents(
                 success_rate=agent.success_rate
             ))
 
-        logger.info(f"Agents list loaded for supervisor {current_user.email}")
+        logger.info(f"Agents list loaded for supervisor {current_user.email} (entity_id={entity_id})")
 
         return agents_list
 
@@ -589,20 +591,21 @@ async def get_workload_balance(
     else:
         agent_ctx = await get_agent_context(current_user.id, db)
 
-    entity_type = agent_ctx.get("entity_type")
+    entity_id = agent_ctx.get("entity_id")
     workload_repo = get_workload_repository(db)
 
     try:
-        # Get balance report
+        # Get balance report - scoped by entity_id for entity supervisors
         report = await workload_repo.get_workload_balance_report(
-            entity_type,
-            agent_ctx.get("ministry_id") or agent_ctx.get("entity_id")
+            db=db,
+            entity_id=entity_id,
         )
 
-        # Get agent list - uses unified 'agent' role with agent_profiles (Migration 054)
+        # Get agent list - scoped by entity_id for entity supervisors
         agents_workloads = await workload_repo.get_available_agents(
             db=db,
-            max_workload_pct=100.0
+            max_workload_pct=100.0,
+            entity_id=entity_id,
         )
 
         # Build response - agents_workloads is List[AgentWorkload]
@@ -653,7 +656,7 @@ async def get_workload_balance(
         )
 
         logger.info(
-            f"Workload balance report generated for {entity_type}/{agent_ctx.get('ministry_id') or agent_ctx.get('entity_id')} "
+            f"Workload balance report generated for entity_id={entity_id} "
             f"by supervisor {current_user.email}"
         )
 

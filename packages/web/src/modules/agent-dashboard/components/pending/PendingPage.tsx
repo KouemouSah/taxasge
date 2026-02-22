@@ -13,8 +13,9 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Filter } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { RefreshCw, Filter, Users } from 'lucide-react';
+import apiClient from '@/core/api/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -31,6 +32,7 @@ import { RequestList } from './RequestList';
 import { RequestPreview } from './RequestPreview';
 import { PreviewSkeleton } from './PreviewSkeleton';
 import { DEFAULT_LIST_COLUMNS } from './RequestListItem';
+import { useAgentDashboard } from '../../hooks/useAgentDashboard';
 import type { EntityCode } from '../../types';
 import type { ActionType, Priority } from '../../services/agent-requests-api';
 
@@ -50,6 +52,8 @@ interface PendingPageProps {
 export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps) {
   const t = useTranslations('agent.pending');
   const queryClient = useQueryClient();
+  const { context } = useAgentDashboard();
+  const isSupervisor = context?.isSupervisor ?? false;
 
   // State
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -57,12 +61,24 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [priority, setPriority] = useState<Priority | undefined>(undefined);
+  const [agentFilter, setAgentFilter] = useState<string | undefined>(undefined);
   const [solicitudType, setSolicitudType] = useState<'expedicion' | 'renovacion' | undefined>(undefined);
   const [motivo, setMotivo] = useState<'vencimiento' | 'perdida' | 'robo' | 'deterioro' | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showRequestDocsDialog, setShowRequestDocsDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Fetch team agents for supervisor filter dropdown
+  const { data: teamAgents } = useQuery<Array<{ agent_profile_id: string; agent_name: string }>>({
+    queryKey: ['supervisor', 'agents', 'list'],
+    queryFn: async () => {
+      const res = await apiClient.get('/supervisor/agents');
+      return res.data?.agents || [];
+    },
+    enabled: isSupervisor,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Debounce search
   useEffect(() => {
@@ -86,13 +102,21 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
     priority,
     solicitudType,
     motivo,
+    agentId: agentFilter,
     page,
     pageSize: 20,
   });
 
   // List always uses default columns (Option D: consistent columns for mixed workflows)
   // Preview will fetch workflow-specific config for sections
-  const displayColumns = [...DEFAULT_LIST_COLUMNS];
+  // Add agent column for supervisors
+  const displayColumns = useMemo(() => {
+    const cols: string[] = [...DEFAULT_LIST_COLUMNS];
+    if (isSupervisor) {
+      cols.push('assignedAgent');
+    }
+    return cols;
+  }, [isSupervisor]);
 
   // Get selected request's workflow code for preview config
   const selectedRequest = useMemo(
@@ -338,8 +362,8 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
 
       {/* Filters - Full Width */}
       <div className="grid grid-cols-12 gap-3 mb-4">
-        {/* Search - 5 columns */}
-        <div className="col-span-5">
+        {/* Search - reduced to 4 columns when supervisor has agent filter */}
+        <div className={isSupervisor ? 'col-span-3' : 'col-span-5'}>
           <Input
             placeholder={t('search')}
             value={search}
@@ -347,6 +371,31 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
             className="h-9 w-full"
           />
         </div>
+        {/* Agent filter - 2 columns (supervisor only) */}
+        {isSupervisor && (
+          <div className="col-span-2">
+            <Select
+              value={agentFilter || 'all'}
+              onValueChange={(v) => {
+                setAgentFilter(v === 'all' ? undefined : v);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="h-9 w-full">
+                <Users className="h-4 w-4 mr-2" />
+                <SelectValue placeholder={t('filters.agent') || 'Agent'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('filters.allAgents') || 'Todos los agentes'}</SelectItem>
+                {teamAgents?.map((agent) => (
+                  <SelectItem key={agent.agent_profile_id} value={agent.agent_profile_id}>
+                    {agent.agent_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         {/* Type filter - 2 columns */}
         <div className="col-span-2">
           <Select

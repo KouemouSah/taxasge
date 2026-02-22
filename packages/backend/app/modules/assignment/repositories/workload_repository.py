@@ -17,6 +17,7 @@ from app.modules.assignment.models.agent_workload import (
     AgentWorkloadStats,
     AgentPerformanceMetrics,
     AgentCapacityForecast,
+    WorkloadBalanceReport,
 )
 
 
@@ -157,6 +158,7 @@ class WorkloadRepository:
             WHERE ap.is_active = true
             AND u.role = 'agent'
             AND u.status = 'active'
+            AND ap.is_supervisor = false
             AND COALESCE(aw.availability::text, 'available') = 'available'
             {entity_filter}
             {location_filter}
@@ -202,6 +204,7 @@ class WorkloadRepository:
                 WHERE ap.is_active = true
                 AND u.role = 'agent'
                 AND u.status = 'active'
+                AND ap.is_supervisor = false
                 AND COALESCE(aw.availability::text, 'available') = 'available'
                 {fallback_entity_filter}
                 GROUP BY ap.id, ap.user_id, ap.entity_id, u.id, u.full_name, u.first_name, u.last_name, u.email,
@@ -282,6 +285,103 @@ class WorkloadRepository:
 
         logger.warning(f"No entity found for workflow_code: {workflow_code}")
         return None
+
+    async def get_workload_balance_report(
+        self,
+        db,
+        entity_id: Optional[UUID] = None,
+    ) -> WorkloadBalanceReport:
+        """Compute workload balance report for a team (entity-scoped or global).
+
+        Args:
+            db: Database connection
+            entity_id: Optional entity_id to scope the report. None = all agents.
+
+        Returns:
+            WorkloadBalanceReport with team-wide metrics and balance score.
+        """
+        params: list = []
+        entity_filter = ""
+        if entity_id:
+            entity_filter = f"AND ap.entity_id = ${len(params) + 1}"
+            params.append(entity_id)
+
+        query = f"""
+            SELECT
+                COUNT(*) as total_agents,
+                COUNT(*) FILTER (
+                    WHERE COALESCE(aw.availability::text, 'available') = 'available'
+                ) as available_agents,
+                COUNT(*) FILTER (
+                    WHERE COALESCE(aw.workload_status::text, 'available') IN ('normal', 'busy')
+                ) as busy_agents,
+                COUNT(*) FILTER (
+                    WHERE COALESCE(aw.workload_status::text, 'available') = 'overloaded'
+                ) as overloaded_agents,
+                COUNT(*) FILTER (
+                    WHERE COALESCE(aw.availability::text, 'available') != 'available'
+                ) as unavailable_agents,
+                COALESCE(SUM(
+                    (SELECT COUNT(*) FROM assignments a
+                     WHERE a.agent_profile_id = ap.id
+                     AND a.status IN ('assigned', 'in_progress'))
+                ), 0) as total_assignments,
+                COALESCE(AVG(
+                    (SELECT COUNT(*) FROM assignments a
+                     WHERE a.agent_profile_id = ap.id
+                     AND a.status IN ('assigned', 'in_progress'))
+                ), 0) as avg_assignments,
+                COALESCE(MIN(
+                    (SELECT COUNT(*) FROM assignments a
+                     WHERE a.agent_profile_id = ap.id
+                     AND a.status IN ('assigned', 'in_progress'))
+                ), 0) as min_assignments,
+                COALESCE(MAX(
+                    (SELECT COUNT(*) FROM assignments a
+                     WHERE a.agent_profile_id = ap.id
+                     AND a.status IN ('assigned', 'in_progress'))
+                ), 0) as max_assignments
+            FROM agent_profiles ap
+            INNER JOIN users u ON u.id = ap.user_id
+            LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+            WHERE ap.is_active = true
+            AND u.role = 'agent'
+            AND u.status = 'active'
+            AND ap.is_supervisor = false
+            {entity_filter}
+        """
+        row = await db.fetchrow(query, *params)
+
+        total = int(row['total_agents']) if row else 0
+        available = int(row['available_agents']) if row else 0
+        overloaded = int(row['overloaded_agents']) if row else 0
+        min_a = int(row['min_assignments']) if row else 0
+        max_a = int(row['max_assignments']) if row else 0
+        avg_a = float(row['avg_assignments']) if row else 0.0
+        total_assignments = int(row['total_assignments']) if row else 0
+
+        # Compute balance score: 100 = perfect, lower = more imbalanced
+        if total <= 1 or max_a == 0:
+            balance_score = 100.0
+        else:
+            spread = max_a - min_a
+            balance_score = max(0.0, 100.0 - (spread / max(avg_a, 1)) * 25)
+
+        rebalancing_needed = balance_score < 70 or overloaded > 0
+
+        return WorkloadBalanceReport(
+            total_agents=total,
+            available_agents=available,
+            busy_agents=int(row['busy_agents']) if row else 0,
+            overloaded_agents=overloaded,
+            unavailable_agents=int(row['unavailable_agents']) if row else 0,
+            total_assignments=total_assignments,
+            avg_assignments_per_agent=round(avg_a, 1),
+            min_assignments=min_a,
+            max_assignments=max_a,
+            balance_score=round(min(balance_score, 100.0), 1),
+            rebalancing_needed=rebalancing_needed,
+        )
 
     async def get_workload_stats(
         self,
@@ -392,6 +492,6 @@ class WorkloadRepository:
         )
 
 
-async def get_workload_repository() -> WorkloadRepository:
+def get_workload_repository(db=None) -> WorkloadRepository:
     """Dependency injection for WorkloadRepository"""
     return WorkloadRepository()

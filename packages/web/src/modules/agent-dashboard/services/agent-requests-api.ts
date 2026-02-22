@@ -52,6 +52,7 @@ export interface ServiceRequestListItem {
   submittedAt: string | null;
   createdAt: string;
   assignedTo: string | null;
+  assignedAgentName: string | null;
   slaDeadline: string | null;
   slaStatus: SlaStatus;
   // Batch context
@@ -78,6 +79,7 @@ export interface ServiceRequestFilters {
   motivo?: RenovacionMotivo;
   search?: string;
   priority?: Priority;
+  agentId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -209,6 +211,7 @@ interface BackendServiceRequestListItem {
   submitted_at: string | null;
   created_at: string;
   assigned_to: string | null;
+  assigned_agent_name: string | null;
   sla_deadline: string | null;
   sla_status: string;
   batch_id?: string | null;
@@ -290,6 +293,7 @@ function transformServiceRequestItem(item: BackendServiceRequestListItem): Servi
     submittedAt: item.submitted_at,
     createdAt: item.created_at,
     assignedTo: item.assigned_to,
+    assignedAgentName: item.assigned_agent_name,
     slaDeadline: item.sla_deadline,
     slaStatus: normalizeSlaStatus(item.sla_status),
     batchId: item.batch_id,
@@ -409,6 +413,7 @@ class AgentRequestsApiClient {
     if (filters.motivo) params.append('motivo', filters.motivo);
     if (filters.search) params.append('search', filters.search);
     if (filters.priority) params.append('priority', filters.priority);
+    if (filters.agentId) params.append('agent_id', filters.agentId);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.pageSize) params.append('page_size', filters.pageSize.toString());
 

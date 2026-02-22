@@ -23,6 +23,7 @@ export interface UseEntityServiceRequestsOptions {
   motivo?: 'vencimiento' | 'perdida' | 'robo' | 'deterioro';
   search?: string;
   priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  agentId?: string;
   page?: number;
   pageSize?: number;
   enabled?: boolean;
@@ -38,6 +39,7 @@ export function useEntityServiceRequests(options: UseEntityServiceRequestsOption
     motivo,
     search,
     priority,
+    agentId,
     page = 1,
     pageSize = 20,
     enabled = true,
@@ -51,6 +53,7 @@ export function useEntityServiceRequests(options: UseEntityServiceRequestsOption
     motivo,
     search,
     priority,
+    agentId,
     page,
     pageSize,
   };

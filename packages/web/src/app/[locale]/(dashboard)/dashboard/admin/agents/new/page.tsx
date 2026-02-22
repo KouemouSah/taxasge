@@ -177,6 +177,8 @@ export default function CreateAgentPage() {
   const watchAgentType = agentForm.watch('agent_type');
   const watchCanApproveUnlimited = agentForm.watch('can_approve_unlimited');
   const watchEntityId = agentForm.watch('entity_id');
+  const watchIsSupervisor = agentForm.watch('is_supervisor');
+  const watchRbacRoleId = agentForm.watch('rbac_role_id');
 
   // Derive entity info from selected entity_id
   const selectedEntity = entities.find(e => e.id === watchEntityId);
@@ -766,6 +768,32 @@ export default function CreateAgentPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Warning: supervisor checkbox + supervisor RBAC role = wrong path */}
+                {watchIsSupervisor && watchRbacRoleId && (() => {
+                  const selectedRole = rbacRoles.find(r => r.id === watchRbacRoleId);
+                  if (selectedRole?.code?.startsWith('supervisor')) {
+                    return (
+                      <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm">
+                        <div className="flex items-start gap-2">
+                          <Info className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-orange-800">
+                              Rôle superviseur RBAC non recommandé
+                            </p>
+                            <p className="text-orange-700 mt-1">
+                              Le rôle &quot;{selectedRole.name}&quot; possède un menu statique.
+                              Un superviseur d&apos;entité devrait utiliser un rôle agent standard
+                              (ex: agent_cnedoge_pasaporte) pour bénéficier du menu dynamique
+                              de l&apos;entité enrichi des outils de supervision.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <Separator />
 

@@ -12,7 +12,7 @@
 import React from 'react';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
-import { Clock, AlertTriangle, AlertCircle, FileStack, ShieldAlert } from 'lucide-react';
+import { Clock, AlertTriangle, AlertCircle, FileStack, ShieldAlert, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ServiceRequestListItem, SlaStatus, Priority } from '../../services/agent-requests-api';
@@ -219,6 +219,16 @@ export function RequestListItem({
       {/* Citizen name / fullName */}
       {showColumn('fullName') && (
         <p className="text-sm truncate">{item.citizenName}</p>
+      )}
+
+      {/* Assigned agent (supervisor team view) */}
+      {showColumn('assignedAgent') && (
+        <div className="flex items-center gap-1 mt-1">
+          <User className="h-3 w-3 text-blue-500 flex-shrink-0" />
+          <span className="text-xs text-blue-600 truncate">
+            {item.assignedAgentName || 'Sin asignar'}
+          </span>
+        </div>
       )}
 
       {/* Escalation info (only shown when escalation data present) */}
