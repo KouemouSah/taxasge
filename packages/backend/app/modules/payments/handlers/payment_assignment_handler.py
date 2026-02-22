@@ -6,8 +6,8 @@ Handles auto-assignment of manual payments (Cash/Check) to Treasury agents.
 Business Logic:
 - When a manual payment is created (PAYMENT_MANUAL_PENDING event),
   auto-assign it to an available Treasury agent
-- Treasury agents have entity_id pointing to TESORO entity
-- Uses load-balanced assignment based on current workload
+- Uses AutoAssignmentService with site-based routing (entity_location_id)
+- Fallback: site exact → floating agents → entity-wide
 
 @module payments/handlers/payment_assignment_handler
 """
@@ -18,6 +18,7 @@ from uuid import UUID
 
 from app.core.events import EventBus, EventType, EventPayload
 from app.database.connection import get_db_connection, release_db_connection
+from app.modules.assignment.services.auto_assignment_service import AutoAssignmentService
 
 logger = logging.getLogger(__name__)
 
@@ -92,58 +93,9 @@ class PaymentAssignmentHandler:
 
         conn = None
         try:
-            # Get database connection
             conn = await get_db_connection()
 
-            # 1. Get TESORO entity ID
-            tesoro_entity = await conn.fetchrow("""
-                SELECT id FROM entities
-                WHERE code = $1 AND is_active = true
-            """, self.TREASURY_ENTITY_CODE)
-
-            if not tesoro_entity:
-                logger.error(f"TESORO entity not found or inactive")
-                return
-
-            tesoro_entity_id = tesoro_entity["id"]
-
-            # 2. Find available Treasury agents (lowest workload first)
-            available_agents = await conn.fetch("""
-                SELECT
-                    ap.id as agent_profile_id,
-                    ap.user_id,
-                    COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as agent_name,
-                    COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) as current_assignments,
-                    COALESCE(aw.max_concurrent_assignments, 20) as max_concurrent_assignments
-                FROM agent_profiles ap
-                INNER JOIN users u ON u.id = ap.user_id
-                LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
-                LEFT JOIN assignments a ON a.agent_profile_id = ap.id
-                WHERE ap.is_active = true
-                AND ap.entity_id = $1
-                AND u.role = 'agent'
-                AND u.status = 'active'
-                AND COALESCE(aw.availability::text, 'available') = 'available'
-                GROUP BY ap.id, ap.user_id, u.id, u.full_name, u.first_name, u.last_name,
-                         aw.max_concurrent_assignments
-                HAVING (COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress'))::float /
-                        COALESCE(aw.max_concurrent_assignments, 20)) * 100 < 80
-                ORDER BY COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress')) ASC
-                LIMIT 1
-            """, tesoro_entity_id)
-
-            if not available_agents:
-                logger.warning(
-                    f"No available Treasury agents for payment {payment_id}. "
-                    f"Payment will remain unassigned in the queue."
-                )
-                return
-
-            selected_agent = available_agents[0]
-            agent_profile_id = selected_agent["agent_profile_id"]
-            agent_name = selected_agent["agent_name"]
-
-            # 3. Check if assignment already exists
+            # 1. Check if assignment already exists (duplicate guard)
             existing = await conn.fetchval("""
                 SELECT id FROM assignments
                 WHERE item_id = $1::uuid AND item_type = 'payment_validation'
@@ -153,35 +105,35 @@ class PaymentAssignmentHandler:
                 logger.info(f"Payment {payment_id} already assigned, skipping")
                 return
 
-            # 4. Create assignment record
-            assignment = await conn.fetchrow("""
-                INSERT INTO assignments (
-                    item_id,
-                    item_type,
-                    agent_profile_id,
-                    status,
-                    assignment_method,
-                    priority_level,
-                    assigned_at,
-                    created_at,
-                    updated_at
-                ) VALUES (
-                    $1::uuid,
-                    'payment_validation',
-                    $2,
-                    'assigned',
-                    'auto',
-                    5,
-                    NOW(),
-                    NOW(),
-                    NOW()
-                )
-                RETURNING id
-            """, payment_id, agent_profile_id)
+            # 2. Get entity_location_id from service_request for site-based routing
+            entity_location_id = None
+            if service_request_id:
+                entity_location_id = await conn.fetchval("""
+                    SELECT entity_location_id FROM service_requests WHERE id = $1::uuid
+                """, service_request_id)
 
-            # 5. Update service_payments with assigned agent
-            # Note: Column was renamed from assigned_agent_profile_id to assigned_agent_id
-            # in migration 049, but still references agent_profiles(id) UUID
+            # 3. Auto-assign via AutoAssignmentService (site-based routing with fallback)
+            assignment_service = AutoAssignmentService()
+            assignment = await assignment_service.auto_assign_item(
+                db=conn,
+                item_id=UUID(str(payment_id)),
+                item_type="payment_validation",
+                item_data={"amount": amount, "payment_method": payment_method},
+                entity_code=self.TREASURY_ENTITY_CODE,
+                entity_location_id=entity_location_id,
+                priority_level=5,
+            )
+
+            if not assignment:
+                logger.warning(
+                    f"No available Treasury agents for payment {payment_id}. "
+                    f"Payment will remain unassigned in the queue."
+                )
+                return
+
+            agent_profile_id = assignment.agent_profile_id
+
+            # 4. Update service_payments with assigned agent
             await conn.execute("""
                 UPDATE service_payments
                 SET assigned_agent_id = $1,
@@ -190,8 +142,9 @@ class PaymentAssignmentHandler:
             """, agent_profile_id, payment_id)
 
             logger.info(
-                f"Payment {payment_id} auto-assigned to Treasury agent {agent_name} "
-                f"(agent_profile_id: {agent_profile_id}). Assignment ID: {assignment['id']}"
+                f"Payment {payment_id} auto-assigned to Treasury agent "
+                f"(agent_profile_id: {agent_profile_id}). "
+                f"Assignment ID: {assignment.id}, location_id: {entity_location_id}"
             )
 
         except Exception as e:
