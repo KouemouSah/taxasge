@@ -356,8 +356,8 @@ export function GenericAgentSidebar({
             </div>
           ) : null}
 
-          {/* Batch requests link — always visible */}
-          {(() => {
+          {/* Batch requests link — visible for workflow-based entities only (not TESORO) */}
+          {entityCode !== 'TESORO' && (() => {
             const batchHref = `${getBasePath()}/batch-requests`;
             const isActive = pathname?.startsWith(batchHref);
             return (
