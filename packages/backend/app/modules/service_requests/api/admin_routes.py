@@ -3318,7 +3318,7 @@ async def get_pending_payments(
     Get details of a specific payment by ID.
 
     **Permissions:**
-    - Requires 'treasury:validate_payments' permission
+    - Requires 'treasury.validate_payment' permission
     """
 )
 async def get_payment_details(
@@ -3399,7 +3399,7 @@ async def get_payment_details(
     - Updates service_request payment_status
 
     **Permissions:**
-    - Requires 'treasury:validate_payments' permission
+    - Requires 'treasury.validate_payment' permission
     """
 )
 async def validate_payment(
@@ -3524,7 +3524,7 @@ async def validate_payment(
     - Notifies user
 
     **Permissions:**
-    - Requires 'treasury:validate_payments' permission
+    - Requires 'treasury.validate_payment' permission
     """
 )
 async def reject_payment(
