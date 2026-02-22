@@ -5303,6 +5303,161 @@
       "title": "Validacion de Pagos",
       "description": "Revisar y validar pagos en efectivo y cheque"
     },
+    "workflowNames": {
+      "PASAPORTE": "Pasaporte",
+      "CONDUCIR": "Permiso de Conducir",
+      "CONTRATO": "Contrato ONRC",
+      "RESIDENCIA": "Tarjeta de Residencia",
+      "MATRICULACION": "Matriculacion de Vehiculo",
+      "INSPECCION_TECNICA": "Inspeccion Tecnica (ITVE)",
+      "DUPLICADO_VEHICULO": "Duplicado de Vehiculo",
+      "PROMOCION_ADMINISTRATIVA": "Promocion Administrativa",
+      "CARNET_FUNCIONARIO": "Carnet de Funcionario"
+    },
+    "validationPage": {
+      "filters": {
+        "title": "Filtros",
+        "searchPlaceholder": "Buscar por referencia, servicio...",
+        "workflowStatus": "Estado del workflow",
+        "paymentMethod": "Metodo de pago",
+        "slaStatus": "Estado SLA",
+        "location": "Sede",
+        "allStatuses": "Todos los estados",
+        "pendingReview": "Pendiente revision",
+        "validated": "Validados",
+        "rejected": "Rechazados",
+        "allMethods": "Todos los metodos",
+        "cash": "Efectivo",
+        "check": "Cheque",
+        "bankTransfer": "Transferencia",
+        "allSla": "Todos los SLA",
+        "onTime": "En plazo",
+        "warning": "Alerta",
+        "critical": "Critico",
+        "breached": "Vencido",
+        "allLocations": "Todas las sedes"
+      },
+      "table": {
+        "reference": "Referencia",
+        "service": "Servicio",
+        "location": "Sede",
+        "amount": "Monto",
+        "method": "Metodo",
+        "agent": "Agente",
+        "status": "Estado",
+        "sla": "SLA",
+        "date": "Fecha",
+        "action": "Accion",
+        "selectAll": "Seleccionar todos",
+        "select": "Seleccionar {reference}"
+      },
+      "tableTitle": {
+        "pending": "Pagos Pendientes de Validacion",
+        "completed": "Pagos Validados",
+        "rejected": "Pagos Rechazados",
+        "all": "Todos los Pagos"
+      },
+      "pagination": {
+        "page": "Pagina {current} de {total}",
+        "showing": "Mostrando {from} - {to} de {total}",
+        "previous": "Anterior",
+        "next": "Siguiente"
+      },
+      "buttons": {
+        "refresh": "Actualizar",
+        "validate": "Validar",
+        "reject": "Rechazar",
+        "cancel": "Cancelar"
+      },
+      "selection": {
+        "selected": "seleccionado(s)",
+        "processing": "Procesando..."
+      },
+      "empty": {
+        "noPending": "Sin pagos pendientes",
+        "noPendingDescription": "No hay pagos que requieran validacion en este momento.",
+        "noResults": "Sin resultados",
+        "noResultsDescription": "No se encontraron pagos con los filtros seleccionados."
+      },
+      "error": {
+        "loadingPayments": "Error al cargar los pagos pendientes"
+      },
+      "unassigned": "Sin asignar",
+      "unspecified": "Sin especificar",
+      "dialogs": {
+        "validateTitle": "Validar {count} Pago(s)",
+        "validateDescription": "Esta a punto de validar {count} pago(s) por un total de {amount}.",
+        "validateInfo": "Se generaran recibos para cada pago y los solicitantes seran notificados.",
+        "validateComment": "Comentario general (opcional)",
+        "validateCommentPlaceholder": "Comentario que se aplicara a todos los pagos...",
+        "validateConfirm": "Validar {count} Pago(s)",
+        "rejectTitle": "Rechazar {count} Pago(s)",
+        "rejectDescription": "Esta a punto de rechazar {count} pago(s). Los solicitantes seran notificados del rechazo.",
+        "rejectReason": "Motivo del rechazo (obligatorio)",
+        "rejectReasonPlaceholder": "Indique el motivo del rechazo...",
+        "rejectConfirm": "Rechazar {count} Pago(s)"
+      }
+    },
+    "detail": {
+      "title": "Detalle del Pago",
+      "backToList": "Lista",
+      "backToListFull": "Volver a la lista",
+      "paymentNotFound": "Pago no encontrado",
+      "paymentNotFoundDescription": "El pago solicitado no existe o no tienes permisos para verlo.",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "service": "Servicio",
+      "procedureType": "Tipo de Tramite",
+      "requestReference": "Referencia Solicitud",
+      "requestId": "ID Solicitud",
+      "paymentDetails": "Detalles del Pago",
+      "reference": "Referencia",
+      "paymentMethod": "Metodo de Pago",
+      "baseAmount": "Monto Base",
+      "supplements": "Suplementos:",
+      "penalties": "Penalidades",
+      "discounts": "Descuentos",
+      "total": "Total",
+      "applicant": "Solicitante",
+      "fullName": "Nombre Completo",
+      "email": "Correo Electronico",
+      "timeline": "Cronologia",
+      "created": "Creado",
+      "submitted": "Enviado",
+      "slaLimit": "Limite SLA",
+      "waiting": "En Espera",
+      "currentStatus": "Estado Actual",
+      "workflow": "Workflow",
+      "actions": "Acciones",
+      "actionsDescription": "Revise los detalles y tome una decision",
+      "commentOptional": "Comentario (opcional)",
+      "commentPlaceholder": "Agregar comentario de validacion...",
+      "validatePayment": "Validar Pago",
+      "validating": "Validando...",
+      "rejectPayment": "Rechazar Pago",
+      "rejecting": "Rechazando...",
+      "paymentValidated": "Pago Validado",
+      "paymentAlreadyProcessed": "Este pago ya fue procesado",
+      "paymentRejected": "Pago Rechazado",
+      "paymentWasRejected": "Este pago fue rechazado",
+      "statusLabel": "Estado: {status}",
+      "noActionsAvailable": "No se pueden realizar acciones en este estado",
+      "navigationHint": "Use las flechas {previous} / {next} para navegar entre pagos",
+      "confirmValidation": "Confirmar Validacion",
+      "confirmValidationDescription": "Esta a punto de validar el pago {reference} por {amount}.",
+      "confirmValidationInfo": "Se generara un recibo automaticamente y el solicitante sera notificado.",
+      "confirmValidationButton": "Confirmar Validacion",
+      "confirmRejection": "Rechazar Pago",
+      "confirmRejectionDescription": "Esta a punto de rechazar el pago {reference}. El solicitante sera notificado del rechazo.",
+      "rejectionReason": "Motivo del rechazo (obligatorio)",
+      "rejectionReasonPlaceholder": "Indique el motivo del rechazo...",
+      "confirmRejectionButton": "Confirmar Rechazo",
+      "formatHours": {
+        "minutes": "{value} min",
+        "hours": "{value} horas",
+        "days": "{value} dias"
+      }
+    },
     "reconciliation": {
       "title": "Reconciliacion Bancaria",
       "description": "Vincular transacciones bancarias con pagos del sistema"
@@ -5434,6 +5589,48 @@
         "critical": "Menos de 2 horas",
         "breached": "Tiempo excedido"
       }
+    },
+    "statusLabels": {
+      "pending": "Pendiente",
+      "processing": "Procesando",
+      "completed": "Completado",
+      "failed": "Fallido",
+      "refunded": "Reembolsado",
+      "cancelled": "Cancelado"
+    },
+    "workflowStatusLabels": {
+      "submitted": "Enviado",
+      "auto_processing": "Auto Procesando",
+      "auto_approved": "Auto Aprobado",
+      "pending_agent_review": "Pendiente Revisión",
+      "agent_reviewing": "En Revisión",
+      "requires_documents": "Requiere Docs",
+      "docs_resubmitted": "Docs Reenviados",
+      "approved_by_agent": "Aprobado",
+      "rejected_by_agent": "Rechazado",
+      "escalated_supervisor": "Escalado",
+      "supervisor_reviewing": "Supervisor Revisando",
+      "completed": "Completado",
+      "cancelled_by_user": "Cancelado Usuario",
+      "cancelled_by_agent": "Cancelado Agente",
+      "expired": "Expirado"
+    },
+    "methodLabels": {
+      "cash": "Efectivo",
+      "check": "Cheque",
+      "mobile_money": "Mobile Money",
+      "bank_transfer": "Transferencia",
+      "card": "Tarjeta",
+      "bange_wallet": "BANGE Wallet"
+    },
+    "slaLabels": {
+      "on_time": "En plazo",
+      "warning": "Alerta",
+      "critical": "Crítico",
+      "breached": "Vencido",
+      "completed": "Completado",
+      "noSla": "Sin SLA definido",
+      "deadline": "Fecha límite:"
     },
     "anomalies": {
       "title": "Anomalias de Pagos",
@@ -5978,7 +6175,25 @@
       "amountAffected": "Monto afectado",
       "noAnomalies": "Sin anomalías detectadas",
       "viewAllAnomalies": "Ver todas las anomalías",
-      "loadError": "Error al cargar datos"
+      "loadError": "Error al cargar datos",
+      "recentActivity": "Actividad Reciente",
+      "noRecentActivity": "Sin actividad reciente",
+      "inProgressPayments": "Pagos En Revisión",
+      "completedPayments": "Pagos Completados",
+      "anomalyTypes": {
+        "amount_mismatch": "Diferencia de monto",
+        "duplicate_suspected": "Duplicado sospechoso",
+        "reconciliation_failed": "Fallo reconciliación",
+        "validated_not_received": "Validado no recibido",
+        "sla_breached": "SLA incumplido",
+        "high_amount": "Monto alto",
+        "suspicious_pattern": "Patrón sospechoso",
+        "manual_flag": "Marcado manual",
+        "duplicate_payment": "Pago duplicado",
+        "late_validation": "Validación tardía",
+        "orphan_transaction": "Transacción huérfana",
+        "reference_missing": "Referencia faltante"
+      }
     },
     "pending": {
       "title": "Dossiers Pendientes",

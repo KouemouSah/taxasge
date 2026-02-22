@@ -8,7 +8,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,24 +50,6 @@ import {
   SLABadge,
 } from '@/modules/treasury/components';
 
-// Workflow names mapping
-const WORKFLOW_NAMES: Record<string, string> = {
-  'pasaporte_expedicion': 'Expedicion de Pasaporte',
-  'pasaporte_renovacion': 'Renovacion de Pasaporte',
-  'pasaporte_menor': 'Pasaporte Menor de Edad',
-  'residencia_expedicion': 'Permiso de Residencia (Expedicion)',
-  'residencia_renovacion': 'Permiso de Residencia (Renovacion)',
-  'verificacion_funcionario': 'Verificacion de Funcionario Publico',
-  'licencia_conducir': 'Licencia de Conducir',
-  'certificado_nacimiento': 'Certificado de Nacimiento',
-  'certificado_antecedentes': 'Certificado de Antecedentes Penales',
-};
-
-function getWorkflowName(code: string | undefined): string {
-  if (!code) return 'Servicio no especificado';
-  return WORKFLOW_NAMES[code] || code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
 function formatCurrency(amount: number | undefined): string {
   if (amount === undefined || amount === null) return 'N/A';
   return new Intl.NumberFormat('es-GQ', {
@@ -88,19 +70,31 @@ function formatDate(dateString: string | undefined): string {
   });
 }
 
-function formatHours(hours: number | undefined): string {
-  if (!hours) return 'N/A';
-  if (hours < 1) return `${Math.round(hours * 60)} min`;
-  if (hours < 24) return `${hours.toFixed(1)} horas`;
-  return `${Math.round(hours / 24)} dias`;
-}
-
 export default function PaymentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
+  const t = useTranslations('treasury');
   const paymentId = params.paymentId as string;
+
+  // Workflow name helper using i18n
+  const getWorkflowName = (code: string | undefined): string => {
+    if (!code) return t('validationPage.unspecified');
+    const normalizedKey = code.toUpperCase().replace(/[^A-Z_]/g, '');
+    if (t.has(`workflowNames.${normalizedKey}`)) {
+      return t(`workflowNames.${normalizedKey}`);
+    }
+    return code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Format hours with i18n
+  const formatHours = (hours: number | undefined): string => {
+    if (!hours) return 'N/A';
+    if (hours < 1) return t('detail.formatHours.minutes', { value: Math.round(hours * 60) });
+    if (hours < 24) return t('detail.formatHours.hours', { value: hours.toFixed(1) });
+    return t('detail.formatHours.days', { value: Math.round(hours / 24) });
+  };
 
   // Get filter params from URL to maintain context
   const statusFilter = searchParams.get('status') || 'pending_agent_review';
@@ -221,15 +215,15 @@ export default function PaymentDetailPage() {
       <div className="space-y-6">
         <Button variant="ghost" onClick={goBack}>
           <ChevronLeft className="mr-2 h-4 w-4" />
-          Volver a la lista
+          {t('detail.backToListFull')}
         </Button>
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-3 py-6">
             <AlertTriangle className="h-6 w-6 text-red-500" />
             <div>
-              <p className="font-medium text-red-700">Pago no encontrado</p>
+              <p className="font-medium text-red-700">{t('detail.paymentNotFound')}</p>
               <p className="text-sm text-red-600">
-                El pago solicitado no existe o no tienes permisos para verlo.
+                {t('detail.paymentNotFoundDescription')}
               </p>
             </div>
           </CardContent>
@@ -245,10 +239,10 @@ export default function PaymentDetailPage() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={goBack}>
             <ChevronLeft className="mr-1 h-4 w-4" />
-            Lista
+            {t('detail.backToList')}
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Detalle del Pago</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t('detail.title')}</h1>
             <p className="text-muted-foreground font-mono">{payment.paymentReference}</p>
           </div>
         </div>
@@ -267,7 +261,7 @@ export default function PaymentDetailPage() {
             disabled={!navigation.hasPrev}
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Anterior
+            {t('detail.previous')}
           </Button>
           <Button
             variant="outline"
@@ -275,7 +269,7 @@ export default function PaymentDetailPage() {
             onClick={() => navigation.nextId && navigateToPayment(navigation.nextId)}
             disabled={!navigation.hasNext}
           >
-            Siguiente
+            {t('detail.next')}
             <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
@@ -289,13 +283,13 @@ export default function PaymentDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                Servicio
+                {t('detail.service')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Tipo de Tramite</p>
+                  <p className="text-sm text-muted-foreground">{t('detail.procedureType')}</p>
                   <p className="text-lg font-semibold">{getWorkflowName(payment.workflowCode)}</p>
                 </div>
                 <WorkflowStatusBadge status={payment.workflowStatus} />
@@ -306,13 +300,13 @@ export default function PaymentDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 {payment.requestReference && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Referencia Solicitud</p>
+                    <p className="text-sm text-muted-foreground">{t('detail.requestReference')}</p>
                     <p className="font-mono">{payment.requestReference}</p>
                   </div>
                 )}
                 {payment.serviceRequestId && (
                   <div>
-                    <p className="text-sm text-muted-foreground">ID Solicitud</p>
+                    <p className="text-sm text-muted-foreground">{t('detail.requestId')}</p>
                     <p className="font-mono text-xs text-muted-foreground">{payment.serviceRequestId}</p>
                   </div>
                 )}
@@ -325,20 +319,20 @@ export default function PaymentDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Detalles del Pago
+                {t('detail.paymentDetails')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Hash className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Referencia</span>
+                  <span className="text-muted-foreground">{t('detail.reference')}</span>
                 </div>
                 <span className="font-mono font-medium">{payment.paymentReference}</span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Metodo de Pago</span>
+                <span className="text-muted-foreground">{t('detail.paymentMethod')}</span>
                 <PaymentMethodBadge method={payment.paymentMethod} />
               </div>
 
@@ -348,14 +342,14 @@ export default function PaymentDetailPage() {
               <div className="space-y-2">
                 {payment.baseAmount && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Monto Base</span>
+                    <span className="text-muted-foreground">{t('detail.baseAmount')}</span>
                     <span>{formatCurrency(payment.baseAmount)}</span>
                   </div>
                 )}
 
                 {payment.calculationDetails?.supplements && payment.calculationDetails.supplements.length > 0 && (
                   <div className="border-l-2 border-muted pl-4 space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Suplementos:</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('detail.supplements')}</p>
                     {payment.calculationDetails.supplements.map((supp, idx) => (
                       <div key={idx} className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
@@ -369,14 +363,14 @@ export default function PaymentDetailPage() {
 
                 {payment.penalties && payment.penalties > 0 && (
                   <div className="flex justify-between text-orange-600">
-                    <span>Penalidades</span>
+                    <span>{t('detail.penalties')}</span>
                     <span>+{formatCurrency(payment.penalties)}</span>
                   </div>
                 )}
 
                 {payment.discounts && payment.discounts > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Descuentos</span>
+                    <span>{t('detail.discounts')}</span>
                     <span>-{formatCurrency(payment.discounts)}</span>
                   </div>
                 )}
@@ -384,7 +378,7 @@ export default function PaymentDetailPage() {
                 <Separator />
 
                 <div className="flex justify-between text-xl font-bold">
-                  <span>Total</span>
+                  <span>{t('detail.total')}</span>
                   <span>{formatCurrency(payment.totalAmount)}</span>
                 </div>
               </div>
@@ -396,19 +390,19 @@ export default function PaymentDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Solicitante
+                {t('detail.applicant')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Nombre Completo</p>
+                  <p className="text-sm text-muted-foreground">{t('detail.fullName')}</p>
                   <p className="font-medium">{payment.userName || 'N/A'}</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground mt-1" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Correo Electronico</p>
+                    <p className="text-sm text-muted-foreground">{t('detail.email')}</p>
                     <p className="text-sm">{payment.userEmail || 'N/A'}</p>
                   </div>
                 </div>
@@ -421,31 +415,31 @@ export default function PaymentDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Cronologia
+                {t('detail.timeline')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Creado</p>
+                  <p className="text-sm text-muted-foreground">{t('detail.created')}</p>
                   <p className="text-sm">{formatDate(payment.createdAt)}</p>
                 </div>
                 {payment.submittedAt && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Enviado</p>
+                    <p className="text-sm text-muted-foreground">{t('detail.submitted')}</p>
                     <p className="text-sm">{formatDate(payment.submittedAt)}</p>
                   </div>
                 )}
                 {payment.slaTargetDate && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Limite SLA</p>
+                    <p className="text-sm text-muted-foreground">{t('detail.slaLimit')}</p>
                     <p className="text-sm">{formatDate(payment.slaTargetDate)}</p>
                   </div>
                 )}
                 <div className="flex items-start gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm text-muted-foreground">En Espera</p>
+                    <p className="text-sm text-muted-foreground">{t('detail.waiting')}</p>
                     <p className="text-sm font-medium">{formatHours(payment.hoursWaiting)}</p>
                   </div>
                 </div>
@@ -459,11 +453,11 @@ export default function PaymentDetailPage() {
           {/* Status & SLA Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Estado Actual</CardTitle>
+              <CardTitle>{t('detail.currentStatus')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Workflow</span>
+                <span className="text-muted-foreground">{t('detail.workflow')}</span>
                 <WorkflowStatusBadge status={payment.workflowStatus} />
               </div>
               <div className="flex items-center justify-between">
@@ -482,19 +476,19 @@ export default function PaymentDetailPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Receipt className="h-5 w-5" />
-                  Acciones
+                  {t('detail.actions')}
                 </CardTitle>
                 <CardDescription>
-                  Revise los detalles y tome una decision
+                  {t('detail.actionsDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Validation comment */}
                 <div className="space-y-2">
-                  <Label htmlFor="comment">Comentario (opcional)</Label>
+                  <Label htmlFor="comment">{t('detail.commentOptional')}</Label>
                   <Textarea
                     id="comment"
-                    placeholder="Agregar comentario de validacion..."
+                    placeholder={t('detail.commentPlaceholder')}
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     rows={3}
@@ -512,12 +506,12 @@ export default function PaymentDetailPage() {
                     {isValidating ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Validando...
+                        {t('detail.validating')}
                       </>
                     ) : (
                       <>
                         <CheckCircle className="mr-2 h-4 w-4" />
-                        Validar Pago
+                        {t('detail.validatePayment')}
                       </>
                     )}
                   </Button>
@@ -531,12 +525,12 @@ export default function PaymentDetailPage() {
                     {isRejecting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Rechazando...
+                        {t('detail.rejecting')}
                       </>
                     ) : (
                       <>
                         <XCircle className="mr-2 h-4 w-4" />
-                        Rechazar Pago
+                        {t('detail.rejectPayment')}
                       </>
                     )}
                   </Button>
@@ -553,27 +547,27 @@ export default function PaymentDetailPage() {
                   {payment.workflowStatus === 'completed' && (
                     <>
                       <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-                      <p className="font-medium text-green-700">Pago Validado</p>
+                      <p className="font-medium text-green-700">{t('detail.paymentValidated')}</p>
                       <p className="text-sm text-muted-foreground">
-                        Este pago ya fue procesado
+                        {t('detail.paymentAlreadyProcessed')}
                       </p>
                     </>
                   )}
                   {payment.workflowStatus === 'rejected_by_agent' && (
                     <>
                       <XCircle className="h-12 w-12 text-red-500 mx-auto" />
-                      <p className="font-medium text-red-700">Pago Rechazado</p>
+                      <p className="font-medium text-red-700">{t('detail.paymentRejected')}</p>
                       <p className="text-sm text-muted-foreground">
-                        Este pago fue rechazado
+                        {t('detail.paymentWasRejected')}
                       </p>
                     </>
                   )}
                   {!['completed', 'rejected_by_agent', 'pending_agent_review'].includes(payment.workflowStatus) && (
                     <>
                       <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto" />
-                      <p className="font-medium">Estado: {payment.workflowStatus}</p>
+                      <p className="font-medium">{t('detail.statusLabel', { status: payment.workflowStatus })}</p>
                       <p className="text-sm text-muted-foreground">
-                        No se pueden realizar acciones en este estado
+                        {t('detail.noActionsAvailable')}
                       </p>
                     </>
                   )}
@@ -586,7 +580,7 @@ export default function PaymentDetailPage() {
           <Card className="bg-muted/50">
             <CardContent className="py-4">
               <p className="text-sm text-muted-foreground text-center">
-                Use las flechas <kbd className="px-1 py-0.5 bg-background rounded border text-xs">Anterior</kbd> / <kbd className="px-1 py-0.5 bg-background rounded border text-xs">Siguiente</kbd> para navegar entre pagos
+                {t('detail.navigationHint', { previous: t('detail.previous'), next: t('detail.next') })}
               </p>
             </CardContent>
           </Card>
@@ -599,17 +593,16 @@ export default function PaymentDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              Confirmar Validacion
+              {t('detail.confirmValidation')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Esta a punto de validar el pago <strong>{payment.paymentReference}</strong> por{' '}
-              <strong>{formatCurrency(payment.totalAmount)}</strong>.
+              {t('detail.confirmValidationDescription', { reference: payment.paymentReference, amount: formatCurrency(payment.totalAmount) })}
               <br /><br />
-              Se generara un recibo automaticamente y el solicitante sera notificado.
+              {t('detail.confirmValidationInfo')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isValidating}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isValidating}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleValidate}
               disabled={isValidating}
@@ -618,10 +611,10 @@ export default function PaymentDetailPage() {
               {isValidating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Validando...
+                  {t('detail.validating')}
                 </>
               ) : (
-                'Confirmar Validacion'
+                t('detail.confirmValidationButton')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -634,19 +627,18 @@ export default function PaymentDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-500" />
-              Rechazar Pago
+              {t('detail.confirmRejection')}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4">
                 <p>
-                  Esta a punto de rechazar el pago <strong>{payment.paymentReference}</strong>.
-                  El solicitante sera notificado del rechazo.
+                  {t('detail.confirmRejectionDescription', { reference: payment.paymentReference })}
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="rejectReason">Motivo del rechazo (obligatorio)</Label>
+                  <Label htmlFor="rejectReason">{t('detail.rejectionReason')}</Label>
                   <Textarea
                     id="rejectReason"
-                    placeholder="Indique el motivo del rechazo..."
+                    placeholder={t('detail.rejectionReasonPlaceholder')}
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
                     rows={3}
@@ -657,7 +649,7 @@ export default function PaymentDetailPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRejecting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isRejecting}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReject}
               disabled={isRejecting || !rejectReason.trim()}
@@ -666,10 +658,10 @@ export default function PaymentDetailPage() {
               {isRejecting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Rechazando...
+                  {t('detail.rejecting')}
                 </>
               ) : (
-                'Confirmar Rechazo'
+                t('detail.confirmRejectionButton')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

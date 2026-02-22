@@ -87,10 +87,10 @@ export const WIDGET_REGISTRY: Record<string, WidgetComponent> = {
     <PendingPaymentsWidget className={className} />
   ),
   in_progress_payments: ({ className }) => (
-    <PendingPaymentsWidget className={className} statusFilter="locked_by_agent" title="Pagos En Revisión" />
+    <PendingPaymentsWidget className={className} statusFilter="locked_by_agent" titleKey="widgets.inProgressPayments" />
   ),
   completed_payments: ({ className }) => (
-    <PendingPaymentsWidget className={className} statusFilter="completed" title="Pagos Completados" />
+    <PendingPaymentsWidget className={className} statusFilter="completed" titleKey="widgets.completedPayments" />
   ),
   anomaly_summary: ({ className }) => (
     <AnomalySummaryWidget className={className} />

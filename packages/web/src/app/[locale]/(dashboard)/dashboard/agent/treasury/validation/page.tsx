@@ -67,24 +67,6 @@ import {
 import type { PendingPayment } from '@/modules/treasury/types';
 import { calculateSLAStatus } from '@/modules/treasury/types';
 
-// Workflow names mapping (short versions for table)
-const WORKFLOW_NAMES: Record<string, string> = {
-  'pasaporte_expedicion': 'Pasaporte Expedicion',
-  'pasaporte_renovacion': 'Pasaporte Renovacion',
-  'pasaporte_menor': 'Pasaporte Menor',
-  'residencia_expedicion': 'Residencia (Exp.)',
-  'residencia_renovacion': 'Residencia (Ren.)',
-  'verificacion_funcionario': 'Verif. Funcionario',
-  'licencia_conducir': 'Licencia Conducir',
-  'certificado_nacimiento': 'Cert. Nacimiento',
-  'certificado_antecedentes': 'Cert. Antecedentes',
-};
-
-function getWorkflowName(code: string | undefined): string {
-  if (!code) return 'Sin especificar';
-  return WORKFLOW_NAMES[code] || code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
 const PAGE_SIZE = 20;
 
 export default function TreasuryValidationPage() {
@@ -92,6 +74,17 @@ export default function TreasuryValidationPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Workflow name helper using i18n
+  const getWorkflowName = (code: string | undefined): string => {
+    if (!code) return t('validationPage.unspecified');
+    // Try to find a matching workflow name key by normalizing the code
+    const normalizedKey = code.toUpperCase().replace(/[^A-Z_]/g, '');
+    if (t.has(`workflowNames.${normalizedKey}`)) {
+      return t(`workflowNames.${normalizedKey}`);
+    }
+    return code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -276,7 +269,7 @@ export default function TreasuryValidationPage() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={goToDashboard}>
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Dashboard
+            {t('nav.dashboard')}
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{t('validation.title')}</h1>
@@ -287,7 +280,7 @@ export default function TreasuryValidationPage() {
         </div>
         <Button onClick={() => refetch()} disabled={isLoading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Actualizar
+          {t('validationPage.buttons.refresh')}
         </Button>
       </div>
 
@@ -296,7 +289,7 @@ export default function TreasuryValidationPage() {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-700">Error al cargar los pagos pendientes</p>
+            <p className="text-red-700">{t('validationPage.error.loadingPayments')}</p>
           </CardContent>
         </Card>
       )}
@@ -304,7 +297,7 @@ export default function TreasuryValidationPage() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filtros</CardTitle>
+          <CardTitle className="text-lg">{t('validationPage.filters.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -312,7 +305,7 @@ export default function TreasuryValidationPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar por referencia, servicio..."
+                placeholder={t('validationPage.filters.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -322,40 +315,40 @@ export default function TreasuryValidationPage() {
             {/* Status Filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Estado del workflow" />
+                <SelectValue placeholder={t('validationPage.filters.workflowStatus')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="pending_agent_review">Pendiente revision</SelectItem>
-                <SelectItem value="completed">Validados</SelectItem>
-                <SelectItem value="rejected_by_agent">Rechazados</SelectItem>
+                <SelectItem value="all">{t('validationPage.filters.allStatuses')}</SelectItem>
+                <SelectItem value="pending_agent_review">{t('validationPage.filters.pendingReview')}</SelectItem>
+                <SelectItem value="completed">{t('validationPage.filters.validated')}</SelectItem>
+                <SelectItem value="rejected_by_agent">{t('validationPage.filters.rejected')}</SelectItem>
               </SelectContent>
             </Select>
 
             {/* Method Filter */}
             <Select value={methodFilter} onValueChange={setMethodFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Metodo de pago" />
+                <SelectValue placeholder={t('validationPage.filters.paymentMethod')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los metodos</SelectItem>
-                <SelectItem value="cash">Efectivo</SelectItem>
-                <SelectItem value="check">Cheque</SelectItem>
-                <SelectItem value="bank_transfer">Transferencia</SelectItem>
+                <SelectItem value="all">{t('validationPage.filters.allMethods')}</SelectItem>
+                <SelectItem value="cash">{t('validationPage.filters.cash')}</SelectItem>
+                <SelectItem value="check">{t('validationPage.filters.check')}</SelectItem>
+                <SelectItem value="bank_transfer">{t('validationPage.filters.bankTransfer')}</SelectItem>
               </SelectContent>
             </Select>
 
             {/* SLA Filter */}
             <Select value={slaFilter} onValueChange={setSlaFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Estado SLA" />
+                <SelectValue placeholder={t('validationPage.filters.slaStatus')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los SLA</SelectItem>
-                <SelectItem value="on_time">En plazo</SelectItem>
-                <SelectItem value="warning">Alerta</SelectItem>
-                <SelectItem value="critical">Critico</SelectItem>
-                <SelectItem value="breached">Vencido</SelectItem>
+                <SelectItem value="all">{t('validationPage.filters.allSla')}</SelectItem>
+                <SelectItem value="on_time">{t('validationPage.filters.onTime')}</SelectItem>
+                <SelectItem value="warning">{t('validationPage.filters.warning')}</SelectItem>
+                <SelectItem value="critical">{t('validationPage.filters.critical')}</SelectItem>
+                <SelectItem value="breached">{t('validationPage.filters.breached')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -363,10 +356,10 @@ export default function TreasuryValidationPage() {
             {locations && locations.length > 0 && (
               <Select value={locationFilter} onValueChange={(v) => { setLocationFilter(v); setPage(1); }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sede" />
+                  <SelectValue placeholder={t('validationPage.filters.location')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas las sedes</SelectItem>
+                  <SelectItem value="all">{t('validationPage.filters.allLocations')}</SelectItem>
                   {locations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.id}>
                       {loc.location_name} ({loc.city})
@@ -385,9 +378,9 @@ export default function TreasuryValidationPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              {statusFilter === 'pending_agent_review' ? 'Pagos Pendientes de Validacion' :
-               statusFilter === 'completed' ? 'Pagos Validados' :
-               statusFilter === 'rejected_by_agent' ? 'Pagos Rechazados' : 'Todos los Pagos'}
+              {statusFilter === 'pending_agent_review' ? t('validationPage.tableTitle.pending') :
+               statusFilter === 'completed' ? t('validationPage.tableTitle.completed') :
+               statusFilter === 'rejected_by_agent' ? t('validationPage.tableTitle.rejected') : t('validationPage.tableTitle.all')}
               {paymentsData?.total !== undefined && (
                 <Badge variant="secondary" className="ml-2">
                   {paymentsData.total}
@@ -403,7 +396,7 @@ export default function TreasuryValidationPage() {
                     {selectedIds.size}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    seleccionado(s) • {formatCurrency(selectedTotalAmount)}
+                    {t('validationPage.selection.selected')} • {formatCurrency(selectedTotalAmount)}
                   </span>
                 </div>
                 <div className="h-4 w-px bg-border" />
@@ -419,7 +412,7 @@ export default function TreasuryValidationPage() {
                     ) : (
                       <CheckCircle className="h-3 w-3 mr-1" />
                     )}
-                    Validar
+                    {t('validationPage.buttons.validate')}
                   </Button>
                   <Button
                     size="sm"
@@ -433,7 +426,7 @@ export default function TreasuryValidationPage() {
                     ) : (
                       <XCircle className="h-3 w-3 mr-1" />
                     )}
-                    Rechazar
+                    {t('validationPage.buttons.reject')}
                   </Button>
                   <Button
                     size="sm"
@@ -442,7 +435,7 @@ export default function TreasuryValidationPage() {
                     onClick={() => setSelectedIds(new Set())}
                     disabled={isBatchProcessing}
                   >
-                    Cancelar
+                    {t('validationPage.buttons.cancel')}
                   </Button>
                 </div>
               </div>
@@ -450,7 +443,7 @@ export default function TreasuryValidationPage() {
               /* Pagination info - shows when nothing selected */
               totalPages > 1 && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  Pagina {page} de {totalPages}
+                  {t('validationPage.pagination.page', { current: page, total: totalPages })}
                 </div>
               )
             )}
@@ -465,12 +458,12 @@ export default function TreasuryValidationPage() {
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
               <h3 className="text-lg font-semibold">
-                {statusFilter === 'pending_agent_review' ? 'Sin pagos pendientes' : 'Sin resultados'}
+                {statusFilter === 'pending_agent_review' ? t('validationPage.empty.noPending') : t('validationPage.empty.noResults')}
               </h3>
               <p className="text-muted-foreground">
                 {statusFilter === 'pending_agent_review'
-                  ? 'No hay pagos que requieran validacion en este momento.'
-                  : 'No se encontraron pagos con los filtros seleccionados.'}
+                  ? t('validationPage.empty.noPendingDescription')
+                  : t('validationPage.empty.noResultsDescription')}
               </p>
             </div>
           ) : (
@@ -485,21 +478,21 @@ export default function TreasuryValidationPage() {
                           <Checkbox
                             checked={allPendingSelected}
                             onCheckedChange={toggleSelectAll}
-                            aria-label="Seleccionar todos"
+                            aria-label={t('validationPage.table.selectAll')}
                             className={somePendingSelected && !allPendingSelected ? 'opacity-50' : ''}
                           />
                         </TableHead>
                       )}
-                      <TableHead>Referencia</TableHead>
-                      <TableHead>Servicio</TableHead>
-                      <TableHead>Sede</TableHead>
-                      <TableHead>Monto</TableHead>
-                      <TableHead>Metodo</TableHead>
-                      <TableHead>Agente</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>SLA</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead className="text-right">Accion</TableHead>
+                      <TableHead>{t('validationPage.table.reference')}</TableHead>
+                      <TableHead>{t('validationPage.table.service')}</TableHead>
+                      <TableHead>{t('validationPage.table.location')}</TableHead>
+                      <TableHead>{t('validationPage.table.amount')}</TableHead>
+                      <TableHead>{t('validationPage.table.method')}</TableHead>
+                      <TableHead>{t('validationPage.table.agent')}</TableHead>
+                      <TableHead>{t('validationPage.table.status')}</TableHead>
+                      <TableHead>{t('validationPage.table.sla')}</TableHead>
+                      <TableHead>{t('validationPage.table.date')}</TableHead>
+                      <TableHead className="text-right">{t('validationPage.table.action')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -518,7 +511,7 @@ export default function TreasuryValidationPage() {
                               <Checkbox
                                 checked={selectedIds.has(payment.id)}
                                 onCheckedChange={() => toggleSelect(payment.id)}
-                                aria-label={`Seleccionar ${payment.paymentReference}`}
+                                aria-label={t('validationPage.table.select', { reference: payment.paymentReference })}
                               />
                             )}
                           </TableCell>
@@ -549,7 +542,7 @@ export default function TreasuryValidationPage() {
                         </TableCell>
                         <TableCell className="text-sm">
                           {payment.assignedAgentName || (
-                            <span className="text-muted-foreground italic">Sin asignar</span>
+                            <span className="text-muted-foreground italic">{t('validationPage.unassigned')}</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -616,7 +609,7 @@ export default function TreasuryValidationPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <div className="text-sm text-muted-foreground">
-                    Mostrando {((page - 1) * PAGE_SIZE) + 1} - {Math.min(page * PAGE_SIZE, paymentsData?.total || 0)} de {paymentsData?.total || 0}
+                    {t('validationPage.pagination.showing', { from: ((page - 1) * PAGE_SIZE) + 1, to: Math.min(page * PAGE_SIZE, paymentsData?.total || 0), total: paymentsData?.total || 0 })}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -626,7 +619,7 @@ export default function TreasuryValidationPage() {
                       disabled={!hasPrevPage || isLoading}
                     >
                       <ChevronLeft className="h-4 w-4 mr-1" />
-                      Anterior
+                      {t('validationPage.pagination.previous')}
                     </Button>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -660,7 +653,7 @@ export default function TreasuryValidationPage() {
                       onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                       disabled={!hasNextPage || isLoading}
                     >
-                      Siguiente
+                      {t('validationPage.pagination.next')}
                       <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   </div>
@@ -677,22 +670,21 @@ export default function TreasuryValidationPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              Validar {selectedIds.size} Pago(s)
+              {t('validationPage.dialogs.validateTitle', { count: selectedIds.size })}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4">
                 <p>
-                  Esta a punto de validar <strong>{selectedIds.size}</strong> pago(s) por un total de{' '}
-                  <strong>{formatCurrency(selectedTotalAmount)}</strong>.
+                  {t('validationPage.dialogs.validateDescription', { count: selectedIds.size, amount: formatCurrency(selectedTotalAmount) })}
                 </p>
                 <p className="text-sm">
-                  Se generaran recibos para cada pago y los solicitantes seran notificados.
+                  {t('validationPage.dialogs.validateInfo')}
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="batchComment">Comentario general (opcional)</Label>
+                  <Label htmlFor="batchComment">{t('validationPage.dialogs.validateComment')}</Label>
                   <Textarea
                     id="batchComment"
-                    placeholder="Comentario que se aplicara a todos los pagos..."
+                    placeholder={t('validationPage.dialogs.validateCommentPlaceholder')}
                     value={batchComment}
                     onChange={(e) => setBatchComment(e.target.value)}
                     rows={2}
@@ -703,7 +695,7 @@ export default function TreasuryValidationPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBatchProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isBatchProcessing}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchValidate}
               disabled={isBatchProcessing}
@@ -712,10 +704,10 @@ export default function TreasuryValidationPage() {
               {isBatchProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Procesando...
+                  {t('validationPage.selection.processing')}
                 </>
               ) : (
-                `Validar ${selectedIds.size} Pago(s)`
+                t('validationPage.dialogs.validateConfirm', { count: selectedIds.size })
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -728,19 +720,18 @@ export default function TreasuryValidationPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-500" />
-              Rechazar {selectedIds.size} Pago(s)
+              {t('validationPage.dialogs.rejectTitle', { count: selectedIds.size })}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4">
                 <p>
-                  Esta a punto de rechazar <strong>{selectedIds.size}</strong> pago(s).
-                  Los solicitantes seran notificados del rechazo.
+                  {t('validationPage.dialogs.rejectDescription', { count: selectedIds.size })}
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="batchRejectReason">Motivo del rechazo (obligatorio)</Label>
+                  <Label htmlFor="batchRejectReason">{t('validationPage.dialogs.rejectReason')}</Label>
                   <Textarea
                     id="batchRejectReason"
-                    placeholder="Indique el motivo del rechazo..."
+                    placeholder={t('validationPage.dialogs.rejectReasonPlaceholder')}
                     value={batchRejectReason}
                     onChange={(e) => setBatchRejectReason(e.target.value)}
                     rows={3}
@@ -751,7 +742,7 @@ export default function TreasuryValidationPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isBatchProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isBatchProcessing}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchReject}
               disabled={isBatchProcessing || !batchRejectReason.trim()}
@@ -760,10 +751,10 @@ export default function TreasuryValidationPage() {
               {isBatchProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Procesando...
+                  {t('validationPage.selection.processing')}
                 </>
               ) : (
-                `Rechazar ${selectedIds.size} Pago(s)`
+                t('validationPage.dialogs.rejectConfirm', { count: selectedIds.size })
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -71,20 +71,20 @@ const SEVERITY_STYLES: Record<string, {
   },
 };
 
-const ANOMALY_TYPE_LABELS: Record<string, string> = {
-  amount_mismatch: 'Diferencia de monto',
-  duplicate_suspected: 'Duplicado sospechoso',
-  reconciliation_failed: 'Fallo reconciliación',
-  validated_not_received: 'Validado no recibido',
-  sla_breached: 'SLA incumplido',
-  high_amount: 'Monto alto',
-  suspicious_pattern: 'Patrón sospechoso',
-  manual_flag: 'Marcado manual',
-  duplicate_payment: 'Pago duplicado',
-  late_validation: 'Validación tardía',
-  orphan_transaction: 'Transacción huérfana',
-  reference_missing: 'Referencia faltante',
-};
+const ANOMALY_TYPE_KEYS: string[] = [
+  'amount_mismatch',
+  'duplicate_suspected',
+  'reconciliation_failed',
+  'validated_not_received',
+  'sla_breached',
+  'high_amount',
+  'suspicious_pattern',
+  'manual_flag',
+  'duplicate_payment',
+  'late_validation',
+  'orphan_transaction',
+  'reference_missing',
+];
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -195,6 +195,7 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
               <AnomalyRow
                 key={`${item.anomaly_type}-${item.severity}-${index}`}
                 item={item}
+                t={t}
               />
             ))}
             <Link href={`/${locale}/dashboard/agent/treasury/anomalies`}>
@@ -216,12 +217,15 @@ export function AnomalySummaryWidget({ className }: AnomalySummaryWidgetProps) {
 
 interface AnomalyRowProps {
   item: AnomalySummaryItem;
+  t: (key: string, values?: Record<string, string>) => string;
 }
 
-function AnomalyRow({ item }: AnomalyRowProps) {
+function AnomalyRow({ item, t }: AnomalyRowProps) {
   const severity = item.severity || 'medium';
   const style = SEVERITY_STYLES[severity] || SEVERITY_STYLES.medium;
-  const typeLabel = ANOMALY_TYPE_LABELS[item.anomaly_type] || item.anomaly_type;
+  const typeLabel = ANOMALY_TYPE_KEYS.includes(item.anomaly_type)
+    ? t(`widgets.anomalyTypes.${item.anomaly_type}`)
+    : item.anomaly_type;
 
   return (
     <div

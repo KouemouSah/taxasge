@@ -34,6 +34,7 @@ interface PendingPaymentsWidgetProps {
   workflowCode?: string;
   statusFilter?: string;
   title?: string;
+  titleKey?: string;
   limit?: number;
   className?: string;
 }
@@ -71,6 +72,7 @@ export function PendingPaymentsWidget({
   workflowCode,
   statusFilter,
   title,
+  titleKey,
   limit = 5,
   className,
 }: PendingPaymentsWidgetProps) {
@@ -82,7 +84,7 @@ export function PendingPaymentsWidget({
     limit,
   });
 
-  const widgetTitle = title || t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' });
+  const widgetTitle = titleKey ? t(titleKey) : title || t('widgets.pendingPayments', { defaultValue: 'Pagos Pendientes' });
 
   // Loading state
   if (isLoading) {

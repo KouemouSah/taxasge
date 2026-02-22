@@ -6,6 +6,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Tooltip,
   TooltipContent,
@@ -24,36 +25,31 @@ interface SLABadgeProps {
   className?: string;
 }
 
-const slaConfig: Record<
+const slaStyleConfig: Record<
   SLAStatus | 'completed',
-  { label: string; color: string; bgColor: string; Icon: typeof Clock }
+  { color: string; bgColor: string; Icon: typeof Clock }
 > = {
   on_time: {
-    label: 'En plazo',
     color: 'text-green-700',
     bgColor: 'bg-green-100 border-green-200',
     Icon: CheckCircle,
   },
   warning: {
-    label: 'Alerta',
     color: 'text-yellow-700',
     bgColor: 'bg-yellow-100 border-yellow-200',
     Icon: Clock,
   },
   critical: {
-    label: 'Critico',
     color: 'text-orange-700',
     bgColor: 'bg-orange-100 border-orange-200',
     Icon: AlertTriangle,
   },
   breached: {
-    label: 'Vencido',
     color: 'text-red-700',
     bgColor: 'bg-red-100 border-red-200',
     Icon: XCircle,
   },
   completed: {
-    label: 'Completado',
     color: 'text-gray-600',
     bgColor: 'bg-gray-100 border-gray-200',
     Icon: CheckCircle,
@@ -92,6 +88,8 @@ export function SLABadge({
   showCountdown = true,
   className,
 }: SLABadgeProps) {
+  const t = useTranslations('treasury');
+
   const status = useMemo(() => {
     if (providedStatus) return providedStatus;
     if (workflowStatus) {
@@ -100,8 +98,9 @@ export function SLABadge({
     return 'on_time' as SLAStatus;
   }, [providedStatus, slaTargetDate, workflowStatus]);
 
-  const config = slaConfig[status] || slaConfig.on_time;
+  const config = slaStyleConfig[status] || slaStyleConfig.on_time;
   const { Icon } = config;
+  const label = t(`slaLabels.${status}`);
 
   const timeRemaining = useMemo(() => {
     if (!slaTargetDate || status === 'completed') return null;
@@ -109,13 +108,13 @@ export function SLABadge({
   }, [slaTargetDate, status]);
 
   const tooltipContent = useMemo(() => {
-    if (!slaTargetDate) return 'Sin SLA definido';
+    if (!slaTargetDate) return t('slaLabels.noSla');
     const target = new Date(slaTargetDate);
-    return `Fecha limite: ${target.toLocaleString('es-ES', {
+    return `${t('slaLabels.deadline')} ${target.toLocaleString(undefined, {
       dateStyle: 'short',
       timeStyle: 'short',
     })}`;
-  }, [slaTargetDate]);
+  }, [slaTargetDate, t]);
 
   return (
     <TooltipProvider>
@@ -125,7 +124,7 @@ export function SLABadge({
             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border ${config.bgColor} ${config.color} ${className || ''}`}
           >
             <Icon className="h-3 w-3" />
-            <span>{config.label}</span>
+            <span>{label}</span>
             {showCountdown && timeRemaining && (
               <span className="font-mono text-[10px] ml-1 opacity-80">
                 ({timeRemaining})
@@ -150,6 +149,7 @@ interface SLAIndicatorProps {
 }
 
 export function SLAIndicator({ status, className }: SLAIndicatorProps) {
+  const t = useTranslations('treasury');
   const dotColors: Record<SLAStatus | 'completed', string> = {
     on_time: 'bg-green-500',
     warning: 'bg-yellow-500',
@@ -159,6 +159,7 @@ export function SLAIndicator({ status, className }: SLAIndicatorProps) {
   };
 
   const color = dotColors[status] || dotColors.on_time;
+  const label = status in slaStyleConfig ? t(`slaLabels.${status}`) : status;
 
   return (
     <TooltipProvider>
@@ -169,7 +170,7 @@ export function SLAIndicator({ status, className }: SLAIndicatorProps) {
           />
         </TooltipTrigger>
         <TooltipContent>
-          <p>{slaConfig[status]?.label || status}</p>
+          <p>{label}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

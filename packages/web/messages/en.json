@@ -5201,6 +5201,161 @@
       "title": "Payment Validation",
       "description": "Review and validate cash and check payments"
     },
+    "workflowNames": {
+      "PASAPORTE": "Passport",
+      "CONDUCIR": "Driving License",
+      "CONTRATO": "ONRC Contract",
+      "RESIDENCIA": "Residence Card",
+      "MATRICULACION": "Vehicle Registration",
+      "INSPECCION_TECNICA": "Technical Inspection (ITVE)",
+      "DUPLICADO_VEHICULO": "Vehicle Duplicate",
+      "PROMOCION_ADMINISTRATIVA": "Administrative Promotion",
+      "CARNET_FUNCIONARIO": "Official ID Card"
+    },
+    "validationPage": {
+      "filters": {
+        "title": "Filters",
+        "searchPlaceholder": "Search by reference, service...",
+        "workflowStatus": "Workflow status",
+        "paymentMethod": "Payment method",
+        "slaStatus": "SLA status",
+        "location": "Site",
+        "allStatuses": "All statuses",
+        "pendingReview": "Pending review",
+        "validated": "Validated",
+        "rejected": "Rejected",
+        "allMethods": "All methods",
+        "cash": "Cash",
+        "check": "Check",
+        "bankTransfer": "Bank Transfer",
+        "allSla": "All SLA",
+        "onTime": "On time",
+        "warning": "Warning",
+        "critical": "Critical",
+        "breached": "Breached",
+        "allLocations": "All sites"
+      },
+      "table": {
+        "reference": "Reference",
+        "service": "Service",
+        "location": "Site",
+        "amount": "Amount",
+        "method": "Method",
+        "agent": "Agent",
+        "status": "Status",
+        "sla": "SLA",
+        "date": "Date",
+        "action": "Action",
+        "selectAll": "Select all",
+        "select": "Select {reference}"
+      },
+      "tableTitle": {
+        "pending": "Payments Pending Validation",
+        "completed": "Validated Payments",
+        "rejected": "Rejected Payments",
+        "all": "All Payments"
+      },
+      "pagination": {
+        "page": "Page {current} of {total}",
+        "showing": "Showing {from} - {to} of {total}",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "buttons": {
+        "refresh": "Refresh",
+        "validate": "Validate",
+        "reject": "Reject",
+        "cancel": "Cancel"
+      },
+      "selection": {
+        "selected": "selected",
+        "processing": "Processing..."
+      },
+      "empty": {
+        "noPending": "No pending payments",
+        "noPendingDescription": "There are no payments requiring validation at this time.",
+        "noResults": "No results",
+        "noResultsDescription": "No payments found with the selected filters."
+      },
+      "error": {
+        "loadingPayments": "Error loading pending payments"
+      },
+      "unassigned": "Unassigned",
+      "unspecified": "Unspecified",
+      "dialogs": {
+        "validateTitle": "Validate {count} Payment(s)",
+        "validateDescription": "You are about to validate {count} payment(s) for a total of {amount}.",
+        "validateInfo": "Receipts will be generated for each payment and applicants will be notified.",
+        "validateComment": "General comment (optional)",
+        "validateCommentPlaceholder": "Comment that will be applied to all payments...",
+        "validateConfirm": "Validate {count} Payment(s)",
+        "rejectTitle": "Reject {count} Payment(s)",
+        "rejectDescription": "You are about to reject {count} payment(s). Applicants will be notified of the rejection.",
+        "rejectReason": "Rejection reason (required)",
+        "rejectReasonPlaceholder": "Enter the rejection reason...",
+        "rejectConfirm": "Reject {count} Payment(s)"
+      }
+    },
+    "detail": {
+      "title": "Payment Detail",
+      "backToList": "List",
+      "backToListFull": "Back to list",
+      "paymentNotFound": "Payment not found",
+      "paymentNotFoundDescription": "The requested payment does not exist or you do not have permissions to view it.",
+      "previous": "Previous",
+      "next": "Next",
+      "service": "Service",
+      "procedureType": "Procedure Type",
+      "requestReference": "Request Reference",
+      "requestId": "Request ID",
+      "paymentDetails": "Payment Details",
+      "reference": "Reference",
+      "paymentMethod": "Payment Method",
+      "baseAmount": "Base Amount",
+      "supplements": "Supplements:",
+      "penalties": "Penalties",
+      "discounts": "Discounts",
+      "total": "Total",
+      "applicant": "Applicant",
+      "fullName": "Full Name",
+      "email": "Email Address",
+      "timeline": "Timeline",
+      "created": "Created",
+      "submitted": "Submitted",
+      "slaLimit": "SLA Limit",
+      "waiting": "Waiting",
+      "currentStatus": "Current Status",
+      "workflow": "Workflow",
+      "actions": "Actions",
+      "actionsDescription": "Review the details and make a decision",
+      "commentOptional": "Comment (optional)",
+      "commentPlaceholder": "Add validation comment...",
+      "validatePayment": "Validate Payment",
+      "validating": "Validating...",
+      "rejectPayment": "Reject Payment",
+      "rejecting": "Rejecting...",
+      "paymentValidated": "Payment Validated",
+      "paymentAlreadyProcessed": "This payment has already been processed",
+      "paymentRejected": "Payment Rejected",
+      "paymentWasRejected": "This payment was rejected",
+      "statusLabel": "Status: {status}",
+      "noActionsAvailable": "No actions can be performed in this state",
+      "navigationHint": "Use the {previous} / {next} arrows to navigate between payments",
+      "confirmValidation": "Confirm Validation",
+      "confirmValidationDescription": "You are about to validate payment {reference} for {amount}.",
+      "confirmValidationInfo": "A receipt will be automatically generated and the applicant will be notified.",
+      "confirmValidationButton": "Confirm Validation",
+      "confirmRejection": "Reject Payment",
+      "confirmRejectionDescription": "You are about to reject payment {reference}. The applicant will be notified of the rejection.",
+      "rejectionReason": "Rejection reason (required)",
+      "rejectionReasonPlaceholder": "Enter the rejection reason...",
+      "confirmRejectionButton": "Confirm Rejection",
+      "formatHours": {
+        "minutes": "{value} min",
+        "hours": "{value} hours",
+        "days": "{value} days"
+      }
+    },
     "reconciliation": {
       "title": "Bank Reconciliation",
       "description": "Match bank transactions with system payments"
@@ -5332,6 +5487,48 @@
         "critical": "Less than 2 hours",
         "breached": "Time exceeded"
       }
+    },
+    "statusLabels": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed",
+      "refunded": "Refunded",
+      "cancelled": "Cancelled"
+    },
+    "workflowStatusLabels": {
+      "submitted": "Submitted",
+      "auto_processing": "Auto Processing",
+      "auto_approved": "Auto Approved",
+      "pending_agent_review": "Pending Review",
+      "agent_reviewing": "Under Review",
+      "requires_documents": "Docs Required",
+      "docs_resubmitted": "Docs Resubmitted",
+      "approved_by_agent": "Approved",
+      "rejected_by_agent": "Rejected",
+      "escalated_supervisor": "Escalated",
+      "supervisor_reviewing": "Supervisor Reviewing",
+      "completed": "Completed",
+      "cancelled_by_user": "Cancelled",
+      "cancelled_by_agent": "Cancelled by Agent",
+      "expired": "Expired"
+    },
+    "methodLabels": {
+      "cash": "Cash",
+      "check": "Check",
+      "mobile_money": "Mobile Money",
+      "bank_transfer": "Bank Transfer",
+      "card": "Card",
+      "bange_wallet": "BANGE Wallet"
+    },
+    "slaLabels": {
+      "on_time": "On Time",
+      "warning": "Warning",
+      "critical": "Critical",
+      "breached": "Breached",
+      "completed": "Completed",
+      "noSla": "No SLA defined",
+      "deadline": "Deadline:"
     },
     "anomalies": {
       "title": "Payment Anomalies",
@@ -5876,7 +6073,25 @@
       "amountAffected": "Amount affected",
       "noAnomalies": "No anomalies detected",
       "viewAllAnomalies": "View all anomalies",
-      "loadError": "Error loading data"
+      "loadError": "Error loading data",
+      "recentActivity": "Recent Activity",
+      "noRecentActivity": "No recent activity",
+      "inProgressPayments": "In Progress Payments",
+      "completedPayments": "Completed Payments",
+      "anomalyTypes": {
+        "amount_mismatch": "Amount Mismatch",
+        "duplicate_suspected": "Suspected Duplicate",
+        "reconciliation_failed": "Reconciliation Failed",
+        "validated_not_received": "Validated Not Received",
+        "sla_breached": "SLA Breached",
+        "high_amount": "High Amount",
+        "suspicious_pattern": "Suspicious Pattern",
+        "manual_flag": "Manual Flag",
+        "duplicate_payment": "Duplicate Payment",
+        "late_validation": "Late Validation",
+        "orphan_transaction": "Orphan Transaction",
+        "reference_missing": "Missing Reference"
+      }
     },
     "pending": {
       "title": "Pending Requests",
