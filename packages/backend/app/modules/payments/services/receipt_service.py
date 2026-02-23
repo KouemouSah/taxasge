@@ -550,7 +550,7 @@ class ReceiptService:
             "name": f"{first_name} {last_name}".strip() or user_data.get("email", "N/A"),
             "email": user_data.get("email"),
             "phone": user_data.get("phone"),
-            "dni": user_data.get("dni") or user_data.get("nif"),
+            "dni": user_data.get("document_number") or user_data.get("dni") or user_data.get("nif"),
         }
 
         # Payment method label

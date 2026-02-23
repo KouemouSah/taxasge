@@ -242,7 +242,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
 
             # 3. Get user data for receipt and notifications
             user_query = """
-                SELECT id, email, phone_number as phone, first_name, last_name, dni, preferred_language
+                SELECT id, email, phone_number as phone, first_name, last_name, document_number, document_type, preferred_language
                 FROM users WHERE id = $1
             """
             user_data = await db.fetchrow(user_query, payment["user_id"])
