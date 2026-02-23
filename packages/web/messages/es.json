@@ -5518,16 +5518,17 @@
       "stats": {
         "total": "Total transacciones",
         "totalAmount": "Monto total",
+        "pending": "Pendientes",
         "approved": "Aprobados",
         "rejected": "Rechazados"
       },
       "filters": {
         "status": "Estado",
         "statusAll": "Todos los estados",
-        "pending": "Pendiente",
+        "pending": "Pendiente revision",
+        "approved": "Aprobado",
+        "rejected": "Rechazado",
         "completed": "Completado",
-        "failed": "Fallido",
-        "refunded": "Reembolsado",
         "method": "Metodo",
         "methodAll": "Todos los metodos",
         "cash": "Efectivo",

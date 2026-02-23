@@ -5416,16 +5416,17 @@
       "stats": {
         "total": "Total transactions",
         "totalAmount": "Total amount",
+        "pending": "Pending",
         "approved": "Approved",
         "rejected": "Rejected"
       },
       "filters": {
         "status": "Status",
         "statusAll": "All statuses",
-        "pending": "Pending",
+        "pending": "Pending review",
+        "approved": "Approved",
+        "rejected": "Rejected",
         "completed": "Completed",
-        "failed": "Failed",
-        "refunded": "Refunded",
         "method": "Method",
         "methodAll": "All methods",
         "cash": "Cash",

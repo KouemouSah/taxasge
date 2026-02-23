@@ -3186,16 +3186,24 @@ async def get_pending_payments(
         offset = (page - 1) * limit
 
         # Build query
-        where_clauses = ["sp.workflow_status = $1"]
-        params = [workflow_status or "pending_agent_review"]
-        param_idx = 2
+        where_clauses = []
+        params = []
+        param_idx = 1
+
+        # workflow_status=all → no status filter (history mode)
+        effective_status = workflow_status or "pending_agent_review"
+        if effective_status != "all":
+            where_clauses.append(f"sp.workflow_status = ${param_idx}")
+            params.append(effective_status)
+            param_idx += 1
 
         if payment_method:
             where_clauses.append(f"sp.payment_method = ${param_idx}")
             params.append(payment_method)
             param_idx += 1
-        else:
-            # Default: only manual validation methods
+        elif effective_status != "all":
+            # Default: only manual validation methods (for pending view)
+            # In history mode (all), show all payment methods
             where_clauses.append("sp.payment_method IN ('cash', 'check')")
 
         # Agent-based filtering
@@ -3225,7 +3233,7 @@ async def get_pending_payments(
                 logger.warning(f"[Treasury] User {user_id} has no agent_profile, showing empty results")
                 return PendingPaymentsListResponse(payments=[], total=0, page=page, page_size=limit)
 
-        where_sql = " AND ".join(where_clauses)
+        where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
 
         query = f"""
             SELECT

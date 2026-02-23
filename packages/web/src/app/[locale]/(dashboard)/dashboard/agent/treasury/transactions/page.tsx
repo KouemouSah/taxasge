@@ -62,9 +62,9 @@ export default function TreasuryTransactionsPage() {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Data fetching
+  // Data fetching — 'all' returns every workflow_status (history mode)
   const { data: paymentsData, isLoading, error, refetch } = usePendingPayments({
-    status: filters.status,
+    status: filters.status || 'all',
     method: filters.method,
   });
 
@@ -114,10 +114,12 @@ export default function TreasuryTransactionsPage() {
 
   const totalPages = Math.ceil(filteredTransactions.length / filters.limit);
 
-  // Calculate stats
-  const totalAmount = filteredTransactions.reduce((sum: number, tx: PendingPayment) => sum + tx.totalAmount, 0);
-  const approvedCount = filteredTransactions.filter((tx: PendingPayment) => tx.workflowStatus === 'approved_by_agent').length;
-  const rejectedCount = filteredTransactions.filter((tx: PendingPayment) => tx.workflowStatus === 'rejected_by_agent').length;
+  // Calculate stats from all fetched transactions (not just current page)
+  const allTransactions = paymentsData?.payments || [];
+  const totalAmount = allTransactions.reduce((sum: number, tx: PendingPayment) => sum + tx.totalAmount, 0);
+  const pendingCount = allTransactions.filter((tx: PendingPayment) => tx.workflowStatus === 'pending_agent_review').length;
+  const approvedCount = allTransactions.filter((tx: PendingPayment) => tx.workflowStatus === 'approved_by_agent').length;
+  const rejectedCount = allTransactions.filter((tx: PendingPayment) => tx.workflowStatus === 'rejected_by_agent').length;
 
   return (
     <div className="space-y-6">
@@ -182,10 +184,10 @@ export default function TreasuryTransactionsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('transactions.filters.statusAll')}</SelectItem>
-                <SelectItem value="pending">{t('transactions.filters.pending')}</SelectItem>
+                <SelectItem value="pending_agent_review">{t('transactions.filters.pending')}</SelectItem>
+                <SelectItem value="approved_by_agent">{t('transactions.filters.approved')}</SelectItem>
+                <SelectItem value="rejected_by_agent">{t('transactions.filters.rejected')}</SelectItem>
                 <SelectItem value="completed">{t('transactions.filters.completed')}</SelectItem>
-                <SelectItem value="failed">{t('transactions.filters.failed')}</SelectItem>
-                <SelectItem value="refunded">{t('transactions.filters.refunded')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -216,10 +218,10 @@ export default function TreasuryTransactionsPage() {
       </Card>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{filteredTransactions.length}</div>
+            <div className="text-2xl font-bold">{paymentsData?.total || 0}</div>
             <p className="text-xs text-muted-foreground">{t('transactions.stats.total')}</p>
           </CardContent>
         </Card>
@@ -229,6 +231,14 @@ export default function TreasuryTransactionsPage() {
               {formatCurrency(totalAmount)}
             </div>
             <p className="text-xs text-muted-foreground">{t('transactions.stats.totalAmount')}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-yellow-600">
+              {pendingCount}
+            </div>
+            <p className="text-xs text-muted-foreground">{t('transactions.stats.pending')}</p>
           </CardContent>
         </Card>
         <Card>

@@ -5656,16 +5656,17 @@
       "stats": {
         "total": "Total transactions",
         "totalAmount": "Montant total",
+        "pending": "En attente",
         "approved": "Approuves",
         "rejected": "Rejetes"
       },
       "filters": {
         "status": "Statut",
         "statusAll": "Tous les statuts",
-        "pending": "En attente",
+        "pending": "En attente de revision",
+        "approved": "Approuve",
+        "rejected": "Rejete",
         "completed": "Complete",
-        "failed": "Echoue",
-        "refunded": "Rembourse",
         "method": "Methode",
         "methodAll": "Toutes les methodes",
         "cash": "Especes",
