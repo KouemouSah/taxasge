@@ -444,7 +444,7 @@ export default function TreasuryValidationPage() {
   }, [handleDetailNavigate]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] -mx-4 md:-mx-6 lg:-mx-8 -mb-4 md:-mb-6 lg:-mb-8 -mt-1">
+    <div className="flex flex-col h-[calc(100vh-4rem)] -mx-4 md:-mx-6 lg:-mx-8 -mb-4 md:-mb-6 lg:-mb-8 -mt-1 w-[calc(100%_+_2rem)] md:w-[calc(100%_+_3rem)] lg:w-[calc(100%_+_4rem)]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 md:px-6 lg:px-8 pb-3 shrink-0">
         <div className="flex items-center gap-3">
@@ -579,9 +579,9 @@ export default function TreasuryValidationPage() {
       {/* ================================================================= */}
       {/* SPLIT VIEW: LEFT (list) + RIGHT (detail)                         */}
       {/* ================================================================= */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex gap-3 flex-1 min-h-0 px-3 lg:px-4 pb-2">
         {/* LEFT PANEL — Payment List */}
-        <div className="w-full lg:w-[35%] flex flex-col min-h-0 border-r bg-card">
+        <div className="w-full lg:w-[35%] flex flex-col min-h-0 border rounded-lg bg-card">
           {/* List header */}
           <div className="flex items-center justify-between p-2 border-b bg-muted/30 shrink-0">
             <div className="flex items-center gap-2">
@@ -697,7 +697,7 @@ export default function TreasuryValidationPage() {
         </div>
 
         {/* RIGHT PANEL — Payment Detail (hidden on mobile) */}
-        <div className="hidden lg:flex lg:flex-1 bg-card overflow-hidden">
+        <div className="hidden lg:flex lg:flex-1 border rounded-lg bg-card overflow-hidden">
           {selectedPayment ? (
             <PaymentDetailPanel
               payment={selectedPayment}
