@@ -5386,6 +5386,7 @@
       },
       "unassigned": "Sin asignar",
       "unspecified": "Sin especificar",
+      "selectPayment": "Seleccione un pago de la lista",
       "dialogs": {
         "validateTitle": "Validar {count} Pago(s)",
         "validateDescription": "Esta a punto de validar {count} pago(s) por un total de {amount}.",
@@ -5404,6 +5405,7 @@
       "title": "Detalle del Pago",
       "backToList": "Lista",
       "backToListFull": "Volver a la lista",
+      "openFullDetail": "Abrir detalle completo",
       "paymentNotFound": "Pago no encontrado",
       "paymentNotFoundDescription": "El pago solicitado no existe o no tienes permisos para verlo.",
       "previous": "Anterior",

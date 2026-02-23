@@ -5524,6 +5524,7 @@
       },
       "unassigned": "Non assigne",
       "unspecified": "Non specifie",
+      "selectPayment": "Selectionnez un paiement dans la liste",
       "dialogs": {
         "validateTitle": "Valider {count} Paiement(s)",
         "validateDescription": "Vous etes sur le point de valider {count} paiement(s) pour un total de {amount}.",
@@ -5542,6 +5543,7 @@
       "title": "Detail du Paiement",
       "backToList": "Liste",
       "backToListFull": "Retour a la liste",
+      "openFullDetail": "Ouvrir detail complet",
       "paymentNotFound": "Paiement introuvable",
       "paymentNotFoundDescription": "Le paiement demande n existe pas ou vous n avez pas les permissions pour le voir.",
       "previous": "Precedent",

@@ -1,0 +1,539 @@
+/**
+ * PaymentDetailPanel
+ * Compact detail view for a payment, used in the split-view validation page.
+ * Shows service info, payment breakdown, citizen info, timeline, and actions.
+ */
+
+'use client';
+
+import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  User,
+  Calendar,
+  CreditCard,
+  ArrowLeft,
+  ArrowRight,
+  ExternalLink,
+} from 'lucide-react';
+import {
+  PaymentMethodBadge,
+  WorkflowStatusBadge,
+  SLABadge,
+} from './index';
+import type { PendingPayment } from '../types';
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+interface PaymentDetailPanelProps {
+  payment: PendingPayment;
+  /** Navigation: current index in the list (1-based) */
+  currentIndex?: number;
+  /** Navigation: total items in list */
+  totalItems?: number;
+  onNavigate?: (direction: 'prev' | 'next') => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  /** Open the full detail page */
+  onOpenFullDetail?: (paymentId: string) => void;
+  /** Action callbacks */
+  onValidate?: (paymentId: string, comment?: string) => Promise<void>;
+  onReject?: (paymentId: string, reason: string) => Promise<void>;
+  onEscalate?: (paymentId: string, reason: string, level: string) => Promise<void>;
+  isValidating?: boolean;
+  isRejecting?: boolean;
+  isEscalating?: boolean;
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+function formatCurrency(amount: number | undefined): string {
+  if (amount === undefined || amount === null) return 'N/A';
+  return new Intl.NumberFormat('es-GQ', {
+    style: 'currency',
+    currency: 'XAF',
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(dateString: string | undefined): string {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleDateString('es-GQ', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+// =============================================================================
+// COMPONENT
+// =============================================================================
+
+export function PaymentDetailPanel({
+  payment,
+  currentIndex,
+  totalItems,
+  onNavigate,
+  hasPrev = false,
+  hasNext = false,
+  onOpenFullDetail,
+  onValidate,
+  onReject,
+  onEscalate,
+  isValidating = false,
+  isRejecting = false,
+  isEscalating = false,
+}: PaymentDetailPanelProps) {
+  const t = useTranslations('treasury');
+
+  // Dialog states
+  const [comment, setComment] = useState('');
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
+  const [escalateReason, setEscalateReason] = useState('');
+  const [escalateLevel, setEscalateLevel] = useState('medium');
+
+  const isActionable = payment.workflowStatus === 'pending_agent_review';
+  const isAnyLoading = isValidating || isRejecting || isEscalating;
+
+  // Workflow name helper
+  const getWorkflowName = (code: string | undefined): string => {
+    if (!code) return t('validationPage.unspecified');
+    const normalizedKey = code.toUpperCase().replace(/[^A-Z_]/g, '');
+    if (t.has(`workflowNames.${normalizedKey}`)) {
+      return t(`workflowNames.${normalizedKey}`);
+    }
+    return code.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+  };
+
+  const formatHours = (hours: number | undefined): string => {
+    if (!hours) return 'N/A';
+    if (hours < 1) return `${Math.round(hours * 60)}m`;
+    if (hours < 24) return `${hours.toFixed(1)}h`;
+    return `${Math.round(hours / 24)}d`;
+  };
+
+  // Action handlers
+  const handleValidate = async () => {
+    if (onValidate) {
+      await onValidate(payment.id, comment || undefined);
+      setComment('');
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectReason.trim() || !onReject) return;
+    await onReject(payment.id, rejectReason);
+    setShowRejectDialog(false);
+    setRejectReason('');
+  };
+
+  const handleEscalate = async () => {
+    if (!escalateReason.trim() || !onEscalate) return;
+    await onEscalate(payment.id, escalateReason, escalateLevel);
+    setShowEscalateDialog(false);
+    setEscalateReason('');
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Navigation Header */}
+      <div className="flex items-center justify-between p-3 border-b bg-muted/30 shrink-0">
+        <div className="flex items-center gap-2">
+          {onNavigate && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => onNavigate('prev')}
+                disabled={!hasPrev}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => onNavigate('next')}
+                disabled={!hasNext}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {currentIndex !== undefined && totalItems !== undefined && (
+            <span className="text-xs text-muted-foreground">
+              {currentIndex} / {totalItems}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-mono font-medium">{payment.paymentReference}</span>
+          {onOpenFullDetail && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => onOpenFullDetail(payment.id)}
+              title={t('detail.openFullDetail')}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Service + Status Row */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">{t('detail.procedureType')}</p>
+            <p className="font-semibold truncate">{getWorkflowName(payment.workflowCode)}</p>
+            {payment.requestReference && (
+              <p className="text-xs font-mono text-muted-foreground">{payment.requestReference}</p>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <WorkflowStatusBadge status={payment.workflowStatus} />
+            <SLABadge
+              slaTargetDate={payment.slaTargetDate}
+              workflowStatus={payment.workflowStatus}
+            />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Payment Breakdown */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{t('detail.paymentDetails')}</span>
+          </div>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('detail.paymentMethod')}</span>
+              <PaymentMethodBadge method={payment.paymentMethod} />
+            </div>
+
+            {payment.baseAmount != null && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('detail.baseAmount')}</span>
+                <span>{formatCurrency(payment.baseAmount)}</span>
+              </div>
+            )}
+
+            {payment.calculationDetails?.supplements && payment.calculationDetails.supplements.length > 0 && (
+              <div className="border-l-2 border-muted pl-3 space-y-1">
+                {payment.calculationDetails.supplements.map((supp, idx) => (
+                  <div key={idx} className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      {supp.nameEs} x{supp.quantity}
+                    </span>
+                    <span>{formatCurrency(supp.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {payment.penalties != null && payment.penalties > 0 && (
+              <div className="flex justify-between text-orange-600">
+                <span>{t('detail.penalties')}</span>
+                <span>+{formatCurrency(payment.penalties)}</span>
+              </div>
+            )}
+
+            {payment.discounts != null && payment.discounts > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>{t('detail.discounts')}</span>
+                <span>-{formatCurrency(payment.discounts)}</span>
+              </div>
+            )}
+
+            <Separator />
+
+            <div className="flex justify-between text-base font-bold">
+              <span>{t('detail.total')}</span>
+              <span>{formatCurrency(payment.totalAmount)}</span>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Citizen */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{t('detail.applicant')}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">{t('detail.fullName')}</p>
+              <p className="font-medium">{payment.userName || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">{t('detail.email')}</p>
+              <p className="text-xs truncate">{payment.userEmail || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Timeline */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{t('detail.timeline')}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">{t('detail.submitted')}</p>
+              <p className="text-xs">{formatDate(payment.submittedAt || payment.createdAt)}</p>
+            </div>
+            {payment.slaTargetDate && (
+              <div>
+                <p className="text-xs text-muted-foreground">{t('detail.slaLimit')}</p>
+                <p className="text-xs">{formatDate(payment.slaTargetDate)}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-muted-foreground">{t('detail.waiting')}</p>
+              <p className="text-xs font-medium">{formatHours(payment.hoursWaiting)}</p>
+            </div>
+            {payment.locationName && (
+              <div>
+                <p className="text-xs text-muted-foreground">{t('validationPage.table.location')}</p>
+                <p className="text-xs">{payment.locationName}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Escalation info */}
+        {payment.escalationLevel && (
+          <>
+            <Separator />
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+              <p className="font-medium text-amber-800">{t('escalation.escalated')}</p>
+              <p className="text-amber-700 text-xs mt-1">{payment.escalationReason}</p>
+            </div>
+          </>
+        )}
+
+        {/* Already processed banner */}
+        {!isActionable && (
+          <div className="text-center py-4">
+            {payment.workflowStatus === 'completed' || payment.workflowStatus === 'approved_by_agent' ? (
+              <>
+                <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
+                <p className="font-medium text-green-700">{t('detail.paymentValidated')}</p>
+              </>
+            ) : payment.workflowStatus === 'rejected_by_agent' ? (
+              <>
+                <XCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
+                <p className="font-medium text-red-700">{t('detail.paymentRejected')}</p>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-2" />
+                <p className="font-medium">{payment.workflowStatus}</p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Actions Footer — fixed at bottom */}
+      {isActionable && (
+        <div className="p-3 border-t bg-muted/30 space-y-3 shrink-0">
+          {/* Comment input */}
+          <Textarea
+            placeholder={t('detail.commentPlaceholder')}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            disabled={isAnyLoading}
+            className="text-sm"
+          />
+
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={handleValidate}
+              disabled={isAnyLoading}
+            >
+              {isValidating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  {t('detail.validatePayment')}
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="flex-1"
+              onClick={() => setShowRejectDialog(true)}
+              disabled={isAnyLoading}
+            >
+              {isRejecting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-1" />
+                  {t('detail.rejectPayment')}
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              onClick={() => setShowEscalateDialog(true)}
+              disabled={isAnyLoading}
+            >
+              <AlertTriangle className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Dialog */}
+      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-red-500" />
+              {t('detail.confirmRejection')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>{t('detail.confirmRejectionDescription', { reference: payment.paymentReference })}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="panelRejectReason">{t('detail.rejectionReason')}</Label>
+                  <Textarea
+                    id="panelRejectReason"
+                    placeholder={t('detail.rejectionReasonPlaceholder')}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    rows={3}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRejecting}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReject}
+              disabled={isRejecting || !rejectReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isRejecting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {t('detail.confirmRejectionButton')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Escalate Dialog */}
+      <AlertDialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {t('escalation.dialogTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>{t('escalation.dialogDescription')}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="panelEscalateLevel">{t('escalation.level')}</Label>
+                  <Select value={escalateLevel} onValueChange={setEscalateLevel}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">{t('escalation.levels.low')}</SelectItem>
+                      <SelectItem value="medium">{t('escalation.levels.medium')}</SelectItem>
+                      <SelectItem value="high">{t('escalation.levels.high')}</SelectItem>
+                      <SelectItem value="critical">{t('escalation.levels.critical')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="panelEscalateReason">{t('escalation.reason')}</Label>
+                  <Textarea
+                    id="panelEscalateReason"
+                    placeholder={t('escalation.reasonPlaceholder')}
+                    value={escalateReason}
+                    onChange={(e) => setEscalateReason(e.target.value)}
+                    rows={3}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isEscalating}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEscalate}
+              disabled={isEscalating || escalateReason.trim().length < 10}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isEscalating ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {t('escalation.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

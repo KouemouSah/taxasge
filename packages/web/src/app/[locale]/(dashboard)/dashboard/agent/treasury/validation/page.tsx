@@ -1,33 +1,24 @@
 /**
- * Treasury Validation Page
- * Lists pending payments requiring manual validation (cash/check)
- * Features:
- * - Multi-select with batch actions (validate/reject)
- * - Pagination with navigation buttons
- * - Back to dashboard navigation
- * @version 4.0.0 - Added batch actions and pagination
+ * Treasury Validation Page — Split View
+ * Left panel: compact payment list with filters + batch actions
+ * Right panel: payment detail + inline actions
+ * Mobile: list only, click navigates to [paymentId] detail page
+ *
+ * @version 5.0.0 - Split view layout
  */
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
@@ -54,22 +45,140 @@ import {
   AlertTriangle,
   Clock,
   RefreshCw,
-  ExternalLink,
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
   Package,
+  CreditCard,
 } from 'lucide-react';
 import { usePendingPayments, usePaymentActions, useTreasuryLocations } from '@/modules/treasury/hooks';
 import {
   PaymentMethodBadge,
   WorkflowStatusBadge,
   SLABadge,
+  PaymentDetailPanel,
 } from '@/modules/treasury/components';
 import type { PendingPayment } from '@/modules/treasury/types';
 import { calculateSLAStatus } from '@/modules/treasury/types';
 
 const PAGE_SIZE = 20;
+
+// =============================================================================
+// COMPACT LIST ITEM
+// =============================================================================
+
+function PaymentListItem({
+  payment,
+  isSelected,
+  isChecked,
+  showCheckbox,
+  onClick,
+  onCheck,
+  getWorkflowName,
+}: {
+  payment: PendingPayment;
+  isSelected: boolean;
+  isChecked: boolean;
+  showCheckbox: boolean;
+  onClick: () => void;
+  onCheck: () => void;
+  getWorkflowName: (code: string | undefined) => string;
+}) {
+  const isLongWait = (payment.hoursWaiting ?? 0) > 8;
+  const formatAmount = (amount: number) =>
+    new Intl.NumberFormat('es-GQ', { style: 'decimal', minimumFractionDigits: 0 }).format(amount);
+
+  const formatWaiting = (hours: number | undefined): string => {
+    if (!hours) return '';
+    if (hours < 1) return `${Math.round(hours * 60)}m`;
+    if (hours < 24) return `${Math.round(hours)}h`;
+    return `${Math.round(hours / 24)}d`;
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
+      className={`p-3 border-b cursor-pointer transition-colors ${
+        isSelected
+          ? 'bg-accent border-l-4 border-l-primary'
+          : isLongWait
+          ? 'bg-yellow-50/50 hover:bg-yellow-50'
+          : 'hover:bg-accent/50'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        {/* Checkbox */}
+        {showCheckbox && payment.workflowStatus === 'pending_agent_review' && (
+          <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={onCheck}
+              className="h-4 w-4"
+            />
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Row 1: Reference + Amount */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-sm font-mono font-medium truncate">
+                {payment.paymentReference}
+              </span>
+              {payment.batchReference && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 shrink-0 border-blue-300 text-blue-700 bg-blue-50">
+                  <Package className="h-2.5 w-2.5 mr-0.5" />
+                  {payment.batchReference}
+                </Badge>
+              )}
+            </div>
+            <span className="text-sm font-bold whitespace-nowrap">
+              {formatAmount(payment.totalAmount)} XAF
+            </span>
+          </div>
+
+          {/* Row 2: Workflow + request ref */}
+          <div className="flex items-center justify-between mt-1">
+            <span className="text-xs text-muted-foreground truncate">
+              {getWorkflowName(payment.workflowCode)}
+            </span>
+            {payment.userName && (
+              <span className="text-xs text-muted-foreground truncate ml-2">
+                {payment.userName}
+              </span>
+            )}
+          </div>
+
+          {/* Row 3: Badges */}
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <PaymentMethodBadge method={payment.paymentMethod} />
+            <WorkflowStatusBadge status={payment.workflowStatus} />
+            <SLABadge
+              slaTargetDate={payment.slaTargetDate}
+              workflowStatus={payment.workflowStatus}
+            />
+            {payment.hoursWaiting != null && payment.hoursWaiting > 0 && (
+              <span className={`text-[10px] flex items-center gap-0.5 ${
+                isLongWait ? 'text-red-600' : 'text-muted-foreground'
+              }`}>
+                <Clock className="h-2.5 w-2.5" />
+                {formatWaiting(payment.hoursWaiting)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// MAIN PAGE COMPONENT
+// =============================================================================
 
 export default function TreasuryValidationPage() {
   const t = useTranslations('treasury');
@@ -77,21 +186,20 @@ export default function TreasuryValidationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Workflow name helper using i18n
-  const getWorkflowName = (code: string | undefined): string => {
+  // Workflow name helper
+  const getWorkflowName = useCallback((code: string | undefined): string => {
     if (!code) return t('validationPage.unspecified');
-    // Try to find a matching workflow name key by normalizing the code
     const normalizedKey = code.toUpperCase().replace(/[^A-Z_]/g, '');
     if (t.has(`workflowNames.${normalizedKey}`)) {
       return t(`workflowNames.${normalizedKey}`);
     }
-    return code.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
+    return code.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+  }, [t]);
 
   // Pagination state
   const [page, setPage] = useState(1);
 
-  // Initialize filters from URL params
+  // Filters from URL
   const [statusFilter, setStatusFilter] = useState<string>(
     searchParams.get('status') || 'pending_agent_review'
   );
@@ -102,11 +210,14 @@ export default function TreasuryValidationPage() {
   const [slaFilter, setSlaFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('all');
 
-  // Treasury locations for filter dropdown
+  // Treasury locations
   const { data: locations } = useTreasuryLocations();
 
-  // Selection state
+  // Selection state (batch actions)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Split view: selected payment for right panel
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
 
   // Batch action dialogs
   const [showBatchValidateDialog, setShowBatchValidateDialog] = useState(false);
@@ -114,19 +225,20 @@ export default function TreasuryValidationPage() {
   const [batchComment, setBatchComment] = useState('');
   const [batchRejectReason, setBatchRejectReason] = useState('');
 
-  // Escalation dialog
+  // Escalation dialog (for batch escalate from list)
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
   const [escalatePaymentId, setEscalatePaymentId] = useState<string | null>(null);
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateLevel, setEscalateLevel] = useState<string>('medium');
 
-  // Reset selection when filters change
+  // Reset selection on filter change
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(1);
+    setSelectedPaymentId(null);
   }, [statusFilter, methodFilter]);
 
-  // Data fetching with pagination
+  // Data fetching
   const { data: paymentsData, isLoading, error, refetch } = usePendingPayments({
     status: statusFilter !== 'all' ? statusFilter : undefined,
     method: methodFilter !== 'all' ? methodFilter : undefined,
@@ -138,32 +250,31 @@ export default function TreasuryValidationPage() {
   // Actions
   const {
     validatePayment,
+    rejectPayment,
     escalatePayment,
     validateBatch,
     rejectBatch,
-    validateBatchPayments,
     isValidating,
+    isRejecting,
     isEscalating,
     isBatchProcessing,
   } = usePaymentActions();
 
-  // Filter payments by search term and SLA status (client-side)
+  // Client-side filters (search + SLA)
   const filteredPayments = useMemo(() => {
     const payments = paymentsData?.payments || [];
     let filtered = payments;
 
-    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter((p: PendingPayment) =>
         p.paymentReference.toLowerCase().includes(term) ||
         p.requestReference?.toLowerCase().includes(term) ||
         p.workflowCode?.toLowerCase().includes(term) ||
-        getWorkflowName(p.workflowCode).toLowerCase().includes(term)
+        p.userName?.toLowerCase().includes(term)
       );
     }
 
-    // SLA filter
     if (slaFilter !== 'all') {
       filtered = filtered.filter((p: PendingPayment) => {
         const slaStatus = calculateSLAStatus(p.slaTargetDate, p.workflowStatus);
@@ -174,18 +285,41 @@ export default function TreasuryValidationPage() {
     return filtered;
   }, [paymentsData?.payments, searchTerm, slaFilter]);
 
-  // Pagination info
+  // Pagination
   const totalPages = Math.ceil((paymentsData?.total || 0) / PAGE_SIZE);
-  const hasNextPage = page < totalPages;
-  const hasPrevPage = page > 1;
 
-  // Selection helpers
+  // Selected payment object
+  const selectedPayment = useMemo(() => {
+    if (!selectedPaymentId) return null;
+    return filteredPayments.find((p) => p.id === selectedPaymentId) || null;
+  }, [filteredPayments, selectedPaymentId]);
+
+  // Auto-select first item if nothing selected and data loads
+  useEffect(() => {
+    if (!selectedPaymentId && filteredPayments.length > 0) {
+      setSelectedPaymentId(filteredPayments[0].id);
+    }
+  }, [filteredPayments, selectedPaymentId]);
+
+  // Navigation for detail panel
+  const selectedIndex = useMemo(() => {
+    if (!selectedPaymentId) return -1;
+    return filteredPayments.findIndex((p) => p.id === selectedPaymentId);
+  }, [filteredPayments, selectedPaymentId]);
+
+  const handleDetailNavigate = useCallback((direction: 'prev' | 'next') => {
+    const newIndex = direction === 'prev' ? selectedIndex - 1 : selectedIndex + 1;
+    if (newIndex >= 0 && newIndex < filteredPayments.length) {
+      setSelectedPaymentId(filteredPayments[newIndex].id);
+    }
+  }, [selectedIndex, filteredPayments]);
+
+  // Selection helpers (for batch actions)
   const pendingPayments = filteredPayments.filter(
     (p) => p.workflowStatus === 'pending_agent_review'
   );
   const allPendingSelected = pendingPayments.length > 0 &&
     pendingPayments.every((p) => selectedIds.has(p.id));
-  const somePendingSelected = pendingPayments.some((p) => selectedIds.has(p.id));
 
   const toggleSelectAll = () => {
     if (allPendingSelected) {
@@ -205,25 +339,10 @@ export default function TreasuryValidationPage() {
     setSelectedIds(newSelected);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-GQ', {
-      style: 'currency',
-      currency: 'XAF',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('es-GQ', { style: 'currency', currency: 'XAF', minimumFractionDigits: 0 }).format(amount);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-GQ', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  // Navigate to payment detail
+  // Navigate to full detail page (mobile + external link)
   const openPaymentDetail = (paymentId: string) => {
     const params = new URLSearchParams();
     params.set('status', statusFilter);
@@ -231,12 +350,11 @@ export default function TreasuryValidationPage() {
     router.push(`/${locale}/dashboard/agent/treasury/validation/${paymentId}?${params.toString()}`);
   };
 
-  // Navigate back to dashboard
   const goToDashboard = () => {
     router.push(`/${locale}/dashboard/agent/treasury`);
   };
 
-  // Batch actions
+  // --- Batch action handlers ---
   const handleBatchValidate = async () => {
     const ids = Array.from(selectedIds);
     await validateBatch.mutateAsync({ paymentIds: ids, comment: batchComment || undefined });
@@ -254,26 +372,6 @@ export default function TreasuryValidationPage() {
     setSelectedIds(new Set());
   };
 
-  // Single payment actions
-  // Validation: Direct action without dialog (fast workflow)
-  const handleSingleValidate = async (paymentId: string) => {
-    await validatePayment.mutateAsync({ paymentId });
-  };
-
-  // Rejection: Opens dialog because reason is required
-  const handleSingleReject = (paymentId: string) => {
-    setSelectedIds(new Set([paymentId]));
-    setShowBatchRejectDialog(true);
-  };
-
-  // Escalation: Opens dialog
-  const handleSingleEscalate = (paymentId: string) => {
-    setEscalatePaymentId(paymentId);
-    setEscalateReason('');
-    setEscalateLevel('medium');
-    setShowEscalateDialog(true);
-  };
-
   const handleEscalateConfirm = async () => {
     if (!escalatePaymentId || !escalateReason.trim()) return;
     await escalatePayment.mutateAsync({
@@ -286,459 +384,348 @@ export default function TreasuryValidationPage() {
     setEscalateReason('');
   };
 
-  // Batch-level validate (all payments in a batch at once)
-  const handleBatchLevelValidate = async (batchId: string) => {
-    await validateBatchPayments.mutateAsync({ batchId });
+  // --- Detail panel action handlers ---
+  const handleDetailValidate = async (paymentId: string, comment?: string) => {
+    await validatePayment.mutateAsync({ paymentId, request: comment ? { comment } : undefined });
+    // Auto-advance to next
+    const idx = filteredPayments.findIndex((p) => p.id === paymentId);
+    if (idx < filteredPayments.length - 1) {
+      setSelectedPaymentId(filteredPayments[idx + 1].id);
+    } else if (idx > 0) {
+      setSelectedPaymentId(filteredPayments[idx - 1].id);
+    }
   };
 
-  // Calculate total amount of selected payments
+  const handleDetailReject = async (paymentId: string, reason: string) => {
+    await rejectPayment.mutateAsync({ paymentId, request: { reason } });
+    const idx = filteredPayments.findIndex((p) => p.id === paymentId);
+    if (idx < filteredPayments.length - 1) {
+      setSelectedPaymentId(filteredPayments[idx + 1].id);
+    } else if (idx > 0) {
+      setSelectedPaymentId(filteredPayments[idx - 1].id);
+    }
+  };
+
+  const handleDetailEscalate = async (paymentId: string, reason: string, level: string) => {
+    await escalatePayment.mutateAsync({ paymentId, reason, level });
+    const idx = filteredPayments.findIndex((p) => p.id === paymentId);
+    if (idx < filteredPayments.length - 1) {
+      setSelectedPaymentId(filteredPayments[idx + 1].id);
+    } else if (idx > 0) {
+      setSelectedPaymentId(filteredPayments[idx - 1].id);
+    }
+  };
+
+  // Selected total for batch actions
   const selectedTotalAmount = useMemo(() => {
     return filteredPayments
       .filter((p) => selectedIds.has(p.id))
       .reduce((sum, p) => sum + p.totalAmount, 0);
   }, [filteredPayments, selectedIds]);
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleDetailNavigate('next');
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleDetailNavigate('prev');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleDetailNavigate]);
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-1 pb-3 shrink-0">
+        <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={goToDashboard}>
             <ArrowLeft className="mr-1 h-4 w-4" />
             {t('nav.dashboard')}
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{t('validation.title')}</h1>
-            <p className="text-muted-foreground mt-1">
-              {t('validation.description')}
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight">{t('validation.title')}</h1>
+            <p className="text-sm text-muted-foreground">{t('validation.description')}</p>
           </div>
         </div>
-        <Button onClick={() => refetch()} disabled={isLoading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          {t('validationPage.buttons.refresh')}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Batch action bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5">
+              <Badge variant="secondary" className="text-sm px-2 py-0">
+                {selectedIds.size}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {formatCurrency(selectedTotalAmount)}
+              </span>
+              <div className="h-4 w-px bg-border" />
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 h-7"
+                onClick={() => setShowBatchValidateDialog(true)}
+                disabled={isBatchProcessing}
+              >
+                <CheckCircle className="h-3 w-3 mr-1" />
+                {t('validationPage.buttons.validate')}
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7"
+                onClick={() => setShowBatchRejectDialog(true)}
+                disabled={isBatchProcessing}
+              >
+                <XCircle className="h-3 w-3 mr-1" />
+                {t('validationPage.buttons.reject')}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                {t('validationPage.buttons.cancel')}
+              </Button>
+            </div>
+          )}
+          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
-      {/* Error State */}
+      {/* Filters */}
+      <div className="grid gap-2 grid-cols-2 lg:grid-cols-6 px-1 pb-3 shrink-0">
+        <div className="relative col-span-2 lg:col-span-2">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={t('validationPage.filters.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder={t('validationPage.filters.workflowStatus')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('validationPage.filters.allStatuses')}</SelectItem>
+            <SelectItem value="pending_agent_review">{t('validationPage.filters.pendingReview')}</SelectItem>
+            <SelectItem value="escalated_supervisor">{t('validationPage.filters.escalated')}</SelectItem>
+            <SelectItem value="completed">{t('validationPage.filters.validated')}</SelectItem>
+            <SelectItem value="rejected_by_agent">{t('validationPage.filters.rejected')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={methodFilter} onValueChange={setMethodFilter}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder={t('validationPage.filters.paymentMethod')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('validationPage.filters.allMethods')}</SelectItem>
+            <SelectItem value="cash">{t('validationPage.filters.cash')}</SelectItem>
+            <SelectItem value="check">{t('validationPage.filters.check')}</SelectItem>
+            <SelectItem value="bank_transfer">{t('validationPage.filters.bankTransfer')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={slaFilter} onValueChange={setSlaFilter}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder={t('validationPage.filters.slaStatus')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('validationPage.filters.allSla')}</SelectItem>
+            <SelectItem value="on_time">{t('validationPage.filters.onTime')}</SelectItem>
+            <SelectItem value="warning">{t('validationPage.filters.warning')}</SelectItem>
+            <SelectItem value="critical">{t('validationPage.filters.critical')}</SelectItem>
+            <SelectItem value="breached">{t('validationPage.filters.breached')}</SelectItem>
+          </SelectContent>
+        </Select>
+        {locations && locations.length > 0 && (
+          <Select value={locationFilter} onValueChange={(v) => { setLocationFilter(v); setPage(1); }}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder={t('validationPage.filters.location')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('validationPage.filters.allLocations')}</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.location_name} ({loc.city})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Error */}
       {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="flex items-center gap-3 py-4">
+        <Card className="border-red-200 bg-red-50 mx-1 mb-3 shrink-0">
+          <CardContent className="flex items-center gap-3 py-3">
             <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-700">{t('validationPage.error.loadingPayments')}</p>
+            <p className="text-sm text-red-700">{t('validationPage.error.loadingPayments')}</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('validationPage.filters.title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t('validationPage.filters.searchPlaceholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+      {/* ================================================================= */}
+      {/* SPLIT VIEW: LEFT (list) + RIGHT (detail)                         */}
+      {/* ================================================================= */}
+      <div className="flex gap-3 flex-1 min-h-0 px-1 pb-1">
+        {/* LEFT PANEL — Payment List */}
+        <div className="w-full lg:w-[38%] flex flex-col min-h-0 border rounded-lg bg-card">
+          {/* List header */}
+          <div className="flex items-center justify-between p-2 border-b bg-muted/30 shrink-0">
+            <div className="flex items-center gap-2">
+              {statusFilter === 'pending_agent_review' && pendingPayments.length > 0 && (
+                <Checkbox
+                  checked={allPendingSelected}
+                  onCheckedChange={toggleSelectAll}
+                  className="h-4 w-4"
+                />
+              )}
+              <span className="text-sm font-medium">
+                {paymentsData?.total ?? 0} {t('validationPage.tableTitle.pending')}
+              </span>
             </div>
-
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('validationPage.filters.workflowStatus')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('validationPage.filters.allStatuses')}</SelectItem>
-                <SelectItem value="pending_agent_review">{t('validationPage.filters.pendingReview')}</SelectItem>
-                <SelectItem value="escalated_supervisor">{t('validationPage.filters.escalated')}</SelectItem>
-                <SelectItem value="completed">{t('validationPage.filters.validated')}</SelectItem>
-                <SelectItem value="rejected_by_agent">{t('validationPage.filters.rejected')}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Method Filter */}
-            <Select value={methodFilter} onValueChange={setMethodFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('validationPage.filters.paymentMethod')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('validationPage.filters.allMethods')}</SelectItem>
-                <SelectItem value="cash">{t('validationPage.filters.cash')}</SelectItem>
-                <SelectItem value="check">{t('validationPage.filters.check')}</SelectItem>
-                <SelectItem value="bank_transfer">{t('validationPage.filters.bankTransfer')}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* SLA Filter */}
-            <Select value={slaFilter} onValueChange={setSlaFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('validationPage.filters.slaStatus')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('validationPage.filters.allSla')}</SelectItem>
-                <SelectItem value="on_time">{t('validationPage.filters.onTime')}</SelectItem>
-                <SelectItem value="warning">{t('validationPage.filters.warning')}</SelectItem>
-                <SelectItem value="critical">{t('validationPage.filters.critical')}</SelectItem>
-                <SelectItem value="breached">{t('validationPage.filters.breached')}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Location Filter */}
-            {locations && locations.length > 0 && (
-              <Select value={locationFilter} onValueChange={(v) => { setLocationFilter(v); setPage(1); }}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('validationPage.filters.location')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('validationPage.filters.allLocations')}</SelectItem>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.location_name} ({loc.city})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {totalPages > 1 && (
+              <span className="text-xs text-muted-foreground">
+                {page}/{totalPages}
+              </span>
             )}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Payments Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              {statusFilter === 'pending_agent_review' ? t('validationPage.tableTitle.pending') :
-               statusFilter === 'completed' ? t('validationPage.tableTitle.completed') :
-               statusFilter === 'rejected_by_agent' ? t('validationPage.tableTitle.rejected') : t('validationPage.tableTitle.all')}
-              {paymentsData?.total !== undefined && (
-                <Badge variant="secondary" className="ml-2">
-                  {paymentsData.total}
-                </Badge>
-              )}
-            </CardTitle>
-
-            {/* Selection Actions Bar - shows when payments are selected */}
-            {selectedIds.size > 0 ? (
-              <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-sm px-2 py-0.5">
-                    {selectedIds.size}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {t('validationPage.selection.selected')} • {formatCurrency(selectedTotalAmount)}
-                  </span>
-                </div>
-                <div className="h-4 w-px bg-border" />
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 h-7"
-                    onClick={() => setShowBatchValidateDialog(true)}
-                    disabled={isBatchProcessing}
-                  >
-                    {isBatchProcessing ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                    )}
-                    {t('validationPage.buttons.validate')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-7"
-                    onClick={() => setShowBatchRejectDialog(true)}
-                    disabled={isBatchProcessing}
-                  >
-                    {isBatchProcessing ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <XCircle className="h-3 w-3 mr-1" />
-                    )}
-                    {t('validationPage.buttons.reject')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7"
-                    onClick={() => setSelectedIds(new Set())}
-                    disabled={isBatchProcessing}
-                  >
-                    {t('validationPage.buttons.cancel')}
-                  </Button>
-                </div>
+          {/* Scrollable list */}
+          <div className="flex-1 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredPayments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                <CheckCircle className="h-10 w-10 text-green-500 mb-3" />
+                <p className="text-sm font-semibold">
+                  {statusFilter === 'pending_agent_review'
+                    ? t('validationPage.empty.noPending')
+                    : t('validationPage.empty.noResults')}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {statusFilter === 'pending_agent_review'
+                    ? t('validationPage.empty.noPendingDescription')
+                    : t('validationPage.empty.noResultsDescription')}
+                </p>
               </div>
             ) : (
-              /* Pagination info - shows when nothing selected */
-              totalPages > 1 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  {t('validationPage.pagination.page', { current: page, total: totalPages })}
-                </div>
-              )
+              filteredPayments.map((payment) => (
+                <PaymentListItem
+                  key={payment.id}
+                  payment={payment}
+                  isSelected={payment.id === selectedPaymentId}
+                  isChecked={selectedIds.has(payment.id)}
+                  showCheckbox={statusFilter === 'pending_agent_review'}
+                  onClick={() => {
+                    setSelectedPaymentId(payment.id);
+                    // On mobile, navigate to detail page
+                    if (window.innerWidth < 1024) {
+                      openPaymentDetail(payment.id);
+                    }
+                  }}
+                  onCheck={() => toggleSelect(payment.id)}
+                  getWorkflowName={getWorkflowName}
+                />
+              ))
             )}
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredPayments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold">
-                {statusFilter === 'pending_agent_review' ? t('validationPage.empty.noPending') : t('validationPage.empty.noResults')}
-              </h3>
-              <p className="text-muted-foreground">
-                {statusFilter === 'pending_agent_review'
-                  ? t('validationPage.empty.noPendingDescription')
-                  : t('validationPage.empty.noResultsDescription')}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {/* Checkbox column - only show for pending payments */}
-                      {statusFilter === 'pending_agent_review' && (
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={allPendingSelected}
-                            onCheckedChange={toggleSelectAll}
-                            aria-label={t('validationPage.table.selectAll')}
-                            className={somePendingSelected && !allPendingSelected ? 'opacity-50' : ''}
-                          />
-                        </TableHead>
-                      )}
-                      <TableHead>{t('validationPage.table.reference')}</TableHead>
-                      <TableHead>{t('validationPage.table.service')}</TableHead>
-                      <TableHead>{t('validationPage.table.location')}</TableHead>
-                      <TableHead>{t('validationPage.table.amount')}</TableHead>
-                      <TableHead>{t('validationPage.table.method')}</TableHead>
-                      <TableHead>{t('validationPage.table.agent')}</TableHead>
-                      <TableHead>{t('validationPage.table.status')}</TableHead>
-                      <TableHead>{t('validationPage.table.sla')}</TableHead>
-                      <TableHead>{t('validationPage.table.date')}</TableHead>
-                      <TableHead className="text-right">{t('validationPage.table.action')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPayments.map((payment: PendingPayment) => (
-                      <TableRow
-                        key={payment.id}
-                        className={`cursor-pointer hover:bg-muted/50 ${
-                          selectedIds.has(payment.id) ? 'bg-primary/5' : ''
-                        }`}
-                        onClick={() => openPaymentDetail(payment.id)}
-                      >
-                        {/* Checkbox */}
-                        {statusFilter === 'pending_agent_review' && (
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            {payment.workflowStatus === 'pending_agent_review' && (
-                              <Checkbox
-                                checked={selectedIds.has(payment.id)}
-                                onCheckedChange={() => toggleSelect(payment.id)}
-                                aria-label={t('validationPage.table.select', { reference: payment.paymentReference })}
-                              />
-                            )}
-                          </TableCell>
-                        )}
-                        <TableCell className="font-mono text-sm">
-                          <div className="flex items-center gap-1.5">
-                            {payment.paymentReference}
-                            {payment.batchReference && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-normal border-blue-300 text-blue-700 bg-blue-50">
-                                <Package className="h-3 w-3 mr-0.5" />
-                                {payment.batchReference}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-sm">
-                              {getWorkflowName(payment.workflowCode)}
-                            </p>
-                            {payment.requestReference && (
-                              <p className="text-xs text-muted-foreground font-mono">
-                                {payment.requestReference}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {payment.locationName || '-'}
-                        </TableCell>
-                        <TableCell className="font-bold">
-                          {formatCurrency(payment.totalAmount)}
-                        </TableCell>
-                        <TableCell>
-                          <PaymentMethodBadge method={payment.paymentMethod} />
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {payment.assignedAgentName || (
-                            <span className="text-muted-foreground italic">{t('validationPage.unassigned')}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <WorkflowStatusBadge status={payment.workflowStatus} />
-                        </TableCell>
-                        <TableCell>
-                          <SLABadge
-                            slaTargetDate={payment.slaTargetDate}
-                            workflowStatus={payment.workflowStatus}
-                          />
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(payment.submittedAt || payment.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {payment.workflowStatus === 'pending_agent_review' && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSingleValidate(payment.id);
-                                  }}
-                                  disabled={isValidating || isBatchProcessing || isEscalating}
-                                  title={t('validationPage.buttons.validate')}
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSingleReject(payment.id);
-                                  }}
-                                  disabled={isValidating || isBatchProcessing || isEscalating}
-                                  title={t('validationPage.buttons.reject')}
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSingleEscalate(payment.id);
-                                  }}
-                                  disabled={isValidating || isBatchProcessing || isEscalating}
-                                  title={t('escalation.escalate')}
-                                >
-                                  <AlertTriangle className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            {/* Batch-level validate button */}
-                            {payment.batchId && payment.workflowStatus === 'pending_agent_review' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleBatchLevelValidate(payment.batchId!);
-                                }}
-                                disabled={isValidating || isBatchProcessing}
-                                title={t('batch.validateAll')}
-                              >
-                                <Package className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openPaymentDetail(payment.id);
-                              }}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    {t('validationPage.pagination.showing', { from: ((page - 1) * PAGE_SIZE) + 1, to: Math.min(page * PAGE_SIZE, paymentsData?.total || 0), total: paymentsData?.total || 0 })}
-                  </div>
-                  <div className="flex items-center gap-2">
+          {/* Pagination footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between p-2 border-t shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
                     <Button
-                      variant="outline"
+                      key={pageNum}
+                      variant={pageNum === page ? 'default' : 'ghost'}
                       size="sm"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={!hasPrevPage || isLoading}
+                      className="w-7 h-7 p-0 text-xs"
+                      onClick={() => setPage(pageNum)}
+                      disabled={isLoading}
                     >
-                      <ChevronLeft className="h-4 w-4 mr-1" />
-                      {t('validationPage.pagination.previous')}
+                      {pageNum}
                     </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum: number;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (page <= 3) {
-                          pageNum = i + 1;
-                        } else if (page >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = page - 2 + i;
-                        }
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={pageNum === page ? 'default' : 'outline'}
-                            size="sm"
-                            className="w-8 h-8 p-0"
-                            onClick={() => setPage(pageNum)}
-                            disabled={isLoading}
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={!hasNextPage || isLoading}
-                    >
-                      {t('validationPage.pagination.next')}
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
+                  );
+                })}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || isLoading}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* RIGHT PANEL — Payment Detail (hidden on mobile) */}
+        <div className="hidden lg:flex lg:w-[62%] border rounded-lg bg-card overflow-hidden">
+          {selectedPayment ? (
+            <PaymentDetailPanel
+              payment={selectedPayment}
+              currentIndex={selectedIndex + 1}
+              totalItems={filteredPayments.length}
+              onNavigate={handleDetailNavigate}
+              hasPrev={selectedIndex > 0}
+              hasNext={selectedIndex < filteredPayments.length - 1}
+              onOpenFullDetail={openPaymentDetail}
+              onValidate={handleDetailValidate}
+              onReject={handleDetailReject}
+              onEscalate={handleDetailEscalate}
+              isValidating={isValidating}
+              isRejecting={isRejecting}
+              isEscalating={isEscalating}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
+              <CreditCard className="h-12 w-12 mb-3 opacity-30" />
+              <p className="text-sm">{t('validationPage.selectPayment')}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ================================================================= */}
+      {/* BATCH DIALOGS (kept from original)                               */}
+      {/* ================================================================= */}
 
       {/* Batch Validate Dialog */}
       <AlertDialog open={showBatchValidateDialog} onOpenChange={setShowBatchValidateDialog}>
@@ -750,12 +737,8 @@ export default function TreasuryValidationPage() {
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4">
-                <p>
-                  {t('validationPage.dialogs.validateDescription', { count: selectedIds.size, amount: formatCurrency(selectedTotalAmount) })}
-                </p>
-                <p className="text-sm">
-                  {t('validationPage.dialogs.validateInfo')}
-                </p>
+                <p>{t('validationPage.dialogs.validateDescription', { count: selectedIds.size, amount: formatCurrency(selectedTotalAmount) })}</p>
+                <p className="text-sm">{t('validationPage.dialogs.validateInfo')}</p>
                 <div className="space-y-2">
                   <Label htmlFor="batchComment">{t('validationPage.dialogs.validateComment')}</Label>
                   <Textarea
@@ -777,14 +760,8 @@ export default function TreasuryValidationPage() {
               disabled={isBatchProcessing}
               className="bg-green-600 hover:bg-green-700"
             >
-              {isBatchProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('validationPage.selection.processing')}
-                </>
-              ) : (
-                t('validationPage.dialogs.validateConfirm', { count: selectedIds.size })
-              )}
+              {isBatchProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t('validationPage.dialogs.validateConfirm', { count: selectedIds.size })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -800,9 +777,7 @@ export default function TreasuryValidationPage() {
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4">
-                <p>
-                  {t('validationPage.dialogs.rejectDescription', { count: selectedIds.size })}
-                </p>
+                <p>{t('validationPage.dialogs.rejectDescription', { count: selectedIds.size })}</p>
                 <div className="space-y-2">
                   <Label htmlFor="batchRejectReason">{t('validationPage.dialogs.rejectReason')}</Label>
                   <Textarea
@@ -824,14 +799,8 @@ export default function TreasuryValidationPage() {
               disabled={isBatchProcessing || !batchRejectReason.trim()}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isBatchProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('validationPage.selection.processing')}
-                </>
-              ) : (
-                t('validationPage.dialogs.rejectConfirm', { count: selectedIds.size })
-              )}
+              {isBatchProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t('validationPage.dialogs.rejectConfirm', { count: selectedIds.size })}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -851,9 +820,7 @@ export default function TreasuryValidationPage() {
                 <div className="space-y-2">
                   <Label htmlFor="escalateLevel">{t('escalation.level')}</Label>
                   <Select value={escalateLevel} onValueChange={setEscalateLevel}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">{t('escalation.levels.low')}</SelectItem>
                       <SelectItem value="medium">{t('escalation.levels.medium')}</SelectItem>
@@ -883,19 +850,12 @@ export default function TreasuryValidationPage() {
               disabled={isEscalating || escalateReason.trim().length < 10}
               className="bg-amber-600 hover:bg-amber-700"
             >
-              {isEscalating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('validationPage.selection.processing')}
-                </>
-              ) : (
-                t('escalation.confirm')
-              )}
+              {isEscalating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t('escalation.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }

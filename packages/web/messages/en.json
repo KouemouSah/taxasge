@@ -5284,6 +5284,7 @@
       },
       "unassigned": "Unassigned",
       "unspecified": "Unspecified",
+      "selectPayment": "Select a payment from the list",
       "dialogs": {
         "validateTitle": "Validate {count} Payment(s)",
         "validateDescription": "You are about to validate {count} payment(s) for a total of {amount}.",
@@ -5302,6 +5303,7 @@
       "title": "Payment Detail",
       "backToList": "List",
       "backToListFull": "Back to list",
+      "openFullDetail": "Open full detail",
       "paymentNotFound": "Payment not found",
       "paymentNotFoundDescription": "The requested payment does not exist or you do not have permissions to view it.",
       "previous": "Previous",
