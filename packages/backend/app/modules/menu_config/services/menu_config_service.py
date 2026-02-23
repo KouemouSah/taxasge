@@ -187,7 +187,16 @@ class MenuConfigService:
             cached = await cache.get(cache_key)
             if cached:
                 logger.debug(f"Cache hit for agent menu config: {agent_profile_id}")
-                return cached
+                # Reconstruct Pydantic model from cached dict (Redis returns dict, memory may return model)
+                if isinstance(cached, dict):
+                    try:
+                        return AgentMenuConfigResponse.model_validate(cached)
+                    except Exception as e:
+                        logger.warning(f"Failed to validate cached menu config, rebuilding: {e}")
+                elif isinstance(cached, AgentMenuConfigResponse):
+                    return cached
+                else:
+                    logger.warning(f"Invalid cache type for menu config: {type(cached)}")
 
         # 1. Fetch agent profile with joins
         agent_data = await self._fetch_agent_with_details(agent_profile_id, db_connection)
@@ -282,8 +291,9 @@ class MenuConfigService:
         )
 
         # 8. Cache the result (5 min TTL)
+        # Serialize to JSON-compatible dict so Redis json.dumps doesn't mangle Pydantic models
         if use_cache:
-            await cache.set(cache_key, result, ttl=300)
+            await cache.set(cache_key, result.model_dump(mode='json'), ttl=300)
             logger.debug(f"Cached menu config for agent: {agent_profile_id}")
 
         return result
