@@ -3555,7 +3555,7 @@ async def get_payment_details(
         penalties=float(row["penalties"]) if row["penalties"] else None,
         discounts=float(row["discounts"]) if row["discounts"] else None,
         currency=row["currency"],
-        calculation_details=row["calculation_details"],
+        calculation_details=json.loads(row["calculation_details"]) if isinstance(row["calculation_details"], str) else row["calculation_details"],
         workflow_status=row["workflow_status"],
         sla_target_date=row["sla_target_date"].isoformat() if row["sla_target_date"] else None,
         created_at=row["created_at"].isoformat(),
