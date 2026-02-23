@@ -149,6 +149,9 @@ export interface PendingPaymentsParams {
   agentProfileId?: string;
   // Filter by entity_location (site)
   entityLocationId?: string;
+  // Date range filters (YYYY-MM-DD)
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 // =============================================================================

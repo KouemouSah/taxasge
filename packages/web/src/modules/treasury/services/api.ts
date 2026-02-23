@@ -164,6 +164,13 @@ export const treasuryApi = {
     if (params.entityLocationId) {
       queryParams.entity_location_id = params.entityLocationId;
     }
+    // Date range filters
+    if (params.dateFrom) {
+      queryParams.date_from = params.dateFrom;
+    }
+    if (params.dateTo) {
+      queryParams.date_to = params.dateTo;
+    }
 
     const response = await fetchClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/pending`,

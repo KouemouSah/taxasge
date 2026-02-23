@@ -252,7 +252,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             # 4. Get service request data for receipt (workflow_code, entity_code, solicitud_type, location)
             service_query = """
                 SELECT sr.id, sr.reference, sr.workflow_code, sr.solicitud_type, sr.entity_code,
-                       el.location_name, el.city, el.address as location_address
+                       el.location_name, el.city, el.location_address
                 FROM service_requests sr
                 LEFT JOIN entity_locations el ON el.id = sr.entity_location_id
                 WHERE sr.id = $1

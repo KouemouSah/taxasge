@@ -3142,10 +3142,12 @@ async def get_pending_payments(
     payment_method: Optional[str] = Query(None, description="Filter by payment method"),
     workflow_status: Optional[str] = Query(
         "pending_agent_review",
-        description="Filter by workflow status"
+        description="Filter by workflow status. Use 'all' for all statuses, 'processed' for non-pending statuses."
     ),
     agent_profile_id: Optional[str] = Query(None, description="(Supervisor only) Filter by assigned agent_profile_id"),
     entity_location_id: Optional[str] = Query(None, description="Filter by entity_location (site)"),
+    date_from: Optional[str] = Query(None, description="Filter payments from this date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Filter payments up to this date (YYYY-MM-DD)"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
@@ -3191,8 +3193,13 @@ async def get_pending_payments(
         param_idx = 1
 
         # workflow_status=all → no status filter (history mode)
+        # workflow_status=processed → only resolved statuses (transactions history)
         effective_status = workflow_status or "pending_agent_review"
-        if effective_status != "all":
+        if effective_status == "processed":
+            where_clauses.append(
+                "sp.workflow_status IN ('approved_by_agent', 'rejected_by_agent', 'completed', 'cancelled_by_agent', 'cancelled_by_user', 'expired')"
+            )
+        elif effective_status != "all":
             where_clauses.append(f"sp.workflow_status = ${param_idx}")
             params.append(effective_status)
             param_idx += 1
@@ -3201,10 +3208,20 @@ async def get_pending_payments(
             where_clauses.append(f"sp.payment_method = ${param_idx}")
             params.append(payment_method)
             param_idx += 1
-        elif effective_status != "all":
+        elif effective_status not in ("all", "processed"):
             # Default: only manual validation methods (for pending view)
-            # In history mode (all), show all payment methods
+            # In history/processed mode, show all payment methods
             where_clauses.append("sp.payment_method IN ('cash', 'check')")
+
+        # Date range filtering
+        if date_from:
+            where_clauses.append(f"sp.created_at >= ${param_idx}::date")
+            params.append(date_from)
+            param_idx += 1
+        if date_to:
+            where_clauses.append(f"sp.created_at < (${param_idx}::date + INTERVAL '1 day')")
+            params.append(date_to)
+            param_idx += 1
 
         # Agent-based filtering
         if is_supervisor:

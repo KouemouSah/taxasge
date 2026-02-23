@@ -5415,23 +5415,25 @@
       "export": "Export",
       "dateRange": "Date range",
       "searchPlaceholder": "Search by reference, citizen...",
+      "perPage": "per page",
+      "clearDates": "Clear dates",
       "stats": {
         "total": "Total transactions",
         "totalAmount": "Total amount",
-        "pending": "Pending",
         "approved": "Approved",
         "rejected": "Rejected"
       },
       "filters": {
         "status": "Status",
         "statusAll": "All statuses",
-        "pending": "Pending review",
+        "processed": "Processed",
         "approved": "Approved",
         "rejected": "Rejected",
         "completed": "Completed",
         "method": "Method",
         "methodAll": "All methods",
         "cash": "Cash",
+        "check": "Check",
         "mobile_money": "Mobile Money",
         "bank_transfer": "Bank transfer",
         "card": "Card"
@@ -5441,8 +5443,7 @@
         "citizen": "Citizen",
         "amount": "Amount",
         "method": "Method",
-        "paymentStatus": "Payment Status",
-        "workflowStatus": "Workflow Status",
+        "workflowStatus": "Status",
         "date": "Date"
       }
     },
