@@ -57,6 +57,7 @@ import {
   WorkflowStatusBadge,
   SLABadge,
   PaymentDetailPanel,
+  ReceiptSuccessDialog,
 } from '@/modules/treasury/components';
 import type { PendingPayment } from '@/modules/treasury/types';
 import { calculateSLAStatus } from '@/modules/treasury/types';
@@ -218,6 +219,10 @@ export default function TreasuryValidationPage() {
 
   // Split view: selected payment for right panel
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+
+  // Receipt dialog state
+  const [receiptData, setReceiptData] = useState<{ receiptNumber: string; receiptUrl: string } | null>(null);
+  const [receiptNextPaymentId, setReceiptNextPaymentId] = useState<string | null>(null);
 
   // Batch action dialogs
   const [showBatchValidateDialog, setShowBatchValidateDialog] = useState(false);
@@ -384,16 +389,26 @@ export default function TreasuryValidationPage() {
     setEscalateReason('');
   };
 
+  // Helper: compute next payment ID after an action
+  const getAdjacentPaymentId = (paymentId: string): string | null => {
+    const idx = filteredPayments.findIndex((p) => p.id === paymentId);
+    if (idx < filteredPayments.length - 1) return filteredPayments[idx + 1].id;
+    if (idx > 0) return filteredPayments[idx - 1].id;
+    return null;
+  };
+
   // --- Detail panel action handlers ---
   const handleDetailValidate = async (paymentId: string, comment?: string) => {
-    await validatePayment.mutateAsync({ paymentId, request: comment ? { comment } : undefined });
-    // Auto-advance to next
-    const idx = filteredPayments.findIndex((p) => p.id === paymentId);
-    if (idx < filteredPayments.length - 1) {
-      setSelectedPaymentId(filteredPayments[idx + 1].id);
-    } else if (idx > 0) {
-      setSelectedPaymentId(filteredPayments[idx - 1].id);
+    const result = await validatePayment.mutateAsync({ paymentId, request: comment ? { comment } : undefined });
+    const nextId = getAdjacentPaymentId(paymentId);
+    // Show receipt dialog if receipt was generated
+    if (result.receiptNumber && result.receiptUrl) {
+      setReceiptData({ receiptNumber: result.receiptNumber, receiptUrl: result.receiptUrl });
+      setReceiptNextPaymentId(nextId);
+      return;
     }
+    // Auto-advance to next
+    if (nextId) setSelectedPaymentId(nextId);
   };
 
   const handleDetailReject = async (paymentId: string, reason: string) => {
@@ -856,6 +871,22 @@ export default function TreasuryValidationPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Receipt Success Dialog */}
+      {receiptData && (
+        <ReceiptSuccessDialog
+          open={!!receiptData}
+          onClose={() => {
+            setReceiptData(null);
+            if (receiptNextPaymentId) {
+              setSelectedPaymentId(receiptNextPaymentId);
+              setReceiptNextPaymentId(null);
+            }
+          }}
+          receiptNumber={receiptData.receiptNumber}
+          receiptUrl={receiptData.receiptUrl}
+        />
+      )}
     </div>
   );
 }

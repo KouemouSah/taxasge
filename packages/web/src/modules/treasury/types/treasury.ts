@@ -184,6 +184,7 @@ export interface PaymentActionResponse {
   paymentId: string;
   newStatus?: PaymentWorkflowStatus;
   receiptNumber?: string;
+  receiptUrl?: string;
   messageEs?: string;
   error?: string;
 }

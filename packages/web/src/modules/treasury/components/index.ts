@@ -5,3 +5,5 @@ export { PaymentRejectionDialog } from './PaymentRejectionDialog';
 export { SLABadge, SLAIndicator } from './SLABadge';
 // Split view detail panel
 export { PaymentDetailPanel } from './PaymentDetailPanel';
+// Receipt success dialog
+export { ReceiptSuccessDialog } from './ReceiptSuccessDialog';

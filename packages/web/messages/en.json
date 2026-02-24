@@ -5363,6 +5363,14 @@
         "days": "{value} days"
       }
     },
+    "receipt": {
+      "successTitle": "Payment Validated - Receipt Generated",
+      "successDescription": "The payment has been validated successfully. The receipt has been generated and sent to the applicant by email.",
+      "receiptNumber": "Receipt Number",
+      "download": "Download PDF",
+      "print": "Print",
+      "continue": "Continue"
+    },
     "reconciliation": {
       "title": "Bank Reconciliation",
       "description": "Match bank transactions with system payments"

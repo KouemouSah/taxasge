@@ -50,6 +50,7 @@ import {
   PaymentMethodBadge,
   WorkflowStatusBadge,
   SLABadge,
+  ReceiptSuccessDialog,
 } from '@/modules/treasury/components';
 
 function formatCurrency(amount: number | undefined): string {
@@ -111,6 +112,9 @@ export default function PaymentDetailPage() {
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateLevel, setEscalateLevel] = useState('medium');
 
+  // Receipt dialog state
+  const [receiptData, setReceiptData] = useState<{ receiptNumber: string; receiptUrl: string } | null>(null);
+
   // Fetch current payment details
   const { data: payment, isLoading: isLoadingPayment, error: paymentError } = useQuery({
     queryKey: ['treasury-payment-detail', paymentId],
@@ -164,21 +168,30 @@ export default function PaymentDetailPage() {
     router.push(`/${locale}/dashboard/agent/treasury/validation?${navParams.toString()}`);
   };
 
+  // Navigate after validation (used by receipt dialog dismiss and direct navigation)
+  const navigateAfterValidation = () => {
+    if (navigation.nextId) {
+      navigateToPayment(navigation.nextId);
+    } else {
+      goBack();
+    }
+  };
+
   // Action handlers
   const handleValidate = async () => {
     try {
-      await validatePayment.mutateAsync({
+      const result = await validatePayment.mutateAsync({
         paymentId,
         request: comment ? { comment } : undefined,
       });
       setShowValidateConfirm(false);
       setComment('');
-      // Navigate to next payment or back to list
-      if (navigation.nextId) {
-        navigateToPayment(navigation.nextId);
-      } else {
-        goBack();
+      // Show receipt dialog if receipt was generated
+      if (result.receiptNumber && result.receiptUrl) {
+        setReceiptData({ receiptNumber: result.receiptNumber, receiptUrl: result.receiptUrl });
+        return;
       }
+      navigateAfterValidation();
     } catch (error) {
       // Error is handled by the hook
     }
@@ -669,6 +682,19 @@ export default function PaymentDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Receipt Success Dialog */}
+      {receiptData && (
+        <ReceiptSuccessDialog
+          open={!!receiptData}
+          onClose={() => {
+            setReceiptData(null);
+            navigateAfterValidation();
+          }}
+          receiptNumber={receiptData.receiptNumber}
+          receiptUrl={receiptData.receiptUrl}
+        />
+      )}
     </div>
   );
 }

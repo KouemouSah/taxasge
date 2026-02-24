@@ -3118,6 +3118,8 @@ class PaymentActionResponse(BaseModel):
     status: str
     message_es: Optional[str] = None
     error: Optional[str] = None
+    receipt_number: Optional[str] = None
+    receipt_url: Optional[str] = None
 
 
 @router.get(
@@ -3764,7 +3766,9 @@ async def validate_payment(
         success=True,
         payment_id=payment_id,
         status="approved",
-        message_es="Pago validado correctamente. Recibo generado."
+        message_es="Pago validado correctamente. Recibo generado.",
+        receipt_number=result.receipt_number,
+        receipt_url=result.receipt_url,
     )
 
 

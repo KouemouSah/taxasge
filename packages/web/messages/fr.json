@@ -5603,6 +5603,14 @@
         "days": "{value} jours"
       }
     },
+    "receipt": {
+      "successTitle": "Paiement Valide - Recu Genere",
+      "successDescription": "Le paiement a ete valide avec succes. Le recu a ete genere et envoye au demandeur par e-mail.",
+      "receiptNumber": "Numero de Recu",
+      "download": "Telecharger PDF",
+      "print": "Imprimer",
+      "continue": "Continuer"
+    },
     "reconciliation": {
       "title": "Reconciliation Bancaire",
       "description": "Associer les transactions bancaires aux paiements systeme"
