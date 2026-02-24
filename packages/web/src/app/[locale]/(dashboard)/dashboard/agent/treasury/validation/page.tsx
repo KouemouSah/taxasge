@@ -549,7 +549,7 @@ export default function TreasuryValidationPage() {
             <SelectItem value="breached">{t('validationPage.filters.breached')}</SelectItem>
           </SelectContent>
         </Select>
-        {locations && locations.length > 0 && (
+        {locations && locations.length > 1 && (
           <Select value={locationFilter} onValueChange={(v) => { setLocationFilter(v); setPage(1); }}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder={t('validationPage.filters.location')} />

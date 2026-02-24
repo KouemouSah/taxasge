@@ -103,6 +103,7 @@ export interface PendingPayment {
   // Joined data
   userName?: string;
   userEmail?: string;
+  beneficiaryName?: string;
   serviceName?: string;
   ministryName?: string;
   calculationDetails?: TariffBreakdown;

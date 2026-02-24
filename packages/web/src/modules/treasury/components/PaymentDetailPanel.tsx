@@ -35,7 +35,6 @@ import {
   AlertTriangle,
   Loader2,
   User,
-  Calendar,
   CreditCard,
   ArrowLeft,
   ArrowRight,
@@ -216,12 +215,11 @@ export function PaymentDetailPanel({
         </div>
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Content — optimized for zero-scroll decision-making */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {/* Service + Status Row */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">{t('detail.procedureType')}</p>
             <p className="font-semibold truncate">{getWorkflowName(payment.workflowCode)}</p>
             {payment.requestReference && (
               <p className="text-xs font-mono text-muted-foreground">{payment.requestReference}</p>
@@ -238,14 +236,15 @@ export function PaymentDetailPanel({
 
         <Separator />
 
-        {/* Payment Breakdown */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{t('detail.paymentDetails')}</span>
-          </div>
-
+        {/* Payment + Beneficiary — merged 2-column layout */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Left: Payment breakdown */}
           <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">{t('detail.paymentDetails')}</span>
+            </div>
+
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('detail.paymentMethod')}</span>
               <PaymentMethodBadge method={payment.paymentMethod} />
@@ -253,33 +252,33 @@ export function PaymentDetailPanel({
 
             {payment.baseAmount != null && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('detail.baseAmount')}</span>
-                <span>{formatCurrency(payment.baseAmount)}</span>
+                <span className="text-xs text-muted-foreground">{t('detail.baseAmount')}</span>
+                <span className="text-xs">{formatCurrency(payment.baseAmount)}</span>
               </div>
             )}
 
             {payment.calculationDetails?.supplements && payment.calculationDetails.supplements.length > 0 && (
-              <div className="border-l-2 border-muted pl-3 space-y-1">
+              <div className="border-l-2 border-muted pl-2 space-y-0.5">
                 {payment.calculationDetails.supplements.map((supp, idx) => (
                   <div key={idx} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">
+                    <span className="text-muted-foreground truncate mr-2">
                       {supp.nameEs} x{supp.quantity}
                     </span>
-                    <span>{formatCurrency(supp.subtotal)}</span>
+                    <span className="shrink-0">{formatCurrency(supp.subtotal)}</span>
                   </div>
                 ))}
               </div>
             )}
 
             {payment.penalties != null && payment.penalties > 0 && (
-              <div className="flex justify-between text-orange-600">
+              <div className="flex justify-between text-xs text-orange-600">
                 <span>{t('detail.penalties')}</span>
                 <span>+{formatCurrency(payment.penalties)}</span>
               </div>
             )}
 
             {payment.discounts != null && payment.discounts > 0 && (
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-xs text-green-600">
                 <span>{t('detail.discounts')}</span>
                 <span>-{formatCurrency(payment.discounts)}</span>
               </div>
@@ -287,94 +286,67 @@ export function PaymentDetailPanel({
 
             <Separator />
 
-            <div className="flex justify-between text-base font-bold">
+            <div className="flex justify-between font-bold">
               <span>{t('detail.total')}</span>
               <span>{formatCurrency(payment.totalAmount)}</span>
             </div>
           </div>
-        </div>
 
-        <Separator />
-
-        {/* Citizen */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{t('detail.applicant')}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.fullName')}</p>
-              <p className="font-medium">{payment.userName || 'N/A'}</p>
+          {/* Right: Beneficiary + Account */}
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">{t('detail.applicant')}</span>
             </div>
+
             <div>
-              <p className="text-xs text-muted-foreground">{t('detail.email')}</p>
+              <p className="text-xs text-muted-foreground">{t('detail.beneficiary')}</p>
+              <p className="font-medium text-sm">{payment.beneficiaryName || payment.userName || 'N/A'}</p>
+            </div>
+
+            <div>
+              <p className="text-xs text-muted-foreground">{t('detail.accountEmail')}</p>
               <p className="text-xs truncate">{payment.userEmail || 'N/A'}</p>
             </div>
-          </div>
-        </div>
 
-        <Separator />
-
-        {/* Timeline */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{t('detail.timeline')}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.submitted')}</p>
-              <p className="text-xs">{formatDate(payment.submittedAt || payment.createdAt)}</p>
-            </div>
-            {payment.slaTargetDate && (
+            {payment.beneficiaryName && payment.userName && payment.beneficiaryName !== payment.userName && (
               <div>
-                <p className="text-xs text-muted-foreground">{t('detail.slaLimit')}</p>
-                <p className="text-xs">{formatDate(payment.slaTargetDate)}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-xs text-muted-foreground">{t('detail.waiting')}</p>
-              <p className="text-xs font-medium">{formatHours(payment.hoursWaiting)}</p>
-            </div>
-            {payment.locationName && (
-              <div>
-                <p className="text-xs text-muted-foreground">{t('validationPage.table.location')}</p>
-                <p className="text-xs">{payment.locationName}</p>
+                <p className="text-xs text-muted-foreground">{t('detail.accountHolder')}</p>
+                <p className="text-xs text-muted-foreground">{payment.userName}</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Escalation info */}
+        {/* Escalation info — conditional */}
         {payment.escalationLevel && (
           <>
             <Separator />
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+            <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs">
               <p className="font-medium text-amber-800">{t('escalation.escalated')}</p>
-              <p className="text-amber-700 text-xs mt-1">{payment.escalationReason}</p>
+              <p className="text-amber-700 mt-0.5">{payment.escalationReason}</p>
             </div>
           </>
         )}
 
         {/* Already processed banner */}
         {!isActionable && (
-          <div className="text-center py-4">
+          <div className="text-center py-3">
             {payment.workflowStatus === 'completed' || payment.workflowStatus === 'approved_by_agent' ? (
-              <>
-                <CheckCircle className="h-10 w-10 text-green-500 mx-auto mb-2" />
+              <div className="flex items-center justify-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
                 <p className="font-medium text-green-700">{t('detail.paymentValidated')}</p>
-              </>
+              </div>
             ) : payment.workflowStatus === 'rejected_by_agent' ? (
-              <>
-                <XCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
+              <div className="flex items-center justify-center gap-2">
+                <XCircle className="h-5 w-5 text-red-500" />
                 <p className="font-medium text-red-700">{t('detail.paymentRejected')}</p>
-              </>
+              </div>
             ) : (
-              <>
-                <AlertTriangle className="h-10 w-10 text-yellow-500 mx-auto mb-2" />
+              <div className="flex items-center justify-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500" />
                 <p className="font-medium">{payment.workflowStatus}</p>
-              </>
+              </div>
             )}
           </div>
         )}
@@ -382,15 +354,15 @@ export function PaymentDetailPanel({
 
       {/* Actions Footer — fixed at bottom */}
       {isActionable && (
-        <div className="p-3 border-t bg-muted/30 space-y-3 shrink-0">
-          {/* Comment input */}
+        <div className="p-3 border-t bg-muted/30 space-y-2 shrink-0">
+          {/* Comment input — compact, expands on focus */}
           <Textarea
             placeholder={t('detail.commentPlaceholder')}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            rows={2}
+            rows={1}
             disabled={isAnyLoading}
-            className="text-sm"
+            className="text-sm resize-none focus:rows-3 min-h-[2rem]"
           />
 
           {/* Action buttons */}
