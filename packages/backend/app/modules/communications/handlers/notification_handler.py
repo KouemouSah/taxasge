@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from enum import Enum
 from loguru import logger
 
+from app.config import settings
 from app.core.events import EventBus, EventType, EventPayload
 from app.database.connection import db_manager
 from app.modules.communications.services.communication_service import CommunicationService
@@ -641,6 +642,13 @@ class NotificationEventHandler:
             "total_items": payload.get("total_items"),
             "items_count": payload.get("items_count"),
             "beneficiary_names": payload.get("beneficiary_names", []),
+
+            # Verification URL (HMAC-signed link for receipt/request verification)
+            "verification_url": payload.get("verification_url"),
+
+            # Global template variables
+            "current_year": str(datetime.now().year),
+            "site_url": getattr(settings, 'FRONTEND_URL', 'https://taxasge.emacsah.com').rstrip('/'),
 
             # Any additional metadata
             **(payload.get("metadata") or {}),

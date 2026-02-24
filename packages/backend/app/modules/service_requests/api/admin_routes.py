@@ -3727,7 +3727,7 @@ async def validate_payment(
         payment_info = await db.fetchrow(
             """
             SELECT sp.total_amount, sp.currency, sp.receipt_number, sp.payment_method,
-                   sp.payment_reference, sr.reference as request_reference
+                   sp.payment_reference, sp.paid_at, sr.reference as request_reference
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             WHERE sp.id = $1::uuid
@@ -3736,6 +3736,19 @@ async def validate_payment(
         )
 
         if user_info:
+            # Generate receipt verification URL (HMAC-signed)
+            verification_url = None
+            if payment_info and payment_info["receipt_number"]:
+                try:
+                    from app.modules.payments.services.receipt_service import receipt_service
+                    verification_url = receipt_service._generate_verification_url(
+                        receipt_number=payment_info["receipt_number"],
+                        amount=float(payment_info["total_amount"]) if payment_info["total_amount"] else 0,
+                        paid_at=payment_info["paid_at"] or datetime.now(),
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to generate verification URL: {e}")
+
             # Build attachments: attach receipt PDF if available
             attachments = None
             if result.receipt_pdf_bytes and result.receipt_number:
@@ -3770,6 +3783,7 @@ async def validate_payment(
                     "agent_id": current_user.id,
                     "timestamp": datetime.now().isoformat(),
                     "attachments": attachments,
+                    "verification_url": verification_url,
                 }
             )
     except Exception as e:
