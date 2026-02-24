@@ -107,7 +107,7 @@ class InfobipSmsProvider(BaseSmsProvider):
         self,
         api_key: str,
         base_url: str = "y45e8g.api.infobip.com",
-        sender_id: str = "TaxasGE"
+        sender_id: str = "Facil"
     ):
         self.api_key = api_key
         self.base_url = f"https://{base_url}"
@@ -366,7 +366,7 @@ class SmsService:
         provider: str = "infobip",
         api_key: Optional[str] = None,
         base_url: str = "y45e8g.api.infobip.com",
-        sender_id: str = "TaxasGE"
+        sender_id: str = "Facil"
     ):
         if provider == "infobip":
             if not api_key:
@@ -423,5 +423,5 @@ def get_sms_service(
         provider=provider,
         api_key=api_key,
         base_url="y45e8g.api.infobip.com",
-        sender_id="TaxasGE"
+        sender_id="Facil"
     )

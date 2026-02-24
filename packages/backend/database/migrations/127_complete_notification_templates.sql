@@ -142,4 +142,114 @@ UPDATE email_templates SET html_content =
 '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><style>body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,''Helvetica Neue'',Arial,sans-serif;line-height:1.6;color:#333;background:#f5f5f5}.wrapper{padding:20px;background:#f5f5f5}.container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)}.header{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);padding:30px 20px;text-align:center}.header h1{color:#fff;margin:0;font-size:24px}.body{padding:30px}.alert-box{background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:16px;margin:16px 0}.footer{background:#f9fafb;padding:20px;text-align:center;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280}</style></head><body><div class="wrapper"><div class="container"><div class="header"><h1>⚠️ Cita No Asistida</h1></div><div class="body"><p>Estimado/a {{user_name}},</p><p>No se presentó a su cita programada para el <strong>{{appointment_date}}</strong>.</p><div class="alert-box"><p>Si necesita reprogramar, contacte nuestro servicio de soporte lo antes posible.</p></div></div><div class="footer"><p>Facil Platform - Mensaje automático</p></div></div></div></body></html>'
 WHERE template_code = 'appointment_no_show' AND html_content IS NULL;
 
+-- =============================================================================
+-- 4. REBRAND: TaxasGE → Facil (subjects, SMS, html_content, provider settings)
+-- Migration 039 inserted subjects with "TaxasGE". Migration 070 updated html_content
+-- to "Facil" but did NOT update subjects or SMS. Fix all in one shot.
+-- NOTE: REPLACE is case-sensitive so "taxasge.gq" (lowercase domain) is NOT affected.
+-- =============================================================================
+
+-- 4a. Email template subjects: "... - TaxasGE" → "... - Facil"
+UPDATE email_templates SET
+    subject_es = REPLACE(subject_es, 'TaxasGE', 'Facil'),
+    subject_fr = REPLACE(subject_fr, 'TaxasGE', 'Facil'),
+    subject_en = REPLACE(subject_en, 'TaxasGE', 'Facil'),
+    updated_at = NOW()
+WHERE subject_es LIKE '%TaxasGE%'
+   OR subject_fr LIKE '%TaxasGE%'
+   OR subject_en LIKE '%TaxasGE%';
+
+-- 4b. Email template html_content: catch any "TaxasGE" remnants (e.g. password_changed from migration 015)
+-- REPLACE is case-sensitive: "TaxasGE" is replaced but "taxasge.gq" (lowercase) is untouched
+UPDATE email_templates SET
+    html_content = REPLACE(html_content, 'TaxasGE', 'Facil'),
+    updated_at = NOW()
+WHERE html_content LIKE '%TaxasGE%';
+
+-- 4c. SMS template content: "TaxasGE: ..." → "Facil: ..."
+UPDATE sms_templates SET
+    content_es = REPLACE(content_es, 'TaxasGE', 'Facil'),
+    content_fr = REPLACE(content_fr, 'TaxasGE', 'Facil'),
+    content_en = REPLACE(content_en, 'TaxasGE', 'Facil'),
+    updated_at = NOW()
+WHERE content_es LIKE '%TaxasGE%'
+   OR content_fr LIKE '%TaxasGE%'
+   OR content_en LIKE '%TaxasGE%';
+
+-- 4d. Communication provider settings: sender_id and from_name
+UPDATE communication_provider_settings SET
+    config = REPLACE(config::text, '"TaxasGE"', '"Facil"')::jsonb,
+    updated_at = NOW()
+WHERE config::text LIKE '%"TaxasGE"%';
+
+-- =============================================================================
+-- 5. EMAIL TEMPLATES THAT DON'T EXIST YET (actively published events)
+-- =============================================================================
+
+-- user_welcome (triggered by USER_REGISTERED event in auth_routes.py)
+INSERT INTO email_templates (template_code, name_es, name_fr, name_en, subject_es, subject_fr, subject_en, description_es, variables, category, is_active, html_content)
+VALUES (
+    'user_welcome',
+    'Bienvenida al usuario',
+    'Bienvenue utilisateur',
+    'User welcome',
+    'Bienvenido a Facil Platform',
+    'Bienvenue sur Facil Platform',
+    'Welcome to Facil Platform',
+    'Email de bienvenida al registrarse',
+    '["user_name"]'::jsonb,
+    'auth',
+    true,
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><style>body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,''Helvetica Neue'',Arial,sans-serif;line-height:1.6;color:#333;background:#f5f5f5}.wrapper{padding:20px;background:#f5f5f5}.container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)}.header{background:linear-gradient(135deg,#2563eb 0%,#1e40af 100%);padding:30px 20px;text-align:center}.header h1{color:#fff;margin:0;font-size:28px}.body{padding:30px}.info-box{background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:16px;margin:16px 0}.footer{background:#f9fafb;padding:20px;text-align:center;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280}</style></head><body><div class="wrapper"><div class="container"><div class="header"><h1>Bienvenido a Facil</h1></div><div class="body"><p>Estimado/a {{user_name}},</p><p>Gracias por registrarse en <strong>Facil Platform</strong>. Su cuenta ha sido creada exitosamente.</p><div class="info-box"><p>Ahora puede acceder a todos los servicios fiscales y administrativos de Guinea Ecuatorial desde su panel de control.</p></div><p>Si tiene alguna pregunta, no dude en contactar nuestro servicio de soporte.</p></div><div class="footer"><p>Facil Platform - Mensaje automático</p></div></div></div></body></html>'
+) ON CONFLICT (template_code) DO UPDATE SET
+    html_content = EXCLUDED.html_content,
+    subject_es = EXCLUDED.subject_es,
+    subject_fr = EXCLUDED.subject_fr,
+    subject_en = EXCLUDED.subject_en,
+    updated_at = NOW();
+
+-- batch_submitted (triggered by BATCH_SUBMITTED event in batch_persist_service.py)
+INSERT INTO email_templates (template_code, name_es, name_fr, name_en, subject_es, subject_fr, subject_en, description_es, variables, category, is_active, html_content)
+VALUES (
+    'batch_submitted',
+    'Lote enviado',
+    'Lot envoyé',
+    'Batch submitted',
+    'Lote enviado correctamente - Facil',
+    'Lot envoyé avec succès - Facil',
+    'Batch submitted successfully - Facil',
+    'Notificación cuando un lote de solicitudes es enviado',
+    '["user_name", "batch_reference", "total_items", "amount", "currency", "beneficiary_names"]'::jsonb,
+    'batch',
+    true,
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><style>body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,''Helvetica Neue'',Arial,sans-serif;line-height:1.6;color:#333;background:#f5f5f5}.wrapper{padding:20px;background:#f5f5f5}.container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)}.header{background:linear-gradient(135deg,#2563eb 0%,#1e40af 100%);padding:30px 20px;text-align:center}.header h1{color:#fff;margin:0;font-size:24px}.body{padding:30px}.info-box{background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:16px;margin:16px 0}.footer{background:#f9fafb;padding:20px;text-align:center;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280}</style></head><body><div class="wrapper"><div class="container"><div class="header"><h1>📦 Lote Enviado</h1></div><div class="body"><p>Estimado/a {{user_name}},</p><p>Su lote <strong>{{batch_reference}}</strong> ha sido enviado correctamente.</p><div class="info-box"><p><strong>Solicitudes creadas:</strong> {{total_items}}</p><p><strong>Monto total:</strong> {{amount}} {{currency}}</p></div><p>Recibirá una notificación cuando todas las solicitudes hayan sido procesadas.</p></div><div class="footer"><p>Facil Platform - Mensaje automático</p></div></div></div></body></html>'
+) ON CONFLICT (template_code) DO UPDATE SET
+    html_content = EXCLUDED.html_content,
+    subject_es = EXCLUDED.subject_es,
+    subject_fr = EXCLUDED.subject_fr,
+    subject_en = EXCLUDED.subject_en,
+    updated_at = NOW();
+
+-- batch_completed (triggered by BATCH_COMPLETED event in batch_routes.py + agent_routes.py)
+INSERT INTO email_templates (template_code, name_es, name_fr, name_en, subject_es, subject_fr, subject_en, description_es, variables, category, is_active, html_content)
+VALUES (
+    'batch_completed',
+    'Lote completado',
+    'Lot terminé',
+    'Batch completed',
+    'Lote procesado completamente - Facil',
+    'Lot entièrement traité - Facil',
+    'Batch fully processed - Facil',
+    'Notificación cuando todas las solicitudes de un lote han sido procesadas',
+    '["user_name", "batch_reference", "total_items"]'::jsonb,
+    'batch',
+    true,
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><style>body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,''Segoe UI'',Roboto,''Helvetica Neue'',Arial,sans-serif;line-height:1.6;color:#333;background:#f5f5f5}.wrapper{padding:20px;background:#f5f5f5}.container{max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)}.header{background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);padding:30px 20px;text-align:center}.header h1{color:#fff;margin:0;font-size:24px}.body{padding:30px}.info-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin:16px 0}.footer{background:#f9fafb;padding:20px;text-align:center;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280}</style></head><body><div class="wrapper"><div class="container"><div class="header"><h1>✅ Lote Completado</h1></div><div class="body"><p>Estimado/a {{user_name}},</p><p>Todas las solicitudes de su lote <strong>{{batch_reference}}</strong> han sido procesadas.</p><div class="info-box"><p><strong>{{total_items}}</strong> solicitudes han sido finalizadas.</p></div><p>Puede consultar el detalle de cada solicitud en su panel de control.</p></div><div class="footer"><p>Facil Platform - Mensaje automático</p></div></div></div></body></html>'
+) ON CONFLICT (template_code) DO UPDATE SET
+    html_content = EXCLUDED.html_content,
+    subject_es = EXCLUDED.subject_es,
+    subject_fr = EXCLUDED.subject_fr,
+    subject_en = EXCLUDED.subject_en,
+    updated_at = NOW();
+
 COMMIT;

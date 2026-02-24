@@ -252,7 +252,7 @@ class SmsSendingService:
             provider="infobip",
             api_key=api_key,
             base_url="y45e8g.api.infobip.com",
-            sender_id="TaxasGE"
+            sender_id="Facil"
         )
 
 

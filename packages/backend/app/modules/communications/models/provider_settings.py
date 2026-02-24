@@ -56,7 +56,7 @@ class ProviderSettingsCreate(BaseModel):
                 "api_base_url": "https://y45e8g.api.infobip.com",
                 "api_key": "your-api-key",
                 "config": {
-                    "sender_id": "TaxasGE",
+                    "sender_id": "Facil",
                     "sms_endpoint": "/sms/2/text/advanced"
                 },
                 "is_active": True,
@@ -136,7 +136,7 @@ class ProviderTestResponse(BaseModel):
 
 class SmsProviderConfig(BaseModel):
     """SMS provider specific configuration"""
-    sender_id: str = Field("TaxasGE", description="SMS sender ID")
+    sender_id: str = Field("Facil", description="SMS sender ID")
     sms_endpoint: str = Field("/sms/2/text/advanced", description="SMS send endpoint")
     delivery_report_endpoint: str = Field("/sms/1/reports", description="Delivery report endpoint")
     balance_endpoint: str = Field("/account/1/balance", description="Balance check endpoint")
@@ -148,7 +148,7 @@ class SmsProviderConfig(BaseModel):
 class EmailProviderConfig(BaseModel):
     """Email provider specific configuration"""
     from_email: str = Field(..., description="Default from email")
-    from_name: str = Field("TaxasGE", description="Default from name")
+    from_name: str = Field("Facil", description="Default from name")
     send_endpoint: str = Field("/mail/send", description="Email send endpoint")
     templates_enabled: bool = Field(True, description="Whether templates are enabled")
     tracking_enabled: bool = Field(True, description="Whether tracking is enabled")

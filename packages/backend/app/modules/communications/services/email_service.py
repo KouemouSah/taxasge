@@ -51,7 +51,7 @@ class EmailService:
         smtp_password: str,
         smtp_use_tls: bool = True,
         smtp_from_email: Optional[str] = None,
-        smtp_from_name: str = "TaxasGE Platform",
+        smtp_from_name: str = "Facil Platform",
     ):
         """
         Initialize Email service
@@ -676,5 +676,5 @@ def get_email_service() -> EmailService:
         smtp_password=settings.SMTP_PASSWORD,
         smtp_use_tls=settings.SMTP_USE_TLS,
         smtp_from_email=settings.SMTP_FROM_EMAIL,
-        smtp_from_name=settings.SMTP_FROM_NAME or "TaxasGE Platform",
+        smtp_from_name=settings.SMTP_FROM_NAME or "Facil Platform",
     )

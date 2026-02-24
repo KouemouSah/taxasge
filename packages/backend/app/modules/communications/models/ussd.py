@@ -93,9 +93,9 @@ class MenuNode(BaseModel):
         json_schema_extra = {
             "example": {
                 "id": "main",
-                "title_es": "Bienvenido a TaxasGE",
-                "title_fr": "Bienvenue à TaxasGE",
-                "title_en": "Welcome to TaxasGE",
+                "title_es": "Bienvenido a Facil",
+                "title_fr": "Bienvenue à Facil",
+                "title_en": "Welcome to Facil",
                 "is_root": True,
                 "options": [
                     {
@@ -170,7 +170,7 @@ class UssdConfigCreate(BaseModel):
                 "menu_structure": [
                     {
                         "id": "main",
-                        "title_es": "Bienvenido a TaxasGE",
+                        "title_es": "Bienvenido a Facil",
                         "is_root": True,
                         "options": [
                             {"key": "1", "label_es": "Consultar Saldo", "action": "balance"},
@@ -254,7 +254,7 @@ class UssdConfigResponse(BaseModel):
                 "menu_structure": [
                     {
                         "id": "main",
-                        "title_es": "Bienvenido a TaxasGE",
+                        "title_es": "Bienvenido a Facil",
                         "is_root": True,
                         "options": [
                             {"key": "1", "label_es": "Consultar Saldo", "action": "balance"}

@@ -501,7 +501,7 @@ async def send_sms_with_template(
             provider="infobip",
             api_key=api_key,
             base_url="y45e8g.api.infobip.com",
-            sender_id="TaxasGE"
+            sender_id="Facil"
         )
 
         result = sms_service.send_sms(
@@ -638,7 +638,7 @@ async def notify_user_via_sms(
             provider="infobip",
             api_key=api_key,
             base_url="y45e8g.api.infobip.com",
-            sender_id="TaxasGE"
+            sender_id="Facil"
         )
 
         result = sms_service.send_sms(
