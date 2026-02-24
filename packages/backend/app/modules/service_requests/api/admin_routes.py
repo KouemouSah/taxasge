@@ -3686,6 +3686,29 @@ async def validate_payment(
             payment["service_request_id"]
         )
 
+    # Update assignment status to COMPLETED
+    await db.execute("""
+        UPDATE assignments
+        SET status = 'completed',
+            completed_at = NOW(),
+            processing_duration_hours = EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, assigned_at))) / 3600,
+            updated_at = NOW()
+        WHERE item_id = $1::uuid AND item_type = 'payment_validation'
+          AND status NOT IN ('completed', 'cancelled', 'rejected')
+    """, payment_id)
+
+    # Insert audit record
+    await db.execute("""
+        INSERT INTO payment_validation_audit
+            (id, payment_id, agent_profile_id, agent_user_id, action,
+             from_status, to_status, comment, created_at)
+        VALUES (gen_random_uuid(), $1::uuid, $2, $3,
+                'approve'::agent_action_type,
+                'pending_agent_review'::payment_workflow_status,
+                'completed'::payment_workflow_status,
+                $4, NOW())
+    """, payment_id, agent_profile_id, current_user.id, body.comment)
+
     # Publish PAYMENT_CASH_VALIDATED event
     try:
         # Get user info for notification
@@ -3791,6 +3814,29 @@ async def reject_payment(
         agent_profile_id=agent_profile_id,
         reason=body.reason
     )
+
+    # Update assignment status to REJECTED
+    await db.execute("""
+        UPDATE assignments
+        SET status = 'rejected',
+            completed_at = NOW(),
+            processing_duration_hours = EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, assigned_at))) / 3600,
+            updated_at = NOW()
+        WHERE item_id = $1::uuid AND item_type = 'payment_validation'
+          AND status NOT IN ('completed', 'cancelled', 'rejected')
+    """, payment_id)
+
+    # Insert audit record
+    await db.execute("""
+        INSERT INTO payment_validation_audit
+            (id, payment_id, agent_profile_id, agent_user_id, action,
+             from_status, to_status, comment, created_at)
+        VALUES (gen_random_uuid(), $1::uuid, $2, $3,
+                'reject'::agent_action_type,
+                'pending_agent_review'::payment_workflow_status,
+                'rejected_by_agent'::payment_workflow_status,
+                $4, NOW())
+    """, payment_id, agent_profile_id, current_user.id, body.reason)
 
     # Publish PAYMENT_CASH_REJECTED event
     try:
@@ -4013,6 +4059,30 @@ async def escalate_payment(
                 updated_at = NOW()
             WHERE id = $1::uuid
         """, payment_id, supervisor_id, level, body.reason)
+
+        # 5. Update assignment status to CANCELLED (escalated away from agent)
+        await db.execute("""
+            UPDATE assignments
+            SET status = 'cancelled',
+                completed_at = NOW(),
+                processing_duration_hours = EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, assigned_at))) / 3600,
+                notes = COALESCE(notes || ' | ', '') || 'Escalated: ' || $2,
+                updated_at = NOW()
+            WHERE item_id = $1::uuid AND item_type = 'payment_validation'
+              AND status NOT IN ('completed', 'cancelled', 'rejected')
+        """, payment_id, body.reason)
+
+        # 6. Insert audit record
+        await db.execute("""
+            INSERT INTO payment_validation_audit
+                (id, payment_id, agent_profile_id, agent_user_id, action,
+                 from_status, to_status, comment, created_at)
+            VALUES (gen_random_uuid(), $1::uuid, $2, $3,
+                    'escalate'::agent_action_type,
+                    'pending_agent_review'::payment_workflow_status,
+                    'escalated_supervisor'::payment_workflow_status,
+                    $4, NOW())
+        """, payment_id, agent_profile_id, current_user.id, body.reason)
 
         logger.info(
             f"[Treasury] Payment {payment_id} escalated to supervisor {supervisor_id} "
