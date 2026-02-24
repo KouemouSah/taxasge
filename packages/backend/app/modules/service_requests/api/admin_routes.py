@@ -4115,10 +4115,12 @@ async def escalate_payment(
                         EventType.PAYMENT_MANUAL_ESCALATED,
                         {
                             "payment_id": payment_id,
-                            "escalation_reason": body.reason,
+                            "reason": body.reason,
                             "escalation_level": level,
-                            "supervisor_email": sup_user["email"],
-                            "supervisor_name": f"{sup_user['first_name']} {sup_user['last_name']}",
+                            # Recipient = supervisor (not citizen)
+                            "user_email": sup_user["email"],
+                            "user_name": f"{sup_user['first_name']} {sup_user['last_name']}",
+                            "preferred_language": sup_user.get("preferred_language") or "es",
                             "agent_name": f"{current_user.first_name} {current_user.last_name}".strip(),
                             "timestamp": datetime.now().isoformat(),
                         }

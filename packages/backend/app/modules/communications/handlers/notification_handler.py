@@ -88,6 +88,13 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         subject_key="notifications.payment.cash_rejected.subject",
         sms_template_code="PAYMENT_CASH_REJECTED"
     ),
+    EventType.PAYMENT_MANUAL_ESCALATED: NotificationConfig(
+        template_code="payment_escalated",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="critical",
+        subject_key="notifications.payment.escalated.subject",
+        sms_template_code="PAYMENT_ESCALATED"
+    ),
 
     # Service Request Events
     EventType.REQUEST_SUBMITTED: NotificationConfig(
@@ -488,8 +495,9 @@ class NotificationEventHandler:
                 return False
 
             # Get notification title and body
-            title = self._get_subject(config, language, context)
-            body = self._get_push_body(config, language, context)
+            db_template = await self._fetch_db_template(config.template_code)
+            title = self._get_subject(config, language, context, db_template=db_template)
+            body = await self._get_push_body(config, language, context)
 
             # Send push notification via PushSendingService
             try:
@@ -665,9 +673,7 @@ class NotificationEventHandler:
         db_template: Optional[Dict[str, Any]] = None
     ) -> str:
         """
-        Get email subject for the notification.
-
-        Uses DB template subject if available, falls back to hardcoded.
+        Get email subject from DB template.
 
         Args:
             config: Notification configuration
@@ -676,144 +682,16 @@ class NotificationEventHandler:
             db_template: Optional DB template row
 
         Returns:
-            Email subject string
+            Email subject string from DB, or generic fallback
         """
-        # Try DB template subject first
         if db_template:
             lang_key = f"subject_{language}"
-            db_subject = db_template.get(lang_key)
-            if not db_subject:
-                # Fallback to Spanish subject from DB
-                db_subject = db_template.get("subject_es")
+            db_subject = db_template.get(lang_key) or db_template.get("subject_es")
             if db_subject:
                 return db_subject
 
-        # Fallback: hardcoded subjects
-        subjects = {
-            "payment_completed": {
-                "es": "Pago completado - TaxasGE",
-                "fr": "Paiement effectué - TaxasGE",
-                "en": "Payment completed - TaxasGE"
-            },
-            "payment_failed": {
-                "es": "Pago fallido - TaxasGE",
-                "fr": "Échec du paiement - TaxasGE",
-                "en": "Payment failed - TaxasGE"
-            },
-            "payment_cash_pending": {
-                "es": "Pago en efectivo pendiente de validación - TaxasGE",
-                "fr": "Paiement en espèces en attente de validation - TaxasGE",
-                "en": "Cash payment pending validation - TaxasGE"
-            },
-            "payment_cash_validated": {
-                "es": "Pago en efectivo validado - TaxasGE",
-                "fr": "Paiement en espèces validé - TaxasGE",
-                "en": "Cash payment validated - TaxasGE"
-            },
-            "payment_cash_rejected": {
-                "es": "Pago en efectivo rechazado - TaxasGE",
-                "fr": "Paiement en espèces refusé - TaxasGE",
-                "en": "Cash payment rejected - TaxasGE"
-            },
-            "request_submitted": {
-                "es": "Solicitud recibida - TaxasGE",
-                "fr": "Demande reçue - TaxasGE",
-                "en": "Request received - TaxasGE"
-            },
-            "request_approved": {
-                "es": "Solicitud aprobada - TaxasGE",
-                "fr": "Demande approuvée - TaxasGE",
-                "en": "Request approved - TaxasGE"
-            },
-            "request_rejected": {
-                "es": "Solicitud rechazada - TaxasGE",
-                "fr": "Demande refusée - TaxasGE",
-                "en": "Request rejected - TaxasGE"
-            },
-            "request_completed": {
-                "es": "Solicitud completada - TaxasGE",
-                "fr": "Demande terminée - TaxasGE",
-                "en": "Request completed - TaxasGE"
-            },
-            "document_validated": {
-                "es": "Documento validado - TaxasGE",
-                "fr": "Document validé - TaxasGE",
-                "en": "Document validated - TaxasGE"
-            },
-            "document_rejected": {
-                "es": "Documento rechazado - TaxasGE",
-                "fr": "Document refusé - TaxasGE",
-                "en": "Document rejected - TaxasGE"
-            },
-            "appointment_booked": {
-                "es": "Cita confirmada - TaxasGE",
-                "fr": "Rendez-vous confirmé - TaxasGE",
-                "en": "Appointment confirmed - TaxasGE"
-            },
-            "appointment_confirmed": {
-                "es": "Cita confirmada - TaxasGE",
-                "fr": "Rendez-vous confirmé - TaxasGE",
-                "en": "Appointment confirmed - TaxasGE"
-            },
-            "appointment_cancelled": {
-                "es": "Cita cancelada - TaxasGE",
-                "fr": "Rendez-vous annulé - TaxasGE",
-                "en": "Appointment cancelled - TaxasGE"
-            },
-            "appointment_reminder": {
-                "es": "Recordatorio de cita - TaxasGE",
-                "fr": "Rappel de rendez-vous - TaxasGE",
-                "en": "Appointment reminder - TaxasGE"
-            },
-            "declaration_submitted": {
-                "es": "Declaración recibida - TaxasGE",
-                "fr": "Déclaration reçue - TaxasGE",
-                "en": "Declaration received - TaxasGE"
-            },
-            "declaration_validated": {
-                "es": "Declaración validada - TaxasGE",
-                "fr": "Déclaration validée - TaxasGE",
-                "en": "Declaration validated - TaxasGE"
-            },
-            "declaration_rejected": {
-                "es": "Declaración rechazada - TaxasGE",
-                "fr": "Déclaration refusée - TaxasGE",
-                "en": "Declaration rejected - TaxasGE"
-            },
-            "sla_warning": {
-                "es": "Alerta SLA - TaxasGE",
-                "fr": "Alerte SLA - TaxasGE",
-                "en": "SLA Warning - TaxasGE"
-            },
-            "sla_breach": {
-                "es": "Incumplimiento SLA - TaxasGE",
-                "fr": "Violation SLA - TaxasGE",
-                "en": "SLA Breach - TaxasGE"
-            },
-            "password_changed": {
-                "es": "Alerta de seguridad: Contraseña modificada - TaxasGE",
-                "fr": "Alerte de sécurité: Mot de passe modifié - TaxasGE",
-                "en": "Security alert: Password changed - TaxasGE"
-            },
-            "user_welcome": {
-                "es": "¡Bienvenido a TaxasGE!",
-                "fr": "Bienvenue sur TaxasGE!",
-                "en": "Welcome to TaxasGE!"
-            },
-            "batch_submitted": {
-                "es": "Lote enviado - TaxasGE",
-                "fr": "Lot envoyé - TaxasGE",
-                "en": "Batch submitted - TaxasGE"
-            },
-            "batch_completed": {
-                "es": "Lote completado - TaxasGE",
-                "fr": "Lot terminé - TaxasGE",
-                "en": "Batch completed - TaxasGE"
-            },
-        }
-
-        template_subjects = subjects.get(config.template_code, {})
-        return template_subjects.get(language, template_subjects.get("es", "TaxasGE Notification"))
+        logger.warning(f"No DB subject for template '{config.template_code}' ({language})")
+        return "Facil Platform - Notificación"
 
     async def _render_template(
         self,
@@ -823,10 +701,9 @@ class NotificationEventHandler:
         db_template: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """
-        Render a notification template.
+        Render email template from DB (email_templates table).
 
-        Uses DB template (email_templates table) if available and active,
-        falls back to inline template for non-DB templates or fr/en languages.
+        No inline fallback — all email templates must exist in the database.
 
         Args:
             template_code: Template identifier
@@ -837,521 +714,85 @@ class NotificationEventHandler:
         Returns:
             Rendered HTML content or None if template not found
         """
-        # Try DB template first (html_content is Spanish-only, so use for 'es' or as base)
-        if db_template and db_template.get("html_content"):
-            try:
-                import re
-                html = db_template["html_content"]
+        if not db_template or not db_template.get("html_content"):
+            logger.warning(
+                f"No DB email template for '{template_code}' — "
+                f"email will NOT be sent. Create it in email_templates table."
+            )
+            return None
 
-                # Format amount for display before substitution
-                render_context = dict(context)
-                if render_context.get("amount") is not None:
-                    try:
-                        amt = float(render_context["amount"])
-                        render_context["amount"] = f"{int(amt):,}".replace(",", " ")
-                    except (ValueError, TypeError):
-                        pass
+        try:
+            import re
+            html = db_template["html_content"]
 
-                # Substitute {{var}} with context values
-                for key, value in render_context.items():
-                    if value is not None and not isinstance(value, (list, dict, tuple, bytes)):
-                        html = html.replace("{{" + key + "}}", str(value))
+            # Format amount for display before substitution
+            render_context = dict(context)
+            if render_context.get("amount") is not None:
+                try:
+                    amt = float(render_context["amount"])
+                    render_context["amount"] = f"{int(amt):,}".replace(",", " ")
+                except (ValueError, TypeError):
+                    pass
 
-                # Clean any unreplaced {{variables}}
-                html = re.sub(r'\{\{[a-zA-Z_]+\}\}', '', html)
+            # Substitute {{var}} with context values
+            for key, value in render_context.items():
+                if value is not None and not isinstance(value, (list, dict, tuple, bytes)):
+                    html = html.replace("{{" + key + "}}", str(value))
 
-                logger.debug(f"Rendered DB template '{template_code}' for language '{language}'")
-                return html
-            except Exception as e:
-                logger.warning(f"Failed to render DB template '{template_code}': {e}")
+            # Clean any unreplaced {{variables}}
+            html = re.sub(r'\{\{[a-zA-Z_]+\}\}', '', html)
 
-        # Fallback: inline template
-        user_name = context.get("user_name", "Usuario")
+            logger.debug(f"Rendered DB template '{template_code}' for language '{language}'")
+            return html
+        except Exception as e:
+            logger.error(f"Failed to render DB template '{template_code}': {e}")
+            return None
 
-        # Get greeting and footer based on language
-        greetings = {
-            "es": f"Estimado/a {user_name},",
-            "fr": f"Cher/Chère {user_name},",
-            "en": f"Dear {user_name},"
-        }
-        footers = {
-            "es": ("Este es un mensaje automático de TaxasGE.", "No responda a este correo.", "Todos los derechos reservados."),
-            "fr": ("Ceci est un message automatique de TaxasGE.", "Ne répondez pas à cet e-mail.", "Tous droits réservés."),
-            "en": ("This is an automated message from TaxasGE.", "Please do not reply to this email.", "All rights reserved.")
-        }
-
-        greeting = greetings.get(language, greetings["es"])
-        footer_auto, footer_noreply, footer_rights = footers.get(language, footers["es"])
-        body_content = self._get_template_body(template_code, language, context)
-
-        # Professional template structure
-        html = f"""
-        <!DOCTYPE html>
-        <html lang="{language}">
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                    line-height: 1.6;
-                    color: #333333;
-                    background-color: #f5f5f5;
-                }}
-                .email-wrapper {{
-                    padding: 20px;
-                    background-color: #f5f5f5;
-                }}
-                .email-container {{
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background-color: #ffffff;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }}
-                .email-header {{
-                    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-                    padding: 30px 20px;
-                    text-align: center;
-                }}
-                .email-header h1 {{
-                    color: #ffffff;
-                    margin: 0;
-                    font-size: 28px;
-                    font-weight: 700;
-                }}
-                .email-body {{
-                    padding: 40px 30px;
-                }}
-                .greeting {{
-                    font-size: 16px;
-                    color: #333333;
-                    margin-bottom: 20px;
-                }}
-                .content {{
-                    font-size: 15px;
-                    color: #4b5563;
-                    line-height: 1.8;
-                }}
-                .email-footer {{
-                    background-color: #f9fafb;
-                    padding: 25px 30px;
-                    text-align: center;
-                    border-top: 1px solid #e5e7eb;
-                }}
-                .email-footer p {{
-                    margin: 5px 0;
-                    font-size: 12px;
-                    color: #6b7280;
-                }}
-                .email-footer a {{
-                    color: #2563eb;
-                    text-decoration: none;
-                }}
-                @media only screen and (max-width: 600px) {{
-                    .email-body {{
-                        padding: 30px 20px;
-                    }}
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="email-wrapper">
-                <div class="email-container">
-                    <div class="email-header">
-                        <h1>TaxasGE</h1>
-                    </div>
-                    <div class="email-body">
-                        <p class="greeting">{greeting}</p>
-                        <div class="content">{body_content}</div>
-                    </div>
-                    <div class="email-footer">
-                        <p>{footer_auto}</p>
-                        <p>{footer_noreply}</p>
-                        <p style="margin-top: 15px;">
-                            <a href="https://taxasge.emacsah.com">taxasge.emacsah.com</a>
-                        </p>
-                        <p style="margin-top: 10px; font-size: 11px;">
-                            &copy; {datetime.now().year} TaxasGE Platform. {footer_rights}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        return html
-
-    def _get_template_body(
-        self,
-        template_code: str,
-        language: str,
-        context: Dict[str, Any]
-    ) -> str:
-        """Get the body text for a template."""
-        amount = context.get("amount")
-        receipt = context.get("receipt_number")
-        reason = context.get("reason", "")
-
-        bodies = {
-            "payment_completed": {
-                "es": f"Su pago de {amount} XAF ha sido procesado exitosamente. Número de recibo: {receipt}",
-                "fr": f"Votre paiement de {amount} XAF a été traité avec succès. Numéro de reçu: {receipt}",
-                "en": f"Your payment of {amount} XAF has been processed successfully. Receipt number: {receipt}"
-            },
-            "payment_failed": {
-                "es": f"Su pago no pudo ser procesado. Motivo: {reason}",
-                "fr": f"Votre paiement n'a pas pu être traité. Raison: {reason}",
-                "en": f"Your payment could not be processed. Reason: {reason}"
-            },
-            "payment_cash_pending": {
-                "es": "Su pago en efectivo está pendiente de validación por un agente.",
-                "fr": "Votre paiement en espèces est en attente de validation par un agent.",
-                "en": "Your cash payment is pending validation by an agent."
-            },
-            "payment_cash_validated": {
-                "es": f"Su pago en efectivo ha sido validado. Número de recibo: {receipt}",
-                "fr": f"Votre paiement en espèces a été validé. Numéro de reçu: {receipt}",
-                "en": f"Your cash payment has been validated. Receipt number: {receipt}"
-            },
-            "payment_cash_rejected": {
-                "es": f"Su pago en efectivo ha sido rechazado. Motivo: {reason}",
-                "fr": f"Votre paiement en espèces a été refusé. Raison: {reason}",
-                "en": f"Your cash payment has been rejected. Reason: {reason}"
-            },
-            "request_submitted": {
-                "es": self._get_request_submitted_body("es", context),
-                "fr": self._get_request_submitted_body("fr", context),
-                "en": self._get_request_submitted_body("en", context),
-            },
-            "request_approved": {
-                "es": self._get_request_approved_body("es", context),
-                "fr": self._get_request_approved_body("fr", context),
-                "en": self._get_request_approved_body("en", context),
-            },
-            "request_rejected": {
-                "es": f"Su solicitud ha sido rechazada. Motivo: {reason}",
-                "fr": f"Votre demande a été refusée. Raison: {reason}",
-                "en": f"Your request has been rejected. Reason: {reason}"
-            },
-            "request_completed": {
-                "es": "Su solicitud ha sido completada exitosamente.",
-                "fr": "Votre demande a été complétée avec succès.",
-                "en": "Your request has been completed successfully."
-            },
-            "appointment_booked": {
-                "es": f"Su cita ha sido confirmada para el {context.get('appointment_date')} a las {context.get('appointment_time')}.",
-                "fr": f"Votre rendez-vous a été confirmé pour le {context.get('appointment_date')} à {context.get('appointment_time')}.",
-                "en": f"Your appointment has been confirmed for {context.get('appointment_date')} at {context.get('appointment_time')}."
-            },
-            "appointment_reminder": {
-                "es": f"Le recordamos su cita programada para el {context.get('appointment_date')} a las {context.get('appointment_time')}.",
-                "fr": f"Nous vous rappelons votre rendez-vous prévu pour le {context.get('appointment_date')} à {context.get('appointment_time')}.",
-                "en": f"This is a reminder of your appointment scheduled for {context.get('appointment_date')} at {context.get('appointment_time')}."
-            },
-            "password_changed": {
-                "es": f"Su contraseña fue modificada el {context.get('date')} a las {context.get('time')}. Si no realizó este cambio, contacte soporte inmediatamente.",
-                "fr": f"Votre mot de passe a été modifié le {context.get('date')} à {context.get('time')}. Si vous n'avez pas effectué ce changement, contactez le support immédiatement.",
-                "en": f"Your password was changed on {context.get('date')} at {context.get('time')}. If you did not make this change, contact support immediately."
-            },
-            "user_welcome": {
-                "es": "Gracias por registrarse en TaxasGE. Su cuenta ha sido creada exitosamente. Ahora puede acceder a todos los servicios fiscales de Guinea Ecuatorial.",
-                "fr": "Merci de vous être inscrit sur TaxasGE. Votre compte a été créé avec succès. Vous pouvez maintenant accéder à tous les services fiscaux de Guinée Équatoriale.",
-                "en": "Thank you for registering on TaxasGE. Your account has been created successfully. You can now access all fiscal services of Equatorial Guinea."
-            },
-            "batch_submitted": {
-                "es": self._get_batch_submitted_body("es", context),
-                "fr": self._get_batch_submitted_body("fr", context),
-                "en": self._get_batch_submitted_body("en", context),
-            },
-            "batch_completed": {
-                "es": self._get_batch_completed_body("es", context),
-                "fr": self._get_batch_completed_body("fr", context),
-                "en": self._get_batch_completed_body("en", context),
-            },
-        }
-
-        template_bodies = bodies.get(template_code, {})
-        return template_bodies.get(
-            language,
-            template_bodies.get("es", "Tiene una nueva notificación de TaxasGE.")
-        )
-
-    def _get_request_approved_body(self, language: str, context: Dict[str, Any]) -> str:
-        """
-        Generate rich body text for request_approved notification.
-
-        Includes appointment info and reference to attached PDF certificate.
-        """
-        request_id = context.get("request_id", "")
-        workflow_code = context.get("workflow_code", "")
-        appointment_date = context.get("appointment_date")
-        appointment_time = context.get("appointment_time")
-        location = context.get("location", "")
-        has_attachment = context.get("attachments") is not None
-
-        if language == "fr":
-            lines = [
-                f"Nous avons le plaisir de vous informer que votre demande <strong>{workflow_code}</strong> a été approuvée.",
-                "",
-            ]
-
-            if appointment_date and appointment_time:
-                lines.append("<strong>📅 Rendez-vous programmé:</strong>")
-                lines.append(f"• Date: {appointment_date}")
-                lines.append(f"• Heure: {appointment_time}")
-                if location:
-                    lines.append(f"• Lieu: {location}")
-                lines.append("")
-                lines.append("Veuillez vous présenter à l'heure indiquée avec une pièce d'identité valide.")
-                lines.append("")
-
-            if has_attachment:
-                lines.append("<strong>📎 Document joint:</strong>")
-                lines.append("Vous trouverez ci-joint votre <strong>Certificat de Validation</strong> au format PDF.")
-                lines.append("Ce document atteste l'approbation de votre dossier.")
-                lines.append("")
-
-            lines.append("Pour toute question, contactez notre support.")
-
-        elif language == "en":
-            lines = [
-                f"We are pleased to inform you that your request <strong>{workflow_code}</strong> has been approved.",
-                "",
-            ]
-
-            if appointment_date and appointment_time:
-                lines.append("<strong>📅 Scheduled Appointment:</strong>")
-                lines.append(f"• Date: {appointment_date}")
-                lines.append(f"• Time: {appointment_time}")
-                if location:
-                    lines.append(f"• Location: {location}")
-                lines.append("")
-                lines.append("Please arrive on time with a valid ID document.")
-                lines.append("")
-
-            if has_attachment:
-                lines.append("<strong>📎 Attached Document:</strong>")
-                lines.append("Please find attached your <strong>Validation Certificate</strong> in PDF format.")
-                lines.append("This document certifies the approval of your application.")
-                lines.append("")
-
-            lines.append("For any questions, please contact our support team.")
-
-        else:  # Spanish (default)
-            lines = [
-                f"Nos complace informarle que su solicitud <strong>{workflow_code}</strong> ha sido aprobada.",
-                "",
-            ]
-
-            if appointment_date and appointment_time:
-                lines.append("<strong>📅 Cita programada:</strong>")
-                lines.append(f"• Fecha: {appointment_date}")
-                lines.append(f"• Hora: {appointment_time}")
-                if location:
-                    lines.append(f"• Lugar: {location}")
-                lines.append("")
-                lines.append("Por favor, preséntese a la hora indicada con un documento de identidad válido.")
-                lines.append("")
-
-            if has_attachment:
-                lines.append("<strong>📎 Documento adjunto:</strong>")
-                lines.append("Adjunto encontrará su <strong>Certificado de Validación</strong> en formato PDF.")
-                lines.append("Este documento certifica la aprobación de su expediente.")
-                lines.append("")
-
-            lines.append("Para cualquier consulta, contacte con nuestro servicio de soporte.")
-
-        return "<br>".join(lines)
-
-    def _get_request_submitted_body(self, language: str, context: Dict[str, Any]) -> str:
-        """
-        Generate rich body text for request_submitted notification.
-
-        Includes reference number, payment status, appointment info,
-        and reference to attached PDF summary.
-        """
-        reference = context.get("reference", "")
-        workflow_code = context.get("workflow_code", "")
-        payment_id = context.get("payment_id")
-        appointment_date = context.get("appointment_date")
-        appointment_time = context.get("appointment_time")
-        location = context.get("location", "")
-        has_attachment = context.get("attachments") is not None
-
-        if language == "fr":
-            lines = [
-                f"Votre demande <strong>{reference}</strong> a été enregistrée avec succès.",
-                "",
-            ]
-
-            if payment_id:
-                lines.append("Votre paiement a été enregistré et est en cours de traitement.")
-                lines.append("")
-
-            if appointment_date and appointment_time:
-                lines.append("<strong>Rendez-vous:</strong>")
-                lines.append(f"Date: {appointment_date} - Heure: {appointment_time}")
-                if location:
-                    lines.append(f"Lieu: {location}")
-                lines.append("")
-
-            if has_attachment:
-                lines.append("Vous trouverez en pièce jointe le <strong>résumé de votre demande</strong> au format PDF.")
-                lines.append("")
-
-            lines.append("Vous recevrez une notification lorsque votre demande sera traitée.")
-
-        elif language == "en":
-            lines = [
-                f"Your request <strong>{reference}</strong> has been successfully registered.",
-                "",
-            ]
-
-            if payment_id:
-                lines.append("Your payment has been registered and is being processed.")
-                lines.append("")
-
-            if appointment_date and appointment_time:
-                lines.append("<strong>Appointment:</strong>")
-                lines.append(f"Date: {appointment_date} - Time: {appointment_time}")
-                if location:
-                    lines.append(f"Location: {location}")
-                lines.append("")
-
-            if has_attachment:
-                lines.append("Please find attached the <strong>summary of your request</strong> in PDF format.")
-                lines.append("")
-
-            lines.append("You will receive a notification when your request is processed.")
-
-        else:  # Spanish (default)
-            lines = [
-                f"Su solicitud <strong>{reference}</strong> ha sido registrada correctamente.",
-                "",
-            ]
-
-            if payment_id:
-                lines.append("Su pago ha sido registrado y está siendo procesado.")
-                lines.append("")
-
-            if appointment_date and appointment_time:
-                lines.append("<strong>Cita programada:</strong>")
-                lines.append(f"Fecha: {appointment_date} - Hora: {appointment_time}")
-                if location:
-                    lines.append(f"Lugar: {location}")
-                lines.append("")
-
-            if has_attachment:
-                lines.append("Adjunto encontrará el <strong>resumen de su solicitud</strong> en formato PDF.")
-                lines.append("")
-
-            lines.append("Recibirá una notificación cuando su solicitud sea procesada.")
-
-        return "<br>".join(lines)
-
-    def _get_batch_submitted_body(self, language: str, context: Dict[str, Any]) -> str:
-        """Generate body for batch_submitted notification."""
-        ref = context.get("batch_reference", "")
-        total_items = context.get("total_items", 0)
-        amount = context.get("amount", 0)
-        currency = context.get("currency", "XAF")
-        names = context.get("beneficiary_names", [])
-        names_display = ", ".join(names[:5])
-        if len(names) > 5:
-            more = {"es": f" y {len(names) - 5} más", "fr": f" et {len(names) - 5} autres", "en": f" and {len(names) - 5} more"}
-            names_display += more.get(language, more["es"])
-
-        if language == "fr":
-            lines = [
-                f"Votre lot <strong>{ref}</strong> a été envoyé avec succès.",
-                f"<strong>{total_items}</strong> demandes ont été créées.",
-                "",
-                f"<strong>Montant total:</strong> {amount:,.0f} {currency}",
-                "",
-            ]
-            if names_display:
-                lines.append(f"<strong>Bénéficiaires:</strong> {names_display}")
-                lines.append("")
-            lines.append("Vous recevrez une notification lorsque toutes les demandes seront traitées.")
-        elif language == "en":
-            lines = [
-                f"Your batch <strong>{ref}</strong> has been submitted successfully.",
-                f"<strong>{total_items}</strong> requests have been created.",
-                "",
-                f"<strong>Total amount:</strong> {amount:,.0f} {currency}",
-                "",
-            ]
-            if names_display:
-                lines.append(f"<strong>Beneficiaries:</strong> {names_display}")
-                lines.append("")
-            lines.append("You will receive a notification when all requests have been processed.")
-        else:
-            lines = [
-                f"Su lote <strong>{ref}</strong> ha sido enviado correctamente.",
-                f"Se han creado <strong>{total_items}</strong> solicitudes.",
-                "",
-                f"<strong>Monto total:</strong> {amount:,.0f} {currency}",
-                "",
-            ]
-            if names_display:
-                lines.append(f"<strong>Beneficiarios:</strong> {names_display}")
-                lines.append("")
-            lines.append("Recibirá una notificación cuando todas las solicitudes hayan sido procesadas.")
-
-        return "<br>".join(lines)
-
-    def _get_batch_completed_body(self, language: str, context: Dict[str, Any]) -> str:
-        """Generate body for batch_completed notification."""
-        ref = context.get("batch_reference", "")
-        total_items = context.get("total_items", 0)
-
-        if language == "fr":
-            lines = [
-                f"Toutes les demandes de votre lot <strong>{ref}</strong> ont été traitées.",
-                f"<strong>{total_items}</strong> demandes ont été finalisées.",
-                "",
-                "Vous pouvez consulter le détail de chaque demande dans votre tableau de bord.",
-            ]
-        elif language == "en":
-            lines = [
-                f"All requests in your batch <strong>{ref}</strong> have been processed.",
-                f"<strong>{total_items}</strong> requests have been finalized.",
-                "",
-                "You can view the details of each request in your dashboard.",
-            ]
-        else:
-            lines = [
-                f"Todas las solicitudes de su lote <strong>{ref}</strong> han sido procesadas.",
-                f"<strong>{total_items}</strong> solicitudes han sido finalizadas.",
-                "",
-                "Puede consultar el detalle de cada solicitud en su panel de control.",
-            ]
-
-        return "<br>".join(lines)
-
-    def _get_push_body(
+    async def _get_push_body(
         self,
         config: NotificationConfig,
         language: str,
         context: Dict[str, Any]
     ) -> str:
         """
-        Get push notification body text.
+        Get push notification body text from DB email template.
 
-        Uses shorter versions of template bodies suitable for push notifications.
+        Strips HTML tags and truncates for push notification limits.
         """
-        # Reuse template body but keep it shorter for push
-        body = self._get_template_body(config.template_code, language, context)
+        import re
 
-        # Truncate for push notification (max ~200 chars recommended)
-        if len(body) > 180:
-            body = body[:177] + "..."
+        # Fetch DB template and extract plain text from HTML
+        db_template = await self._fetch_db_template(config.template_code)
+        if db_template and db_template.get("html_content"):
+            html = db_template["html_content"]
 
-        return body
+            # Substitute variables
+            render_context = dict(context)
+            if render_context.get("amount") is not None:
+                try:
+                    amt = float(render_context["amount"])
+                    render_context["amount"] = f"{int(amt):,}".replace(",", " ")
+                except (ValueError, TypeError):
+                    pass
+
+            for key, value in render_context.items():
+                if value is not None and not isinstance(value, (list, dict, tuple, bytes)):
+                    html = html.replace("{{" + key + "}}", str(value))
+
+            html = re.sub(r'\{\{[a-zA-Z_]+\}\}', '', html)
+
+            # Strip HTML to plain text
+            text = re.sub(r'<br\s*/?>', ' ', html)
+            text = re.sub(r'<[^>]+>', '', text)
+            text = re.sub(r'\s+', ' ', text).strip()
+
+            # Truncate for push notification
+            if len(text) > 180:
+                text = text[:177] + "..."
+            return text
+
+        # Generic fallback if no DB template
+        return "Tiene una nueva notificación de Facil Platform."
 
 
 # =============================================================================
