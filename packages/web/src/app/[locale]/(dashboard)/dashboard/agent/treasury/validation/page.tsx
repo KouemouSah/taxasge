@@ -444,9 +444,9 @@ export default function TreasuryValidationPage() {
   }, [handleDetailNavigate]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] -mx-4 md:-mx-6 lg:-mx-8 -mb-4 md:-mb-6 lg:-mb-8 -mt-1 w-[calc(100%_+_2rem)] md:w-[calc(100%_+_3rem)] lg:w-[calc(100%_+_4rem)]">
+    <div className="dashboard-full-bleed flex flex-col h-[calc(100vh-4rem)]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 md:px-6 lg:px-8 pb-3 shrink-0">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8 pb-3 shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={goToDashboard}>
             <ArrowLeft className="mr-1 h-4 w-4" />
@@ -568,7 +568,7 @@ export default function TreasuryValidationPage() {
 
       {/* Error */}
       {error && (
-        <Card className="border-red-200 bg-red-50 mx-4 md:mx-6 lg:mx-8 mb-3 shrink-0">
+        <Card className="border-red-200 bg-red-50 mx-4 md:mx-6 lg:mx-8 mb-3 mt-0 shrink-0">
           <CardContent className="flex items-center gap-3 py-3">
             <AlertCircle className="h-5 w-5 text-red-500" />
             <p className="text-sm text-red-700">{t('validationPage.error.loadingPayments')}</p>
@@ -579,7 +579,7 @@ export default function TreasuryValidationPage() {
       {/* ================================================================= */}
       {/* SPLIT VIEW: LEFT (list) + RIGHT (detail)                         */}
       {/* ================================================================= */}
-      <div className="flex gap-3 flex-1 min-h-0 px-3 lg:px-4 pb-2">
+      <div className="flex gap-3 flex-1 min-h-0 px-4 md:px-6 lg:px-8 pb-4">
         {/* LEFT PANEL — Payment List */}
         <div className="w-full lg:w-[35%] flex flex-col min-h-0 border rounded-lg bg-card">
           {/* List header */}

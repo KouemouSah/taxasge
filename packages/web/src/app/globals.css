@@ -123,6 +123,13 @@ All colors MUST be HSL.
   }
 }
 
+@layer components {
+  /* Full-bleed dashboard pages: remove <main> padding so child fills entire area */
+  main:has(> .dashboard-full-bleed) {
+    padding: 0 !important;
+  }
+}
+
 @layer utilities {
   .gradient-hero {
     background: var(--gradient-hero);
