@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 export default {
   darkMode: ["class"],
@@ -99,5 +100,16 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
+    // Full-bleed pages: removes <main> padding so split views fill entire width
+    plugin(function ({ addComponents }) {
+      addComponents({
+        "main:has(> .dashboard-full-bleed)": {
+          padding: "0 !important",
+        },
+      });
+    }),
+  ],
 } satisfies Config;
