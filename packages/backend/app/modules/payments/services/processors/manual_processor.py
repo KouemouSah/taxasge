@@ -259,17 +259,30 @@ class ManualValidationProcessor(PaymentProcessorBase):
             """
             service_data = await db.fetchrow(service_query, payment["service_request_id"])
 
-            # 5. Get agent data for receipt (using agent_profiles table)
+            # 5. Get agent data + treasury location for receipt (using agent_profiles table)
             agent_query = """
-                SELECT u.first_name, u.last_name
+                SELECT u.first_name, u.last_name,
+                       el.location_name AS treasury_location_name,
+                       el.location_address AS treasury_location_address,
+                       el.city AS treasury_city,
+                       el.phone AS treasury_phone
                 FROM users u
                 JOIN agent_profiles ap ON ap.user_id = u.id
+                LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
                 WHERE ap.id = $1::uuid
             """
             agent_data = await db.fetchrow(agent_query, agent_profile_id)
             agent_name = None
+            agent_location = None
             if agent_data:
                 agent_name = f"{agent_data['first_name'] or ''} {agent_data['last_name'] or ''}".strip()
+                if agent_data.get("treasury_location_name"):
+                    agent_location = {
+                        "location_name": agent_data["treasury_location_name"],
+                        "location_address": agent_data.get("treasury_location_address"),
+                        "city": agent_data.get("treasury_city"),
+                        "phone": agent_data.get("treasury_phone"),
+                    }
 
             # 6. Update payment status first (using agent_profile_id UUID)
             paid_at = datetime.utcnow()
@@ -352,6 +365,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     validated_by_name=agent_name,
                     validated_at=paid_at,
                     language="es",  # TODO: Get user's preferred language
+                    agent_location=agent_location,
                 )
                 receipt_number = receipt_result["receipt_number"]
                 receipt_url = receipt_result["receipt_url"]

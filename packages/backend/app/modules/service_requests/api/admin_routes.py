@@ -3984,20 +3984,33 @@ async def download_receipt_pdf(
         payment["user_id"]
     )
 
-    # Fetch agent info
+    # Fetch agent info + treasury location
     agent_name = None
+    agent_location = None
     if payment["validated_by_agent_id"]:
         agent_data = await db.fetchrow(
             """
-            SELECT u.first_name, u.last_name
+            SELECT u.first_name, u.last_name,
+                   ael.location_name AS treasury_location_name,
+                   ael.location_address AS treasury_location_address,
+                   ael.city AS treasury_city,
+                   ael.phone AS treasury_phone
             FROM users u
             JOIN agent_profiles ap ON ap.user_id = u.id
+            LEFT JOIN entity_locations ael ON ael.id = ap.entity_location_id
             WHERE ap.id = $1::uuid
             """,
             str(payment["validated_by_agent_id"])
         )
         if agent_data:
             agent_name = f"{agent_data['first_name'] or ''} {agent_data['last_name'] or ''}".strip()
+            if agent_data.get("treasury_location_name"):
+                agent_location = {
+                    "location_name": agent_data["treasury_location_name"],
+                    "location_address": agent_data.get("treasury_location_address"),
+                    "city": agent_data.get("treasury_city"),
+                    "phone": agent_data.get("treasury_phone"),
+                }
 
     # Build service_data dict from the joined query
     service_data = {
@@ -4020,6 +4033,7 @@ async def download_receipt_pdf(
         validated_by_name=agent_name,
         validated_at=payment.get("validated_at"),
         language="es",
+        agent_location=agent_location,
     )
 
     filename = f"recibo_{payment['receipt_number']}.pdf"

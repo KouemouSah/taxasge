@@ -241,10 +241,21 @@ class ReceiptService:
         "nif": "GE-MHEP-001",
     }
 
-    def _get_treasury_info(self, service_data: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
-        """Build treasury info dynamically from service_data location."""
+    def _get_treasury_info(
+        self,
+        service_data: Optional[Dict[str, Any]] = None,
+        agent_location: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, str]:
+        """Build treasury info from agent's treasury site (preferred) or service_data location."""
         info = dict(self.TREASURY_INFO_DEFAULT)
-        if service_data:
+        # Prefer agent's treasury office over service request location
+        if agent_location and agent_location.get("location_name"):
+            info["name"] = f"Tesoro Publico - {agent_location['location_name']}"
+            if agent_location.get("location_address"):
+                info["address"] = agent_location["location_address"]
+            elif agent_location.get("city"):
+                info["address"] = f"{agent_location['city']}, Guinea Ecuatorial"
+        elif service_data:
             city = service_data.get("city")
             location_address = service_data.get("location_address")
             if location_address:
@@ -490,6 +501,7 @@ class ReceiptService:
         validated_by_name: Optional[str] = None,
         validated_at: Optional[datetime] = None,
         language: str = "es",
+        agent_location: Optional[Dict[str, str]] = None,
     ) -> bytes:
         """
         Generate a PDF receipt for a completed payment.
@@ -619,7 +631,7 @@ class ReceiptService:
             validated_by=validated_by,
             validated_by_name=validated_by_name,
             validated_at=validated_at_str,
-            treasury=self._get_treasury_info(service_data),
+            treasury=self._get_treasury_info(service_data, agent_location),
             # QR code with secure verification URL
             verification_url=verification_url,
             qr_code_base64=qr_code_base64,
@@ -657,6 +669,7 @@ class ReceiptService:
         validated_by_name: Optional[str] = None,
         validated_at: Optional[datetime] = None,
         language: str = "es",
+        agent_location: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Generate receipt PDF and store in Firebase Storage.
@@ -672,6 +685,7 @@ class ReceiptService:
             validated_by_name: Agent name
             validated_at: Validation timestamp
             language: Language for the receipt
+            agent_location: Agent's treasury office location (from entity_locations)
 
         Returns:
             Dict with receipt_number, receipt_url, file_path
@@ -691,6 +705,7 @@ class ReceiptService:
             validated_by_name=validated_by_name,
             validated_at=validated_at,
             language=language,
+            agent_location=agent_location,
         )
 
         # Upload to Firebase Storage

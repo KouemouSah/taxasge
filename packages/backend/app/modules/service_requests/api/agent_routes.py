@@ -3615,7 +3615,7 @@ async def get_pending_payments_widget(
 ):
     """
     Get payment validations for treasury widget.
-    Without workflow_status: uses v_pending_payment_validations (pending only).
+    Without workflow_status: uses v_pending_payment_validations filtered to pending_agent_review.
     With workflow_status: queries service_payments directly for that status.
     """
     conn = db
@@ -3667,7 +3667,8 @@ async def get_pending_payments_widget(
                 assigned_to_name,
                 created_at
             FROM v_pending_payment_validations
-            WHERE workflow_code = $1
+            WHERE workflow_status = 'pending_agent_review'
+              AND workflow_code = $1
             ORDER BY hours_waiting DESC NULLS LAST
             LIMIT $2
         """, workflow_code, limit)
@@ -3686,6 +3687,7 @@ async def get_pending_payments_widget(
                 assigned_to_name,
                 created_at
             FROM v_pending_payment_validations
+            WHERE workflow_status = 'pending_agent_review'
             ORDER BY hours_waiting DESC NULLS LAST
             LIMIT $1
         """, limit)
