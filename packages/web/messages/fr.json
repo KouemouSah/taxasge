@@ -6377,7 +6377,9 @@
       "qualityScoreDesc": "Note moyenne de vos travaux évalués",
       "outOf10": "sur 10",
       "typeBreakdown": "Répartition par Type",
-      "typeBreakdownDesc": "Distribution des demandes traitées par catégorie"
+      "typeBreakdownDesc": "Distribution des affectations par catégorie",
+      "ofTotalAssignments": "sur {total} affectations",
+      "totalLabel": "total"
     },
     "quickActions": {
       "title": "Actions Rapides",

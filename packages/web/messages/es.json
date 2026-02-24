@@ -6239,7 +6239,9 @@
       "qualityScoreDesc": "Calificación promedio de sus trabajos revisados",
       "outOf10": "de 10",
       "typeBreakdown": "Desglose por Tipo",
-      "typeBreakdownDesc": "Distribución de solicitudes procesadas por categoría"
+      "typeBreakdownDesc": "Distribución de asignaciones por categoría",
+      "ofTotalAssignments": "de {total} asignaciones",
+      "totalLabel": "total"
     },
     "quickActions": {
       "title": "Acciones Rápidas",

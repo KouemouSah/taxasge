@@ -144,9 +144,9 @@ export default function AgentStatsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">{t('agent.stats.totalProcessed')}</p>
-                    <p className="text-2xl font-bold">{formatNumber(stats.totalAssignments)}</p>
+                    <p className="text-2xl font-bold">{formatNumber(stats.completedAssignments + stats.rejectedAssignments)}</p>
                     <p className="text-sm text-muted-foreground">
-                      {stats.completedAssignments} {t('agent.stats.completed')}
+                      {t('agent.stats.ofTotalAssignments', { total: stats.totalAssignments })}
                     </p>
                   </div>
                   <div className="p-3 bg-blue-100 rounded-full">
@@ -339,7 +339,9 @@ export default function AgentStatsPage() {
                       <span className="text-sm font-medium capitalize">
                         {type.replace(/_/g, ' ')}
                       </span>
-                      <Badge variant="secondary">{count}</Badge>
+                      <Badge variant="secondary">
+                        {count} {t('agent.stats.totalLabel')}
+                      </Badge>
                     </div>
                   ))}
                 </div>

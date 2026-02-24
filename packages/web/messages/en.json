@@ -6137,7 +6137,9 @@
       "qualityScoreDesc": "Average rating of your reviewed work",
       "outOf10": "out of 10",
       "typeBreakdown": "Type Breakdown",
-      "typeBreakdownDesc": "Distribution of processed requests by category"
+      "typeBreakdownDesc": "Distribution of assignments by category",
+      "ofTotalAssignments": "of {total} assignments",
+      "totalLabel": "total"
     },
     "quickActions": {
       "title": "Quick Actions",
