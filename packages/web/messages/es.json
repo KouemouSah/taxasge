@@ -5471,7 +5471,9 @@
       "receiptNumber": "Numero de Recibo",
       "download": "Descargar PDF",
       "print": "Imprimir",
-      "continue": "Continuar"
+      "continue": "Continuar",
+      "downloadError": "No se pudo descargar el recibo",
+      "printError": "No se pudo abrir el recibo"
     },
     "reconciliation": {
       "title": "Reconciliacion Bancaria",

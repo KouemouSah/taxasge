@@ -113,7 +113,7 @@ export default function PaymentDetailPage() {
   const [escalateLevel, setEscalateLevel] = useState('medium');
 
   // Receipt dialog state
-  const [receiptData, setReceiptData] = useState<{ receiptNumber: string; receiptUrl: string } | null>(null);
+  const [receiptData, setReceiptData] = useState<{ receiptNumber: string; paymentId: string } | null>(null);
 
   // Fetch current payment details
   const { data: payment, isLoading: isLoadingPayment, error: paymentError } = useQuery({
@@ -187,8 +187,8 @@ export default function PaymentDetailPage() {
       setShowValidateConfirm(false);
       setComment('');
       // Show receipt dialog if receipt was generated
-      if (result.receiptNumber && result.receiptUrl) {
-        setReceiptData({ receiptNumber: result.receiptNumber, receiptUrl: result.receiptUrl });
+      if (result.receiptNumber) {
+        setReceiptData({ receiptNumber: result.receiptNumber, paymentId });
         return;
       }
       navigateAfterValidation();
@@ -692,7 +692,7 @@ export default function PaymentDetailPage() {
             navigateAfterValidation();
           }}
           receiptNumber={receiptData.receiptNumber}
-          receiptUrl={receiptData.receiptUrl}
+          paymentId={receiptData.paymentId}
         />
       )}
     </div>

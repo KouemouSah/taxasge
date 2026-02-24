@@ -221,7 +221,7 @@ export default function TreasuryValidationPage() {
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
 
   // Receipt dialog state
-  const [receiptData, setReceiptData] = useState<{ receiptNumber: string; receiptUrl: string } | null>(null);
+  const [receiptData, setReceiptData] = useState<{ receiptNumber: string; paymentId: string } | null>(null);
   const [receiptNextPaymentId, setReceiptNextPaymentId] = useState<string | null>(null);
 
   // Batch action dialogs
@@ -402,8 +402,8 @@ export default function TreasuryValidationPage() {
     const result = await validatePayment.mutateAsync({ paymentId, request: comment ? { comment } : undefined });
     const nextId = getAdjacentPaymentId(paymentId);
     // Show receipt dialog if receipt was generated
-    if (result.receiptNumber && result.receiptUrl) {
-      setReceiptData({ receiptNumber: result.receiptNumber, receiptUrl: result.receiptUrl });
+    if (result.receiptNumber) {
+      setReceiptData({ receiptNumber: result.receiptNumber, paymentId });
       setReceiptNextPaymentId(nextId);
       return;
     }
@@ -884,7 +884,7 @@ export default function TreasuryValidationPage() {
             }
           }}
           receiptNumber={receiptData.receiptNumber}
-          receiptUrl={receiptData.receiptUrl}
+          paymentId={receiptData.paymentId}
         />
       )}
     </div>

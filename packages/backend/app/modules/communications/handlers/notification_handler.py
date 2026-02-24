@@ -595,6 +595,8 @@ class NotificationEventHandler:
 
             # Reference: service request reference first, then payment reference, then receipt
             "reference": payload.get("reference") or payload.get("payment_reference") or payload.get("receipt_number"),
+            "payment_reference": payload.get("payment_reference"),
+            "request_reference": payload.get("request_reference"),
             "date": payment_date,  # For PAYMENT_RECEIVED {{date}}
 
             # Request info

@@ -5369,7 +5369,9 @@
       "receiptNumber": "Receipt Number",
       "download": "Download PDF",
       "print": "Print",
-      "continue": "Continue"
+      "continue": "Continue",
+      "downloadError": "Could not download the receipt",
+      "printError": "Could not open the receipt"
     },
     "reconciliation": {
       "title": "Bank Reconciliation",

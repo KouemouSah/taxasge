@@ -3725,7 +3725,13 @@ async def validate_payment(
             payment_id
         )
         payment_info = await db.fetchrow(
-            "SELECT total_amount, currency, receipt_number, payment_method FROM service_payments WHERE id = $1::uuid",
+            """
+            SELECT sp.total_amount, sp.currency, sp.receipt_number, sp.payment_method,
+                   sp.payment_reference, sr.reference as request_reference
+            FROM service_payments sp
+            JOIN service_requests sr ON sr.id = sp.service_request_id
+            WHERE sp.id = $1::uuid
+            """,
             payment_id
         )
 
@@ -3738,6 +3744,12 @@ async def validate_payment(
                     result.receipt_pdf_bytes,
                     "application/pdf"
                 )]
+                logger.info(f"Receipt PDF attachment prepared: {result.receipt_number} ({len(result.receipt_pdf_bytes)} bytes)")
+            else:
+                logger.warning(
+                    f"No receipt PDF attachment: receipt_number={result.receipt_number}, "
+                    f"pdf_bytes={'available' if result.receipt_pdf_bytes else 'None'}"
+                )
 
             EventBus.publish_nowait(
                 EventType.PAYMENT_CASH_VALIDATED,
@@ -3753,14 +3765,15 @@ async def validate_payment(
                     "currency": payment_info["currency"] or "XAF",
                     "receipt_number": payment_info["receipt_number"],
                     "payment_method": payment_info["payment_method"],
+                    "payment_reference": payment_info["payment_reference"],
+                    "request_reference": payment_info["request_reference"],
                     "agent_id": current_user.id,
                     "timestamp": datetime.now().isoformat(),
                     "attachments": attachments,
                 }
             )
     except Exception as e:
-        # Non-blocking - log but don't fail the request
-        pass
+        logger.error(f"Failed to publish PAYMENT_CASH_VALIDATED event for {payment_id}: {e}", exc_info=True)
 
     return PaymentActionResponse(
         success=True,
@@ -3858,7 +3871,8 @@ async def reject_payment(
         user_info = await db.fetchrow(
             """
             SELECT u.id, u.email, u.first_name, u.last_name, u.phone_number, u.preferred_language,
-                   sp.service_request_id, sp.total_amount, sp.currency, sp.payment_method
+                   sp.service_request_id, sp.total_amount, sp.currency, sp.payment_method,
+                   sp.payment_reference, sr.reference as request_reference
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             JOIN users u ON u.id = sr.user_id
@@ -3881,20 +3895,127 @@ async def reject_payment(
                     "amount": float(user_info["total_amount"]) if user_info["total_amount"] else None,
                     "currency": user_info["currency"] or "XAF",
                     "payment_method": user_info["payment_method"],
+                    "payment_reference": user_info["payment_reference"],
+                    "request_reference": user_info["request_reference"],
                     "reason": body.reason,
                     "agent_id": current_user.id,
                     "timestamp": datetime.now().isoformat(),
                 }
             )
-    except Exception:
-        # Non-blocking
-        pass
+    except Exception as e:
+        logger.error(f"Failed to publish PAYMENT_CASH_REJECTED event for {payment_id}: {e}", exc_info=True)
 
     return PaymentActionResponse(
         success=True,
         payment_id=payment_id,
         status="rejected",
         message_es="Pago rechazado."
+    )
+
+
+@router.get(
+    "/treasury/payments/{payment_id}/receipt/download",
+    summary="Download receipt PDF",
+    description="""
+    Regenerate and download the receipt PDF for a validated payment.
+
+    **Behavior:**
+    - Fetches payment, user, and service data from DB
+    - Regenerates the PDF using the receipt template
+    - Returns the PDF as a streaming response
+
+    **Permissions:**
+    - Requires 'treasury.validate_payment' permission
+    """
+)
+async def download_receipt_pdf(
+    payment_id: str = Path(..., description="Payment UUID"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.validate_payment"))
+):
+    """Download receipt PDF for a completed payment."""
+    from fastapi.responses import StreamingResponse
+    from io import BytesIO
+    from app.modules.payments.services.receipt_service import receipt_service
+
+    # Fetch all data needed for PDF generation in 2 queries (payment+service, user)
+    payment = await db.fetchrow(
+        """
+        SELECT sp.id, sp.payment_reference, sp.total_amount, sp.currency,
+               sp.payment_method, sp.calculation_details, sp.receipt_number,
+               sp.paid_at, sp.created_at, sp.validated_by_agent_id, sp.validated_at,
+               sp.service_request_id,
+               sr.user_id, sr.reference, sr.workflow_code, sr.solicitud_type, sr.entity_code,
+               el.location_name, el.city, el.location_address
+        FROM service_payments sp
+        JOIN service_requests sr ON sr.id = sp.service_request_id
+        LEFT JOIN entity_locations el ON el.id = sr.entity_location_id
+        WHERE sp.id = $1::uuid
+        """,
+        payment_id
+    )
+    if not payment:
+        raise payment_not_found(payment_id)
+
+    if not payment["receipt_number"]:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No receipt found for this payment"
+        )
+
+    # Fetch user data
+    user_data = await db.fetchrow(
+        "SELECT id, email, phone_number as phone, first_name, last_name, document_number FROM users WHERE id = $1",
+        payment["user_id"]
+    )
+
+    # Fetch agent info
+    agent_name = None
+    if payment["validated_by_agent_id"]:
+        agent_data = await db.fetchrow(
+            """
+            SELECT u.first_name, u.last_name
+            FROM users u
+            JOIN agent_profiles ap ON ap.user_id = u.id
+            WHERE ap.id = $1::uuid
+            """,
+            str(payment["validated_by_agent_id"])
+        )
+        if agent_data:
+            agent_name = f"{agent_data['first_name'] or ''} {agent_data['last_name'] or ''}".strip()
+
+    # Build service_data dict from the joined query
+    service_data = {
+        "reference": payment["reference"],
+        "workflow_code": payment["workflow_code"],
+        "solicitud_type": payment["solicitud_type"],
+        "entity_code": payment["entity_code"],
+        "location_name": payment["location_name"],
+        "city": payment["city"],
+        "location_address": payment["location_address"],
+    }
+
+    # Generate PDF
+    pdf_bytes = await receipt_service.generate_receipt_pdf(
+        receipt_number=payment["receipt_number"],
+        payment_data=dict(payment),
+        user_data=dict(user_data) if user_data else {},
+        service_data=service_data,
+        validated_by=str(payment["validated_by_agent_id"]) if payment["validated_by_agent_id"] else None,
+        validated_by_name=agent_name,
+        validated_at=payment.get("validated_at"),
+        language="es",
+    )
+
+    filename = f"recibo_{payment['receipt_number']}.pdf"
+    return StreamingResponse(
+        BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        }
     )
 
 

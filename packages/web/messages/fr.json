@@ -5609,7 +5609,9 @@
       "receiptNumber": "Numero de Recu",
       "download": "Telecharger PDF",
       "print": "Imprimer",
-      "continue": "Continuer"
+      "continue": "Continuer",
+      "downloadError": "Impossible de telecharger le recu",
+      "printError": "Impossible d'ouvrir le recu"
     },
     "reconciliation": {
       "title": "Reconciliation Bancaire",
