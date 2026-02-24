@@ -3558,7 +3558,12 @@ async def get_payment_details(
             sp.escalation_level::text AS escalation_level,
             sp.escalation_reason,
             sp.escalated_at,
-            sp.sla_escalated
+            sp.sla_escalated,
+            COALESCE(
+                sr.form_data->>'nombre_completo',
+                NULLIF(TRIM(COALESCE(sr.form_data->>'apellidos', '') || ' ' || COALESCE(sr.form_data->>'nombres', '')), ''),
+                NULLIF(TRIM(COALESCE(sr.form_data->>'propietario_apellidos', '') || ' ' || COALESCE(sr.form_data->>'propietario_nombres', '')), '')
+            ) AS beneficiary_name
         FROM service_payments sp
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
         LEFT JOIN users u ON u.id = sp.user_id
@@ -3596,6 +3601,7 @@ async def get_payment_details(
         batch_id=str(row["batch_id"]) if row["batch_id"] else None,
         batch_reference=row["batch_reference"],
         batch_total_items=row["batch_total_items"],
+        beneficiary_name=row.get("beneficiary_name"),
         escalation_level=row["escalation_level"],
         escalation_reason=row["escalation_reason"],
         escalated_at=row["escalated_at"].isoformat() if row["escalated_at"] else None,
