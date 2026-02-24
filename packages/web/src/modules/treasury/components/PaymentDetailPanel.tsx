@@ -84,17 +84,6 @@ function formatCurrency(amount: number | undefined): string {
   }).format(amount);
 }
 
-function formatDate(dateString: string | undefined): string {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('es-GQ', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -135,13 +124,6 @@ export function PaymentDetailPanel({
       return t(`workflowNames.${normalizedKey}`);
     }
     return code.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-  };
-
-  const formatHours = (hours: number | undefined): string => {
-    if (!hours) return 'N/A';
-    if (hours < 1) return `${Math.round(hours * 60)}m`;
-    if (hours < 24) return `${hours.toFixed(1)}h`;
-    return `${Math.round(hours / 24)}d`;
   };
 
   // Action handlers
