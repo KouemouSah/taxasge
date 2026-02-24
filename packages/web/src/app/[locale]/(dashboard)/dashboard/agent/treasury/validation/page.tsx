@@ -697,7 +697,7 @@ export default function TreasuryValidationPage() {
         </div>
 
         {/* RIGHT PANEL — Payment Detail (hidden on mobile) */}
-        <div className="hidden lg:flex lg:flex-1 border rounded-lg bg-card overflow-hidden">
+        <div className="hidden lg:flex lg:flex-col lg:flex-1 border rounded-lg bg-card overflow-hidden">
           {selectedPayment ? (
             <PaymentDetailPanel
               payment={selectedPayment}
