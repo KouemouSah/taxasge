@@ -3728,6 +3728,15 @@ async def validate_payment(
         )
 
         if user_info:
+            # Build attachments: attach receipt PDF if available
+            attachments = None
+            if result.receipt_pdf_bytes and result.receipt_number:
+                attachments = [(
+                    f"recibo_{result.receipt_number}.pdf",
+                    result.receipt_pdf_bytes,
+                    "application/pdf"
+                )]
+
             EventBus.publish_nowait(
                 EventType.PAYMENT_CASH_VALIDATED,
                 {
@@ -3744,6 +3753,7 @@ async def validate_payment(
                     "payment_method": payment_info["payment_method"],
                     "agent_id": current_user.id,
                     "timestamp": datetime.now().isoformat(),
+                    "attachments": attachments,
                 }
             )
     except Exception as e:

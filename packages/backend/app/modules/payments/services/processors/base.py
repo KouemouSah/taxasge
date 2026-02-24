@@ -78,6 +78,7 @@ class PaymentStatusResult:
     currency: str = "XAF"
     receipt_number: Optional[str] = None
     receipt_url: Optional[str] = None
+    receipt_pdf_bytes: Optional[bytes] = None
     validated_by: Optional[str] = None
     error: Optional[str] = None
 

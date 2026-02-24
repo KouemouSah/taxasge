@@ -747,6 +747,7 @@ class ReceiptService:
             "receipt_url": receipt_url,
             "file_path": file_path,
             "pdf_size_bytes": len(pdf_bytes),
+            "pdf_bytes": pdf_bytes,
         }
 
     async def get_receipt_download_url(

@@ -338,6 +338,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             # 7. Generate and store receipt PDF
             receipt_number = None
             receipt_url = None
+            receipt_pdf_bytes = None
             try:
                 payment_data = dict(updated)
                 receipt_result = await receipt_service.generate_and_store_receipt(
@@ -354,6 +355,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 )
                 receipt_number = receipt_result["receipt_number"]
                 receipt_url = receipt_result["receipt_url"]
+                receipt_pdf_bytes = receipt_result.get("pdf_bytes")
                 logger.info(f"Receipt generated: {receipt_number}")
             except Exception as e:
                 # Log but don't fail the validation
@@ -366,27 +368,8 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     receipt_number, payment_id
                 )
 
-            # 8. Publish PAYMENT_COMPLETED event to trigger notifications
-            try:
-                await EventBus.publish(EventType.PAYMENT_COMPLETED, {
-                    "payment_id": payment_id,
-                    "user_id": str(payment["user_id"]),
-                    "service_request_id": str(payment["service_request_id"]),
-                    "amount": float(updated["total_amount"]),
-                    "currency": updated["currency"],
-                    "payment_method": updated["payment_method"],
-                    "receipt_number": receipt_number,
-                    "receipt_url": receipt_url,
-                    "agent_profile_id": agent_profile_id,
-                    "user_email": user_data["email"] if user_data else None,
-                    "user_phone": user_data["phone"] if user_data else None,
-                    "preferred_language": user_data.get("preferred_language", "es") if user_data else "es",
-                    "date": paid_at.strftime("%d/%m/%Y"),
-                })
-                logger.info(f"PAYMENT_COMPLETED event published for {payment_id}")
-            except Exception as e:
-                # Log but don't fail the validation
-                logger.error(f"Failed to publish PAYMENT_COMPLETED event: {e}")
+            # Note: notification event is published by admin_routes.validate_payment()
+            # (PAYMENT_CASH_VALIDATED) — do NOT publish here to avoid duplicate emails.
 
             logger.info(
                 f"Manual payment {payment_id} validated by agent_profile {agent_profile_id}. "
@@ -402,6 +385,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 currency=updated["currency"],
                 receipt_number=receipt_number,
                 receipt_url=receipt_url,
+                receipt_pdf_bytes=receipt_pdf_bytes,
                 validated_by=agent_profile_id,
             )
 
@@ -467,23 +451,8 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     error="Payment not found"
                 )
 
-            # Publish PAYMENT_MANUAL_REJECTED event for notifications
-            try:
-                EventBus.publish_nowait(EventType.PAYMENT_MANUAL_REJECTED, {
-                    "payment_id": payment_id,
-                    "user_id": str(updated["user_id"]),
-                    "service_request_id": str(updated["service_request_id"]),
-                    "amount": float(updated["total_amount"]),
-                    "currency": updated["currency"],
-                    "payment_method": updated["payment_method"],
-                    "reason": rejection_reason,
-                    "user_email": user_data["email"] if user_data else None,
-                    "user_phone": user_data["phone"] if user_data else None,
-                    "preferred_language": user_data["preferred_language"] if user_data else "es",
-                })
-                logger.info(f"PAYMENT_MANUAL_REJECTED event published for payment {payment_id}")
-            except Exception as e:
-                logger.error(f"Failed to publish PAYMENT_MANUAL_REJECTED event: {e}")
+            # Note: notification event is published by admin_routes.reject_payment()
+            # (PAYMENT_CASH_REJECTED) — do NOT publish here to avoid duplicate emails.
 
             logger.info(
                 f"Manual payment {payment_id} rejected by agent_profile {agent_profile_id}. "

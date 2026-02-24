@@ -393,14 +393,18 @@ class NotificationEventHandler:
                 logger.warning("Cannot send email: no email address")
                 return False
 
-            # Get subject based on language
-            subject = self._get_subject(config, language, context)
+            # Fetch DB template once for both subject and content
+            db_template = await self._fetch_db_template(config.template_code)
 
-            # Render template content
+            # Get subject based on language (DB first, fallback to hardcoded)
+            subject = self._get_subject(config, language, context, db_template=db_template)
+
+            # Render template content (DB first, fallback to inline)
             content = await self._render_template(
                 config.template_code,
                 language,
-                context
+                context,
+                db_template=db_template
             )
 
             if not content:
@@ -632,24 +636,59 @@ class NotificationEventHandler:
             **(payload.get("metadata") or {}),
         }
 
+    async def _fetch_db_template(self, template_code: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch email template from the database.
+
+        Returns:
+            Dict with html_content, subject_es/fr/en or None if not found
+        """
+        try:
+            async with db_manager.get_connection() as db:
+                row = await db.fetchrow(
+                    "SELECT html_content, subject_es, subject_fr, subject_en "
+                    "FROM email_templates "
+                    "WHERE template_code = $1 AND is_active = true",
+                    template_code
+                )
+                if row:
+                    return dict(row)
+        except Exception as e:
+            logger.warning(f"DB template fetch failed for '{template_code}': {e}")
+        return None
+
     def _get_subject(
         self,
         config: NotificationConfig,
         language: str,
-        context: Dict[str, Any]
+        context: Dict[str, Any],
+        db_template: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Get email subject for the notification.
+
+        Uses DB template subject if available, falls back to hardcoded.
 
         Args:
             config: Notification configuration
             language: Language code
             context: Template context
+            db_template: Optional DB template row
 
         Returns:
             Email subject string
         """
-        # Default subjects by template code
+        # Try DB template subject first
+        if db_template:
+            lang_key = f"subject_{language}"
+            db_subject = db_template.get(lang_key)
+            if not db_subject:
+                # Fallback to Spanish subject from DB
+                db_subject = db_template.get("subject_es")
+            if db_subject:
+                return db_subject
+
+        # Fallback: hardcoded subjects
         subjects = {
             "payment_completed": {
                 "es": "Pago completado - TaxasGE",
@@ -780,24 +819,53 @@ class NotificationEventHandler:
         self,
         template_code: str,
         language: str,
-        context: Dict[str, Any]
+        context: Dict[str, Any],
+        db_template: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """
         Render a notification template.
 
-        In the future, this will fetch templates from the database.
-        For now, returns a basic HTML template.
+        Uses DB template (email_templates table) if available and active,
+        falls back to inline template for non-DB templates or fr/en languages.
 
         Args:
             template_code: Template identifier
             language: Language code
             context: Template variables
+            db_template: Optional pre-fetched DB template row
 
         Returns:
             Rendered HTML content or None if template not found
         """
-        # Basic template rendering
-        # In production, this would fetch from email_templates table
+        # Try DB template first (html_content is Spanish-only, so use for 'es' or as base)
+        if db_template and db_template.get("html_content"):
+            try:
+                import re
+                html = db_template["html_content"]
+
+                # Format amount for display before substitution
+                render_context = dict(context)
+                if render_context.get("amount") is not None:
+                    try:
+                        amt = float(render_context["amount"])
+                        render_context["amount"] = f"{int(amt):,}".replace(",", " ")
+                    except (ValueError, TypeError):
+                        pass
+
+                # Substitute {{var}} with context values
+                for key, value in render_context.items():
+                    if value is not None and not isinstance(value, (list, dict, tuple, bytes)):
+                        html = html.replace("{{" + key + "}}", str(value))
+
+                # Clean any unreplaced {{variables}}
+                html = re.sub(r'\{\{[a-zA-Z_]+\}\}', '', html)
+
+                logger.debug(f"Rendered DB template '{template_code}' for language '{language}'")
+                return html
+            except Exception as e:
+                logger.warning(f"Failed to render DB template '{template_code}': {e}")
+
+        # Fallback: inline template
         user_name = context.get("user_name", "Usuario")
 
         # Get greeting and footer based on language
