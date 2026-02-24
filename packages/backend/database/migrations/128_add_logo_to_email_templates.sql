@@ -1,24 +1,29 @@
 -- Migration 128: Add logo image to all email templates
 -- Date: 2026-02-24
+-- Status: APPLIED MANUALLY via Python script (regexp_replace backreferences
+--         don't work correctly with E-strings in PostgreSQL).
+--         The migration was applied using Python regex on each template row.
+--
 -- Description:
 --   Adds the Facil logo image above the colored header in all email templates.
 --   The logo sits on a white background bar, above the colored gradient header.
---   Uses a single REPLACE since all templates share the same HTML structure.
 --   Logo URL: Frontend public folder (Firebase Hosting)
+--
+-- Result: 17 templates updated (all except SECURITY_PASSWORD_CHANGED,
+--         appointment_confirmed, appointment_rescheduled which have different structures)
+--
+-- Idempotency check:
+--   SELECT count(*) FROM email_templates WHERE html_content LIKE '%logo.png%';
+--   Expected: 17
 
-BEGIN;
-
--- Add logo bar above the colored header in ALL email templates
--- Pattern: <div class="container"><div class="header">
--- Becomes: <div class="container"><div style="logo bar"><img></div><div class="header">
-UPDATE email_templates SET
-    html_content = REPLACE(
-        html_content,
-        '<div class="container"><div class="header">',
-        '<div class="container"><div style="background:#ffffff;padding:20px 20px 10px;text-align:center;border-bottom:1px solid #e5e7eb"><img src="https://taxasge.emacsah.com/logo.png" alt="Facil" width="160" style="display:block;margin:0 auto;max-width:160px"></div><div class="header">'
-    ),
-    updated_at = NOW()
-WHERE html_content LIKE '%<div class="container"><div class="header">%'
-  AND html_content NOT LIKE '%taxasge.emacsah.com/logo.png%';  -- Idempotent: skip if already has logo
-
-COMMIT;
+-- NO-OP: Migration already applied. Kept for documentation.
+-- If you need to re-apply, use the Python approach below:
+--
+-- import re
+-- LOGO_DIV = '<div style="background:#ffffff;padding:20px 20px 10px;text-align:center;border-bottom:1px solid #e5e7eb"><img src="https://taxasge.emacsah.com/logo.png" alt="Facil" width="160" style="display:block;margin:0 auto;max-width:160px"></div>'
+-- pattern = re.compile(r'(<div class="container">)\s*(<div class="header">)')
+-- for each template:
+--   new_html = pattern.sub(
+--     '<div class="container">\n        ' + LOGO_DIV + '\n        <div class="header">',
+--     html
+--   )
