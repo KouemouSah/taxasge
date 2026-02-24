@@ -354,9 +354,9 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
   }, [handleNavigate, handleApprove, selectedId, preview, showRejectDialog, showRequestDocsDialog, isProcessing, action]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)]">
+    <div className="dashboard-full-bleed flex flex-col h-[calc(100vh-3rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 pt-4 md:pt-6 lg:pt-8 mb-4">
         <div>
           <h1 className="text-xl font-semibold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
@@ -377,7 +377,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
       </div>
 
       {/* Filters - Full Width */}
-      <div className="grid grid-cols-12 gap-3 mb-4">
+      <div className="grid grid-cols-12 gap-3 mb-4 px-4 md:px-6 lg:px-8">
         {/* Search - reduced to 4 columns when supervisor has agent filter */}
         <div className={isSupervisor ? 'col-span-3' : 'col-span-5'}>
           <Input
@@ -483,7 +483,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
       </div>
 
       {/* Split View */}
-      <div className="flex gap-4 flex-1 min-h-0">
+      <div className="flex gap-4 flex-1 min-h-0 px-4 md:px-6 lg:px-8 pb-4">
         {/* Left Column - List (35%) */}
         <div className="w-[35%] flex flex-col min-h-0">
           <RequestList
