@@ -19,12 +19,6 @@ from ..workflows.workflow_interface import PredefinedWorkflow
 
 # All workflows are now v2 (PredefinedWorkflow)
 AnyWorkflow = PredefinedWorkflow
-from app.modules.agents.models import (
-    AgentWorkQueueCreate,
-    AssignmentCreate,
-    AssignmentMethod,
-    AssignmentStatus
-)
 
 
 class AgentQueueService:

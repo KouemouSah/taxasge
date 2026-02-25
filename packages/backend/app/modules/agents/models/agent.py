@@ -148,10 +148,15 @@ class MinistryAgent(MinistryAgentResponse):
 # ============================================================================
 
 class AgentWorkQueueBase(BaseModel):
-    """Base work queue fields"""
+    """Base work queue fields.
+
+    Routing: entity_code (primary, migration 131).
+    ministry_id: nullable legacy field kept for backward compat.
+    """
     item_type: str
     item_id: str
-    ministry_id: int
+    entity_code: Optional[str] = None
+    ministry_id: Optional[int] = None
     amount: Optional[Decimal] = None
     declaration_type: Optional[str] = None
     priority_score: Decimal = Decimal("0")
