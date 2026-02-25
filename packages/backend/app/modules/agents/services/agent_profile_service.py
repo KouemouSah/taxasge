@@ -73,6 +73,15 @@ class AgentProfileService:
         if not validation["valid"]:
             raise ValueError(validation["error"])
 
+        # Auto-populate ministry_id from entity if not provided
+        if profile_data.entity_id and not profile_data.ministry_id:
+            entity_ministry = await conn.fetchval(
+                "SELECT ministry_id FROM entities WHERE id = $1",
+                profile_data.entity_id,
+            )
+            if entity_ministry:
+                profile_data.ministry_id = entity_ministry
+
         # Create the profile
         profile = await self.profile_repo.create(conn, profile_data)
         profile_id = profile["id"]
@@ -511,26 +520,19 @@ class AgentProfileService:
         self,
         profile_data: AgentProfileCreate,
     ) -> Dict[str, Any]:
-        """Validate profile creation data."""
-        # Agent must be assigned to either ministry or entity
-        if not profile_data.ministry_id and not profile_data.entity_id:
-            return {
-                "valid": False,
-                "error": "Agent must be assigned to a ministry or entity",
-            }
+        """
+        Validate profile creation data.
 
-        # Entity agent must have entity_id
-        if profile_data.agent_type == AgentType.ENTITY_AGENT and not profile_data.entity_id:
+        All agents MUST have entity_id for service_request routing.
+        ministry_id is optional (auto-populated from entity's ministry_id
+        if the entity belongs to a ministry — used only for dashboard
+        filtering and performance stats).
+        """
+        # entity_id is required for ALL agent types (routing depends on it)
+        if not profile_data.entity_id:
             return {
                 "valid": False,
-                "error": "Entity agent must have an entity_id",
-            }
-
-        # Ministry agent must have ministry_id
-        if profile_data.agent_type == AgentType.MINISTRY_AGENT and not profile_data.ministry_id:
-            return {
-                "valid": False,
-                "error": "Ministry agent must have a ministry_id",
+                "error": "Agent must be assigned to an entity (entity_id required)",
             }
 
         return {"valid": True, "error": None}
@@ -758,7 +760,17 @@ class AgentProfileService:
                     except (ValueError, IndexError):
                         working_hours_end = dt_time(17, 0)  # Default 17:00
 
-                logger.info(f"[AGENT_ACTIVATION] Profile params: entity_id={entity_id}, ministry_id={agent_data.get('ministry_id')}, working_hours={working_hours_start}-{working_hours_end}")
+                # Auto-populate ministry_id from entity if not provided
+                effective_ministry_id = agent_data.get('ministry_id')
+                if entity_id and not effective_ministry_id:
+                    entity_ministry = await conn.fetchval(
+                        "SELECT ministry_id FROM entities WHERE id = $1",
+                        entity_id,
+                    )
+                    if entity_ministry:
+                        effective_ministry_id = entity_ministry
+
+                logger.info(f"[AGENT_ACTIVATION] Profile params: entity_id={entity_id}, ministry_id={effective_ministry_id}, working_hours={working_hours_start}-{working_hours_end}")
 
                 profile_query = """
                     INSERT INTO agent_profiles (
@@ -779,7 +791,7 @@ class AgentProfileService:
                     agent_data.get('is_supervisor', False),
                     entity_id,
                     entity_location_id,
-                    agent_data.get('ministry_id'),
+                    effective_ministry_id,
                     agent_data.get('agent_role', 'validator'),
                     agent_data.get('can_approve_unlimited', False),
                     agent_data.get('max_approval_amount'),

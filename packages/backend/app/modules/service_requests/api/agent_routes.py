@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field
 
+from app.config import get_settings
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
@@ -220,7 +221,7 @@ async def get_queue(
             now = datetime.utcnow()
             if deadline.replace(tzinfo=None) < now:
                 sla_status = "violated"
-            elif (deadline.replace(tzinfo=None) - now).total_seconds() < 6 * 3600:
+            elif (deadline.replace(tzinfo=None) - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
                 sla_status = "at_risk"
 
         result.append(QueueItemResponse(
@@ -300,7 +301,7 @@ async def get_my_queue(
             now = datetime.utcnow()
             if deadline.replace(tzinfo=None) < now:
                 sla_status = "violated"
-            elif (deadline.replace(tzinfo=None) - now).total_seconds() < 6 * 3600:
+            elif (deadline.replace(tzinfo=None) - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
                 sla_status = "at_risk"
 
         result.append(QueueItemResponse(
@@ -2153,7 +2154,7 @@ async def get_entity_service_requests(
                 deadline = deadline.replace(tzinfo=None)
             if deadline < now:
                 sla_status = "violated"
-            elif (deadline - now).total_seconds() < 6 * 3600:
+            elif (deadline - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
                 sla_status = "at_risk"
 
         citizen_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
@@ -2778,7 +2779,7 @@ async def get_urgent_requests_widget(
             sla_deadline_str = deadline.isoformat()
             if deadline < now:
                 sla_status = "violated"
-            elif (deadline - now).total_seconds() < 6 * 3600:
+            elif (deadline - now).total_seconds() < get_settings().QUEUE_SLA_WARNING_HOURS * 3600:
                 sla_status = "at_risk"
 
         items.append(UrgentRequestItem(

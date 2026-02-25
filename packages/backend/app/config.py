@@ -301,6 +301,24 @@ class Settings(BaseSettings):
     CACHE_TTL: int = Field(default=3600, env="CACHE_TTL")  # 1 hour
     
     # ========================================================================
+    # ASSIGNMENT OUTBOX
+    # ========================================================================
+
+    OUTBOX_BATCH_SIZE: int = Field(default=50, env="OUTBOX_BATCH_SIZE")
+    OUTBOX_ORPHAN_THRESHOLD_MINUTES: int = Field(default=10, env="OUTBOX_ORPHAN_THRESHOLD_MINUTES")
+    OUTBOX_STALE_PROCESSING_MINUTES: int = Field(default=5, env="OUTBOX_STALE_PROCESSING_MINUTES")
+    OUTBOX_RETRY_DELAYS: str = Field(default="30,60,120,300,600", env="OUTBOX_RETRY_DELAYS")
+
+    # ========================================================================
+    # AGENT QUEUE
+    # ========================================================================
+
+    QUEUE_DEFAULT_SLA_HOURS: int = Field(default=48, env="QUEUE_DEFAULT_SLA_HOURS")
+    QUEUE_ESCALATION_BOOST: int = Field(default=50, env="QUEUE_ESCALATION_BOOST")
+    QUEUE_SLA_WARNING_HOURS: int = Field(default=6, env="QUEUE_SLA_WARNING_HOURS")
+    QUEUE_MAX_WORKLOAD_PCT: float = Field(default=80.0, env="QUEUE_MAX_WORKLOAD_PCT")
+
+    # ========================================================================
     # RATE LIMITING
     # ========================================================================
     

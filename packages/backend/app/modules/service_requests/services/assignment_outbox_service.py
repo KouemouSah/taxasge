@@ -8,6 +8,8 @@ Instead of fire-and-forget EventBus.publish_nowait(PAYMENT_COMPLETED),
 the payment validation endpoint INSERTs into assignment_outbox in the
 same DB transaction. A cron job (every 1 min) processes pending items.
 
+Constants are read from Settings (config.py) for env-var configurability.
+
 @module service_requests/services/assignment_outbox_service
 """
 
@@ -18,6 +20,8 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import asyncpg
+
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +36,14 @@ class AssignmentOutboxService:
         run_health_check()     - Detect orphans and stuck items (cron, every 5 min)
     """
 
-    # Retry delays in seconds: 30s, 1m, 2m, 5m, 10m
-    RETRY_DELAYS_SECONDS = [30, 60, 120, 300, 600]
-
-    # Max items per cron invocation
-    BATCH_SIZE = 50
-
-    # Health check thresholds
-    ORPHAN_THRESHOLD_MINUTES = 10
-    STALE_PROCESSING_MINUTES = 5
+    def __init__(self):
+        settings = get_settings()
+        self.RETRY_DELAYS_SECONDS = [
+            int(x) for x in settings.OUTBOX_RETRY_DELAYS.split(",")
+        ]
+        self.BATCH_SIZE = settings.OUTBOX_BATCH_SIZE
+        self.ORPHAN_THRESHOLD_MINUTES = settings.OUTBOX_ORPHAN_THRESHOLD_MINUTES
+        self.STALE_PROCESSING_MINUTES = settings.OUTBOX_STALE_PROCESSING_MINUTES
 
     async def enqueue(
         self,
@@ -393,7 +396,7 @@ class AssignmentOutboxService:
         Called by cron every 5 minutes.
 
         Detects:
-        1. PAID requests >10 min without assignment AND not in outbox
+        1. PAID requests >ORPHAN_THRESHOLD_MINUTES without assignment AND not in outbox
         2. Dead letter outbox items
         3. Stale 'processing' items (crashed instance)
 
@@ -421,7 +424,7 @@ class AssignmentOutboxService:
             WHERE sr.status = 'PAID'
               AND sr.payment_status = 'completed'
               AND sr.assigned_to IS NULL
-              AND sr.created_at < NOW() - INTERVAL '10 minutes'
+              AND sr.created_at < NOW() - ($1 * interval '1 minute')
               AND NOT EXISTS (
                   SELECT 1 FROM assignment_outbox ao
                   WHERE ao.service_request_id = sr.id
@@ -435,7 +438,8 @@ class AssignmentOutboxService:
               )
             ORDER BY sr.created_at ASC
             LIMIT 100
-            """
+            """,
+            self.ORPHAN_THRESHOLD_MINUTES,
         )
 
         results["orphans_found"] = len(orphans)
@@ -520,8 +524,9 @@ class AssignmentOutboxService:
                 last_error = 'Reset by health check: stale processing state',
                 updated_at = NOW()
             WHERE status = 'processing'
-              AND locked_at < NOW() - INTERVAL '5 minutes'
-            """
+              AND locked_at < NOW() - ($1 * interval '1 minute')
+            """,
+            self.STALE_PROCESSING_MINUTES,
         )
         stale_count = int(stale_result.split()[-1]) if stale_result else 0
         results["stale_processing_reset"] = stale_count

@@ -3,6 +3,9 @@ Agent Queue Service for Service Requests.
 
 Integrates service_requests with the agent_work_queue system.
 Enables agents to receive, process, and manage service requests.
+
+Routes by entity_code (direct) instead of ministry_id (indirect).
+Priority scores from workflows.priority_weight (DB) instead of hardcoded dicts.
 """
 from typing import Optional, Dict, Any, List
 from uuid import UUID
@@ -11,6 +14,7 @@ from decimal import Decimal
 import asyncpg
 from loguru import logger
 
+from app.config import get_settings
 from ..workflows.workflow_interface import PredefinedWorkflow
 
 # All workflows are now v2 (PredefinedWorkflow)
@@ -29,35 +33,20 @@ class AgentQueueService:
 
     This service bridges the service_requests module with the agents module,
     allowing service requests to be processed through the same queue as declarations.
+
+    Routing: entity_code direct (migration 131).
+    Priority: workflows.priority_weight (migration 131).
+    Constants: from Settings (config.py).
     """
 
     # Item type identifier for service_requests in agent_work_queue
     ITEM_TYPE = "service_request"
 
-    # Default SLA hours if not specified in workflow
-    DEFAULT_SLA_HOURS = 48
-
-    # Entity code to ministry_id mapping
-    # TODO: This should come from the database (ministries table)
-    ENTITY_TO_MINISTRY = {
-        "CNEDOGE": 1,       # Identidad
-        "EXTRANJERIA": 2,   # Extranjería
-        "DGT": 3,           # Tráfico
-        "ONRC": 4,          # Registro Civil
-        "MINFP": 5,         # Función Pública
-        "ITVE": 3,          # ITV (under DGT)
-        "OFIVE": 3,         # OFIVE (under DGT)
-    }
-
-    # Priority base scores by workflow category
-    CATEGORY_PRIORITIES = {
-        "identidad": 50,
-        "residencia": 60,
-        "vehiculo": 40,
-        "contrato": 45,
-        "conducir": 35,
-        "funcion_publica": 55,
-    }
+    def __init__(self):
+        settings = get_settings()
+        self.DEFAULT_SLA_HOURS = settings.QUEUE_DEFAULT_SLA_HOURS
+        self.ESCALATION_BOOST = settings.QUEUE_ESCALATION_BOOST
+        self.SLA_WARNING_HOURS = settings.QUEUE_SLA_WARNING_HOURS
 
     async def add_to_queue(
         self,
@@ -77,17 +66,14 @@ class AgentQueueService:
             db: Database connection
             service_request_id: The service request ID
             workflow_code: The workflow code (e.g., PASAPORTE_NUEVO)
-            entity_code: The responsible entity code (e.g., CNEDOGE)
+            entity_code: The responsible entity code (e.g., CNEDOGE_PASAPORTE)
             workflow_instance: Optional workflow instance for custom settings
             priority_boost: Additional priority points
 
         Returns:
             The created queue item
         """
-        # Get ministry_id from entity_code
-        ministry_id = await self._get_ministry_id(db, entity_code)
-
-        # Calculate priority score
+        # Calculate priority score from workflows.priority_weight (DB)
         priority_score = await self._calculate_priority(
             db=db,
             workflow_code=workflow_code,
@@ -115,12 +101,12 @@ class AgentQueueService:
             )
             return await self._get_queue_item(db, existing['id'])
 
-        # Insert into queue
+        # Insert into queue with entity_code (direct routing)
         row = await db.fetchrow("""
             INSERT INTO agent_work_queue (
                 item_type,
                 item_id,
-                ministry_id,
+                entity_code,
                 declaration_type,
                 priority_score,
                 sla_deadline,
@@ -129,36 +115,15 @@ class AgentQueueService:
                 updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW(), NOW())
             RETURNING *
-        """, self.ITEM_TYPE, str(service_request_id), ministry_id,
+        """, self.ITEM_TYPE, str(service_request_id), entity_code,
             workflow_code, priority_score, sla_deadline)
 
         logger.info(
             f"Added service_request {service_request_id} to queue. "
-            f"Priority: {priority_score}, SLA: {sla_deadline}"
+            f"Entity: {entity_code}, Priority: {priority_score}, SLA: {sla_deadline}"
         )
 
         return dict(row)
-
-    async def _get_ministry_id(
-        self,
-        db: asyncpg.Connection,
-        entity_code: str
-    ) -> int:
-        """Get ministry_id from entity_code."""
-
-        # Try database lookup first
-        ministry_id = await db.fetchval("""
-            SELECT m.id
-            FROM ministries m
-            JOIN entities e ON e.ministry_id = m.id
-            WHERE e.code = $1
-        """, entity_code)
-
-        if ministry_id:
-            return ministry_id
-
-        # Fallback to hardcoded mapping
-        return self.ENTITY_TO_MINISTRY.get(entity_code, 1)
 
     async def _calculate_priority(
         self,
@@ -167,11 +132,14 @@ class AgentQueueService:
         workflow_instance: Optional[AnyWorkflow],
         priority_boost: int
     ) -> Decimal:
-        """Calculate priority score for the queue item."""
+        """
+        Calculate priority score for the queue item.
 
+        Reads priority_weight directly from workflows table (migration 131).
+        """
         # Get workflow info from database
         workflow = await db.fetchrow("""
-            SELECT category, priority_weight, sla_hours
+            SELECT priority_weight, sla_hours
             FROM workflows
             WHERE code = $1
         """, workflow_code)
@@ -179,22 +147,19 @@ class AgentQueueService:
         base_score = Decimal("50")  # Default
 
         if workflow:
-            # Use category-based priority
-            category = workflow.get('category', '').lower()
-            base_score = Decimal(str(self.CATEGORY_PRIORITIES.get(category, 50)))
-
-            # Apply workflow priority weight
-            weight = workflow.get('priority_weight', 1.0)
-            base_score = base_score * Decimal(str(weight))
+            # Use priority_weight from DB (set per-category by migration 131)
+            pw = workflow.get('priority_weight')
+            if pw is not None:
+                base_score = Decimal(str(pw))
 
             # Higher priority for shorter SLAs
-            sla_hours = workflow.get('sla_hours', 48)
+            sla_hours = workflow.get('sla_hours', self.DEFAULT_SLA_HOURS)
             if sla_hours <= 24:
                 base_score += Decimal("20")
             elif sla_hours <= 48:
                 base_score += Decimal("10")
 
-        # Check hardcoded workflow for custom priority
+        # Check workflow instance for custom priority override
         if workflow_instance is not None:
             custom_priority = getattr(workflow_instance, 'queue_priority', None)
             if custom_priority is not None:
@@ -223,7 +188,7 @@ class AgentQueueService:
         if db_sla:
             sla_hours = db_sla
 
-        # Check hardcoded workflow (takes precedence)
+        # Check workflow instance (takes precedence)
         if workflow_instance is not None:
             instance_sla = getattr(workflow_instance, 'sla_hours', None)
             if instance_sla is not None:
@@ -258,15 +223,12 @@ class AgentQueueService:
 
         Args:
             db: Database connection
-            entity_code: Optional entity code filter
-            ministry_id: Optional ministry ID filter
+            entity_code: Entity code filter (primary routing)
+            ministry_id: Deprecated, kept for backward compatibility
             entity_location_id: Filter by specific site (NULL = show all for entity)
             limit: Maximum items to return (default: 1000 for agents to see all)
             offset: Offset for pagination
         """
-        if not ministry_id and entity_code:
-            ministry_id = await self._get_ministry_id(db, entity_code)
-
         query = """
             SELECT
                 q.*,
@@ -282,12 +244,12 @@ class AgentQueueService:
             WHERE q.item_type = $1
             AND q.status = 'pending'
         """
-        params = [self.ITEM_TYPE]
+        params: list = [self.ITEM_TYPE]
         param_idx = 2
 
-        if ministry_id:
-            query += f" AND q.ministry_id = ${param_idx}"
-            params.append(ministry_id)
+        if entity_code:
+            query += f" AND q.entity_code = ${param_idx}"
+            params.append(entity_code)
             param_idx += 1
 
         if entity_location_id:
@@ -351,27 +313,26 @@ class AgentQueueService:
         """
         Escalate a queue item.
 
-        Increases priority and marks for supervisor attention.
+        Increases priority by ESCALATION_BOOST (from settings) and marks for supervisor attention.
         """
-        row = await db.fetchrow("""
+        row = await db.fetchrow(f"""
             UPDATE agent_work_queue
             SET escalated = true,
                 escalated_at = NOW(),
                 escalated_by = $2,
                 escalation_reason = $3,
-                priority_score = priority_score + 50,
+                priority_score = priority_score + $4,
                 status = 'pending',
                 assigned_to = NULL,
                 updated_at = NOW()
             WHERE id = $1
             RETURNING *
-        """, queue_id, agent_id, reason)
+        """, queue_id, agent_id, reason, self.ESCALATION_BOOST)
 
         if not row:
             raise ValueError("Queue item not found")
 
         # Update service_request notes to track escalation
-        # Note: service_requests table doesn't have dedicated escalation columns
         await db.execute("""
             UPDATE service_requests
             SET notes = COALESCE(notes, '') || E'\n[ESCALATED] ' || $2,
@@ -434,17 +395,14 @@ class AgentQueueService:
         ministry_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Get queue statistics for an entity/ministry.
+        Get queue statistics for an entity.
         """
-        if not ministry_id and entity_code:
-            ministry_id = await self._get_ministry_id(db, entity_code)
-
         where_clause = "WHERE item_type = $1"
-        params = [self.ITEM_TYPE]
+        params: list = [self.ITEM_TYPE]
 
-        if ministry_id:
-            where_clause += " AND ministry_id = $2"
-            params.append(ministry_id)
+        if entity_code:
+            where_clause += " AND entity_code = $2"
+            params.append(entity_code)
 
         stats = await db.fetchrow(f"""
             SELECT
@@ -478,6 +436,7 @@ class AgentQueueService:
     ) -> Dict[str, Any]:
         """
         Check SLA status for a queue item.
+        Uses SLA_WARNING_HOURS from settings instead of hardcoded 6 hours.
         """
         row = await db.fetchrow("""
             SELECT
@@ -488,13 +447,13 @@ class AgentQueueService:
                 CASE
                     WHEN status = 'completed' THEN 'completed'
                     WHEN sla_deadline < NOW() THEN 'violated'
-                    WHEN sla_deadline < NOW() + INTERVAL '6 hours' THEN 'at_risk'
+                    WHEN sla_deadline < NOW() + ($2 * interval '1 hour') THEN 'at_risk'
                     ELSE 'on_track'
                 END as sla_status,
                 EXTRACT(EPOCH FROM (sla_deadline - NOW())) / 3600 as hours_remaining
             FROM agent_work_queue
             WHERE id = $1
-        """, queue_id)
+        """, queue_id, self.SLA_WARNING_HOURS)
 
         if not row:
             raise ValueError("Queue item not found")

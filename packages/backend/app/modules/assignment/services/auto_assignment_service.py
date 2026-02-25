@@ -17,6 +17,8 @@ from uuid import UUID
 from fastapi import Depends
 from loguru import logger
 
+from app.config import get_settings
+
 from app.modules.assignment.models.assignment_history import (
     Assignment,
     AssignmentCreate,
@@ -117,7 +119,7 @@ class AutoAssignmentService:
         # Get available agents filtered by entity + location
         available_agents = await self.workload_repository.get_available_agents(
             db,
-            max_workload_pct=80.0,
+            max_workload_pct=get_settings().QUEUE_MAX_WORKLOAD_PCT,
             entity_id=entity_uuid,
             workflow_code=effective_workflow if not entity_uuid else None,
             entity_location_id=entity_location_id,
