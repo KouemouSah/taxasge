@@ -148,6 +148,18 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize EventBus (non-blocking): {e}")
 
+        # Self-healing: repair orphaned PAID requests (never assigned to entity agents)
+        # Must run AFTER EventBus handlers are registered (publishes PAYMENT_COMPLETED)
+        try:
+            from app.modules.service_requests.handlers.agent_queue_handler import (
+                repair_orphaned_paid_requests,
+            )
+            repaired = await repair_orphaned_paid_requests()
+            if repaired > 0:
+                logger.info(f"✅ Startup repair: {repaired} orphaned PAID requests re-queued")
+        except Exception as e:
+            logger.warning(f"⚠️ Startup repair failed (non-fatal): {e}")
+
         # Initialize Cache System (Upstash Redis with in-memory fallback)
         try:
             from app.core.cache import initialize_cache, get_cache_health

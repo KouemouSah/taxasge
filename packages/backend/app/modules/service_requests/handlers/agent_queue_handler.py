@@ -9,6 +9,7 @@ Business Logic:
   the corresponding service_request should be added to agent_work_queue
 - This ensures agents only see requests that have been PAID
 - The agent can then process the dossier (validate documents, schedule appointments, etc.)
+- After assignment, status transitions from PAID → SUBMITTED (visible in agent dashboard)
 
 @module service_requests/handlers/agent_queue_handler
 """
@@ -34,7 +35,8 @@ class AgentQueueEventHandler:
     When triggered:
     - Fetches the service_request details
     - Adds it to agent_work_queue with appropriate priority
-    - Logs the action for audit purposes
+    - Auto-assigns to entity agent via AutoAssignmentService
+    - Transitions status: PAID → SUBMITTED
     """
 
     def __init__(self):
@@ -64,7 +66,8 @@ class AgentQueueEventHandler:
         When payment is completed:
         1. Get service_request details from database
         2. Add to agent_work_queue with appropriate entity/workflow
-        3. Update service_request status if needed
+        3. Auto-assign to entity agent
+        4. Transition status: PAID → SUBMITTED
 
         Args:
             payload: Event payload containing:
@@ -108,7 +111,8 @@ class AgentQueueEventHandler:
                     entity_code,
                     entity_location_id,
                     status,
-                    payment_status
+                    payment_status,
+                    assigned_to
                 FROM service_requests
                 WHERE id = $1
             """, UUID(service_request_id))
@@ -124,6 +128,14 @@ class AgentQueueEventHandler:
                 logger.warning(
                     f"Service request {sr['reference']} payment_status is "
                     f"'{sr['payment_status']}', expected 'completed'. Skipping queue addition."
+                )
+                return
+
+            # Skip if already assigned (idempotency guard)
+            if sr["assigned_to"] is not None and sr["status"] != "PAID":
+                logger.info(
+                    f"Service request {sr['reference']} already assigned "
+                    f"(status={sr['status']}). Skipping duplicate processing."
                 )
                 return
 
@@ -196,10 +208,23 @@ class AgentQueueEventHandler:
             else:
                 logger.warning(
                     f"No agent available for service request {sr['reference']} "
-                    f"(workflow: {workflow_code})"
+                    f"(entity: {entity_code}, workflow: {workflow_code})"
                 )
 
-            # Note: service_request status remains 'PAID', agent queue handles the workflow
+            # Transition status: PAID → SUBMITTED (now ready for entity agent processing)
+            # SUBMITTED is in ActionStatusMapping.PENDING → visible in agent dashboard
+            # Transition even without agent so supervisors can see and manually assign
+            await conn.execute("""
+                UPDATE service_requests
+                SET status = 'SUBMITTED',
+                    updated_at = NOW()
+                WHERE id = $1 AND status = 'PAID'
+            """, UUID(service_request_id))
+
+            logger.info(
+                f"Service request {sr['reference']} status: PAID → SUBMITTED"
+                + (f" (assigned to {assignment.agent_profile_id})" if assignment else " (no agent, pending manual assignment)")
+            )
 
         except Exception as e:
             logger.error(
@@ -228,3 +253,124 @@ def register_agent_queue_handlers() -> AgentQueueEventHandler:
         _handler = AgentQueueEventHandler()
         _handler.register()
     return _handler
+
+
+async def repair_orphaned_paid_requests() -> int:
+    """
+    Self-healing: Find PAID requests that were never assigned to entity agents
+    (due to missing PAYMENT_COMPLETED event before this fix) and re-publish the event.
+
+    Called once at backend startup. Idempotent:
+    - Skips requests already in agent_work_queue
+    - Skips requests already assigned (assigned_to IS NOT NULL)
+    - Resolves entity_code from entity_location_id or workflow_code if NULL
+
+    Returns:
+        Number of requests repaired
+    """
+    conn = None
+    try:
+        conn = await get_db_connection()
+
+        # Find orphaned PAID requests (paid but never assigned to entity agent)
+        orphans = await conn.fetch("""
+            SELECT sr.id, sr.reference, sr.workflow_code, sr.entity_code,
+                   sr.entity_location_id, sr.payment_status,
+                   sp.id AS payment_id, sp.total_amount, sp.payment_method,
+                   sr.user_id
+            FROM service_requests sr
+            JOIN service_payments sp ON sp.request_id = sr.id
+                AND sp.status = 'completed'
+            WHERE sr.status = 'PAID'
+              AND sr.payment_status = 'completed'
+              AND sr.assigned_to IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM agent_work_queue awq
+                  WHERE awq.item_id = sr.id AND awq.item_type = 'service_request'
+              )
+            ORDER BY sr.created_at ASC
+        """)
+
+        if not orphans:
+            logger.info("Startup repair: no orphaned PAID requests found")
+            return 0
+
+        logger.warning(
+            f"Startup repair: found {len(orphans)} orphaned PAID requests, repairing..."
+        )
+
+        repaired = 0
+        for sr in orphans:
+            try:
+                entity_code = sr["entity_code"]
+
+                # Resolve entity_code if NULL — try entity_location first, then workflow
+                if not entity_code and sr["entity_location_id"]:
+                    entity_code = await conn.fetchval(
+                        "SELECT entity_code FROM entity_locations "
+                        "WHERE id = $1 AND is_active = true",
+                        sr["entity_location_id"]
+                    )
+
+                if not entity_code and sr["workflow_code"]:
+                    entity_code = await conn.fetchval("""
+                        SELECT code FROM entities
+                        WHERE workflow_codes ? $1
+                          AND is_active = true
+                          AND entity_type = 'department'
+                        LIMIT 1
+                    """, sr["workflow_code"])
+
+                if not entity_code:
+                    logger.error(
+                        f"Startup repair: cannot resolve entity_code for "
+                        f"{sr['reference']}, skipping"
+                    )
+                    continue
+
+                # Persist entity_code if it was NULL
+                if not sr["entity_code"]:
+                    await conn.execute(
+                        "UPDATE service_requests SET entity_code = $1, "
+                        "updated_at = NOW() WHERE id = $2",
+                        entity_code, sr["id"]
+                    )
+                    logger.info(
+                        f"Startup repair: set entity_code={entity_code} "
+                        f"for {sr['reference']}"
+                    )
+
+                # Publish PAYMENT_COMPLETED → triggers handle_payment_completed pipeline
+                EventBus.publish_nowait(
+                    EventType.PAYMENT_COMPLETED,
+                    {
+                        "service_request_id": str(sr["id"]),
+                        "payment_id": str(sr["payment_id"]),
+                        "user_id": str(sr["user_id"]),
+                        "amount": float(sr["total_amount"]) if sr["total_amount"] else 0,
+                        "payment_method": sr["payment_method"] or "cash",
+                    }
+                )
+                repaired += 1
+                logger.info(
+                    f"Startup repair: published PAYMENT_COMPLETED for "
+                    f"{sr['reference']} (entity={entity_code})"
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"Startup repair: failed to repair {sr['reference']}: {e}",
+                    exc_info=True
+                )
+
+        logger.info(
+            f"Startup repair complete: {repaired}/{len(orphans)} requests repaired"
+        )
+        return repaired
+
+    except Exception as e:
+        logger.error(f"Startup repair failed: {e}", exc_info=True)
+        return 0
+    finally:
+        if conn:
+            await release_db_connection(conn)

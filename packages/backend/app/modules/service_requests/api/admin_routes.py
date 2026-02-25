@@ -3789,6 +3789,22 @@ async def validate_payment(
     except Exception as e:
         logger.error(f"Failed to publish PAYMENT_CASH_VALIDATED event for {payment_id}: {e}", exc_info=True)
 
+    # Publish PAYMENT_COMPLETED to trigger entity agent auto-assignment
+    # (PAYMENT_CASH_VALIDATED handles notifications; PAYMENT_COMPLETED handles assignment queue)
+    try:
+        EventBus.publish_nowait(
+            EventType.PAYMENT_COMPLETED,
+            {
+                "service_request_id": str(payment["service_request_id"]),
+                "payment_id": payment_id,
+                "user_id": str(user_info["id"]) if user_info else None,
+                "amount": float(payment_info["total_amount"]) if payment_info and payment_info["total_amount"] else 0,
+                "payment_method": payment_info["payment_method"] if payment_info else "cash",
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to publish PAYMENT_COMPLETED for {payment_id}: {e}", exc_info=True)
+
     return PaymentActionResponse(
         success=True,
         payment_id=payment_id,
