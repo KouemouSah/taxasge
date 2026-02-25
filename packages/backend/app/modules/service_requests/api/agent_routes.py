@@ -1167,8 +1167,8 @@ async def escalate_request(
     # Also update agent_work_queue if a queue item exists (backward compat)
     queue_item = await db.fetchrow("""
         SELECT id FROM agent_work_queue
-        WHERE item_id = $1::text AND item_type = 'service_request' AND status != 'completed'
-    """, str(request_id))
+        WHERE item_id = $1 AND item_type = 'service_request' AND status != 'completed'
+    """, request_id)
     if queue_item:
         try:
             await agent_queue_service.escalate_item(
@@ -2369,7 +2369,7 @@ async def get_request_preview(
             AND ar.status NOT IN ('cancelled', 'expired')
         LEFT JOIN entity_locations el ON el.id = ar.entity_location_id
         LEFT JOIN service_payments sp ON sp.request_id = sr.id
-        LEFT JOIN assignments a ON a.item_id = sr.id::text
+        LEFT JOIN assignments a ON a.item_id = sr.id
             AND a.status IN ('assigned', 'in_progress')
         LEFT JOIN users agent_u ON agent_u.id = a.agent_id
         WHERE sr.id = $1

@@ -432,7 +432,7 @@ class AssignmentOutboxService:
               )
               AND NOT EXISTS (
                   SELECT 1 FROM agent_work_queue awq
-                  WHERE awq.item_id = sr.id::text
+                  WHERE awq.item_id = sr.id
                     AND awq.item_type = 'service_request'
                     AND awq.status NOT IN ('completed', 'cancelled')
               )

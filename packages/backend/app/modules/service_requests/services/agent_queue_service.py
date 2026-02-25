@@ -93,7 +93,7 @@ class AgentQueueService:
             SELECT id FROM agent_work_queue
             WHERE item_type = $1 AND item_id = $2
             AND status NOT IN ('completed', 'cancelled')
-        """, self.ITEM_TYPE, str(service_request_id))
+        """, self.ITEM_TYPE, service_request_id)
 
         if existing:
             logger.warning(
@@ -115,8 +115,8 @@ class AgentQueueService:
                 updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW(), NOW())
             RETURNING *
-        """, self.ITEM_TYPE, str(service_request_id), entity_code,
-            workflow_code, priority_score, sla_deadline)
+        """, self.ITEM_TYPE, service_request_id, entity_code,
+            workflow_code, int(priority_score), sla_deadline)
 
         logger.info(
             f"Added service_request {service_request_id} to queue. "
@@ -484,7 +484,7 @@ class AgentQueueService:
             WHERE item_type = $1
             AND item_id = $3
             AND status NOT IN ('completed', 'cancelled')
-        """, self.ITEM_TYPE, reason, str(service_request_id))
+        """, self.ITEM_TYPE, reason, service_request_id)
 
         removed = 'UPDATE 1' in result
         if removed:

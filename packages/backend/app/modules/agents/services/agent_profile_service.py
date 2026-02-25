@@ -568,6 +568,13 @@ class AgentProfileService:
         from app.modules.auth.repositories.pending_registration_repository import PendingRegistrationRepository
         from app.modules.communications.services.email_service import EmailService
 
+        # Validate entity_id is provided (required for routing)
+        if not data.entity_id:
+            raise ValueError(
+                "L'agent doit être assigné à une entité (entity_id requis). "
+                "Tous les agents nécessitent une entité pour le routage des demandes."
+            )
+
         # Check if email already exists
         from app.database.connection import db_manager
         existing = await db_manager.execute_single(
@@ -739,6 +746,13 @@ class AgentProfileService:
                 # Step 3: Create agent profile
                 logger.info(f"[AGENT_ACTIVATION] Step 3 - Creating agent profile...")
                 entity_id = UUID(agent_data['entity_id']) if agent_data.get('entity_id') else None
+
+                # Validate: entity_id is required for all agents (routing depends on it)
+                if not entity_id:
+                    raise ValueError(
+                        "L'agent doit être assigné à une entité (entity_id requis). "
+                        "Veuillez recréer l'invitation avec une entité."
+                    )
                 entity_location_id = UUID(agent_data['entity_location_id']) if agent_data.get('entity_location_id') else None
                 # rbac_role_id already defined above for user creation
                 assigned_by = UUID(created_by) if created_by else None
