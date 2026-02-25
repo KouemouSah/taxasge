@@ -12,6 +12,7 @@ same DB transaction. A cron job (every 1 min) processes pending items.
 """
 
 import logging
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -74,7 +75,7 @@ class AssignmentOutboxService:
                     'pending', 0, NOW(), NOW(), NOW()
                 )
                 ON CONFLICT (service_request_id)
-                    WHERE status IN ('pending', 'processing')
+                    WHERE status IN ('pending', 'processing', 'completed')
                 DO NOTHING
                 RETURNING id
                 """,
@@ -195,7 +196,10 @@ class AssignmentOutboxService:
                     delay_idx = min(
                         retry_count - 1, len(self.RETRY_DELAYS_SECONDS) - 1
                     )
-                    delay = self.RETRY_DELAYS_SECONDS[delay_idx]
+                    base_delay = self.RETRY_DELAYS_SECONDS[delay_idx]
+                    # Add jitter (0-20% of base delay) to prevent thundering herd
+                    jitter = random.uniform(0, base_delay * 0.2)
+                    delay = base_delay + jitter
                     next_retry = datetime.now(timezone.utc) + timedelta(seconds=delay)
 
                     await db.execute(
@@ -232,6 +236,11 @@ class AssignmentOutboxService:
         AgentQueueEventHandler.handle_payment_completed() but with
         proper error propagation for retry.
 
+        All mutations (queue + assign + status transition) are wrapped
+        in a single transaction for atomicity: either all succeed or
+        all rollback (preventing partial state like queue entry without
+        status transition).
+
         Steps:
         1. Verify service_request exists and payment_status='completed'
         2. Skip if already assigned (idempotency)
@@ -244,7 +253,7 @@ class AssignmentOutboxService:
         workflow_code = item["workflow_code"]
         entity_location_id = item.get("entity_location_id")
 
-        # 1. Verify service_request state
+        # 1. Verify service_request state (read outside transaction for early exit)
         sr = await db.fetchrow(
             """
             SELECT id, reference, status, payment_status, assigned_to,
@@ -284,94 +293,96 @@ class AssignmentOutboxService:
                 f"or workflow_code={effective_workflow_code}"
             )
 
-        # 2. Add to agent_work_queue
-        from app.modules.service_requests.services.agent_queue_service import (
-            agent_queue_service,
-        )
-
-        queue_item = await agent_queue_service.add_to_queue(
-            db=db,
-            service_request_id=service_request_id,
-            workflow_code=effective_workflow_code,
-            entity_code=effective_entity_code,
-            priority_boost=0,
-        )
-
-        logger.info(
-            f"Outbox: SR {sr['reference']} added to queue "
-            f"(item={queue_item.get('id')}, entity={effective_entity_code})"
-        )
-
-        # 3. Auto-assign to entity agent
-        from app.modules.assignment.services.auto_assignment_service import (
-            AutoAssignmentService,
-        )
-
-        auto_assignment = AutoAssignmentService()
-        assignment = await auto_assignment.auto_assign_item(
-            db=db,
-            item_id=service_request_id,
-            item_type="service_request",
-            item_data={
-                "workflow_code": effective_workflow_code,
-                "entity_code": effective_entity_code,
-            },
-            entity_type="entity",
-            entity_id=None,
-            priority_level=5,
-            entity_code=effective_entity_code,
-            entity_location_id=entity_location_id,
-        )
-
-        if assignment:
-            # Sync assigned_to for backward compatibility
-            agent_user_id = await db.fetchval(
-                "SELECT user_id FROM agent_profiles WHERE id = $1",
-                assignment.agent_profile_id,
+        # ATOMIC: queue + assign + status transition in one transaction
+        async with db.transaction():
+            # 2. Add to agent_work_queue
+            from app.modules.service_requests.services.agent_queue_service import (
+                agent_queue_service,
             )
-            if agent_user_id:
-                await db.execute(
-                    """
-                    UPDATE service_requests
-                    SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW()
-                    WHERE id = $2
-                    """,
-                    agent_user_id,
-                    service_request_id,
-                )
+
+            queue_item = await agent_queue_service.add_to_queue(
+                db=db,
+                service_request_id=service_request_id,
+                workflow_code=effective_workflow_code,
+                entity_code=effective_entity_code,
+                priority_boost=0,
+            )
 
             logger.info(
-                f"Outbox: SR {sr['reference']} auto-assigned to "
-                f"agent {assignment.agent_profile_id}"
-            )
-        else:
-            logger.warning(
-                f"Outbox: no agent available for SR {sr['reference']} "
-                f"(entity={effective_entity_code}). Pending manual assignment."
+                f"Outbox: SR {sr['reference']} added to queue "
+                f"(item={queue_item.get('id')}, entity={effective_entity_code})"
             )
 
-        # 4. Transition PAID → SUBMITTED
-        # SUBMITTED is in ActionStatusMapping.PENDING → visible in agent dashboard
-        # Transition even without agent so supervisors can see and manually assign
-        updated = await db.fetchval(
-            """
-            UPDATE service_requests
-            SET status = 'SUBMITTED', updated_at = NOW()
-            WHERE id = $1 AND status = 'PAID'
-            RETURNING id
-            """,
-            service_request_id,
-        )
+            # 3. Auto-assign to entity agent
+            from app.modules.assignment.services.auto_assignment_service import (
+                AutoAssignmentService,
+            )
 
-        if updated:
-            logger.info(
-                f"Outbox: SR {sr['reference']} PAID → SUBMITTED"
-                + (
-                    f" (agent {assignment.agent_profile_id})"
-                    if assignment
-                    else " (no agent, pending manual)"
+            auto_assignment = AutoAssignmentService()
+            assignment = await auto_assignment.auto_assign_item(
+                db=db,
+                item_id=service_request_id,
+                item_type="service_request",
+                item_data={
+                    "workflow_code": effective_workflow_code,
+                    "entity_code": effective_entity_code,
+                },
+                entity_type="entity",
+                entity_id=None,
+                priority_level=5,
+                entity_code=effective_entity_code,
+                entity_location_id=entity_location_id,
+            )
+
+            if assignment:
+                # Sync assigned_to for backward compatibility
+                agent_user_id = await db.fetchval(
+                    "SELECT user_id FROM agent_profiles WHERE id = $1",
+                    assignment.agent_profile_id,
                 )
+                if agent_user_id:
+                    await db.execute(
+                        """
+                        UPDATE service_requests
+                        SET assigned_to = $1, assigned_at = NOW(), updated_at = NOW()
+                        WHERE id = $2
+                        """,
+                        agent_user_id,
+                        service_request_id,
+                    )
+
+                logger.info(
+                    f"Outbox: SR {sr['reference']} auto-assigned to "
+                    f"agent {assignment.agent_profile_id}"
+                )
+            else:
+                logger.warning(
+                    f"Outbox: no agent available for SR {sr['reference']} "
+                    f"(entity={effective_entity_code}). Pending manual assignment."
+                )
+
+            # 4. Transition PAID → SUBMITTED
+            # SUBMITTED is in ActionStatusMapping.PENDING → visible in agent dashboard
+            # Transition even without agent so supervisors can see and manually assign
+            updated = await db.fetchval(
+                """
+                UPDATE service_requests
+                SET status = 'SUBMITTED', updated_at = NOW()
+                WHERE id = $1 AND status = 'PAID'
+                RETURNING id
+                """,
+                service_request_id,
             )
+
+            if updated:
+                logger.info(
+                    f"Outbox: SR {sr['reference']} PAID → SUBMITTED"
+                    + (
+                        f" (agent {assignment.agent_profile_id})"
+                        if assignment
+                        else " (no agent, pending manual)"
+                    )
+                )
 
     async def run_health_check(
         self,

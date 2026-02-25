@@ -54,10 +54,11 @@ CREATE INDEX idx_assignment_outbox_pending
     ON assignment_outbox (next_retry_at ASC)
     WHERE status = 'pending';
 
--- Idempotency: one active item per service_request
+-- Idempotency: one item per service_request (pending/processing/completed)
+-- Allows re-insertion only after dead_letter (health check re-enqueue)
 CREATE UNIQUE INDEX idx_assignment_outbox_sr_active
     ON assignment_outbox (service_request_id)
-    WHERE status IN ('pending', 'processing');
+    WHERE status IN ('pending', 'processing', 'completed');
 
 -- Monitoring: find dead letters
 CREATE INDEX idx_assignment_outbox_dead_letter

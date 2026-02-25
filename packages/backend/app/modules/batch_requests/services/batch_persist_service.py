@@ -1080,9 +1080,15 @@ class BatchPersistService:
         )
 
         queue_inserted = 0
+        enqueue_failures = 0
         for sr in batch_srs:
             entity_code = sr["entity_code"]
             if not entity_code:
+                logger.warning(
+                    f"Batch fan-out: SR {sr['id']} missing entity_code, "
+                    f"skipping (health check will catch)"
+                )
+                enqueue_failures += 1
                 continue
             try:
                 outbox_id = await assignment_outbox_service.enqueue(
@@ -1096,9 +1102,17 @@ class BatchPersistService:
                 if outbox_id:
                     queue_inserted += 1
             except Exception as e:
+                enqueue_failures += 1
                 logger.error(
-                    f"Batch fan-out: failed to enqueue SR {sr['id']}: {e}"
+                    f"Batch fan-out: failed to enqueue SR {sr['id']} "
+                    f"(entity={entity_code}): {e}"
                 )
+
+        if enqueue_failures > 0:
+            logger.error(
+                f"Batch fan-out: {enqueue_failures}/{len(batch_srs)} SRs failed to enqueue "
+                f"for batch {batch_id}. Health check cron will catch orphans."
+            )
 
         # Update batch status
         await db.execute(

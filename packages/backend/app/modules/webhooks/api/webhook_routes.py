@@ -284,7 +284,8 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
             receipt_number = f"REC-{year}-{result['n']:06d}" if result else f"REC-{year}-000001"
             await db.execute("UPDATE service_payments SET receipt_number = $1 WHERE id = $2::uuid", receipt_number, payment_id)
 
-        # 6. Update service_request payment status
+        # 6. Update service_request payment status + INSERT assignment outbox
+        # Both must succeed atomically (outbox = guaranteed entity agent assignment)
         if service_request_id:
             await db.execute(
                 "UPDATE service_requests SET payment_status = 'completed', paid_at = NOW(), updated_at = NOW() WHERE id = $1",
@@ -293,7 +294,42 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
             logger.info(f"Updated service_request {service_request_id} payment_status to completed")
             await confirm_appointment_for_payment(db, payment_id)
 
-        # 7. Publish PAYMENT_COMPLETED event for notifications
+            # INSERT into assignment outbox (guaranteed entity agent assignment)
+            try:
+                from app.modules.service_requests.services.assignment_outbox_service import (
+                    assignment_outbox_service,
+                )
+                sr_data = await db.fetchrow(
+                    "SELECT workflow_code, entity_code, entity_location_id "
+                    "FROM service_requests WHERE id = $1",
+                    service_request_id,
+                )
+                if sr_data and sr_data["entity_code"]:
+                    await assignment_outbox_service.enqueue(
+                        db=db,
+                        service_request_id=service_request_id,
+                        workflow_code=sr_data["workflow_code"],
+                        entity_code=sr_data["entity_code"],
+                        entity_location_id=sr_data["entity_location_id"],
+                        payment_id=payment_id,
+                        payment_method=payment["payment_method"],
+                    )
+                    logger.info(
+                        f"Outbox item created for BANGE webhook payment {payment_id} "
+                        f"(entity={sr_data['entity_code']})"
+                    )
+                else:
+                    logger.warning(
+                        f"Cannot enqueue outbox for BANGE webhook: "
+                        f"SR {service_request_id} missing entity_code"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to enqueue outbox for BANGE webhook payment {payment_id}: {e}",
+                    exc_info=True,
+                )
+
+        # 7. Publish PAYMENT_COMPLETED event (fallback + notifications)
         try:
             paid_at = datetime.utcnow()
             await EventBus.publish(EventType.PAYMENT_COMPLETED, {

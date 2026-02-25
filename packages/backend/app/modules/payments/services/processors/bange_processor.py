@@ -237,28 +237,20 @@ class BangeProcessor(PaymentProcessorBase):
                 bange_status = await self.bange_service.verify_payment(bange_transaction_id)
 
                 if bange_status and bange_status.get("status") == "completed":
-                    # Update local status
                     paid_at = datetime.utcnow()
-                    await self._mark_payment_completed(
-                        db=db,
-                        payment_id=payment_id,
-                        paid_at=paid_at
-                    )
-
-                    # Get user data for notifications
-                    user_data = None
-                    try:
-                        user_data = await db.fetchrow(
-                            "SELECT email, phone_number as phone, preferred_language FROM users WHERE id = $1",
-                            payment.get("user_id")
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to fetch user data for notification: {e}")
-
-                    # Insert into assignment outbox (primary path — guaranteed delivery)
                     sr_id = payment.get("service_request_id")
-                    if sr_id:
-                        try:
+
+                    # ATOMIC: mark_completed + outbox INSERT in same transaction
+                    # If outbox fails → payment stays 'processing' → next poll retries
+                    async with db.transaction():
+                        await self._mark_payment_completed(
+                            db=db,
+                            payment_id=payment_id,
+                            paid_at=paid_at
+                        )
+
+                        # Insert into assignment outbox (guaranteed delivery)
+                        if sr_id:
                             from app.modules.service_requests.services.assignment_outbox_service import (
                                 assignment_outbox_service,
                             )
@@ -278,8 +270,16 @@ class BangeProcessor(PaymentProcessorBase):
                                     payment_method=payment.get("payment_method", "bange_wallet"),
                                 )
                                 logger.info(f"Outbox item created for BANGE payment {payment_id}")
-                        except Exception as e:
-                            logger.error(f"Failed to enqueue outbox for BANGE payment {payment_id}: {e}")
+
+                    # Get user data for notifications (outside transaction)
+                    user_data = None
+                    try:
+                        user_data = await db.fetchrow(
+                            "SELECT email, phone_number as phone, preferred_language FROM users WHERE id = $1",
+                            payment.get("user_id")
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch user data for notification: {e}")
 
                     # Publish PAYMENT_COMPLETED event (fallback + notifications)
                     try:

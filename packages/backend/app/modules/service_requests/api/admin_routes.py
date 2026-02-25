@@ -3715,35 +3715,31 @@ async def validate_payment(
         """, payment_id, agent_profile_id, current_user.id, body.comment)
 
         # INSERT into assignment outbox (guaranteed delivery for entity agent assignment)
+        # No try/except: if enqueue fails, the entire transaction rolls back.
+        # This guarantees that a validated payment ALWAYS has an outbox entry.
         if payment["service_request_id"]:
-            try:
-                from app.modules.service_requests.services.assignment_outbox_service import (
-                    assignment_outbox_service,
+            from app.modules.service_requests.services.assignment_outbox_service import (
+                assignment_outbox_service,
+            )
+            sr_data = await db.fetchrow(
+                "SELECT workflow_code, entity_code, entity_location_id "
+                "FROM service_requests WHERE id = $1",
+                payment["service_request_id"],
+            )
+            if sr_data and sr_data["entity_code"]:
+                await assignment_outbox_service.enqueue(
+                    db=db,
+                    service_request_id=payment["service_request_id"],
+                    workflow_code=sr_data["workflow_code"],
+                    entity_code=sr_data["entity_code"],
+                    entity_location_id=sr_data["entity_location_id"],
+                    payment_id=payment_id,
+                    payment_method="cash",
                 )
-                sr_data = await db.fetchrow(
-                    "SELECT workflow_code, entity_code, entity_location_id "
-                    "FROM service_requests WHERE id = $1",
-                    payment["service_request_id"],
-                )
-                if sr_data and sr_data["entity_code"]:
-                    await assignment_outbox_service.enqueue(
-                        db=db,
-                        service_request_id=payment["service_request_id"],
-                        workflow_code=sr_data["workflow_code"],
-                        entity_code=sr_data["entity_code"],
-                        entity_location_id=sr_data["entity_location_id"],
-                        payment_id=payment_id,
-                        payment_method="cash",
-                    )
-                else:
-                    logger.warning(
-                        f"Cannot enqueue outbox: SR {payment['service_request_id']} "
-                        f"missing entity_code"
-                    )
-            except Exception as e:
-                logger.error(
-                    f"Failed to enqueue outbox for {payment_id}: {e}",
-                    exc_info=True,
+            else:
+                logger.warning(
+                    f"Cannot enqueue outbox: SR {payment['service_request_id']} "
+                    f"missing entity_code"
                 )
     # End of transaction block
 
