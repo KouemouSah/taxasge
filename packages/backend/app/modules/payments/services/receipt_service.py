@@ -14,7 +14,7 @@ Table: payment_receipts
 from typing import Dict, Any, Optional, List
 from io import BytesIO
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import uuid
 import base64
@@ -342,7 +342,6 @@ class ReceiptService:
         # Normalize paid_at to UTC-naive to ensure consistency
         # between token generation (RETURNING *) and verification (SELECT)
         if paid_at and paid_at.tzinfo is not None:
-            from datetime import timezone
             paid_at = paid_at.astimezone(timezone.utc).replace(tzinfo=None)
 
         # Create message to sign: receipt_number|amount|date
@@ -619,7 +618,8 @@ class ReceiptService:
         # Generate secure verification URL for QR code (HMAC-signed)
         # Use payment_data["total_amount"] (DB column) to match verification endpoint
         # which also reads from sp.total_amount — NOT breakdown which comes from calculation_details JSON
-        receipt_amount = float(payment_data.get("total_amount") or breakdown["total_amount"])
+        db_amount = payment_data.get("total_amount")
+        receipt_amount = float(db_amount if db_amount is not None else breakdown["total_amount"])
         verification_url = self._generate_verification_url(
             receipt_number=receipt_number,
             amount=receipt_amount,
