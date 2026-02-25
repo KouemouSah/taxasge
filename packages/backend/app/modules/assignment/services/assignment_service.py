@@ -12,12 +12,13 @@ Handles:
 - Assignment status updates
 """
 
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 from datetime import datetime, timedelta
 from fastapi import Depends
 from loguru import logger
 
+from app.config import get_settings
 from app.modules.assignment.models.assignment_history import (
     Assignment,
     AssignmentCreate,
@@ -304,6 +305,122 @@ class AssignmentService:
             limit=limit,
             offset=offset
         )
+
+    def should_escalate(
+        self,
+        assignment: Assignment,
+        current_time: Optional[datetime] = None,
+    ) -> Dict[str, Any]:
+        """Check if an assignment should be escalated.
+
+        Ported from legacy agents/services/assignment_service.py.
+        Evaluates 3 escalation criteria using configurable thresholds:
+        1. SLA deadline violation or approaching deadline
+        2. Processing duration exceeding max hours
+        3. Stuck in pending_review status too long
+
+        Args:
+            assignment: Assignment model instance
+            current_time: Override for testing (defaults to now)
+
+        Returns:
+            {"should_escalate": bool, "reason": Optional[str], "urgency": str}
+        """
+        if current_time is None:
+            current_time = datetime.utcnow()
+
+        settings = get_settings()
+        reasons: List[str] = []
+        urgency = "normal"
+
+        # 1. SLA deadline check
+        if assignment.deadline:
+            if current_time > assignment.deadline:
+                reasons.append("SLA deadline violated")
+                urgency = "critical"
+            else:
+                hours_remaining = (assignment.deadline - current_time).total_seconds() / 3600
+                if hours_remaining < settings.ESCALATION_SLA_HIGH_HOURS:
+                    reasons.append(f"Approaching SLA deadline ({hours_remaining:.1f}h remaining)")
+                    if urgency != "critical":
+                        urgency = "high"
+
+        # 2. Processing duration check
+        if assignment.started_at:
+            hours_elapsed = (current_time - assignment.started_at).total_seconds() / 3600
+            if hours_elapsed > settings.ESCALATION_PROCESSING_MAX_HOURS:
+                reasons.append(f"Processing for {hours_elapsed:.1f} hours")
+                if urgency != "critical":
+                    urgency = "high"
+
+        # 3. Stuck in pending_review
+        if assignment.status == AssignmentStatus.PENDING_REVIEW and assignment.assigned_at:
+            last_update = assignment.reassigned_at or assignment.assigned_at
+            hours_pending = (current_time - last_update).total_seconds() / 3600
+            if hours_pending > settings.ESCALATION_PENDING_REVIEW_MAX_HOURS:
+                reasons.append(f"Pending review for {hours_pending:.1f} hours")
+                if urgency != "critical":
+                    urgency = "high"
+
+        return {
+            "should_escalate": len(reasons) > 0,
+            "reason": "; ".join(reasons) if reasons else None,
+            "urgency": urgency,
+        }
+
+    async def validate_reassignment(
+        self,
+        db,
+        assignment_id: UUID,
+        new_agent_profile_id: UUID,
+        reason: ReassignmentReason,
+    ) -> Dict[str, Any]:
+        """Validate a reassignment request before executing it.
+
+        Ported from legacy agents/services/assignment_service.py.
+        Guards against:
+        1. Reassigning completed/cancelled assignments
+        2. Reassigning to the same agent
+        3. Reassigning too soon (cooldown period)
+
+        Args:
+            db: Database connection
+            assignment_id: UUID of the assignment
+            new_agent_profile_id: Target agent_profile.id
+            reason: ReassignmentReason enum value
+
+        Returns:
+            {"is_valid": bool, "errors": List[str]}
+        """
+        errors: List[str] = []
+
+        assignment = await self.repository.get_by_id(db, assignment_id)
+        if not assignment:
+            return {"is_valid": False, "errors": ["Assignment not found"]}
+
+        # Cannot reassign terminal statuses
+        terminal = {AssignmentStatus.COMPLETED, AssignmentStatus.CANCELLED, AssignmentStatus.REJECTED}
+        if assignment.status in terminal:
+            errors.append(f"Cannot reassign assignment with status '{assignment.status.value}'")
+
+        # Cannot reassign to the same agent
+        if assignment.agent_profile_id == new_agent_profile_id:
+            errors.append("Cannot reassign to the same agent")
+
+        # Cooldown: prevent rapid reassignments
+        settings = get_settings()
+        if assignment.reassigned_at:
+            hours_since = (datetime.utcnow() - assignment.reassigned_at).total_seconds() / 3600
+            if hours_since < settings.REASSIGNMENT_COOLDOWN_HOURS:
+                wait_minutes = int((settings.REASSIGNMENT_COOLDOWN_HOURS - hours_since) * 60)
+                errors.append(
+                    f"Assignment was recently reassigned (wait {wait_minutes} more minutes)"
+                )
+
+        return {
+            "is_valid": len(errors) == 0,
+            "errors": errors,
+        }
 
 
 def get_assignment_service(

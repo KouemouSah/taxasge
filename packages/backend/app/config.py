@@ -317,6 +317,19 @@ class Settings(BaseSettings):
     QUEUE_ESCALATION_BOOST: int = Field(default=50, env="QUEUE_ESCALATION_BOOST")
     QUEUE_SLA_WARNING_HOURS: int = Field(default=6, env="QUEUE_SLA_WARNING_HOURS")
     QUEUE_MAX_WORKLOAD_PCT: float = Field(default=80.0, env="QUEUE_MAX_WORKLOAD_PCT")
+    QUEUE_AGE_BOOST_24H: int = Field(default=10, env="QUEUE_AGE_BOOST_24H")
+    QUEUE_AGE_BOOST_48H: int = Field(default=15, env="QUEUE_AGE_BOOST_48H")
+    QUEUE_AGE_BOOST_72H: int = Field(default=25, env="QUEUE_AGE_BOOST_72H")
+
+    # ========================================================================
+    # ASSIGNMENT ESCALATION
+    # ========================================================================
+
+    ESCALATION_SLA_CRITICAL_HOURS: int = Field(default=0, env="ESCALATION_SLA_CRITICAL_HOURS")
+    ESCALATION_SLA_HIGH_HOURS: int = Field(default=6, env="ESCALATION_SLA_HIGH_HOURS")
+    ESCALATION_PROCESSING_MAX_HOURS: int = Field(default=24, env="ESCALATION_PROCESSING_MAX_HOURS")
+    ESCALATION_PENDING_REVIEW_MAX_HOURS: int = Field(default=12, env="ESCALATION_PENDING_REVIEW_MAX_HOURS")
+    REASSIGNMENT_COOLDOWN_HOURS: float = Field(default=1.0, env="REASSIGNMENT_COOLDOWN_HOURS")
 
     # ========================================================================
     # RATE LIMITING

@@ -430,6 +430,44 @@ async def supervisor_weekly_report(
 
 
 # ============================================================
+# Queue Priority Management
+# ============================================================
+
+
+@router.post(
+    "/queue-priority-recalculate",
+    summary="Recalculate queue priorities based on item age",
+    description="""
+    Called every 6 hours by Cloud Scheduler.
+
+    Applies age-based priority boosts to pending queue items:
+    - Items >24h: +QUEUE_AGE_BOOST_24H (default 10)
+    - Items >48h: +QUEUE_AGE_BOOST_48H (default 15)
+    - Items >72h: +QUEUE_AGE_BOOST_72H (default 25)
+
+    Prevents items from languishing in the queue when static
+    priority alone (from workflows.priority_weight) is equal.
+    """,
+)
+async def queue_priority_recalculate(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Recalculate priorities for aging queue items."""
+    from app.modules.service_requests.services.agent_queue_service import agent_queue_service
+
+    updated_count = await agent_queue_service.recalculate_pending_priorities(db)
+
+    if updated_count > 0:
+        logger.info(f"Queue priority recalculation: {updated_count} items boosted")
+
+    return {
+        "message": "Queue priority recalculation completed",
+        "items_updated": updated_count,
+    }
+
+
+# ============================================================
 # Assignment Outbox Cron Jobs
 # ============================================================
 

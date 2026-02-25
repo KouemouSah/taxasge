@@ -124,13 +124,17 @@ class AgentQueueService:
         db: asyncpg.Connection,
         workflow_code: str,
         workflow_instance: Optional[AnyWorkflow],
-        priority_boost: int
+        priority_boost: int,
+        created_at: Optional[datetime] = None
     ) -> Decimal:
         """
         Calculate priority score for the queue item.
 
         Reads priority_weight directly from workflows table (migration 131).
+        Includes age-based boost (ported from legacy assignment_service).
         """
+        settings = get_settings()
+
         # Get workflow info from database
         workflow = await db.fetchrow("""
             SELECT priority_weight, sla_hours
@@ -152,6 +156,17 @@ class AgentQueueService:
                 base_score += Decimal("20")
             elif sla_hours <= 48:
                 base_score += Decimal("10")
+
+        # Age-based boost: older items get higher priority
+        # Ported from legacy agents/services/assignment_service.calculate_priority_score()
+        if created_at:
+            age_hours = (datetime.utcnow() - created_at).total_seconds() / 3600
+            if age_hours > 72:
+                base_score += Decimal(str(settings.QUEUE_AGE_BOOST_72H))
+            elif age_hours > 48:
+                base_score += Decimal(str(settings.QUEUE_AGE_BOOST_48H))
+            elif age_hours > 24:
+                base_score += Decimal(str(settings.QUEUE_AGE_BOOST_24H))
 
         # Check workflow instance for custom priority override
         if workflow_instance is not None:
@@ -458,6 +473,75 @@ class AgentQueueService:
             "status": row['sla_status'],
             "hours_remaining": round(row['hours_remaining'] or 0, 2)
         }
+
+    async def recalculate_pending_priorities(
+        self,
+        db: asyncpg.Connection,
+        entity_code: Optional[str] = None,
+    ) -> int:
+        """
+        Recalculate priority scores for pending items based on age.
+
+        IDEMPOTENT: Recalculates the full score (base + age boost) each run,
+        not an incremental addition. Safe to call at any frequency.
+
+        Formula: priority_score = workflows.priority_weight + SLA_boost + age_boost
+        (Same as _calculate_priority but applied in batch via SQL.)
+
+        Args:
+            db: Database connection
+            entity_code: Optional entity filter (None = all entities)
+
+        Returns:
+            Number of items updated
+        """
+        settings = get_settings()
+
+        params: list = [
+            self.ITEM_TYPE,
+            settings.QUEUE_AGE_BOOST_72H,
+            settings.QUEUE_AGE_BOOST_48H,
+            settings.QUEUE_AGE_BOOST_24H,
+            self.DEFAULT_SLA_HOURS,
+        ]
+        where_extra = ""
+        param_idx = 6
+
+        if entity_code:
+            where_extra = f" AND q.entity_code = ${param_idx}"
+            params.append(entity_code)
+            param_idx += 1
+
+        # Recalculate full score: base (priority_weight) + SLA boost + age boost
+        result = await db.execute(f"""
+            UPDATE agent_work_queue q
+            SET priority_score = (
+                COALESCE(w.priority_weight, 50)
+                + CASE
+                    WHEN COALESCE(w.sla_hours, $5) <= 24 THEN 20
+                    WHEN COALESCE(w.sla_hours, $5) <= 48 THEN 10
+                    ELSE 0
+                END
+                + CASE
+                    WHEN q.created_at < NOW() - INTERVAL '72 hours' THEN $2
+                    WHEN q.created_at < NOW() - INTERVAL '48 hours' THEN $3
+                    WHEN q.created_at < NOW() - INTERVAL '24 hours' THEN $4
+                    ELSE 0
+                END
+            ),
+            updated_at = NOW()
+            FROM workflows w
+            WHERE w.code = q.declaration_type
+            AND q.status = 'pending'
+            AND q.item_type = $1
+            AND q.created_at < NOW() - INTERVAL '24 hours'
+            {where_extra}
+        """, *params)
+
+        count = int(result.split()[-1]) if result and 'UPDATE' in result else 0
+        if count > 0:
+            logger.info(f"Recalculated priorities for {count} pending queue items")
+        return count
 
     async def remove_from_queue(
         self,

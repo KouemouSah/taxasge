@@ -706,6 +706,19 @@ async def reassign_assignment(
                 detail="Supervisor agent profile not found"
             )
 
+        # Validate before reassigning (cooldown, same-agent, terminal status)
+        validation = await service.validate_reassignment(
+            db=db,
+            assignment_id=assignment_id,
+            new_agent_profile_id=request.new_agent_profile_id,
+            reason=request.reason,
+        )
+        if not validation["is_valid"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="; ".join(validation["errors"])
+            )
+
         new_assignment = await service.reassign_to_new_agent(
             db=db,
             assignment_id=assignment_id,
@@ -988,6 +1001,20 @@ async def bulk_reassign(
 
     for assignment_id in request.assignment_ids:
         try:
+            # Validate before reassigning
+            validation = await service.validate_reassignment(
+                db=db,
+                assignment_id=assignment_id,
+                new_agent_profile_id=request.new_agent_profile_id,
+                reason=request.reason,
+            )
+            if not validation["is_valid"]:
+                failed.append({
+                    "assignment_id": str(assignment_id),
+                    "error": "; ".join(validation["errors"])
+                })
+                continue
+
             await service.reassign_to_new_agent(
                 db=db,
                 assignment_id=assignment_id,
