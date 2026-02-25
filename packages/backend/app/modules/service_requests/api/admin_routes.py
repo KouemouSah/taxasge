@@ -3677,39 +3677,75 @@ async def validate_payment(
             error=result.error
         )
 
-    # Update service_request if linked
-    if payment["service_request_id"]:
-        await db.execute(
-            """
-            UPDATE service_requests
-            SET payment_status = 'completed', paid_at = NOW(), updated_at = NOW()
-            WHERE id = $1
-            """,
-            payment["service_request_id"]
-        )
+    # Wrap post-validation updates + outbox INSERT in a single transaction
+    # so the outbox item is guaranteed to exist if payment is validated.
+    async with db.transaction():
+        # Update service_request if linked
+        if payment["service_request_id"]:
+            await db.execute(
+                """
+                UPDATE service_requests
+                SET payment_status = 'completed', paid_at = NOW(), updated_at = NOW()
+                WHERE id = $1
+                """,
+                payment["service_request_id"]
+            )
 
-    # Update assignment status to COMPLETED
-    await db.execute("""
-        UPDATE assignments
-        SET status = 'completed',
-            completed_at = NOW(),
-            processing_duration_hours = EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, assigned_at))) / 3600,
-            updated_at = NOW()
-        WHERE item_id = $1::uuid AND item_type = 'payment_validation'
-          AND status NOT IN ('completed', 'cancelled', 'rejected')
-    """, payment_id)
+        # Update assignment status to COMPLETED
+        await db.execute("""
+            UPDATE assignments
+            SET status = 'completed',
+                completed_at = NOW(),
+                processing_duration_hours = EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, assigned_at))) / 3600,
+                updated_at = NOW()
+            WHERE item_id = $1::uuid AND item_type = 'payment_validation'
+              AND status NOT IN ('completed', 'cancelled', 'rejected')
+        """, payment_id)
 
-    # Insert audit record
-    await db.execute("""
-        INSERT INTO payment_validation_audit
-            (id, payment_id, agent_profile_id, agent_user_id, action,
-             from_status, to_status, comment, created_at)
-        VALUES (gen_random_uuid(), $1::uuid, $2, $3,
-                'approve'::agent_action_type,
-                'pending_agent_review'::payment_workflow_status,
+        # Insert audit record
+        await db.execute("""
+            INSERT INTO payment_validation_audit
+                (id, payment_id, agent_profile_id, agent_user_id, action,
+                 from_status, to_status, comment, created_at)
+            VALUES (gen_random_uuid(), $1::uuid, $2, $3,
+                    'approve'::agent_action_type,
+                    'pending_agent_review'::payment_workflow_status,
                 'completed'::payment_workflow_status,
                 $4, NOW())
-    """, payment_id, agent_profile_id, current_user.id, body.comment)
+        """, payment_id, agent_profile_id, current_user.id, body.comment)
+
+        # INSERT into assignment outbox (guaranteed delivery for entity agent assignment)
+        if payment["service_request_id"]:
+            try:
+                from app.modules.service_requests.services.assignment_outbox_service import (
+                    assignment_outbox_service,
+                )
+                sr_data = await db.fetchrow(
+                    "SELECT workflow_code, entity_code, entity_location_id "
+                    "FROM service_requests WHERE id = $1",
+                    payment["service_request_id"],
+                )
+                if sr_data and sr_data["entity_code"]:
+                    await assignment_outbox_service.enqueue(
+                        db=db,
+                        service_request_id=payment["service_request_id"],
+                        workflow_code=sr_data["workflow_code"],
+                        entity_code=sr_data["entity_code"],
+                        entity_location_id=sr_data["entity_location_id"],
+                        payment_id=payment_id,
+                        payment_method="cash",
+                    )
+                else:
+                    logger.warning(
+                        f"Cannot enqueue outbox: SR {payment['service_request_id']} "
+                        f"missing entity_code"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to enqueue outbox for {payment_id}: {e}",
+                    exc_info=True,
+                )
+    # End of transaction block
 
     # Publish PAYMENT_CASH_VALIDATED event
     try:
@@ -3789,21 +3825,8 @@ async def validate_payment(
     except Exception as e:
         logger.error(f"Failed to publish PAYMENT_CASH_VALIDATED event for {payment_id}: {e}", exc_info=True)
 
-    # Publish PAYMENT_COMPLETED to trigger entity agent auto-assignment
-    # (PAYMENT_CASH_VALIDATED handles notifications; PAYMENT_COMPLETED handles assignment queue)
-    try:
-        EventBus.publish_nowait(
-            EventType.PAYMENT_COMPLETED,
-            {
-                "service_request_id": str(payment["service_request_id"]),
-                "payment_id": payment_id,
-                "user_id": str(user_info["id"]) if user_info else None,
-                "amount": float(payment_info["total_amount"]) if payment_info and payment_info["total_amount"] else 0,
-                "payment_method": payment_info["payment_method"] if payment_info else "cash",
-            }
-        )
-    except Exception as e:
-        logger.error(f"Failed to publish PAYMENT_COMPLETED for {payment_id}: {e}", exc_info=True)
+    # NOTE: PAYMENT_COMPLETED EventBus publish removed — replaced by assignment_outbox
+    # (transactional INSERT above). Cron processes outbox items every 1 minute.
 
     return PaymentActionResponse(
         success=True,

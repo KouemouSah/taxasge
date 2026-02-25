@@ -255,12 +255,38 @@ class BangeProcessor(PaymentProcessorBase):
                     except Exception as e:
                         logger.warning(f"Failed to fetch user data for notification: {e}")
 
-                    # Publish PAYMENT_COMPLETED event for agent queue and notifications
+                    # Insert into assignment outbox (primary path — guaranteed delivery)
+                    sr_id = payment.get("service_request_id")
+                    if sr_id:
+                        try:
+                            from app.modules.service_requests.services.assignment_outbox_service import (
+                                assignment_outbox_service,
+                            )
+                            sr_data = await db.fetchrow(
+                                "SELECT workflow_code, entity_code, entity_location_id "
+                                "FROM service_requests WHERE id = $1",
+                                sr_id,
+                            )
+                            if sr_data and sr_data["entity_code"]:
+                                await assignment_outbox_service.enqueue(
+                                    db=db,
+                                    service_request_id=sr_id,
+                                    workflow_code=sr_data["workflow_code"],
+                                    entity_code=sr_data["entity_code"],
+                                    entity_location_id=sr_data["entity_location_id"],
+                                    payment_id=payment_id,
+                                    payment_method=payment.get("payment_method", "bange_wallet"),
+                                )
+                                logger.info(f"Outbox item created for BANGE payment {payment_id}")
+                        except Exception as e:
+                            logger.error(f"Failed to enqueue outbox for BANGE payment {payment_id}: {e}")
+
+                    # Publish PAYMENT_COMPLETED event (fallback + notifications)
                     try:
                         await EventBus.publish(EventType.PAYMENT_COMPLETED, {
                             "payment_id": payment_id,
                             "user_id": str(payment.get("user_id")),
-                            "service_request_id": str(payment.get("service_request_id")),
+                            "service_request_id": str(sr_id) if sr_id else None,
                             "amount": float(payment.get("total_amount", 0)),
                             "currency": payment.get("currency", "XAF"),
                             "payment_method": payment.get("payment_method", "bange_wallet"),
@@ -271,9 +297,9 @@ class BangeProcessor(PaymentProcessorBase):
                             "preferred_language": user_data["preferred_language"] if user_data else "es",
                             "date": paid_at.strftime("%d/%m/%Y"),
                         })
-                        logger.info(f"PAYMENT_COMPLETED event published for BANGE payment {payment_id} (via check_status)")
+                        logger.info(f"PAYMENT_COMPLETED event published for BANGE payment {payment_id}")
                     except Exception as e:
-                        logger.error(f"Failed to publish PAYMENT_COMPLETED event for BANGE payment: {e}")
+                        logger.error(f"Failed to publish PAYMENT_COMPLETED for BANGE payment: {e}")
 
                     return PaymentStatusResult(
                         payment_id=payment_id,

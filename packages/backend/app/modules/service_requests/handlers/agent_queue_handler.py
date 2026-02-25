@@ -61,21 +61,15 @@ class AgentQueueEventHandler:
 
     async def handle_payment_completed(self, payload: EventPayload) -> None:
         """
-        Handle PAYMENT_COMPLETED event.
+        Handle PAYMENT_COMPLETED event — FALLBACK SAFETY NET.
 
-        When payment is completed:
-        1. Get service_request details from database
-        2. Add to agent_work_queue with appropriate entity/workflow
-        3. Auto-assign to entity agent
-        4. Transition status: PAID → SUBMITTED
+        The primary path for entity agent assignment is now the assignment_outbox
+        (transactional INSERT + cron processing). This EventBus handler only runs
+        as a fallback if the outbox INSERT failed or for backward compatibility
+        (e.g., BANGE processor still publishes this event).
 
-        Args:
-            payload: Event payload containing:
-                - service_request_id: UUID of the service request
-                - payment_id: UUID of the payment
-                - user_id: User who made the payment
-                - amount: Payment amount
-                - payment_method: 'bange_wallet', 'cash', 'check', etc.
+        If an outbox entry already exists for this service_request, this handler
+        skips processing (cron will handle it).
         """
         service_request_id = payload.get("service_request_id")
         payment_id = payload.get("payment_id")
@@ -96,6 +90,25 @@ class AgentQueueEventHandler:
         try:
             # Get database connection
             conn = await get_db_connection()
+
+            # Check if outbox already handles this SR (primary path)
+            outbox_exists = await conn.fetchval("""
+                SELECT 1 FROM assignment_outbox
+                WHERE service_request_id = $1
+                  AND status IN ('pending', 'processing', 'completed')
+            """, UUID(service_request_id))
+
+            if outbox_exists:
+                logger.debug(
+                    f"Outbox entry exists for {service_request_id}, "
+                    f"skipping EventBus handler (cron will process)"
+                )
+                return
+
+            logger.warning(
+                f"No outbox entry for {service_request_id}, "
+                f"running EventBus fallback handler"
+            )
 
             # Import here to avoid circular imports
             from app.modules.service_requests.services.agent_queue_service import (
@@ -288,6 +301,11 @@ async def repair_orphaned_paid_requests() -> int:
                   SELECT 1 FROM agent_work_queue awq
                   WHERE awq.item_id = sr.id AND awq.item_type = 'service_request'
               )
+              AND NOT EXISTS (
+                  SELECT 1 FROM assignment_outbox ao
+                  WHERE ao.service_request_id = sr.id
+                    AND ao.status IN ('pending', 'processing')
+              )
             ORDER BY sr.created_at ASC
         """)
 
@@ -340,20 +358,22 @@ async def repair_orphaned_paid_requests() -> int:
                         f"for {sr['reference']}"
                     )
 
-                # Publish PAYMENT_COMPLETED → triggers handle_payment_completed pipeline
-                EventBus.publish_nowait(
-                    EventType.PAYMENT_COMPLETED,
-                    {
-                        "service_request_id": str(sr["id"]),
-                        "payment_id": str(sr["payment_id"]),
-                        "user_id": str(sr["user_id"]),
-                        "amount": float(sr["total_amount"]) if sr["total_amount"] else 0,
-                        "payment_method": sr["payment_method"] or "cash",
-                    }
+                # Enqueue into assignment outbox (persistent, cron-processed)
+                from app.modules.service_requests.services.assignment_outbox_service import (
+                    assignment_outbox_service,
+                )
+                await assignment_outbox_service.enqueue(
+                    db=conn,
+                    service_request_id=sr["id"],
+                    workflow_code=sr["workflow_code"],
+                    entity_code=entity_code,
+                    entity_location_id=sr["entity_location_id"],
+                    payment_id=str(sr["payment_id"]) if sr["payment_id"] else None,
+                    payment_method=sr["payment_method"] or "cash",
                 )
                 repaired += 1
                 logger.info(
-                    f"Startup repair: published PAYMENT_COMPLETED for "
+                    f"Startup repair: enqueued outbox for "
                     f"{sr['reference']} (entity={entity_code})"
                 )
 

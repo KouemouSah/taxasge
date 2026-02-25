@@ -427,3 +427,81 @@ async def supervisor_weekly_report(
         "emails_failed": emails_failed,
         "total_supervisors": len(supervisors),
     }
+
+
+# ============================================================
+# Assignment Outbox Cron Jobs
+# ============================================================
+
+
+@router.post(
+    "/process-assignment-outbox",
+    summary="Process pending assignment outbox items",
+    description="""
+    Called every 1 minute by Cloud Scheduler.
+
+    Processes pending outbox items using FOR UPDATE SKIP LOCKED:
+    - Multiple Cloud Run instances can run simultaneously (no overlap)
+    - Each item triggers: add_to_queue + auto_assign + PAID→SUBMITTED
+    - Failed items retry with exponential backoff (30s→10min)
+    - Dead letter after 5 retries
+    """,
+)
+async def process_assignment_outbox(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Process pending assignment outbox items."""
+    from app.modules.service_requests.services.assignment_outbox_service import (
+        assignment_outbox_service,
+    )
+
+    results = await assignment_outbox_service.process_pending_items(db)
+
+    total_work = results["processed"] + results["failed"] + results["dead_letter"]
+    if total_work > 0:
+        logger.info(
+            f"Assignment outbox: {results['processed']} processed, "
+            f"{results['failed']} retrying, {results['dead_letter']} dead-lettered"
+        )
+
+    return {"message": "Assignment outbox processed", **results}
+
+
+@router.post(
+    "/assignment-health-check",
+    summary="Assignment pipeline health check",
+    description="""
+    Called every 5 minutes by Cloud Scheduler.
+
+    Detects:
+    - PAID requests >10 min without assignment or outbox entry (orphans)
+    - Dead letter outbox items (>5 retries, need supervisor attention)
+    - Stale 'processing' items from crashed instances
+
+    Actions:
+    - Re-enqueue orphans into outbox
+    - Reset stale processing items to pending
+    - Report dead letters for supervisor attention
+    """,
+)
+async def assignment_health_check(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Run assignment pipeline health check."""
+    from app.modules.service_requests.services.assignment_outbox_service import (
+        assignment_outbox_service,
+    )
+
+    results = await assignment_outbox_service.run_health_check(db)
+
+    if results["orphans_found"] > 0 or results["dead_letters"] > 0:
+        logger.warning(
+            f"Assignment health: {results['orphans_found']} orphans "
+            f"({results['orphans_requeued']} requeued), "
+            f"{results['dead_letters']} dead letters, "
+            f"{results['stale_processing_reset']} stale resets"
+        )
+
+    return {"message": "Assignment health check completed", **results}

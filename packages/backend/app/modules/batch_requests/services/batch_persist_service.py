@@ -1064,15 +1064,19 @@ class BatchPersistService:
         )
         requests_updated = int(requests_result.split()[-1]) if requests_result else 0
 
-        # Add batch service_requests to agent_work_queue so agents see them
-        # Fetch the requests + entity info for queue insertion
+        # Add batch service_requests to assignment outbox for guaranteed processing
+        # (outbox cron handles: add_to_queue + auto_assign + status transition)
         batch_srs = await db.fetch(
             """
-            SELECT sr.id, sr.workflow_code, sr.entity_code
+            SELECT sr.id, sr.workflow_code, sr.entity_code, sr.entity_location_id
             FROM service_requests sr
             WHERE sr.batch_id = $1 AND sr.status = 'SUBMITTED'
             """,
             batch_id,
+        )
+
+        from app.modules.service_requests.services.assignment_outbox_service import (
+            assignment_outbox_service,
         )
 
         queue_inserted = 0
@@ -1080,31 +1084,21 @@ class BatchPersistService:
             entity_code = sr["entity_code"]
             if not entity_code:
                 continue
-            # Get ministry_id from entity
-            ministry_id = await db.fetchval(
-                """
-                SELECT m.id FROM ministries m
-                JOIN entities e ON e.ministry_id = m.id
-                WHERE e.code = $1
-                """,
-                entity_code,
-            )
-            if not ministry_id:
-                continue
-            # Insert into queue (skip if already exists)
-            await db.execute(
-                """
-                INSERT INTO agent_work_queue
-                    (item_type, item_id, ministry_id, declaration_type,
-                     priority_score, status, created_at, updated_at)
-                VALUES ('service_request', $1::text, $2, $3, 5, 'pending', NOW(), NOW())
-                ON CONFLICT DO NOTHING
-                """,
-                str(sr["id"]),
-                ministry_id,
-                sr["workflow_code"],
-            )
-            queue_inserted += 1
+            try:
+                outbox_id = await assignment_outbox_service.enqueue(
+                    db=db,
+                    service_request_id=sr["id"],
+                    workflow_code=sr["workflow_code"],
+                    entity_code=entity_code,
+                    entity_location_id=sr.get("entity_location_id"),
+                    batch_id=batch_id,
+                )
+                if outbox_id:
+                    queue_inserted += 1
+            except Exception as e:
+                logger.error(
+                    f"Batch fan-out: failed to enqueue SR {sr['id']}: {e}"
+                )
 
         # Update batch status
         await db.execute(
