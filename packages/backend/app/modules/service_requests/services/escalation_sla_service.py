@@ -21,6 +21,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from loguru import logger
 
+from app.config import get_settings
 from app.modules.communications.services.communication_service import CommunicationService
 from app.modules.communications.models.communication import CommunicationType
 
@@ -66,15 +67,25 @@ class EscalationSLAService:
 
     async def run_sla_check(self, db) -> Dict[str, Any]:
         """
-        Run all 3 SLA checks in sequence.
+        Run all SLA checks in sequence.
         Returns summary of actions taken.
         """
         results = {
+            "stalled_assignments_flagged": 0,
             "warnings_sent": 0,
             "escalations_sent": 0,
             "expirations_processed": 0,
             "errors": [],
         }
+
+        # 0. Stalled assignments → entity supervisors
+        # Detects: processing >24h, pending_review >12h, SLA deadline violated
+        try:
+            flagged = await self._process_stalled_assignments(db)
+            results["stalled_assignments_flagged"] = flagged
+        except Exception as e:
+            logger.error(f"Stalled assignment check failed: {e}")
+            results["errors"].append(f"stalled_assignments: {str(e)}")
 
         # 1. 4h warning → entity supervisors
         try:
@@ -300,6 +311,145 @@ class EscalationSLAService:
                 await self._send_email_async(email, subject, html)
 
         return len(expired_requests)
+
+    # =========================================================================
+    # STEP 0: STALLED ASSIGNMENTS → ENTITY SUPERVISORS
+    # =========================================================================
+
+    async def _process_stalled_assignments(self, db) -> int:
+        """
+        Detect assignments stuck in processing or pending_review.
+
+        Uses configurable thresholds from Settings:
+        - ESCALATION_PROCESSING_MAX_HOURS (default 24h)
+        - ESCALATION_PENDING_REVIEW_MAX_HOURS (default 12h)
+        - SLA deadline violations
+
+        Sends 1 consolidated email per entity's supervisors.
+        """
+        settings = get_settings()
+        processing_max = settings.ESCALATION_PROCESSING_MAX_HOURS
+        review_max = settings.ESCALATION_PENDING_REVIEW_MAX_HOURS
+
+        # Single query: find all stalled assignments with urgency classification
+        stalled = await db.fetch("""
+            SELECT
+                a.id as assignment_id,
+                a.item_id,
+                a.item_type,
+                a.status,
+                a.assigned_at,
+                a.started_at,
+                a.deadline,
+                sr.reference,
+                sr.workflow_code,
+                sr.entity_code,
+                u_agent.full_name as agent_name,
+                CASE
+                    WHEN a.deadline IS NOT NULL AND a.deadline < NOW()
+                        THEN 'critical'
+                    WHEN a.status = 'in_progress'
+                        AND a.started_at < NOW() - ($1 * interval '1 hour')
+                        THEN 'high'
+                    WHEN a.status = 'pending_review'
+                        AND a.assigned_at < NOW() - ($2 * interval '1 hour')
+                        THEN 'high'
+                    ELSE NULL
+                END as urgency,
+                CASE
+                    WHEN a.deadline IS NOT NULL AND a.deadline < NOW()
+                        THEN 'SLA deadline violated'
+                    WHEN a.status = 'in_progress'
+                        AND a.started_at < NOW() - ($1 * interval '1 hour')
+                        THEN 'Processing > ' || $1 || 'h'
+                    WHEN a.status = 'pending_review'
+                        AND a.assigned_at < NOW() - ($2 * interval '1 hour')
+                        THEN 'Pending review > ' || $2 || 'h'
+                    ELSE NULL
+                END as reason
+            FROM assignments a
+            JOIN service_requests sr ON sr.id = a.item_id
+            JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+            JOIN users u_agent ON u_agent.id = ap.user_id
+            WHERE a.status IN ('assigned', 'in_progress', 'pending_review')
+            AND (
+                (a.deadline IS NOT NULL AND a.deadline < NOW())
+                OR (a.status = 'in_progress'
+                    AND a.started_at IS NOT NULL
+                    AND a.started_at < NOW() - ($1 * interval '1 hour'))
+                OR (a.status = 'pending_review'
+                    AND a.assigned_at < NOW() - ($2 * interval '1 hour'))
+            )
+        """, processing_max, review_max)
+
+        if not stalled:
+            logger.info("Stalled assignment check: no stalled assignments found")
+            return 0
+
+        logger.warning(
+            f"Stalled assignment check: {len(stalled)} assignments flagged"
+        )
+
+        # Group by entity_code for consolidated emails
+        by_entity: Dict[str, list] = {}
+        for row in stalled:
+            entity = row["entity_code"] or "UNKNOWN"
+            by_entity.setdefault(entity, []).append(row)
+
+        for entity_code, assignments in by_entity.items():
+            supervisor_emails = await self._get_entity_supervisor_emails(
+                db, entity_code
+            )
+            if not supervisor_emails:
+                logger.warning(
+                    f"Stalled assignments: no supervisors for entity {entity_code}"
+                )
+                continue
+
+            html_body = self._build_stalled_assignment_email(assignments)
+            critical_count = sum(1 for a in assignments if a["urgency"] == "critical")
+            prefix = "[CRITICO]" if critical_count > 0 else "[ALERTA]"
+            subject = (
+                f"{prefix} {len(assignments)} asignacion(es) bloqueada(s) - "
+                f"{entity_code} - TaxasGE"
+            )
+            for email in supervisor_emails:
+                await self._send_email_async(email, subject, html_body)
+
+        return len(stalled)
+
+    def _build_stalled_assignment_email(self, assignments: list) -> str:
+        """Build HTML table of stalled assignments."""
+        rows_html = ""
+        for a in assignments:
+            label = WORKFLOW_LABELS.get(a["workflow_code"], a["workflow_code"])
+            urgency = a["urgency"] or "normal"
+            urgency_color = "#dc2626" if urgency == "critical" else "#f59e0b"
+            urgency_label = "CRITICO" if urgency == "critical" else "ALTO"
+            started = (
+                a["started_at"].strftime("%d/%m/%Y %H:%M")
+                if a.get("started_at")
+                else "-"
+            )
+            rows_html += f"""
+            <tr>
+                <td style="padding:8px;border:1px solid #e5e7eb;">{a['reference']}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb;">{label}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb;">{a['agent_name']}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb;">{a['status']}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb;">{a['reason']}</td>
+                <td style="padding:8px;border:1px solid #e5e7eb;color:{urgency_color};font-weight:bold;">{urgency_label}</td>
+            </tr>"""
+
+        return self._wrap_email(
+            title="Asignaciones bloqueadas",
+            subtitle=f"{len(assignments)} asignacion(es) requieren atencion inmediata.",
+            intro="Las siguientes asignaciones estan bloqueadas o han superado los tiempos maximos de tratamiento:",
+            headers=["Referencia", "Servicio", "Agente", "Estado", "Motivo", "Urgencia"],
+            rows=rows_html,
+            action_text="Revise estas asignaciones y tome las medidas necesarias (reasignar, contactar al agente, escalar).",
+            color="#dc2626",
+        )
 
     # =========================================================================
     # HELPERS: Get recipient emails

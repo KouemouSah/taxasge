@@ -327,7 +327,7 @@ export function GenericEntityDashboard({
 
       {/* Stats Cards - Custom or Default */}
       {statsComponent || (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {/* Pending */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -394,22 +394,48 @@ export function GenericEntityDashboard({
             </CardContent>
           </Card>
 
-          {/* This Week */}
-          <Card>
+          {/* SLA Violations */}
+          <Card className={stats.slaViolationsCount > 0 ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                {t('stats.thisWeek')}
+                {t('stats.slaViolations')}
               </CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <AlertCircle className={`h-4 w-4 ${stats.slaViolationsCount > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold">{stats.totalThisWeek}</div>
+                  <div className={`text-2xl font-bold ${stats.slaViolationsCount > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+                    {stats.slaViolationsCount}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {t('stats.totalProcessed')}
+                    {t('stats.slaExceeded')}
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Escalated */}
+          <Card className={stats.escalatedCount > 0 ? 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {t('stats.escalated')}
+              </CardTitle>
+              <AlertCircle className={`h-4 w-4 ${stats.escalatedCount > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              ) : (
+                <>
+                  <div className={`text-2xl font-bold ${stats.escalatedCount > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                    {stats.escalatedCount}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('stats.pendingEscalation')}
                   </p>
                 </>
               )}

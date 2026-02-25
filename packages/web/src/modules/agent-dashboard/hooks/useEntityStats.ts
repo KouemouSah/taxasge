@@ -45,7 +45,8 @@ export interface UseEntityStatsReturn {
     pendingCount: number;
     inProgressCount: number;
     completedTodayCount: number;
-    totalThisWeek: number;
+    slaViolationsCount: number;
+    escalatedCount: number;
   };
   /** Raw stats from API */
   rawStats: EntityQueueStats | null;
@@ -118,7 +119,8 @@ export function useEntityStats(entityCode: EntityCode): UseEntityStatsReturn {
     pendingCount: data?.pending || 0,
     inProgressCount: data?.assigned || 0,
     completedTodayCount: data?.completedToday || 0,
-    totalThisWeek: (data?.pending || 0) + (data?.assigned || 0) + (data?.completedToday || 0),
+    slaViolationsCount: data?.slaViolations || 0,
+    escalatedCount: data?.escalated || 0,
   };
 
   return {
