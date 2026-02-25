@@ -264,6 +264,23 @@ class ReceiptService:
                 info["address"] = f"{city}, Guinea Ecuatorial"
         return info
 
+    def _get_logo_base64(self) -> Optional[str]:
+        """Load FACIL logo as base64 for PDF embedding."""
+        import base64
+        # Try multiple possible logo locations
+        logo_candidates = [
+            Path(__file__).parent.parent / "templates" / "logo.png",
+            Path(__file__).parents[4] / "packages" / "web" / "public" / "logo.png",
+        ]
+        for logo_path in logo_candidates:
+            if logo_path.exists():
+                try:
+                    with open(logo_path, "rb") as f:
+                        return base64.b64encode(f.read()).decode("utf-8")
+                except Exception:
+                    pass
+        return None
+
     # Verification URL base - resolved dynamically from settings
     @property
     def VERIFICATION_URL_BASE(self) -> str:
@@ -321,6 +338,12 @@ class ReceiptService:
         secret_key = getattr(settings, 'RECEIPT_VERIFICATION_SECRET', None)
         if not secret_key:
             secret_key = getattr(settings, 'SECRET_KEY', 'taxasge-receipt-verification-key')
+
+        # Normalize paid_at to UTC-naive to ensure consistency
+        # between token generation (RETURNING *) and verification (SELECT)
+        if paid_at and paid_at.tzinfo is not None:
+            from datetime import timezone
+            paid_at = paid_at.astimezone(timezone.utc).replace(tzinfo=None)
 
         # Create message to sign: receipt_number|amount|date
         date_str = paid_at.strftime("%Y%m%d") if paid_at else datetime.utcnow().strftime("%Y%m%d")
@@ -594,9 +617,12 @@ class ReceiptService:
         payment_date = paid_at.strftime("%d/%m/%Y %H:%M")
 
         # Generate secure verification URL for QR code (HMAC-signed)
+        # Use payment_data["total_amount"] (DB column) to match verification endpoint
+        # which also reads from sp.total_amount — NOT breakdown which comes from calculation_details JSON
+        receipt_amount = float(payment_data.get("total_amount") or breakdown["total_amount"])
         verification_url = self._generate_verification_url(
             receipt_number=receipt_number,
-            amount=float(breakdown["total_amount"]),
+            amount=receipt_amount,
             paid_at=paid_at
         )
         qr_code_base64 = self._generate_qr_code(verification_url)
@@ -632,6 +658,8 @@ class ReceiptService:
             validated_by_name=validated_by_name,
             validated_at=validated_at_str,
             treasury=self._get_treasury_info(service_data, agent_location),
+            # Logo for PDF header
+            logo_base64=self._get_logo_base64(),
             # QR code with secure verification URL
             verification_url=verification_url,
             qr_code_base64=qr_code_base64,
