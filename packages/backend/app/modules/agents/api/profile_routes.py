@@ -1035,7 +1035,7 @@ async def admin_assistant_query(
     from app.modules.agents.services.admin_assistant_service import admin_assistant_service
 
     # Rate limit: 10 requests/minute per user (Gemini costs money)
-    user_id = current_user.get("id", "anonymous")
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     is_allowed, remaining = await check_rate_limit(
         str(user_id), "/agents/admin/assistant", max_requests=10, window_seconds=60
     )
