@@ -3726,20 +3726,60 @@ async def validate_payment(
                 "FROM service_requests WHERE id = $1",
                 payment["service_request_id"],
             )
-            if sr_data and sr_data["entity_code"]:
+            entity_code = sr_data["entity_code"] if sr_data else None
+
+            # Resolve entity_code from entity_location_id if NULL
+            if not entity_code and sr_data and sr_data["entity_location_id"]:
+                entity_code = await db.fetchval(
+                    "SELECT entity_code FROM entity_locations "
+                    "WHERE id = $1 AND is_active = true",
+                    sr_data["entity_location_id"],
+                )
+                if entity_code:
+                    await db.execute(
+                        "UPDATE service_requests SET entity_code = $1 WHERE id = $2",
+                        entity_code, payment["service_request_id"],
+                    )
+                    logger.info(
+                        f"Resolved entity_code={entity_code} from "
+                        f"entity_location_id={sr_data['entity_location_id']} "
+                        f"for SR {payment['service_request_id']}"
+                    )
+
+            # Fallback: resolve from workflow_code → entities.workflow_codes
+            if not entity_code and sr_data and sr_data["workflow_code"]:
+                entity_code = await db.fetchval(
+                    "SELECT e.code FROM entities e "
+                    "WHERE e.workflow_codes ? $1 AND e.is_active = true "
+                    "LIMIT 1",
+                    sr_data["workflow_code"],
+                )
+                if entity_code:
+                    await db.execute(
+                        "UPDATE service_requests SET entity_code = $1 WHERE id = $2",
+                        entity_code, payment["service_request_id"],
+                    )
+                    logger.info(
+                        f"Resolved entity_code={entity_code} from "
+                        f"workflow_code={sr_data['workflow_code']} "
+                        f"for SR {payment['service_request_id']}"
+                    )
+
+            if entity_code:
                 await assignment_outbox_service.enqueue(
                     db=db,
                     service_request_id=payment["service_request_id"],
                     workflow_code=sr_data["workflow_code"],
-                    entity_code=sr_data["entity_code"],
+                    entity_code=entity_code,
                     entity_location_id=sr_data["entity_location_id"],
                     payment_id=payment_id,
                     payment_method="cash",
                 )
             else:
-                logger.warning(
+                logger.error(
                     f"Cannot enqueue outbox: SR {payment['service_request_id']} "
-                    f"missing entity_code"
+                    f"entity_code unresolvable (no entity_location_id, "
+                    f"no workflow_code match)"
                 )
     # End of transaction block
 
