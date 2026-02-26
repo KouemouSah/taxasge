@@ -25,14 +25,6 @@ class AgentType(str, Enum):
     ENTITY_AGENT = "entity_agent"
 
 
-class AgentRole(str, Enum):
-    """Functional role of the agent"""
-    VALIDATOR = "validator"
-    APPROVER = "approver"
-    AUDITOR = "auditor"
-    REVIEWER = "reviewer"
-
-
 # ============================================================================
 # AGENT_PROFILES - Agent configuration and permissions
 # ============================================================================
@@ -45,7 +37,6 @@ class AgentProfileBase(BaseModel):
     entity_id: Optional[UUID] = None
     entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
-    agent_role: str = "validator"
     can_approve_unlimited: bool = False
     max_approval_amount: Optional[Decimal] = None
     can_escalate: bool = True
@@ -68,7 +59,6 @@ class AgentProfileCreate(BaseModel):
     entity_id: Optional[UUID] = None
     entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
-    agent_role: str = "validator"
     can_approve_unlimited: bool = False
     max_approval_amount: Optional[Decimal] = None
     can_escalate: bool = True
@@ -88,7 +78,6 @@ class AgentProfileUpdate(BaseModel):
     entity_id: Optional[UUID] = None
     entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
-    agent_role: Optional[str] = None
     rbac_role_id: Optional[UUID] = Field(
         None,
         description="RBAC role ID to assign. Replaces user permissions with role's permissions."
@@ -204,7 +193,6 @@ class AgentAssignmentRequest(BaseModel):
     entity_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
     is_supervisor: bool = False
-    agent_role: str = "validator"
     assigned_by: UUID
 
 
@@ -244,7 +232,6 @@ class AgentCompleteCreate(BaseModel):
     entity_id: Optional[UUID] = None
     entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
-    agent_role: str = Field(default="validator", pattern="^(validator|approver|auditor|reviewer)$")
 
     # RBAC role for permissions (from roles table where entity_type='agent')
     rbac_role_id: Optional[UUID] = Field(
@@ -341,7 +328,6 @@ class AgentInviteRequest(BaseModel):
     entity_id: Optional[UUID] = None
     entity_location_id: Optional[UUID] = None
     ministry_id: Optional[int] = None
-    agent_role: str = Field(default="validator", pattern="^(validator|approver|auditor|reviewer)$")
 
     # RBAC role for permissions
     rbac_role_id: Optional[UUID] = Field(

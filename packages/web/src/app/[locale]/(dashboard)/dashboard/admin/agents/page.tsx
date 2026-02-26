@@ -405,7 +405,6 @@ export default function AgentsPage() {
                       <TableHead>Agent</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead className="hidden lg:table-cell">Organisation</TableHead>
-                      <TableHead className="hidden md:table-cell">Rôle</TableHead>
                       <TableHead>Statut</TableHead>
                       <TableHead className="hidden md:table-cell">Tâches</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -438,7 +437,6 @@ export default function AgentsPage() {
                             <span>{agent.ministry_name || agent.entity_name || '-'}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell capitalize">{agent.agent_role || 'validator'}</TableCell>
                         <TableCell>{getStatusBadge(agent.is_active)}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           {agent.current_assignments !== undefined ? (

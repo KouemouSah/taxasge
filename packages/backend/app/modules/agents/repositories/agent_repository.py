@@ -21,19 +21,18 @@ class AgentRepository:
         """Create new ministry agent"""
         query = """
             INSERT INTO ministry_agents (
-                user_id, ministry_id, agent_role, can_approve_unlimited,
+                user_id, ministry_id, can_approve_unlimited,
                 max_approval_amount, can_escalate, can_assign_tasks, is_active,
                 is_backup_agent, backup_for_agent_id, working_hours_start,
                 working_hours_end, working_days, assigned_by, assigned_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
             RETURNING *
         """
         result = await conn.fetchrow(
             query,
             agent.user_id,
             agent.ministry_id,
-            agent.agent_role,
             agent.can_approve_unlimited,
             agent.max_approval_amount,
             agent.can_escalate,

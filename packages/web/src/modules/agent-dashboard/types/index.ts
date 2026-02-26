@@ -195,7 +195,6 @@ export interface AgentDashboardContext {
   ministryId: number | null;
   ministryName: string | null;
   isSupervisor: boolean;
-  agentRole: string;
   permissions: string[];
   specializations: string[];
 }

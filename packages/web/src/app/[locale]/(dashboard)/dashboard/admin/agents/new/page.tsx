@@ -256,7 +256,6 @@ export default function CreateAgentPage() {
           data.entity_location_id !== 'ALL_SITES'
             ? data.entity_location_id
             : null,
-        agent_role: 'validator',
         rbac_role_id: data.rbac_role_id,
         ...capabilities,
         can_approve_unlimited: data.can_approve_unlimited,

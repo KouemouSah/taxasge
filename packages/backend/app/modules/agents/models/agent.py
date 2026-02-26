@@ -89,10 +89,9 @@ class WorkloadStatus(str, Enum):
 # ============================================================================
 
 class MinistryAgentBase(BaseModel):
-    """Base ministry agent fields"""
+    """Base ministry agent fields (legacy - ministry_agents table dropped)"""
     user_id: str
     ministry_id: int
-    agent_role: str
     can_approve_unlimited: bool = False
     max_approval_amount: Optional[Decimal] = None
     can_escalate: bool = True
@@ -111,8 +110,7 @@ class MinistryAgentCreate(MinistryAgentBase):
 
 
 class MinistryAgentUpdate(BaseModel):
-    """Update ministry agent"""
-    agent_role: Optional[str] = None
+    """Update ministry agent (legacy - ministry_agents table dropped)"""
     can_approve_unlimited: Optional[bool] = None
     max_approval_amount: Optional[Decimal] = None
     can_escalate: Optional[bool] = None

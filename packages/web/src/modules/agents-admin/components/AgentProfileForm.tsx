@@ -60,7 +60,6 @@ const agentProfileSchema = z.object({
   is_supervisor: z.boolean().default(false),
   entity_id: z.string().uuid().optional().or(z.literal('')),
   ministry_id: z.coerce.number().int().positive().optional(),
-  agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']).default('validator'),
   can_approve_unlimited: z.boolean().default(false),
   max_approval_amount: z.coerce.number().positive().optional(),
   can_escalate: z.boolean().default(true),
@@ -134,7 +133,6 @@ export function AgentProfileForm({
       is_supervisor: initialData?.is_supervisor || false,
       ministry_id: initialData?.ministry_id,
       entity_id: initialData?.entity_id || '',
-      agent_role: (initialData?.agent_role as 'validator' | 'approver' | 'auditor' | 'reviewer') || 'validator',
       can_approve_unlimited: initialData?.can_approve_unlimited || false,
       max_approval_amount: initialData?.max_approval_amount,
       can_escalate: initialData?.can_escalate ?? true,
@@ -358,30 +356,6 @@ export function AgentProfileForm({
 
             {/* Role & Permissions */}
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="agent_role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rôle fonctionnel</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner le rôle" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="validator">Validateur</SelectItem>
-                        <SelectItem value="approver">Approbateur</SelectItem>
-                        <SelectItem value="auditor">Auditeur</SelectItem>
-                        <SelectItem value="reviewer">Réviseur</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="is_supervisor"

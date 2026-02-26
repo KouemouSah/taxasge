@@ -73,14 +73,14 @@ class AgentProfileRepository:
             INSERT INTO agent_profiles (
                 user_id, agent_type, is_supervisor, entity_id, entity_location_id,
                 ministry_id,
-                agent_role, can_approve_unlimited, max_approval_amount,
+                can_approve_unlimited, max_approval_amount,
                 can_escalate, can_assign_tasks, can_reassign,
                 specializations, working_hours_start, working_hours_end,
                 working_days, assigned_by, assigned_at, created_at, updated_at
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-                $13, $14, $15, $16, $17, NOW(), NOW(), NOW()
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+                $12, $13, $14, $15, $16, NOW(), NOW(), NOW()
             )
             RETURNING *
         """
@@ -92,7 +92,6 @@ class AgentProfileRepository:
             str(profile.entity_id) if profile.entity_id else None,
             str(profile.entity_location_id) if profile.entity_location_id else None,
             profile.ministry_id,
-            profile.agent_role,
             profile.can_approve_unlimited,
             profile.max_approval_amount,
             profile.can_escalate,

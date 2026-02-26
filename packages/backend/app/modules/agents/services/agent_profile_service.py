@@ -603,7 +603,6 @@ class AgentProfileService:
             'entity_id': str(data.entity_id) if data.entity_id else None,
             'entity_location_id': str(data.entity_location_id) if data.entity_location_id else None,
             'ministry_id': data.ministry_id,
-            'agent_role': data.agent_role,
             'rbac_role_id': str(data.rbac_role_id) if data.rbac_role_id else None,
             'can_approve_unlimited': data.can_approve_unlimited,
             'max_approval_amount': float(data.max_approval_amount) if data.max_approval_amount else None,
@@ -790,12 +789,12 @@ class AgentProfileService:
                 profile_query = """
                     INSERT INTO agent_profiles (
                         user_id, agent_type, is_supervisor, entity_id, entity_location_id,
-                        ministry_id, agent_role, can_approve_unlimited, max_approval_amount,
+                        ministry_id, can_approve_unlimited, max_approval_amount,
                         can_escalate, can_assign_tasks, can_reassign,
                         specializations, working_hours_start, working_hours_end,
                         working_days, is_active, assigned_by, assigned_at
                     ) VALUES (
-                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16, TRUE, $17, NOW()
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, TRUE, $16, NOW()
                     )
                     RETURNING id
                 """
@@ -807,7 +806,6 @@ class AgentProfileService:
                     entity_id,
                     entity_location_id,
                     effective_ministry_id,
-                    agent_data.get('agent_role', 'validator'),
                     agent_data.get('can_approve_unlimited', False),
                     agent_data.get('max_approval_amount'),
                     agent_data.get('can_escalate', True),

@@ -98,7 +98,6 @@ const profileSchema = z.object({
   ministry_id: z.coerce.number().int().positive().optional().nullable(),
   entity_id: z.string().uuid().optional().nullable().or(z.literal('')),
   entity_location_id: z.string().uuid().optional().nullable().or(z.literal('ALL_SITES')).or(z.literal('')),
-  agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']),
   rbac_role_id: z.string().uuid().optional().nullable().or(z.literal('')),
   can_approve_unlimited: z.boolean(),
   max_approval_amount: z.coerce.number().positive().optional().nullable(),
@@ -180,7 +179,6 @@ export default function AgentDetailPage() {
     defaultValues: {
       agent_type: AgentType.MINISTRY_AGENT,
       is_supervisor: false,
-      agent_role: 'validator',
       rbac_role_id: '',
       can_approve_unlimited: false,
       can_escalate: true,
@@ -201,7 +199,6 @@ export default function AgentDetailPage() {
         ministry_id: profile.ministry_id ?? null,
         entity_id: profile.entity_id ?? '',
         entity_location_id: profile.entity_location_id ?? '',
-        agent_role: (profile.agent_role as 'validator' | 'approver' | 'auditor' | 'reviewer') || 'validator',
         rbac_role_id: '',
         can_approve_unlimited: profile.can_approve_unlimited,
         max_approval_amount: profile.max_approval_amount ?? null,
@@ -275,7 +272,6 @@ export default function AgentDetailPage() {
           data.entity_location_id !== 'ALL_SITES'
             ? data.entity_location_id
             : null,
-        agent_role: data.agent_role,
         rbac_role_id: data.rbac_role_id || undefined,
         ...capabilities,
         can_approve_unlimited: data.can_approve_unlimited,
@@ -596,8 +592,8 @@ export default function AgentDetailPage() {
                       <p className="font-medium">{profile.is_supervisor ? 'Oui' : 'Non'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Rôle fonctionnel</p>
-                      <p className="font-medium capitalize">{profile.agent_role}</p>
+                      <p className="text-sm text-muted-foreground">Type d&apos;agent</p>
+                      <p className="font-medium capitalize">{profile.agent_type?.replace('_', ' ')}</p>
                     </div>
                   </div>
 

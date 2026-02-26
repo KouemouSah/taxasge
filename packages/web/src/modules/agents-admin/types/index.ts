@@ -29,17 +29,6 @@ export enum AgentType {
 }
 
 /**
- * Functional role of the agent
- * BACKEND: AgentRole in agent_profile.py
- */
-export enum AgentRole {
-  VALIDATOR = 'validator',
-  APPROVER = 'approver',
-  AUDITOR = 'auditor',
-  REVIEWER = 'reviewer',
-}
-
-/**
  * Agent availability status
  * BACKEND: AgentAvailability in agent.py
  */
@@ -80,7 +69,6 @@ export interface AgentProfile {
   entity_id?: string;
   entity_location_id?: string | null;
   ministry_id?: number;
-  agent_role: AgentRole | string;
   can_approve_unlimited: boolean;
   max_approval_amount?: number;
   can_escalate: boolean;
@@ -209,7 +197,6 @@ export interface AgentCompleteCreateRequest {
   entity_id?: string;
   entity_location_id?: string | null;
   ministry_id?: number;
-  agent_role?: AgentRole | string;
   /** RBAC role ID for defining agent permissions */
   rbac_role_id?: string;
   can_approve_unlimited?: boolean;
@@ -276,7 +263,6 @@ export interface AgentProfileUpdateRequest {
   entity_id?: string;
   entity_location_id?: string | null;
   ministry_id?: number;
-  agent_role?: AgentRole | string;
   /** RBAC role ID - replaces user's permissions with role's permissions */
   rbac_role_id?: string;
   can_approve_unlimited?: boolean;
@@ -434,7 +420,6 @@ export interface AgentInviteRequest {
   entity_id?: string;
   entity_location_id?: string | null;
   ministry_id?: number;
-  agent_role?: AgentRole | string;
   rbac_role_id?: string;
   can_approve_unlimited?: boolean;
   max_approval_amount?: number;

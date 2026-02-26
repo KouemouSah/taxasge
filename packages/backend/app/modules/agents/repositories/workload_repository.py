@@ -241,7 +241,7 @@ class WorkloadRepository:
             params.append(entity_location_id)
 
         query = f"""
-            SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id, ap.agent_role
+            SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id
             FROM agent_workloads aw
             JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
             LEFT JOIN entities e ON ap.entity_id = e.id
@@ -258,7 +258,7 @@ class WorkloadRepository:
         # Fallback: if no agents found with location filter, retry without it
         if not results and entity_location_id:
             fallback_query = """
-                SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id, ap.agent_role
+                SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id
                 FROM agent_workloads aw
                 JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
                 LEFT JOIN entities e ON ap.entity_id = e.id
@@ -290,7 +290,7 @@ class WorkloadRepository:
             params.append(ministry_id)
 
         query = f"""
-            SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id, ap.agent_role
+            SELECT aw.*, COALESCE(ap.ministry_id, e.ministry_id) as ministry_id
             FROM agent_workloads aw
             JOIN agent_profiles ap ON aw.agent_profile_id = ap.id
             LEFT JOIN entities e ON ap.entity_id = e.id
@@ -504,7 +504,7 @@ class WorkloadRepository:
         Considers both direct ministry assignment and entity-based assignment.
         """
         query = """
-            SELECT aps.*, ap.user_id, ap.agent_role
+            SELECT aps.*, ap.user_id
             FROM agent_performance_stats aps
             JOIN agent_profiles ap ON aps.agent_profile_id = ap.id
             LEFT JOIN entities e ON ap.entity_id = e.id

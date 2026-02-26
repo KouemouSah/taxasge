@@ -121,10 +121,6 @@ export default function AgentDashboardPage() {
               <p className="font-medium">{context.entityName || context.ministryName || '-'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">{t('profile.role')}</p>
-              <p className="font-medium capitalize">{context.agentRole}</p>
-            </div>
-            <div>
               <p className="text-sm text-muted-foreground">{t('profile.type')}</p>
               <p className="font-medium">
                 {context.isSupervisor ? t('profile.supervisor') : t('profile.agent')}

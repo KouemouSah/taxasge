@@ -212,7 +212,7 @@ export function AgentProfileCard({
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm capitalize">
-              {profile.agent_role || 'Validateur'}
+              {profile.agent_type?.replace('_', ' ') || 'Agent'}
             </span>
           </div>
           <div className="flex items-center gap-2">

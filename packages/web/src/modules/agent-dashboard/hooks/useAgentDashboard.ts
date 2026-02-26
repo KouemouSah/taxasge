@@ -34,7 +34,6 @@ interface AgentProfileResponse {
   is_supervisor: boolean;
   entity_id: string | null;
   ministry_id: number | null;
-  agent_role: string;
   specializations: string[];
   is_active: boolean;
   // Joined fields
@@ -225,7 +224,6 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
         ministryId: agentProfile.ministry_id,
         ministryName: agentProfile.ministry_name || null,
         isSupervisor: agentProfile.is_supervisor,
-        agentRole: agentProfile.agent_role,
         permissions: user?.permissions || [],
         specializations: agentProfile.specializations || [],
       }
