@@ -350,6 +350,34 @@ class Settings(BaseSettings):
     SCHEDULER_DAILY_INTERVAL: int = Field(default=86400, env="SCHEDULER_DAILY_INTERVAL")
 
     # ========================================================================
+    # MULTI-CRITERIA SCORING (Assignment Intelligence)
+    # ========================================================================
+
+    SCORING_WEIGHT_WORKLOAD: float = Field(default=0.30, env="SCORING_WEIGHT_WORKLOAD")
+    SCORING_WEIGHT_SUCCESS: float = Field(default=0.25, env="SCORING_WEIGHT_SUCCESS")
+    SCORING_WEIGHT_SPECIALIZATION: float = Field(default=0.20, env="SCORING_WEIGHT_SPECIALIZATION")
+    SCORING_WEIGHT_SITE: float = Field(default=0.15, env="SCORING_WEIGHT_SITE")
+    SCORING_WEIGHT_SPEED: float = Field(default=0.10, env="SCORING_WEIGHT_SPEED")
+    SCORING_NEW_AGENT_DEFAULT: float = Field(default=50.0, env="SCORING_NEW_AGENT_DEFAULT")
+    SPECIALIZATION_THRESHOLD: int = Field(default=3, env="SPECIALIZATION_THRESHOLD")
+    SPECIALIZATION_REMOVE_THRESHOLD: float = Field(default=40.0, env="SPECIALIZATION_REMOVE_THRESHOLD")
+
+    # Predictive escalation
+    ESCALATION_PREDICTIVE_MIN_COMPLETIONS: int = Field(default=5, env="ESCALATION_PREDICTIVE_MIN_COMPLETIONS")
+    ESCALATION_PREDICTIVE_SUCCESS_THRESHOLD: float = Field(default=60.0, env="ESCALATION_PREDICTIVE_SUCCESS_THRESHOLD")
+    ESCALATION_PREDICTIVE_COMPLEXITY_THRESHOLD: int = Field(default=60, env="ESCALATION_PREDICTIVE_COMPLEXITY_THRESHOLD")  # complexity_score 0-100 scale (migration 136)
+
+    # Anomaly detection
+    ANOMALY_QUEUE_SPIKE_MULTIPLIER: float = Field(default=2.0, env="ANOMALY_QUEUE_SPIKE_MULTIPLIER")
+    ANOMALY_UNDERPERFORMER_THRESHOLD: float = Field(default=40.0, env="ANOMALY_UNDERPERFORMER_THRESHOLD")
+    ANOMALY_PROCESSING_TIME_SPIKE_HOURS: float = Field(default=72.0, env="ANOMALY_PROCESSING_TIME_SPIKE_HOURS")
+
+    # Auto-rebalancing
+    REBALANCE_OVERLOAD_THRESHOLD: float = Field(default=90.0, env="REBALANCE_OVERLOAD_THRESHOLD")
+    REBALANCE_UNDERLOAD_THRESHOLD: float = Field(default=30.0, env="REBALANCE_UNDERLOAD_THRESHOLD")
+    REBALANCE_MAX_REASSIGNMENTS_PER_RUN: int = Field(default=10, env="REBALANCE_MAX_REASSIGNMENTS_PER_RUN")
+
+    # ========================================================================
     # RATE LIMITING
     # ========================================================================
     

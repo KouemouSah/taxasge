@@ -79,6 +79,16 @@ class InternalScheduler:
                 self._workload_rebalance,
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
+            (
+                "proficiency-30d-rollup",
+                self._proficiency_30d_rollup,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
+                "anomaly-detection",
+                self._anomaly_detection,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -337,6 +347,173 @@ class InternalScheduler:
                     f"across {len(entities)} entities"
                 )
                 return {"total_reassigned": total}
+        return None
+
+    async def _proficiency_30d_rollup(self):
+        """Recalculate 30-day rolling counters in agent_workflow_proficiency."""
+        from app.database.connection import db_manager
+
+        async with db_manager.get_connection() as db:
+            # Step 1: Reset ALL 30d counters to 0 first (avoids stale data bug)
+            await db.execute("""
+                UPDATE agent_workflow_proficiency
+                SET completions_30d = 0, escalations_30d = 0
+                WHERE completions_30d > 0 OR escalations_30d > 0
+            """)
+
+            # Step 2: Set actual 30d completions from agent_work_queue
+            await db.execute("""
+                UPDATE agent_workflow_proficiency awp SET
+                    completions_30d = sub.cnt
+                FROM (
+                    SELECT ap.id AS agent_profile_id, q.declaration_type AS workflow_code,
+                           COUNT(*) AS cnt
+                    FROM agent_work_queue q
+                    JOIN agent_profiles ap ON ap.user_id = q.completed_by
+                    WHERE q.status = 'completed'
+                      AND q.completed_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY ap.id, q.declaration_type
+                ) sub
+                WHERE awp.agent_profile_id = sub.agent_profile_id
+                  AND awp.workflow_code = sub.workflow_code
+            """)
+
+            # Step 3: Set actual 30d escalations from agent_work_queue
+            await db.execute("""
+                UPDATE agent_workflow_proficiency awp SET
+                    escalations_30d = sub.cnt
+                FROM (
+                    SELECT ap.id AS agent_profile_id, q.declaration_type AS workflow_code,
+                           COUNT(*) AS cnt
+                    FROM agent_work_queue q
+                    JOIN agent_profiles ap ON ap.user_id = q.escalated_by
+                    WHERE q.escalated = true
+                      AND q.escalated_at >= NOW() - INTERVAL '30 days'
+                    GROUP BY ap.id, q.declaration_type
+                ) sub
+                WHERE awp.agent_profile_id = sub.agent_profile_id
+                  AND awp.workflow_code = sub.workflow_code
+            """)
+
+            logger.info("Proficiency 30d rollup completed")
+            return {"status": "ok"}
+
+    async def _anomaly_detection(self):
+        """Detect assignment anomalies: queue spikes, underperformers, imbalances."""
+        from app.database.connection import db_manager
+        from app.config import get_settings
+
+        settings = get_settings()
+        anomalies = []
+
+        async with db_manager.get_connection() as db:
+            # 1. Queue spike detection: pending items much higher than normal
+            queue_stats = await db.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+                    COUNT(*) FILTER (WHERE status = 'assigned') AS assigned,
+                    COUNT(*) FILTER (WHERE status = 'completed'
+                        AND completed_at >= NOW() - INTERVAL '7 days') AS completed_7d
+                FROM agent_work_queue
+            """)
+            if queue_stats:
+                pending = queue_stats["pending"] or 0
+                completed_7d = queue_stats["completed_7d"] or 0
+                daily_avg = completed_7d / 7.0 if completed_7d > 0 else 1.0
+                if pending > daily_avg * settings.ANOMALY_QUEUE_SPIKE_MULTIPLIER:
+                    anomalies.append(
+                        f"QUEUE_SPIKE: {pending} pending vs "
+                        f"{daily_avg:.0f}/day avg (>{settings.ANOMALY_QUEUE_SPIKE_MULTIPLIER}x)"
+                    )
+
+            # 2. Underperforming agents: success_rate below threshold with enough data
+            underperformers = await db.fetch("""
+                SELECT awp.agent_profile_id, awp.workflow_code,
+                       awp.success_rate, awp.completions_total, awp.escalations_total
+                FROM agent_workflow_proficiency awp
+                WHERE awp.completions_total + awp.escalations_total >= $1
+                  AND awp.success_rate < $2
+            """, settings.ESCALATION_PREDICTIVE_MIN_COMPLETIONS,
+                settings.ANOMALY_UNDERPERFORMER_THRESHOLD)
+            for row in underperformers:
+                anomalies.append(
+                    f"UNDERPERFORMER: agent {row['agent_profile_id']} "
+                    f"workflow={row['workflow_code']} "
+                    f"success_rate={row['success_rate']}% "
+                    f"({row['completions_total']}C/{row['escalations_total']}E)"
+                )
+
+            # 3. Processing time spike: avg much higher than expected
+            slow_workflows = await db.fetch("""
+                SELECT workflow_code,
+                       AVG(avg_processing_hours) AS avg_hours,
+                       COUNT(*) AS agent_count
+                FROM agent_workflow_proficiency
+                WHERE completions_total > 0
+                GROUP BY workflow_code
+                HAVING AVG(avg_processing_hours) > $1
+            """, settings.ANOMALY_PROCESSING_TIME_SPIKE_HOURS)
+            for row in slow_workflows:
+                anomalies.append(
+                    f"SLOW_WORKFLOW: {row['workflow_code']} "
+                    f"avg={row['avg_hours']:.1f}h across {row['agent_count']} agents"
+                )
+
+            # 4. Site imbalance: some entities have much more pending than others
+            site_imbalance = await db.fetch("""
+                SELECT entity_code, COUNT(*) AS pending_count
+                FROM agent_work_queue
+                WHERE status = 'pending' AND entity_code IS NOT NULL
+                GROUP BY entity_code
+                ORDER BY pending_count DESC
+            """)
+            if len(site_imbalance) >= 2:
+                max_pending = site_imbalance[0]["pending_count"]
+                min_pending = site_imbalance[-1]["pending_count"]
+                if max_pending > 0 and min_pending >= 0 and max_pending > min_pending * 3:
+                    anomalies.append(
+                        f"SITE_IMBALANCE: {site_imbalance[0]['entity_code']}="
+                        f"{max_pending} vs {site_imbalance[-1]['entity_code']}="
+                        f"{min_pending}"
+                    )
+
+        # Store results in Redis cache for supervisor dashboard consumption
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            anomaly_data = {
+                "detected_at": datetime.now().isoformat(),
+                "anomalies": [
+                    {
+                        "type": a.split(":")[0].strip(),
+                        "message": a,
+                        "severity": "critical" if "UNDERPERFORMER" in a or "QUEUE_SPIKE" in a else "warning",
+                    }
+                    for a in anomalies
+                ],
+                "count": len(anomalies),
+            }
+            await cache.set("supervisor:anomalies:latest", anomaly_data, ttl=86400)
+        except Exception as e:
+            logger.warning(f"Failed to cache anomaly results: {e}")
+
+        if anomalies:
+            for a in anomalies:
+                logger.warning(f"Anomaly detected: {a}")
+            return {"anomalies": anomalies, "count": len(anomalies)}
+
+        # Clear cache when no anomalies
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            await cache.set("supervisor:anomalies:latest", {
+                "detected_at": datetime.now().isoformat(),
+                "anomalies": [],
+                "count": 0,
+            }, ttl=86400)
+        except Exception:
+            pass
+
         return None
 
 

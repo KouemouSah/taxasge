@@ -187,6 +187,52 @@ export interface RuleEffectivenessItem {
 }
 
 // =============================================================================
+// INTELLIGENCE (Phase 2b)
+// =============================================================================
+
+/** Backend: GET /supervisor/proficiency-overview */
+export interface AgentProficiency {
+  agent_profile_id: string;
+  agent_name: string;
+  workflow_code: string;
+  completions_total: number;
+  escalations_total: number;
+  success_rate: number; // 0-100 (NOT 0-1 — comes from agent_workflow_proficiency)
+  avg_processing_hours: number;
+  completions_30d: number;
+  escalations_30d: number;
+  last_completed_at: string | null;
+}
+
+/** Backend: GET /supervisor/anomalies */
+export interface AnomalyAlert {
+  type: string;
+  message: string;
+  severity: 'warning' | 'critical';
+}
+
+export interface AnomalyResponse {
+  detected_at: string | null;
+  anomalies: AnomalyAlert[];
+  count: number;
+}
+
+/** Backend: GET /supervisor/skills-gap */
+export interface SkillsGapItem {
+  workflow_code: string;
+  pending_count: number;
+  specialist_count: number;
+  avg_specialist_success: number;
+  coverage_status: 'critical' | 'warning' | 'ok';
+}
+
+export const COVERAGE_STATUS_COLORS: Record<string, string> = {
+  critical: 'bg-red-100 text-red-800',
+  warning: 'bg-yellow-100 text-yellow-800',
+  ok: 'bg-green-100 text-green-800',
+};
+
+// =============================================================================
 // SHARED HELPERS
 // =============================================================================
 

@@ -284,6 +284,35 @@ async def get_agent_performance(
                 detail=f"No workload data found for agent_profile {agent_profile_id}"
             )
 
+        # Compute real metrics from agent_workflow_proficiency + assignments
+        on_time_rate = await db.fetchval("""
+            SELECT COALESCE(
+                COUNT(*) FILTER (WHERE completed_at IS NOT NULL
+                    AND deadline IS NOT NULL AND completed_at <= deadline) * 1.0
+                / NULLIF(COUNT(*) FILTER (WHERE completed_at IS NOT NULL
+                    AND deadline IS NOT NULL), 0),
+                0.0
+            )
+            FROM assignments WHERE agent_profile_id = $1
+              AND assigned_at >= NOW() - INTERVAL '30 days'
+        """, agent_profile_id)
+
+        # Rejection rate = 1.0 - success_rate (from agent_workloads, updated by feedback loop)
+        rejection_rate = max(0.0, 1.0 - float(workload.success_rate or 0))
+
+        # Quality score: composite from proficiency data (avg success × 0.6 + speed × 0.4)
+        quality_row = await db.fetchrow("""
+            SELECT AVG(success_rate) as avg_sr, AVG(avg_processing_hours) as avg_h
+            FROM agent_workflow_proficiency WHERE agent_profile_id = $1
+        """, agent_profile_id)
+        if quality_row and quality_row['avg_sr'] is not None:
+            quality_score = (
+                float(quality_row['avg_sr']) / 100.0 * 0.6
+                + max(0.0, 1.0 - float(quality_row['avg_h'] or 24) / 48.0) * 0.4
+            ) * 10.0
+        else:
+            quality_score = 0.0
+
         # Convert to AgentPerformanceMetrics
         metrics = AgentPerformanceMetrics(
             agent_profile_id=workload.agent_profile_id,
@@ -291,9 +320,9 @@ async def get_agent_performance(
             period="current",
             declarations_processed=workload.current_assignments,
             average_time_to_complete_hours=workload.avg_processing_time_hours or 0.0,
-            on_time_completion_rate=0.0,  # TODO: Calculate from assignments
-            rejection_rate=0.0,  # TODO: Calculate from assignments
-            quality_score=0.0,  # TODO: Add to agent_workloads table
+            on_time_completion_rate=float(on_time_rate or 0.0),
+            rejection_rate=rejection_rate,
+            quality_score=round(quality_score, 2),
         )
 
         logger.info(
@@ -356,16 +385,50 @@ async def get_agent_trends(
             detail="You can only view your own trends"
         )
 
-    # TODO: Implement time-series query
-    # For now, return placeholder
     period_start = datetime.utcnow() - timedelta(days=period_days)
     period_end = datetime.utcnow()
+
+    # Real time-series query from assignments + service_requests
+    trunc_unit = 'day' if granularity == 'daily' else 'week'
+    trend_rows = await db.fetch("""
+        SELECT
+            date_trunc($3::text, a.completed_at) AS period,
+            COUNT(*) AS processed,
+            COUNT(*) FILTER (WHERE sr.status IN ('approved', 'completed')) AS approved,
+            COUNT(*) FILTER (WHERE sr.status = 'rejected') AS rejected,
+            COALESCE(AVG(EXTRACT(EPOCH FROM (a.completed_at - a.assigned_at)) / 3600), 0)
+                AS avg_processing_hours,
+            COALESCE(
+                COUNT(*) FILTER (WHERE a.deadline IS NOT NULL
+                    AND a.completed_at <= a.deadline) * 100.0
+                / NULLIF(COUNT(*) FILTER (WHERE a.deadline IS NOT NULL), 0), 100
+            ) AS sla_compliance_pct
+        FROM assignments a
+        LEFT JOIN service_requests sr ON sr.id::text = a.item_id
+        WHERE a.agent_profile_id = $1
+          AND a.completed_at >= $2
+          AND a.completed_at IS NOT NULL
+        GROUP BY date_trunc($3::text, a.completed_at)
+        ORDER BY period
+    """, agent_profile_id, period_start, trunc_unit)
+
+    data_points = [
+        {
+            "period": str(row["period"].date()) if row["period"] else "",
+            "processed": row["processed"],
+            "approved": row["approved"],
+            "rejected": row["rejected"],
+            "avg_processing_hours": round(float(row["avg_processing_hours"]), 1),
+            "sla_compliance_pct": round(float(row["sla_compliance_pct"]), 1),
+        }
+        for row in trend_rows
+    ]
 
     response = PerformanceTrendsResponse(
         period_start=period_start,
         period_end=period_end,
         granularity=granularity,
-        data_points=[]  # TODO: Implement
+        data_points=data_points,
     )
 
     logger.info(
@@ -374,6 +437,50 @@ async def get_agent_trends(
     )
 
     return response
+
+
+# ============================================================================
+# TEAM STATISTICS - HELPERS
+# ============================================================================
+
+
+async def _calc_auto_assignment_rate(db, period_days: int) -> float:
+    """Calculate % of assignments made automatically vs total."""
+    row = await db.fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE assignment_method = 'auto') AS auto_count,
+            COUNT(*) AS total_count
+        FROM assignments
+        WHERE assigned_at >= NOW() - ($1 * INTERVAL '1 day')
+    """, period_days)
+    if not row or not row["total_count"]:
+        return 0.0
+    return round(float(row["auto_count"]) / float(row["total_count"]) * 100.0, 1)
+
+
+async def _calc_performance_trends(db, period_days: int) -> dict:
+    """Daily completions + avg processing hours over period."""
+    rows = await db.fetch("""
+        SELECT
+            date_trunc('day', completed_at)::date AS day,
+            COUNT(*) AS completions,
+            ROUND(AVG(EXTRACT(EPOCH FROM (completed_at - assigned_at)) / 3600.0)::numeric, 1) AS avg_hours
+        FROM assignments
+        WHERE completed_at IS NOT NULL
+          AND completed_at >= NOW() - ($1 * INTERVAL '1 day')
+        GROUP BY day
+        ORDER BY day
+    """, period_days)
+    return {
+        "daily": [
+            {
+                "date": str(r["day"]),
+                "completions": r["completions"],
+                "avg_processing_hours": float(r["avg_hours"] or 0),
+            }
+            for r in rows
+        ]
+    }
 
 
 # ============================================================================
@@ -493,9 +600,9 @@ async def get_team_performance(
             avg_quality_score=avg_quality,
             success_rate=success_rate,
             deadline_compliance_rate=deadline_compliance,
-            auto_assignment_rate=0.0,  # TODO: Calculate
+            auto_assignment_rate=await _calc_auto_assignment_rate(db, period_days),
             top_performers=top_performers,
-            performance_trends={}  # TODO: Implement
+            performance_trends=await _calc_performance_trends(db, period_days)
         )
 
         logger.info(

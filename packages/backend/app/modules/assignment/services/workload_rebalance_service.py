@@ -30,6 +30,7 @@ async def rebalance_entity_workload(
             ap.id as agent_profile_id,
             ap.user_id,
             u.full_name as agent_name,
+            ap.specializations,
             COUNT(a.id) FILTER (WHERE a.status IN ('assigned', 'in_progress', 'pending_review')) as active_count
         FROM agent_profiles ap
         JOIN users u ON ap.user_id = u.id
@@ -45,7 +46,7 @@ async def rebalance_entity_workload(
         query += " AND ap.entity_id = $1"
         params.append(entity_id)
 
-    query += " GROUP BY ap.id, ap.user_id, u.full_name ORDER BY active_count DESC"
+    query += " GROUP BY ap.id, ap.user_id, u.full_name, ap.specializations ORDER BY active_count DESC"
     agents = await db.fetch(query, *params)
 
     if len(agents) < 2:
@@ -58,10 +59,16 @@ async def rebalance_entity_workload(
     if not overloaded or not underloaded:
         return {"reassignments_made": 0, "details": [], "message": "Already balanced"}
 
+    from app.config import get_settings
+    settings = get_settings()
+    max_reassignments = settings.REBALANCE_MAX_REASSIGNMENTS_PER_RUN
+
     under_loads = {a['agent_profile_id']: a['active_count'] for a in underloaded}
     details: List[Dict[str, str]] = []
 
     for over_agent in overloaded:
+        if len(details) >= max_reassignments:
+            break
         excess = int(over_agent['active_count'] - avg_load)
         if excess <= 0:
             continue
@@ -90,13 +97,31 @@ async def rebalance_entity_workload(
 
         for assignment in movable:
             best_target = None
+            workflow = assignment.get('workflow_code')
+
+            # Prefer underloaded agents who specialize in this workflow
             for ua in underloaded:
                 current_load = under_loads.get(ua['agent_profile_id'], ua['active_count'])
-                if current_load < avg_load:
-                    best_target = ua
-                    break
+                if current_load >= avg_load:
+                    continue
+                if workflow and ua.get('specializations'):
+                    specs = ua['specializations'] if isinstance(ua['specializations'], list) else []
+                    if workflow in specs:
+                        best_target = ua
+                        break
+
+            # Fallback: any underloaded agent
+            if not best_target:
+                for ua in underloaded:
+                    current_load = under_loads.get(ua['agent_profile_id'], ua['active_count'])
+                    if current_load < avg_load:
+                        best_target = ua
+                        break
 
             if not best_target:
+                break
+
+            if len(details) >= max_reassignments:
                 break
 
             # reassignment_reason_enum: 'workload_imbalance'

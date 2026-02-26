@@ -75,6 +75,13 @@ class AgentQueueService:
             priority_boost=priority_boost
         )
 
+        # Calculate complexity score (for predictive escalation routing)
+        complexity_score = await self._calculate_complexity(
+            db=db,
+            service_request_id=service_request_id,
+            workflow_code=workflow_code,
+        )
+
         # Calculate SLA deadline
         sla_deadline = await self._calculate_sla_deadline(
             db=db,
@@ -103,14 +110,15 @@ class AgentQueueService:
                 entity_code,
                 declaration_type,
                 priority_score,
+                complexity_score,
                 sla_deadline,
                 status,
                 created_at,
                 updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW(), NOW())
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW(), NOW())
             RETURNING *
         """, self.ITEM_TYPE, service_request_id, entity_code,
-            workflow_code, int(priority_score), sla_deadline)
+            workflow_code, int(priority_score), complexity_score, sla_deadline)
 
         logger.info(
             f"Added service_request {service_request_id} to queue. "
@@ -178,6 +186,61 @@ class AgentQueueService:
         base_score += Decimal(str(priority_boost))
 
         return base_score
+
+    async def _calculate_complexity(
+        self,
+        db: asyncpg.Connection,
+        service_request_id: UUID,
+        workflow_code: str,
+    ) -> int:
+        """Compute complexity_score from real signals (not administrative priority_level).
+
+        Formula (0-100):
+          - workflow_weight (30%): priority_weight from workflows table
+          - doc_count (30%): number of uploaded documents (more docs = more complex)
+          - amount_tier (40%): payment amount tiers (higher amount = more scrutiny)
+
+        Used by predictive escalation in auto_assignment_service._score_and_select()
+        to avoid routing complex items to underperforming agents.
+        """
+        row = await db.fetchrow("""
+            SELECT
+                COALESCE(w.priority_weight, 50) AS wf_weight,
+                (SELECT COUNT(*) FROM uploaded_files uf
+                 WHERE uf.related_to_id = $1
+                   AND uf.related_to_type = 'service_request') AS doc_count,
+                COALESCE(sp.total_amount, 0) AS amount
+            FROM workflows w
+            LEFT JOIN service_payments sp ON sp.service_request_id = $1
+                AND sp.status NOT IN ('cancelled', 'failed')
+            WHERE w.code = $2
+            LIMIT 1
+        """, service_request_id, workflow_code)
+
+        if not row:
+            return 50  # Default mid-range
+
+        # Workflow weight component (30%): priority_weight 0-100 → 0-30
+        wf_score = float(row['wf_weight']) * 0.3
+
+        # Document count component (30%): more docs = more complex, capped at 10
+        doc_score = min(int(row['doc_count']), 10) * 3.0  # Max 30pts
+
+        # Payment amount tier component (40%): higher amount = more scrutiny
+        amount = float(row['amount'])
+        if amount > 500000:
+            amount_score = 40.0
+        elif amount > 100000:
+            amount_score = 30.0
+        elif amount > 50000:
+            amount_score = 20.0
+        elif amount > 10000:
+            amount_score = 10.0
+        else:
+            amount_score = 5.0
+
+        total = int(wf_score + doc_score + amount_score)
+        return min(100, max(0, total))
 
     async def _calculate_sla_deadline(
         self,
@@ -310,6 +373,26 @@ class AgentQueueService:
             f"Result: {result_status}"
         )
 
+        # Feedback loop: record completion for multi-criteria scoring
+        try:
+            from app.modules.assignment.services.assignment_feedback_service import feedback_service
+            processing_hours = None
+            if row.get("assigned_at") and row.get("completed_at"):
+                delta = row["completed_at"] - row["assigned_at"]
+                processing_hours = delta.total_seconds() / 3600
+            workflow_code = row.get("declaration_type")
+            agent_profile_id = await db.fetchval(
+                "SELECT id FROM agent_profiles WHERE user_id = $1 AND is_active = true",
+                agent_id,
+            )
+            if agent_profile_id and workflow_code:
+                await feedback_service.record_completion(
+                    db, agent_profile_id, workflow_code,
+                    processing_hours or 0,
+                )
+        except Exception as e:
+            logger.warning(f"Feedback recording failed (non-blocking): {e}")
+
         return dict(row)
 
     async def escalate_item(
@@ -352,6 +435,21 @@ class AgentQueueService:
         logger.warning(
             f"Escalated queue item {queue_id}. Reason: {reason}"
         )
+
+        # Feedback loop: record escalation for multi-criteria scoring
+        try:
+            from app.modules.assignment.services.assignment_feedback_service import feedback_service
+            workflow_code = row.get("declaration_type")
+            agent_profile_id = await db.fetchval(
+                "SELECT id FROM agent_profiles WHERE user_id = $1 AND is_active = true",
+                agent_id,
+            )
+            if agent_profile_id and workflow_code:
+                await feedback_service.record_escalation(
+                    db, agent_profile_id, workflow_code,
+                )
+        except Exception as e:
+            logger.warning(f"Feedback recording failed (non-blocking): {e}")
 
         return dict(row)
 

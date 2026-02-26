@@ -36,7 +36,7 @@ import {
   FileBarChart,
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
-import type { SupervisorDashboardStats } from './types';
+import type { SupervisorDashboardStats, AnomalyResponse } from './types';
 
 export default function SupervisorDashboardPage() {
   const router = useRouter();
@@ -53,6 +53,16 @@ export default function SupervisorDashboardPage() {
     },
     staleTime: 30000, // 30 seconds
     refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Fetch anomaly alerts
+  const { data: anomalies } = useQuery<AnomalyResponse>({
+    queryKey: ['supervisor', 'anomalies'],
+    queryFn: async () => {
+      const response = await apiClient.get('/supervisor/anomalies');
+      return response.data;
+    },
+    staleTime: 300000, // 5 minutes
   });
 
   // Loading state
@@ -166,6 +176,36 @@ export default function SupervisorDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Anomaly Alerts */}
+      {anomalies && anomalies.count > 0 && (
+        <Card className="border-orange-300 bg-orange-50 dark:bg-orange-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              {t('anomalies.title', { defaultValue: 'Alertas del Sistema' })} ({anomalies.count})
+            </CardTitle>
+            <CardDescription>
+              {t('anomalies.detectedAt', {
+                defaultValue: 'Detected: {date}',
+                date: anomalies.detected_at
+                  ? new Date(anomalies.detected_at).toLocaleString()
+                  : '-',
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {anomalies.anomalies.map((a, i) => (
+              <div key={i} className="flex items-center gap-2 py-1">
+                <Badge variant={a.severity === 'critical' ? 'destructive' : 'secondary'}>
+                  {a.type}
+                </Badge>
+                <span className="text-sm">{a.message}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

@@ -71,6 +71,7 @@ class AutoAssignmentService:
         workflow_code: Optional[str] = None,
         entity_code: Optional[str] = None,
         entity_location_id: Optional[UUID] = None,
+        complexity_score: Optional[int] = None,
     ) -> Optional[Assignment]:
         """Automatically assign an item to the best available agent
 
@@ -85,6 +86,7 @@ class AutoAssignmentService:
             workflow_code: Workflow code to determine entity (fallback if no entity_code)
             entity_code: Entity code for deterministic routing (preferred over workflow_code)
             entity_location_id: Specific site UUID for location-based routing (migration 104)
+            complexity_score: Computed complexity 0-100 (migration 136). Used for predictive escalation.
 
         Returns:
             Assignment or None if no agent available
@@ -129,7 +131,7 @@ class AutoAssignmentService:
             logger.warning(f"No available agents for item {item_id}")
             return None
 
-        # Use rules engine to select best agent
+        # Use rules engine first (explicit rules take precedence)
         selected_agent_profile_id = await self.rules_engine.select_best_agent(
             db=db,
             item_type=item_type,
@@ -140,8 +142,16 @@ class AutoAssignmentService:
         )
 
         if not selected_agent_profile_id:
-            # Fallback to load balancing if no rule matched
-            selected_agent_profile_id = self._select_by_load_balance(available_agents)
+            # Multi-criteria scoring (Phase 2 Intelligence)
+            # Use complexity_score if available; fallback to priority_level * 10
+            effective_complexity = complexity_score if complexity_score is not None else priority_level * 10
+            selected_agent_profile_id = await self._score_and_select(
+                db=db,
+                agents=available_agents,
+                workflow_code=effective_workflow,
+                entity_location_id=entity_location_id,
+                complexity_score=effective_complexity,
+            )
 
         if not selected_agent_profile_id:
             logger.warning(f"Could not select agent for item {item_id}")
@@ -160,22 +170,142 @@ class AutoAssignmentService:
         logger.info(f"Auto-assigned item {item_id} to agent_profile {selected_agent_profile_id}")
         return assignment
 
+    async def _score_and_select(
+        self,
+        db,
+        agents: List[AgentWorkload],
+        workflow_code: Optional[str] = None,
+        entity_location_id: Optional[UUID] = None,
+        complexity_score: int = 50,
+    ) -> Optional[UUID]:
+        """Multi-criteria scoring: select the most ADAPTED agent, not just least loaded.
+
+        Criteria (configurable weights):
+          1. Workload    (30%) — lower capacity_percentage = higher score
+          2. Success     (25%) — higher success_rate for this workflow = higher score
+          3. Specialization (20%) — workflow in agent.specializations = bonus
+          4. Site match  (15%) — matching entity_location_id = bonus
+          5. Speed       (10%) — lower avg_processing_hours = higher score
+
+        For new agents with no proficiency data, defaults to neutral scores
+        so they still receive assignments and build up history.
+
+        Predictive escalation: for complex items (high complexity_score),
+        agents with low success_rate on the workflow get a penalty.
+        complexity_score is computed from real signals (workflow weight,
+        doc count, payment amount) — NOT from administrative priority_level.
+        """
+        if not agents:
+            return None
+
+        # Single agent: skip scoring overhead
+        if len(agents) == 1:
+            return agents[0].agent_profile_id
+
+        settings = get_settings()
+
+        agent_ids = [a.agent_profile_id for a in agents]
+
+        # Batch-fetch proficiency data for all agents + this workflow
+        prof_map: Dict[UUID, Any] = {}
+        if workflow_code:
+            proficiencies = await db.fetch("""
+                SELECT agent_profile_id, success_rate, avg_processing_hours,
+                       completions_total, escalations_total
+                FROM agent_workflow_proficiency
+                WHERE workflow_code = $1 AND agent_profile_id = ANY($2::uuid[])
+            """, workflow_code, agent_ids)
+            prof_map = {row["agent_profile_id"]: row for row in proficiencies}
+
+        # Batch-fetch actual entity_location_id for site match scoring
+        location_match_set: set = set()
+        if entity_location_id:
+            matched = await db.fetch("""
+                SELECT id FROM agent_profiles
+                WHERE id = ANY($1::uuid[])
+                  AND entity_location_id = $2
+            """, agent_ids, entity_location_id)
+            location_match_set = {row["id"] for row in matched}
+
+        scores = []
+        for agent in agents:
+            prof = prof_map.get(agent.agent_profile_id)
+
+            # 1. Workload (lower capacity = higher score, 0-100 range)
+            w_score = (1.0 - min(agent.capacity_percentage, 100.0) / 100.0) * 100.0
+
+            # 2. Success rate for this workflow (0-100)
+            if prof and (prof["completions_total"] + prof["escalations_total"]) > 0:
+                s_score = float(prof["success_rate"])
+            else:
+                # New agent: neutral score (doesn't penalize, doesn't boost)
+                s_score = settings.SCORING_NEW_AGENT_DEFAULT
+
+            # 3. Specialization: workflow in agent's specializations list
+            specs = agent.specializations or []
+            spec_score = 100.0 if (workflow_code and workflow_code in specs) else 0.0
+
+            # 4. Site match: agent at the requested location
+            if entity_location_id:
+                site_score = 100.0 if agent.agent_profile_id in location_match_set else 0.0
+            else:
+                site_score = 50.0  # No location preference — neutral
+
+            # 5. Speed: lower avg_processing_hours = faster = higher score
+            if prof and prof["avg_processing_hours"] and prof["completions_total"] > 0:
+                avg_h = float(prof["avg_processing_hours"])
+            else:
+                avg_h = 24.0  # Default assumption for new agents
+            speed_score = max(0.0, (1.0 - min(avg_h, 48.0) / 48.0)) * 100.0
+
+            # Weighted total
+            total = (
+                settings.SCORING_WEIGHT_WORKLOAD * w_score
+                + settings.SCORING_WEIGHT_SUCCESS * s_score
+                + settings.SCORING_WEIGHT_SPECIALIZATION * spec_score
+                + settings.SCORING_WEIGHT_SITE * site_score
+                + settings.SCORING_WEIGHT_SPEED * speed_score
+            )
+
+            # Predictive escalation penalty: complex items should avoid
+            # agents with low success rate on this workflow.
+            # complexity_score (0-100) computed from real signals (migration 136)
+            # replaces priority_level which was administrative, not complexity.
+            if (
+                prof
+                and complexity_score >= settings.ESCALATION_PREDICTIVE_COMPLEXITY_THRESHOLD
+                and prof["completions_total"] >= settings.ESCALATION_PREDICTIVE_MIN_COMPLETIONS
+                and float(prof["success_rate"]) < settings.ESCALATION_PREDICTIVE_SUCCESS_THRESHOLD
+            ):
+                total *= 0.5  # Halve score for underperformers on complex items
+
+            scores.append((agent.agent_profile_id, total, agent.current_assignments))
+
+        # Best score wins. Tie-breaker: lowest current_assignments
+        scores.sort(key=lambda x: (-x[1], x[2]))
+
+        if scores:
+            winner = scores[0]
+            logger.info(
+                f"Multi-criteria scoring: selected agent {winner[0]} "
+                f"(score={winner[1]:.1f}, assignments={winner[2]}) "
+                f"from {len(agents)} candidates for workflow={workflow_code}"
+            )
+            return winner[0]
+
+        return None
+
     def _select_by_load_balance(
         self,
         available_agents: List[AgentWorkload]
     ) -> Optional[UUID]:
-        """Select agent with lowest workload (load balancing fallback)
+        """Select agent with lowest workload (simple fallback).
 
-        Args:
-            available_agents: List of AgentWorkload objects
-
-        Returns:
-            agent_profile_id of the agent with lowest current_assignments
+        Used only when _score_and_select is not applicable.
         """
         if not available_agents:
             return None
 
-        # Sort by current_assignments (ascending) and return the first
         sorted_agents = sorted(
             available_agents,
             key=lambda a: a.current_assignments
@@ -219,7 +349,13 @@ class AutoAssignmentService:
         entity_type: Optional[str] = None,
         entity_id: Optional[str] = None
     ) -> int:
-        """Rebalance workload across agents
+        """Rebalance workload across agents.
+
+        Delegates to workload_rebalance_service which handles:
+        - Overloaded/underloaded detection per entity
+        - Mobility scoring (lowest-priority items moved first)
+        - Specialization-aware target selection
+        - Proper DB updates (assignments + service_requests + history)
 
         Args:
             db: Database connection
@@ -229,37 +365,23 @@ class AutoAssignmentService:
         Returns:
             Number of assignments rebalanced
         """
-        # Get available agents
-        agents = await self.workload_repository.get_available_agents(
-            db, max_workload_pct=100.0
+        from app.modules.assignment.services.workload_rebalance_service import (
+            rebalance_entity_workload,
         )
 
-        if len(agents) < 2:
-            logger.info("Not enough agents for rebalancing")
-            return 0
+        entity_uuid = None
+        if entity_id:
+            try:
+                entity_uuid = UUID(entity_id)
+            except (ValueError, TypeError):
+                pass
 
-        # Calculate average workload
-        total_assignments = sum(a.current_assignments for a in agents)
-        avg_assignments = total_assignments / len(agents)
-
-        # Find overloaded and underloaded agents
-        overloaded = [a for a in agents if a.current_assignments > avg_assignments * 1.2]
-        underloaded = [a for a in agents if a.current_assignments < avg_assignments * 0.8]
-
-        if not overloaded or not underloaded:
-            logger.info("Workload is balanced, no rebalancing needed")
-            return 0
-
-        # TODO: Implement actual reassignment logic
-        # This would involve:
-        # 1. Get oldest/lowest priority assignments from overloaded agents
-        # 2. Reassign them to underloaded agents
-        # 3. Update workload counts
-
-        logger.info(
-            f"Rebalancing: {len(overloaded)} overloaded, {len(underloaded)} underloaded agents"
+        result = await rebalance_entity_workload(
+            entity_id=entity_uuid,
+            db=db,
+            performed_by=None,
         )
-        return 0  # Placeholder
+        return result["reassignments_made"]
 
 
 def get_auto_assignment_service(

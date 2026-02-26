@@ -2400,3 +2400,144 @@ async def export_assignments(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to export assignments"
         )
+
+
+# ============================================================================
+# PHASE 2b - INTELLIGENCE ENDPOINTS
+# ============================================================================
+
+
+@router.get("/proficiency-overview")
+async def get_proficiency_overview(
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_performance")),
+):
+    """
+    Per-agent, per-workflow proficiency for all agents in supervisor scope.
+
+    Uses agent_workflow_proficiency table (populated by feedback loop on completion/escalation).
+    Scoped to supervisor's entity via workflow_codes.
+    """
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
+
+    rows = await db.fetch("""
+        SELECT
+            awp.agent_profile_id,
+            u.full_name AS agent_name,
+            awp.workflow_code,
+            awp.completions_total,
+            awp.escalations_total,
+            awp.success_rate,
+            awp.avg_processing_hours,
+            awp.completions_30d,
+            awp.escalations_30d,
+            awp.last_completed_at
+        FROM agent_workflow_proficiency awp
+        JOIN agent_profiles ap ON ap.id = awp.agent_profile_id
+        JOIN users u ON u.id = ap.user_id
+        WHERE ($1::text[] IS NULL OR awp.workflow_code = ANY($1))
+          AND ap.is_active = true
+        ORDER BY u.full_name, awp.workflow_code
+    """, wf_scope)
+
+    logger.info(
+        f"Proficiency overview loaded: {len(rows)} entries "
+        f"by supervisor {current_user.email}"
+    )
+
+    return [dict(r) for r in rows]
+
+
+@router.get("/anomalies")
+async def get_anomalies(
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("dashboard.view")),
+):
+    """
+    Latest anomaly detection results from Redis cache.
+
+    Populated by scheduled _anomaly_detection() cron (every 15 min).
+    Cached with 24h TTL in key 'supervisor:anomalies:latest'.
+    """
+    from app.core.cache import get_cache
+
+    cache = get_cache()
+    data = await cache.get("supervisor:anomalies:latest")
+
+    if data:
+        logger.info(
+            f"Anomalies fetched: {data.get('count', 0)} alerts "
+            f"by supervisor {current_user.email}"
+        )
+        return data
+
+    return {"detected_at": None, "anomalies": [], "count": 0}
+
+
+@router.get("/skills-gap")
+async def get_skills_gap(
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.view_performance")),
+):
+    """
+    Identify workflow coverage gaps: workflows with demand but few/no specialists.
+
+    A 'specialist' is an agent with >= 3 completions and >= 60% success rate.
+    Coverage status:
+    - critical: 0 specialists for a workflow with pending items
+    - warning: only 1 specialist (single point of failure)
+    - ok: 2+ specialists
+    """
+    if current_user.role == "admin":
+        agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
+    else:
+        agent_ctx = await get_agent_context(current_user.id, db)
+
+    wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
+
+    rows = await db.fetch("""
+        WITH workflow_demand AS (
+            SELECT item_type AS workflow_code, COUNT(*) AS pending_count
+            FROM agent_work_queue
+            WHERE status IN ('pending', 'assigned')
+              AND ($1::text[] IS NULL OR item_type = ANY($1))
+            GROUP BY item_type
+        ),
+        workflow_specialists AS (
+            SELECT workflow_code,
+                   COUNT(DISTINCT agent_profile_id) AS specialist_count,
+                   ROUND(AVG(success_rate)::numeric, 1) AS avg_success
+            FROM agent_workflow_proficiency
+            WHERE completions_total >= 3 AND success_rate >= 60
+              AND ($1::text[] IS NULL OR workflow_code = ANY($1))
+            GROUP BY workflow_code
+        )
+        SELECT
+            wd.workflow_code,
+            wd.pending_count,
+            COALESCE(ws.specialist_count, 0) AS specialist_count,
+            COALESCE(ws.avg_success, 0) AS avg_specialist_success,
+            CASE
+                WHEN COALESCE(ws.specialist_count, 0) = 0 THEN 'critical'
+                WHEN ws.specialist_count = 1 THEN 'warning'
+                ELSE 'ok'
+            END AS coverage_status
+        FROM workflow_demand wd
+        LEFT JOIN workflow_specialists ws ON ws.workflow_code = wd.workflow_code
+        ORDER BY COALESCE(ws.specialist_count, 0) ASC, wd.pending_count DESC
+    """, wf_scope)
+
+    logger.info(
+        f"Skills gap analysis: {len(rows)} workflows analyzed "
+        f"by supervisor {current_user.email}"
+    )
+
+    return [dict(r) for r in rows]

@@ -335,6 +335,7 @@ class AssignmentOutboxService:
                 priority_level=5,
                 entity_code=effective_entity_code,
                 entity_location_id=entity_location_id,
+                complexity_score=queue_item.get("complexity_score"),
             )
 
             if assignment:

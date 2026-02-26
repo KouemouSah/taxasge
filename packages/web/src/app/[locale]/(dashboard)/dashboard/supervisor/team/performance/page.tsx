@@ -52,7 +52,7 @@ import {
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
 import Link from 'next/link';
-import type { AgentListItem, AgentStats, AgentTrendsResponse } from '../../types';
+import type { AgentListItem, AgentStats, AgentTrendsResponse, AgentProficiency } from '../../types';
 import { getSuccessRateColor, getPerformanceBadge } from '../../types';
 
 export default function TeamPerformancePage() {
@@ -87,6 +87,16 @@ export default function TeamPerformancePage() {
       return response.data;
     },
     enabled: !!selectedAgentId,
+  });
+
+  // Fetch proficiency overview (all agents, all workflows)
+  const { data: proficiencies } = useQuery<AgentProficiency[]>({
+    queryKey: ['supervisor', 'proficiency-overview'],
+    queryFn: async () => {
+      const response = await apiClient.get('/supervisor/proficiency-overview');
+      return response.data;
+    },
+    staleTime: 120000, // 2 minutes
   });
 
   // Fetch selected agent stats
@@ -373,6 +383,63 @@ export default function TeamPerformancePage() {
                 <p>{t('performance.noStats') || 'No statistics available for this period'}</p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Proficiency Breakdown */}
+      {proficiencies && proficiencies.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5" />
+              {t('performance.proficiencyBreakdown', { defaultValue: 'Proficiency by Workflow' })}
+            </CardTitle>
+            <CardDescription>
+              {t('performance.proficiencyDescription', {
+                defaultValue: 'Agent specialization and success rates per workflow type',
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('team.agent', { defaultValue: 'Agent' })}</TableHead>
+                  <TableHead>{t('performance.workflow', { defaultValue: 'Workflow' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.completions', { defaultValue: 'Completions' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.escalations', { defaultValue: 'Escalations' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.successRate', { defaultValue: 'Success Rate' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.avgHours', { defaultValue: 'Avg Hours' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.last30d', { defaultValue: '30d' })}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {proficiencies.map((p) => (
+                  <TableRow key={`${p.agent_profile_id}-${p.workflow_code}`}>
+                    <TableCell className="font-medium">{p.agent_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{p.workflow_code}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center">{p.completions_total}</TableCell>
+                    <TableCell className="text-center">{p.escalations_total}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={getSuccessRateColor(p.success_rate / 100)}>
+                        {p.success_rate.toFixed(0)}%
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {p.avg_processing_hours ? `${Number(p.avg_processing_hours).toFixed(1)}h` : '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-xs text-muted-foreground">
+                        {p.completions_30d}C / {p.escalations_30d}E
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
