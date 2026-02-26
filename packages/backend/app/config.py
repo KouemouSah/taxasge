@@ -395,6 +395,16 @@ class Settings(BaseSettings):
     SCORING_SITE_MATCH: float = Field(default=100.0, env="SCORING_SITE_MATCH")
     SCORING_SITE_NEUTRAL: float = Field(default=50.0, env="SCORING_SITE_NEUTRAL")
 
+    # LLM Routing (Gemini-augmented assignment)
+    FEATURE_LLM_ROUTING_ENABLED: bool = Field(default=False, env="FEATURE_LLM_ROUTING_ENABLED")
+    LLM_ROUTING_SCORE_GAP_THRESHOLD: float = Field(default=5.0, env="LLM_ROUTING_SCORE_GAP_THRESHOLD")
+    LLM_ROUTING_CONFIDENCE_THRESHOLD: float = Field(default=0.7, env="LLM_ROUTING_CONFIDENCE_THRESHOLD")
+    LLM_ROUTING_MAX_CANDIDATES: int = Field(default=5, env="LLM_ROUTING_MAX_CANDIDATES")
+    LLM_ROUTING_TIMEOUT_SECONDS: float = Field(default=5.0, env="LLM_ROUTING_TIMEOUT_SECONDS")
+    LLM_ROUTING_MODEL: str = Field(default="gemini-2.0-flash", env="LLM_ROUTING_MODEL")
+    LLM_ROUTING_TEMPERATURE: float = Field(default=0.1, env="LLM_ROUTING_TEMPERATURE")
+    LLM_ROUTING_MAX_TOKENS: int = Field(default=512, env="LLM_ROUTING_MAX_TOKENS")
+
     # Dashboard quality score
     QUALITY_SCORE_SLA_WEIGHT: float = Field(default=0.5, env="QUALITY_SCORE_SLA_WEIGHT")
     QUALITY_SCORE_ACCEPTANCE_WEIGHT: float = Field(default=0.25, env="QUALITY_SCORE_ACCEPTANCE_WEIGHT")
