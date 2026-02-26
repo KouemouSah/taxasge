@@ -52,8 +52,8 @@ import {
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
 import Link from 'next/link';
-import type { AgentListItem, AgentStats, AgentTrendsResponse, AgentProficiency } from '../../types';
-import { getSuccessRateColor, getPerformanceBadge } from '../../types';
+import type { AgentListItem, AgentStats, AgentTrendsResponse, AgentProficiency, SkillsGapItem } from '../../types';
+import { getSuccessRateColor, getPerformanceBadge, COVERAGE_STATUS_COLORS } from '../../types';
 
 export default function TeamPerformancePage() {
   const locale = useLocale();
@@ -97,6 +97,16 @@ export default function TeamPerformancePage() {
       return response.data;
     },
     staleTime: 120000, // 2 minutes
+  });
+
+  // Fetch skills gap analysis
+  const { data: skillsGap } = useQuery<SkillsGapItem[]>({
+    queryKey: ['supervisor', 'skills-gap'],
+    queryFn: async () => {
+      const response = await apiClient.get('/supervisor/skills-gap');
+      return response.data;
+    },
+    staleTime: 300000, // 5 minutes
   });
 
   // Fetch selected agent stats
@@ -435,6 +445,55 @@ export default function TeamPerformancePage() {
                       <span className="text-xs text-muted-foreground">
                         {p.completions_30d}C / {p.escalations_30d}E
                       </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Skills Gap / Coverage Analysis */}
+      {skillsGap && skillsGap.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              {t('performance.skillsGap', { defaultValue: 'Workflow Coverage Analysis' })}
+            </CardTitle>
+            <CardDescription>
+              {t('performance.skillsGapDescription', {
+                defaultValue: 'Workflows with pending items and their specialist coverage',
+              })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('performance.workflow', { defaultValue: 'Workflow' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.pending', { defaultValue: 'Pending' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.specialists', { defaultValue: 'Specialists' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.avgSuccess', { defaultValue: 'Avg Success' })}</TableHead>
+                  <TableHead className="text-center">{t('performance.coverage', { defaultValue: 'Coverage' })}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {skillsGap.map((sg) => (
+                  <TableRow key={sg.workflow_code}>
+                    <TableCell>
+                      <Badge variant="outline">{sg.workflow_code}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center font-medium">{sg.pending_count}</TableCell>
+                    <TableCell className="text-center">{sg.specialist_count}</TableCell>
+                    <TableCell className="text-center">
+                      {sg.avg_specialist_success > 0 ? `${sg.avg_specialist_success.toFixed(0)}%` : '-'}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge className={COVERAGE_STATUS_COLORS[sg.coverage_status] || ''}>
+                        {sg.coverage_status}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

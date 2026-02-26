@@ -2541,3 +2541,76 @@ async def get_skills_gap(
     )
 
     return [dict(r) for r in rows]
+
+
+# =========================================================================
+# DEAD-LETTER VISIBILITY (Phase 3)
+# =========================================================================
+
+
+@router.get("/dead-letters")
+async def get_dead_letters(
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("dashboard.view")),
+):
+    """
+    Get dead-letter outbox items for supervisor visibility.
+
+    Dead-letter items have exhausted all retry attempts and need manual
+    investigation or retry by a supervisor.
+    """
+    rows = await db.fetch("""
+        SELECT
+            ao.id, ao.service_request_id, ao.workflow_code, ao.entity_code,
+            ao.retry_count, ao.max_retries, ao.last_error,
+            ao.created_at, ao.updated_at,
+            sr.reference AS request_reference
+        FROM assignment_outbox ao
+        LEFT JOIN service_requests sr ON sr.id = ao.service_request_id
+        WHERE ao.status = 'dead_letter'
+        ORDER BY ao.updated_at DESC
+        LIMIT 50
+    """)
+
+    logger.info(
+        f"Dead letters fetched: {len(rows)} items "
+        f"by supervisor {current_user.email}"
+    )
+
+    return [dict(r) for r in rows]
+
+
+@router.post("/dead-letters/{item_id}/retry")
+async def retry_dead_letter(
+    item_id: UUID,
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_db_connection),
+    _: None = Depends(permission_required("agent.manage_assignments")),
+):
+    """
+    Reset a dead-letter item back to pending for retry.
+
+    Resets retry_count to 0 and clears last_error so the outbox
+    processor will pick it up on the next cycle.
+    """
+    result = await db.execute("""
+        UPDATE assignment_outbox
+        SET status = 'pending', retry_count = 0,
+            next_retry_at = NOW(), last_error = NULL,
+            updated_at = NOW()
+        WHERE id = $1 AND status = 'dead_letter'
+    """, item_id)
+
+    if result == "UPDATE 0":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dead letter item not found or already retried",
+        )
+
+    logger.info(
+        f"Dead letter {item_id} reset to pending "
+        f"by supervisor {current_user.email}"
+    )
+
+    return {"message": "Item reset to pending for retry", "id": str(item_id)}

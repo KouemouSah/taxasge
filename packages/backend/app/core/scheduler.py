@@ -405,9 +405,11 @@ class InternalScheduler:
 
         settings = get_settings()
         anomalies = []
+        actions_taken = []
 
         async with db_manager.get_connection() as db:
             # 1. Queue spike detection: pending items much higher than normal
+            daily_avg = 1.0  # Default for corrective actions
             queue_stats = await db.fetchrow("""
                 SELECT
                     COUNT(*) FILTER (WHERE status = 'pending') AS pending,
@@ -459,7 +461,35 @@ class InternalScheduler:
                     f"avg={row['avg_hours']:.1f}h across {row['agent_count']} agents"
                 )
 
-            # 4. Site imbalance: some entities have much more pending than others
+            # 4. Rejection patterns: agents with high rejection rate in last 7 days
+            rejection_patterns = await db.fetch("""
+                SELECT
+                    a.agent_profile_id,
+                    u.full_name AS agent_name,
+                    COUNT(*) FILTER (
+                        WHERE srh.new_status::text IN ('REJECTED', 'rejected')
+                    ) AS rejections,
+                    COUNT(*) AS total_actions
+                FROM service_request_history srh
+                JOIN assignments a ON a.item_id = srh.service_request_id
+                    AND a.agent_profile_id IS NOT NULL
+                JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+                JOIN users u ON u.id = ap.user_id
+                WHERE srh.action = 'status_change'
+                  AND srh.created_at >= NOW() - INTERVAL '7 days'
+                GROUP BY a.agent_profile_id, u.full_name
+                HAVING COUNT(*) >= 3
+                   AND COUNT(*) FILTER (
+                       WHERE srh.new_status::text IN ('REJECTED', 'rejected')
+                   ) * 1.0 / COUNT(*) > 0.5
+            """)
+            for row in rejection_patterns:
+                anomalies.append(
+                    f"REJECTION_PATTERN: {row['agent_name']} "
+                    f"{row['rejections']}/{row['total_actions']} rejections in 7 days"
+                )
+
+            # 5. Site imbalance: some entities have much more pending than others
             site_imbalance = await db.fetch("""
                 SELECT entity_code, COUNT(*) AS pending_count
                 FROM agent_work_queue
@@ -477,6 +507,71 @@ class InternalScheduler:
                         f"{min_pending}"
                     )
 
+            # 6. Dead-letter items: failed all retries, need manual attention
+            dead_count = await db.fetchval(
+                "SELECT COUNT(*) FROM assignment_outbox WHERE status = 'dead_letter'"
+            )
+            if dead_count and dead_count > 0:
+                anomalies.append(
+                    f"DEAD_LETTER: {dead_count} items failed all retries "
+                    f"and need manual attention"
+                )
+
+            # === CORRECTIVE ACTIONS ===
+            actions_taken = []
+
+            # Action 1: SITE_IMBALANCE → trigger rebalance for overloaded entities
+            from app.modules.assignment.services.workload_rebalance_service import (
+                rebalance_entity_workload,
+            )
+            for row in site_imbalance:
+                if row["pending_count"] > daily_avg * settings.ANOMALY_QUEUE_SPIKE_MULTIPLIER:
+                    try:
+                        entity = await db.fetchrow(
+                            "SELECT id FROM entities WHERE code = $1",
+                            row["entity_code"],
+                        )
+                        if entity:
+                            result = await rebalance_entity_workload(
+                                entity_id=entity["id"], db=db, performed_by=None,
+                            )
+                            if result["reassignments_made"] > 0:
+                                actions_taken.append(
+                                    f"REBALANCE: {row['entity_code']} "
+                                    f"→ {result['reassignments_made']} moved"
+                                )
+                    except Exception as e:
+                        logger.error(
+                            f"Auto-rebalance failed for {row['entity_code']}: {e}"
+                        )
+
+            # Action 2: UNDERPERFORMER → reduce max_concurrent_assignments
+            for row in underperformers:
+                try:
+                    current_max = await db.fetchval(
+                        "SELECT max_concurrent_assignments FROM agent_workloads "
+                        "WHERE agent_profile_id = $1",
+                        row["agent_profile_id"],
+                    )
+                    if current_max and current_max > 5:
+                        new_max = max(5, current_max - 5)
+                        await db.execute(
+                            "UPDATE agent_workloads "
+                            "SET max_concurrent_assignments = $2, updated_at = NOW() "
+                            "WHERE agent_profile_id = $1",
+                            row["agent_profile_id"], new_max,
+                        )
+                        actions_taken.append(
+                            f"CAPACITY_REDUCED: agent {row['agent_profile_id']} "
+                            f"max_assignments {current_max} → {new_max}"
+                        )
+                except Exception as e:
+                    logger.error(f"Capacity reduction failed: {e}")
+
+            if actions_taken:
+                for act in actions_taken:
+                    logger.info(f"Anomaly action: {act}")
+
         # Store results in Redis cache for supervisor dashboard consumption
         try:
             from app.core.cache import get_cache
@@ -492,6 +587,7 @@ class InternalScheduler:
                     for a in anomalies
                 ],
                 "count": len(anomalies),
+                "actions_taken": actions_taken,
             }
             await cache.set("supervisor:anomalies:latest", anomaly_data, ttl=86400)
         except Exception as e:

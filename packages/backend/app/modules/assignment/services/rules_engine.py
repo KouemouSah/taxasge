@@ -81,6 +81,8 @@ class RulesEngine:
         if not rule_matches:
             # No rules matched - use load balancing
             logger.debug("No rules matched, falling back to load balancing")
+            # Track non-matching rules (times_applied increments)
+            await self._track_rule_stats(db, rules, [], selected=None)
             return self._select_by_load_balance(available_agents)
 
         # Use best matching rule's actions to filter/score agents
@@ -93,6 +95,9 @@ class RulesEngine:
             item_type,
             priority_level
         )
+
+        # Track rule effectiveness stats for all evaluated rules
+        await self._track_rule_stats(db, rules, rule_matches, selected)
 
         return selected
 
@@ -136,6 +141,26 @@ class RulesEngine:
 
         # Fallback to load balancing
         return self._select_by_load_balance(available_agents)
+
+    async def _track_rule_stats(
+        self,
+        db,
+        rules: List[AssignmentRule],
+        rule_matches: List[RuleMatchResult],
+        selected: Optional[UUID],
+    ) -> None:
+        """Track rule effectiveness: increment times_applied/matched/success for all rules."""
+        matched_ids = {rm.rule_id for rm in rule_matches}
+        for rule in rules:
+            try:
+                await self.rules_repository.increment_stats(
+                    db=db,
+                    rule_id=rule.id,
+                    matched=rule.id in matched_ids,
+                    successful=selected is not None,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to increment stats for rule {rule.id}: {e}")
 
     def _evaluate_rule(
         self,
