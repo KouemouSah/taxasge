@@ -247,16 +247,17 @@ class AutoAssignmentService:
 
             # 4. Site match: agent at the requested location
             if entity_location_id:
-                site_score = 100.0 if agent.agent_profile_id in location_match_set else 0.0
+                site_score = settings.SCORING_SITE_MATCH if agent.agent_profile_id in location_match_set else 0.0
             else:
-                site_score = 50.0  # No location preference — neutral
+                site_score = settings.SCORING_SITE_NEUTRAL  # No location preference — neutral
 
             # 5. Speed: lower avg_processing_hours = faster = higher score
             if prof and prof["avg_processing_hours"] and prof["completions_total"] > 0:
                 avg_h = float(prof["avg_processing_hours"])
             else:
-                avg_h = 24.0  # Default assumption for new agents
-            speed_score = max(0.0, (1.0 - min(avg_h, 48.0) / 48.0)) * 100.0
+                avg_h = settings.SCORING_SPEED_DEFAULT_HOURS
+            speed_max = settings.SCORING_SPEED_MAX_HOURS
+            speed_score = max(0.0, (1.0 - min(avg_h, speed_max) / speed_max)) * 100.0
 
             # Weighted total
             total = (
@@ -277,7 +278,7 @@ class AutoAssignmentService:
                 and prof["completions_total"] >= settings.ESCALATION_PREDICTIVE_MIN_COMPLETIONS
                 and float(prof["success_rate"]) < settings.ESCALATION_PREDICTIVE_SUCCESS_THRESHOLD
             ):
-                total *= 0.5  # Halve score for underperformers on complex items
+                total *= settings.ANOMALY_UNDERPERFORMER_PENALTY
 
             scores.append((agent.agent_profile_id, total, agent.current_assignments))
 

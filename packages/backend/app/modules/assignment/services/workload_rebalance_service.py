@@ -52,15 +52,16 @@ async def rebalance_entity_workload(
     if len(agents) < 2:
         return {"reassignments_made": 0, "details": [], "message": "Not enough agents"}
 
+    from app.config import get_settings
+    settings = get_settings()
+
     avg_load = sum(a['active_count'] for a in agents) / len(agents)
-    overloaded = [a for a in agents if a['active_count'] > avg_load + 1]
-    underloaded = [a for a in agents if a['active_count'] < avg_load - 0.5]
+    overloaded = [a for a in agents if a['active_count'] > avg_load + settings.REBALANCE_OVERLOAD_OFFSET]
+    underloaded = [a for a in agents if a['active_count'] < avg_load - settings.REBALANCE_UNDERLOAD_OFFSET]
 
     if not overloaded or not underloaded:
         return {"reassignments_made": 0, "details": [], "message": "Already balanced"}
 
-    from app.config import get_settings
-    settings = get_settings()
     max_reassignments = settings.REBALANCE_MAX_REASSIGNMENTS_PER_RUN
 
     under_loads = {a['agent_profile_id']: a['active_count'] for a in underloaded}
@@ -79,12 +80,12 @@ async def rebalance_entity_workload(
             SELECT a.id, a.item_id,
                    sr.workflow_code,
                    CASE
-                       WHEN sr.priority::text = 'URGENT' THEN 100
-                       WHEN sr.priority::text = 'HIGH' THEN 70
+                       WHEN sr.priority::text = 'URGENT' THEN $3
+                       WHEN sr.priority::text = 'HIGH' THEN $4
                        WHEN sr.submitted_at IS NOT NULL AND w.sla_hours IS NOT NULL
-                            AND sr.submitted_at + (w.sla_hours * interval '1 hour') < NOW() + INTERVAL '4 hours' THEN 80
-                       WHEN sr.priority::text = 'NORMAL' THEN 30
-                       ELSE 10
+                            AND sr.submitted_at + (w.sla_hours * interval '1 hour') < NOW() + INTERVAL '4 hours' THEN $5
+                       WHEN sr.priority::text = 'NORMAL' THEN $6
+                       ELSE $7
                    END as mobility_score
             FROM assignments a
             LEFT JOIN service_requests sr ON a.item_id = sr.id
@@ -93,7 +94,12 @@ async def rebalance_entity_workload(
                 AND a.status = 'assigned'
             ORDER BY mobility_score ASC, a.assigned_at ASC
             LIMIT $2
-        """, over_agent['agent_profile_id'], excess)
+        """, over_agent['agent_profile_id'], excess,
+            settings.REBALANCE_MOBILITY_URGENT,
+            settings.REBALANCE_MOBILITY_HIGH,
+            settings.REBALANCE_MOBILITY_SLA_PRESSURE,
+            settings.REBALANCE_MOBILITY_NORMAL,
+            settings.REBALANCE_MOBILITY_DEFAULT)
 
         for assignment in movable:
             best_target = None

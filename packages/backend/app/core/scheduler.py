@@ -461,7 +461,7 @@ class InternalScheduler:
                     f"avg={row['avg_hours']:.1f}h across {row['agent_count']} agents"
                 )
 
-            # 4. Rejection patterns: agents with high rejection rate in last 7 days
+            # 4. Rejection patterns: agents with high rejection rate
             rejection_patterns = await db.fetch("""
                 SELECT
                     a.agent_profile_id,
@@ -476,13 +476,15 @@ class InternalScheduler:
                 JOIN agent_profiles ap ON ap.id = a.agent_profile_id
                 JOIN users u ON u.id = ap.user_id
                 WHERE srh.action = 'status_change'
-                  AND srh.created_at >= NOW() - INTERVAL '7 days'
+                  AND srh.created_at >= NOW() - MAKE_INTERVAL(days => $1)
                 GROUP BY a.agent_profile_id, u.full_name
-                HAVING COUNT(*) >= 3
+                HAVING COUNT(*) >= $2
                    AND COUNT(*) FILTER (
                        WHERE srh.new_status::text IN ('REJECTED', 'rejected')
-                   ) * 1.0 / COUNT(*) > 0.5
-            """)
+                   ) * 1.0 / COUNT(*) > $3
+            """, settings.ANOMALY_REJECTION_LOOKBACK_DAYS,
+                settings.ANOMALY_REJECTION_MIN_ACTIONS,
+                settings.ANOMALY_REJECTION_RATE_THRESHOLD)
             for row in rejection_patterns:
                 anomalies.append(
                     f"REJECTION_PATTERN: {row['agent_name']} "
@@ -500,7 +502,7 @@ class InternalScheduler:
             if len(site_imbalance) >= 2:
                 max_pending = site_imbalance[0]["pending_count"]
                 min_pending = site_imbalance[-1]["pending_count"]
-                if max_pending > 0 and min_pending >= 0 and max_pending > min_pending * 3:
+                if max_pending > 0 and min_pending >= 0 and max_pending > min_pending * settings.ANOMALY_SITE_IMBALANCE_MULTIPLIER:
                     anomalies.append(
                         f"SITE_IMBALANCE: {site_imbalance[0]['entity_code']}="
                         f"{max_pending} vs {site_imbalance[-1]['entity_code']}="
@@ -553,8 +555,8 @@ class InternalScheduler:
                         "WHERE agent_profile_id = $1",
                         row["agent_profile_id"],
                     )
-                    if current_max and current_max > 5:
-                        new_max = max(5, current_max - 5)
+                    if current_max and current_max > settings.ANOMALY_CAPACITY_MIN_FLOOR:
+                        new_max = max(settings.ANOMALY_CAPACITY_MIN_FLOOR, current_max - settings.ANOMALY_CAPACITY_REDUCTION_STEP)
                         await db.execute(
                             "UPDATE agent_workloads "
                             "SET max_concurrent_assignments = $2, updated_at = NOW() "

@@ -17,6 +17,7 @@ from uuid import UUID
 from fastapi import Depends
 from loguru import logger
 
+from app.config import get_settings
 from app.modules.assignment.models.assignment_rule import AssignmentRule, RuleMatchResult
 from app.modules.assignment.models.agent_workload import AgentWorkload
 from app.modules.assignment.repositories.rules_repository import (
@@ -117,6 +118,8 @@ class RulesEngine:
         Returns:
             agent_profile_id or None
         """
+        settings = get_settings()
+
         # Get active rules
         rules = await self.rules_repository.get_active_rules(db)
 
@@ -126,7 +129,7 @@ class RulesEngine:
 
         # Get available agents
         available_agents = await self.workload_repository.get_available_agents(
-            db, max_workload_pct=80.0
+            db, max_workload_pct=settings.QUEUE_MAX_WORKLOAD_PCT
         )
 
         if not available_agents:
@@ -344,8 +347,9 @@ class RulesEngine:
         Returns:
             agent_profile_id or None
         """
+        settings = get_settings()
         available_agents = await self.workload_repository.get_available_agents(
-            db, max_workload_pct=80.0
+            db, max_workload_pct=settings.QUEUE_MAX_WORKLOAD_PCT
         )
         return self._select_by_load_balance(available_agents)
 

@@ -50,6 +50,7 @@ from app.modules.permissions.middleware import permission_required
 
 import json
 import logging
+from app.config import get_settings
 from app.core.events import EventBus, EventType
 from app.modules.service_requests.models.enums import ServiceRequestStatus
 
@@ -247,6 +248,9 @@ async def get_dashboard(
 
     wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
     # wf_scope = None → admin (no filter) | [] → empty entity | [...] → scoped
+    settings = get_settings()
+    today_interval = f"{settings.REPORT_TODAY_LOOKBACK_HOURS} hours"
+    period_interval = f"{settings.REPORT_PERIOD_DAYS} days"
 
     try:
         # --- Team stats (scoped to entity) ---
@@ -272,62 +276,62 @@ async def get_dashboard(
 
         # --- Escalation stats (scoped to entity's workflow_codes) ---
         if wf_scope is not None:
-            esc_row = await db.fetchrow("""
+            esc_row = await db.fetchrow(f"""
                 SELECT
                     COUNT(*) as pending,
                     (SELECT COUNT(*) FROM service_request_history h
                      JOIN service_requests sr2 ON sr2.id = h.service_request_id
                      WHERE h.action = 'escalation_resolved'
-                     AND h.performed_at > NOW() - INTERVAL '24 hours'
+                     AND h.performed_at > NOW() - INTERVAL '{today_interval}'
                      AND sr2.workflow_code = ANY($1)) as resolved_today,
                     (SELECT AVG(EXTRACT(EPOCH FROM (h2.performed_at - sr3.escalated_at)) / 3600.0)
                      FROM service_request_history h2
                      JOIN service_requests sr3 ON sr3.id = h2.service_request_id
                      WHERE h2.action = 'escalation_resolved'
-                     AND h2.performed_at > NOW() - INTERVAL '30 days'
+                     AND h2.performed_at > NOW() - INTERVAL '{period_interval}'
                      AND sr3.workflow_code = ANY($1)) as avg_resolution_hours
                 FROM service_requests
                 WHERE escalated = true AND workflow_code = ANY($1)
             """, wf_scope)
         else:
-            esc_row = await db.fetchrow("""
+            esc_row = await db.fetchrow(f"""
                 SELECT
                     COUNT(*) as pending,
                     (SELECT COUNT(*) FROM service_request_history
                      WHERE action = 'escalation_resolved'
-                     AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today,
+                     AND performed_at > NOW() - INTERVAL '{today_interval}') as resolved_today,
                     (SELECT AVG(EXTRACT(EPOCH FROM (h2.performed_at - sr3.escalated_at)) / 3600.0)
                      FROM service_request_history h2
                      JOIN service_requests sr3 ON sr3.id = h2.service_request_id
                      WHERE h2.action = 'escalation_resolved'
-                     AND h2.performed_at > NOW() - INTERVAL '30 days') as avg_resolution_hours
+                     AND h2.performed_at > NOW() - INTERVAL '{period_interval}') as avg_resolution_hours
                 FROM service_requests
                 WHERE escalated = true
             """)
 
         # --- Assignment stats (scoped via service_requests join) ---
         if wf_scope is not None:
-            asgn_row = await db.fetchrow("""
+            asgn_row = await db.fetchrow(f"""
                 SELECT
                     COUNT(*) FILTER (WHERE a.status = 'assigned') as pending,
                     COUNT(*) FILTER (WHERE a.status = 'in_progress') as in_progress,
-                    COUNT(*) FILTER (WHERE a.status = 'completed' AND a.completed_at > NOW() - INTERVAL '24 hours') as completed_today
+                    COUNT(*) FILTER (WHERE a.status = 'completed' AND a.completed_at > NOW() - INTERVAL '{today_interval}') as completed_today
                 FROM assignments a
                 JOIN service_requests sr ON sr.id::text = a.item_id
                 WHERE sr.workflow_code = ANY($1)
             """, wf_scope)
         else:
-            asgn_row = await db.fetchrow("""
+            asgn_row = await db.fetchrow(f"""
                 SELECT
                     COUNT(*) FILTER (WHERE status = 'assigned') as pending,
                     COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
-                    COUNT(*) FILTER (WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '24 hours') as completed_today
+                    COUNT(*) FILTER (WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '{today_interval}') as completed_today
                 FROM assignments
             """)
 
         # --- Performance (scoped, last 30 days) ---
         if wf_scope is not None:
-            perf_row = await db.fetchrow("""
+            perf_row = await db.fetchrow(f"""
                 SELECT
                     COALESCE(AVG(EXTRACT(EPOCH FROM (a.completed_at - a.assigned_at)) / 3600), 0) as avg_response_hours,
                     COALESCE(
@@ -337,11 +341,11 @@ async def get_dashboard(
                     ) as sla_compliance
                 FROM assignments a
                 JOIN service_requests sr ON sr.id::text = a.item_id
-                WHERE a.completed_at > NOW() - INTERVAL '30 days'
+                WHERE a.completed_at > NOW() - INTERVAL '{period_interval}'
                 AND sr.workflow_code = ANY($1)
             """, wf_scope)
         else:
-            perf_row = await db.fetchrow("""
+            perf_row = await db.fetchrow(f"""
                 SELECT
                     COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - assigned_at)) / 3600), 0) as avg_response_hours,
                     COALESCE(
@@ -350,7 +354,7 @@ async def get_dashboard(
                         100.0
                     ) as sla_compliance
                 FROM assignments
-                WHERE completed_at > NOW() - INTERVAL '30 days'
+                WHERE completed_at > NOW() - INTERVAL '{period_interval}'
             """)
 
         # --- Quality score (composite: SLA + acceptance rate + response time) ---
@@ -358,25 +362,29 @@ async def get_dashboard(
         avg_resp_hours = float(perf_row['avg_response_hours'] or 0)
         # Acceptance rate: ratio of non-rejected to total resolved (last 30 days)
         if wf_scope is not None:
-            quality_row = await db.fetchrow("""
+            quality_row = await db.fetchrow(f"""
                 SELECT COALESCE(AVG(CASE WHEN sr.status = 'rejected' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
                 FROM service_requests sr
                 JOIN assignments a ON a.item_id = sr.id::text
                 WHERE sr.workflow_code = ANY($1)
-                AND sr.updated_at >= NOW() - INTERVAL '30 days'
+                AND sr.updated_at >= NOW() - INTERVAL '{period_interval}'
                 AND sr.status IN ('completed', 'approved', 'rejected')
             """, wf_scope)
         else:
-            quality_row = await db.fetchrow("""
+            quality_row = await db.fetchrow(f"""
                 SELECT COALESCE(AVG(CASE WHEN status = 'rejected' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
                 FROM service_requests
-                WHERE updated_at >= NOW() - INTERVAL '30 days'
+                WHERE updated_at >= NOW() - INTERVAL '{period_interval}'
                 AND status IN ('completed', 'approved', 'rejected')
             """)
         acceptance_rate = float(quality_row['acceptance_rate'] or 1.0)
-        # Penalty: response time > 48h = max penalty
-        response_penalty = min(avg_resp_hours / 48.0, 1.0) if avg_resp_hours > 0 else 0.0
-        quality_score = round((0.5 * sla_pct + 0.25 * acceptance_rate + 0.25 * (1.0 - response_penalty)) * 100, 1)
+        # Quality score from configurable weights
+        response_penalty = min(avg_resp_hours / settings.QUALITY_SCORE_MAX_RESPONSE_HOURS, 1.0) if avg_resp_hours > 0 else 0.0
+        quality_score = round((
+            settings.QUALITY_SCORE_SLA_WEIGHT * sla_pct
+            + settings.QUALITY_SCORE_ACCEPTANCE_WEIGHT * acceptance_rate
+            + settings.QUALITY_SCORE_RESPONSE_WEIGHT * (1.0 - response_penalty)
+        ) * 100, 1)
 
         response = DashboardResponse(
             team=DashboardTeamStats(
@@ -1091,6 +1099,7 @@ async def list_escalations(
         agent_ctx = await get_agent_context(str(current_user.id), db)
 
     offset = (page - 1) * page_size
+    settings = get_settings()
 
     # Build conditions
     conditions = ["sr.escalated = true"]
@@ -1105,11 +1114,11 @@ async def list_escalations(
     elif status_filter == "resolved":
         # Resolved = no longer escalated but was resolved recently
         conditions[0] = "sr.escalated = false"
-        conditions.append("""EXISTS (
+        conditions.append(f"""EXISTS (
             SELECT 1 FROM service_request_history h
             WHERE h.service_request_id = sr.id
             AND h.action = 'escalation_resolved'
-            AND h.performed_at > NOW() - INTERVAL '7 days'
+            AND h.performed_at > NOW() - INTERVAL '{settings.REPORT_ESCALATION_RECENT_DAYS} days'
         )""")
 
     # Scope to entity's workflow_codes
@@ -1200,29 +1209,31 @@ async def get_escalation_stats(
         agent_ctx = await get_agent_context(str(current_user.id), db)
 
     wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
+    settings = get_settings()
+    today_interval = f"{settings.REPORT_TODAY_LOOKBACK_HOURS} hours"
 
     if wf_scope is not None:
-        row = await db.fetchrow("""
+        row = await db.fetchrow(f"""
             SELECT
                 COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NULL) as pending,
                 COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NOT NULL) as in_review,
                 (SELECT COUNT(*) FROM service_request_history h
                  JOIN service_requests sr2 ON sr2.id = h.service_request_id
                  WHERE h.action = 'escalation_resolved'
-                 AND h.performed_at > NOW() - INTERVAL '24 hours'
+                 AND h.performed_at > NOW() - INTERVAL '{today_interval}'
                  AND sr2.workflow_code = ANY($1)) as resolved_today,
                 COUNT(*) FILTER (WHERE escalated = true) as total
             FROM service_requests
             WHERE escalated = true AND workflow_code = ANY($1)
         """, wf_scope)
     else:
-        row = await db.fetchrow("""
+        row = await db.fetchrow(f"""
             SELECT
                 COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NULL) as pending,
                 COUNT(*) FILTER (WHERE escalated = true AND assigned_to IS NOT NULL) as in_review,
                 (SELECT COUNT(*) FROM service_request_history
                  WHERE action = 'escalation_resolved'
-                 AND performed_at > NOW() - INTERVAL '24 hours') as resolved_today,
+                 AND performed_at > NOW() - INTERVAL '{today_interval}') as resolved_today,
                 COUNT(*) FILTER (WHERE escalated = true) as total
             FROM service_requests
             WHERE escalated = true
@@ -2502,6 +2513,7 @@ async def get_skills_gap(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
+    settings = get_settings()
 
     rows = await db.fetch("""
         WITH workflow_demand AS (
@@ -2516,7 +2528,7 @@ async def get_skills_gap(
                    COUNT(DISTINCT agent_profile_id) AS specialist_count,
                    ROUND(AVG(success_rate)::numeric, 1) AS avg_success
             FROM agent_workflow_proficiency
-            WHERE completions_total >= 3 AND success_rate >= 60
+            WHERE completions_total >= $2 AND success_rate >= $3
               AND ($1::text[] IS NULL OR workflow_code = ANY($1))
             GROUP BY workflow_code
         )
@@ -2533,7 +2545,7 @@ async def get_skills_gap(
         FROM workflow_demand wd
         LEFT JOIN workflow_specialists ws ON ws.workflow_code = wd.workflow_code
         ORDER BY COALESCE(ws.specialist_count, 0) ASC, wd.pending_count DESC
-    """, wf_scope)
+    """, wf_scope, settings.SPECIALIST_MIN_COMPLETIONS, settings.SPECIALIST_MIN_SUCCESS_RATE)
 
     logger.info(
         f"Skills gap analysis: {len(rows)} workflows analyzed "
