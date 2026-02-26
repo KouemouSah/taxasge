@@ -197,9 +197,21 @@ async def lifespan(app: FastAPI):
         else:
             raise
 
+    # Start internal cron scheduler (replaces Cloud Scheduler)
+    try:
+        from app.core.scheduler import internal_scheduler
+        await internal_scheduler.start()
+    except Exception as e:
+        logger.warning(f"⚠️ Internal scheduler failed to start (non-blocking): {e}")
+
     yield
 
     # Shutdown
+    try:
+        from app.core.scheduler import internal_scheduler
+        await internal_scheduler.stop()
+    except Exception:
+        pass
     try:
         # Shutdown cache system
         from app.core.cache import shutdown_cache

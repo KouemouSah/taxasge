@@ -338,6 +338,18 @@ class Settings(BaseSettings):
     CRON_SECRET: Optional[str] = Field(default=None, env="CRON_SECRET")
 
     # ========================================================================
+    # INTERNAL SCHEDULER (replaces Cloud Scheduler)
+    # ========================================================================
+
+    SCHEDULER_ENABLED: bool = Field(default=True, env="SCHEDULER_ENABLED")
+    SCHEDULER_OUTBOX_INTERVAL: int = Field(default=60, env="SCHEDULER_OUTBOX_INTERVAL")
+    SCHEDULER_HEALTH_CHECK_INTERVAL: int = Field(default=300, env="SCHEDULER_HEALTH_CHECK_INTERVAL")
+    SCHEDULER_EXPIRED_HOLDS_INTERVAL: int = Field(default=900, env="SCHEDULER_EXPIRED_HOLDS_INTERVAL")
+    SCHEDULER_ESCALATION_SLA_INTERVAL: int = Field(default=7200, env="SCHEDULER_ESCALATION_SLA_INTERVAL")
+    SCHEDULER_QUEUE_PRIORITY_INTERVAL: int = Field(default=21600, env="SCHEDULER_QUEUE_PRIORITY_INTERVAL")
+    SCHEDULER_DAILY_INTERVAL: int = Field(default=86400, env="SCHEDULER_DAILY_INTERVAL")
+
+    # ========================================================================
     # RATE LIMITING
     # ========================================================================
     
