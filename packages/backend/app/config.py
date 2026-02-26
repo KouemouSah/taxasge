@@ -332,6 +332,12 @@ class Settings(BaseSettings):
     REASSIGNMENT_COOLDOWN_HOURS: float = Field(default=1.0, env="REASSIGNMENT_COOLDOWN_HOURS")
 
     # ========================================================================
+    # CRON SECURITY
+    # ========================================================================
+
+    CRON_SECRET: Optional[str] = Field(default=None, env="CRON_SECRET")
+
+    # ========================================================================
     # RATE LIMITING
     # ========================================================================
     

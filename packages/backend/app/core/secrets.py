@@ -131,6 +131,12 @@ def get_github_pat() -> Optional[str]:
     return get_secret("github-pat")
 
 
+@lru_cache(maxsize=1)
+def get_cron_secret() -> Optional[str]:
+    """Get CRON_SECRET for cron endpoint authentication"""
+    return get_secret("cron-secret")
+
+
 # Validation helper
 def validate_secrets_available() -> dict:
     """
@@ -143,6 +149,7 @@ def validate_secrets_available() -> dict:
         "jwt-secret-key": get_jwt_secret_key(),
         "database-url": get_database_url(),
         "smtp-password": get_smtp_password(),
+        "cron-secret": get_cron_secret(),
     }
 
     status = {}

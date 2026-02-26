@@ -29,16 +29,32 @@ settings = get_settings()
 
 def verify_cron_auth(x_cron_secret: Optional[str] = Header(None)):
     """
-    Verify cron job authentication.
+    Verify cron job authentication via shared secret.
 
-    In production, this should validate:
-    - Cloud Scheduler service account
-    - Or a shared secret from environment
+    Secret is loaded from:
+    - Production: Google Cloud Secret Manager ('cron-secret')
+    - Local dev: .env CRON_SECRET
+
+    If CRON_SECRET is configured, all requests MUST provide matching header.
+    If NOT configured (local dev without .env entry), requests are allowed
+    with a warning log to avoid blocking development.
     """
-    # For development, allow if CRON_SECRET matches or is not set
-    expected_secret = getattr(settings, 'CRON_SECRET', None)
-    if expected_secret and x_cron_secret != expected_secret:
-        raise HTTPException(status_code=403, detail="Invalid cron authentication")
+    from app.core.secrets import get_cron_secret
+
+    # Priority: Secret Manager > config.py > .env
+    expected_secret = get_cron_secret() or settings.CRON_SECRET
+    if expected_secret:
+        if not x_cron_secret:
+            logger.warning("Cron request rejected: missing X-Cron-Secret header")
+            raise HTTPException(status_code=403, detail="Missing cron authentication")
+        if x_cron_secret != expected_secret:
+            logger.warning("Cron request rejected: invalid X-Cron-Secret")
+            raise HTTPException(status_code=403, detail="Invalid cron authentication")
+    else:
+        logger.warning(
+            "CRON_SECRET not configured — cron endpoints are UNPROTECTED. "
+            "Set CRON_SECRET in .env or Secret Manager for production."
+        )
     return True
 
 
