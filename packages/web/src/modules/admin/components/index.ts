@@ -10,6 +10,8 @@ export { default as AdminSidebar, MobileAdminSidebar } from "./AdminSidebar"
 export { default as StatsCards } from "./StatsCards"
 export { default as RecentActivity } from "./RecentActivity"
 export { default as QuickActions } from "./QuickActions"
+export { default as OperationalOverview } from "./OperationalOverview"
+export { default as SystemStatusBar } from "./SystemStatusBar"
 export { BackendUnavailableAlert } from "./BackendUnavailableAlert"
 
 // Menu Configuration Components
