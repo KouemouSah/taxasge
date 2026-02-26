@@ -420,7 +420,7 @@ class AssignmentOutboxService:
                    sr.entity_location_id, sr.payment_status,
                    sp.id AS payment_id, sp.payment_method
             FROM service_requests sr
-            JOIN service_payments sp ON sp.request_id = sr.id
+            JOIN service_payments sp ON sp.service_request_id = sr.id
                 AND sp.status = 'completed'
             WHERE sr.status = 'PAID'
               AND sr.payment_status = 'completed'

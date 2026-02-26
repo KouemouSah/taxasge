@@ -103,7 +103,7 @@ const profileSchema = z.object({
   is_supervisor: z.boolean(),
   ministry_id: z.coerce.number().int().positive().optional().nullable(),
   entity_id: z.string().uuid().optional().nullable().or(z.literal('')),
-  entity_location_id: z.string().uuid().optional().nullable().or(z.literal('')),
+  entity_location_id: z.string().uuid().optional().nullable().or(z.literal('ALL_SITES')).or(z.literal('')),
   agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']),
   // RBAC role for permissions
   rbac_role_id: z.string().uuid().optional().nullable().or(z.literal('')),
@@ -275,7 +275,7 @@ export default function AgentDetailPage() {
         is_supervisor: data.is_supervisor,
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id ?? undefined : undefined,
         entity_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_id ? data.entity_id : undefined,
-        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id ? data.entity_location_id : null,
+        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id && data.entity_location_id !== 'ALL_SITES' ? data.entity_location_id : null,
         agent_role: data.agent_role,
         // Only include rbac_role_id if a role was selected (non-empty string)
         rbac_role_id: data.rbac_role_id || undefined,
@@ -764,9 +764,9 @@ export default function AgentDetailPage() {
                                 </FormControl>
                                 <SelectContent>
                                   {isLoadingMinistries ? (
-                                    <SelectItem value="" disabled>Chargement...</SelectItem>
+                                    <SelectItem value="_loading" disabled>Chargement...</SelectItem>
                                   ) : ministries.length === 0 ? (
-                                    <SelectItem value="" disabled>Aucun ministère</SelectItem>
+                                    <SelectItem value="_empty" disabled>Aucun ministère</SelectItem>
                                   ) : (
                                     ministries.map((m) => (
                                       <SelectItem key={m.id} value={m.id.toString()}>
@@ -795,9 +795,9 @@ export default function AgentDetailPage() {
                                 </FormControl>
                                 <SelectContent>
                                   {isLoadingEntities ? (
-                                    <SelectItem value="" disabled>Chargement...</SelectItem>
+                                    <SelectItem value="_loading" disabled>Chargement...</SelectItem>
                                   ) : entities.length === 0 ? (
-                                    <SelectItem value="" disabled>Aucune entité</SelectItem>
+                                    <SelectItem value="_empty" disabled>Aucune entité</SelectItem>
                                   ) : (
                                     entities.map((e) => (
                                       <SelectItem key={e.id} value={e.id}>
@@ -834,7 +834,7 @@ export default function AgentDetailPage() {
                               <SelectContent>
                                 {/* "All sites" option only for root entities — department agents MUST have a site */}
                                 {!isDepartmentEntity && (
-                                  <SelectItem value="">Todos los sitios (ve todas las solicitudes)</SelectItem>
+                                  <SelectItem value="ALL_SITES">Todos los sitios (ve todas las solicitudes)</SelectItem>
                                 )}
                                 {isLoadingLocations ? (
                                   <SelectItem value="_loading" disabled>Chargement...</SelectItem>
@@ -925,9 +925,9 @@ export default function AgentDetailPage() {
                               </FormControl>
                               <SelectContent>
                                 {isLoadingRoles ? (
-                                  <SelectItem value="" disabled>Chargement...</SelectItem>
+                                  <SelectItem value="_loading" disabled>Chargement...</SelectItem>
                                 ) : rbacRoles.length === 0 ? (
-                                  <SelectItem value="" disabled>Aucun rôle disponible</SelectItem>
+                                  <SelectItem value="_empty" disabled>Aucun rôle disponible</SelectItem>
                                 ) : (
                                   rbacRoles.map((role) => (
                                     <SelectItem key={role.id} value={role.id}>

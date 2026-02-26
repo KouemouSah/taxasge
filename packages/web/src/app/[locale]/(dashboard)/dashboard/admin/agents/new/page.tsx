@@ -81,7 +81,7 @@ const agentSchema = z.object({
   is_supervisor: z.boolean().default(false),
   ministry_id: z.coerce.number().int().positive().optional(),
   entity_id: z.string().uuid().optional().or(z.literal('')),
-  entity_location_id: z.string().uuid().optional().nullable().or(z.literal('')),
+  entity_location_id: z.string().uuid().optional().nullable().or(z.literal('ALL_SITES')).or(z.literal('')),
   agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']).default('validator'),
   // RBAC role for permissions
   rbac_role_id: z.string().uuid('Sélectionnez un rôle RBAC'),
@@ -243,7 +243,7 @@ export default function CreateAgentPage() {
         is_supervisor: data.is_supervisor,
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id : undefined,
         entity_id: data.agent_type === AgentType.ENTITY_AGENT ? data.entity_id : undefined,
-        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id ? data.entity_location_id : null,
+        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id && data.entity_location_id !== 'ALL_SITES' ? data.entity_location_id : null,
         agent_role: data.agent_role,
         rbac_role_id: data.rbac_role_id, // RBAC role for permissions
         can_approve_unlimited: data.can_approve_unlimited,
@@ -631,7 +631,7 @@ export default function CreateAgentPage() {
                           </FormControl>
                           <SelectContent>
                             {!isDepartmentEntity && (
-                              <SelectItem value="">Todos los sitios (ve todas las solicitudes)</SelectItem>
+                              <SelectItem value="ALL_SITES">Todos los sitios (ve todas las solicitudes)</SelectItem>
                             )}
                             {isLoadingLocations ? (
                               <SelectItem value="_loading" disabled>Chargement...</SelectItem>
