@@ -44,6 +44,9 @@ import type {
   AdminInviteResponse,
   AdminActivateRequest,
   AdminActivateResponse,
+  // Validation types
+  AgentValidateRequest,
+  AgentValidateResponse,
 } from '../types';
 
 // =============================================================================
@@ -69,6 +72,14 @@ export const agentCreationApi = {
    * Agent will receive email with code and activation link.
    * They must set their password via POST /agents/activate.
    */
+  /**
+   * Pre-submit validation: check data before sending invitation.
+   * BACKEND: POST /api/v1/agents/validate
+   */
+  validateAgent: async (data: AgentValidateRequest): Promise<AgentValidateResponse> => {
+    return fetchClient.post<AgentValidateResponse>(`${AGENTS_BASE}/validate`, data);
+  },
+
   inviteAgent: async (data: AgentInviteRequest): Promise<AgentInviteResponse> => {
     return fetchClient.post<AgentInviteResponse>(`${AGENTS_BASE}/invite`, data);
   },

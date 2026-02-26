@@ -16,6 +16,7 @@ import type {
   AgentListFilters,
   AgentInviteRequest,
   AdminInviteRequest,
+  AgentValidateRequest,
 } from '../types';
 
 // =============================================================================
@@ -338,6 +339,19 @@ export function useDeleteAgentUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentQueryKeys.profiles() });
     },
+  });
+}
+
+// =============================================================================
+// VALIDATION HOOKS
+// =============================================================================
+
+/**
+ * Hook to validate agent data before submission
+ */
+export function useValidateAgent() {
+  return useMutation({
+    mutationFn: (data: AgentValidateRequest) => agentCreationApi.validateAgent(data),
   });
 }
 

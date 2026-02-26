@@ -526,3 +526,32 @@ export interface AdminActivateResponse {
   role: 'admin';
   message: string;
 }
+
+// =============================================================================
+// PRE-SUBMIT VALIDATION TYPES
+// =============================================================================
+
+export interface AgentValidationIssue {
+  field: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+export interface AgentValidateRequest {
+  email: string;
+  first_name: string;
+  last_name: string;
+  agent_type: AgentType;
+  entity_id?: string;
+  entity_location_id?: string;
+  ministry_id?: number;
+  is_supervisor: boolean;
+  rbac_role_id?: string;
+  specializations: string[];
+}
+
+export interface AgentValidateResponse {
+  valid: boolean;
+  errors: AgentValidationIssue[];
+  warnings: AgentValidationIssue[];
+}

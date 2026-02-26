@@ -1,14 +1,12 @@
 'use client';
 
 /**
- * Agent/Admin Detail Page
- * View and edit agent profile or admin user details
+ * Agent/Admin Detail Page (Refactored)
+ * View and edit agent profile with context-adaptive form sections.
  *
- * For agents: Shows profile, workload, and performance
- * For admins: Shows user details only
+ * Tabs: Profile | Specializations | Workload | Performance
  *
  * @module dashboard/admin/agents/[id]
- * @date 2025-01-14
  */
 
 import { useState, useEffect } from 'react';
@@ -34,20 +32,10 @@ import {
 } from '@/components/ui/accordion';
 import {
   Form,
-  FormControl,
-  FormDescription,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,7 +61,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Shield,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -90,9 +77,16 @@ import { WorkloadStats, PerformanceStats } from '@/modules/agents-admin/componen
 import { AgentType } from '@/modules/agents-admin/types';
 import type { AgentProfileUpdateRequest, WorkflowOption } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
-import { useEntitiesSimple } from '@/modules/cities/hooks';
+import { useEntities } from '@/modules/cities/hooks';
 import { useRoles } from '@/modules/roles-admin/hooks/useRoles';
 import { useLocationsByEntity } from '@/modules/entity-locations/hooks';
+import {
+  AgentOrganizationFields,
+  AgentRoleFields,
+  AgentCapabilitiesFields,
+  AgentApprovalFields,
+  AgentScheduleFields,
+} from '@/modules/agents-admin/components/form-sections';
 
 // =============================================================================
 // VALIDATION SCHEMA
@@ -105,7 +99,6 @@ const profileSchema = z.object({
   entity_id: z.string().uuid().optional().nullable().or(z.literal('')),
   entity_location_id: z.string().uuid().optional().nullable().or(z.literal('ALL_SITES')).or(z.literal('')),
   agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']),
-  // RBAC role for permissions
   rbac_role_id: z.string().uuid().optional().nullable().or(z.literal('')),
   can_approve_unlimited: z.boolean(),
   max_approval_amount: z.coerce.number().positive().optional().nullable(),
@@ -117,7 +110,6 @@ const profileSchema = z.object({
   working_days: z.array(z.number()).default([1, 2, 3, 4, 5]),
   is_active: z.boolean(),
   is_backup_agent: z.boolean(),
-  // Specializations - workflow codes the agent can handle
   specializations: z.array(z.string()).default([]),
 });
 
@@ -128,65 +120,61 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 // =============================================================================
 
 export default function AgentDetailPage() {
-  // Fetch ministries and entities dynamically from API
+  // --- Data fetching ---
   const { data: ministriesData, isLoading: isLoadingMinistries } = useQuery({
     queryKey: ['ministries', 'list'],
     queryFn: () => hierarchyApi.ministries.list('es'),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: entitiesData, isLoading: isLoadingEntities } = useEntitiesSimple(true);
+  // Use full Entity (not EntitySimple) to get workflow_codes for context-adaptive UX
+  const { data: entitiesData, isLoading: isLoadingEntities } = useEntities({ is_active: true });
 
-  // Fetch available workflows for specializations
   const { data: workflowsData, isLoading: isLoadingWorkflows } = useAvailableWorkflows();
-
-  // Fetch RBAC roles for agent permissions
   const { data: rolesData, isLoading: isLoadingRoles } = useRoles({ entity_type: null });
 
-  // Transform data for select components
+  // --- Transform data ---
   const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
-  const entities = entitiesData?.map(e => ({ id: e.id, code: e.code, name: e.name, entity_type: e.entity_type })) || [];
+  const entities = entitiesData?.items?.map(e => ({
+    id: e.id,
+    code: e.code,
+    name: e.name,
+    entity_type: e.entity_type,
+    workflow_codes: e.workflow_codes || [],
+  })) || [];
   const workflows = workflowsData || [];
   const rbacRoles = rolesData?.roles || [];
+
   const router = useRouter();
   const params = useParams();
   const locale = useLocale();
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('profile');
-  // Check if mode=edit is passed in URL
   const [isEditing, setIsEditing] = useState(searchParams.get('mode') === 'edit');
   const [deactivateReason, setDeactivateReason] = useState('');
-  // Workflow filter for specializations tab
   const [workflowFilter, setWorkflowFilter] = useState('');
 
   const profileId = params.id as string;
 
-  // Queries
+  // --- Queries ---
   const { data: profile, isLoading: profileLoading, error: profileError } = useAgentProfile(profileId);
   const { data: workload, isLoading: workloadLoading } = useAgentWorkload(profileId, !!profile);
   const { data: performance, isLoading: performanceLoading } = useAgentPerformance(profileId, !!profile);
 
-  // Fetch all agents for navigation
+  // Agent navigation
   const { data: allAgentsData, isLoading: agentsListLoading, error: agentsListError } = useAgentProfiles({ page_size: 500 });
   const allAgents = allAgentsData?.items || [];
-
-  // Debug: Log navigation data issues
-  if (typeof window !== 'undefined' && agentsListError) {
-    console.error('[AgentEdit] Failed to load agents list for navigation:', agentsListError);
-  }
-
-  // Compute prev/next agent IDs for navigation
   const currentIndex = allAgents.findIndex(a => a.id === profileId);
   const prevAgentId = currentIndex > 0 ? allAgents[currentIndex - 1]?.id : null;
   const nextAgentId = currentIndex < allAgents.length - 1 ? allAgents[currentIndex + 1]?.id : null;
 
-  // Mutations
+  // --- Mutations ---
   const updateMutation = useUpdateAgentProfile();
   const deactivateMutation = useDeactivateAgent();
   const reactivateMutation = useReactivateAgent();
 
-  // Form
+  // --- Form ---
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -214,7 +202,7 @@ export default function AgentDetailPage() {
         entity_id: profile.entity_id ?? '',
         entity_location_id: profile.entity_location_id ?? '',
         agent_role: (profile.agent_role as 'validator' | 'approver' | 'auditor' | 'reviewer') || 'validator',
-        rbac_role_id: '', // RBAC role is not stored on profile, it's derived from user_permissions
+        rbac_role_id: '',
         can_approve_unlimited: profile.can_approve_unlimited,
         max_approval_amount: profile.max_approval_amount ?? null,
         can_escalate: profile.can_escalate,
@@ -230,31 +218,32 @@ export default function AgentDetailPage() {
     }
   }, [profile, form]);
 
+  // --- Watchers for context-adaptive visibility ---
   const watchAgentType = form.watch('agent_type');
-  const watchCanApproveUnlimited = form.watch('can_approve_unlimited');
   const watchEntityId = form.watch('entity_id');
+  const watchIsSupervisor = form.watch('is_supervisor');
 
-  // Derive entity info from selected entity_id
+  // Derive entity info
   const selectedEntity = entities.find(e => e.id === watchEntityId);
   const selectedEntityCode = selectedEntity?.code;
-  // Department entities MUST have a location assigned (supervisors included)
-  // Root entities (entity_type != 'department') can have NULL = sees all sites
-  const isDepartmentEntity = selectedEntity?.entity_type === 'department';
 
-  // Fetch locations for the selected entity
+  // Context-adaptive flags
+  const isPaymentEntity = selectedEntity && (!selectedEntity.workflow_codes || selectedEntity.workflow_codes.length === 0);
+
+  // Fetch locations for selected entity
   const { data: entityLocations, isLoading: isLoadingLocations } = useLocationsByEntity(
     selectedEntityCode || '',
     !!selectedEntityCode && watchAgentType === AgentType.ENTITY_AGENT
   );
 
-  // Reset entity_location_id when entity_id changes (only after profile is loaded)
+  // Reset entity_location_id when entity changes (only after profile loaded)
   useEffect(() => {
     if (profile && watchEntityId !== profile.entity_id) {
       form.setValue('entity_location_id', '');
     }
   }, [watchEntityId, profile, form]);
 
-  // Handlers
+  // --- Submit handlers ---
   const handleSubmit = async (data: ProfileFormData) => {
     try {
       // Validate: department entities MUST have a location
@@ -270,20 +259,27 @@ export default function AgentDetailPage() {
         }
       }
 
+      // Non-supervisors get defaults for capabilities
+      const capabilities = data.is_supervisor
+        ? { can_escalate: data.can_escalate, can_assign_tasks: data.can_assign_tasks, can_reassign: data.can_reassign }
+        : { can_escalate: true, can_assign_tasks: false, can_reassign: false };
+
       const updateData: AgentProfileUpdateRequest = {
         agent_type: data.agent_type,
         is_supervisor: data.is_supervisor,
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id ?? undefined : undefined,
         entity_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_id ? data.entity_id : undefined,
-        entity_location_id: data.agent_type === AgentType.ENTITY_AGENT && data.entity_location_id && data.entity_location_id !== 'ALL_SITES' ? data.entity_location_id : null,
+        entity_location_id:
+          data.agent_type === AgentType.ENTITY_AGENT &&
+          data.entity_location_id &&
+          data.entity_location_id !== 'ALL_SITES'
+            ? data.entity_location_id
+            : null,
         agent_role: data.agent_role,
-        // Only include rbac_role_id if a role was selected (non-empty string)
         rbac_role_id: data.rbac_role_id || undefined,
+        ...capabilities,
         can_approve_unlimited: data.can_approve_unlimited,
         max_approval_amount: data.can_approve_unlimited ? undefined : data.max_approval_amount ?? undefined,
-        can_escalate: data.can_escalate,
-        can_assign_tasks: data.can_assign_tasks,
-        can_reassign: data.can_reassign,
         working_hours_start: data.working_hours_start,
         working_hours_end: data.working_hours_end,
         working_days: data.working_days,
@@ -292,16 +288,12 @@ export default function AgentDetailPage() {
         specializations: data.specializations,
       };
 
-      await updateMutation.mutateAsync({
-        profileId,
-        data: updateData,
-      });
+      await updateMutation.mutateAsync({ profileId, data: updateData });
 
       toast({
         title: 'Profil mis à jour',
         description: 'Les modifications ont été enregistrées.',
       });
-
       setIsEditing(false);
     } catch (error: any) {
       toast({
@@ -318,12 +310,7 @@ export default function AgentDetailPage() {
         profileId,
         reason: deactivateReason || undefined,
       });
-
-      toast({
-        title: 'Agent désactivé',
-        description: "Le profil agent a été désactivé.",
-      });
-
+      toast({ title: 'Agent désactivé', description: 'Le profil agent a été désactivé.' });
       setDeactivateReason('');
     } catch (error: any) {
       toast({
@@ -337,11 +324,7 @@ export default function AgentDetailPage() {
   const handleReactivate = async () => {
     try {
       await reactivateMutation.mutateAsync(profileId);
-
-      toast({
-        title: 'Agent réactivé',
-        description: 'Le profil agent a été réactivé.',
-      });
+      toast({ title: 'Agent réactivé', description: 'Le profil agent a été réactivé.' });
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -351,7 +334,7 @@ export default function AgentDetailPage() {
     }
   };
 
-  // Loading state
+  // --- Loading state ---
   if (profileLoading) {
     return (
       <div className="space-y-6">
@@ -367,7 +350,7 @@ export default function AgentDetailPage() {
     );
   }
 
-  // Error state
+  // --- Error state ---
   if (profileError || !profile) {
     return (
       <div className="space-y-6">
@@ -429,7 +412,7 @@ export default function AgentDetailPage() {
               size="icon"
               onClick={() => prevAgentId && router.push(`/${locale}/dashboard/admin/agents/${prevAgentId}`)}
               disabled={!prevAgentId || agentsListLoading}
-              title={prevAgentId ? `Agent précédent` : 'Pas d\'agent précédent'}
+              title={prevAgentId ? 'Agent précédent' : "Pas d'agent précédent"}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -449,7 +432,7 @@ export default function AgentDetailPage() {
               size="icon"
               onClick={() => nextAgentId && router.push(`/${locale}/dashboard/admin/agents/${nextAgentId}`)}
               disabled={!nextAgentId || agentsListLoading}
-              title={nextAgentId ? `Agent suivant` : 'Pas d\'agent suivant'}
+              title={nextAgentId ? 'Agent suivant' : "Pas d'agent suivant"}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -562,7 +545,7 @@ export default function AgentDetailPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Profile Tab */}
+        {/* ========== Profile Tab ========== */}
         <TabsContent value="profile" className="space-y-6 mt-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -573,30 +556,16 @@ export default function AgentDetailPage() {
                 </CardDescription>
               </div>
               {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)}>
-                  Modifier
-                </Button>
+                <Button onClick={() => setIsEditing(true)}>Modifier</Button>
               ) : (
-                <Button variant="ghost" onClick={() => setIsEditing(false)}>
-                  Annuler
-                </Button>
+                <Button variant="ghost" onClick={() => setIsEditing(false)}>Annuler</Button>
               )}
             </CardHeader>
             <CardContent>
               {!isEditing ? (
-                // Read-only view
+                /* ---- Read-only view ---- */
                 <div className="space-y-6">
-                  {/* RBAC Role & Type */}
                   <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Shield className="h-3 w-3" />
-                        Rôle RBAC (Système)
-                      </p>
-                      <Badge variant="secondary" className="mt-1">
-                        agent
-                      </Badge>
-                    </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Type d&apos;agent</p>
                       <p className="font-medium">{agentTypeLabel}</p>
@@ -621,61 +590,58 @@ export default function AgentDetailPage() {
 
                   <Separator />
 
-                  {/* Role & Supervisor */}
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Rôle fonctionnel</p>
-                      <p className="font-medium capitalize">{profile.agent_role}</p>
-                    </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Superviseur</p>
                       <p className="font-medium">{profile.is_supervisor ? 'Oui' : 'Non'}</p>
                     </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Rôle fonctionnel</p>
+                      <p className="font-medium capitalize">{profile.agent_role}</p>
+                    </div>
                   </div>
 
-                  <Separator />
-
-                  {/* Approval Limits */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Limites d&apos;approbation</p>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Approbation illimitée</p>
-                        <p className="font-medium">{profile.can_approve_unlimited ? 'Oui' : 'Non'}</p>
-                      </div>
-                      {!profile.can_approve_unlimited && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Montant maximum</p>
-                          <p className="font-medium">
-                            {profile.max_approval_amount
-                              ? `${profile.max_approval_amount.toLocaleString()} XAF`
-                              : '-'}
-                          </p>
+                  {/* Capabilities — show if supervisor */}
+                  {profile.is_supervisor && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Capacités superviseur</p>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.can_escalate && <Badge variant="outline">Peut escalader</Badge>}
+                          {profile.can_assign_tasks && <Badge variant="outline">Peut assigner</Badge>}
+                          {profile.can_reassign && <Badge variant="outline">Peut réassigner</Badge>}
+                          {profile.is_backup_agent && <Badge variant="outline">Agent de backup</Badge>}
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </div>
+                    </>
+                  )}
 
-                  <Separator />
-
-                  {/* Capabilities */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Capacités</p>
-                    <div className="flex flex-wrap gap-2">
-                      {profile.can_escalate && (
-                        <Badge variant="outline">Peut escalader</Badge>
-                      )}
-                      {profile.can_assign_tasks && (
-                        <Badge variant="outline">Peut assigner</Badge>
-                      )}
-                      {profile.can_reassign && (
-                        <Badge variant="outline">Peut réassigner</Badge>
-                      )}
-                      {profile.is_backup_agent && (
-                        <Badge variant="outline">Agent de backup</Badge>
-                      )}
-                    </div>
-                  </div>
+                  {/* Approval — show if relevant */}
+                  {(profile.can_approve_unlimited || profile.max_approval_amount) && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Limites d&apos;approbation</p>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Approbation illimitée</p>
+                            <p className="font-medium">{profile.can_approve_unlimited ? 'Oui' : 'Non'}</p>
+                          </div>
+                          {!profile.can_approve_unlimited && (
+                            <div>
+                              <p className="text-sm text-muted-foreground">Montant maximum</p>
+                              <p className="font-medium">
+                                {profile.max_approval_amount
+                                  ? `${profile.max_approval_amount.toLocaleString()} XAF`
+                                  : '-'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <Separator />
 
@@ -719,410 +685,80 @@ export default function AgentDetailPage() {
                   </div>
                 </div>
               ) : (
-                // Edit form
+                /* ---- Edit form (using extracted components) ---- */
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                    {/* Type & Organization */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="agent_type"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Type d&apos;agent</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value={AgentType.MINISTRY_AGENT}>Agent Ministère</SelectItem>
-                                <SelectItem value={AgentType.ENTITY_AGENT}>Agent Entité</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    {/* Organization */}
+                    <AgentOrganizationFields
+                      form={form}
+                      ministries={ministries}
+                      entities={entities}
+                      entityLocations={entityLocations}
+                      isLoadingMinistries={isLoadingMinistries}
+                      isLoadingEntities={isLoadingEntities}
+                      isLoadingLocations={isLoadingLocations}
+                      isEditMode
+                    />
 
-                      {watchAgentType === AgentType.MINISTRY_AGENT ? (
-                        <FormField
-                          control={form.control}
-                          name="ministry_id"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Ministère</FormLabel>
-                              <Select
-                                onValueChange={(v) => field.onChange(parseInt(v))}
-                                value={field.value?.toString() || ''}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Sélectionner" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {isLoadingMinistries ? (
-                                    <SelectItem value="_loading" disabled>Chargement...</SelectItem>
-                                  ) : ministries.length === 0 ? (
-                                    <SelectItem value="_empty" disabled>Aucun ministère</SelectItem>
-                                  ) : (
-                                    ministries.map((m) => (
-                                      <SelectItem key={m.id} value={m.id.toString()}>
-                                        {m.name}
-                                      </SelectItem>
-                                    ))
-                                  )}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      ) : (
-                        <FormField
-                          control={form.control}
-                          name="entity_id"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Entité</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ''}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Sélectionner" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {isLoadingEntities ? (
-                                    <SelectItem value="_loading" disabled>Chargement...</SelectItem>
-                                  ) : entities.length === 0 ? (
-                                    <SelectItem value="_empty" disabled>Aucune entité</SelectItem>
-                                  ) : (
-                                    entities.map((e) => (
-                                      <SelectItem key={e.id} value={e.id}>
-                                        {e.name}
-                                      </SelectItem>
-                                    ))
-                                  )}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </div>
-
-                    {/* Location (site-based routing) - only for entity agents */}
-                    {watchAgentType === AgentType.ENTITY_AGENT && watchEntityId && (
-                      <FormField
-                        control={form.control}
-                        name="entity_location_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              Site / Ubicación
-                              {isDepartmentEntity && <span className="text-destructive ml-1">*</span>}
-                            </FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder={isDepartmentEntity ? 'Seleccionar sitio (obligatorio)' : 'Todos los sitios'} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {/* "All sites" option only for root entities — department agents MUST have a site */}
-                                {!isDepartmentEntity && (
-                                  <SelectItem value="ALL_SITES">Todos los sitios (ve todas las solicitudes)</SelectItem>
-                                )}
-                                {isLoadingLocations ? (
-                                  <SelectItem value="_loading" disabled>Chargement...</SelectItem>
-                                ) : !entityLocations || entityLocations.length === 0 ? (
-                                  <SelectItem value="_empty" disabled>Aucun site configuré</SelectItem>
-                                ) : (
-                                  entityLocations.map((loc) => (
-                                    <SelectItem key={loc.id} value={loc.id}>
-                                      {loc.location_name} — {loc.city}
-                                      {loc.is_main_office ? ' (principal)' : ''}
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                            <FormDescription>
-                              {isDepartmentEntity
-                                ? 'Obligatoire : les agents de département sont liés à un site spécifique.'
-                                : 'Optionnel : sans site = voit toutes les demandes de tous les sites de l\'entité.'}
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
+                    <Separator />
 
                     {/* Role & Supervisor */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="agent_role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Rôle fonctionnel</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="validator">Validateur</SelectItem>
-                                <SelectItem value="approver">Approbateur</SelectItem>
-                                <SelectItem value="auditor">Auditeur</SelectItem>
-                                <SelectItem value="reviewer">Réviseur</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <AgentRoleFields
+                      form={form}
+                      rbacRoles={rbacRoles}
+                      isLoadingRoles={isLoadingRoles}
+                    />
 
-                      <FormField
-                        control={form.control}
-                        name="is_supervisor"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-8">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel>Superviseur</FormLabel>
-                              <FormDescription>
-                                Peut gérer les agents et reassigner les tâches
-                              </FormDescription>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    {/* Capabilities — supervisor only */}
+                    {watchIsSupervisor && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="text-sm font-medium mb-3">Capacités superviseur</h4>
+                          <AgentCapabilitiesFields form={form} />
+                          {/* Backup agent — edit-only field */}
+                          <div className="mt-4">
+                            <FormField
+                              control={form.control}
+                              name="is_backup_agent"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                  <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                  <div className="space-y-1 leading-none">
+                                    <label className="text-sm font-medium leading-none">Agent de backup</label>
+                                    <p className="text-xs text-muted-foreground">
+                                      Reçoit les tâches quand les agents principaux sont indisponibles.
+                                    </p>
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
 
-                    {/* RBAC Role */}
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="rbac_role_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-2">
-                              <Shield className="h-4 w-4" />
-                              Rôle RBAC (Permissions)
-                            </FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Sélectionner un rôle pour modifier les permissions" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {isLoadingRoles ? (
-                                  <SelectItem value="_loading" disabled>Chargement...</SelectItem>
-                                ) : rbacRoles.length === 0 ? (
-                                  <SelectItem value="_empty" disabled>Aucun rôle disponible</SelectItem>
-                                ) : (
-                                  rbacRoles.map((role) => (
-                                    <SelectItem key={role.id} value={role.id}>
-                                      {role.name} ({role.code})
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                            <FormDescription>
-                              Sélectionnez un rôle pour remplacer les permissions actuelles de l&apos;agent.
-                              Laissez vide pour conserver les permissions existantes.
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    {/* Approval Limits — payment entities only */}
+                    {isPaymentEntity && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="text-sm font-medium mb-3">Limites d&apos;approbation</h4>
+                          <AgentApprovalFields form={form} />
+                        </div>
+                      </>
+                    )}
 
                     <Separator />
 
-                    {/* Approval Limits */}
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Limites d&apos;approbation</h4>
-
-                      <FormField
-                        control={form.control}
-                        name="can_approve_unlimited"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Peut approuver des montants illimités
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-
-                      {!watchCanApproveUnlimited && (
-                        <FormField
-                          control={form.control}
-                          name="max_approval_amount"
-                          render={({ field }) => (
-                            <FormItem className="max-w-xs">
-                              <FormLabel>Montant maximum (XAF)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="1000000"
-                                  {...field}
-                                  value={field.value ?? ''}
-                                  onChange={(e) => field.onChange(e.target.valueAsNumber || null)}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </div>
-
-                    <Separator />
-
-                    {/* Capabilities */}
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Capacités</h4>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <FormField
-                          control={form.control}
-                          name="can_escalate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                              <FormLabel className="font-normal">Peut escalader</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="can_assign_tasks"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                              <FormLabel className="font-normal">Peut assigner</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="can_reassign"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                              <FormLabel className="font-normal">Peut réassigner</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="is_backup_agent"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                              <FormLabel className="font-normal">Agent de backup</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Working Hours */}
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Horaires de travail</h4>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <FormField
-                          control={form.control}
-                          name="working_hours_start"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Heure de début</FormLabel>
-                              <FormControl>
-                                <Input type="time" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="working_hours_end"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Heure de fin</FormLabel>
-                              <FormControl>
-                                <Input type="time" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="working_days"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Jours de travail</FormLabel>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { value: 1, label: 'Lun' },
-                                { value: 2, label: 'Mar' },
-                                { value: 3, label: 'Mer' },
-                                { value: 4, label: 'Jeu' },
-                                { value: 5, label: 'Ven' },
-                                { value: 6, label: 'Sam' },
-                                { value: 0, label: 'Dim' },
-                              ].map((day) => (
-                                <Button
-                                  key={day.value}
-                                  type="button"
-                                  variant={field.value?.includes(day.value) ? 'default' : 'outline'}
-                                  size="sm"
-                                  onClick={() => {
-                                    const current = field.value || [];
-                                    const updated = current.includes(day.value)
-                                      ? current.filter((d) => d !== day.value)
-                                      : [...current, day.value];
-                                    field.onChange(updated);
-                                  }}
-                                >
-                                  {day.label}
-                                </Button>
-                              ))}
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    {/* Schedule */}
+                    <div>
+                      <h4 className="text-sm font-medium mb-3">Horaires de travail</h4>
+                      <AgentScheduleFields form={form} />
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4">
@@ -1167,7 +803,7 @@ export default function AgentDetailPage() {
           )}
         </TabsContent>
 
-        {/* Specializations Tab */}
+        {/* ========== Specializations Tab ========== */}
         <TabsContent value="specializations" className="mt-6">
           <Card>
             <CardHeader>
@@ -1193,7 +829,6 @@ export default function AgentDetailPage() {
                     control={form.control}
                     name="specializations"
                     render={({ field }) => {
-                      // Filter workflows based on search
                       const filteredWorkflows = workflowFilter
                         ? workflows.filter(wf =>
                             wf.name_es?.toLowerCase().includes(workflowFilter.toLowerCase()) ||
@@ -1202,7 +837,6 @@ export default function AgentDetailPage() {
                           )
                         : workflows;
 
-                      // Group filtered workflows by entity_code
                       const groupedWorkflows = filteredWorkflows.reduce((acc, wf) => {
                         const key = wf.entity_code || 'Général';
                         if (!acc[key]) acc[key] = [];
@@ -1210,11 +844,9 @@ export default function AgentDetailPage() {
                         return acc;
                       }, {} as Record<string, WorkflowOption[]>);
 
-                      // Get count of selected workflows per group
                       const getSelectedCount = (entityWorkflows: WorkflowOption[]) =>
                         entityWorkflows.filter(wf => field.value?.includes(wf.code)).length;
 
-                      // Select/deselect all workflows in a group
                       const toggleGroup = (entityWorkflows: WorkflowOption[], select: boolean) => {
                         const codes = entityWorkflows.map(wf => wf.code);
                         const current = field.value || [];
@@ -1229,7 +861,7 @@ export default function AgentDetailPage() {
                       return (
                         <FormItem>
                           <div className="space-y-4">
-                            {/* Search/Filter Input */}
+                            {/* Search */}
                             <div className="relative">
                               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input
@@ -1247,11 +879,11 @@ export default function AgentDetailPage() {
                               </div>
                             ) : workflows.length === 0 ? (
                               <p className="text-sm text-muted-foreground">
-                                Aucun workflow disponible. Les workflows seront hérités de l&apos;entité sélectionnée.
+                                Aucun workflow disponible.
                               </p>
                             ) : filteredWorkflows.length === 0 ? (
                               <p className="text-sm text-muted-foreground text-center py-8">
-                                Aucun workflow ne correspond à votre recherche &quot;{workflowFilter}&quot;
+                                Aucun workflow ne correspond à &quot;{workflowFilter}&quot;
                               </p>
                             ) : (
                               <Accordion type="multiple" defaultValue={Object.keys(groupedWorkflows)} className="w-full">
@@ -1279,7 +911,6 @@ export default function AgentDetailPage() {
                                         </div>
                                       </AccordionTrigger>
                                       <AccordionContent>
-                                        {/* Group Actions */}
                                         <div className="flex items-center justify-end gap-2 mb-3 pb-2 border-b">
                                           <Button
                                             type="button"
@@ -1300,7 +931,6 @@ export default function AgentDetailPage() {
                                             Tout désélectionner
                                           </Button>
                                         </div>
-                                        {/* Workflow Grid */}
                                         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
                                           {entityWorkflows.map((wf) => (
                                             <div
@@ -1357,6 +987,7 @@ export default function AgentDetailPage() {
                                 })}
                               </Accordion>
                             )}
+
                             {field.value && field.value.length > 0 && (
                               <div className="flex items-center justify-between pt-4 border-t">
                                 <span className="text-sm text-muted-foreground">
@@ -1390,7 +1021,7 @@ export default function AgentDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Workload Tab */}
+        {/* ========== Workload Tab ========== */}
         <TabsContent value="workload" className="mt-6">
           {workloadLoading ? (
             <Skeleton className="h-[300px] w-full" />
@@ -1407,7 +1038,7 @@ export default function AgentDetailPage() {
           )}
         </TabsContent>
 
-        {/* Performance Tab */}
+        {/* ========== Performance Tab ========== */}
         <TabsContent value="performance" className="mt-6">
           {performanceLoading ? (
             <Skeleton className="h-[400px] w-full" />

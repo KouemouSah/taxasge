@@ -37,6 +37,9 @@ from app.modules.agents.models.agent_profile import (
     AdminInviteResponse,
     AdminActivateRequest,
     AdminActivateResponse,
+    # Pre-submit validation
+    AgentValidateRequest,
+    AgentValidateResponse,
 )
 from app.modules.agents.repositories.agent_profile_repository import AgentProfileRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -470,6 +473,33 @@ async def reactivate_profile(
 
     logger.info(f"Agent profile {profile_id} reactivated")
     return {"message": "Agent profile reactivated successfully", "profile_id": profile_id}
+
+
+# ============================================================================
+# PRE-SUBMIT VALIDATION
+# ============================================================================
+
+@router.post("/validate", response_model=AgentValidateResponse)
+async def validate_agent(
+    data: AgentValidateRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _: None = Depends(permission_required("agent.create")),
+):
+    """
+    Validate agent invitation data without creating.
+    Returns errors (block submit) and warnings (show confirmation).
+    """
+    from app.modules.agents.services.agent_profile_service import agent_profile_service
+
+    try:
+        result = await agent_profile_service.validate_agent_data(data)
+        return result
+    except Exception as e:
+        logger.error(f"Agent validation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur de validation: {str(e)}",
+        )
 
 
 # ============================================================================

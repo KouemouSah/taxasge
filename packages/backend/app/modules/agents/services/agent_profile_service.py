@@ -9,6 +9,7 @@ from typing import Dict, Any, Optional, List
 from uuid import UUID
 from loguru import logger
 from decimal import Decimal
+import asyncio
 import asyncpg
 import json
 
@@ -1053,6 +1054,176 @@ class AgentProfileService:
             "full_name": f"{user_data.get('first_name')} {user_data.get('last_name')}",
             "role": "admin",
             "message": "Compte administrateur créé avec succès. Vous pouvez maintenant vous connecter.",
+        }
+
+    # ========================================================================
+    # PRE-SUBMIT VALIDATION
+    # ========================================================================
+
+    async def validate_agent_data(self, data) -> Dict[str, Any]:
+        """
+        Validate agent invitation data without creating anything.
+        Runs all checks in parallel and returns errors + warnings.
+
+        Args:
+            data: AgentValidateRequest model
+
+        Returns:
+            Dict with valid (bool), errors (list), warnings (list)
+        """
+        from app.database.connection import db_manager
+        from app.modules.agents.models.agent_profile import (
+            AgentValidationIssue,
+        )
+
+        errors: List[AgentValidationIssue] = []
+        warnings: List[AgentValidationIssue] = []
+
+        async def check_email():
+            """Check if email is already taken"""
+            row = await db_manager.execute_single(
+                "SELECT id FROM users WHERE email = $1",
+                data.email.lower(),
+            )
+            if row:
+                errors.append(AgentValidationIssue(
+                    field="email",
+                    message=f"Un compte existe déjà avec l'email {data.email}.",
+                    severity="error",
+                ))
+
+        async def check_entity():
+            """Check entity exists, is active, and type"""
+            if not data.entity_id:
+                errors.append(AgentValidationIssue(
+                    field="entity_id",
+                    message="L'agent doit être assigné à une entité.",
+                    severity="error",
+                ))
+                return None
+            row = await db_manager.execute_single(
+                "SELECT id, entity_type, is_active, workflow_codes FROM entities WHERE id = $1",
+                data.entity_id,
+            )
+            if not row:
+                errors.append(AgentValidationIssue(
+                    field="entity_id",
+                    message="L'entité sélectionnée n'existe pas.",
+                    severity="error",
+                ))
+                return None
+            if not row["is_active"]:
+                errors.append(AgentValidationIssue(
+                    field="entity_id",
+                    message="L'entité sélectionnée est inactive.",
+                    severity="error",
+                ))
+            return row
+
+        async def check_location():
+            """Check location belongs to entity (if provided)"""
+            if not data.entity_location_id or data.entity_location_id == "ALL_SITES":
+                return
+            if not data.entity_id:
+                return
+            # We need entity code to check locations
+            entity_row = await db_manager.execute_single(
+                "SELECT code FROM entities WHERE id = $1",
+                data.entity_id,
+            )
+            if not entity_row:
+                return
+            loc_row = await db_manager.execute_single(
+                "SELECT id FROM entity_locations WHERE id = $1 AND entity_code = $2",
+                data.entity_location_id,
+                entity_row["code"],
+            )
+            if not loc_row:
+                errors.append(AgentValidationIssue(
+                    field="entity_location_id",
+                    message="Le site sélectionné n'appartient pas à cette entité.",
+                    severity="error",
+                ))
+
+        async def check_rbac_role():
+            """Check RBAC role exists"""
+            if not data.rbac_role_id:
+                errors.append(AgentValidationIssue(
+                    field="rbac_role_id",
+                    message="Un rôle RBAC est obligatoire.",
+                    severity="error",
+                ))
+                return None
+            row = await db_manager.execute_single(
+                "SELECT id, code FROM roles WHERE id = $1",
+                data.rbac_role_id,
+            )
+            if not row:
+                errors.append(AgentValidationIssue(
+                    field="rbac_role_id",
+                    message="Le rôle RBAC sélectionné n'existe pas.",
+                    severity="error",
+                ))
+                return None
+            return row
+
+        # Run all checks in parallel
+        results = await asyncio.gather(
+            check_email(),
+            check_entity(),
+            check_location(),
+            check_rbac_role(),
+            return_exceptions=True,
+        )
+
+        # Process exceptions from gather
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.error(f"Validation check {i} failed: {result}")
+
+        # Extract entity and role results for cross-checks
+        entity_row = results[1] if not isinstance(results[1], Exception) else None
+        role_row = results[3] if not isinstance(results[3], Exception) else None
+
+        # Cross-check: department entity requires location
+        if entity_row and isinstance(entity_row, dict) and entity_row.get("entity_type") == "department":
+            if not data.entity_location_id or data.entity_location_id == "ALL_SITES":
+                errors.append(AgentValidationIssue(
+                    field="entity_location_id",
+                    message="Les agents de département doivent être assignés à un site spécifique.",
+                    severity="error",
+                ))
+
+        # Cross-check: supervisor + incompatible role
+        if data.is_supervisor and role_row and isinstance(role_row, dict):
+            role_code = role_row.get("code", "")
+            if "supervisor" not in role_code:
+                warnings.append(AgentValidationIssue(
+                    field="rbac_role_id",
+                    message=f"Le rôle '{role_code}' n'est pas un rôle superviseur. Vérifiez que c'est intentionnel.",
+                    severity="warning",
+                ))
+
+        # Cross-check: specializations exist in entity workflows
+        if data.specializations and entity_row and isinstance(entity_row, dict):
+            entity_workflows = entity_row.get("workflow_codes") or []
+            if isinstance(entity_workflows, str):
+                try:
+                    entity_workflows = json.loads(entity_workflows)
+                except (json.JSONDecodeError, TypeError):
+                    entity_workflows = []
+            invalid_specs = [s for s in data.specializations if s not in entity_workflows]
+            if invalid_specs:
+                warnings.append(AgentValidationIssue(
+                    field="specializations",
+                    message=f"Workflow(s) non trouvé(s) dans l'entité: {', '.join(invalid_specs)}.",
+                    severity="warning",
+                ))
+
+        return {
+            "valid": len(errors) == 0,
+            "errors": [e.model_dump() for e in errors],
+            "warnings": [w.model_dump() for w in warnings],
         }
 
 

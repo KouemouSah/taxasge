@@ -444,3 +444,35 @@ class AdminActivateResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# PRE-SUBMIT VALIDATION
+# ============================================================================
+
+class AgentValidationIssue(BaseModel):
+    """Single validation issue (error or warning)"""
+    field: str
+    message: str
+    severity: str  # "error" | "warning"
+
+
+class AgentValidateRequest(BaseModel):
+    """Request body for agent pre-submit validation"""
+    email: str
+    first_name: str
+    last_name: str
+    agent_type: AgentType
+    entity_id: Optional[str] = None
+    entity_location_id: Optional[str] = None
+    ministry_id: Optional[int] = None
+    is_supervisor: bool = False
+    rbac_role_id: Optional[str] = None
+    specializations: List[str] = []
+
+
+class AgentValidateResponse(BaseModel):
+    """Response from agent pre-submit validation"""
+    valid: bool
+    errors: List[AgentValidationIssue] = []
+    warnings: List[AgentValidationIssue] = []
