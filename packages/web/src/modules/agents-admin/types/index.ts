@@ -547,7 +547,6 @@ export interface AgentValidateRequest {
   ministry_id?: number;
   is_supervisor: boolean;
   rbac_role_id?: string;
-  specializations: string[];
 }
 
 export interface AgentValidateResponse {

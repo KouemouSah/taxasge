@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Loader2, UserCog, Shield, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useInviteAgent, useInviteAdmin, useAvailableWorkflows, useValidateAgent } from '@/modules/agents-admin/hooks';
+import { useInviteAgent, useInviteAdmin, useValidateAgent } from '@/modules/agents-admin/hooks';
 import { AgentType } from '@/modules/agents-admin/types';
 import type { AgentValidationIssue } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
@@ -47,7 +47,6 @@ import {
   AgentCapabilitiesFields,
   AgentApprovalFields,
   AgentScheduleFields,
-  AgentSpecializationsFields,
   AgentReviewSummary,
 } from '@/modules/agents-admin/components/form-sections';
 
@@ -86,7 +85,6 @@ const agentSchema = z.object({
   // Role
   is_supervisor: z.boolean().default(false),
   rbac_role_id: z.string().uuid('Sélectionnez un rôle RBAC'),
-  agent_role: z.enum(['validator', 'approver', 'auditor', 'reviewer']).default('validator'),
   // Capabilities (supervisor-only, but always in schema with defaults)
   can_escalate: z.boolean().default(true),
   can_assign_tasks: z.boolean().default(false),
@@ -98,8 +96,6 @@ const agentSchema = z.object({
   working_hours_start: z.string().optional(),
   working_hours_end: z.string().optional(),
   working_days: z.array(z.number()).default([1, 2, 3, 4, 5]),
-  // Specializations
-  specializations: z.array(z.string()).default([]),
 });
 
 type AdminFormData = z.infer<typeof adminSchema>;
@@ -133,8 +129,6 @@ export default function CreateAgentPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: workflowsData, isLoading: isLoadingWorkflows } = useAvailableWorkflows();
-
   // --- Transform data ---
   const ministries = ministriesData?.map(m => ({ id: m.id, name: m.name_es || m.nameEs || '' })) || [];
   const entities = entitiesData?.items?.map(e => ({
@@ -145,7 +139,6 @@ export default function CreateAgentPage() {
     workflow_codes: e.workflow_codes || [],
   })) || [];
   const rbacRoles = rbacRolesData || [];
-  const workflows = workflowsData || [];
 
   // --- Mutations ---
   const inviteAgentMutation = useInviteAgent();
@@ -180,7 +173,6 @@ export default function CreateAgentPage() {
       preferred_language: 'es',
       agent_type: AgentType.MINISTRY_AGENT,
       is_supervisor: false,
-      agent_role: 'validator',
       rbac_role_id: '',
       can_approve_unlimited: false,
       can_escalate: true,
@@ -189,7 +181,6 @@ export default function CreateAgentPage() {
       working_hours_start: '08:00',
       working_hours_end: '17:00',
       working_days: [1, 2, 3, 4, 5],
-      specializations: [],
     },
   });
 
@@ -204,7 +195,6 @@ export default function CreateAgentPage() {
 
   // Context-adaptive flags
   const isPaymentEntity = selectedEntity && (!selectedEntity.workflow_codes || selectedEntity.workflow_codes.length === 0);
-  const hasMultipleWorkflows = selectedEntity?.workflow_codes && selectedEntity.workflow_codes.length > 1;
 
   // Fetch locations for selected entity
   const { data: entityLocations, isLoading: isLoadingLocations } = useLocationsByEntity(
@@ -266,7 +256,7 @@ export default function CreateAgentPage() {
           data.entity_location_id !== 'ALL_SITES'
             ? data.entity_location_id
             : null,
-        agent_role: data.agent_role,
+        agent_role: 'validator',
         rbac_role_id: data.rbac_role_id,
         ...capabilities,
         can_approve_unlimited: data.can_approve_unlimited,
@@ -274,7 +264,6 @@ export default function CreateAgentPage() {
         working_hours_start: data.working_hours_start,
         working_hours_end: data.working_hours_end,
         working_days: data.working_days,
-        specializations: data.specializations,
       });
 
       toast({
@@ -307,7 +296,6 @@ export default function CreateAgentPage() {
         ministry_id: data.agent_type === AgentType.MINISTRY_AGENT ? data.ministry_id : undefined,
         is_supervisor: data.is_supervisor,
         rbac_role_id: data.rbac_role_id,
-        specializations: data.specializations,
       });
 
       setValidationErrors(result.errors);
@@ -494,27 +482,7 @@ export default function CreateAgentPage() {
               </CardContent>
             </Card>
 
-            {/* 7. Specializations — multi-workflow entities only */}
-            {hasMultipleWorkflows && selectedEntity && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Spécialisations</CardTitle>
-                  <CardDescription>
-                    Workflows que cet agent peut traiter (pré-sélectionnés depuis l&apos;entité)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <AgentSpecializationsFields
-                    form={agentForm}
-                    entity={selectedEntity}
-                    workflows={workflows}
-                    isLoadingWorkflows={isLoadingWorkflows}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* 8. Review Summary */}
+            {/* 7. Review Summary */}
             <AgentReviewSummary
               form={agentForm}
               entityName={selectedEntity?.name}

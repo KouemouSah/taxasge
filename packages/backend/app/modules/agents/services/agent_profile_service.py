@@ -1204,22 +1204,6 @@ class AgentProfileService:
                     severity="warning",
                 ))
 
-        # Cross-check: specializations exist in entity workflows
-        if data.specializations and entity_row and isinstance(entity_row, dict):
-            entity_workflows = entity_row.get("workflow_codes") or []
-            if isinstance(entity_workflows, str):
-                try:
-                    entity_workflows = json.loads(entity_workflows)
-                except (json.JSONDecodeError, TypeError):
-                    entity_workflows = []
-            invalid_specs = [s for s in data.specializations if s not in entity_workflows]
-            if invalid_specs:
-                warnings.append(AgentValidationIssue(
-                    field="specializations",
-                    message=f"Workflow(s) non trouvé(s) dans l'entité: {', '.join(invalid_specs)}.",
-                    severity="warning",
-                ))
-
         return {
             "valid": len(errors) == 0,
             "errors": [e.model_dump() for e in errors],

@@ -468,7 +468,6 @@ class AgentValidateRequest(BaseModel):
     ministry_id: Optional[int] = None
     is_supervisor: bool = False
     rbac_role_id: Optional[str] = None
-    specializations: List[str] = []
 
 
 class AgentValidateResponse(BaseModel):

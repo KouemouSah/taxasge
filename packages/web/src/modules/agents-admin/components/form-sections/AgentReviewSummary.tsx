@@ -143,14 +143,6 @@ export function AgentReviewSummary({
                 label="Horaires"
                 value={`${values.working_hours_start || '08:00'} — ${values.working_hours_end || '17:00'}`}
               />
-              <SummaryRow
-                label="Spécialisations"
-                value={
-                  values.specializations?.length > 0
-                    ? `${values.specializations.length} workflow(s)`
-                    : 'Aucune'
-                }
-              />
             </div>
           </div>
         </AccordionContent>

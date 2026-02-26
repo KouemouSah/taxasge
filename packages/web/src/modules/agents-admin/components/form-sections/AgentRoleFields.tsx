@@ -120,8 +120,6 @@ export function AgentRoleFields({
         </Alert>
       )}
 
-      {/* Hidden agent_role field — auto-set to "validator" (legacy, replaced by RBAC) */}
-      <input type="hidden" {...form.register('agent_role')} value="validator" />
     </div>
   );
 }
