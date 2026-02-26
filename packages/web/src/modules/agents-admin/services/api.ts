@@ -35,6 +35,8 @@ import type {
   AgentListResponse,
   AgentStats,
   WorkflowOption,
+  AdminAlertsDashboard,
+  AdminAssistantResponse,
   // Invitation flow types
   AgentInviteRequest,
   AgentInviteResponse,
@@ -302,7 +304,34 @@ export const agentWorkloadApi = {
   getPerformance: async (profileId: string): Promise<AgentPerformance> => {
     return fetchClient.get<AgentPerformance>(`${AGENTS_BASE}/profiles/${profileId}/performance`);
   },
+};
 
+// =============================================================================
+// ADMIN ALERTS DASHBOARD API
+// =============================================================================
+
+export const agentAlertsApi = {
+  /**
+   * Get aggregated alerts dashboard for admin
+   * BACKEND: GET /api/v1/agents/admin/alerts-dashboard
+   */
+  getDashboard: async (): Promise<AdminAlertsDashboard> => {
+    return fetchClient.get<AdminAlertsDashboard>(`${AGENTS_BASE}/admin/alerts-dashboard`);
+  },
+};
+
+// =============================================================================
+// ADMIN ASSISTANT API
+// =============================================================================
+
+export const adminAssistantApi = {
+  /**
+   * Send question to LLM admin assistant
+   * BACKEND: POST /api/v1/agents/admin/assistant
+   */
+  askQuestion: async (question: string): Promise<AdminAssistantResponse> => {
+    return fetchClient.post<AdminAssistantResponse>(`${AGENTS_BASE}/admin/assistant`, { question });
+  },
 };
 
 // =============================================================================
@@ -389,6 +418,8 @@ export const agentsAdminApi = {
   creation: agentCreationApi,
   profiles: agentProfilesApi,
   workload: agentWorkloadApi,
+  alerts: agentAlertsApi,
+  assistant: adminAssistantApi,
   users: adminUsersApi,
 };
 

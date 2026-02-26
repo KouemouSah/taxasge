@@ -27,6 +27,10 @@ class RoleBase(BaseModel):
         None,
         description="UI preferences (theme, shortcuts, display options). NULL = defaults"
     )
+    default_agent_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Default agent profile config for this role. NULL = system defaults"
+    )
 
 
 class RoleCreate(RoleBase):
@@ -66,6 +70,10 @@ class RoleUpdate(BaseModel):
     ui_config: Optional[Dict[str, Any]] = Field(
         None,
         description="UI preferences JSON"
+    )
+    default_agent_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Default agent config. Set to {} to clear."
     )
 
 

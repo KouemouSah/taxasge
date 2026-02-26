@@ -4,14 +4,9 @@
  * Agents & Admins Admin Page
  * Manages agent profiles and admin users with tabbed interface
  *
- * BUSINESS RULES:
- * - Tab "Agents": CRUD for users with role='agent' (user + agent_profile)
- * - Tab "Admins": CRUD for users with role='admin' (user only, no profile)
- * - Tab "Charge de Travail": View workload stats for all agents
- * - Tab "Performance": View performance stats for all agents
+ * Uses useTranslations('admin.agents') for all UI text.
  *
  * @module dashboard/admin/agents
- * @date 2025-01-14
  */
 
 import { useState } from 'react';
@@ -23,71 +18,39 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Users,
-  UserCog,
-  Shield,
-  BarChart3,
-  Activity,
-  RefreshCw,
-  Search,
-  Plus,
-  MoreVertical,
-  Edit,
-  Trash2,
-  UserCheck,
-  UserX,
-  Eye,
-  Building2,
+  Users, UserCog, Shield, Sparkles, Activity, RefreshCw, Search,
+  Plus, MoreVertical, Edit, Trash2, UserCheck, UserX, Eye, Building2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
-  useAgentProfiles,
-  useAdminUsers,
-  useDeactivateAgent,
-  useReactivateAgent,
-  useActivateUser,
-  useDeactivateUser,
-  useDeleteAgentUser,
+  useAgentProfiles, useAdminUsers, useAlertsDashboard,
+  useDeactivateAgent, useReactivateAgent, useActivateUser,
+  useDeactivateUser, useDeleteAgentUser,
 } from '@/modules/agents-admin/hooks';
 import type { AgentProfile, AgentType } from '@/modules/agents-admin/types';
+import { WorkloadOverviewTab } from '@/modules/agents-admin/components/WorkloadOverviewTab';
+import { AdminAssistantTab } from '@/modules/agents-admin/components/AdminAssistantTab';
 import { BackendUnavailableAlert } from '@/modules/admin/components';
 
 export default function AgentsPage() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('admin.agents');
+  const tAdmin = useTranslations('admin');
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState('agents');
@@ -99,23 +62,19 @@ export default function AgentsPage() {
 
   // Queries
   const {
-    data: agentsData,
-    isLoading: agentsLoading,
-    error: agentsError,
-    refetch: refetchAgents,
+    data: agentsData, isLoading: agentsLoading, error: agentsError, refetch: refetchAgents,
   } = useAgentProfiles({
     agent_type: typeFilter !== 'all' ? typeFilter : undefined,
-    is_active: undefined, // Show all
+    is_active: undefined,
     page: 1,
     page_size: 100,
   });
 
   const {
-    data: adminsData,
-    isLoading: adminsLoading,
-    error: adminsError,
-    refetch: refetchAdmins,
+    data: adminsData, isLoading: adminsLoading, error: adminsError, refetch: refetchAdmins,
   } = useAdminUsers(1, 100);
+
+  const { data: alertsDashboard, isLoading: alertsLoading } = useAlertsDashboard();
 
   // Mutations
   const deactivateAgentMutation = useDeactivateAgent();
@@ -143,7 +102,6 @@ export default function AgentsPage() {
     return matchesSearch;
   });
 
-  // Stats
   const agentStats = {
     total: agents.length,
     active: agents.filter((a) => a.is_active).length,
@@ -157,98 +115,64 @@ export default function AgentsPage() {
     active: admins.filter((a) => a.status === 'active').length,
   };
 
-  const handleCreateAgent = () => {
-    router.push(`/${locale}/dashboard/admin/agents/new?type=agent`);
-  };
-
-  const handleCreateAdmin = () => {
-    router.push(`/${locale}/dashboard/admin/agents/new?type=admin`);
-  };
-
-  const handleViewAgent = (agent: AgentProfile) => {
-    router.push(`/${locale}/dashboard/admin/agents/${agent.id}`);
-  };
-
-  const handleEditAgent = (agent: AgentProfile) => {
-    router.push(`/${locale}/dashboard/admin/agents/${agent.id}?mode=edit`);
-  };
+  const handleCreateAgent = () => router.push(`/${locale}/dashboard/admin/agents/new?type=agent`);
+  const handleCreateAdmin = () => router.push(`/${locale}/dashboard/admin/agents/new?type=admin`);
+  const handleViewAgent = (agent: AgentProfile) => router.push(`/${locale}/dashboard/admin/agents/${agent.id}`);
+  const handleEditAgent = (agent: AgentProfile) => router.push(`/${locale}/dashboard/admin/agents/${agent.id}?mode=edit`);
 
   const handleToggleAgentStatus = async (agent: AgentProfile) => {
     try {
       if (agent.is_active) {
-        await deactivateAgentMutation.mutateAsync({
-          profileId: agent.id,
-          reason: 'Désactivé par administrateur',
-        });
-        toast({ title: 'Agent désactivé' });
+        await deactivateAgentMutation.mutateAsync({ profileId: agent.id, reason: t('toast.deactivatedByAdmin') });
+        toast({ title: t('toast.agentDeactivated') });
       } else {
         await reactivateAgentMutation.mutateAsync(agent.id);
-        toast({ title: 'Agent réactivé' });
+        toast({ title: t('toast.agentReactivated') });
       }
       refetchAgents();
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: "Impossible de modifier le statut de l'agent",
-      });
+    } catch {
+      toast({ variant: 'destructive', title: tAdmin('error'), description: t('toast.errorAgentStatus') });
     }
   };
 
   const handleDeleteAgent = async () => {
     if (!selectedUserId) return;
-
     try {
       await deleteAgentMutation.mutateAsync(selectedUserId);
-      toast({ title: 'Agent supprimé' });
+      toast({ title: t('toast.agentDeleted') });
       setDeleteDialogOpen(false);
       setSelectedUserId(null);
       setSelectedAgent(null);
       refetchAgents();
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: "Impossible de supprimer l'agent",
-      });
+    } catch {
+      toast({ variant: 'destructive', title: tAdmin('error'), description: t('toast.errorDeleteAgent') });
     }
   };
 
   const handleToggleAdminStatus = async (userId: string, currentStatus: string) => {
     try {
       if (currentStatus === 'active') {
-        await deactivateUserMutation.mutateAsync({
-          userId,
-          reason: 'Désactivé par administrateur',
-        });
-        toast({ title: 'Administrateur désactivé' });
+        await deactivateUserMutation.mutateAsync({ userId, reason: t('toast.deactivatedByAdmin') });
+        toast({ title: t('toast.adminDeactivated') });
       } else {
         await activateUserMutation.mutateAsync(userId);
-        toast({ title: 'Administrateur activé' });
+        toast({ title: t('toast.adminActivated') });
       }
       refetchAdmins();
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: "Impossible de modifier le statut de l'administrateur",
-      });
+    } catch {
+      toast({ variant: 'destructive', title: tAdmin('error'), description: t('toast.errorAdminStatus') });
     }
   };
 
   const getAgentTypeBadge = (type: string) => {
-    if (type === 'ministry_agent') {
-      return <Badge variant="default">Ministère</Badge>;
-    }
-    return <Badge variant="secondary">Entité</Badge>;
+    if (type === 'ministry_agent') return <Badge variant="default">{t('status.ministry')}</Badge>;
+    return <Badge variant="secondary">{t('status.entityBadge')}</Badge>;
   };
 
   const getStatusBadge = (isActive: boolean) => {
-    return isActive ? (
-      <Badge className="bg-green-100 text-green-800">Actif</Badge>
-    ) : (
-      <Badge variant="destructive">Inactif</Badge>
-    );
+    return isActive
+      ? <Badge className="bg-green-100 text-green-800">{t('status.active')}</Badge>
+      : <Badge variant="destructive">{t('status.inactive')}</Badge>;
   };
 
   const isBackendUnavailable = !!agentsError || !!adminsError;
@@ -258,26 +182,21 @@ export default function AgentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {t('title') || 'Agents & Administrateurs'}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {t('subtitle') || 'Gérer les profils agents et les administrateurs système'}
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleCreateAdmin}>
             <Shield className="h-4 w-4 mr-2" />
-            Créer Admin
+            {t('createAdmin')}
           </Button>
           <Button onClick={handleCreateAgent}>
             <Plus className="h-4 w-4 mr-2" />
-            Créer Agent
+            {t('createAgent')}
           </Button>
         </div>
       </div>
 
-      {/* Backend Unavailable Alert */}
       {isBackendUnavailable && <BackendUnavailableAlert />}
 
       {/* Tabs */}
@@ -285,99 +204,75 @@ export default function AgentsPage() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="agents" className="flex items-center gap-2">
             <UserCog className="h-4 w-4" />
-            Agents ({agentStats.total})
+            {t('tabs.agents')} ({agentStats.total})
           </TabsTrigger>
           <TabsTrigger value="admins" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            Administrateurs ({adminStats.total})
+            {t('tabs.admins')} ({adminStats.total})
           </TabsTrigger>
-          <TabsTrigger value="workload" className="flex items-center gap-2">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            Charge de Travail
+            {t('tabs.overview')}
+            {(alertsDashboard?.total_alerts ?? 0) > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-5 px-1 text-[10px]">
+                {alertsDashboard?.total_alerts}
+              </Badge>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="performance" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Performance
+          <TabsTrigger value="assistant" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            {t('tabs.assistant')}
           </TabsTrigger>
         </TabsList>
 
         {/* Agents Tab */}
         <TabsContent value="agents" className="space-y-4">
-          {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-5">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Agents</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{agentStats.total}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Actifs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{agentStats.active}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Superviseurs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-amber-600">{agentStats.supervisors}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Ministères</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{agentStats.ministry}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Entités</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{agentStats.entity}</div>
-              </CardContent>
-            </Card>
+            {[
+              { label: t('stats.totalAgents'), value: agentStats.total },
+              { label: t('stats.active'), value: agentStats.active, color: 'text-green-600' },
+              { label: t('stats.supervisors'), value: agentStats.supervisors, color: 'text-amber-600' },
+              { label: t('stats.ministries'), value: agentStats.ministry },
+              { label: t('stats.entities'), value: agentStats.entity },
+            ].map((stat) => (
+              <Card key={stat.label}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${stat.color || ''}`}>{stat.value}</div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
-          {/* Agents Table */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Liste des Agents</CardTitle>
+                  <CardTitle>{t('listAgents')}</CardTitle>
                   <CardDescription>
-                    {filteredAgents.length} agent(s) trouvé(s)
+                    {t('agentsFound', { count: filteredAgents.length })}
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Rechercher..."
+                      placeholder={tAdmin('searchPlaceholder')}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9"
                     />
                   </div>
-                  <Select
-                    value={typeFilter}
-                    onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}
-                  >
+                  <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Type d'agent" />
+                      <SelectValue placeholder={t('filters.allTypes')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous les types</SelectItem>
-                      <SelectItem value="ministry_agent">Ministère</SelectItem>
-                      <SelectItem value="entity_agent">Entité</SelectItem>
+                      <SelectItem value="all">{t('filters.allTypes')}</SelectItem>
+                      <SelectItem value="ministry_agent">{t('filters.ministryAgent')}</SelectItem>
+                      <SelectItem value="entity_agent">{t('filters.entityAgent')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button variant="outline" size="sm" onClick={() => refetchAgents()}>
@@ -390,24 +285,24 @@ export default function AgentsPage() {
               {agentsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-muted-foreground">Chargement...</span>
+                  <span className="ml-2 text-muted-foreground">{tAdmin('loading')}</span>
                 </div>
               ) : filteredAgents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <Users className="h-12 w-12 mb-4 opacity-50" />
-                  <p>Aucun agent trouvé</p>
+                  <p>{t('noAgentsFound')}</p>
                 </div>
               ) : (
                 <div className="border rounded-md overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Agent</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="hidden lg:table-cell">Organisation</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="hidden md:table-cell">Tâches</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('table.agent')}</TableHead>
+                      <TableHead>{t('table.type')}</TableHead>
+                      <TableHead className="hidden lg:table-cell">{t('table.organization')}</TableHead>
+                      <TableHead>{t('table.status')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('table.tasks')}</TableHead>
+                      <TableHead className="text-right">{t('table.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -416,9 +311,7 @@ export default function AgentsPage() {
                         <TableCell>
                           <div>
                             <div className="font-medium">{agent.user_full_name || 'N/A'}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {agent.user_email}
-                            </div>
+                            <div className="text-sm text-muted-foreground">{agent.user_email}</div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -426,7 +319,7 @@ export default function AgentsPage() {
                             {getAgentTypeBadge(agent.agent_type)}
                             {agent.is_supervisor && (
                               <Badge variant="outline" className="border-amber-500 text-amber-700">
-                                Superviseur
+                                {t('status.supervisor')}
                               </Badge>
                             )}
                           </div>
@@ -439,53 +332,32 @@ export default function AgentsPage() {
                         </TableCell>
                         <TableCell>{getStatusBadge(agent.is_active)}</TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {agent.current_assignments !== undefined ? (
-                            <span>{agent.current_assignments}</span>
-                          ) : (
-                            '-'
-                          )}
+                          {agent.current_assignments !== undefined ? <span>{agent.current_assignments}</span> : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
+                              <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleViewAgent(agent)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Voir détails
+                                <Eye className="h-4 w-4 mr-2" />{t('viewDetails')}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEditAgent(agent)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Modifier
+                                <Edit className="h-4 w-4 mr-2" />{t('modify')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleToggleAgentStatus(agent)}>
-                                {agent.is_active ? (
-                                  <>
-                                    <UserX className="h-4 w-4 mr-2" />
-                                    Désactiver
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck className="h-4 w-4 mr-2" />
-                                    Réactiver
-                                  </>
-                                )}
+                                {agent.is_active
+                                  ? <><UserX className="h-4 w-4 mr-2" />{t('deactivate')}</>
+                                  : <><UserCheck className="h-4 w-4 mr-2" />{t('reactivate')}</>}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-600"
-                                onClick={() => {
-                                  setSelectedAgent(agent);
-                                  setSelectedUserId(agent.user_id);
-                                  setDeleteDialogOpen(true);
-                                }}
+                                onClick={() => { setSelectedAgent(agent); setSelectedUserId(agent.user_id); setDeleteDialogOpen(true); }}
                               >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Supprimer
+                                <Trash2 className="h-4 w-4 mr-2" />{t('delete')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -502,49 +374,30 @@ export default function AgentsPage() {
 
         {/* Admins Tab */}
         <TabsContent value="admins" className="space-y-4">
-          {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Administrateurs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{adminStats.total}</div>
-              </CardContent>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t('totalAdmins')}</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold">{adminStats.total}</div></CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Actifs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{adminStats.active}</div>
-              </CardContent>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">{t('stats.active')}</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-green-600">{adminStats.active}</div></CardContent>
             </Card>
           </div>
 
-          {/* Admins Table */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Liste des Administrateurs</CardTitle>
-                  <CardDescription>
-                    {filteredAdmins.length} administrateur(s) trouvé(s)
-                  </CardDescription>
+                  <CardTitle>{t('listAdmins')}</CardTitle>
+                  <CardDescription>{t('adminsFound', { count: filteredAdmins.length })}</CardDescription>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Rechercher..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
+                    <Input placeholder={tAdmin('searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => refetchAdmins()}>
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => refetchAdmins()}><RefreshCw className="h-4 w-4" /></Button>
                 </div>
               </div>
             </CardHeader>
@@ -552,23 +405,22 @@ export default function AgentsPage() {
               {adminsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-muted-foreground">Chargement...</span>
+                  <span className="ml-2 text-muted-foreground">{tAdmin('loading')}</span>
                 </div>
               ) : filteredAdmins.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <Shield className="h-12 w-12 mb-4 opacity-50" />
-                  <p>Aucun administrateur trouvé</p>
+                  <Shield className="h-12 w-12 mb-4 opacity-50" /><p>{t('noAdminsFound')}</p>
                 </div>
               ) : (
                 <div className="border rounded-md overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Administrateur</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead className="hidden md:table-cell">Dernière connexion</TableHead>
-                      <TableHead className="hidden lg:table-cell">Créé le</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t('table.administrator')}</TableHead>
+                      <TableHead>{t('table.status')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('table.lastLogin')}</TableHead>
+                      <TableHead className="hidden lg:table-cell">{t('table.createdAt')}</TableHead>
+                      <TableHead className="text-right">{t('table.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -576,55 +428,33 @@ export default function AgentsPage() {
                       <TableRow key={admin.id}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">
-                              {admin.first_name} {admin.last_name}
-                            </div>
+                            <div className="font-medium">{admin.first_name} {admin.last_name}</div>
                             <div className="text-sm text-muted-foreground">{admin.email}</div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {admin.status === 'active' ? (
-                            <Badge className="bg-green-100 text-green-800">Actif</Badge>
-                          ) : (
-                            <Badge variant="destructive">Inactif</Badge>
-                          )}
+                          {admin.status === 'active'
+                            ? <Badge className="bg-green-100 text-green-800">{t('status.active')}</Badge>
+                            : <Badge variant="destructive">{t('status.inactive')}</Badge>}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {admin.last_login
-                            ? new Date(admin.last_login).toLocaleDateString('fr-FR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : 'Jamais'}
+                            ? new Date(admin.last_login).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : t('never')}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
-                          {new Date(admin.created_at).toLocaleDateString('fr-FR')}
+                          {new Date(admin.created_at).toLocaleDateString(locale)}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
+                              <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleToggleAdminStatus(admin.id, admin.status)}
-                              >
-                                {admin.status === 'active' ? (
-                                  <>
-                                    <UserX className="h-4 w-4 mr-2" />
-                                    Désactiver
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck className="h-4 w-4 mr-2" />
-                                    Activer
-                                  </>
-                                )}
+                              <DropdownMenuItem onClick={() => handleToggleAdminStatus(admin.id, admin.status)}>
+                                {admin.status === 'active'
+                                  ? <><UserX className="h-4 w-4 mr-2" />{t('deactivate')}</>
+                                  : <><UserCheck className="h-4 w-4 mr-2" />{t('activate')}</>}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -639,46 +469,20 @@ export default function AgentsPage() {
           </Card>
         </TabsContent>
 
-        {/* Workload Tab */}
-        <TabsContent value="workload">
-          <Card>
-            <CardHeader>
-              <CardTitle>Charge de Travail des Agents</CardTitle>
-              <CardDescription>
-                Vue d&apos;ensemble de la charge de travail par agent
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <Activity className="h-12 w-12 mb-4 opacity-50" />
-                <p>Sélectionnez un agent pour voir sa charge de travail</p>
-                <p className="text-sm">
-                  Ou accédez aux détails depuis la liste des agents
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Overview Tab */}
+        <TabsContent value="overview">
+          <WorkloadOverviewTab
+            agents={agents}
+            agentsLoading={agentsLoading}
+            dashboard={alertsDashboard}
+            dashboardLoading={alertsLoading}
+            onViewAgent={(agentId) => router.push(`/${locale}/dashboard/admin/agents/${agentId}`)}
+          />
         </TabsContent>
 
-        {/* Performance Tab */}
-        <TabsContent value="performance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance des Agents</CardTitle>
-              <CardDescription>
-                Statistiques de performance par agent
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mb-4 opacity-50" />
-                <p>Sélectionnez un agent pour voir ses performances</p>
-                <p className="text-sm">
-                  Ou accédez aux détails depuis la liste des agents
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Assistant IA Tab */}
+        <TabsContent value="assistant">
+          <AdminAssistantTab />
         </TabsContent>
       </Tabs>
 
@@ -686,21 +490,15 @@ export default function AgentsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogTitle>{t('confirmDeleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer l&apos;agent{' '}
-              <strong>{selectedAgent?.user_full_name}</strong> ?
-              <br />
-              Cette action est irréversible.
+              {t('confirmDeleteDesc', { name: selectedAgent?.user_full_name || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteAgent}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Supprimer
+            <AlertDialogCancel>{tAdmin('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAgent} className="bg-red-600 hover:bg-red-700">
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

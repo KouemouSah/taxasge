@@ -357,3 +357,23 @@ class AgentWorkload(AgentWorkloadBase):
 
     class Config:
         from_attributes = True
+
+
+# ============================================================================
+# ADMIN ALERTS DASHBOARD
+# ============================================================================
+
+class AdminAlertsDashboard(BaseModel):
+    """Aggregated alerts for the admin agents dashboard."""
+    inactive_count: int = 0
+    overloaded_count: int = 0
+    stale_locks_count: int = 0
+    sla_at_risk_count: int = 0
+    total_alerts: int = 0
+    inactive_agents: Optional[List[Dict[str, Any]]] = None
+    overloaded_agents: Optional[List[Dict[str, Any]]] = None
+    stale_locks: Optional[List[Dict[str, Any]]] = None
+    sla_at_risk: Optional[List[Dict[str, Any]]] = None
+    workload_by_entity: Optional[List[Dict[str, Any]]] = None
+    llm_briefing: Optional[str] = None
+    llm_priority: str = "normal"

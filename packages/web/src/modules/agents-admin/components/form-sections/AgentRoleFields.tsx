@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,6 +26,7 @@ interface RoleOption {
   code: string;
   name: string;
   description?: string | null;
+  default_agent_config?: Record<string, unknown> | null;
 }
 
 interface AgentRoleFieldsProps {
@@ -40,10 +42,29 @@ export function AgentRoleFields({
 }: AgentRoleFieldsProps) {
   const watchIsSupervisor = form.watch('is_supervisor');
   const watchRbacRoleId = form.watch('rbac_role_id');
+  const prevRoleIdRef = useRef<string | null>(null);
 
   // Check supervisor + role compatibility
   const selectedRole = rbacRoles.find(r => r.id === watchRbacRoleId);
   const hasSupervisorMismatch = watchIsSupervisor && selectedRole && !selectedRole.code.includes('supervisor');
+  const hasDefaultConfig = !!selectedRole?.default_agent_config;
+
+  // Auto-fill capabilities from role defaults when role changes
+  useEffect(() => {
+    if (!watchRbacRoleId || watchRbacRoleId === prevRoleIdRef.current) return;
+    prevRoleIdRef.current = watchRbacRoleId;
+
+    const config = selectedRole?.default_agent_config;
+    if (!config) return;
+
+    // Apply defaults — only set fields that have values in the config
+    if (config.is_supervisor !== undefined) form.setValue('is_supervisor', !!config.is_supervisor);
+    if (config.can_escalate !== undefined) form.setValue('can_escalate', !!config.can_escalate);
+    if (config.can_assign_tasks !== undefined) form.setValue('can_assign_tasks', !!config.can_assign_tasks);
+    if (config.can_reassign !== undefined) form.setValue('can_reassign', !!config.can_reassign);
+    if (config.can_approve_unlimited !== undefined) form.setValue('can_approve_unlimited', !!config.can_approve_unlimited);
+    if (config.max_approval_amount !== undefined) form.setValue('max_approval_amount', config.max_approval_amount);
+  }, [watchRbacRoleId, selectedRole, form]);
 
   const roleItems = rbacRoles.map(r => ({
     value: r.id,
@@ -108,6 +129,16 @@ export function AgentRoleFields({
           </FormItem>
         )}
       />
+
+      {/* Role defaults applied info */}
+      {hasDefaultConfig && (
+        <Alert variant="default" className="border-blue-300 bg-blue-50">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            Les capacités ont été pré-remplies selon le rôle sélectionné. Vous pouvez les modifier.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Supervisor + Role mismatch warning */}
       {hasSupervisorMismatch && (

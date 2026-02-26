@@ -4,7 +4,7 @@
  * Agent/Admin Detail Page (Refactored)
  * View and edit agent profile with context-adaptive form sections.
  *
- * Tabs: Profile | Specializations | Workload | Performance
+ * Tabs: Profile | Activity
  *
  * @module dashboard/admin/agents/[id]
  */
@@ -24,12 +24,6 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import {
   Form,
   FormField,
@@ -51,16 +45,13 @@ import {
   ArrowLeft,
   Loader2,
   UserCog,
-  Briefcase,
+  Activity,
   XCircle,
-  BarChart3,
   Settings,
   Power,
   PowerOff,
-  GraduationCap,
   ChevronLeft,
   ChevronRight,
-  Search,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -71,11 +62,10 @@ import {
   useUpdateAgentProfile,
   useDeactivateAgent,
   useReactivateAgent,
-  useAvailableWorkflows,
 } from '@/modules/agents-admin/hooks';
-import { WorkloadStats, PerformanceStats } from '@/modules/agents-admin/components';
+import { AgentActivityTab } from '@/modules/agents-admin/components';
 import { AgentType } from '@/modules/agents-admin/types';
-import type { AgentProfileUpdateRequest, WorkflowOption } from '@/modules/agents-admin/types';
+import type { AgentProfileUpdateRequest } from '@/modules/agents-admin/types';
 import { hierarchyApi } from '@/modules/fiscal-services/services/api';
 import { useEntities } from '@/modules/cities/hooks';
 import { useRoles } from '@/modules/roles-admin/hooks/useRoles';
@@ -129,7 +119,6 @@ export default function AgentDetailPage() {
   // Use full Entity (not EntitySimple) to get workflow_codes for context-adaptive UX
   const { data: entitiesData, isLoading: isLoadingEntities } = useEntities({ is_active: true });
 
-  const { data: workflowsData, isLoading: isLoadingWorkflows } = useAvailableWorkflows();
   const { data: rolesData, isLoading: isLoadingRoles } = useRoles({ entity_type: null });
 
   // --- Transform data ---
@@ -141,7 +130,6 @@ export default function AgentDetailPage() {
     entity_type: e.entity_type,
     workflow_codes: e.workflow_codes || [],
   })) || [];
-  const workflows = workflowsData || [];
   const rbacRoles = rolesData?.roles || [];
 
   const router = useRouter();
@@ -152,7 +140,6 @@ export default function AgentDetailPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(searchParams.get('mode') === 'edit');
   const [deactivateReason, setDeactivateReason] = useState('');
-  const [workflowFilter, setWorkflowFilter] = useState('');
 
   const profileId = params.id as string;
 
@@ -162,7 +149,7 @@ export default function AgentDetailPage() {
   const { data: performance, isLoading: performanceLoading } = useAgentPerformance(profileId, !!profile);
 
   // Agent navigation
-  const { data: allAgentsData, isLoading: agentsListLoading, error: agentsListError } = useAgentProfiles({ page_size: 500 });
+  const { data: allAgentsData, isLoading: agentsListLoading, error: agentsListError } = useAgentProfiles({ page_size: 100 });
   const allAgents = allAgentsData?.items || [];
   const currentIndex = allAgents.findIndex(a => a.id === profileId);
   const prevAgentId = currentIndex > 0 ? allAgents[currentIndex - 1]?.id : null;
@@ -522,22 +509,14 @@ export default function AgentDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Profil
           </TabsTrigger>
-          <TabsTrigger value="specializations" className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            Spécialisations
-          </TabsTrigger>
-          <TabsTrigger value="workload" className="flex items-center gap-2">
-            <Briefcase className="h-4 w-4" />
-            Charge
-          </TabsTrigger>
-          <TabsTrigger value="performance" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Performance
+          <TabsTrigger value="activity" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Activité
           </TabsTrigger>
         </TabsList>
 
@@ -799,257 +778,15 @@ export default function AgentDetailPage() {
           )}
         </TabsContent>
 
-        {/* ========== Specializations Tab ========== */}
-        <TabsContent value="specializations" className="mt-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    Spécialisations
-                    <Badge variant="outline">
-                      {form.watch('specializations')?.length || 0} workflow(s)
-                    </Badge>
-                  </CardTitle>
-                  <CardDescription>
-                    Les spécialisations définissent les types de demandes que l&apos;agent peut traiter.
-                    Si aucune n&apos;est sélectionnée, l&apos;agent héritera des workflows de son entité.
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)}>
-                  <FormField
-                    control={form.control}
-                    name="specializations"
-                    render={({ field }) => {
-                      const filteredWorkflows = workflowFilter
-                        ? workflows.filter(wf =>
-                            wf.name_es?.toLowerCase().includes(workflowFilter.toLowerCase()) ||
-                            wf.code.toLowerCase().includes(workflowFilter.toLowerCase()) ||
-                            wf.entity_code?.toLowerCase().includes(workflowFilter.toLowerCase())
-                          )
-                        : workflows;
-
-                      const groupedWorkflows = filteredWorkflows.reduce((acc, wf) => {
-                        const key = wf.entity_code || 'Général';
-                        if (!acc[key]) acc[key] = [];
-                        acc[key].push(wf);
-                        return acc;
-                      }, {} as Record<string, WorkflowOption[]>);
-
-                      const getSelectedCount = (entityWorkflows: WorkflowOption[]) =>
-                        entityWorkflows.filter(wf => field.value?.includes(wf.code)).length;
-
-                      const toggleGroup = (entityWorkflows: WorkflowOption[], select: boolean) => {
-                        const codes = entityWorkflows.map(wf => wf.code);
-                        const current = field.value || [];
-                        if (select) {
-                          const newCodes = codes.filter(c => !current.includes(c));
-                          field.onChange([...current, ...newCodes]);
-                        } else {
-                          field.onChange(current.filter(c => !codes.includes(c)));
-                        }
-                      };
-
-                      return (
-                        <FormItem>
-                          <div className="space-y-4">
-                            {/* Search */}
-                            <div className="relative">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                placeholder="Filtrer les workflows par nom, code ou entité..."
-                                value={workflowFilter}
-                                onChange={(e) => setWorkflowFilter(e.target.value)}
-                                className="pl-9"
-                              />
-                            </div>
-
-                            {isLoadingWorkflows ? (
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Chargement des workflows...
-                              </div>
-                            ) : workflows.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">
-                                Aucun workflow disponible.
-                              </p>
-                            ) : filteredWorkflows.length === 0 ? (
-                              <p className="text-sm text-muted-foreground text-center py-8">
-                                Aucun workflow ne correspond à &quot;{workflowFilter}&quot;
-                              </p>
-                            ) : (
-                              <Accordion type="multiple" defaultValue={Object.keys(groupedWorkflows)} className="w-full">
-                                {Object.entries(groupedWorkflows).map(([entityCode, entityWorkflows]) => {
-                                  const selectedCount = getSelectedCount(entityWorkflows);
-                                  const allSelected = selectedCount === entityWorkflows.length;
-
-                                  return (
-                                    <AccordionItem key={entityCode} value={entityCode}>
-                                      <AccordionTrigger className="hover:no-underline">
-                                        <div className="flex items-center justify-between w-full pr-4">
-                                          <div className="flex items-center gap-3">
-                                            <Badge variant="outline" className="font-mono">
-                                              {entityCode}
-                                            </Badge>
-                                            <span className="text-sm text-muted-foreground">
-                                              {entityWorkflows.length} workflow(s)
-                                            </span>
-                                          </div>
-                                          {selectedCount > 0 && (
-                                            <Badge variant="default" className="ml-auto mr-2">
-                                              {selectedCount} sélectionné(s)
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </AccordionTrigger>
-                                      <AccordionContent>
-                                        <div className="flex items-center justify-end gap-2 mb-3 pb-2 border-b">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => toggleGroup(entityWorkflows, true)}
-                                            disabled={allSelected}
-                                          >
-                                            Tout sélectionner
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => toggleGroup(entityWorkflows, false)}
-                                            disabled={selectedCount === 0}
-                                          >
-                                            Tout désélectionner
-                                          </Button>
-                                        </div>
-                                        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                                          {entityWorkflows.map((wf) => (
-                                            <div
-                                              key={wf.code}
-                                              className={`flex items-start space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                                                field.value?.includes(wf.code)
-                                                  ? 'border-primary bg-primary/5'
-                                                  : 'border-muted hover:border-primary/50'
-                                              }`}
-                                              onClick={() => {
-                                                const current = field.value || [];
-                                                const updated = current.includes(wf.code)
-                                                  ? current.filter((c) => c !== wf.code)
-                                                  : [...current, wf.code];
-                                                field.onChange(updated);
-                                              }}
-                                            >
-                                              <Checkbox
-                                                checked={field.value?.includes(wf.code)}
-                                                onCheckedChange={(checked) => {
-                                                  const current = field.value || [];
-                                                  const updated = checked
-                                                    ? [...current, wf.code]
-                                                    : current.filter((c) => c !== wf.code);
-                                                  field.onChange(updated);
-                                                }}
-                                              />
-                                              <div className="space-y-1">
-                                                <p className="text-sm font-medium leading-none">{wf.name_es}</p>
-                                                {wf.description_es && (
-                                                  <p className="text-xs text-muted-foreground line-clamp-2">
-                                                    {wf.description_es}
-                                                  </p>
-                                                )}
-                                                <div className="flex gap-1">
-                                                  {wf.requires_agent_validation && (
-                                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                                                      Validation
-                                                    </span>
-                                                  )}
-                                                  {wf.sla_hours && (
-                                                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                                                      SLA: {wf.sla_hours}h
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </AccordionContent>
-                                    </AccordionItem>
-                                  );
-                                })}
-                              </Accordion>
-                            )}
-
-                            {field.value && field.value.length > 0 && (
-                              <div className="flex items-center justify-between pt-4 border-t">
-                                <span className="text-sm text-muted-foreground">
-                                  {field.value.length} workflow(s) sélectionné(s)
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => field.onChange([])}
-                                >
-                                  Tout désélectionner
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
-                  <div className="flex justify-end gap-3 pt-6">
-                    <Button type="submit" disabled={updateMutation.isPending}>
-                      {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Enregistrer les spécialisations
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+        {/* ========== Activity Tab (merged Workload + Performance) ========== */}
+        <TabsContent value="activity" className="mt-6">
+          <AgentActivityTab
+            workload={workload}
+            performance={performance}
+            isLoading={workloadLoading || performanceLoading}
+          />
         </TabsContent>
 
-        {/* ========== Workload Tab ========== */}
-        <TabsContent value="workload" className="mt-6">
-          {workloadLoading ? (
-            <Skeleton className="h-[300px] w-full" />
-          ) : workload ? (
-            <WorkloadStats workload={workload} />
-          ) : (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground text-center">
-                  Aucune donnée de charge de travail disponible.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* ========== Performance Tab ========== */}
-        <TabsContent value="performance" className="mt-6">
-          {performanceLoading ? (
-            <Skeleton className="h-[400px] w-full" />
-          ) : performance ? (
-            <PerformanceStats performance={performance} />
-          ) : (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground text-center">
-                  Aucune donnée de performance disponible.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   );

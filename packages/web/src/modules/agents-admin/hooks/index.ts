@@ -7,7 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { agentCreationApi, agentProfilesApi, agentWorkloadApi, adminUsersApi, workflowsApi } from '../services/api';
+import { agentCreationApi, agentProfilesApi, agentWorkloadApi, agentAlertsApi, adminAssistantApi, adminUsersApi, workflowsApi } from '../services/api';
 import type {
   AgentCompleteCreateRequest,
   AdminCreateRequest,
@@ -138,6 +138,38 @@ export function useAgentPerformance(profileId: string, enabled = true) {
     queryFn: () => agentWorkloadApi.getPerformance(profileId),
     enabled: enabled && !!profileId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// =============================================================================
+// ADMIN ALERTS DASHBOARD HOOKS
+// =============================================================================
+
+/**
+ * Hook to get admin alerts dashboard
+ * Auto-refreshes every 60s, stale after 30s
+ */
+export function useAlertsDashboard(enabled = true) {
+  return useQuery({
+    queryKey: [...agentQueryKeys.all, 'alerts-dashboard'],
+    queryFn: () => agentAlertsApi.getDashboard(),
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+// =============================================================================
+// ADMIN ASSISTANT HOOKS
+// =============================================================================
+
+/**
+ * Hook for admin assistant Q&A mutation
+ */
+export function useAdminAssistant() {
+  return useMutation({
+    mutationFn: (question: string) => adminAssistantApi.askQuestion(question),
   });
 }
 

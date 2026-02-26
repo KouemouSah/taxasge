@@ -323,10 +323,11 @@ class WorkloadRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get agent performance stats by agent_profile_id (UUID).
 
-        Since agent_performance_stats.agent_id references the legacy ministry_agents table,
-        we need to compute performance from assignments table for the new architecture.
+        Computes performance from TWO sources:
+        1. assignments table — for workflow-based agents (CNEDOGE, DGT, etc.)
+        2. payment_validation_audit — for payment-based agents (TESORO)
 
-        Returns computed performance metrics based on completed assignments.
+        Both sources are combined so the endpoint works for any agent type.
         """
         query = """
             WITH assignment_stats AS (
@@ -345,34 +346,49 @@ class WorkloadRepository:
                 )
                 AND a.created_at >= date_trunc('month', CURRENT_DATE)
             ),
+            payment_audit_stats AS (
+                SELECT
+                    COUNT(*) as total_validated,
+                    COUNT(*) FILTER (WHERE action = 'approve') as approved,
+                    COUNT(*) FILTER (WHERE action = 'reject') as rejected,
+                    COUNT(*) FILTER (WHERE action = 'escalate') as escalated,
+                    MAX(created_at) as last_action_at
+                FROM payment_validation_audit
+                WHERE agent_profile_id = $1::uuid
+                AND created_at >= date_trunc('month', CURRENT_DATE)
+            ),
             lock_stats AS (
                 SELECT
-                    COUNT(*) FILTER (WHERE locked_by = (SELECT user_id::text FROM agent_profiles WHERE id = $1) AND is_locked = true) as active_locks
+                    COUNT(*) FILTER (
+                        WHERE locked_by_agent_id = $1::uuid
+                        AND workflow_status IN ('locked_by_agent', 'agent_reviewing')
+                    ) as active_locks
                 FROM service_payments
             )
             SELECT
                 $1 as agent_profile_id,
-                COALESCE(s.total_completed, 0) as current_month_processed,
-                COALESCE(s.approved, 0) as current_month_approved,
-                COALESCE(s.rejected, 0) as current_month_rejected,
-                COALESCE(s.escalated, 0) as current_month_escalated,
-                ROUND(s.avg_processing_minutes, 2) as avg_processing_minutes,
+                COALESCE(a.total_completed, 0) + COALESCE(p.total_validated, 0) as current_month_processed,
+                COALESCE(a.approved, 0) + COALESCE(p.approved, 0) as current_month_approved,
+                COALESCE(a.rejected, 0) + COALESCE(p.rejected, 0) as current_month_rejected,
+                COALESCE(a.escalated, 0) + COALESCE(p.escalated, 0) as current_month_escalated,
+                ROUND(a.avg_processing_minutes, 2) as avg_processing_minutes,
                 NULL::numeric as avg_lock_duration_minutes,
-                COALESCE(s.sla_respected, 0) as sla_respected_count,
-                COALESCE(s.sla_missed, 0) as sla_missed_count,
+                COALESCE(a.sla_respected, 0) as sla_respected_count,
+                COALESCE(a.sla_missed, 0) as sla_missed_count,
                 CASE
-                    WHEN COALESCE(s.sla_respected, 0) + COALESCE(s.sla_missed, 0) > 0
-                    THEN ROUND((s.sla_respected::numeric / (s.sla_respected + s.sla_missed)) * 100, 2)
+                    WHEN COALESCE(a.sla_respected, 0) + COALESCE(a.sla_missed, 0) > 0
+                    THEN ROUND((a.sla_respected::numeric / (a.sla_respected + a.sla_missed)) * 100, 2)
                     ELSE NULL
                 END as sla_respect_percentage,
                 COALESCE(l.active_locks, 0)::int as current_active_locks,
                 0 as max_concurrent_locks,
-                s.last_action_at,
+                GREATEST(a.last_action_at, p.last_action_at) as last_action_at,
                 NULL::timestamp as last_login_at,
                 date_trunc('month', CURRENT_DATE)::date as stats_period_start,
                 NULL::date as stats_period_end,
                 NOW() as updated_at
-            FROM assignment_stats s
+            FROM assignment_stats a
+            CROSS JOIN payment_audit_stats p
             CROSS JOIN lock_stats l
         """
         try:
@@ -701,3 +717,130 @@ class WorkloadRepository:
         except Exception as e:
             logger.error(f"Error fetching agent performance rankings: {str(e)}")
             raise
+
+    async def get_admin_alerts_dashboard(self, conn) -> dict:
+        """
+        Single aggregated SQL returning all admin alerts.
+        O(1) per CTE via existing partial indexes.
+        Returns dict matching AdminAlertsDashboard model.
+        """
+        try:
+            query = """
+            WITH inactive_agents AS (
+                SELECT ap.id as agent_profile_id,
+                       u.full_name as agent_name,
+                       e.code as entity_code,
+                       aw.last_assignment_at,
+                       aw.last_completion_at,
+                       EXTRACT(EPOCH FROM (NOW() - GREATEST(
+                           COALESCE(aw.last_assignment_at, ap.created_at),
+                           COALESCE(aw.last_completion_at, ap.created_at)
+                       ))) / 3600 as inactive_hours
+                FROM agent_profiles ap
+                JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                JOIN users u ON u.id = ap.user_id
+                LEFT JOIN entities e ON e.id = ap.entity_id
+                WHERE ap.is_active = true
+                AND GREATEST(
+                    COALESCE(aw.last_assignment_at, ap.created_at),
+                    COALESCE(aw.last_completion_at, ap.created_at)
+                ) < NOW() - INTERVAL '48 hours'
+            ),
+            overloaded_agents AS (
+                SELECT ap.id as agent_profile_id,
+                       u.full_name as agent_name,
+                       e.code as entity_code,
+                       aw.capacity_percentage,
+                       aw.current_assignments,
+                       aw.max_concurrent_assignments
+                FROM agent_profiles ap
+                JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                JOIN users u ON u.id = ap.user_id
+                LEFT JOIN entities e ON e.id = ap.entity_id
+                WHERE ap.is_active = true
+                AND aw.capacity_percentage > 80
+            ),
+            stale_locks AS (
+                SELECT sp.id as payment_id,
+                       sp.payment_reference,
+                       sp.locked_by_agent_profile_id as agent_profile_id,
+                       u.full_name as agent_name,
+                       sp.locked_at,
+                       EXTRACT(EPOCH FROM (NOW() - sp.locked_at)) / 3600 as locked_hours
+                FROM service_payments sp
+                JOIN agent_profiles ap ON ap.id = sp.locked_by_agent_profile_id
+                JOIN users u ON u.id = ap.user_id
+                WHERE sp.locked_by_agent_profile_id IS NOT NULL
+                AND sp.locked_at < NOW() - INTERVAL '4 hours'
+                AND sp.workflow_status IN ('locked_by_agent', 'agent_reviewing')
+            ),
+            sla_at_risk AS (
+                SELECT sp.id as payment_id,
+                       sp.payment_reference,
+                       sp.sla_target_date,
+                       EXTRACT(EPOCH FROM (sp.sla_target_date - NOW())) / 3600 as hours_remaining
+                FROM service_payments sp
+                WHERE sp.workflow_status = 'pending_agent_review'
+                AND sp.sla_target_date IS NOT NULL
+                AND sp.sla_target_date < NOW() + INTERVAL '24 hours'
+                AND sp.sla_target_date > NOW()
+            ),
+            workload_summary AS (
+                SELECT e.code as entity_code,
+                       e.name as entity_name,
+                       COUNT(ap.id)::int as agent_count,
+                       COUNT(*) FILTER (WHERE aw.capacity_percentage > 80)::int as overloaded_count,
+                       COALESCE(AVG(aw.capacity_percentage), 0)::int as avg_capacity,
+                       COALESCE(SUM(aw.current_assignments), 0)::int as total_assignments
+                FROM agent_profiles ap
+                JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                LEFT JOIN entities e ON e.id = ap.entity_id
+                WHERE ap.is_active = true
+                GROUP BY e.code, e.name
+            )
+            SELECT json_build_object(
+                'inactive_count', (SELECT COUNT(*)::int FROM inactive_agents),
+                'overloaded_count', (SELECT COUNT(*)::int FROM overloaded_agents),
+                'stale_locks_count', (SELECT COUNT(*)::int FROM stale_locks),
+                'sla_at_risk_count', (SELECT COUNT(*)::int FROM sla_at_risk),
+                'inactive_agents', COALESCE((SELECT json_agg(row_to_json(t)) FROM inactive_agents t), '[]'::json),
+                'overloaded_agents', COALESCE((SELECT json_agg(row_to_json(t)) FROM overloaded_agents t), '[]'::json),
+                'stale_locks', COALESCE((SELECT json_agg(row_to_json(t)) FROM stale_locks t), '[]'::json),
+                'sla_at_risk', COALESCE((SELECT json_agg(row_to_json(t)) FROM sla_at_risk t), '[]'::json),
+                'workload_by_entity', COALESCE((SELECT json_agg(row_to_json(t)) FROM workload_summary t), '[]'::json)
+            ) as dashboard
+            """
+            row = await conn.fetchrow(query)
+            if not row:
+                return {
+                    'inactive_count': 0, 'overloaded_count': 0,
+                    'stale_locks_count': 0, 'sla_at_risk_count': 0,
+                    'total_alerts': 0,
+                    'inactive_agents': [], 'overloaded_agents': [],
+                    'stale_locks': [], 'sla_at_risk': [],
+                    'workload_by_entity': [],
+                }
+
+            import json as json_lib
+            dashboard = row['dashboard']
+            if isinstance(dashboard, str):
+                dashboard = json_lib.loads(dashboard)
+
+            dashboard['total_alerts'] = (
+                dashboard.get('inactive_count', 0) +
+                dashboard.get('overloaded_count', 0) +
+                dashboard.get('stale_locks_count', 0) +
+                dashboard.get('sla_at_risk_count', 0)
+            )
+            return dashboard
+
+        except Exception as e:
+            logger.error(f"Error fetching admin alerts dashboard: {str(e)}")
+            return {
+                'inactive_count': 0, 'overloaded_count': 0,
+                'stale_locks_count': 0, 'sla_at_risk_count': 0,
+                'total_alerts': 0,
+                'inactive_agents': [], 'overloaded_agents': [],
+                'stale_locks': [], 'sla_at_risk': [],
+                'workload_by_entity': [],
+            }

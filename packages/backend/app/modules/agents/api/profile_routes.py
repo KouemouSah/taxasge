@@ -897,3 +897,162 @@ async def get_profile_performance(
         stats_period_start=stats.get('stats_period_start'),
         stats_period_end=stats.get('stats_period_end'),
     )
+
+
+# ============================================================================
+# ADMIN ALERTS DASHBOARD
+# ============================================================================
+
+from app.core.cache import get_cache
+
+
+@router.get("/admin/alerts-dashboard")
+async def get_alerts_dashboard(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+    _: None = Depends(permission_required("agent.view"))
+):
+    """
+    Aggregated alerts dashboard for admin agent management.
+
+    Returns counts and details for:
+    - Inactive agents (no activity >48h)
+    - Overloaded agents (capacity >80%)
+    - Stale locks (payments locked >4h)
+    - SLA at risk (expiring within 24h)
+    - Workload summary by entity
+    - LLM briefing (async, cached 5min, graceful degradation)
+
+    Cached for 60 seconds (real-time enough for admin monitoring).
+    """
+    cache = get_cache()
+    cache_key = "admin:agents:alerts-dashboard"
+
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    result = await workload_repository.get_admin_alerts_dashboard(db)
+
+    if not result:
+        return {
+            "inactive_count": 0,
+            "overloaded_count": 0,
+            "stale_locks_count": 0,
+            "sla_at_risk_count": 0,
+            "total_alerts": 0,
+        }
+
+    # Async LLM briefing (non-blocking, same TTL as dashboard to avoid stale analysis)
+    from app.modules.agents.services.llm_briefing_service import llm_briefing_service
+
+    briefing_key = "admin:agents:llm-briefing"
+    briefing = await cache.get(briefing_key)
+    if not briefing:
+        try:
+            briefing = await llm_briefing_service.generate_briefing(result)
+            if briefing:
+                # Same TTL as dashboard (60s) to keep data and analysis in sync
+                await cache.set(briefing_key, briefing, ttl=60)
+        except Exception as e:
+            logger.warning(f"LLM briefing failed (graceful): {e}")
+
+    # Safely extract briefing fields (cache may return unexpected types)
+    if isinstance(briefing, dict):
+        result["llm_briefing"] = briefing.get("briefing")
+        result["llm_priority"] = briefing.get("priority", "normal")
+    else:
+        result["llm_briefing"] = None
+        result["llm_priority"] = "normal"
+
+    await cache.set(cache_key, result, ttl=60)
+
+    return result
+
+
+# ============================================================================
+# ADMIN ASSISTANT (LLM Q&A)
+# ============================================================================
+
+from pydantic import BaseModel as PydanticBaseModel, Field
+import re
+
+
+class AdminAssistantRequest(PydanticBaseModel):
+    """Request for admin assistant Q&A."""
+    question: str = Field(
+        ...,
+        min_length=3,
+        max_length=500,
+        description="Question en langage naturel (3-500 caractères)"
+    )
+
+
+class AdminAssistantResponse(PydanticBaseModel):
+    """Response from admin assistant."""
+    answer: str
+    tools_used: List[str] = []
+    data: Dict[str, Any] = {}
+
+
+def _sanitize_question(question: str) -> str:
+    """Sanitize user question to prevent prompt injection."""
+    # Strip control characters and excessive whitespace
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', question)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    # Remove common injection patterns
+    injection_patterns = [
+        r'(?i)ignore\s+(previous|above|all)\s+(instructions?|prompts?)',
+        r'(?i)you\s+are\s+now\s+',
+        r'(?i)system\s*:\s*',
+        r'(?i)INST\]',
+        r'(?i)\[\/INST\]',
+    ]
+    for pattern in injection_patterns:
+        cleaned = re.sub(pattern, '', cleaned)
+    return cleaned.strip()
+
+
+@router.post("/admin/assistant", response_model=AdminAssistantResponse)
+async def admin_assistant_query(
+    request: AdminAssistantRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db = Depends(get_database),
+    _: None = Depends(permission_required("agent.view"))
+):
+    """
+    LLM-powered admin assistant for agent management Q&A.
+
+    Accepts natural language questions in Spanish about agents,
+    workload, performance, SLA, and anomalies.
+
+    Uses Gemini function calling — the LLM never generates SQL directly.
+    It routes to predefined safe functions and formats the response.
+
+    Rate limited: 10 requests per minute per user.
+    """
+    from app.core.cache import check_rate_limit
+    from app.modules.agents.services.admin_assistant_service import admin_assistant_service
+
+    # Rate limit: 10 requests/minute per user (Gemini costs money)
+    user_id = current_user.get("id", "anonymous")
+    is_allowed, remaining = await check_rate_limit(
+        str(user_id), "/agents/admin/assistant", max_requests=10, window_seconds=60
+    )
+    if not is_allowed:
+        return AdminAssistantResponse(
+            answer="Has alcanzado el límite de consultas (10/min). Espera un momento antes de intentar de nuevo.",
+            tools_used=[],
+            data={},
+        )
+
+    sanitized = _sanitize_question(request.question)
+    if len(sanitized) < 3:
+        return AdminAssistantResponse(
+            answer="Pregunta demasiado corta o inválida. Escribe una pregunta clara.",
+            tools_used=[],
+            data={},
+        )
+
+    result = await admin_assistant_service.process_question(db, sanitized)
+    return AdminAssistantResponse(**result)

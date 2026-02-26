@@ -513,6 +513,102 @@ export interface AdminActivateResponse {
 }
 
 // =============================================================================
+// ADMIN ALERTS DASHBOARD TYPES
+// =============================================================================
+
+/**
+ * Inactive agent alert detail
+ * BACKEND: get_admin_alerts_dashboard() CTE
+ */
+export interface InactiveAgentAlert {
+  agent_profile_id: string;
+  user_id: string;
+  agent_name: string;
+  entity_code?: string;
+  last_assignment_at?: string;
+  last_completion_at?: string;
+}
+
+/**
+ * Overloaded agent alert detail
+ */
+export interface OverloadedAgentAlert {
+  agent_profile_id: string;
+  agent_name: string;
+  entity_code?: string;
+  capacity_percentage: number;
+  current_assignments: number;
+  max_concurrent_assignments: number;
+}
+
+/**
+ * Stale lock alert detail
+ */
+export interface StaleLockAlert {
+  payment_id: string;
+  payment_reference: string;
+  locked_by_agent_profile_id: string;
+  locked_agent_name?: string;
+  locked_at: string;
+  locked_hours: number;
+}
+
+/**
+ * SLA at risk alert detail
+ */
+export interface SlaAtRiskAlert {
+  payment_id: string;
+  payment_reference: string;
+  sla_target_date: string;
+  hours_remaining: number;
+}
+
+/**
+ * Entity workload summary
+ */
+export interface EntityWorkloadSummary {
+  entity_code: string;
+  entity_name: string;
+  agent_count: number;
+  overloaded_count: number;
+  avg_capacity: number;
+  total_assignments: number;
+}
+
+/**
+ * Aggregated admin alerts dashboard
+ * BACKEND: AdminAlertsDashboard in agent.py
+ */
+export interface AdminAlertsDashboard {
+  inactive_count: number;
+  overloaded_count: number;
+  stale_locks_count: number;
+  sla_at_risk_count: number;
+  total_alerts: number;
+  inactive_agents?: InactiveAgentAlert[];
+  overloaded_agents?: OverloadedAgentAlert[];
+  stale_locks?: StaleLockAlert[];
+  sla_at_risk?: SlaAtRiskAlert[];
+  workload_by_entity?: EntityWorkloadSummary[];
+  llm_briefing?: string;
+  llm_priority?: 'normal' | 'attention' | 'urgent';
+}
+
+// =============================================================================
+// ADMIN ASSISTANT TYPES
+// =============================================================================
+
+export interface AdminAssistantRequest {
+  question: string;
+}
+
+export interface AdminAssistantResponse {
+  answer: string;
+  tools_used: string[];
+  data: Record<string, unknown>;
+}
+
+// =============================================================================
 // PRE-SUBMIT VALIDATION TYPES
 // =============================================================================
 

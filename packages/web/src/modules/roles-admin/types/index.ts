@@ -17,6 +17,8 @@ export interface Role {
   entity_type: string | null // 'DGI' | 'Ministry' | null
   description: string | null
   is_system: boolean
+  /** Default agent profile config for this role. NULL = system defaults */
+  default_agent_config?: Record<string, unknown> | null
   created_at: string
   updated_at: string
   created_by: string | null
