@@ -8,10 +8,11 @@ Based on DATABASE_SCHEMA_REFERENCE.md (2026-01-18):
 - Migration 054: agent_profile_id is the primary identifier
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from uuid import UUID
+import json
 
 
 class AgentWorkload(BaseModel):
@@ -42,6 +43,19 @@ class AgentWorkload(BaseModel):
 
     # From agent_profiles table
     specializations: Optional[List[str]] = Field(None, description="DB: agent_profiles.specializations (JSONB)")
+
+    @field_validator("specializations", mode="before")
+    @classmethod
+    def parse_jsonb_specializations(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else None
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
     # Computed fields (not in DB)
     completed_today: int = Field(0, description="Computed from assignments")
