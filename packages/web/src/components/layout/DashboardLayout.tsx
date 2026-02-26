@@ -36,6 +36,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Prevent body-level scrolling in dashboard (scroll happens in <main>)
+  useEffect(() => {
+    document.body.classList.add('overflow-hidden')
+    return () => { document.body.classList.remove('overflow-hidden') }
+  }, [])
+
   useEffect(() => {
     const authData = getAuthData()
 

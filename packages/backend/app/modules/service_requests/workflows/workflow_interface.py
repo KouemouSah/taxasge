@@ -672,10 +672,21 @@ class PredefinedWorkflow(ABC):
         code = self.workflow_code.value
         return code.split('_')[0] if '_' in code else code
 
+    # Mapping from menu_group to proper i18n key (must match frontend messages)
+    _MENU_GROUP_I18N: dict = {
+        'PASAPORTE': 'agent.nav.passports',
+        'RESIDENCIA': 'agent.nav.residences',
+        'CONDUCIR': 'agent.nav.licenses',
+        'VEHICULO': 'agent.nav.vehicles',
+        'CONTRATO': 'agent.nav.contracts',
+        'FP': 'agent.nav.fp',
+        'VISADO': 'agent.nav.visas',
+    }
+
     @property
     def menu_title_key(self) -> str:
-        """i18n key for menu title. Default derived from menu_group."""
-        return f"agent.nav.{self.menu_group.lower()}"
+        """i18n key for menu title. Uses _MENU_GROUP_I18N mapping, falls back to menu_group."""
+        return self._MENU_GROUP_I18N.get(self.menu_group, f"agent.nav.{self.menu_group.lower()}")
 
     # === Auto-Discovery Methods (Plug & Play Pipeline) ===
 

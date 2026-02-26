@@ -984,15 +984,15 @@ export function WorkflowMappingForm({
 
       {/* Sub-item add/edit dialog */}
       <Dialog open={subItemDialogOpen} onOpenChange={setSubItemDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {editingSubItem
-                ? t('fields.editSubItem', { defaultValue: 'Modifier le sous-menu' })
-                : t('fields.addSubItem', { defaultValue: 'Ajouter un sous-menu' })}
+                ? t('fields.editSubItem')
+                : t('fields.addSubItem')}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-1">
             <div className="grid gap-2">
               <Label>{t('fields.subItemId', { defaultValue: 'ID (unique)' })}</Label>
               <Input

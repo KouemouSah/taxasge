@@ -260,14 +260,21 @@ export function GenericAgentSidebar({
     router.push(`/${locale}`);
   };
 
-  // Get translated title
+  // Get translated title — strips 'agent.' prefix for i18n lookup
   const getTitle = (titleKey: string): string => {
     try {
-      return t(titleKey.replace('agent.', '')) || titleKey;
+      const key = titleKey.replace('agent.', '');
+      const translated = t(key);
+      // next-intl returns the key itself when not found
+      if (translated === key || !translated) {
+        // Humanize the last segment as fallback (e.g. "pasaporte" → "Pasaporte")
+        const lastPart = titleKey.split('.').pop() || titleKey;
+        return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+      }
+      return translated;
     } catch {
-      // Fallback to key name
-      const parts = titleKey.split('.');
-      return parts[parts.length - 1];
+      const lastPart = titleKey.split('.').pop() || titleKey;
+      return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
     }
   };
 

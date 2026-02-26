@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,17 +15,19 @@ interface AgentScheduleFieldsProps {
   form: UseFormReturn<any>;
 }
 
-const DAY_OPTIONS = [
-  { value: 1, label: 'Lun' },
-  { value: 2, label: 'Mar' },
-  { value: 3, label: 'Mer' },
-  { value: 4, label: 'Jeu' },
-  { value: 5, label: 'Ven' },
-  { value: 6, label: 'Sam' },
-  { value: 0, label: 'Dim' },
-];
-
 export function AgentScheduleFields({ form }: AgentScheduleFieldsProps) {
+  const t = useTranslations('admin.agents');
+
+  const dayOptions = [
+    { value: 1, label: t('days.mon') },
+    { value: 2, label: t('days.tue') },
+    { value: 3, label: t('days.wed') },
+    { value: 4, label: t('days.thu') },
+    { value: 5, label: t('days.fri') },
+    { value: 6, label: t('days.sat') },
+    { value: 0, label: t('days.sun') },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -34,7 +37,7 @@ export function AgentScheduleFields({ form }: AgentScheduleFieldsProps) {
           name="working_hours_start"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Heure de début</FormLabel>
+              <FormLabel>{t('form.startHour')}</FormLabel>
               <FormControl>
                 <Input type="time" {...field} value={field.value || '08:00'} />
               </FormControl>
@@ -48,7 +51,7 @@ export function AgentScheduleFields({ form }: AgentScheduleFieldsProps) {
           name="working_hours_end"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Heure de fin</FormLabel>
+              <FormLabel>{t('form.endHour')}</FormLabel>
               <FormControl>
                 <Input type="time" {...field} value={field.value || '17:00'} />
               </FormControl>
@@ -63,9 +66,9 @@ export function AgentScheduleFields({ form }: AgentScheduleFieldsProps) {
         name="working_days"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Jours de travail</FormLabel>
+            <FormLabel>{t('form.workingDays')}</FormLabel>
             <div className="flex flex-wrap gap-2">
-              {DAY_OPTIONS.map((day) => (
+              {dayOptions.map((day) => (
                 <Button
                   key={day.value}
                   type="button"

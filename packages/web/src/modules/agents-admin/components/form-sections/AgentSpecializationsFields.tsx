@@ -2,6 +2,7 @@
 
 import { UseFormReturn } from 'react-hook-form';
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
 import {
@@ -37,6 +38,7 @@ export function AgentSpecializationsFields({
   workflows,
   isLoadingWorkflows,
 }: AgentSpecializationsFieldsProps) {
+  const t = useTranslations('admin.agents');
   const initializedRef = useRef(false);
   const entityWorkflows = useMemo(() => entity.workflow_codes || [], [entity.workflow_codes]);
 
@@ -61,7 +63,7 @@ export function AgentSpecializationsFields({
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-4">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Chargement des workflows...
+        {t('form.loadingWorkflows')}
       </div>
     );
   }
@@ -69,7 +71,7 @@ export function AgentSpecializationsFields({
   if (entityWorkflowItems.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-2">
-        Aucun workflow disponible pour cette entité.
+        {t('form.noWorkflows')}
       </p>
     );
   }
@@ -80,9 +82,9 @@ export function AgentSpecializationsFields({
       name="specializations"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Workflows assignés</FormLabel>
+          <FormLabel>{t('form.specializations')}</FormLabel>
           <FormDescription>
-            Tous les workflows de l&apos;entité sont pré-sélectionnés. Décochez ceux que l&apos;agent ne doit pas traiter.
+            {t('form.specializationsDesc')}
           </FormDescription>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 mt-2">
             {entityWorkflowItems.map((wf) => {

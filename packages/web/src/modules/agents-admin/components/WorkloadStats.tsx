@@ -7,6 +7,7 @@
  * @module agents-admin/components
  */
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,8 @@ interface WorkloadStatsProps {
 }
 
 export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
+  const t = useTranslations('admin.agents');
+
   const getCapacityColor = (percentage: number) => {
     if (percentage < 50) return 'bg-green-500';
     if (percentage < 80) return 'bg-yellow-500';
@@ -34,12 +37,12 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
 
   const getAvailabilityBadge = (availability: string) => {
     const config: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      available: { label: 'Disponible', variant: 'default' },
-      on_leave: { label: 'En congé', variant: 'secondary' },
-      sick_leave: { label: 'Maladie', variant: 'destructive' },
-      training: { label: 'Formation', variant: 'outline' },
-      mission: { label: 'Mission', variant: 'outline' },
-      temporarily_unavailable: { label: 'Temp. indisponible', variant: 'secondary' },
+      available: { label: t('availability.available'), variant: 'default' },
+      on_leave: { label: t('availability.onLeave'), variant: 'secondary' },
+      sick_leave: { label: t('availability.sickLeave'), variant: 'destructive' },
+      training: { label: t('availability.training'), variant: 'outline' },
+      mission: { label: t('availability.mission'), variant: 'outline' },
+      temporarily_unavailable: { label: t('availability.temporarilyUnavailable'), variant: 'secondary' },
     };
     const c = config[availability] || { label: availability, variant: 'outline' as const };
     return <Badge variant={c.variant}>{c.label}</Badge>;
@@ -58,7 +61,7 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Activity className="h-4 w-4 text-muted-foreground" />
-            Capacité
+            {t('wkld.capacity')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -72,8 +75,8 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
               className={`h-2 ${getCapacityColor(workload.capacity_percentage)}`}
             />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{workload.pending_declarations} en attente</span>
-              <span>{workload.in_progress_declarations} en cours</span>
+              <span>{t('wkld.pending', { count: workload.pending_declarations })}</span>
+              <span>{t('wkld.inProgress', { count: workload.in_progress_declarations })}</span>
             </div>
           </div>
         </CardContent>
@@ -84,7 +87,7 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            Disponibilité
+            {t('wkld.availability')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -99,7 +102,7 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
             )}
             {workload.unavailable_until && (
               <p className="text-xs text-muted-foreground">
-                Jusqu&apos;au: {new Date(workload.unavailable_until).toLocaleDateString()}
+                {t('wkld.untilDate', { date: new Date(workload.unavailable_until).toLocaleDateString() })}
               </p>
             )}
           </div>
@@ -111,7 +114,7 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            Temps de traitement
+            {t('wkld.processingTime')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -120,11 +123,11 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
               {formatDuration(workload.avg_processing_time_hours)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Moyenne par dossier
+              {t('wkld.avgPerCase')}
             </p>
             {workload.avg_pending_duration_hours && (
               <p className="text-xs text-muted-foreground">
-                Attente moyenne: {formatDuration(workload.avg_pending_duration_hours)}
+                {t('wkld.avgWait', { duration: formatDuration(workload.avg_pending_duration_hours) })}
               </p>
             )}
           </div>
@@ -136,7 +139,7 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            Taux de complétion
+            {t('wkld.completionRate')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -145,10 +148,10 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
               {(workload.completion_rate_7d * 100).toFixed(0)}%
             </div>
             <p className="text-xs text-muted-foreground">
-              Sur les 7 derniers jours
+              {t('wkld.last7Days')}
             </p>
             <div className="text-sm">
-              Moyenne: {workload.avg_daily_completions.toFixed(1)} / jour
+              {t('wkld.avgPerDay', { count: workload.avg_daily_completions.toFixed(1) })}
             </div>
           </div>
         </CardContent>
@@ -159,7 +162,7 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            Qualité
+            {t('wkld.quality')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -169,8 +172,8 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
             </div>
             <Progress value={workload.quality_score_avg * 10} className="h-2" />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Réussite: {(workload.success_rate * 100).toFixed(0)}%</span>
-              <span>Délais: {(workload.deadline_compliance_rate * 100).toFixed(0)}%</span>
+              <span>{t('wkld.successRate', { rate: (workload.success_rate * 100).toFixed(0) })}</span>
+              <span>{t('wkld.deadlineRate', { rate: (workload.deadline_compliance_rate * 100).toFixed(0) })}</span>
             </div>
           </div>
         </CardContent>
@@ -181,7 +184,7 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            Plus ancien en attente
+            {t('wkld.oldestPending')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -192,16 +195,17 @@ export function WorkloadStats({ workload, className }: WorkloadStatsProps) {
                   {new Date(workload.oldest_pending_assignment_date).toLocaleDateString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {Math.floor(
-                    (Date.now() - new Date(workload.oldest_pending_assignment_date).getTime()) /
-                      (1000 * 60 * 60 * 24)
-                  )}{' '}
-                  jours
+                  {t('wkld.daysAgo', {
+                    count: Math.floor(
+                      (Date.now() - new Date(workload.oldest_pending_assignment_date).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    ),
+                  })}
                 </p>
               </>
             ) : (
               <div className="text-sm text-muted-foreground">
-                Aucun dossier en attente
+                {t('wkld.noPending')}
               </div>
             )}
           </div>

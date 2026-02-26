@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   FormControl,
@@ -14,33 +15,35 @@ interface AgentCapabilitiesFieldsProps {
   form: UseFormReturn<any>;
 }
 
-const CAPABILITIES = [
-  {
-    name: 'can_escalate' as const,
-    label: 'Peut escalader',
-    description: 'Escalader les demandes au superviseur ou à un autre agent.',
-  },
-  {
-    name: 'can_assign_tasks' as const,
-    label: 'Peut assigner des tâches',
-    description: 'Assigner des demandes à d\'autres agents de l\'équipe.',
-  },
-  {
-    name: 'can_reassign' as const,
-    label: 'Peut réassigner',
-    description: 'Transférer une demande assignée vers un autre agent.',
-  },
-] as const;
-
 /**
  * Supervisor capabilities: can_escalate, can_assign_tasks, can_reassign.
  * Only rendered when `is_supervisor = true` (handled by parent).
  */
 export function AgentCapabilitiesFields({ form }: AgentCapabilitiesFieldsProps) {
+  const t = useTranslations('admin.agents');
+
+  const capabilities = [
+    {
+      name: 'can_escalate' as const,
+      label: t('form.canEscalate'),
+      description: t('form.canEscalateDesc'),
+    },
+    {
+      name: 'can_assign_tasks' as const,
+      label: t('form.canAssignTasks'),
+      description: t('form.canAssignTasksDesc'),
+    },
+    {
+      name: 'can_reassign' as const,
+      label: t('form.canReassign'),
+      description: t('form.canReassignDesc'),
+    },
+  ] as const;
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {CAPABILITIES.map((cap) => (
+        {capabilities.map((cap) => (
           <FormField
             key={cap.name}
             control={form.control}

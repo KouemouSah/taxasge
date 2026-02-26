@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,6 +23,7 @@ interface AgentApprovalFieldsProps {
  * Parent controls visibility.
  */
 export function AgentApprovalFields({ form }: AgentApprovalFieldsProps) {
+  const t = useTranslations('admin.agents');
   const watchCanApproveUnlimited = form.watch('can_approve_unlimited');
 
   return (
@@ -38,9 +40,9 @@ export function AgentApprovalFields({ form }: AgentApprovalFieldsProps) {
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>Peut approuver des montants illimités</FormLabel>
+              <FormLabel>{t('form.unlimitedApproval')}</FormLabel>
               <FormDescription>
-                Si activé, l&apos;agent peut approuver tout montant sans plafond.
+                {t('form.unlimitedApprovalDesc')}
               </FormDescription>
             </div>
           </FormItem>
@@ -53,17 +55,17 @@ export function AgentApprovalFields({ form }: AgentApprovalFieldsProps) {
           name="max_approval_amount"
           render={({ field }) => (
             <FormItem className="max-w-xs">
-              <FormLabel>Montant maximum (XAF)</FormLabel>
+              <FormLabel>{t('form.maxAmount')}</FormLabel>
               <FormControl>
                 <Input
                   type="number"
-                  placeholder="100000"
+                  placeholder={t('form.maxAmountPlaceholder')}
                   {...field}
                   value={field.value ?? ''}
                 />
               </FormControl>
               <FormDescription>
-                Plafond d&apos;approbation par transaction.
+                {t('form.maxAmountDesc')}
               </FormDescription>
               <FormMessage />
             </FormItem>

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import {
   FormControl,
   FormDescription,
@@ -45,11 +46,6 @@ interface AgentOrganizationFieldsProps {
   isEditMode?: boolean;
 }
 
-const AGENT_TYPE_OPTIONS = [
-  { value: AgentType.MINISTRY_AGENT, label: 'Agent Ministère' },
-  { value: AgentType.ENTITY_AGENT, label: 'Agent Entité' },
-];
-
 export function AgentOrganizationFields({
   form,
   ministries,
@@ -60,11 +56,17 @@ export function AgentOrganizationFields({
   isLoadingLocations,
   isEditMode = false,
 }: AgentOrganizationFieldsProps) {
+  const t = useTranslations('admin.agents');
   const watchAgentType = form.watch('agent_type');
   const watchEntityId = form.watch('entity_id');
 
   const selectedEntity = entities.find(e => e.id === watchEntityId);
   const isDepartmentEntity = selectedEntity?.entity_type === 'department';
+
+  const agentTypeOptions = [
+    { value: AgentType.MINISTRY_AGENT, label: t('form.agentMinistry') },
+    { value: AgentType.ENTITY_AGENT, label: t('form.agentEntity') },
+  ];
 
   // Cascade: when entity changes, reset location
   useEffect(() => {
@@ -82,12 +84,12 @@ export function AgentOrganizationFields({
   const entityItems = entities.map(e => ({
     value: e.id,
     label: `${e.name} (${e.code})`,
-    description: e.entity_type === 'department' ? 'Département' : 'Entité racine',
+    description: e.entity_type === 'department' ? t('form.department') : t('form.rootEntity'),
   }));
 
   const locationItems = (entityLocations || []).map(loc => ({
     value: loc.id,
-    label: `${loc.location_name} — ${loc.city}${loc.is_main_office ? ' (principal)' : ''}`,
+    label: `${loc.location_name} — ${loc.city}${loc.is_main_office ? ` (${t('form.mainOffice')})` : ''}`,
   }));
 
   return (
@@ -98,7 +100,7 @@ export function AgentOrganizationFields({
         name="agent_type"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Type d&apos;agent <span className="text-destructive">*</span></FormLabel>
+            <FormLabel>{t('form.agentType')} <span className="text-destructive">*</span></FormLabel>
             <FormControl>
               <SafeSelect
                 value={field.value}
@@ -109,8 +111,8 @@ export function AgentOrganizationFields({
                   form.setValue('entity_id', '');
                   form.setValue('entity_location_id', '');
                 }}
-                items={AGENT_TYPE_OPTIONS}
-                placeholder="Sélectionner le type"
+                items={agentTypeOptions}
+                placeholder={t('form.selectType')}
               />
             </FormControl>
             <FormMessage />
@@ -125,15 +127,15 @@ export function AgentOrganizationFields({
           name="ministry_id"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ministère <span className="text-destructive">*</span></FormLabel>
+              <FormLabel>{t('form.ministry')} <span className="text-destructive">*</span></FormLabel>
               <FormControl>
                 <SafeSelect
                   value={field.value?.toString() || ''}
                   onValueChange={(val) => field.onChange(parseInt(val, 10))}
                   items={ministryItems}
                   isLoading={isLoadingMinistries}
-                  emptyMessage="Aucun ministère disponible"
-                  placeholder="Sélectionner le ministère"
+                  emptyMessage={t('form.noMinistry')}
+                  placeholder={t('form.selectMinistry')}
                 />
               </FormControl>
               <FormMessage />
@@ -150,15 +152,15 @@ export function AgentOrganizationFields({
             name="entity_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Entité <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>{t('form.entity')} <span className="text-destructive">*</span></FormLabel>
                 <FormControl>
                   <SafeSelect
                     value={field.value || ''}
                     onValueChange={field.onChange}
                     items={entityItems}
                     isLoading={isLoadingEntities}
-                    emptyMessage="Aucune entité disponible"
-                    placeholder="Sélectionner l'entité"
+                    emptyMessage={t('form.noEntity')}
+                    placeholder={t('form.selectEntity')}
                   />
                 </FormControl>
                 <FormMessage />
@@ -174,7 +176,7 @@ export function AgentOrganizationFields({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Site / Ubicación
+                    {t('form.site')}
                     {isDepartmentEntity && <span className="text-destructive ml-1">*</span>}
                   </FormLabel>
                   <FormControl>
@@ -183,15 +185,15 @@ export function AgentOrganizationFields({
                       onValueChange={field.onChange}
                       items={locationItems}
                       isLoading={isLoadingLocations}
-                      emptyMessage="Aucun site configuré"
-                      placeholder={isDepartmentEntity ? 'Seleccionar sitio (obligatorio)' : 'Todos los sitios'}
-                      allOption={!isDepartmentEntity ? { value: 'ALL_SITES', label: 'Todos los sitios (ve todas las solicitudes)' } : undefined}
+                      emptyMessage={t('form.noSite')}
+                      placeholder={isDepartmentEntity ? t('form.selectSiteRequired') : t('form.selectSiteOptional')}
+                      allOption={!isDepartmentEntity ? { value: 'ALL_SITES', label: t('form.allSites') } : undefined}
                     />
                   </FormControl>
                   <FormDescription>
                     {isDepartmentEntity
-                      ? 'Obligatoire : les agents de département sont liés à un site spécifique.'
-                      : 'Optionnel : sans site = voit toutes les demandes de tous les sites.'}
+                      ? t('form.siteDeptRequired')
+                      : t('form.siteOptional')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

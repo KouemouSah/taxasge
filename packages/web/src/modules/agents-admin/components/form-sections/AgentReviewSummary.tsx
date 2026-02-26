@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import {
   Accordion,
   AccordionContent,
@@ -44,6 +45,7 @@ export function AgentReviewSummary({
   validationWarnings = [],
   forceOpen = false,
 }: AgentReviewSummaryProps) {
+  const t = useTranslations('admin.agents');
   const values = form.getValues();
   const hasIssues = validationErrors.length > 0 || validationWarnings.length > 0;
 
@@ -61,15 +63,15 @@ export function AgentReviewSummary({
             ) : (
               <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
             )}
-            <span>Résumé de vérification</span>
+            <span>{t('review.title')}</span>
             {hasIssues && (
               <>
                 {validationErrors.length > 0 && (
-                  <Badge variant="destructive">{validationErrors.length} erreur(s)</Badge>
+                  <Badge variant="destructive">{t('review.errors', { count: validationErrors.length })}</Badge>
                 )}
                 {validationWarnings.length > 0 && (
                   <Badge variant="outline" className="border-orange-300 text-orange-700">
-                    {validationWarnings.length} avertissement(s)
+                    {t('review.warnings', { count: validationWarnings.length })}
                   </Badge>
                 )}
               </>
@@ -102,45 +104,45 @@ export function AgentReviewSummary({
 
             {/* Summary fields */}
             <div className="divide-y">
-              <SummaryRow label="Email" value={values.email} />
+              <SummaryRow label={t('form.email')} value={values.email} />
               <SummaryRow
-                label="Nom complet"
+                label={t('review.fullName')}
                 value={values.first_name && values.last_name ? `${values.first_name} ${values.last_name}` : undefined}
               />
-              <SummaryRow label="Téléphone" value={values.phone_number} />
-              <SummaryRow label="Langue" value={values.preferred_language?.toUpperCase()} />
-              <SummaryRow label="Entité" value={entityName} />
-              <SummaryRow label="Rôle RBAC" value={roleName} />
+              <SummaryRow label={t('review.phone')} value={values.phone_number} />
+              <SummaryRow label={t('review.language')} value={values.preferred_language?.toUpperCase()} />
+              <SummaryRow label={t('review.entity')} value={entityName} />
+              <SummaryRow label={t('review.rbacRole')} value={roleName} />
               <SummaryRow
-                label="Superviseur"
-                value={values.is_supervisor ? 'Oui' : 'Non'}
+                label={t('review.supervisor')}
+                value={values.is_supervisor ? t('review.yes') : t('review.no')}
               />
               {values.is_supervisor && (
                 <>
                   <SummaryRow
-                    label="Peut assigner"
-                    value={values.can_assign_tasks ? 'Oui' : 'Non'}
+                    label={t('review.canAssign')}
+                    value={values.can_assign_tasks ? t('review.yes') : t('review.no')}
                   />
                   <SummaryRow
-                    label="Peut réassigner"
-                    value={values.can_reassign ? 'Oui' : 'Non'}
+                    label={t('review.canReassign')}
+                    value={values.can_reassign ? t('review.yes') : t('review.no')}
                   />
                 </>
               )}
               {values.can_approve_unlimited !== undefined && (
                 <SummaryRow
-                  label="Approbation"
+                  label={t('review.approval')}
                   value={
                     values.can_approve_unlimited
-                      ? 'Illimitée'
+                      ? t('review.unlimited')
                       : values.max_approval_amount
                         ? `Max ${Number(values.max_approval_amount).toLocaleString()} XAF`
-                        : 'Non configuré'
+                        : t('review.notConfigured')
                   }
                 />
               )}
               <SummaryRow
-                label="Horaires"
+                label={t('review.schedule')}
                 value={`${values.working_hours_start || '08:00'} — ${values.working_hours_end || '17:00'}`}
               />
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { UseFormReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
@@ -40,6 +41,7 @@ export function AgentRoleFields({
   rbacRoles,
   isLoadingRoles,
 }: AgentRoleFieldsProps) {
+  const t = useTranslations('admin.agents');
   const watchIsSupervisor = form.watch('is_supervisor');
   const watchRbacRoleId = form.watch('rbac_role_id');
   const prevRoleIdRef = useRef<string | null>(null);
@@ -87,9 +89,9 @@ export function AgentRoleFields({
               />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>Superviseur</FormLabel>
+              <FormLabel>{t('form.supervisor')}</FormLabel>
               <FormDescription>
-                Les superviseurs peuvent gérer les équipes, réassigner les tâches et accéder aux tableaux de bord de supervision.
+                {t('form.supervisorDescFull')}
               </FormDescription>
             </div>
           </FormItem>
@@ -103,14 +105,14 @@ export function AgentRoleFields({
         render={({ field }) => (
           <FormItem>
             <FormLabel className="flex items-center gap-2">
-              Rôle RBAC <span className="text-destructive">*</span>
+              {t('form.rbacRole')} <span className="text-destructive">*</span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p>Le rôle RBAC détermine les permissions de l&apos;agent (menus, actions, accès aux données).</p>
+                    <p>{t('form.rbacTooltip')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -121,8 +123,8 @@ export function AgentRoleFields({
                 onValueChange={field.onChange}
                 items={roleItems}
                 isLoading={isLoadingRoles}
-                emptyMessage="Aucun rôle disponible"
-                placeholder="Sélectionner un rôle RBAC"
+                emptyMessage={t('form.noRoles')}
+                placeholder={t('form.selectRole')}
               />
             </FormControl>
             <FormMessage />
@@ -135,7 +137,7 @@ export function AgentRoleFields({
         <Alert variant="default" className="border-blue-300 bg-blue-50">
           <Info className="h-4 w-4 text-blue-600" />
           <AlertDescription className="text-blue-800">
-            Les capacités ont été pré-remplies selon le rôle sélectionné. Vous pouvez les modifier.
+            {t('form.defaultsApplied')}
           </AlertDescription>
         </Alert>
       )}
@@ -145,8 +147,7 @@ export function AgentRoleFields({
         <Alert variant="default" className="border-orange-300 bg-orange-50">
           <Info className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-orange-800">
-            Attention : Vous avez coché &quot;Superviseur&quot; mais le rôle RBAC sélectionné ({selectedRole?.code}) n&apos;est pas un rôle superviseur.
-            Vérifiez que c&apos;est intentionnel ou sélectionnez un rôle contenant &quot;supervisor&quot;.
+            {t('form.supervisorMismatch', { roleCode: selectedRole?.code })}
           </AlertDescription>
         </Alert>
       )}

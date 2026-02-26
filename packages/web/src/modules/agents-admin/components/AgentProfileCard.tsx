@@ -7,6 +7,7 @@
  * @module agents-admin/components
  */
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,8 @@ export function AgentProfileCard({
   onViewWorkload,
   onViewPerformance,
 }: AgentProfileCardProps) {
+  const t = useTranslations('admin.agents');
+
   const getInitials = (name?: string) => {
     if (!name) return 'AG';
     const parts = name.split(' ');
@@ -63,8 +66,8 @@ export function AgentProfileCard({
 
   const getAgentTypeBadge = (type: AgentType | string) => {
     const typeLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
-      ministry_agent: { label: 'Ministère', variant: 'default' },
-      entity_agent: { label: 'Entité', variant: 'secondary' },
+      ministry_agent: { label: t('card.ministry'), variant: 'default' },
+      entity_agent: { label: t('card.entity'), variant: 'secondary' },
     };
     const config = typeLabels[type] || { label: type, variant: 'outline' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -74,11 +77,11 @@ export function AgentProfileCard({
     if (!status) return null;
 
     const statusConfig: Record<string, { label: string; className: string }> = {
-      available: { label: 'Disponible', className: 'bg-green-100 text-green-800' },
-      normal: { label: 'Normal', className: 'bg-blue-100 text-blue-800' },
-      busy: { label: 'Occupé', className: 'bg-yellow-100 text-yellow-800' },
-      overloaded: { label: 'Surchargé', className: 'bg-red-100 text-red-800' },
-      unavailable: { label: 'Indisponible', className: 'bg-gray-100 text-gray-800' },
+      available: { label: t('status.available'), className: 'bg-green-100 text-green-800' },
+      normal: { label: t('status.normal'), className: 'bg-blue-100 text-blue-800' },
+      busy: { label: t('status.busy'), className: 'bg-yellow-100 text-yellow-800' },
+      overloaded: { label: t('status.overloaded'), className: 'bg-red-100 text-red-800' },
+      unavailable: { label: t('status.unavailable'), className: 'bg-gray-100 text-gray-800' },
     };
 
     const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
@@ -87,9 +90,9 @@ export function AgentProfileCard({
 
   const getStatusBadge = () => {
     if (profile.is_active) {
-      return <Badge variant="default" className="bg-green-600">Actif</Badge>;
+      return <Badge variant="default" className="bg-green-600">{t('card.active')}</Badge>;
     }
-    return <Badge variant="destructive">Inactif</Badge>;
+    return <Badge variant="destructive">{t('card.inactive')}</Badge>;
   };
 
   return (
@@ -104,14 +107,14 @@ export function AgentProfileCard({
             </Avatar>
             <div>
               <CardTitle className="text-base font-medium">
-                {profile.user_full_name || 'Agent'}
+                {profile.user_full_name || t('card.agent')}
               </CardTitle>
               <div className="flex items-center gap-2 mt-1">
                 {getAgentTypeBadge(profile.agent_type)}
                 {profile.is_supervisor && (
                   <Badge variant="outline" className="border-amber-500 text-amber-700">
                     <Shield className="h-3 w-3 mr-1" />
-                    Superviseur
+                    {t('card.supervisor')}
                   </Badge>
                 )}
               </div>
@@ -130,19 +133,19 @@ export function AgentProfileCard({
                 {onEdit && (
                   <DropdownMenuItem onClick={() => onEdit(profile)}>
                     <Edit className="h-4 w-4 mr-2" />
-                    Modifier
+                    {t('card.modify')}
                   </DropdownMenuItem>
                 )}
                 {onViewWorkload && (
                   <DropdownMenuItem onClick={() => onViewWorkload(profile)}>
                     <BarChart3 className="h-4 w-4 mr-2" />
-                    Charge de travail
+                    {t('card.workload')}
                   </DropdownMenuItem>
                 )}
                 {onViewPerformance && (
                   <DropdownMenuItem onClick={() => onViewPerformance(profile)}>
                     <Clock className="h-4 w-4 mr-2" />
-                    Performance
+                    {t('card.performance')}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
@@ -152,7 +155,7 @@ export function AgentProfileCard({
                     className="text-orange-600"
                   >
                     <UserX className="h-4 w-4 mr-2" />
-                    Désactiver
+                    {t('card.deactivate')}
                   </DropdownMenuItem>
                 )}
                 {!profile.is_active && onReactivate && (
@@ -161,7 +164,7 @@ export function AgentProfileCard({
                     className="text-green-600"
                   >
                     <UserCheck className="h-4 w-4 mr-2" />
-                    Réactiver
+                    {t('card.reactivate')}
                   </DropdownMenuItem>
                 )}
                 {onDelete && (
@@ -172,7 +175,7 @@ export function AgentProfileCard({
                       className="text-red-600"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Supprimer
+                      {t('card.delete')}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -203,7 +206,7 @@ export function AgentProfileCard({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Building2 className="h-4 w-4" />
           <span>
-            {profile.entity_name || profile.ministry_name || 'Non assigné'}
+            {profile.entity_name || profile.ministry_name || t('card.notAssigned')}
           </span>
         </div>
 
@@ -212,14 +215,14 @@ export function AgentProfileCard({
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm capitalize">
-              {profile.agent_type?.replace('_', ' ') || 'Agent'}
+              {profile.agent_type?.replace('_', ' ') || t('card.agent')}
             </span>
           </div>
           <div className="flex items-center gap-2">
             {getWorkloadStatusBadge(profile.workload_status)}
             {profile.current_assignments !== undefined && (
               <span className="text-xs text-muted-foreground">
-                {profile.current_assignments} tâche(s)
+                {t('card.tasks', { count: profile.current_assignments })}
               </span>
             )}
           </div>

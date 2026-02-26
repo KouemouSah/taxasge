@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslations } from 'next-intl';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,6 +115,8 @@ export function AgentProfileForm({
   ministries = [],
   entities = [],
 }: AgentProfileFormProps) {
+  const t = useTranslations('admin.agents');
+
   // Note: _showMaxAmount kept for future implementation
   const [_showMaxAmount, setShowMaxAmount] = useState(
     initialData?.can_approve_unlimited === false && !!initialData?.max_approval_amount
@@ -160,13 +163,13 @@ export function AgentProfileForm({
   };
 
   const weekDays = [
-    { value: 1, label: 'Lun' },
-    { value: 2, label: 'Mar' },
-    { value: 3, label: 'Mer' },
-    { value: 4, label: 'Jeu' },
-    { value: 5, label: 'Ven' },
-    { value: 6, label: 'Sam' },
-    { value: 0, label: 'Dim' },
+    { value: 1, label: t('days.mon') },
+    { value: 2, label: t('days.tue') },
+    { value: 3, label: t('days.wed') },
+    { value: 4, label: t('days.thu') },
+    { value: 5, label: t('days.fri') },
+    { value: 6, label: t('days.sat') },
+    { value: 0, label: t('days.sun') },
   ];
 
   return (
@@ -176,9 +179,9 @@ export function AgentProfileForm({
         {mode === 'create' && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Informations Utilisateur</CardTitle>
+              <CardTitle className="text-lg">{t('form.userInfo')}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                L&apos;agent recevra un email d&apos;invitation pour définir son mot de passe.
+                {t('form.userInfoDesc')}
               </p>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
@@ -187,12 +190,12 @@ export function AgentProfileForm({
                 name="user.email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email *</FormLabel>
+                    <FormLabel>{t('form.email')} *</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="agent@example.com" {...field} />
+                      <Input type="email" placeholder={t('form.emailPlaceholder')} {...field} />
                     </FormControl>
                     <FormDescription>
-                      Un email d&apos;invitation sera envoyé à cette adresse
+                      {t('form.emailDesc')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -204,9 +207,9 @@ export function AgentProfileForm({
                 name="user.first_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Prénom *</FormLabel>
+                    <FormLabel>{t('form.firstName')} *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Juan" {...field} />
+                      <Input placeholder={t('form.firstNamePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -218,9 +221,9 @@ export function AgentProfileForm({
                 name="user.last_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nom *</FormLabel>
+                    <FormLabel>{t('form.lastName')} *</FormLabel>
                     <FormControl>
-                      <Input placeholder="García" {...field} />
+                      <Input placeholder={t('form.lastNamePlaceholder')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -232,11 +235,11 @@ export function AgentProfileForm({
                 name="user.phone_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Téléphone</FormLabel>
+                    <FormLabel>{t('form.phone')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="222123456" {...field} />
+                      <Input placeholder={t('form.phonePlaceholder')} {...field} />
                     </FormControl>
-                    <FormDescription>Format: 222/555/551/333 + 6 chiffres</FormDescription>
+                    <FormDescription>{t('form.phoneFormat')}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -247,11 +250,11 @@ export function AgentProfileForm({
                 name="user.preferred_language"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Langue préférée</FormLabel>
+                    <FormLabel>{t('form.preferredLanguage')}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner" />
+                          <SelectValue placeholder={t('form.selectLanguage')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -271,7 +274,7 @@ export function AgentProfileForm({
         {/* Agent Profile Configuration */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Configuration du Profil Agent</CardTitle>
+            <CardTitle className="text-lg">{t('form.profileConfig')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Type & Organization */}
@@ -281,16 +284,16 @@ export function AgentProfileForm({
                 name="agent_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Type d&apos;agent *</FormLabel>
+                    <FormLabel>{t('form.agentType')} *</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner le type" />
+                          <SelectValue placeholder={t('form.selectType')} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={AgentType.MINISTRY_AGENT}>Agent Ministère</SelectItem>
-                        <SelectItem value={AgentType.ENTITY_AGENT}>Agent Entité</SelectItem>
+                        <SelectItem value={AgentType.MINISTRY_AGENT}>{t('form.agentMinistry')}</SelectItem>
+                        <SelectItem value={AgentType.ENTITY_AGENT}>{t('form.agentEntity')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -304,14 +307,14 @@ export function AgentProfileForm({
                   name="ministry_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ministère *</FormLabel>
+                      <FormLabel>{t('form.ministry')} *</FormLabel>
                       <Select
                         onValueChange={(v) => field.onChange(parseInt(v))}
                         defaultValue={field.value?.toString()}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner le ministère" />
+                            <SelectValue placeholder={t('form.selectMinistry')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -332,11 +335,11 @@ export function AgentProfileForm({
                   name="entity_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Entité *</FormLabel>
+                      <FormLabel>{t('form.entity')} *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner l'entité" />
+                            <SelectValue placeholder={t('form.selectEntity')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -365,9 +368,9 @@ export function AgentProfileForm({
                       <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>Superviseur</FormLabel>
+                      <FormLabel>{t('form.supervisor')}</FormLabel>
                       <FormDescription>
-                        Peut gérer les agents et reassigner les tâches
+                        {t('form.supervisorDesc')}
                       </FormDescription>
                     </div>
                   </FormItem>
@@ -379,7 +382,7 @@ export function AgentProfileForm({
 
             {/* Approval Limits */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium">Limites d&apos;approbation</h4>
+              <h4 className="text-sm font-medium">{t('form.approvalLimits')}</h4>
 
               <FormField
                 control={form.control}
@@ -396,7 +399,7 @@ export function AgentProfileForm({
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>Peut approuver des montants illimités</FormLabel>
+                      <FormLabel>{t('form.unlimitedApproval')}</FormLabel>
                     </div>
                   </FormItem>
                 )}
@@ -408,11 +411,11 @@ export function AgentProfileForm({
                   name="max_approval_amount"
                   render={({ field }) => (
                     <FormItem className="max-w-xs">
-                      <FormLabel>Montant maximum (XAF)</FormLabel>
+                      <FormLabel>{t('form.maxAmount')}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder="1000000"
+                          placeholder={t('form.maxAmountPlaceholder')}
                           {...field}
                           onChange={(e) => field.onChange(e.target.valueAsNumber)}
                         />
@@ -428,7 +431,7 @@ export function AgentProfileForm({
 
             {/* Capabilities */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium">Capacités</h4>
+              <h4 className="text-sm font-medium">{t('form.capabilities')}</h4>
               <div className="grid gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
@@ -438,7 +441,7 @@ export function AgentProfileForm({
                       <FormControl>
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="font-normal">Peut escalader</FormLabel>
+                      <FormLabel className="font-normal">{t('form.canEscalate')}</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -451,7 +454,7 @@ export function AgentProfileForm({
                       <FormControl>
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="font-normal">Peut assigner des tâches</FormLabel>
+                      <FormLabel className="font-normal">{t('form.canAssignTasks')}</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -464,7 +467,7 @@ export function AgentProfileForm({
                       <FormControl>
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
-                      <FormLabel className="font-normal">Peut réassigner</FormLabel>
+                      <FormLabel className="font-normal">{t('form.canReassign')}</FormLabel>
                     </FormItem>
                   )}
                 />
@@ -475,14 +478,14 @@ export function AgentProfileForm({
 
             {/* Working Hours */}
             <div className="space-y-4">
-              <h4 className="text-sm font-medium">Horaires de travail</h4>
+              <h4 className="text-sm font-medium">{t('form.workingHours')}</h4>
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="working_hours_start"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Heure de début</FormLabel>
+                      <FormLabel>{t('form.startHour')}</FormLabel>
                       <FormControl>
                         <Input type="time" {...field} />
                       </FormControl>
@@ -496,7 +499,7 @@ export function AgentProfileForm({
                   name="working_hours_end"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Heure de fin</FormLabel>
+                      <FormLabel>{t('form.endHour')}</FormLabel>
                       <FormControl>
                         <Input type="time" {...field} />
                       </FormControl>
@@ -511,7 +514,7 @@ export function AgentProfileForm({
                 name="working_days"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Jours de travail</FormLabel>
+                    <FormLabel>{t('form.workingDays')}</FormLabel>
                     <div className="flex flex-wrap gap-2">
                       {weekDays.map((day) => (
                         <Button
@@ -542,11 +545,11 @@ export function AgentProfileForm({
         {/* Actions */}
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-            Annuler
+            {t('form.cancel')}
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === 'create' ? "Envoyer l'Invitation" : 'Enregistrer'}
+            {mode === 'create' ? t('form.sendInvitation') : t('form.save')}
           </Button>
         </div>
       </form>

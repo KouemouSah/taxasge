@@ -12,6 +12,7 @@
  * @module agents-admin/components
  */
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,8 @@ interface AgentActivityTabProps {
 }
 
 export function AgentActivityTab({ workload, performance, isLoading }: AgentActivityTabProps) {
+  const t = useTranslations('admin.agents');
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -53,8 +56,8 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <BarChart3 className="h-8 w-8 text-muted-foreground mb-3" />
-        <p className="text-muted-foreground">Aucune donnée d&apos;activité disponible</p>
-        <p className="text-xs text-muted-foreground mt-1">Les données apparaîtront après la première activité de l&apos;agent.</p>
+        <p className="text-muted-foreground">{t('activity.noData')}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t('activity.noDataDesc')}</p>
       </div>
     );
   }
@@ -91,26 +94,26 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
 
   const getAvailabilityConfig = (avail: string) => {
     const config: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      available: { label: 'Disponible', variant: 'default' },
-      on_leave: { label: 'En congé', variant: 'secondary' },
-      sick_leave: { label: 'Maladie', variant: 'destructive' },
-      training: { label: 'Formation', variant: 'outline' },
-      mission: { label: 'Mission', variant: 'outline' },
-      temporarily_unavailable: { label: 'Temp. indisponible', variant: 'secondary' },
+      available: { label: t('availability.available'), variant: 'default' },
+      on_leave: { label: t('availability.onLeave'), variant: 'secondary' },
+      sick_leave: { label: t('availability.sickLeave'), variant: 'destructive' },
+      training: { label: t('availability.training'), variant: 'outline' },
+      mission: { label: t('availability.mission'), variant: 'outline' },
+      temporarily_unavailable: { label: t('availability.temporarilyUnavailable'), variant: 'secondary' },
     };
     return config[avail] || { label: avail, variant: 'outline' as const };
+  };
+
+  const getSlaLabel = (rate: number) => {
+    if (rate >= 90) return t('activity.excellent');
+    if (rate >= 70) return t('activity.acceptable');
+    return t('activity.needsImprovement');
   };
 
   const getSlaColor = (rate: number) => {
     if (rate >= 90) return 'text-green-600';
     if (rate >= 70) return 'text-yellow-600';
     return 'text-red-600';
-  };
-
-  const getSlaLabel = (rate: number) => {
-    if (rate >= 90) return 'Excellent';
-    if (rate >= 70) return 'Acceptable';
-    return 'À améliorer';
   };
 
   const availConfig = getAvailabilityConfig(availability);
@@ -124,7 +127,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <BarChart3 className="h-3.5 w-3.5" />
-              Traités ce mois
+              {t('activity.processedMonth')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4">
@@ -137,7 +140,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-              Approuvés
+              {t('activity.approved')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4">
@@ -153,7 +156,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <XCircle className="h-3.5 w-3.5 text-red-500" />
-              Rejetés
+              {t('activity.rejected')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4">
@@ -169,7 +172,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-              Escaladés
+              {t('activity.escalated')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4">
@@ -188,7 +191,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <Activity className="h-3.5 w-3.5" />
-              Capacité
+              {t('activity.capacity')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4 space-y-2">
@@ -208,7 +211,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <Calendar className="h-3.5 w-3.5" />
-              Disponibilité
+              {t('activity.availability')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4">
@@ -223,7 +226,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
         <Card className="py-0">
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Respect des SLA
+              {t('activity.slaCompliance')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4 space-y-2">
@@ -233,8 +236,8 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
             </div>
             <Progress value={slaRate} className="h-2" />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span className="text-green-600">{slaRespected} respectés</span>
-              <span className="text-red-600">{slaMissed} manqués</span>
+              <span className="text-green-600">{t('activity.slaRespected', { count: slaRespected })}</span>
+              <span className="text-red-600">{t('activity.slaMissed', { count: slaMissed })}</span>
             </div>
           </CardContent>
         </Card>
@@ -247,14 +250,14 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
-              Temps moyen
+              {t('activity.avgTime')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4">
             <div className="text-lg font-bold">
               {formatDuration(performance?.avg_processing_minutes)}
             </div>
-            <p className="text-xs text-muted-foreground">par dossier</p>
+            <p className="text-xs text-muted-foreground">{t('activity.perCase')}</p>
           </CardContent>
         </Card>
 
@@ -263,14 +266,14 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <TrendingUp className="h-3.5 w-3.5" />
-              Qualité
+              {t('activity.quality')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4 space-y-1">
             <div className="text-lg font-bold">{Number(qualityScore).toFixed(1)}/10</div>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Réussite: {(Number(successRate) * 100).toFixed(0)}%</span>
-              <span>Délais: {(Number(deadlineRate) * 100).toFixed(0)}%</span>
+              <span>{t('activity.successRate', { rate: (Number(successRate) * 100).toFixed(0) })}</span>
+              <span>{t('activity.deadlineRate', { rate: (Number(deadlineRate) * 100).toFixed(0) })}</span>
             </div>
           </CardContent>
         </Card>
@@ -280,17 +283,17 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
               <Lock className="h-3.5 w-3.5" />
-              Verrouillages
+              {t('activity.locks')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pb-3 px-4">
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-lg font-bold">{performance?.current_active_locks ?? 0}</span>
-                <span className="text-xs text-muted-foreground ml-1">actifs</span>
+                <span className="text-xs text-muted-foreground ml-1">{t('activity.activeLocks')}</span>
               </div>
               <div className="text-xs text-muted-foreground">
-                max: {performance?.max_concurrent_locks ?? 0}
+                {t('activity.maxLocks', { count: performance?.max_concurrent_locks ?? 0 })}
               </div>
             </div>
           </CardContent>
@@ -299,10 +302,10 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
 
       {/* Footer: Activity dates */}
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground px-1">
-        <span>Dernière action: {formatDate(performance?.last_action_at)}</span>
-        <span>Dernière connexion: {formatDate(performance?.last_login_at)}</span>
+        <span>{t('activity.lastAction', { date: formatDate(performance?.last_action_at) })}</span>
+        <span>{t('activity.lastLogin', { date: formatDate(performance?.last_login_at) })}</span>
         {performance?.stats_period_start && (
-          <span>Période: depuis le {performance.stats_period_start}</span>
+          <span>{t('activity.periodSince', { date: performance.stats_period_start })}</span>
         )}
       </div>
     </div>

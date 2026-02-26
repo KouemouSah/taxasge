@@ -1,6 +1,7 @@
 'use client';
 
 import { UseFormReturn } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import {
   FormControl,
@@ -23,6 +24,8 @@ interface AgentAccountFieldsProps {
 }
 
 export function AgentAccountFields({ form }: AgentAccountFieldsProps) {
+  const t = useTranslations('admin.agents');
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -32,12 +35,12 @@ export function AgentAccountFields({ form }: AgentAccountFieldsProps) {
           name="email"
           render={({ field }) => (
             <FormItem className="md:col-span-2">
-              <FormLabel>Email <span className="text-destructive">*</span></FormLabel>
+              <FormLabel>{t('form.email')} <span className="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input type="email" placeholder="agent@taxasge.gq" {...field} />
               </FormControl>
               <FormDescription>
-                Un email d&apos;activation sera envoyé à cette adresse.
+                {t('form.emailDesc')}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -50,9 +53,9 @@ export function AgentAccountFields({ form }: AgentAccountFieldsProps) {
           name="first_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Prénom <span className="text-destructive">*</span></FormLabel>
+              <FormLabel>{t('form.firstName')} <span className="text-destructive">*</span></FormLabel>
               <FormControl>
-                <Input placeholder="Prénom" {...field} />
+                <Input placeholder={t('form.firstNamePlaceholder')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -65,9 +68,9 @@ export function AgentAccountFields({ form }: AgentAccountFieldsProps) {
           name="last_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nom <span className="text-destructive">*</span></FormLabel>
+              <FormLabel>{t('form.lastName')} <span className="text-destructive">*</span></FormLabel>
               <FormControl>
-                <Input placeholder="Nom de famille" {...field} />
+                <Input placeholder={t('form.lastNamePlaceholder')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -80,11 +83,11 @@ export function AgentAccountFields({ form }: AgentAccountFieldsProps) {
           name="phone_number"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Téléphone</FormLabel>
+              <FormLabel>{t('form.phone')}</FormLabel>
               <FormControl>
                 <Input placeholder="222XXXXXX" {...field} />
               </FormControl>
-              <FormDescription>Format GE: 222/555/551/333 + 6 chiffres</FormDescription>
+              <FormDescription>{t('form.phoneFormat')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -96,13 +99,13 @@ export function AgentAccountFields({ form }: AgentAccountFieldsProps) {
           name="preferred_language"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Langue préférée</FormLabel>
+              <FormLabel>{t('form.preferredLanguage')}</FormLabel>
               <FormControl>
                 <SafeSelect
                   value={field.value || 'es'}
                   onValueChange={field.onChange}
                   items={LANGUAGE_OPTIONS}
-                  placeholder="Sélectionner la langue"
+                  placeholder={t('form.selectLanguage')}
                 />
               </FormControl>
               <FormMessage />
