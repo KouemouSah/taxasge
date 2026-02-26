@@ -18,6 +18,7 @@ interface ValidationIssue {
 }
 
 interface AgentReviewSummaryProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<any>;
   entityName?: string;
   roleName?: string;

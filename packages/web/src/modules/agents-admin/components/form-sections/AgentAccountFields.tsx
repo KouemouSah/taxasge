@@ -20,6 +20,7 @@ const LANGUAGE_OPTIONS = [
 ];
 
 interface AgentAccountFieldsProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<any>;
 }
 

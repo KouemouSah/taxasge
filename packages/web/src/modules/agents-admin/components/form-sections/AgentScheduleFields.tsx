@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/form';
 
 interface AgentScheduleFieldsProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<any>;
 }
 

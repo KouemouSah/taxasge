@@ -31,6 +31,7 @@ interface RoleOption {
 }
 
 interface AgentRoleFieldsProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<any>;
   rbacRoles: RoleOption[];
   isLoadingRoles: boolean;

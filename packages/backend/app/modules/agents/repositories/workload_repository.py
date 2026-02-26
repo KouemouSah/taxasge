@@ -341,9 +341,7 @@ class WorkloadRepository:
                     AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)::numeric as avg_processing_minutes,
                     MAX(completed_at) as last_action_at
                 FROM assignments a
-                WHERE a.agent_id = (
-                    SELECT user_id::text FROM agent_profiles WHERE id = $1
-                )
+                WHERE a.agent_profile_id = $1::uuid
                 AND a.created_at >= date_trunc('month', CURRENT_DATE)
             ),
             payment_audit_stats AS (

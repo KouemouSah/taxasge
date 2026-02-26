@@ -35,6 +35,7 @@ interface LocationOption {
 }
 
 interface AgentOrganizationFieldsProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<any>;
   ministries: MinistryOption[];
   entities: EntityOption[];

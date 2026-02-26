@@ -21,6 +21,7 @@ interface EntityWithWorkflows {
 }
 
 interface AgentSpecializationsFieldsProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: UseFormReturn<any>;
   entity: EntityWithWorkflows;
   workflows: WorkflowOption[];

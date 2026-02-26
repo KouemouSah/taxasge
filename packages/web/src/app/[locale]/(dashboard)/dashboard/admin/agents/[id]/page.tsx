@@ -278,11 +278,11 @@ export default function AgentDetailPage() {
         description: 'Les modifications ont été enregistrées.',
       });
       setIsEditing(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error?.message || 'Impossible de mettre à jour le profil',
+        description: (error instanceof Error ? error.message : '') || 'Impossible de mettre à jour le profil',
       });
     }
   };
@@ -295,11 +295,11 @@ export default function AgentDetailPage() {
       });
       toast({ title: 'Agent désactivé', description: 'Le profil agent a été désactivé.' });
       setDeactivateReason('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error?.message || "Impossible de désactiver l'agent",
+        description: (error instanceof Error ? error.message : '') || "Impossible de désactiver l'agent",
       });
     }
   };
@@ -308,11 +308,11 @@ export default function AgentDetailPage() {
     try {
       await reactivateMutation.mutateAsync(profileId);
       toast({ title: 'Agent réactivé', description: 'Le profil agent a été réactivé.' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error?.message || "Impossible de réactiver l'agent",
+        description: (error instanceof Error ? error.message : '') || "Impossible de réactiver l'agent",
       });
     }
   };
@@ -361,7 +361,7 @@ export default function AgentDetailPage() {
   const organizationName = profile.ministry_name || profile.entity_name || '-';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -369,11 +369,11 @@ export default function AgentDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <UserCog className="h-8 w-8" />
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <UserCog className="h-6 w-6" />
               {profile.user_full_name || 'Agent'}
             </h1>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-1">
               <Badge variant={profile.is_active ? 'default' : 'secondary'}>
                 {profile.is_active ? 'Actif' : 'Inactif'}
               </Badge>
@@ -476,36 +476,25 @@ export default function AgentDetailPage() {
         </div>
       </div>
 
-      {/* User Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Informations utilisateur</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Email</p>
-              <p className="font-medium">{profile.user_email}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Téléphone</p>
-              <p className="font-medium">{profile.user_phone || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Organisation</p>
-              <p className="font-medium">{organizationName}</p>
-            </div>
-            {profile.agent_type === AgentType.ENTITY_AGENT && (
-              <div>
-                <p className="text-sm text-muted-foreground">Site</p>
-                <p className="font-medium">
-                  {profile.location_name || 'Toutes ubicaciones'}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* User Info — compact inline bar */}
+      <div className="rounded-lg border bg-card px-4 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+        <span className="text-muted-foreground">
+          Email: <span className="font-medium text-foreground">{profile.user_email}</span>
+        </span>
+        <span className="text-muted-foreground">
+          Tél: <span className="font-medium text-foreground">{profile.user_phone || '-'}</span>
+        </span>
+        <span className="text-muted-foreground">
+          Organisation: <span className="font-medium text-foreground">{organizationName}</span>
+        </span>
+        {profile.agent_type === AgentType.ENTITY_AGENT && (
+          <span className="text-muted-foreground">
+            Site: <span className="font-medium text-foreground">
+              {profile.location_name || 'Toutes ubicaciones'}
+            </span>
+          </span>
+        )}
+      </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -521,7 +510,7 @@ export default function AgentDetailPage() {
         </TabsList>
 
         {/* ========== Profile Tab ========== */}
-        <TabsContent value="profile" className="space-y-6 mt-6">
+        <TabsContent value="profile" className="space-y-4 mt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -538,125 +527,90 @@ export default function AgentDetailPage() {
             </CardHeader>
             <CardContent>
               {!isEditing ? (
-                /* ---- Read-only view ---- */
-                <div className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-3">
+                /* ---- Read-only view — compact, no separators ---- */
+                <div className="space-y-3">
+                  {/* Row 1: Organization info */}
+                  <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Type d&apos;agent</p>
-                      <p className="font-medium">{agentTypeLabel}</p>
+                      <p className="text-xs text-muted-foreground">Type</p>
+                      <p className="text-sm font-medium">{agentTypeLabel}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {profile.agent_type === AgentType.MINISTRY_AGENT ? 'Ministère' : 'Entité'}
                       </p>
-                      <p className="font-medium">{organizationName}</p>
+                      <p className="text-sm font-medium">{organizationName}</p>
                     </div>
                     {profile.agent_type === AgentType.ENTITY_AGENT && (
                       <div>
-                        <p className="text-sm text-muted-foreground">Site / Ubicación</p>
-                        <p className="font-medium">
+                        <p className="text-xs text-muted-foreground">Site</p>
+                        <p className="text-sm font-medium">
                           {profile.location_name
                             ? `${profile.location_name} — ${profile.location_city || ''}`
                             : 'Todas las ubicaciones'}
                         </p>
                       </div>
                     )}
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <p className="text-sm text-muted-foreground">Superviseur</p>
-                      <p className="font-medium">{profile.is_supervisor ? 'Oui' : 'Non'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Type d&apos;agent</p>
-                      <p className="font-medium capitalize">{profile.agent_type?.replace('_', ' ')}</p>
+                      <p className="text-xs text-muted-foreground">Superviseur</p>
+                      <p className="text-sm font-medium">{profile.is_supervisor ? 'Oui' : 'Non'}</p>
                     </div>
                   </div>
 
-                  {/* Capabilities — show if supervisor */}
-                  {profile.is_supervisor && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Capacités superviseur</p>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.can_escalate && <Badge variant="outline">Peut escalader</Badge>}
-                          {profile.can_assign_tasks && <Badge variant="outline">Peut assigner</Badge>}
-                          {profile.can_reassign && <Badge variant="outline">Peut réassigner</Badge>}
-                          {profile.is_backup_agent && <Badge variant="outline">Agent de backup</Badge>}
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  {/* Row 2: Capabilities + Approval (inline badges) */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {profile.is_supervisor && (
+                      <>
+                        {profile.can_escalate && <Badge variant="outline" className="text-xs">Peut escalader</Badge>}
+                        {profile.can_assign_tasks && <Badge variant="outline" className="text-xs">Peut assigner</Badge>}
+                        {profile.can_reassign && <Badge variant="outline" className="text-xs">Peut réassigner</Badge>}
+                        {profile.is_backup_agent && <Badge variant="outline" className="text-xs">Agent de backup</Badge>}
+                      </>
+                    )}
+                    {profile.can_approve_unlimited && (
+                      <Badge variant="outline" className="text-xs bg-green-50">Approbation illimitée</Badge>
+                    )}
+                    {!profile.can_approve_unlimited && profile.max_approval_amount && (
+                      <Badge variant="outline" className="text-xs">
+                        Max: {profile.max_approval_amount.toLocaleString()} XAF
+                      </Badge>
+                    )}
+                  </div>
 
-                  {/* Approval — show if relevant */}
-                  {(profile.can_approve_unlimited || profile.max_approval_amount) && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Limites d&apos;approbation</p>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Approbation illimitée</p>
-                            <p className="font-medium">{profile.can_approve_unlimited ? 'Oui' : 'Non'}</p>
-                          </div>
-                          {!profile.can_approve_unlimited && (
-                            <div>
-                              <p className="text-sm text-muted-foreground">Montant maximum</p>
-                              <p className="font-medium">
-                                {profile.max_approval_amount
-                                  ? `${profile.max_approval_amount.toLocaleString()} XAF`
-                                  : '-'}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  <Separator />
-
-                  {/* Working Hours */}
-                  <div className="grid gap-4 md:grid-cols-2">
+                  {/* Row 3: Schedule + Created */}
+                  <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
                     <div>
-                      <p className="text-sm text-muted-foreground">Horaires de travail</p>
-                      <p className="font-medium">
+                      <p className="text-xs text-muted-foreground">Horaires</p>
+                      <p className="text-sm font-medium">
                         {profile.working_hours_start || '08:00'} - {profile.working_hours_end || '17:00'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Jours de travail</p>
-                      <div className="flex flex-wrap gap-1">
+                      <p className="text-xs text-muted-foreground">Jours de travail</p>
+                      <div className="flex flex-wrap gap-0.5">
                         {[
-                          { value: 1, label: 'Lun' },
-                          { value: 2, label: 'Mar' },
-                          { value: 3, label: 'Mer' },
-                          { value: 4, label: 'Jeu' },
-                          { value: 5, label: 'Ven' },
-                          { value: 6, label: 'Sam' },
-                          { value: 0, label: 'Dim' },
+                          { value: 1, label: 'L' },
+                          { value: 2, label: 'M' },
+                          { value: 3, label: 'M' },
+                          { value: 4, label: 'J' },
+                          { value: 5, label: 'V' },
+                          { value: 6, label: 'S' },
+                          { value: 0, label: 'D' },
                         ].map((day) => (
                           <Badge
                             key={day.value}
                             variant={(profile.working_days || [1, 2, 3, 4, 5]).includes(day.value) ? 'default' : 'outline'}
-                            className="text-xs"
+                            className="text-[10px] h-5 w-5 p-0 justify-center"
                           >
                             {day.label}
                           </Badge>
                         ))}
                       </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-muted-foreground">Créé le</p>
-                    <p className="font-medium">
-                      {new Date(profile.created_at).toLocaleDateString()}
-                    </p>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Créé le</p>
+                      <p className="text-sm font-medium">{new Date(profile.created_at).toLocaleDateString()}</p>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -779,7 +733,7 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         {/* ========== Activity Tab (merged Workload + Performance) ========== */}
-        <TabsContent value="activity" className="mt-6">
+        <TabsContent value="activity" className="mt-4">
           <AgentActivityTab
             workload={workload}
             performance={performance}

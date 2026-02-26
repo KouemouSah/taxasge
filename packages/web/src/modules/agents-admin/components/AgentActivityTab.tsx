@@ -1,19 +1,17 @@
 'use client';
 
 /**
- * Agent Activity Tab - Merged Workload + Performance
- * Compact single-viewport view of all agent activity metrics.
+ * Agent Activity Tab - Compact single-viewport dashboard
+ * All metrics visible at a glance without scrolling on 1080p desktop.
  *
- * Row 1: KPI (4 cards) - Processed, Approved, Rejected, Escalated
- * Row 2: Operations (3 cards) - Capacity, Availability, SLA
- * Row 3: Details (3 cards) - Processing Time, Quality, Locks
- * Footer: Last action / Last login
+ * Row 1: KPIs (4 mini cards) — Processed, Approved, Rejected, Escalated
+ * Row 2: Operations (6 inline metrics) — Capacity, Availability, SLA, Time, Quality, Locks
+ * Footer: Last action / Last login / Period
  *
  * @module agents-admin/components
  */
 
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +25,7 @@ import {
   Clock,
   TrendingUp,
   Lock,
+  Shield,
 } from 'lucide-react';
 import type { AgentWorkload, AgentPerformance } from '../types';
 
@@ -41,12 +40,12 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+      <div className="space-y-3">
+        <div className="grid gap-2 grid-cols-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-16" />)}
         </div>
-        <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
-          {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28" />)}
+        <div className="grid gap-2 grid-cols-3 lg:grid-cols-6">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-20" />)}
         </div>
       </div>
     );
@@ -54,9 +53,9 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
 
   if (!workload && !performance) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <BarChart3 className="h-8 w-8 text-muted-foreground mb-3" />
-        <p className="text-muted-foreground">{t('activity.noData')}</p>
+      <div className="flex flex-col items-center justify-center py-10 text-center">
+        <BarChart3 className="h-7 w-7 text-muted-foreground mb-2" />
+        <p className="text-sm text-muted-foreground">{t('activity.noData')}</p>
         <p className="text-xs text-muted-foreground mt-1">{t('activity.noDataDesc')}</p>
       </div>
     );
@@ -75,11 +74,11 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
   // Workload metrics
   const currentAssignments = workload?.current_assignments ?? 0;
   const maxAssignments = workload?.max_concurrent_assignments ?? 20;
-  const capacityPct = workload?.capacity_percentage ?? 0;
+  const capacityPct = Number(workload?.capacity_percentage ?? 0);
   const availability = (workload?.availability as string) ?? 'available';
-  const qualityScore = workload?.quality_score_avg ?? 0;
-  const successRate = workload?.success_rate ?? 0;
-  const deadlineRate = workload?.deadline_compliance_rate ?? 0;
+  const qualityScore = Number(workload?.quality_score_avg ?? 0);
+  const successRate = Number(workload?.success_rate ?? 0);
+  const deadlineRate = Number(workload?.deadline_compliance_rate ?? 0);
 
   const formatDuration = (minutes?: number) => {
     if (!minutes) return '-';
@@ -89,7 +88,7 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleString();
+    return new Date(dateStr).toLocaleDateString();
   };
 
   const getAvailabilityConfig = (avail: string) => {
@@ -104,209 +103,170 @@ export function AgentActivityTab({ workload, performance, isLoading }: AgentActi
     return config[avail] || { label: avail, variant: 'outline' as const };
   };
 
-  const getSlaLabel = (rate: number) => {
-    if (rate >= 90) return t('activity.excellent');
-    if (rate >= 70) return t('activity.acceptable');
-    return t('activity.needsImprovement');
-  };
-
   const getSlaColor = (rate: number) => {
     if (rate >= 90) return 'text-green-600';
     if (rate >= 70) return 'text-yellow-600';
     return 'text-red-600';
   };
 
+  const getCapacityColor = (pct: number) => {
+    if (pct > 80) return 'text-red-600';
+    if (pct > 60) return 'text-yellow-600';
+    return 'text-green-600';
+  };
+
   const availConfig = getAvailabilityConfig(availability);
 
   return (
-    <div className="space-y-4">
-      {/* Row 1: KPI - Monthly stats */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-        {/* Processed */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <BarChart3 className="h-3.5 w-3.5" />
-              {t('activity.processedMonth')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            <div className="text-2xl font-bold">{processed}</div>
-          </CardContent>
-        </Card>
-
-        {/* Approved */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-              {t('activity.approved')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            <div className="text-2xl font-bold text-green-600">{approved}</div>
-            {processed > 0 && (
-              <p className="text-xs text-muted-foreground">{((approved / processed) * 100).toFixed(0)}%</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Rejected */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <XCircle className="h-3.5 w-3.5 text-red-500" />
-              {t('activity.rejected')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            <div className="text-2xl font-bold text-red-600">{rejected}</div>
-            {processed > 0 && (
-              <p className="text-xs text-muted-foreground">{((rejected / processed) * 100).toFixed(0)}%</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Escalated */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
-              {t('activity.escalated')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            <div className="text-2xl font-bold text-orange-600">{escalated}</div>
-            {processed > 0 && (
-              <p className="text-xs text-muted-foreground">{((escalated / processed) * 100).toFixed(0)}%</p>
-            )}
-          </CardContent>
-        </Card>
+    <div className="space-y-3">
+      {/* Row 1: KPI — 4 compact cards */}
+      <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+        <KpiCard
+          icon={<BarChart3 className="h-3.5 w-3.5" />}
+          label={t('activity.processedMonth')}
+          value={processed}
+        />
+        <KpiCard
+          icon={<CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+          label={t('activity.approved')}
+          value={approved}
+          valueColor="text-green-600"
+          pct={processed > 0 ? ((approved / processed) * 100).toFixed(0) + '%' : undefined}
+        />
+        <KpiCard
+          icon={<XCircle className="h-3.5 w-3.5 text-red-500" />}
+          label={t('activity.rejected')}
+          value={rejected}
+          valueColor="text-red-600"
+          pct={processed > 0 ? ((rejected / processed) * 100).toFixed(0) + '%' : undefined}
+        />
+        <KpiCard
+          icon={<AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
+          label={t('activity.escalated')}
+          value={escalated}
+          valueColor="text-orange-600"
+          pct={processed > 0 ? ((escalated / processed) * 100).toFixed(0) + '%' : undefined}
+        />
       </div>
 
-      {/* Row 2: Operations */}
-      <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
+      {/* Row 2: Operations — 6 dense metric cells */}
+      <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {/* Capacity */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <Activity className="h-3.5 w-3.5" />
-              {t('activity.capacity')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>{currentAssignments} / {maxAssignments}</span>
-              <span className="font-medium">{Number(capacityPct)}%</span>
-            </div>
-            <Progress
-              value={Number(capacityPct)}
-              className="h-2"
-            />
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Activity className="h-3 w-3" />
+            {t('activity.capacity')}
+          </div>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className={`text-sm font-bold ${getCapacityColor(capacityPct)}`}>
+              {currentAssignments}/{maxAssignments}
+            </span>
+            <span className="text-xs text-muted-foreground">{capacityPct}%</span>
+          </div>
+          <Progress value={capacityPct} className="h-1.5 mt-1.5" />
+        </div>
 
         {/* Availability */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5" />
-              {t('activity.availability')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            <Badge variant={availConfig.variant}>{availConfig.label}</Badge>
-            {workload?.availability_reason && (
-              <p className="text-xs text-muted-foreground mt-1">{workload.availability_reason}</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            {t('activity.availability')}
+          </div>
+          <div className="mt-1.5">
+            <Badge variant={availConfig.variant} className="text-xs">{availConfig.label}</Badge>
+          </div>
+        </div>
 
-        {/* SLA Compliance */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground">
-              {t('activity.slaCompliance')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-bold">{slaRate.toFixed(0)}%</span>
-              <span className={`text-xs ${getSlaColor(slaRate)}`}>{getSlaLabel(slaRate)}</span>
-            </div>
-            <Progress value={slaRate} className="h-2" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span className="text-green-600">{t('activity.slaRespected', { count: slaRespected })}</span>
-              <span className="text-red-600">{t('activity.slaMissed', { count: slaMissed })}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* SLA */}
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Shield className="h-3 w-3" />
+            {t('activity.slaCompliance')}
+          </div>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-sm font-bold">{slaRate.toFixed(0)}%</span>
+            <span className={`text-[11px] ${getSlaColor(slaRate)}`}>
+              {slaRespected}✓ {slaMissed}✗
+            </span>
+          </div>
+          <Progress value={slaRate} className="h-1.5 mt-1.5" />
+        </div>
 
-      {/* Row 3: Details */}
-      <div className="grid gap-3 grid-cols-1 md:grid-cols-3">
         {/* Processing Time */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
-              {t('activity.avgTime')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            <div className="text-lg font-bold">
-              {formatDuration(performance?.avg_processing_minutes)}
-            </div>
-            <p className="text-xs text-muted-foreground">{t('activity.perCase')}</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {t('activity.avgTime')}
+          </div>
+          <div className="text-sm font-bold mt-1">
+            {formatDuration(performance?.avg_processing_minutes)}
+          </div>
+          <div className="text-[11px] text-muted-foreground">{t('activity.perCase')}</div>
+        </div>
 
         {/* Quality */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <TrendingUp className="h-3.5 w-3.5" />
-              {t('activity.quality')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4 space-y-1">
-            <div className="text-lg font-bold">{Number(qualityScore).toFixed(1)}/10</div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{t('activity.successRate', { rate: (Number(successRate) * 100).toFixed(0) })}</span>
-              <span>{t('activity.deadlineRate', { rate: (Number(deadlineRate) * 100).toFixed(0) })}</span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            {t('activity.quality')}
+          </div>
+          <div className="text-sm font-bold mt-1">{qualityScore.toFixed(1)}/10</div>
+          <div className="text-[11px] text-muted-foreground">
+            {(successRate * 100).toFixed(0)}% · {(deadlineRate * 100).toFixed(0)}%
+          </div>
+        </div>
 
         {/* Locks */}
-        <Card className="py-0">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
-              <Lock className="h-3.5 w-3.5" />
-              {t('activity.locks')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="text-lg font-bold">{performance?.current_active_locks ?? 0}</span>
-                <span className="text-xs text-muted-foreground ml-1">{t('activity.activeLocks')}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t('activity.maxLocks', { count: performance?.max_concurrent_locks ?? 0 })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <Lock className="h-3 w-3" />
+            {t('activity.locks')}
+          </div>
+          <div className="flex items-baseline gap-1 mt-1">
+            <span className="text-sm font-bold">{performance?.current_active_locks ?? 0}</span>
+            <span className="text-[11px] text-muted-foreground">{t('activity.activeLocks')}</span>
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            {t('activity.maxLocks', { count: performance?.max_concurrent_locks ?? 0 })}
+          </div>
+        </div>
       </div>
 
-      {/* Footer: Activity dates */}
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground px-1">
+      {/* Footer: Activity dates — single line */}
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground px-1">
         <span>{t('activity.lastAction', { date: formatDate(performance?.last_action_at) })}</span>
         <span>{t('activity.lastLogin', { date: formatDate(performance?.last_login_at) })}</span>
         {performance?.stats_period_start && (
           <span>{t('activity.periodSince', { date: performance.stats_period_start })}</span>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Tiny KPI card — icon + label + bold value + optional percentage */
+function KpiCard({
+  icon,
+  label,
+  value,
+  valueColor,
+  pct,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  valueColor?: string;
+  pct?: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-card px-3 py-2">
+      <div className="text-[11px] font-medium flex items-center gap-1 text-muted-foreground">
+        {icon}
+        {label}
+      </div>
+      <div className="flex items-baseline gap-1.5 mt-0.5">
+        <span className={`text-xl font-bold ${valueColor ?? ''}`}>{value}</span>
+        {pct && <span className="text-[11px] text-muted-foreground">{pct}</span>}
       </div>
     </div>
   );
