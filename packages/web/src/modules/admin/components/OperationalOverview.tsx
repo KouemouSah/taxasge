@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { RefreshCw, AlertTriangle, PieChart, BarChart3 } from 'lucide-react'
+import { RefreshCw, AlertTriangle, PieChart, BarChart3, Cpu, DollarSign } from 'lucide-react'
 import type { TooltipItem } from 'chart.js'
 import {
   Chart as ChartJS,
@@ -11,11 +11,14 @@ import {
   LinearScale,
   BarElement,
   ArcElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from 'chart.js'
-import { Bar, Doughnut } from 'react-chartjs-2'
+import { Bar, Doughnut, Line } from 'react-chartjs-2'
 import { fetchClient } from '@/core/api'
 import usersApi from '@/modules/users-admin/services/api'
 
@@ -24,9 +27,12 @@ ChartJS.register(
   LinearScale,
   BarElement,
   ArcElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
+  Filler,
 )
 
 // Palette for donut charts
@@ -45,17 +51,7 @@ const ROLE_COLORS: Record<string, string> = {
   agent: '#ec4899',
 }
 
-// Colors for service types
-const SERVICE_TYPE_COLORS: Record<string, string> = {
-  document_processing: '#3b82f6',
-  license_permit: '#10b981',
-  residence_permit: '#8b5cf6',
-  registration_fee: '#f59e0b',
-  inspection_fee: '#14b8a6',
-  administrative_tax: '#ef4444',
-  customs_duty: '#f97316',
-  declaration_tax: '#ec4899',
-}
+// (SERVICE_TYPE_COLORS removed — chart 2 is now Gemini AI usage)
 
 interface UserStats {
   by_role?: Record<string, number>
@@ -81,10 +77,19 @@ interface FiscalServiceStats {
   total_views: number
 }
 
+interface GeminiDashboardStats {
+  total_calls: number
+  total_tokens: number
+  estimated_cost_usd: number
+  error_count: number
+  daily_breakdown: Array<{ day: string; calls: number; tokens: number; errors: number }>
+}
+
 export default function OperationalOverview() {
   const t = useTranslations('admin.dashboard')
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [serviceStats, setServiceStats] = useState<FiscalServiceStats | null>(null)
+  const [geminiStats, setGeminiStats] = useState<GeminiDashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errors, setErrors] = useState<string[]>([])
 
@@ -93,9 +98,10 @@ export default function OperationalOverview() {
       setIsLoading(true)
       const errs: string[] = []
 
-      const [usersResult, servicesResult] = await Promise.allSettled([
+      const [usersResult, servicesResult, geminiResult] = await Promise.allSettled([
         usersApi.getStats(),
         fetchClient.get<FiscalServiceStats>('/fiscal-services/admin/stats'),
+        fetchClient.get<GeminiDashboardStats>('/audit-logs/gemini-stats', { days: 30 }),
       ])
 
       if (usersResult.status === 'fulfilled') {
@@ -108,6 +114,10 @@ export default function OperationalOverview() {
         setServiceStats(servicesResult.value)
       } else {
         errs.push('services')
+      }
+
+      if (geminiResult.status === 'fulfilled') {
+        setGeminiStats(geminiResult.value)
       }
 
       setErrors(errs)
@@ -180,21 +190,48 @@ export default function OperationalOverview() {
   }
 
   // =============================================
-  // CHART 2: Services by Type (Donut)
+  // CHART 2: Gemini AI Usage (Line + KPIs)
   // =============================================
-  const typeData = serviceStats?.services_by_type || {}
-  const typeLabels = Object.keys(typeData)
-  const typeValues = Object.values(typeData)
-  const typeColors = typeLabels.map(t => SERVICE_TYPE_COLORS[t] || DONUT_PALETTE[typeLabels.indexOf(t) % DONUT_PALETTE.length])
-
-  const typesDonutData = {
-    labels: typeLabels.map(tp => tp.replace(/_/g, ' ')),
-    datasets: [{
-      data: typeValues,
-      backgroundColor: typeColors,
-      borderWidth: 2,
-      borderColor: '#ffffff',
-    }],
+  const geminiDaily = [...(geminiStats?.daily_breakdown || [])].reverse()
+  const geminiLineData = {
+    labels: geminiDaily.map(d => {
+      const date = new Date(d.day)
+      return `${date.getDate()}/${date.getMonth() + 1}`
+    }),
+    datasets: [
+      {
+        label: 'Tokens',
+        data: geminiDaily.map(d => d.tokens),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 1,
+      },
+    ],
+  }
+  const geminiLineOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx: TooltipItem<'line'>) => {
+            const day = geminiDaily[ctx.dataIndex]
+            return [
+              `Tokens: ${(ctx.parsed.y || 0).toLocaleString()}`,
+              `Llamadas: ${day?.calls || 0}`,
+              ...(day?.errors ? [`Errores: ${day.errors}`] : []),
+            ]
+          },
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 9 }, maxTicksLimit: 10 } },
+      y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 9 } } },
+    },
   }
 
   // =============================================
@@ -320,26 +357,33 @@ export default function OperationalOverview() {
         </CardContent>
       </Card>
 
-      {/* Chart 2: Services by Type (Donut) */}
+      {/* Chart 2: Gemini AI Usage */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <PieChart className="h-4 w-4 text-primary" />
-            {t('chart.servicesByType')}
+            <Cpu className="h-4 w-4 text-indigo-500" />
+            {t('chart.geminiUsage')}
           </CardTitle>
+          {geminiStats && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+              <span>{geminiStats.total_calls} llamadas</span>
+              <span className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />${geminiStats.estimated_cost_usd.toFixed(2)}
+              </span>
+              {geminiStats.error_count > 0 && (
+                <span className="text-red-500">{geminiStats.error_count} errores</span>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
-          {typeLabels.length > 0 ? (
-            <div className="h-56">
-              <Doughnut data={typesDonutData} options={donutOptions} />
+          {geminiDaily.length > 0 ? (
+            <div className="h-48">
+              <Line data={geminiLineData} options={geminiLineOptions} />
             </div>
           ) : (
             <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              {errors.includes('services') ? (
-                <><AlertTriangle className="h-4 w-4" /><span className="text-sm">{t('chart.errorServices')}</span></>
-              ) : (
-                <span className="text-sm">{t('chart.noData')}</span>
-              )}
+              <span className="text-sm">{t('chart.noData')}</span>
             </div>
           )}
         </CardContent>

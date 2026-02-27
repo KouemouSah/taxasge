@@ -254,3 +254,143 @@ async def get_user_audit_logs(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error retrieving user audit logs"
         )
+
+
+# =============================================================================
+# GEMINI / AI COST MONITORING
+# =============================================================================
+
+
+class GeminiUsageStats(BaseModel):
+    """Gemini API usage statistics"""
+    total_calls: int = 0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_tokens: int = 0
+    estimated_cost_usd: float = 0.0
+    error_count: int = 0
+    fallback_count: int = 0
+    avg_processing_time_ms: float = 0.0
+    avg_confidence: float = 0.0
+    daily_breakdown: List[Dict[str, Any]] = []
+    by_workflow: List[Dict[str, Any]] = []
+    by_document_category: List[Dict[str, Any]] = []
+
+
+@router.get("/gemini-stats", response_model=GeminiUsageStats)
+async def get_gemini_usage_stats(
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user=Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("audit.view_stats")),
+):
+    """
+    Get Gemini AI API usage statistics for cost monitoring.
+
+    Queries gemini_processing_logs table for token usage, cost estimation,
+    error rates, and breakdown by workflow/document type.
+
+    Requires audit.view_stats permission.
+    """
+    try:
+        # Gemini Flash pricing (USD per 1M tokens)
+        INPUT_RATE = 0.075  # $0.075 per 1M input tokens
+        OUTPUT_RATE = 0.30   # $0.30 per 1M output tokens
+
+        # Overall stats
+        overall_query = """
+            SELECT
+                COUNT(*) as total_calls,
+                COALESCE(SUM(input_tokens), 0)::bigint as total_input_tokens,
+                COALESCE(SUM(output_tokens), 0)::bigint as total_output_tokens,
+                COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0)::bigint as total_tokens,
+                COUNT(*) FILTER (WHERE has_error = true) as error_count,
+                COUNT(*) FILTER (WHERE used_fallback = true) as fallback_count,
+                COALESCE(AVG(processing_time_ms), 0)::numeric as avg_processing_time_ms,
+                COALESCE(AVG(extraction_confidence) FILTER (WHERE extraction_confidence IS NOT NULL), 0)::numeric as avg_confidence
+            FROM gemini_processing_logs
+            WHERE created_at >= NOW() - ($1 || ' days')::interval
+        """
+        overall = await db.fetchrow(overall_query, str(days))
+
+        total_input = int(overall['total_input_tokens']) if overall else 0
+        total_output = int(overall['total_output_tokens']) if overall else 0
+        estimated_cost = (total_input * INPUT_RATE + total_output * OUTPUT_RATE) / 1_000_000
+
+        # Daily breakdown (for chart)
+        daily_query = """
+            SELECT
+                created_at::date as day,
+                COUNT(*) as calls,
+                COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0)::bigint as tokens,
+                COUNT(*) FILTER (WHERE has_error = true) as errors
+            FROM gemini_processing_logs
+            WHERE created_at >= NOW() - ($1 || ' days')::interval
+            GROUP BY created_at::date
+            ORDER BY day DESC
+            LIMIT 60
+        """
+        daily_rows = await db.fetch(daily_query, str(days))
+        daily_breakdown = [
+            {"day": str(r['day']), "calls": r['calls'], "tokens": int(r['tokens']), "errors": r['errors']}
+            for r in daily_rows
+        ]
+
+        # By workflow
+        workflow_query = """
+            SELECT
+                COALESCE(workflow_code, 'unknown') as workflow,
+                COUNT(*) as calls,
+                COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0)::bigint as tokens
+            FROM gemini_processing_logs
+            WHERE created_at >= NOW() - ($1 || ' days')::interval
+            GROUP BY workflow_code
+            ORDER BY tokens DESC
+            LIMIT 15
+        """
+        wf_rows = await db.fetch(workflow_query, str(days))
+        by_workflow = [
+            {"workflow": r['workflow'], "calls": r['calls'], "tokens": int(r['tokens'])}
+            for r in wf_rows
+        ]
+
+        # By document category
+        category_query = """
+            SELECT
+                COALESCE(document_category, 'other') as category,
+                COUNT(*) as calls,
+                COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0)::bigint as tokens,
+                COALESCE(AVG(extraction_confidence) FILTER (WHERE extraction_confidence IS NOT NULL), 0)::numeric as avg_confidence
+            FROM gemini_processing_logs
+            WHERE created_at >= NOW() - ($1 || ' days')::interval
+            GROUP BY document_category
+            ORDER BY tokens DESC
+        """
+        cat_rows = await db.fetch(category_query, str(days))
+        by_document_category = [
+            {"category": r['category'], "calls": r['calls'], "tokens": int(r['tokens']),
+             "avg_confidence": float(round(r['avg_confidence'], 2))}
+            for r in cat_rows
+        ]
+
+        return GeminiUsageStats(
+            total_calls=overall['total_calls'] if overall else 0,
+            total_input_tokens=total_input,
+            total_output_tokens=total_output,
+            total_tokens=total_input + total_output,
+            estimated_cost_usd=round(estimated_cost, 4),
+            error_count=overall['error_count'] if overall else 0,
+            fallback_count=overall['fallback_count'] if overall else 0,
+            avg_processing_time_ms=float(round(overall['avg_processing_time_ms'], 1)) if overall else 0,
+            avg_confidence=float(round(overall['avg_confidence'], 2)) if overall else 0,
+            daily_breakdown=daily_breakdown,
+            by_workflow=by_workflow,
+            by_document_category=by_document_category,
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting Gemini usage stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving Gemini usage statistics"
+        )

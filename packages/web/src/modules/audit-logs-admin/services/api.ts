@@ -1,104 +1,79 @@
 /**
  * Audit Logs Admin API Service
- * Handles all API calls to the backend audit logs endpoints
- *
- * @module audit-logs-admin/services
- * @author Claude Code
- * @date 2025-11-19
+ * Aligned with backend audit_routes.py
  */
 
 import { fetchClient } from '@/core/api'
 import type {
   AuditLog,
   PaginatedAuditLogsResponse,
-  AuditAction,
-} from "../types";
-
-// =============================================================================
-// AUDIT LOGS API
-// =============================================================================
+  AuditLogStats,
+} from '../types'
 
 export const auditLogsApi = {
   /**
-   * Get all audit logs with optional filters
+   * GET /audit-logs — paginated list with filters
    */
   getAll: async (params?: {
-    action?: AuditAction;
-    user_id?: string;
-    resource_type?: string;
-    success?: boolean;
-    start_date?: string;
-    end_date?: string;
-    search?: string;
-    page?: number;
-    page_size?: number;
-  }): Promise<AuditLog[]> => {
-    const response = await fetchClient.get<PaginatedAuditLogsResponse>('/audit-logs', {
+    action?: string
+    user_id?: string
+    entity_type?: string
+    search?: string
+    start_date?: string
+    end_date?: string
+    page?: number
+    page_size?: number
+  }): Promise<PaginatedAuditLogsResponse> => {
+    return fetchClient.get<PaginatedAuditLogsResponse>('/audit-logs', {
       action: params?.action,
       user_id: params?.user_id,
-      resource_type: params?.resource_type,
-      success: params?.success,
+      entity_type: params?.entity_type,
+      search: params?.search,
       start_date: params?.start_date,
       end_date: params?.end_date,
-      search: params?.search,
-      page: params?.page,
-      page_size: params?.page_size,
-    });
-
-    // Extract audit logs array from paginated response
-    return response.items || [];
+      page: params?.page || 1,
+      page_size: params?.page_size || 25,
+    })
   },
 
   /**
-   * Get audit log by ID
+   * GET /audit-logs/{id}
    */
   getById: async (id: string): Promise<AuditLog> => {
-    return fetchClient.get<AuditLog>(`/audit-logs/${id}`);
+    return fetchClient.get<AuditLog>(`/audit-logs/${id}`)
   },
 
   /**
-   * Get audit logs for a specific user
+   * GET /audit-logs/stats
+   */
+  getStats: async (params?: {
+    start_date?: string
+    end_date?: string
+  }): Promise<AuditLogStats> => {
+    return fetchClient.get<AuditLogStats>('/audit-logs/stats', {
+      start_date: params?.start_date,
+      end_date: params?.end_date,
+    })
+  },
+
+  /**
+   * GET /users/{user_id}/audit-logs
    */
   getByUser: async (userId: string, params?: {
-    action?: AuditAction;
-    page?: number;
-    page_size?: number;
+    action?: string
+    page?: number
+    page_size?: number
   }): Promise<AuditLog[]> => {
-    const response = await fetchClient.get<PaginatedAuditLogsResponse>(
+    const response = await fetchClient.get<AuditLog[]>(
       `/users/${userId}/audit-logs`,
       {
         action: params?.action,
         page: params?.page,
         page_size: params?.page_size,
       }
-    );
-
-    return response.items || [];
+    )
+    return response || []
   },
+}
 
-  /**
-   * Get audit log statistics
-   * BACKEND: GET /api/v1/audit-logs/stats
-   * ROUTE: get_audit_stats() in audit_routes.py:119
-   * PERMISSION: audit.view_stats
-   */
-  getStats: async (params?: {
-    start_date?: string;
-    end_date?: string;
-  }): Promise<{
-    total_logs: number;
-    by_action: Record<string, number>;
-    by_entity_type: Record<string, number>;
-  }> => {
-    return fetchClient.get('/audit-logs/stats', {
-      start_date: params?.start_date,
-      end_date: params?.end_date,
-    });
-  },
-};
-
-// =============================================================================
-// EXPORTS
-// =============================================================================
-
-export default auditLogsApi;
+export default auditLogsApi

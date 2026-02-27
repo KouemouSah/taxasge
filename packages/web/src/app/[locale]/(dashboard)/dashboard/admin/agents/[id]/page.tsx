@@ -527,89 +527,106 @@ export default function AgentDetailPage() {
             </CardHeader>
             <CardContent>
               {!isEditing ? (
-                /* ---- Read-only view — compact, no separators ---- */
-                <div className="space-y-3">
-                  {/* Row 1: Organization info */}
-                  <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Type</p>
-                      <p className="text-sm font-medium">{agentTypeLabel}</p>
+                /* ---- Read-only view — structured with separators ---- */
+                <div className="space-y-0 divide-y">
+                  {/* Section 1: Type + Supervisor + Entity */}
+                  <div className="pb-3 space-y-2">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                      <span className="text-muted-foreground">
+                        Type: <span className="font-medium text-foreground">{agentTypeLabel}</span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        Superviseur: <span className={`font-medium ${profile.is_supervisor ? 'text-green-600' : 'text-foreground'}`}>
+                          {profile.is_supervisor ? 'Oui' : 'Non'}
+                        </span>
+                      </span>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {profile.agent_type === AgentType.MINISTRY_AGENT ? 'Ministère' : 'Entité'}
-                      </p>
-                      <p className="text-sm font-medium">{organizationName}</p>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">
+                        {profile.agent_type === AgentType.MINISTRY_AGENT ? 'Ministère' : 'Entité'}:{' '}
+                      </span>
+                      <span className="font-medium text-foreground">{organizationName}</span>
                     </div>
                     {profile.agent_type === AgentType.ENTITY_AGENT && (
-                      <div>
-                        <p className="text-xs text-muted-foreground">Site</p>
-                        <p className="text-sm font-medium">
-                          {profile.location_name
-                            ? `${profile.location_name} — ${profile.location_city || ''}`
-                            : 'Todas las ubicaciones'}
-                        </p>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                        <span className="text-muted-foreground">
+                          Site: <span className="font-medium text-foreground">
+                            {profile.location_name
+                              ? `${profile.location_name} — ${profile.location_city || ''}`
+                              : 'Todas las ubicaciones'}
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          Créé le: <span className="font-medium text-foreground">
+                            {new Date(profile.created_at).toLocaleDateString()}
+                          </span>
+                        </span>
                       </div>
                     )}
-                    <div>
-                      <p className="text-xs text-muted-foreground">Superviseur</p>
-                      <p className="text-sm font-medium">{profile.is_supervisor ? 'Oui' : 'Non'}</p>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Capabilities + Approval (inline badges) */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {profile.is_supervisor && (
-                      <>
-                        {profile.can_escalate && <Badge variant="outline" className="text-xs">Peut escalader</Badge>}
-                        {profile.can_assign_tasks && <Badge variant="outline" className="text-xs">Peut assigner</Badge>}
-                        {profile.can_reassign && <Badge variant="outline" className="text-xs">Peut réassigner</Badge>}
-                        {profile.is_backup_agent && <Badge variant="outline" className="text-xs">Agent de backup</Badge>}
-                      </>
-                    )}
-                    {profile.can_approve_unlimited && (
-                      <Badge variant="outline" className="text-xs bg-green-50">Approbation illimitée</Badge>
-                    )}
-                    {!profile.can_approve_unlimited && profile.max_approval_amount && (
-                      <Badge variant="outline" className="text-xs">
-                        Max: {profile.max_approval_amount.toLocaleString()} XAF
-                      </Badge>
+                    {profile.agent_type !== AgentType.ENTITY_AGENT && (
+                      <div className="text-sm text-muted-foreground">
+                        Créé le: <span className="font-medium text-foreground">
+                          {new Date(profile.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Row 3: Schedule + Created */}
-                  <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Horaires</p>
-                      <p className="text-sm font-medium">
-                        {profile.working_hours_start || '08:00'} - {profile.working_hours_end || '17:00'}
-                      </p>
+                  {/* Section 2: Capabilities + Approval */}
+                  <div className="py-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {profile.is_supervisor && (
+                        <>
+                          {profile.can_escalate && <Badge variant="outline" className="text-xs">Peut escalader</Badge>}
+                          {profile.can_assign_tasks && <Badge variant="outline" className="text-xs">Peut assigner</Badge>}
+                          {profile.can_reassign && <Badge variant="outline" className="text-xs">Peut réassigner</Badge>}
+                          {profile.is_backup_agent && <Badge variant="outline" className="text-xs">Agent de backup</Badge>}
+                        </>
+                      )}
+                      {profile.can_approve_unlimited && (
+                        <Badge variant="outline" className="text-xs bg-green-50 border-green-200">Approbation illimitée</Badge>
+                      )}
+                      {!profile.can_approve_unlimited && profile.max_approval_amount && (
+                        <Badge variant="outline" className="text-xs">
+                          Max: {profile.max_approval_amount.toLocaleString()} XAF
+                        </Badge>
+                      )}
+                      {!profile.is_supervisor && !profile.can_approve_unlimited && !profile.max_approval_amount && (
+                        <span className="text-xs text-muted-foreground italic">Aucune capacité spéciale</span>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Jours de travail</p>
-                      <div className="flex flex-wrap gap-0.5">
-                        {[
-                          { value: 1, label: 'L' },
-                          { value: 2, label: 'M' },
-                          { value: 3, label: 'M' },
-                          { value: 4, label: 'J' },
-                          { value: 5, label: 'V' },
-                          { value: 6, label: 'S' },
-                          { value: 0, label: 'D' },
-                        ].map((day) => (
-                          <Badge
-                            key={day.value}
-                            variant={(profile.working_days || [1, 2, 3, 4, 5]).includes(day.value) ? 'default' : 'outline'}
-                            className="text-[10px] h-5 w-5 p-0 justify-center"
-                          >
-                            {day.label}
-                          </Badge>
-                        ))}
+                  </div>
+
+                  {/* Section 3: Schedule */}
+                  <div className="pt-3">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                      <span className="text-muted-foreground">
+                        Horaires: <span className="font-medium text-foreground">
+                          {profile.working_hours_start || '08:00'} - {profile.working_hours_end || '17:00'}
+                        </span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">Jours:</span>
+                        <div className="flex gap-0.5">
+                          {[
+                            { value: 1, label: 'L' },
+                            { value: 2, label: 'M' },
+                            { value: 3, label: 'M' },
+                            { value: 4, label: 'J' },
+                            { value: 5, label: 'V' },
+                            { value: 6, label: 'S' },
+                            { value: 0, label: 'D' },
+                          ].map((day) => (
+                            <Badge
+                              key={day.value}
+                              variant={(profile.working_days || [1, 2, 3, 4, 5]).includes(day.value) ? 'default' : 'outline'}
+                              className="text-[10px] h-5 w-5 p-0 justify-center"
+                            >
+                              {day.label}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Créé le</p>
-                      <p className="text-sm font-medium">{new Date(profile.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
                 </div>

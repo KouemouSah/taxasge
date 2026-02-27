@@ -1,42 +1,19 @@
 /**
  * Audit Logs Admin Types
- * Type definitions for audit log management
- *
- * @module audit-logs-admin/types
- * @author Claude Code
- * @date 2025-11-19
+ * Aligned with backend AuditLogResponse (admin.py:182)
  */
-
-export type AuditAction =
-  | 'user.login'
-  | 'user.logout'
-  | 'user.register'
-  | 'user.update'
-  | 'user.delete'
-  | 'role.create'
-  | 'role.update'
-  | 'role.delete'
-  | 'permission.grant'
-  | 'permission.revoke'
-  | 'settings.update'
-  | 'declaration.create'
-  | 'declaration.update'
-  | 'declaration.submit'
-  | 'declaration.approve'
-  | 'declaration.reject'
 
 export interface AuditLog {
   id: string
-  user_id: string
-  user_email: string
-  action: AuditAction
-  resource_type: string
-  resource_id?: string
-  details?: string
-  ip_address?: string
-  user_agent?: string
-  timestamp: string
-  success: boolean
+  user_id: string | null
+  entity_type: string
+  entity_id: string
+  action: string
+  old_values?: Record<string, unknown> | null
+  new_values?: Record<string, unknown> | null
+  ip_address?: string | null
+  user_agent?: string | null
+  created_at: string
 }
 
 export interface PaginatedAuditLogsResponse {
@@ -44,4 +21,14 @@ export interface PaginatedAuditLogsResponse {
   total: number
   page: number
   page_size: number
+  pages: number
 }
+
+export interface AuditLogStats {
+  total_logs: number
+  by_action: Record<string, number>
+  by_entity_type: Record<string, number>
+}
+
+// Keep for backward compatibility — used in filters
+export type AuditAction = string

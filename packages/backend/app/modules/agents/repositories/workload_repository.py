@@ -330,64 +330,126 @@ class WorkloadRepository:
         Both sources are combined so the endpoint works for any agent type.
         """
         query = """
-            WITH assignment_stats AS (
-                SELECT
-                    COUNT(*) FILTER (WHERE status = 'completed') as total_completed,
-                    COUNT(*) FILTER (WHERE status = 'completed' AND validation_status = 'approved') as approved,
-                    COUNT(*) FILTER (WHERE status = 'completed' AND validation_status = 'rejected') as rejected,
-                    COUNT(*) FILTER (WHERE status = 'completed' AND validation_status = 'escalated') as escalated,
-                    COUNT(*) FILTER (WHERE deadline_met = true) as sla_respected,
-                    COUNT(*) FILTER (WHERE deadline_met = false) as sla_missed,
-                    AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)::numeric as avg_processing_minutes,
-                    MAX(completed_at) as last_action_at
-                FROM assignments a
-                WHERE a.agent_profile_id = $1::uuid
-                AND a.created_at >= date_trunc('month', CURRENT_DATE)
-            ),
-            payment_audit_stats AS (
-                SELECT
-                    COUNT(*) as total_validated,
-                    COUNT(*) FILTER (WHERE action = 'approve') as approved,
-                    COUNT(*) FILTER (WHERE action = 'reject') as rejected,
-                    COUNT(*) FILTER (WHERE action = 'escalate') as escalated,
-                    MAX(created_at) as last_action_at
-                FROM payment_validation_audit
-                WHERE agent_profile_id = $1::uuid
-                AND created_at >= date_trunc('month', CURRENT_DATE)
-            ),
-            lock_stats AS (
-                SELECT
-                    COUNT(*) FILTER (
-                        WHERE locked_by_agent_id = $1::uuid
-                        AND workflow_status IN ('locked_by_agent', 'agent_reviewing')
-                    ) as active_locks
-                FROM service_payments
-            )
             SELECT
                 $1 as agent_profile_id,
-                COALESCE(a.total_completed, 0) + COALESCE(p.total_validated, 0) as current_month_processed,
-                COALESCE(a.approved, 0) + COALESCE(p.approved, 0) as current_month_approved,
-                COALESCE(a.rejected, 0) + COALESCE(p.rejected, 0) as current_month_rejected,
-                COALESCE(a.escalated, 0) + COALESCE(p.escalated, 0) as current_month_escalated,
-                ROUND(a.avg_processing_minutes, 2) as avg_processing_minutes,
+                -- Combined processed count from assignments + payment validations
+                COALESCE((
+                    SELECT COUNT(*) FILTER (WHERE status = 'completed')
+                    FROM assignments
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                ), 0) + COALESCE((
+                    SELECT COUNT(*)
+                    FROM payment_validation_audit
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                ), 0) as current_month_processed,
+                -- Approved
+                COALESCE((
+                    SELECT COUNT(*)
+                    FROM assignments
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                    AND status = 'completed' AND validation_status = 'approved'
+                ), 0) + COALESCE((
+                    SELECT COUNT(*)
+                    FROM payment_validation_audit
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                    AND action = 'approve'
+                ), 0) as current_month_approved,
+                -- Rejected
+                COALESCE((
+                    SELECT COUNT(*)
+                    FROM assignments
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                    AND status = 'completed' AND validation_status = 'rejected'
+                ), 0) + COALESCE((
+                    SELECT COUNT(*)
+                    FROM payment_validation_audit
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                    AND action = 'reject'
+                ), 0) as current_month_rejected,
+                -- Escalated
+                COALESCE((
+                    SELECT COUNT(*)
+                    FROM assignments
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                    AND status = 'completed' AND validation_status = 'escalated'
+                ), 0) + COALESCE((
+                    SELECT COUNT(*)
+                    FROM payment_validation_audit
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                    AND action = 'escalate'
+                ), 0) as current_month_escalated,
+                -- Avg processing time (assignments only)
+                ROUND(COALESCE((
+                    SELECT AVG(EXTRACT(EPOCH FROM (completed_at - started_at)) / 60)::numeric
+                    FROM assignments
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                    AND status = 'completed'
+                ), 0), 2) as avg_processing_minutes,
                 NULL::numeric as avg_lock_duration_minutes,
-                COALESCE(a.sla_respected, 0) as sla_respected_count,
-                COALESCE(a.sla_missed, 0) as sla_missed_count,
+                -- SLA stats (assignments)
+                COALESCE((
+                    SELECT COUNT(*) FILTER (WHERE deadline_met = true)
+                    FROM assignments
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                ), 0) as sla_respected_count,
+                COALESCE((
+                    SELECT COUNT(*) FILTER (WHERE deadline_met = false)
+                    FROM assignments
+                    WHERE agent_profile_id = $1::uuid
+                    AND created_at >= date_trunc('month', CURRENT_DATE)
+                ), 0) as sla_missed_count,
+                -- SLA percentage
                 CASE
-                    WHEN COALESCE(a.sla_respected, 0) + COALESCE(a.sla_missed, 0) > 0
-                    THEN ROUND((a.sla_respected::numeric / (a.sla_respected + a.sla_missed)) * 100, 2)
+                    WHEN COALESCE((
+                        SELECT COUNT(*) FILTER (WHERE deadline_met IS NOT NULL)
+                        FROM assignments
+                        WHERE agent_profile_id = $1::uuid
+                        AND created_at >= date_trunc('month', CURRENT_DATE)
+                    ), 0) > 0
+                    THEN ROUND(
+                        (SELECT COUNT(*) FILTER (WHERE deadline_met = true)
+                         FROM assignments
+                         WHERE agent_profile_id = $1::uuid
+                         AND created_at >= date_trunc('month', CURRENT_DATE)
+                        )::numeric /
+                        NULLIF((SELECT COUNT(*) FILTER (WHERE deadline_met IS NOT NULL)
+                         FROM assignments
+                         WHERE agent_profile_id = $1::uuid
+                         AND created_at >= date_trunc('month', CURRENT_DATE)
+                        ), 0) * 100, 2)
                     ELSE NULL
                 END as sla_respect_percentage,
-                COALESCE(l.active_locks, 0)::int as current_active_locks,
+                -- Active locks (use correct column name: locked_by_agent_profile_id)
+                COALESCE((
+                    SELECT COUNT(*)
+                    FROM service_payments
+                    WHERE locked_by_agent_profile_id = $1::uuid
+                    AND workflow_status IN ('locked_by_agent', 'agent_reviewing')
+                ), 0)::int as current_active_locks,
                 0 as max_concurrent_locks,
-                GREATEST(a.last_action_at, p.last_action_at) as last_action_at,
+                -- Last action (most recent from either source)
+                GREATEST(
+                    (SELECT MAX(completed_at) FROM assignments
+                     WHERE agent_profile_id = $1::uuid
+                     AND created_at >= date_trunc('month', CURRENT_DATE)),
+                    (SELECT MAX(created_at) FROM payment_validation_audit
+                     WHERE agent_profile_id = $1::uuid
+                     AND created_at >= date_trunc('month', CURRENT_DATE))
+                ) as last_action_at,
                 NULL::timestamp as last_login_at,
                 date_trunc('month', CURRENT_DATE)::date as stats_period_start,
                 NULL::date as stats_period_end,
                 NOW() as updated_at
-            FROM assignment_stats a
-            CROSS JOIN payment_audit_stats p
-            CROSS JOIN lock_stats l
         """
         try:
             result = await conn.fetchrow(query, agent_profile_id)

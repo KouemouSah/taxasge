@@ -1,17 +1,9 @@
-/**
- * Audit Logs Hooks
- * React Query hooks for audit log operations
- *
- * @module audit-logs-admin/hooks
- */
-
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
 import { auditLogsApi } from '../services/api'
-import type { AuditAction } from '../types'
+import type { PaginatedAuditLogsResponse } from '../types'
 
-// Query keys
 export const auditLogsKeys = {
   all: ['audit-logs'] as const,
   lists: () => [...auditLogsKeys.all, 'list'] as const,
@@ -22,29 +14,22 @@ export const auditLogsKeys = {
   user: (userId: string) => [...auditLogsKeys.all, 'user', userId] as const,
 }
 
-/**
- * Fetch all audit logs with optional filters
- */
 export function useAuditLogs(params?: {
-  action?: AuditAction
+  action?: string
   user_id?: string
-  resource_type?: string
-  success?: boolean
+  entity_type?: string
+  search?: string
   start_date?: string
   end_date?: string
-  search?: string
   page?: number
   page_size?: number
 }) {
-  return useQuery({
+  return useQuery<PaginatedAuditLogsResponse>({
     queryKey: auditLogsKeys.list(params || {}),
     queryFn: () => auditLogsApi.getAll(params),
   })
 }
 
-/**
- * Fetch a single audit log by ID
- */
 export function useAuditLog(id: string) {
   return useQuery({
     queryKey: auditLogsKeys.detail(id),
@@ -53,13 +38,10 @@ export function useAuditLog(id: string) {
   })
 }
 
-/**
- * Fetch audit logs for a specific user
- */
 export function useUserAuditLogs(
   userId: string,
   params?: {
-    action?: AuditAction
+    action?: string
     page?: number
     page_size?: number
   }

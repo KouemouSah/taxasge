@@ -709,6 +709,7 @@
       "chart": {
         "usersByRole": "Usuarios por Rol",
         "servicesByType": "Servicios Fiscales por Tipo",
+        "geminiUsage": "Uso Gemini AI (30 días)",
         "topServices": "Top 10 Servicios más Utilizados",
         "servicesByMinistry": "Servicios por Ministerio",
         "calculations": "Cálculos",

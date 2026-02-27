@@ -1,15 +1,3 @@
-/**
- * Recent Activity Component
- * Display recent audit log entries with real backend data
- *
- * BACKEND INTEGRATION:
- * - Audit logs: GET /api/v1/audit-logs (audit-logs-admin module)
- *
- * @module modules/admin/components
- * @author Claude Code
- * @date 2025-11-27
- */
-
 'use client'
 
 import React, { useEffect, useState } from 'react'
@@ -34,11 +22,11 @@ export default function RecentActivity() {
       setError(null)
 
       try {
-        const logs = await auditLogsApi.getAll({
+        const response = await auditLogsApi.getAll({
           page: 1,
           page_size: 5,
         })
-        setActivities(logs)
+        setActivities(response.items || [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error fetching activities')
       } finally {
@@ -51,13 +39,13 @@ export default function RecentActivity() {
 
   const getActionColor = (action: string) => {
     const actionLower = action.toLowerCase()
-    if (actionLower.includes('create') || actionLower.includes('register')) {
+    if (actionLower.includes('create') || actionLower.includes('register') || actionLower.includes('submitted')) {
       return 'bg-green-100 text-green-800'
     }
-    if (actionLower.includes('update') || actionLower.includes('modify')) {
+    if (actionLower.includes('update') || actionLower.includes('modify') || actionLower.includes('approved')) {
       return 'bg-blue-100 text-blue-800'
     }
-    if (actionLower.includes('delete') || actionLower.includes('remove')) {
+    if (actionLower.includes('delete') || actionLower.includes('remove') || actionLower.includes('rejected')) {
       return 'bg-red-100 text-red-800'
     }
     if (actionLower.includes('grant') || actionLower.includes('permission')) {
@@ -67,14 +55,6 @@ export default function RecentActivity() {
       return 'bg-yellow-100 text-yellow-800'
     }
     return 'bg-gray-100 text-gray-800'
-  }
-
-  const getActionLabel = (action: string) => {
-    // Try to get translation, fallback to action name
-    const key = `activityType.${action}` as any
-    const translated = t(key)
-    // If translation returns the key itself, use the action name
-    return translated === key ? action.replace(/_/g, ' ') : translated
   }
 
   const formatTimeAgo = (timestamp: string) => {
@@ -95,17 +75,15 @@ export default function RecentActivity() {
     }
   }
 
-  const getUserInitials = (userId: string) => {
-    // For now, use first 2 chars of user ID
+  const getUserInitials = (userId: string | null) => {
+    if (!userId) return '??'
     return userId.substring(0, 2).toUpperCase()
   }
 
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>{t('recentActivityTitle')}</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>{t('recentActivityTitle')}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -118,9 +96,7 @@ export default function RecentActivity() {
   if (error) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>{t('recentActivityTitle')}</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>{t('recentActivityTitle')}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 text-destructive py-4">
             <AlertTriangle className="h-5 w-5" />
@@ -134,9 +110,7 @@ export default function RecentActivity() {
   if (activities.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>{t('recentActivityTitle')}</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>{t('recentActivityTitle')}</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Activity className="h-12 w-12 mb-4 opacity-50" />
@@ -149,9 +123,7 @@ export default function RecentActivity() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('recentActivityTitle')}</CardTitle>
-      </CardHeader>
+      <CardHeader><CardTitle>{t('recentActivityTitle')}</CardTitle></CardHeader>
       <CardContent>
         <div className="space-y-4">
           {activities.map((activity) => (
@@ -164,23 +136,23 @@ export default function RecentActivity() {
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium truncate max-w-[120px]">
-                    {activity.user_id.substring(0, 8)}...
+                    {activity.user_id ? `${activity.user_id.substring(0, 8)}...` : '-'}
                   </span>
                   <Badge variant="outline" className={getActionColor(activity.action)}>
-                    {getActionLabel(activity.action)}
+                    {activity.action.replace(/_/g, ' ')}
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-600">
-                  {activity.resource_type && (
+                  {activity.entity_type && (
                     <>
-                      <span className="font-mono">{activity.resource_type}</span>
-                      {activity.resource_id && (
-                        <span className="text-gray-400"> / {activity.resource_id.substring(0, 8)}...</span>
+                      <span className="font-mono">{activity.entity_type}</span>
+                      {activity.entity_id && (
+                        <span className="text-gray-400"> / {activity.entity_id.substring(0, 8)}...</span>
                       )}
                     </>
                   )}
                 </p>
-                <p className="text-xs text-gray-500">{formatTimeAgo(activity.timestamp)}</p>
+                <p className="text-xs text-gray-500">{formatTimeAgo(activity.created_at)}</p>
               </div>
             </div>
           ))}
