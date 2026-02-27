@@ -4282,7 +4282,11 @@
     "code": "Código",
     "entityType": "Tipo de Entidad",
     "name": "Nombre",
-    "description": "Descripción"
+    "description": "Descripción",
+    "createdAt": "Creado",
+    "updatedAt": "Actualizado",
+    "type": "Tipo",
+    "id": "ID"
   },
   "dashboard": {
     "actionRequired": "Acción requerida en las siguientes solicitudes",

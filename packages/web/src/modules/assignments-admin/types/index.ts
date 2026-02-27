@@ -145,6 +145,7 @@ export interface Assignment {
   // DB: reassigned_to_profile_id uuid FK→agent_profiles
   reassigned_at?: string
   reassigned_to_profile_id?: string
+  reassigned_to_name?: string  // Joined from agent_profiles→users (not in assignments table)
   reassignment_reason?: ReassignmentReason
   reassignment_notes?: string
 

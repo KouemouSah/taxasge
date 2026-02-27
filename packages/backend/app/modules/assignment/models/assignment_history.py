@@ -98,6 +98,7 @@ class Assignment(BaseModel):
     reassignment_reason: Optional[ReassignmentReason] = None
     reassignment_notes: Optional[str] = None
     reassigned_to_profile_id: Optional[UUID] = None
+    reassigned_to_name: Optional[str] = Field(None, description="Joined: reassignee full name")
     # Audit timestamps
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

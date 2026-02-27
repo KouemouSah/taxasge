@@ -169,8 +169,11 @@ class AuditRepository:
     ) -> List[Dict[str, Any]]:
         """Get recent audit activity"""
         query = """
-            SELECT * FROM audit_logs
-            WHERE created_at >= NOW() - INTERVAL '$1 hours'
+            SELECT id::text, user_id::text, entity_type, entity_id,
+                   action, old_values, new_values,
+                   ip_address, user_agent, created_at
+            FROM audit_logs
+            WHERE created_at >= NOW() - MAKE_INTERVAL(hours => $1)
             ORDER BY created_at DESC
             LIMIT $2
         """
@@ -239,7 +242,7 @@ class AuditRepository:
         """Delete audit logs older than specified days"""
         query = """
             DELETE FROM audit_logs
-            WHERE created_at < NOW() - INTERVAL '$1 days'
+            WHERE created_at < NOW() - MAKE_INTERVAL(days => $1)
         """
         result = await conn.execute(query, days)
         count = int(result.split()[-1])

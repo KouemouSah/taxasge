@@ -8,6 +8,7 @@
  *
  * Redesigned: no scrolling on 1080p, actions in header,
  * agent names from JOINs, conditional Performance section.
+ * All labels from i18n (no hardcoded language strings).
  */
 
 import { useParams, useRouter } from 'next/navigation'
@@ -50,31 +51,38 @@ import {
 } from '@/modules/assignments-admin'
 import type { AssignmentStatus, PriorityLevel } from '@/modules/assignments-admin'
 
-// Status configuration
-const statusConfig: Record<AssignmentStatus, { color: string; icon: typeof Clock; label: string }> = {
-  assigned: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Asignado' },
-  in_progress: { color: 'bg-yellow-100 text-yellow-800', icon: Play, label: 'En curso' },
-  pending_review: { color: 'bg-purple-100 text-purple-800', icon: Eye, label: 'Revisión' },
-  completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle2, label: 'Completado' },
-  reassigned: { color: 'bg-orange-100 text-orange-800', icon: ArrowRightLeft, label: 'Reasignado' },
-  cancelled: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Cancelado' },
-  rejected: { color: 'bg-red-100 text-red-800', icon: Ban, label: 'Rechazado' },
+// Status configuration — labels are i18n keys, used as fallback only
+const statusConfig: Record<AssignmentStatus, { color: string; icon: typeof Clock }> = {
+  assigned: { color: 'bg-blue-100 text-blue-800', icon: Clock },
+  in_progress: { color: 'bg-yellow-100 text-yellow-800', icon: Play },
+  pending_review: { color: 'bg-purple-100 text-purple-800', icon: Eye },
+  completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle2 },
+  reassigned: { color: 'bg-orange-100 text-orange-800', icon: ArrowRightLeft },
+  cancelled: { color: 'bg-gray-100 text-gray-800', icon: XCircle },
+  rejected: { color: 'bg-red-100 text-red-800', icon: Ban },
 }
 
-function getPriorityConfig(level: PriorityLevel): { color: string; label: string } {
-  if (level <= 3) return { color: 'bg-slate-100 text-slate-600', label: 'Baja' }
-  if (level <= 6) return { color: 'bg-blue-100 text-blue-600', label: 'Media' }
-  if (level <= 8) return { color: 'bg-orange-100 text-orange-600', label: 'Alta' }
-  return { color: 'bg-red-100 text-red-600', label: 'Urgente' }
+function getPriorityKey(level: PriorityLevel): string {
+  if (level <= 3) return 'low'
+  if (level <= 6) return 'medium'
+  if (level <= 8) return 'high'
+  return 'urgent'
 }
 
-/** Compact key-value row */
-function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
-  if (value === null || value === undefined || value === '' || value === '-') return null
+function getPriorityColor(level: PriorityLevel): string {
+  if (level <= 3) return 'bg-slate-100 text-slate-600'
+  if (level <= 6) return 'bg-blue-100 text-blue-600'
+  if (level <= 8) return 'bg-orange-100 text-orange-600'
+  return 'bg-red-100 text-red-600'
+}
+
+/** Compact key-value row — hidden when children are falsy */
+function InfoRow({ label, children, mono }: { label: string; children: React.ReactNode; mono?: boolean }) {
+  if (!children) return null
   return (
     <div className="flex items-baseline justify-between gap-2 py-1">
       <span className="text-xs text-muted-foreground shrink-0">{label}</span>
-      <span className={`text-sm text-right ${mono ? 'font-mono text-xs' : ''}`}>{value}</span>
+      <span className={`text-sm text-right ${mono ? 'font-mono text-xs' : ''}`}>{children}</span>
     </div>
   )
 }
@@ -92,7 +100,7 @@ export default function AssignmentDetailPage() {
   // Fetch current assignment
   const { data: assignment, isLoading, error, refetch } = useAssignment(assignmentId)
 
-  // Fetch all assignments for navigation
+  // Fetch assignments for navigation
   const { data: allAssignments = [] } = useAssignments({ limit: 100 })
 
   // Mutations
@@ -140,7 +148,7 @@ export default function AssignmentDetailPage() {
   }
 
   // Format date helper — short format for compact layout
-  const formatDate = (dateString?: string) => {
+  const fmtDate = (dateString?: string) => {
     if (!dateString) return null
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: dateLocale })
@@ -149,7 +157,7 @@ export default function AssignmentDetailPage() {
     }
   }
 
-  const formatRelative = (dateString?: string) => {
+  const fmtRelative = (dateString?: string) => {
     if (!dateString) return null
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: dateLocale })
@@ -195,8 +203,8 @@ export default function AssignmentDetailPage() {
   }
 
   const statusInfo = statusConfig[assignment.status]
-  const priorityInfo = getPriorityConfig(assignment.priority_level)
   const StatusIcon = statusInfo.icon
+  const priorityKey = getPriorityKey(assignment.priority_level)
 
   const canStart = assignment.status === 'assigned'
   const canComplete = assignment.status === 'in_progress'
@@ -204,13 +212,12 @@ export default function AssignmentDetailPage() {
   const canCancel = !['completed', 'cancelled', 'rejected'].includes(assignment.status)
   const canEdit = !['completed', 'cancelled', 'rejected'].includes(assignment.status)
 
-  // Check if there's any performance data to show
+  // Show Performance card only when there's meaningful data (not just a rule UUID)
   const hasPerformance =
-    (assignment.processing_duration_hours !== undefined && assignment.processing_duration_hours !== null) ||
-    (assignment.quality_score !== undefined && assignment.quality_score !== null) ||
-    (assignment.auto_assignment_score !== undefined && assignment.auto_assignment_score !== null) ||
-    assignment.validation_status ||
-    assignment.rule_applied_id
+    (assignment.processing_duration_hours != null) ||
+    (assignment.quality_score != null) ||
+    (assignment.auto_assignment_score != null) ||
+    !!assignment.validation_status
 
   return (
     <div className="space-y-4">
@@ -227,9 +234,9 @@ export default function AssignmentDetailPage() {
               <h1 className="text-lg font-bold truncate">{t('detail')}</h1>
               <Badge className={`gap-1 shrink-0 ${statusInfo.color}`}>
                 <StatusIcon className="h-3 w-3" />
-                {t(`statuses.${assignment.status}`) || statusInfo.label}
+                {t(`statuses.${assignment.status}`)}
               </Badge>
-              <Badge className={`shrink-0 ${priorityInfo.color}`}>
+              <Badge className={`shrink-0 ${getPriorityColor(assignment.priority_level)}`}>
                 P{assignment.priority_level}
               </Badge>
             </div>
@@ -309,18 +316,18 @@ export default function AssignmentDetailPage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{t('itemInfo')}</span>
             </div>
-            <InfoRow label={t('itemType.tax_declaration') === assignment.item_type ? 'Tipo' : 'Tipo'} value={
+            <InfoRow label={tCommon('type')}>
               <Badge variant="outline" className="text-xs">
                 {t(`itemType.${assignment.item_type}`) || assignment.item_type}
               </Badge>
-            } />
-            <InfoRow label="ID" value={assignment.item_id} mono />
-            <InfoRow label={t('assignmentMethod')} value={
-              assignment.assignment_method === 'auto' ? 'Automática' :
-              assignment.assignment_method === 'manual' ? 'Manual' :
-              assignment.assignment_method === 'escalated' ? 'Escalada' :
-              assignment.assignment_method
-            } />
+            </InfoRow>
+            <InfoRow label={tCommon('id')} mono>{assignment.item_id}</InfoRow>
+            <InfoRow label={t('assignmentMethod')}>
+              {t(assignment.assignment_method)}
+            </InfoRow>
+            <InfoRow label={t('priority')}>
+              {t(`priorities.${priorityKey}`)} ({assignment.priority_level})
+            </InfoRow>
             {assignment.notes && (
               <div className="pt-1 border-t mt-1">
                 <span className="text-xs text-muted-foreground">{t('notes')}</span>
@@ -337,24 +344,30 @@ export default function AssignmentDetailPage() {
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{t('agentInfo')}</span>
             </div>
-            <InfoRow label={t('agent')} value={assignment.agent_name || assignment.agent_profile_id} />
+            <InfoRow label={t('agent')}>
+              {assignment.agent_name || assignment.agent_profile_id}
+            </InfoRow>
             {assignment.agent_name && (
-              <InfoRow label="Profile ID" value={assignment.agent_profile_id} mono />
+              <InfoRow label="Profile ID" mono>{assignment.agent_profile_id}</InfoRow>
             )}
-            <InfoRow label={t('assignedBy')} value={assignment.assigned_by_name || (assignment.assigned_by_profile_id ? assignment.assigned_by_profile_id : null)} />
+            <InfoRow label={t('assignedBy')}>
+              {assignment.assigned_by_name || (assignment.assigned_by_profile_id || null)}
+            </InfoRow>
             {assignment.reassigned_to_profile_id && (
               <>
                 <div className="border-t my-1" />
-                <InfoRow label={t('reassignedTo')} value={assignment.reassigned_to_profile_id} mono />
+                <InfoRow label={t('reassignedTo')}>
+                  {assignment.reassigned_to_name || assignment.reassigned_to_profile_id}
+                </InfoRow>
                 {assignment.reassignment_reason && (
-                  <InfoRow label={t('reason')} value={
+                  <InfoRow label={t('reason')}>
                     <Badge variant="outline" className="text-xs">
                       {t(`reasons.${assignment.reassignment_reason}`) || assignment.reassignment_reason}
                     </Badge>
-                  } />
+                  </InfoRow>
                 )}
                 {assignment.reassignment_notes && (
-                  <InfoRow label={t('reassignmentNotes')} value={assignment.reassignment_notes} />
+                  <InfoRow label={t('reassignmentNotes')}>{assignment.reassignment_notes}</InfoRow>
                 )}
               </>
             )}
@@ -368,48 +381,48 @@ export default function AssignmentDetailPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{t('timestamps')}</span>
             </div>
-            <InfoRow label={t('assignedAt')} value={
-              <span title={formatDate(assignment.assigned_at) || ''}>
-                {formatRelative(assignment.assigned_at)}
+            <InfoRow label={t('assignedAt')}>
+              <span title={fmtDate(assignment.assigned_at) || ''}>
+                {fmtRelative(assignment.assigned_at)}
               </span>
-            } />
+            </InfoRow>
             {assignment.started_at && (
-              <InfoRow label={t('startedAt')} value={
-                <span title={formatDate(assignment.started_at) || ''}>
-                  {formatRelative(assignment.started_at)}
+              <InfoRow label={t('startedAt')}>
+                <span title={fmtDate(assignment.started_at) || ''}>
+                  {fmtRelative(assignment.started_at)}
                 </span>
-              } />
+              </InfoRow>
             )}
             {assignment.completed_at && (
-              <InfoRow label={t('completedAt')} value={
-                <span title={formatDate(assignment.completed_at) || ''}>
-                  {formatRelative(assignment.completed_at)}
+              <InfoRow label={t('completedAt')}>
+                <span title={fmtDate(assignment.completed_at) || ''}>
+                  {fmtRelative(assignment.completed_at)}
                 </span>
-              } />
+              </InfoRow>
             )}
             {assignment.reassigned_at && (
-              <InfoRow label={t('reassignedAt')} value={formatDate(assignment.reassigned_at)} />
+              <InfoRow label={t('reassignedAt')}>{fmtDate(assignment.reassigned_at)}</InfoRow>
             )}
             {assignment.deadline && (
-              <InfoRow label={t('deadline')} value={
+              <InfoRow label={t('deadline')}>
                 <span className="flex items-center gap-1">
-                  {formatDate(assignment.deadline)}
-                  {assignment.deadline_met !== undefined && assignment.deadline_met !== null && (
+                  {fmtDate(assignment.deadline)}
+                  {assignment.deadline_met != null && (
                     <Badge variant={assignment.deadline_met ? 'default' : 'destructive'} className="text-[10px] px-1 py-0">
                       {assignment.deadline_met ? t('deadlineMet') : t('deadlineMissed')}
                     </Badge>
                   )}
                 </span>
-              } />
+              </InfoRow>
             )}
             <div className="border-t my-1" />
-            <InfoRow label="Creado" value={formatDate(assignment.created_at)} />
-            <InfoRow label="Actualizado" value={formatDate(assignment.updated_at)} />
+            <InfoRow label={tCommon('createdAt')}>{fmtDate(assignment.created_at)}</InfoRow>
+            <InfoRow label={tCommon('updatedAt')}>{fmtDate(assignment.updated_at)}</InfoRow>
           </CardContent>
         </Card>
       </div>
 
-      {/* Performance — only shown when there's data */}
+      {/* Performance — only shown when there's meaningful data */}
       {hasPerformance && (
         <Card>
           <CardContent className="py-3 px-4">
@@ -418,19 +431,19 @@ export default function AssignmentDetailPage() {
               <span className="text-sm font-semibold">{t('performance')}</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {assignment.processing_duration_hours !== undefined && assignment.processing_duration_hours !== null && (
+              {assignment.processing_duration_hours != null && (
                 <div>
                   <span className="text-xs text-muted-foreground">{t('processingTime')}</span>
                   <p className="text-lg font-semibold">{assignment.processing_duration_hours.toFixed(1)}h</p>
                 </div>
               )}
-              {assignment.quality_score !== undefined && assignment.quality_score !== null && (
+              {assignment.quality_score != null && (
                 <div>
                   <span className="text-xs text-muted-foreground">{t('qualityScore')}</span>
                   <p className="text-lg font-semibold">{assignment.quality_score}/100</p>
                 </div>
               )}
-              {assignment.auto_assignment_score !== undefined && assignment.auto_assignment_score !== null && (
+              {assignment.auto_assignment_score != null && (
                 <div>
                   <span className="text-xs text-muted-foreground">{t('autoScore')}</span>
                   <p className="text-lg font-semibold">{assignment.auto_assignment_score}</p>

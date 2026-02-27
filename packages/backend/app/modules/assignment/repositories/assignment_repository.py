@@ -22,6 +22,46 @@ from app.modules.assignment.models.assignment_history import (
     ReassignmentReason,
 )
 
+# Shared column lists to keep all methods consistent
+_ASSIGNMENT_COLS = """
+    a.id, a.item_id, a.item_type, a.agent_profile_id, a.assigned_by_profile_id,
+    a.assignment_method, a.status, a.priority_level, a.notes, a.deadline,
+    a.assigned_at, a.started_at, a.completed_at, a.processing_duration_hours,
+    a.deadline_met, a.validation_status, a.quality_score,
+    a.auto_assignment_score, a.rule_applied_id,
+    a.reassigned_at, a.reassignment_reason, a.reassignment_notes,
+    a.reassigned_to_profile_id,
+    a.created_at, a.updated_at
+"""
+
+_ASSIGNMENT_JOINS = """
+    FROM assignments a
+    LEFT JOIN agent_profiles ap_agent ON ap_agent.id = a.agent_profile_id
+    LEFT JOIN users u_agent ON u_agent.id = ap_agent.user_id
+    LEFT JOIN agent_profiles ap_assigner ON ap_assigner.id = a.assigned_by_profile_id
+    LEFT JOIN users u_assigner ON u_assigner.id = ap_assigner.user_id
+    LEFT JOIN agent_profiles ap_reassigned ON ap_reassigned.id = a.reassigned_to_profile_id
+    LEFT JOIN users u_reassigned ON u_reassigned.id = ap_reassigned.user_id
+"""
+
+_NAME_COLS = """
+    u_agent.full_name as agent_name,
+    u_assigner.full_name as assigned_by_name,
+    u_reassigned.full_name as reassigned_to_name
+"""
+
+# For INSERT/UPDATE RETURNING (no JOINs available)
+_RETURNING_COLS = """
+    RETURNING id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
+              assignment_method, status, priority_level, notes, deadline,
+              assigned_at, started_at, completed_at, processing_duration_hours,
+              deadline_met, validation_status, quality_score,
+              auto_assignment_score, rule_applied_id,
+              reassigned_at, reassignment_reason, reassignment_notes,
+              reassigned_to_profile_id,
+              created_at, updated_at
+"""
+
 
 class AssignmentRepository:
     """Repository for assignment data operations"""
@@ -42,16 +82,12 @@ class AssignmentRepository:
             data: AssignmentCreate with item_id, item_type, agent_profile_id
             assigned_by_profile_id: UUID of supervisor's agent_profile (optional)
         """
-        query = """
+        query = f"""
             INSERT INTO assignments
             (item_id, item_type, agent_profile_id, assigned_by_profile_id,
              assignment_method, status, priority_level, notes, deadline, assigned_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-            RETURNING id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
-                      assignment_method, status, priority_level, notes, deadline,
-                      assigned_at, started_at, completed_at, processing_duration_hours,
-                      deadline_met, validation_status, quality_score,
-                      reassigned_at, reassignment_reason, reassignment_notes, reassigned_to_profile_id
+            {_RETURNING_COLS}
         """
         row = await db.fetchrow(
             query,
@@ -69,22 +105,10 @@ class AssignmentRepository:
 
     async def get_by_id(self, db, assignment_id: UUID) -> Optional[Assignment]:
         """Get assignment by ID with agent name JOINs"""
-        query = """
-            SELECT a.id, a.item_id, a.item_type, a.agent_profile_id, a.assigned_by_profile_id,
-                   a.assignment_method, a.status, a.priority_level, a.notes, a.deadline,
-                   a.assigned_at, a.started_at, a.completed_at, a.processing_duration_hours,
-                   a.deadline_met, a.validation_status, a.quality_score,
-                   a.auto_assignment_score, a.rule_applied_id,
-                   a.reassigned_at, a.reassignment_reason, a.reassignment_notes,
-                   a.reassigned_to_profile_id,
-                   a.created_at, a.updated_at,
-                   u_agent.full_name as agent_name,
-                   u_assigner.full_name as assigned_by_name
-            FROM assignments a
-            LEFT JOIN agent_profiles ap_agent ON ap_agent.id = a.agent_profile_id
-            LEFT JOIN users u_agent ON u_agent.id = ap_agent.user_id
-            LEFT JOIN agent_profiles ap_assigner ON ap_assigner.id = a.assigned_by_profile_id
-            LEFT JOIN users u_assigner ON u_assigner.id = ap_assigner.user_id
+        query = f"""
+            SELECT {_ASSIGNMENT_COLS},
+                   {_NAME_COLS}
+            {_ASSIGNMENT_JOINS}
             WHERE a.id = $1
         """
         row = await db.fetchrow(query, assignment_id)
@@ -145,11 +169,7 @@ class AssignmentRepository:
             UPDATE assignments
             SET {', '.join(updates)}
             WHERE id = ${param_count}
-            RETURNING id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
-                      assignment_method, status, priority_level, notes, deadline,
-                      assigned_at, started_at, completed_at, processing_duration_hours,
-                      deadline_met, validation_status, quality_score,
-                      reassigned_at, reassignment_reason, reassignment_notes, reassigned_to_profile_id
+            {_RETURNING_COLS}
         """
         row = await db.fetchrow(query, *values)
         return Assignment(**dict(row)) if row else None
@@ -167,7 +187,7 @@ class AssignmentRepository:
             data: ReassignmentCreate with assignment_id, new_agent_profile_id, reason
             reassigned_by_profile_id: UUID of supervisor's agent_profile who is doing the reassignment
         """
-        query = """
+        query = f"""
             UPDATE assignments
             SET reassigned_to_profile_id = $1,
                 reassignment_reason = $2,
@@ -176,11 +196,7 @@ class AssignmentRepository:
                 status = $4,
                 updated_at = NOW()
             WHERE id = $5
-            RETURNING id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
-                      assignment_method, status, priority_level, notes, deadline,
-                      assigned_at, started_at, completed_at, processing_duration_hours,
-                      deadline_met, validation_status, quality_score,
-                      reassigned_at, reassignment_reason, reassignment_notes, reassigned_to_profile_id
+            {_RETURNING_COLS}
         """
         row = await db.fetchrow(
             query,
@@ -234,21 +250,9 @@ class AssignmentRepository:
 
         values.extend([limit, offset])
         query = f"""
-            SELECT a.id, a.item_id, a.item_type, a.agent_profile_id, a.assigned_by_profile_id,
-                   a.assignment_method, a.status, a.priority_level, a.notes, a.deadline,
-                   a.assigned_at, a.started_at, a.completed_at, a.processing_duration_hours,
-                   a.deadline_met, a.validation_status, a.quality_score,
-                   a.auto_assignment_score, a.rule_applied_id,
-                   a.reassigned_at, a.reassignment_reason, a.reassignment_notes,
-                   a.reassigned_to_profile_id,
-                   a.created_at, a.updated_at,
-                   u_agent.full_name as agent_name,
-                   u_assigner.full_name as assigned_by_name
-            FROM assignments a
-            LEFT JOIN agent_profiles ap_agent ON ap_agent.id = a.agent_profile_id
-            LEFT JOIN users u_agent ON u_agent.id = ap_agent.user_id
-            LEFT JOIN agent_profiles ap_assigner ON ap_assigner.id = a.assigned_by_profile_id
-            LEFT JOIN users u_assigner ON u_assigner.id = ap_assigner.user_id
+            SELECT {_ASSIGNMENT_COLS},
+                   {_NAME_COLS}
+            {_ASSIGNMENT_JOINS}
             {where_clause}
             ORDER BY a.assigned_at DESC
             LIMIT ${param_count} OFFSET ${param_count + 1}
@@ -267,42 +271,36 @@ class AssignmentRepository:
             db: Database connection
             agent_profile_id: Filter by agent_profile.id (optional)
         """
-        conditions = ["status NOT IN ('completed', 'cancelled', 'rejected')"]
+        conditions = ["a.status NOT IN ('completed', 'cancelled', 'rejected')"]
         values = []
         param_count = 1
 
         if agent_profile_id:
-            conditions.append(f"agent_profile_id = ${param_count}")
+            conditions.append(f"a.agent_profile_id = ${param_count}")
             values.append(agent_profile_id)
             param_count += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}"
 
         query = f"""
-            SELECT id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
-                   assignment_method, status, priority_level, notes, deadline,
-                   assigned_at, started_at, completed_at, processing_duration_hours,
-                   deadline_met, validation_status, quality_score,
-                   reassigned_at, reassignment_reason, reassignment_notes, reassigned_to_profile_id
-            FROM assignments
+            SELECT {_ASSIGNMENT_COLS},
+                   {_NAME_COLS}
+            {_ASSIGNMENT_JOINS}
             {where_clause}
-            ORDER BY priority_level DESC, assigned_at ASC
+            ORDER BY a.priority_level DESC, a.assigned_at ASC
         """
         rows = await db.fetch(query, *values)
         return [Assignment(**dict(row)) for row in rows]
 
     async def get_overdue_assignments(self, db) -> List[Assignment]:
         """Get assignments past their deadline"""
-        query = """
-            SELECT id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
-                   assignment_method, status, priority_level, notes, deadline,
-                   assigned_at, started_at, completed_at, processing_duration_hours,
-                   deadline_met, validation_status, quality_score,
-                   reassigned_at, reassignment_reason, reassignment_notes, reassigned_to_profile_id
-            FROM assignments
-            WHERE deadline < NOW()
-            AND status NOT IN ('completed', 'cancelled', 'rejected')
-            ORDER BY deadline ASC
+        query = f"""
+            SELECT {_ASSIGNMENT_COLS},
+                   {_NAME_COLS}
+            {_ASSIGNMENT_JOINS}
+            WHERE a.deadline < NOW()
+            AND a.status NOT IN ('completed', 'cancelled', 'rejected')
+            ORDER BY a.deadline ASC
         """
         rows = await db.fetch(query)
         return [Assignment(**dict(row)) for row in rows]

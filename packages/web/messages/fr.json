@@ -4301,7 +4301,11 @@
     "code": "Code",
     "entityType": "Type d'entité",
     "name": "Nom",
-    "description": "Description"
+    "description": "Description",
+    "createdAt": "Créé",
+    "updatedAt": "Mis à jour",
+    "type": "Type",
+    "id": "ID"
   },
   "dashboard": {
     "actionRequired": "Action requise sur les demandes suivantes",

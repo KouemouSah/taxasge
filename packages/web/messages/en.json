@@ -4061,7 +4061,11 @@
     "code": "Code",
     "entityType": "Entity Type",
     "name": "Name",
-    "description": "Description"
+    "description": "Description",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "type": "Type",
+    "id": "ID"
   },
   "dashboard": {
     "actionRequired": "Action required on the following requests",
