@@ -380,7 +380,7 @@ async def _exec_get_sla_report(db) -> Dict[str, Any]:
             COUNT(*) FILTER (WHERE sla_target_date BETWEEN NOW() AND NOW() + INTERVAL '24 hours'
                 AND workflow_status NOT IN ('completed', 'cancelled', 'rejected')) as sla_at_risk,
             AVG(EXTRACT(EPOCH FROM (COALESCE(validated_at, NOW()) - created_at)) / 3600)
-                FILTER (WHERE workflow_status IN ('approved', 'rejected', 'completed')) as avg_processing_hours
+                FILTER (WHERE workflow_status IN ('approved_by_agent', 'rejected_by_agent', 'completed')) as avg_processing_hours
         FROM service_payments
         WHERE created_at > NOW() - INTERVAL '30 days'
     """)
@@ -410,17 +410,17 @@ async def _exec_analyze_performance_ranking(db, metric: str = "success_rate") ->
                aw.quality_score_avg,
                aw.success_rate,
                aw.deadline_compliance_rate,
-               aps.total_processed,
-               aps.total_approved,
-               aps.total_rejected,
-               aps.total_escalated,
-               aps.avg_processing_time_hours
+               aps.current_month_processed as total_processed,
+               aps.current_month_approved as total_approved,
+               aps.current_month_rejected as total_rejected,
+               aps.current_month_escalated as total_escalated,
+               aps.avg_processing_minutes as avg_processing_time_hours
         FROM agent_profiles ap
         JOIN users u ON u.id = ap.user_id
         LEFT JOIN entities e ON e.id = ap.entity_id
         LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
         LEFT JOIN agent_performance_stats aps ON aps.agent_profile_id = ap.id
-            AND aps.period_start = date_trunc('month', CURRENT_DATE)
+            AND aps.stats_period_start = date_trunc('month', CURRENT_DATE)
         WHERE ap.is_active = true
     """)
 
@@ -488,10 +488,10 @@ async def _exec_detect_anomalies(db) -> Dict[str, Any]:
                aw.quality_score_avg,
                aw.deadline_compliance_rate,
                aw.current_assignments,
-               aps.total_processed,
-               aps.total_rejected,
-               aps.total_escalated,
-               aps.avg_processing_time_hours,
+               aps.current_month_processed as total_processed,
+               aps.current_month_rejected as total_rejected,
+               aps.current_month_escalated as total_escalated,
+               aps.avg_processing_minutes as avg_processing_time_hours,
                aw.last_assignment_at,
                aw.last_completion_at
         FROM agent_profiles ap
@@ -499,7 +499,7 @@ async def _exec_detect_anomalies(db) -> Dict[str, Any]:
         LEFT JOIN entities e ON e.id = ap.entity_id
         LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
         LEFT JOIN agent_performance_stats aps ON aps.agent_profile_id = ap.id
-            AND aps.period_start = date_trunc('month', CURRENT_DATE)
+            AND aps.stats_period_start = date_trunc('month', CURRENT_DATE)
         WHERE ap.is_active = true
     """)
 
@@ -670,16 +670,16 @@ async def _exec_get_processing_trends(db, period_days: int = 30) -> Dict[str, An
     period_days = min(max(period_days, 7), 90)  # Clamp 7-90 days
 
     rows = await db.fetch("""
-        SELECT date_trunc('day', pva.validated_at)::date as day,
+        SELECT date_trunc('day', pva.created_at)::date as day,
                COUNT(*) as total,
                COUNT(*) FILTER (WHERE pva.action = 'approve') as approved,
                COUNT(*) FILTER (WHERE pva.action = 'reject') as rejected,
                COUNT(*) FILTER (WHERE pva.action = 'escalate') as escalated,
-               AVG(EXTRACT(EPOCH FROM (pva.validated_at - sp.created_at)) / 3600) as avg_hours
+               AVG(EXTRACT(EPOCH FROM (pva.created_at - sp.created_at)) / 3600) as avg_hours
         FROM payment_validation_audit pva
-        JOIN service_payments sp ON sp.id = pva.service_payment_id
-        WHERE pva.validated_at > NOW() - make_interval(days => $1)
-        GROUP BY date_trunc('day', pva.validated_at)::date
+        JOIN service_payments sp ON sp.id = pva.payment_id
+        WHERE pva.created_at > NOW() - make_interval(days => $1)
+        GROUP BY date_trunc('day', pva.created_at)::date
         ORDER BY day
     """, period_days)
 
