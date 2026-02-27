@@ -89,6 +89,11 @@ class InternalScheduler:
                 self._anomaly_detection,
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
+            (
+                "refresh-treasury-views",
+                self._refresh_treasury_views,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -397,6 +402,31 @@ class InternalScheduler:
 
             logger.info("Proficiency 30d rollup completed")
             return {"status": "ok"}
+
+    async def _refresh_treasury_views(self):
+        """Refresh materialized views used by treasury analytics dashboard."""
+        from app.database.connection import db_manager
+
+        async with db_manager.get_connection() as db:
+            refreshed = []
+            for view in ("mv_treasury_daily_kpis", "mv_reconciliation_stats"):
+                try:
+                    await db.execute(
+                        f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}"
+                    )
+                    refreshed.append(view)
+                except Exception as e:
+                    # CONCURRENTLY requires a unique index; fall back to blocking refresh
+                    try:
+                        await db.execute(f"REFRESH MATERIALIZED VIEW {view}")
+                        refreshed.append(view)
+                    except Exception as e2:
+                        logger.error(f"Failed to refresh {view}: {e2}")
+
+            if refreshed:
+                logger.info(f"Treasury views refreshed: {', '.join(refreshed)}")
+                return {"refreshed": refreshed}
+        return None
 
     async def _anomaly_detection(self):
         """Detect assignment anomalies: queue spikes, underperformers, imbalances."""

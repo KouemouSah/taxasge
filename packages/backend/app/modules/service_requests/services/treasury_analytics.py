@@ -189,6 +189,49 @@ class TreasuryAnalyticsService:
             logger.error(f"Error fetching KPI data: {e}")
             return pd.DataFrame()
 
+    async def get_agent_performance_data(
+        self,
+        db: asyncpg.Connection,
+        date_from: str,
+        date_to: str,
+    ) -> pd.DataFrame:
+        """Extract agent performance data from payment_validation_audit.
+
+        Uses actual audit trail (not the empty agent_performance_stats table)
+        to provide monthly agent metrics for cross-correlation with treasury KPIs.
+        """
+        query = """
+            SELECT
+                pva.agent_profile_id::text AS agent_id,
+                to_char(date_trunc('month', pva.created_at), 'YYYY-MM') AS month_year,
+                COUNT(*) AS validations_count,
+                COUNT(*) FILTER (WHERE pva.action = 'reject') AS rejections_count,
+                COALESCE(AVG(pva.action_duration_seconds) / 60.0, 0) AS avg_processing_minutes,
+                CASE WHEN COUNT(*) > 0
+                    THEN ROUND(
+                        COUNT(*) FILTER (WHERE pva.action = 'approve')::numeric
+                        / COUNT(*)::numeric * 100, 2
+                    )
+                    ELSE 0
+                END AS sla_respect_rate,
+                COUNT(DISTINCT pva.payment_id) AS unique_payments
+            FROM payment_validation_audit pva
+            WHERE pva.agent_profile_id IS NOT NULL
+            AND pva.created_at >= $1::date
+            AND pva.created_at < ($2::date + INTERVAL '1 month')
+            GROUP BY pva.agent_profile_id, date_trunc('month', pva.created_at)
+            ORDER BY month_year, validations_count DESC
+        """
+
+        try:
+            rows = await db.fetch(query, date_from, date_to)
+            if not rows:
+                return pd.DataFrame()
+            return pd.DataFrame([dict(row) for row in rows])
+        except Exception as e:
+            logger.error(f"Error fetching agent performance data: {e}")
+            return pd.DataFrame()
+
     # =========================================================================
     # DESCRIPTIVE STATISTICS
     # =========================================================================
