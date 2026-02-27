@@ -1936,7 +1936,7 @@ async def rebalance_workload(
                         INSERT INTO service_request_history
                         (service_request_id, action, performed_by, comment)
                         VALUES ($1, 'rebalanced', $2, $3)
-                    """, assignment['item_id'], current_user.id,
+                    """, assignment['item_id'], UUID(current_user.id),
                         f"Workload rebalance: {over_agent['agent_name']} → {best_target['agent_name']}")
 
                 details.append(RebalanceDetail(
@@ -2304,7 +2304,7 @@ async def reassign_request(
     await db.execute("""
         INSERT INTO service_request_history (service_request_id, action, performed_by, comment)
         VALUES ($1, 'reassigned', $2, $3)
-    """, request_id, current_user.id,
+    """, request_id, UUID(current_user.id),
         f"Reassigned to {target['full_name']} by supervisor ({reason_comment})")
 
     logger.info(f"Request {request_id} reassigned to {body.target_agent_id} by {current_user.id}")

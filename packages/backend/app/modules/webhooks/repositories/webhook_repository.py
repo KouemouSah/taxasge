@@ -81,7 +81,7 @@ class WebhookRepository:
         params = [config_id]
         param_idx = 2
 
-        for field, value in update_data.dict(exclude_unset=True).items():
+        for field, value in update_data.model_dump(exclude_unset=True).items():
             if value is not None:
                 updates.append(f"{field} = ${param_idx}")
                 params.append(value)
