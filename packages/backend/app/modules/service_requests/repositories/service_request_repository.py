@@ -633,12 +633,12 @@ class ServiceRequestRepository:
                     assigner.email as performer_email,
                     assigner.role as performer_role
                 FROM assignments a
-                LEFT JOIN ministry_agents ma ON ma.id = a.agent_profile_id
-                LEFT JOIN users agent_user ON agent_user.id = ma.user_id
-                LEFT JOIN ministry_agents ma_reassign ON ma_reassign.id = a.reassigned_to_profile_id
-                LEFT JOIN users reassign_user ON reassign_user.id = ma_reassign.user_id
-                LEFT JOIN ministry_agents ma_assigner ON ma_assigner.id = COALESCE(a.assigned_by_profile_id, a.agent_profile_id)
-                LEFT JOIN users assigner ON assigner.id = ma_assigner.user_id
+                LEFT JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+                LEFT JOIN users agent_user ON agent_user.id = ap.user_id
+                LEFT JOIN agent_profiles ap_reassign ON ap_reassign.id = a.reassigned_to_profile_id
+                LEFT JOIN users reassign_user ON reassign_user.id = ap_reassign.user_id
+                LEFT JOIN agent_profiles ap_assigner ON ap_assigner.id = COALESCE(a.assigned_by_profile_id, a.agent_profile_id)
+                LEFT JOIN users assigner ON assigner.id = ap_assigner.user_id
                 WHERE a.item_id = $1 AND a.item_type = 'service_request'{assign_date_filter}
             """)
 

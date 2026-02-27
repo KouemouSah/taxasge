@@ -165,9 +165,9 @@ class TreasuryAnalyticsService:
                 service_code,
                 workflow_code,
                 total_amount,
-                transaction_count,
-                success_count,
-                failed_count,
+                payment_count AS transaction_count,
+                completed_count AS success_count,
+                rejected_count AS failed_count,
                 avg_processing_minutes
             FROM mv_treasury_daily_kpis
             WHERE report_date BETWEEN $1 AND $2
