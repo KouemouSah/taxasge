@@ -68,15 +68,24 @@ class AssignmentRepository:
         return Assignment(**dict(row)) if row else None
 
     async def get_by_id(self, db, assignment_id: UUID) -> Optional[Assignment]:
-        """Get assignment by ID"""
+        """Get assignment by ID with agent name JOINs"""
         query = """
-            SELECT id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
-                   assignment_method, status, priority_level, notes, deadline,
-                   assigned_at, started_at, completed_at, processing_duration_hours,
-                   deadline_met, validation_status, quality_score,
-                   reassigned_at, reassignment_reason, reassignment_notes, reassigned_to_profile_id
-            FROM assignments
-            WHERE id = $1
+            SELECT a.id, a.item_id, a.item_type, a.agent_profile_id, a.assigned_by_profile_id,
+                   a.assignment_method, a.status, a.priority_level, a.notes, a.deadline,
+                   a.assigned_at, a.started_at, a.completed_at, a.processing_duration_hours,
+                   a.deadline_met, a.validation_status, a.quality_score,
+                   a.auto_assignment_score, a.rule_applied_id,
+                   a.reassigned_at, a.reassignment_reason, a.reassignment_notes,
+                   a.reassigned_to_profile_id,
+                   a.created_at, a.updated_at,
+                   u_agent.full_name as agent_name,
+                   u_assigner.full_name as assigned_by_name
+            FROM assignments a
+            LEFT JOIN agent_profiles ap_agent ON ap_agent.id = a.agent_profile_id
+            LEFT JOIN users u_agent ON u_agent.id = ap_agent.user_id
+            LEFT JOIN agent_profiles ap_assigner ON ap_assigner.id = a.assigned_by_profile_id
+            LEFT JOIN users u_assigner ON u_assigner.id = ap_assigner.user_id
+            WHERE a.id = $1
         """
         row = await db.fetchrow(query, assignment_id)
         return Assignment(**dict(row)) if row else None
@@ -207,17 +216,17 @@ class AssignmentRepository:
         param_count = 1
 
         if agent_profile_id:
-            conditions.append(f"agent_profile_id = ${param_count}")
+            conditions.append(f"a.agent_profile_id = ${param_count}")
             values.append(agent_profile_id)
             param_count += 1
 
         if status:
-            conditions.append(f"status = ${param_count}")
+            conditions.append(f"a.status = ${param_count}")
             values.append(status)
             param_count += 1
 
         if item_type:
-            conditions.append(f"item_type = ${param_count}")
+            conditions.append(f"a.item_type = ${param_count}")
             values.append(item_type)
             param_count += 1
 
@@ -225,14 +234,23 @@ class AssignmentRepository:
 
         values.extend([limit, offset])
         query = f"""
-            SELECT id, item_id, item_type, agent_profile_id, assigned_by_profile_id,
-                   assignment_method, status, priority_level, notes, deadline,
-                   assigned_at, started_at, completed_at, processing_duration_hours,
-                   deadline_met, validation_status, quality_score,
-                   reassigned_at, reassignment_reason, reassignment_notes, reassigned_to_profile_id
-            FROM assignments
+            SELECT a.id, a.item_id, a.item_type, a.agent_profile_id, a.assigned_by_profile_id,
+                   a.assignment_method, a.status, a.priority_level, a.notes, a.deadline,
+                   a.assigned_at, a.started_at, a.completed_at, a.processing_duration_hours,
+                   a.deadline_met, a.validation_status, a.quality_score,
+                   a.auto_assignment_score, a.rule_applied_id,
+                   a.reassigned_at, a.reassignment_reason, a.reassignment_notes,
+                   a.reassigned_to_profile_id,
+                   a.created_at, a.updated_at,
+                   u_agent.full_name as agent_name,
+                   u_assigner.full_name as assigned_by_name
+            FROM assignments a
+            LEFT JOIN agent_profiles ap_agent ON ap_agent.id = a.agent_profile_id
+            LEFT JOIN users u_agent ON u_agent.id = ap_agent.user_id
+            LEFT JOIN agent_profiles ap_assigner ON ap_assigner.id = a.assigned_by_profile_id
+            LEFT JOIN users u_assigner ON u_assigner.id = ap_assigner.user_id
             {where_clause}
-            ORDER BY assigned_at DESC
+            ORDER BY a.assigned_at DESC
             LIMIT ${param_count} OFFSET ${param_count + 1}
         """
         rows = await db.fetch(query, *values)

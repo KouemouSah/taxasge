@@ -75,7 +75,9 @@ class Assignment(BaseModel):
     item_id: UUID = Field(..., description="UUID of the assigned item")
     item_type: str = Field(..., description="Type of item (declaration type or workflow code)")
     agent_profile_id: UUID = Field(..., description="Reference to agent_profiles.id")
+    agent_name: Optional[str] = Field(None, description="Joined: agent full name")
     assigned_by_profile_id: Optional[UUID] = Field(None, description="Supervisor who assigned")
+    assigned_by_name: Optional[str] = Field(None, description="Joined: assigner full name")
     assignment_method: AssignmentMethod = AssignmentMethod.MANUAL
     status: AssignmentStatus
     priority_level: int = Field(5, description="Priority 1-10")
@@ -88,11 +90,17 @@ class Assignment(BaseModel):
     notes: Optional[str] = None
     validation_status: Optional[str] = None
     quality_score: Optional[float] = None
+    # Auto-assignment scoring
+    auto_assignment_score: Optional[float] = None
+    rule_applied_id: Optional[UUID] = None
     # Reassignment fields
     reassigned_at: Optional[datetime] = None
     reassignment_reason: Optional[ReassignmentReason] = None
     reassignment_notes: Optional[str] = None
     reassigned_to_profile_id: Optional[UUID] = None
+    # Audit timestamps
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

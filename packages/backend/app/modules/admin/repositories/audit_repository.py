@@ -46,7 +46,10 @@ class AuditRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get audit log by ID"""
         query = """
-            SELECT * FROM audit_logs WHERE id = $1
+            SELECT id::text, user_id::text, entity_type, entity_id,
+                   action, old_values, new_values,
+                   ip_address, user_agent, created_at
+            FROM audit_logs WHERE id::text = $1
         """
         result = await conn.fetchrow(query, audit_id)
         return dict(result) if result else None
@@ -104,9 +107,12 @@ class AuditRepository:
         count_query = f"SELECT COUNT(*) FROM audit_logs WHERE {where_clause}"
         total = await conn.fetchval(count_query, *params)
 
-        # Get data
+        # Get data with explicit columns (avoid extra columns breaking Pydantic)
         data_query = f"""
-            SELECT * FROM audit_logs
+            SELECT id::text, user_id::text, entity_type, entity_id,
+                   action, old_values, new_values,
+                   ip_address, user_agent, created_at
+            FROM audit_logs
             WHERE {where_clause}
             ORDER BY created_at DESC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -125,7 +131,10 @@ class AuditRepository:
     ) -> List[Dict[str, Any]]:
         """Get all audit logs for a specific entity"""
         query = """
-            SELECT * FROM audit_logs
+            SELECT id::text, user_id::text, entity_type, entity_id,
+                   action, old_values, new_values,
+                   ip_address, user_agent, created_at
+            FROM audit_logs
             WHERE entity_type = $1 AND entity_id = $2
             ORDER BY created_at DESC
             LIMIT $3
@@ -141,8 +150,11 @@ class AuditRepository:
     ) -> List[Dict[str, Any]]:
         """Get all audit logs for a user"""
         query = """
-            SELECT * FROM audit_logs
-            WHERE user_id = $1
+            SELECT id::text, user_id::text, entity_type, entity_id,
+                   action, old_values, new_values,
+                   ip_address, user_agent, created_at
+            FROM audit_logs
+            WHERE user_id::text = $1
             ORDER BY created_at DESC
             LIMIT $2
         """
@@ -196,7 +208,7 @@ class AuditRepository:
             ORDER BY count DESC
         """
         action_results = await conn.fetch(action_query, *params)
-        by_action = {r["action"]: r["count"] for r in action_results}
+        by_action = {(r["action"] or "unknown"): r["count"] for r in action_results}
 
         # Count by entity type
         entity_query = f"""
@@ -207,7 +219,7 @@ class AuditRepository:
             ORDER BY count DESC
         """
         entity_results = await conn.fetch(entity_query, *params)
-        by_entity_type = {r["entity_type"]: r["count"] for r in entity_results}
+        by_entity_type = {(r["entity_type"] or "unknown"): r["count"] for r in entity_results}
 
         # Total count
         total_query = f"SELECT COUNT(*) FROM audit_logs WHERE {where_clause}"

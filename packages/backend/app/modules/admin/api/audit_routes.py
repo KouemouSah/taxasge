@@ -97,7 +97,13 @@ async def list_audit_logs(
             offset=offset,
         )
 
-        items = [AuditLogResponse(**log) for log in logs]
+        items = []
+        for i, log in enumerate(logs):
+            try:
+                items.append(AuditLogResponse(**log))
+            except Exception as item_err:
+                logger.warning(f"Skipping audit log #{i} (id={log.get('id')}): {item_err}")
+                continue
         pages = (total + page_size - 1) // page_size
 
         return AuditLogListResponse(
@@ -109,7 +115,7 @@ async def list_audit_logs(
         )
 
     except Exception as e:
-        logger.error(f"Error listing audit logs: {e}")
+        logger.error(f"Error listing audit logs: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error retrieving audit logs"

@@ -87,7 +87,7 @@ export default function EditRolePage() {
   const _tPerm = useTranslations('admin.permissions');
 
   // Fetch all roles for navigation
-  const { data: allRolesData, isLoading: rolesListLoading, error: rolesListError } = useRoles({ page_size: 200 });
+  const { data: allRolesData, isLoading: rolesListLoading, error: rolesListError } = useRoles({ page_size: 100 });
 
   // Debug: Log navigation data issues
   if (typeof window !== 'undefined' && rolesListError) {
