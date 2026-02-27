@@ -48,7 +48,7 @@ class RoleRepository:
         """
         result = await self.db.fetchrow("""
             SELECT id, name, code, entity_type, description, is_system,
-                   menu_config, dashboard_config, ui_config, default_agent_config,
+                   menu_config, dashboard_config, ui_config,
                    created_at, updated_at, created_by
             FROM roles
             WHERE id = $1
@@ -68,7 +68,7 @@ class RoleRepository:
         """
         result = await self.db.fetchrow("""
             SELECT id, name, code, entity_type, description, is_system,
-                   menu_config, dashboard_config, ui_config, default_agent_config,
+                   menu_config, dashboard_config, ui_config,
                    created_at, updated_at, created_by
             FROM roles
             WHERE code = $1
@@ -97,7 +97,7 @@ class RoleRepository:
         """
         query = """
             SELECT id, name, code, entity_type, description, is_system,
-                   menu_config, dashboard_config, ui_config, default_agent_config,
+                   menu_config, dashboard_config, ui_config,
                    created_at, updated_at, created_by
             FROM roles
             WHERE 1=1
@@ -246,14 +246,12 @@ class RoleRepository:
             asyncpg.UniqueViolationError: If role code already exists
         """
         result = await self.db.fetchrow("""
-            INSERT INTO roles (name, code, entity_type, description, is_system, created_by,
-                               default_agent_config)
-            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+            INSERT INTO roles (name, code, entity_type, description, is_system, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id, name, code, entity_type, description, is_system,
-                      menu_config, dashboard_config, ui_config, default_agent_config,
+                      menu_config, dashboard_config, ui_config,
                       created_at, updated_at, created_by
-        """, role.name, role.code, role.entity_type, role.description, False, created_by,
-             json.dumps(role.default_agent_config) if role.default_agent_config else None)
+        """, role.name, role.code, role.entity_type, role.description, False, created_by)
 
         return _row_to_dict(result)
 
@@ -313,12 +311,6 @@ class RoleRepository:
             update_fields.append(f"ui_config = ${param_count}::jsonb")
             params.append(json.dumps(role.ui_config) if role.ui_config else None)
 
-        # Handle default_agent_config (JSONB)
-        if role.default_agent_config is not None:
-            param_count += 1
-            update_fields.append(f"default_agent_config = ${param_count}::jsonb")
-            params.append(json.dumps(role.default_agent_config) if role.default_agent_config else None)
-
         if not update_fields:
             # No fields to update
             return await self.get_by_id(role_id)
@@ -332,7 +324,7 @@ class RoleRepository:
             SET {', '.join(update_fields)}
             WHERE id = ${param_count}
             RETURNING id, name, code, entity_type, description, is_system,
-                      menu_config, dashboard_config, ui_config, default_agent_config,
+                      menu_config, dashboard_config, ui_config,
                       created_at, updated_at, created_by
         """
 

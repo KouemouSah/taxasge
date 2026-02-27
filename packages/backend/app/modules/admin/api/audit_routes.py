@@ -146,116 +146,6 @@ async def get_audit_stats(
         )
 
 
-@router.get("/{audit_id}", response_model=AuditLogResponse)
-async def get_audit_log(
-    audit_id: str = Path(..., description="Audit log ID"),
-    current_user=Depends(get_current_user),
-    db=Depends(get_database),
-    _: None = Depends(permission_required("audit.view")),
-):
-    """
-    Get a single audit log by ID
-
-    Requires audit.view permission
-    """
-    try:
-        log = await audit_repository.get_by_id(conn=db, audit_id=audit_id)
-
-        if not log:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Audit log {audit_id} not found"
-            )
-
-        return AuditLogResponse(**log)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting audit log {audit_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error retrieving audit log"
-        )
-
-
-@router.get("/entity/{entity_type}/{entity_id}", response_model=List[AuditLogResponse])
-async def get_audit_logs_by_entity(
-    entity_type: str = Path(..., description="Entity type (user, declaration, etc.)"),
-    entity_id: str = Path(..., description="Entity ID"),
-    limit: int = Query(50, ge=1, le=200, description="Maximum logs to return"),
-    current_user=Depends(get_current_user),
-    db=Depends(get_database),
-    _: None = Depends(permission_required("audit.view")),
-):
-    """
-    Get all audit logs for a specific entity
-
-    Requires audit.view permission
-    """
-    try:
-        logs = await audit_repository.get_by_entity(
-            conn=db,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            limit=limit,
-        )
-
-        return [AuditLogResponse(**log) for log in logs]
-
-    except Exception as e:
-        logger.error(f"Error getting audit logs for {entity_type}/{entity_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error retrieving audit logs"
-        )
-
-
-# =============================================================================
-# USER AUDIT LOGS (nested route)
-# =============================================================================
-
-user_audit_router = APIRouter(tags=["User Audit Logs"])
-
-
-@user_audit_router.get("/{user_id}/audit-logs", response_model=List[AuditLogResponse])
-async def get_user_audit_logs(
-    user_id: str = Path(..., description="User ID"),
-    action: Optional[str] = Query(None, description="Filter by action"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Page size"),
-    current_user=Depends(get_current_user),
-    db=Depends(get_database),
-    _: None = Depends(permission_required("audit.view")),
-):
-    """
-    Get audit logs for a specific user
-
-    Requires audit.view permission
-
-    This endpoint is mounted at /api/v1/users/{user_id}/audit-logs
-    """
-    try:
-        offset = (page - 1) * page_size
-
-        logs, _ = await audit_repository.list(
-            conn=db,
-            user_id=user_id,
-            action=action,
-            limit=page_size,
-            offset=offset,
-        )
-
-        return [AuditLogResponse(**log) for log in logs]
-
-    except Exception as e:
-        logger.error(f"Error getting audit logs for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error retrieving user audit logs"
-        )
-
-
 # =============================================================================
 # GEMINI / AI COST MONITORING
 # =============================================================================
@@ -407,4 +297,118 @@ async def get_gemini_usage_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error retrieving Gemini usage statistics"
+        )
+
+
+# =============================================================================
+# SINGLE AUDIT LOG (must be AFTER /stats and /gemini-stats to avoid catch-all)
+# =============================================================================
+
+@router.get("/{audit_id}", response_model=AuditLogResponse)
+async def get_audit_log(
+    audit_id: str = Path(..., description="Audit log ID"),
+    current_user=Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("audit.view")),
+):
+    """
+    Get a single audit log by ID
+
+    Requires audit.view permission
+    """
+    try:
+        log = await audit_repository.get_by_id(conn=db, audit_id=audit_id)
+
+        if not log:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Audit log {audit_id} not found"
+            )
+
+        return AuditLogResponse(**log)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting audit log {audit_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving audit log"
+        )
+
+
+@router.get("/entity/{entity_type}/{entity_id}", response_model=List[AuditLogResponse])
+async def get_audit_logs_by_entity(
+    entity_type: str = Path(..., description="Entity type (user, declaration, etc.)"),
+    entity_id: str = Path(..., description="Entity ID"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum logs to return"),
+    current_user=Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("audit.view")),
+):
+    """
+    Get all audit logs for a specific entity
+
+    Requires audit.view permission
+    """
+    try:
+        logs = await audit_repository.get_by_entity(
+            conn=db,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            limit=limit,
+        )
+
+        return [AuditLogResponse(**log) for log in logs]
+
+    except Exception as e:
+        logger.error(f"Error getting audit logs for {entity_type}/{entity_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving audit logs"
+        )
+
+
+# =============================================================================
+# USER AUDIT LOGS (nested route)
+# =============================================================================
+
+user_audit_router = APIRouter(tags=["User Audit Logs"])
+
+
+@user_audit_router.get("/{user_id}/audit-logs", response_model=List[AuditLogResponse])
+async def get_user_audit_logs(
+    user_id: str = Path(..., description="User ID"),
+    action: Optional[str] = Query(None, description="Filter by action"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Page size"),
+    current_user=Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("audit.view")),
+):
+    """
+    Get audit logs for a specific user
+
+    Requires audit.view permission
+
+    This endpoint is mounted at /api/v1/users/{user_id}/audit-logs
+    """
+    try:
+        offset = (page - 1) * page_size
+
+        logs, _ = await audit_repository.list(
+            conn=db,
+            user_id=user_id,
+            action=action,
+            limit=page_size,
+            offset=offset,
+        )
+
+        return [AuditLogResponse(**log) for log in logs]
+
+    except Exception as e:
+        logger.error(f"Error getting audit logs for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving user audit logs"
         )

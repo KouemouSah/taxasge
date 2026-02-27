@@ -165,8 +165,8 @@ class UserStats(BaseModel):
 
 class AuditLogBase(BaseModel):
     """Base audit log fields"""
-    entity_type: str = Field(..., max_length=50)
-    entity_id: str = Field(..., max_length=50)
+    entity_type: Optional[str] = Field(None, max_length=50)
+    entity_id: Optional[str] = Field(None, max_length=50)
     action: str = Field(..., max_length=50)
     old_values: Optional[Dict[str, Any]] = None
     new_values: Optional[Dict[str, Any]] = None
