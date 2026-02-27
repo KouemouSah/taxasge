@@ -94,6 +94,11 @@ class InternalScheduler:
                 self._refresh_treasury_views,
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
+            (
+                "supervisor-weekly-report",
+                self._supervisor_weekly_report,
+                settings.SCHEDULER_WEEKLY_INTERVAL,
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -642,6 +647,130 @@ class InternalScheduler:
         except Exception:
             pass
 
+        return None
+
+    async def _supervisor_weekly_report(self):
+        """Send weekly performance report email to all active supervisors."""
+        import asyncio
+        import json as json_mod
+        from app.database.connection import db_manager
+        from app.config import get_settings
+
+        settings = get_settings()
+
+        async with db_manager.get_connection() as db:
+            supervisors = await db.fetch("""
+                SELECT ap.user_id, u.email, u.full_name, ap.entity_id,
+                       e.code as entity_code, e.name as entity_name
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                JOIN entities e ON e.id = ap.entity_id
+                WHERE ap.is_supervisor = true AND ap.is_active = true
+                AND u.status = 'active'
+            """)
+
+            if not supervisors:
+                return None
+
+            from app.modules.communications.services.communication_service import CommunicationService
+            from app.modules.communications.models.communication import CommunicationType
+
+            comm_service = CommunicationService()
+            emails_sent = 0
+            emails_failed = 0
+
+            for sup in supervisors:
+                try:
+                    wf_codes = await db.fetchval(
+                        "SELECT workflow_codes FROM entities WHERE id = $1", sup['entity_id']
+                    )
+                    if isinstance(wf_codes, str):
+                        wf_codes = json_mod.loads(wf_codes)
+                    if not wf_codes:
+                        continue
+
+                    stats = await db.fetchrow("""
+                        SELECT
+                            COUNT(*) FILTER (WHERE sr.created_at >= NOW() - INTERVAL '7 days') as new_requests,
+                            COUNT(*) FILTER (
+                                WHERE sr.status IN ('completed', 'approved')
+                                AND sr.updated_at >= NOW() - INTERVAL '7 days'
+                            ) as completed,
+                            COUNT(*) FILTER (WHERE sr.escalated = true) as pending_escalations,
+                            COALESCE(AVG(
+                                CASE WHEN sr.status IN ('completed', 'approved')
+                                THEN EXTRACT(EPOCH FROM (sr.updated_at - sr.created_at)) / 3600.0
+                                ELSE NULL END
+                            ), 0) as avg_processing_hours,
+                            COUNT(*) FILTER (
+                                WHERE sr.status NOT IN ('completed', 'approved', 'rejected', 'cancelled', 'expired')
+                            ) as active_requests
+                        FROM service_requests sr
+                        WHERE sr.workflow_code = ANY($1)
+                    """, wf_codes)
+
+                    entity_name = html_escape(sup['entity_name'] or sup['entity_code'] or '')
+                    sup_name = html_escape(sup['full_name'] or 'Supervisor')
+                    avg_hours = round(float(stats['avg_processing_hours'] or 0), 1)
+                    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://taxasge.web.app')
+                    html_body = f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #1a56db;">Reporte Semanal — {entity_name}</h2>
+                        <p>Hola {sup_name},</p>
+                        <p>Resumen de la actividad de tu equipo esta semana:</p>
+                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                            <tr style="background: #f3f4f6;">
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Nuevas solicitudes</td>
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">{stats['new_requests'] or 0}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Completadas</td>
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">{stats['completed'] or 0}</td>
+                            </tr>
+                            <tr style="background: #f3f4f6;">
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Solicitudes activas</td>
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">{stats['active_requests'] or 0}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Escalaciones pendientes</td>
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right; color: {'#dc2626' if (stats['pending_escalations'] or 0) > 0 else '#059669'};">{stats['pending_escalations'] or 0}</td>
+                            </tr>
+                            <tr style="background: #f3f4f6;">
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; font-weight: bold;">Tiempo promedio</td>
+                                <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">{avg_hours}h</td>
+                            </tr>
+                        </table>
+                        <p style="font-size: 12px; color: #6b7280;">
+                            Este reporte se genera automáticamente cada lunes.
+                            <a href="{frontend_url}/dashboard/supervisor">Panel de supervisión</a>
+                        </p>
+                    </div>
+                    """
+
+                    subject = f"Reporte Semanal — {entity_name}"
+
+                    loop = asyncio.get_running_loop()
+                    sent = await loop.run_in_executor(
+                        None,
+                        lambda: comm_service.send_communication(
+                            channel=CommunicationType.EMAIL,
+                            recipient=sup['email'],
+                            subject=subject,
+                            content=html_body,
+                        )
+                    )
+                    if sent:
+                        emails_sent += 1
+                    else:
+                        emails_failed += 1
+
+                except Exception as e:
+                    logger.error(f"Failed to send weekly report to {sup.get('email')}: {e}")
+                    emails_failed += 1
+
+            if emails_sent > 0 or emails_failed > 0:
+                logger.info(f"Supervisor weekly reports: {emails_sent} sent, {emails_failed} failed")
+                return {"emails_sent": emails_sent, "emails_failed": emails_failed}
         return None
 
 

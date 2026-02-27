@@ -348,6 +348,7 @@ class Settings(BaseSettings):
     SCHEDULER_ESCALATION_SLA_INTERVAL: int = Field(default=7200, env="SCHEDULER_ESCALATION_SLA_INTERVAL")
     SCHEDULER_QUEUE_PRIORITY_INTERVAL: int = Field(default=21600, env="SCHEDULER_QUEUE_PRIORITY_INTERVAL")
     SCHEDULER_DAILY_INTERVAL: int = Field(default=86400, env="SCHEDULER_DAILY_INTERVAL")
+    SCHEDULER_WEEKLY_INTERVAL: int = Field(default=604800, env="SCHEDULER_WEEKLY_INTERVAL")
 
     # ========================================================================
     # MULTI-CRITERIA SCORING (Assignment Intelligence)

@@ -339,6 +339,39 @@ class RulesRepository:
         rows = await conn.fetch(query, *values)
         return [AssignmentRule(**self._process_row(row)) for row in rows]
 
+    async def count(
+        self,
+        db=None,
+        entity_type: Optional[str] = None,
+        entity_id: Optional[str] = None,
+        status: Optional[RuleStatus] = None,
+    ) -> int:
+        """Count assignment rules with same filters as get_all()"""
+        conn = db or self._db
+        conditions = []
+        values = []
+        param_count = 1
+
+        if entity_type:
+            conditions.append(f"entity_type = ${param_count}")
+            values.append(entity_type)
+            param_count += 1
+
+        if entity_id:
+            conditions.append(f"entity_id = ${param_count}")
+            values.append(str(entity_id))
+            param_count += 1
+
+        if status:
+            conditions.append(f"status = ${param_count}")
+            values.append(status.value if hasattr(status, 'value') else str(status))
+            param_count += 1
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        query = f"SELECT COUNT(*) FROM assignment_rules {where_clause}"
+        return await conn.fetchval(query, *values)
+
     async def activate(self, db=None, rule_id: UUID = None) -> Optional[AssignmentRule]:
         """Activate a rule (draft/inactive → active)"""
         conn = db or self._db

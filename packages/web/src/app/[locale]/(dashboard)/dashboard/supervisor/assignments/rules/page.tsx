@@ -100,8 +100,13 @@ export default function AssignmentRulesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirmRule, setDeleteConfirmRule] = useState<AssignmentRule | null>(null);
 
-  // Fetch rules
-  const { data, isLoading, isError, error, refetch } = useQuery<AssignmentRule[]>({
+  // Fetch rules (paginated backend response)
+  const { data: rulesResponse, isLoading, isError, error, refetch } = useQuery<{
+    items: AssignmentRule[];
+    total: number;
+    page: number;
+    page_size: number;
+  }>({
     queryKey: ['supervisor', 'rules', statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -112,8 +117,9 @@ export default function AssignmentRulesPage() {
       return response.data;
     },
   });
+  const data = rulesResponse?.items;
 
-  // Filter and paginate client-side (backend doesn't have search)
+  // Filter and paginate client-side (backend pagination + client search)
   const filteredRules = data?.filter((rule) => {
     const matchesSearch =
       rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

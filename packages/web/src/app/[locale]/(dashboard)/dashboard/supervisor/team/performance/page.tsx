@@ -89,8 +89,13 @@ export default function TeamPerformancePage() {
     enabled: !!selectedAgentId,
   });
 
-  // Fetch proficiency overview (all agents, all workflows)
-  const { data: proficiencies } = useQuery<AgentProficiency[]>({
+  // Fetch proficiency overview (all agents, all workflows — paginated)
+  const { data: proficienciesResponse } = useQuery<{
+    items: AgentProficiency[];
+    total: number;
+    page: number;
+    page_size: number;
+  }>({
     queryKey: ['supervisor', 'proficiency-overview'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/proficiency-overview');
@@ -98,6 +103,7 @@ export default function TeamPerformancePage() {
     },
     staleTime: 120000, // 2 minutes
   });
+  const proficiencies = proficienciesResponse?.items;
 
   // Fetch skills gap analysis
   const { data: skillsGap } = useQuery<SkillsGapItem[]>({

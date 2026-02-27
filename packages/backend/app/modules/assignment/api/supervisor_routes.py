@@ -44,6 +44,7 @@ from app.modules.assignment.repositories.rules_repository import (
     get_rules_repository
 )
 from app.core.database import get_db_connection
+from app.core.cache import get_cache
 
 # Permission middleware - use permission_required dependency instead of decorator
 from app.modules.permissions.middleware import permission_required
@@ -201,6 +202,22 @@ class WorkloadBalanceResponse(BaseModel):
     recommendations: List[Dict[str, str]]
 
 
+class PaginatedRulesResponse(BaseModel):
+    """Paginated assignment rules response"""
+    items: List[AssignmentRule]
+    total: int
+    page: int
+    page_size: int
+
+
+class PaginatedProficiencyResponse(BaseModel):
+    """Paginated proficiency overview response"""
+    items: List[Dict[str, Any]]
+    total: int
+    page: int
+    page_size: int
+
+
 # ============================================================================
 # AUTHORIZATION HELPERS
 # ============================================================================
@@ -248,6 +265,15 @@ async def get_dashboard(
 
     wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
     # wf_scope = None → admin (no filter) | [] → empty entity | [...] → scoped
+
+    # --- Cache lookup (30s TTL per entity) ---
+    cache = get_cache()
+    entity_key = str(agent_ctx.get("entity_id") or "global")
+    cache_key = f"supervisor:dashboard:{entity_key}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return DashboardResponse(**cached)
+
     settings = get_settings()
     today_interval = f"{settings.REPORT_TODAY_LOOKBACK_HOURS} hours"
     period_interval = f"{settings.REPORT_PERIOD_DAYS} days"
@@ -317,7 +343,7 @@ async def get_dashboard(
                     COUNT(*) FILTER (WHERE a.status = 'in_progress') as in_progress,
                     COUNT(*) FILTER (WHERE a.status = 'completed' AND a.completed_at > NOW() - INTERVAL '{today_interval}') as completed_today
                 FROM assignments a
-                JOIN service_requests sr ON sr.id::text = a.item_id
+                JOIN service_requests sr ON sr.id = a.item_id
                 WHERE sr.workflow_code = ANY($1)
             """, wf_scope)
         else:
@@ -340,7 +366,7 @@ async def get_dashboard(
                         100.0
                     ) as sla_compliance
                 FROM assignments a
-                JOIN service_requests sr ON sr.id::text = a.item_id
+                JOIN service_requests sr ON sr.id = a.item_id
                 WHERE a.completed_at > NOW() - INTERVAL '{period_interval}'
                 AND sr.workflow_code = ANY($1)
             """, wf_scope)
@@ -363,19 +389,19 @@ async def get_dashboard(
         # Acceptance rate: ratio of non-rejected to total resolved (last 30 days)
         if wf_scope is not None:
             quality_row = await db.fetchrow(f"""
-                SELECT COALESCE(AVG(CASE WHEN sr.status = 'rejected' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
+                SELECT COALESCE(AVG(CASE WHEN sr.status = 'REJECTED' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
                 FROM service_requests sr
-                JOIN assignments a ON a.item_id = sr.id::text
+                JOIN assignments a ON a.item_id = sr.id
                 WHERE sr.workflow_code = ANY($1)
                 AND sr.updated_at >= NOW() - INTERVAL '{period_interval}'
-                AND sr.status IN ('completed', 'approved', 'rejected')
+                AND sr.status IN ('COMPLETED', 'REJECTED')
             """, wf_scope)
         else:
             quality_row = await db.fetchrow(f"""
-                SELECT COALESCE(AVG(CASE WHEN status = 'rejected' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
+                SELECT COALESCE(AVG(CASE WHEN status = 'REJECTED' THEN 0.0 ELSE 1.0 END), 1.0) as acceptance_rate
                 FROM service_requests
                 WHERE updated_at >= NOW() - INTERVAL '{period_interval}'
-                AND status IN ('completed', 'approved', 'rejected')
+                AND status IN ('COMPLETED', 'REJECTED')
             """)
         acceptance_rate = float(quality_row['acceptance_rate'] or 1.0)
         # Quality score from configurable weights
@@ -408,6 +434,12 @@ async def get_dashboard(
                 qualityScore=quality_score,
             ),
         )
+
+        # Cache for 30s
+        try:
+            await cache.set(cache_key, response.model_dump(), ttl=30)
+        except Exception:
+            pass  # Cache write failure is non-blocking
 
         logger.info(f"Dashboard loaded for supervisor {current_user.email}")
         return response
@@ -823,30 +855,32 @@ async def create_rule(
         )
 
 
-@router.get("/rules", response_model=List[AssignmentRule])
+@router.get("/rules", response_model=PaginatedRulesResponse)
 async def list_rules(
     status_filter: Optional[RuleStatus] = Query(None, description="Filter by status"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
     _: None = Depends(permission_required("rules.view"))
 ):
     """
-    **List assignment rules**
+    **List assignment rules (paginated)**
 
     Permissions:
     - Requires appropriate RBAC permission (see @require_permission decorator)
 
     Returns:
-    - All rules for supervisor's entity
-    - Sorted by priority (ASC)
+    - Paginated rules for supervisor's entity
+    - Sorted by priority (DESC)
 
     Query Parameters:
     - status: Filter by status (active, inactive, draft, archived)
+    - page: Page number (default: 1)
+    - page_size: Items per page (default: 50, max: 100)
 
     Migration 048: Uses unified 'agent' role with agent_profiles for filtering
     """
-    # Get agent context from agent_profiles
-    # Admin sees all rules (no filtering by ministry/entity)
     if current_user.role == "admin":
         agent_ctx = {"entity_type": None, "ministry_id": None, "entity_id": None, "is_supervisor": True}
     else:
@@ -857,17 +891,28 @@ async def list_rules(
     rules_repo = get_rules_repository(db)
 
     try:
+        offset = (page - 1) * page_size
+
         rules = await rules_repo.get_all(
             db=db,
             entity_type=entity_type,
             entity_id=str(entity_id) if entity_id else None,
             status=status_filter,
-            order_by_priority=True
+            order_by_priority=True,
+            limit=page_size,
+            offset=offset
         )
 
-        logger.info(f"Rules list loaded for supervisor {current_user.email}")
+        total = await rules_repo.count(
+            db=db,
+            entity_type=entity_type,
+            entity_id=str(entity_id) if entity_id else None,
+            status=status_filter
+        )
 
-        return rules
+        logger.info(f"Rules list loaded for supervisor {current_user.email} (page={page}, total={total})")
+
+        return PaginatedRulesResponse(items=rules, total=total, page=page, page_size=page_size)
 
     except Exception as e:
         logger.error(f"Error listing rules: {e}", exc_info=True)
@@ -1870,17 +1915,16 @@ async def rebalance_workload(
         # Build mutable load tracker for underloaded agents
         under_loads = {a['agent_profile_id']: a['active_count'] for a in underloaded}
 
+        # Phase 1: Planning — collect (assignment_id, target_agent_id) pairs in Python
+        reassignment_plan = []  # [(assignment_id, item_id, target_profile_id, from_name, to_name, wf_code)]
         details = []
+
         for over_agent in overloaded:
             excess = int(over_agent['active_count'] - avg_load)
             if excess <= 0:
                 continue
 
-            # Get movable assignments sorted by mobility score (lowest = easiest to move)
-            # Only move 'assigned' status (never move in_progress work)
-            # Mobility: LOW priority = easy to move, URGENT/HIGH = avoid
-            # Note: sla_deadline is on agent_work_queue, not service_requests
-            # Use submitted_at + workflows.sla_hours as proxy for SLA pressure
+            # Read-only query per overloaded agent (few agents, read-only)
             movable = await db.fetch("""
                 SELECT a.id, a.item_id, a.item_type,
                        sr.workflow_code, sr.priority::text as priority,
@@ -1902,7 +1946,6 @@ async def rebalance_workload(
             """, over_agent['agent_profile_id'], excess)
 
             for assignment in movable:
-                # Find best underloaded target
                 best_target = None
                 for ua in underloaded:
                     current_load = under_loads.get(ua['agent_profile_id'], ua['active_count'])
@@ -1913,43 +1956,74 @@ async def rebalance_workload(
                 if not best_target:
                     break
 
-                # Reassign assignment (reassignment_reason enum: workload_imbalance)
-                await db.execute("""
-                    UPDATE assignments
-                    SET agent_profile_id = $1, status = 'assigned',
-                        reassigned_at = NOW(),
-                        reassignment_reason = 'workload_imbalance'::reassignment_reason_enum,
-                        updated_at = NOW()
-                    WHERE id = $2
-                """, best_target['agent_profile_id'], assignment['id'])
-
-                # Update service_requests.assigned_to
-                if assignment['item_id']:
-                    await db.execute("""
-                        UPDATE service_requests SET assigned_to = (
-                            SELECT user_id FROM agent_profiles WHERE id = $1
-                        ) WHERE id = $2
-                    """, best_target['agent_profile_id'], assignment['item_id'])
-
-                    # Insert history for traceability
-                    await db.execute("""
-                        INSERT INTO service_request_history
-                        (service_request_id, action, performed_by, comment)
-                        VALUES ($1, 'rebalanced', $2, $3)
-                    """, assignment['item_id'], UUID(current_user.id),
-                        f"Workload rebalance: {over_agent['agent_name']} → {best_target['agent_name']}")
-
-                details.append(RebalanceDetail(
-                    from_agent_name=over_agent['agent_name'],
-                    to_agent_name=best_target['agent_name'],
-                    request_id=str(assignment['item_id']),
-                    workflow_code=assignment.get('workflow_code') or assignment.get('item_type') or 'unknown'
+                reassignment_plan.append((
+                    assignment['id'],
+                    assignment['item_id'],
+                    best_target['agent_profile_id'],
+                    over_agent['agent_name'],
+                    best_target['agent_name'],
+                    assignment.get('workflow_code') or assignment.get('item_type') or 'unknown'
                 ))
 
-                # Update target load tracker
                 under_loads[best_target['agent_profile_id']] = under_loads.get(
                     best_target['agent_profile_id'], best_target['active_count']
                 ) + 1
+
+        # Phase 2: Batch execution — 3 queries total for all reassignments
+        if reassignment_plan:
+            assignment_ids = [p[0] for p in reassignment_plan]
+            target_profile_ids = [p[2] for p in reassignment_plan]
+            item_ids = [p[1] for p in reassignment_plan if p[1]]
+
+            # Batch UPDATE assignments using UNNEST for per-row target mapping
+            await db.execute("""
+                UPDATE assignments a
+                SET agent_profile_id = plan.target_id,
+                    status = 'assigned',
+                    reassigned_at = NOW(),
+                    reassignment_reason = 'workload_imbalance'::reassignment_reason_enum,
+                    updated_at = NOW()
+                FROM UNNEST($1::uuid[], $2::uuid[]) AS plan(asgn_id, target_id)
+                WHERE a.id = plan.asgn_id
+            """, assignment_ids, target_profile_ids)
+
+            # Batch UPDATE service_requests
+            if item_ids:
+                # Build per-item target mapping for service_requests
+                sr_item_ids = []
+                sr_target_ids = []
+                for p in reassignment_plan:
+                    if p[1]:
+                        sr_item_ids.append(p[1])
+                        sr_target_ids.append(p[2])
+
+                await db.execute("""
+                    UPDATE service_requests sr
+                    SET assigned_to = (SELECT user_id FROM agent_profiles WHERE id = plan.target_id),
+                        updated_at = NOW()
+                    FROM UNNEST($1::uuid[], $2::uuid[]) AS plan(item_id, target_id)
+                    WHERE sr.id = plan.item_id
+                """, sr_item_ids, sr_target_ids)
+
+                # Batch INSERT history
+                performer = UUID(current_user.id)
+                comments = [
+                    f"Workload rebalance: {p[3]} → {p[4]}"
+                    for p in reassignment_plan if p[1]
+                ]
+                await db.execute("""
+                    INSERT INTO service_request_history
+                    (service_request_id, action, performed_by, comment)
+                    SELECT unnest($1::uuid[]), 'rebalanced', $2, unnest($3::text[])
+                """, [p[1] for p in reassignment_plan if p[1]], performer, comments)
+
+            for p in reassignment_plan:
+                details.append(RebalanceDetail(
+                    from_agent_name=p[3],
+                    to_agent_name=p[4],
+                    request_id=str(p[1]),
+                    workflow_code=p[5]
+                ))
 
         logger.info(
             f"Workload rebalanced: {len(details)} reassignments by supervisor {current_user.email}"
@@ -2182,53 +2256,62 @@ async def bulk_reassign(
         raise HTTPException(status_code=404, detail="Target agent not found")
 
     performer_id = UUID(current_user.id)
-    reassigned = 0
-    failed = 0
-    details = []
 
-    for assignment_id in body.assignment_ids:
-        try:
-            row = await db.fetchrow("""
-                UPDATE assignments
-                SET agent_profile_id = $2,
-                    reassigned_at = NOW(),
-                    reassignment_reason = 'supervisor_bulk_reassign',
-                    reassignment_notes = $3,
-                    reassigned_to_profile_id = $2,
-                    assigned_by_profile_id = (
-                        SELECT id FROM agent_profiles WHERE user_id = $4 LIMIT 1
-                    ),
+    try:
+        # Batch 1: Update all assignments in one query
+        updated_rows = await db.fetch("""
+            UPDATE assignments
+            SET agent_profile_id = $2,
+                reassigned_at = NOW(),
+                reassignment_reason = 'supervisor_decision'::reassignment_reason_enum,
+                reassignment_notes = $3,
+                reassigned_to_profile_id = $2,
+                assigned_by_profile_id = (
+                    SELECT id FROM agent_profiles WHERE user_id = $4 LIMIT 1
+                ),
+                updated_at = NOW()
+            WHERE id = ANY($1::uuid[])
+              AND status IN ('assigned', 'in_progress')
+            RETURNING id, item_id
+        """, body.assignment_ids, body.target_agent_id,
+            body.reason or 'Supervisor bulk reassign', performer_id)
+
+        reassigned_ids = {row['id'] for row in updated_rows}
+        item_ids = [row['item_id'] for row in updated_rows if row['item_id']]
+
+        # Batch 2: Update all service_requests in one query
+        if item_ids:
+            await db.execute("""
+                UPDATE service_requests
+                SET assigned_to = (SELECT user_id FROM agent_profiles WHERE id = $2),
                     updated_at = NOW()
-                WHERE id = $1
-                  AND status IN ('assigned', 'in_progress')
-                RETURNING id, item_id
-            """, assignment_id, body.target_agent_id, body.reason or 'Supervisor bulk reassign', performer_id)
+                WHERE id = ANY($1::uuid[])
+            """, item_ids, body.target_agent_id)
 
-            if row:
-                # Update service_request assigned_to
-                await db.execute("""
-                    UPDATE service_requests
-                    SET assigned_to = (SELECT user_id FROM agent_profiles WHERE id = $2),
-                        updated_at = NOW()
-                    WHERE id = $1
-                """, row['item_id'], body.target_agent_id)
+            # Batch 3: Insert all history entries in one query
+            comment = f"Bulk reassigned to {target['full_name']}"
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, performed_by, comment)
+                SELECT unnest($1::uuid[]), 'bulk_reassigned', $2, $3
+            """, item_ids, performer_id, comment)
 
-                # History entry
-                await db.execute("""
-                    INSERT INTO service_request_history
-                    (service_request_id, action, performed_by, comment)
-                    VALUES ($1, 'bulk_reassigned', $2, $3)
-                """, row['item_id'], performer_id, f"Bulk reassigned to {target['full_name']}")
-
-                reassigned += 1
-                details.append({"assignment_id": str(assignment_id), "status": "reassigned"})
+        # Build details
+        reassigned = len(reassigned_ids)
+        failed = len(body.assignment_ids) - reassigned
+        details = []
+        for aid in body.assignment_ids:
+            if aid in reassigned_ids:
+                details.append({"assignment_id": str(aid), "status": "reassigned"})
             else:
-                failed += 1
-                details.append({"assignment_id": str(assignment_id), "status": "not_found_or_completed"})
-        except Exception as e:
-            logger.error(f"Bulk reassign error for {assignment_id}: {e}")
-            failed += 1
-            details.append({"assignment_id": str(assignment_id), "status": "error"})
+                details.append({"assignment_id": str(aid), "status": "not_found_or_completed"})
+
+    except Exception as e:
+        logger.error(f"Bulk reassign error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to bulk reassign"
+        )
 
     logger.info(f"Bulk reassign by {current_user.email}: {reassigned} reassigned, {failed} failed")
 
@@ -2355,7 +2438,7 @@ async def export_assignments(
             FROM assignments a
             JOIN agent_profiles ap ON a.agent_profile_id = ap.id
             JOIN users u ON ap.user_id = u.id
-            LEFT JOIN service_requests sr ON a.item_id = sr.id::text
+            LEFT JOIN service_requests sr ON a.item_id = sr.id
             WHERE a.assigned_at >= NOW() - MAKE_INTERVAL(days => $1)
         """
         params: list = [period_days]
@@ -2417,14 +2500,16 @@ async def export_assignments(
 # ============================================================================
 
 
-@router.get("/proficiency-overview")
+@router.get("/proficiency-overview", response_model=PaginatedProficiencyResponse)
 async def get_proficiency_overview(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_db_connection),
     _: None = Depends(permission_required("agent.view_performance")),
 ):
     """
-    Per-agent, per-workflow proficiency for all agents in supervisor scope.
+    Per-agent, per-workflow proficiency for all agents in supervisor scope (paginated).
 
     Uses agent_workflow_proficiency table (populated by feedback loop on completion/escalation).
     Scoped to supervisor's entity via workflow_codes.
@@ -2435,6 +2520,15 @@ async def get_proficiency_overview(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
+    offset = (page - 1) * page_size
+
+    total = await db.fetchval("""
+        SELECT COUNT(*)
+        FROM agent_workflow_proficiency awp
+        JOIN agent_profiles ap ON ap.id = awp.agent_profile_id
+        WHERE ($1::text[] IS NULL OR awp.workflow_code = ANY($1))
+          AND ap.is_active = true
+    """, wf_scope)
 
     rows = await db.fetch("""
         SELECT
@@ -2454,14 +2548,20 @@ async def get_proficiency_overview(
         WHERE ($1::text[] IS NULL OR awp.workflow_code = ANY($1))
           AND ap.is_active = true
         ORDER BY u.full_name, awp.workflow_code
-    """, wf_scope)
+        LIMIT $2 OFFSET $3
+    """, wf_scope, page_size, offset)
 
     logger.info(
-        f"Proficiency overview loaded: {len(rows)} entries "
+        f"Proficiency overview loaded: {len(rows)}/{total} entries "
         f"by supervisor {current_user.email}"
     )
 
-    return [dict(r) for r in rows]
+    return PaginatedProficiencyResponse(
+        items=[dict(r) for r in rows],
+        total=total or 0,
+        page=page,
+        page_size=page_size
+    )
 
 
 @router.get("/anomalies")
@@ -2476,8 +2576,6 @@ async def get_anomalies(
     Populated by scheduled _anomaly_detection() cron (every 15 min).
     Cached with 24h TTL in key 'supervisor:anomalies:latest'.
     """
-    from app.core.cache import get_cache
-
     cache = get_cache()
     data = await cache.get("supervisor:anomalies:latest")
 
