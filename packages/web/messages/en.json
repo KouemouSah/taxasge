@@ -705,7 +705,27 @@
       "totalAgentsLabel": "agents",
       "totalCasesLabel": "cases",
       "avgCapacityLabel": "avg capacity",
-      "systemStatus": "System status"
+      "systemStatus": "System status",
+      "chart": {
+        "usersByRole": "Users by Role",
+        "servicesByType": "Fiscal Services by Type",
+        "topServices": "Top 10 Most Used Services",
+        "servicesByMinistry": "Services by Ministry",
+        "calculations": "Calculations",
+        "views": "Views",
+        "services": "Services",
+        "noData": "No data available",
+        "errorUsers": "Error loading user data",
+        "errorServices": "Error loading services data",
+        "role": {
+          "citizen": "Citizen",
+          "business": "Business",
+          "accountant": "Accountant",
+          "admin": "Administrator",
+          "supervisor": "Supervisor",
+          "agent": "Agent"
+        }
+      }
     },
     "delete": "Delete",
     "edit": "Edit",

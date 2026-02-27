@@ -705,7 +705,27 @@
       "totalAgentsLabel": "agents",
       "totalCasesLabel": "dossiers",
       "avgCapacityLabel": "capacité moyenne",
-      "systemStatus": "État du système"
+      "systemStatus": "État du système",
+      "chart": {
+        "usersByRole": "Utilisateurs par Rôle",
+        "servicesByType": "Services Fiscaux par Type",
+        "topServices": "Top 10 Services les plus Utilisés",
+        "servicesByMinistry": "Services par Ministère",
+        "calculations": "Calculs",
+        "views": "Vues",
+        "services": "Services",
+        "noData": "Aucune donnée disponible",
+        "errorUsers": "Erreur lors du chargement des données utilisateurs",
+        "errorServices": "Erreur lors du chargement des données services",
+        "role": {
+          "citizen": "Citoyen",
+          "business": "Entreprise",
+          "accountant": "Comptable",
+          "admin": "Administrateur",
+          "supervisor": "Superviseur",
+          "agent": "Agent"
+        }
+      }
     },
     "delete": "Supprimer",
     "edit": "Modifier",

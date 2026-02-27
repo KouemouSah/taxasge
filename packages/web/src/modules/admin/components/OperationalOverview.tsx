@@ -1,14 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import {
-  AlertTriangle,
-  RefreshCw,
-  Zap,
-} from 'lucide-react'
+import { RefreshCw, AlertTriangle, PieChart, BarChart3 } from 'lucide-react'
 import type { TooltipItem } from 'chart.js'
 import {
   Chart as ChartJS,
@@ -21,9 +16,9 @@ import {
   Legend,
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
-import { useAlertsDashboard } from '@/modules/agents-admin/hooks'
+import { fetchClient } from '@/core/api'
+import usersApi from '@/modules/users-admin/services/api'
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -34,33 +29,101 @@ ChartJS.register(
   Legend,
 )
 
-// Colors for entity capacity bars
-const CAPACITY_COLORS = {
-  normal: '#10b981',   // emerald-500
-  warning: '#f59e0b',  // amber-500
-  critical: '#ef4444', // red-500
+// Palette for donut charts
+const DONUT_PALETTE = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16',
+]
+
+// Colors for specific role types
+const ROLE_COLORS: Record<string, string> = {
+  citizen: '#3b82f6',
+  business: '#10b981',
+  accountant: '#f59e0b',
+  admin: '#ef4444',
+  supervisor: '#8b5cf6',
+  agent: '#ec4899',
 }
 
-// Colors for alerts donut
-const ALERT_COLORS = {
-  inactive: '#f59e0b',   // amber — inactive agents
-  overloaded: '#ef4444', // red — overloaded agents
-  staleLocks: '#f97316', // orange — stale locks
-  slaAtRisk: '#dc2626',  // red-600 — SLA risk
-  ok: '#10b981',         // emerald — all normal
+// Colors for service types
+const SERVICE_TYPE_COLORS: Record<string, string> = {
+  document_processing: '#3b82f6',
+  license_permit: '#10b981',
+  residence_permit: '#8b5cf6',
+  registration_fee: '#f59e0b',
+  inspection_fee: '#14b8a6',
+  administrative_tax: '#ef4444',
+  customs_duty: '#f97316',
+  declaration_tax: '#ec4899',
+}
+
+interface UserStats {
+  by_role?: Record<string, number>
+  users_by_role?: Record<string, number>
+  total_users?: number
+}
+
+interface FiscalServiceStats {
+  total_services: number
+  active_services: number
+  inactive_services: number
+  services_by_type: Record<string, number>
+  services_by_category: Record<string, number>
+  services_by_ministry: Record<string, number>
+  services_by_status: Record<string, number>
+  most_used_services: Array<{
+    service_code?: string
+    name_es?: string
+    calculation_count?: number
+    view_count?: number
+  }>
+  total_calculations: number
+  total_views: number
 }
 
 export default function OperationalOverview() {
   const t = useTranslations('admin.dashboard')
-  const { data: dashboard, isLoading, error } = useAlertsDashboard()
+  const [userStats, setUserStats] = useState<UserStats | null>(null)
+  const [serviceStats, setServiceStats] = useState<FiscalServiceStats | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errors, setErrors] = useState<string[]>([])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      const errs: string[] = []
+
+      const [usersResult, servicesResult] = await Promise.allSettled([
+        usersApi.getStats(),
+        fetchClient.get<FiscalServiceStats>('/fiscal-services/admin/stats'),
+      ])
+
+      if (usersResult.status === 'fulfilled') {
+        setUserStats(usersResult.value as UserStats)
+      } else {
+        errs.push('users')
+      }
+
+      if (servicesResult.status === 'fulfilled') {
+        setServiceStats(servicesResult.value)
+      } else {
+        errs.push('services')
+      }
+
+      setErrors(errs)
+      setIsLoading(false)
+    }
+
+    fetchData()
+  }, [])
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
             <CardContent className="p-6">
-              <div className="flex items-center justify-center h-48">
+              <div className="flex items-center justify-center h-56">
                 <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             </CardContent>
@@ -70,254 +133,263 @@ export default function OperationalOverview() {
     )
   }
 
-  if (error || !dashboard) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm">{t('operationalError')}</span>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const totalAlerts = dashboard.total_alerts || 0
-  const entities = dashboard.workload_by_entity || []
-
   // =============================================
-  // CHART 1: Entity Capacity Bar Chart
+  // CHART 1: Users by Role (Donut)
   // =============================================
-  const entityLabels = entities.map(e => e.entity_name || e.entity_code || '—')
-  const entityCapacities = entities.map(e => e.avg_capacity || 0)
-  const entityBarColors = entityCapacities.map(c =>
-    c > 80 ? CAPACITY_COLORS.critical : c > 60 ? CAPACITY_COLORS.warning : CAPACITY_COLORS.normal
-  )
+  const roleData = userStats?.by_role || userStats?.users_by_role || {}
+  const roleLabels = Object.keys(roleData)
+  const roleValues = Object.values(roleData)
+  const roleColors = roleLabels.map(r => ROLE_COLORS[r] || DONUT_PALETTE[roleLabels.indexOf(r) % DONUT_PALETTE.length])
 
-  const capacityChartData = {
-    labels: entityLabels,
-    datasets: [
-      {
-        label: t('capacityCol'),
-        data: entityCapacities,
-        backgroundColor: entityBarColors,
-        borderRadius: 4,
-        maxBarThickness: 40,
-      },
-    ],
-  }
-
-  const capacityChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    indexAxis: 'y' as const,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (ctx: TooltipItem<'bar'>) => `${ctx.parsed.x ?? 0}% ${t('capacityCol').toLowerCase()}`,
-        },
-      },
-    },
-    scales: {
-      x: {
-        min: 0,
-        max: 100,
-        grid: { display: false },
-        ticks: { callback: (v: string | number) => `${v}%` },
-      },
-      y: {
-        grid: { display: false },
-        ticks: { font: { size: 11 } },
-      },
-    },
-  }
-
-  // =============================================
-  // CHART 2: Entity Assignments Bar Chart
-  // =============================================
-  const entityAssignments = entities.map(e => e.total_assignments || 0)
-  const entityAgentCounts = entities.map(e => e.agent_count || 0)
-
-  const assignmentsChartData = {
-    labels: entityLabels,
-    datasets: [
-      {
-        label: t('casesCol'),
-        data: entityAssignments,
-        backgroundColor: '#3b82f6',
-        borderRadius: 4,
-        maxBarThickness: 40,
-      },
-      {
-        label: t('agentsCol'),
-        data: entityAgentCounts,
-        backgroundColor: '#8b5cf6',
-        borderRadius: 4,
-        maxBarThickness: 40,
-      },
-    ],
-  }
-
-  const assignmentsChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom' as const,
-        labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11 } },
-      },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-      y: {
-        beginAtZero: true,
-        grid: { color: '#f1f5f9' },
-        ticks: { stepSize: 1, font: { size: 11 } },
-      },
-    },
-  }
-
-  // =============================================
-  // CHART 3: Alerts Donut Chart
-  // =============================================
-  const alertValues = [
-    dashboard.inactive_count || 0,
-    dashboard.overloaded_count || 0,
-    dashboard.stale_locks_count || 0,
-    dashboard.sla_at_risk_count || 0,
-  ]
-  const alertLabels = [
-    t('inactiveAgents'),
-    t('overloadedAgents'),
-    t('staleLocks'),
-    t('slaAtRisk'),
-  ]
-  const alertColors = [
-    ALERT_COLORS.inactive,
-    ALERT_COLORS.overloaded,
-    ALERT_COLORS.staleLocks,
-    ALERT_COLORS.slaAtRisk,
-  ]
-
-  // Filter out zero values for cleaner donut
-  const nonZeroIndices = alertValues
-    .map((v, i) => (v > 0 ? i : -1))
-    .filter(i => i >= 0)
-
-  const hasAlerts = nonZeroIndices.length > 0
-  const donutData = hasAlerts
-    ? {
-        labels: nonZeroIndices.map(i => alertLabels[i]),
-        datasets: [{
-          data: nonZeroIndices.map(i => alertValues[i]),
-          backgroundColor: nonZeroIndices.map(i => alertColors[i]),
-          borderWidth: 2,
-          borderColor: '#ffffff',
-        }],
+  const usersDonutData = {
+    labels: roleLabels.map(r => {
+      try {
+        const translated = t(`chart.role.${r}`)
+        return translated || r
+      } catch {
+        return r.charAt(0).toUpperCase() + r.slice(1)
       }
-    : {
-        labels: [t('allNormal')],
-        datasets: [{
-          data: [1],
-          backgroundColor: [ALERT_COLORS.ok],
-          borderWidth: 2,
-          borderColor: '#ffffff',
-        }],
-      }
+    }),
+    datasets: [{
+      data: roleValues,
+      backgroundColor: roleColors,
+      borderWidth: 2,
+      borderColor: '#ffffff',
+    }],
+  }
 
   const donutOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '65%',
+    cutout: '60%',
     plugins: {
       legend: {
-        position: 'bottom' as const,
-        labels: { usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 11 } },
+        position: 'right' as const,
+        labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 11 } },
       },
       tooltip: {
         callbacks: {
-          label: (ctx: TooltipItem<'doughnut'>) =>
-            hasAlerts ? `${ctx.label}: ${ctx.parsed}` : t('allNormal'),
+          label: (ctx: TooltipItem<'doughnut'>) => {
+            const total = (ctx.dataset.data as number[]).reduce((a, b) => a + b, 0)
+            const pct = total > 0 ? Math.round(((ctx.parsed || 0) / total) * 100) : 0
+            return `${ctx.label}: ${ctx.parsed} (${pct}%)`
+          },
         },
       },
     },
   }
 
-  return (
-    <div className="space-y-4">
-      {/* LLM Briefing banner */}
-      {dashboard.llm_briefing && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50/50 px-4 py-2.5">
-          <p className="text-sm text-blue-900">{dashboard.llm_briefing}</p>
-        </div>
-      )}
+  // =============================================
+  // CHART 2: Services by Type (Donut)
+  // =============================================
+  const typeData = serviceStats?.services_by_type || {}
+  const typeLabels = Object.keys(typeData)
+  const typeValues = Object.values(typeData)
+  const typeColors = typeLabels.map(t => SERVICE_TYPE_COLORS[t] || DONUT_PALETTE[typeLabels.indexOf(t) % DONUT_PALETTE.length])
 
-      {/* Charts Grid: 3 columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Chart 1: Alerts Donut */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                {t('operationalAlertsLabel')}
-              </CardTitle>
-              {totalAlerts > 0 ? (
-                <Badge variant="destructive" className="text-xs">{totalAlerts}</Badge>
+  const typesDonutData = {
+    labels: typeLabels.map(tp => tp.replace(/_/g, ' ')),
+    datasets: [{
+      data: typeValues,
+      backgroundColor: typeColors,
+      borderWidth: 2,
+      borderColor: '#ffffff',
+    }],
+  }
+
+  // =============================================
+  // CHART 3: Top 10 Most Used Services (Horizontal Bar)
+  // =============================================
+  const topServices = (serviceStats?.most_used_services || []).slice(0, 10)
+  const topLabels = topServices.map(s => {
+    const name = s.name_es || s.service_code || '—'
+    return name.length > 30 ? name.substring(0, 27) + '...' : name
+  })
+  const topCalcValues = topServices.map(s => s.calculation_count || 0)
+  const topViewValues = topServices.map(s => s.view_count || 0)
+
+  const topServicesData = {
+    labels: topLabels,
+    datasets: [
+      {
+        label: t('chart.calculations'),
+        data: topCalcValues,
+        backgroundColor: '#3b82f6',
+        borderRadius: 3,
+        maxBarThickness: 20,
+      },
+      {
+        label: t('chart.views'),
+        data: topViewValues,
+        backgroundColor: '#93c5fd',
+        borderRadius: 3,
+        maxBarThickness: 20,
+      },
+    ],
+  }
+
+  const horizontalBarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y' as const,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: { usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 11 } },
+      },
+      tooltip: { mode: 'index' as const, intersect: false },
+    },
+    scales: {
+      x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+      y: { grid: { display: false }, ticks: { font: { size: 10 } } },
+    },
+  }
+
+  // =============================================
+  // CHART 4: Services by Ministry (Vertical Bar)
+  // =============================================
+  const ministryData = serviceStats?.services_by_ministry || {}
+  const ministryEntries = Object.entries(ministryData)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+  const ministryLabels = ministryEntries.map(([name]) =>
+    name.length > 20 ? name.substring(0, 17) + '...' : name
+  )
+  const ministryValues = ministryEntries.map(([, count]) => count)
+
+  const ministryBarData = {
+    labels: ministryLabels,
+    datasets: [{
+      label: t('chart.services'),
+      data: ministryValues,
+      backgroundColor: ministryValues.map((_, i) => DONUT_PALETTE[i % DONUT_PALETTE.length]),
+      borderRadius: 4,
+      maxBarThickness: 40,
+    }],
+  }
+
+  const verticalBarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: (items: TooltipItem<'bar'>[]) => {
+            // Show full ministry name in tooltip
+            const idx = items[0]?.dataIndex
+            if (idx !== undefined && ministryEntries[idx]) {
+              return ministryEntries[idx][0]
+            }
+            return ''
+          },
+          label: (ctx: TooltipItem<'bar'>) => `${ctx.parsed.y} ${t('chart.services').toLowerCase()}`,
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } },
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, font: { size: 10 } } },
+    },
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Chart 1: Users by Role (Donut) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <PieChart className="h-4 w-4 text-primary" />
+            {t('chart.usersByRole')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {roleLabels.length > 0 ? (
+            <div className="h-56">
+              <Doughnut data={usersDonutData} options={donutOptions} />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+              {errors.includes('users') ? (
+                <><AlertTriangle className="h-4 w-4" /><span className="text-sm">{t('chart.errorUsers')}</span></>
               ) : (
-                <Badge variant="outline" className="border-emerald-300 text-emerald-700 text-xs">OK</Badge>
+                <span className="text-sm">{t('chart.noData')}</span>
               )}
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-52">
-              <Doughnut data={donutData} options={donutOptions} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Chart 2: Services by Type (Donut) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <PieChart className="h-4 w-4 text-primary" />
+            {t('chart.servicesByType')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {typeLabels.length > 0 ? (
+            <div className="h-56">
+              <Doughnut data={typesDonutData} options={donutOptions} />
             </div>
-          </CardContent>
-        </Card>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+              {errors.includes('services') ? (
+                <><AlertTriangle className="h-4 w-4" /><span className="text-sm">{t('chart.errorServices')}</span></>
+              ) : (
+                <span className="text-sm">{t('chart.noData')}</span>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Chart 2: Entity Capacity (horizontal bar) */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{t('capacityCol')} {t('workloadByEntity').toLowerCase()}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {entities.length > 0 ? (
-              <div style={{ height: Math.max(entities.length * 40, 120) }}>
-                <Bar data={capacityChartData} options={capacityChartOptions} />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-52 text-muted-foreground text-sm">
-                {t('operationalError')}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Chart 3: Top 10 Most Used Services (Horizontal Bar) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            {t('chart.topServices')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topServices.length > 0 ? (
+            <div style={{ height: Math.max(topServices.length * 30 + 40, 200) }}>
+              <Bar data={topServicesData} options={horizontalBarOptions} />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+              <span className="text-sm">{t('chart.noData')}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Chart 3: Assignments + Agents by Entity */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">{t('casesCol')} & {t('agentsCol')} {t('workloadByEntity').toLowerCase()}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {entities.length > 0 ? (
-              <div className="h-52">
-                <Bar data={assignmentsChartData} options={assignmentsChartOptions} />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-52 text-muted-foreground text-sm">
-                {t('operationalError')}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Chart 4: Services by Ministry (Vertical Bar) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            {t('chart.servicesByMinistry')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ministryEntries.length > 0 ? (
+            <div className="h-64">
+              <Bar data={ministryBarData} options={verticalBarOptions} />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
+              {errors.includes('services') ? (
+                <><AlertTriangle className="h-4 w-4" /><span className="text-sm">{t('chart.errorServices')}</span></>
+              ) : (
+                <span className="text-sm">{t('chart.noData')}</span>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

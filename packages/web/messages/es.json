@@ -705,7 +705,27 @@
       "totalAgentsLabel": "agentes",
       "totalCasesLabel": "expedientes",
       "avgCapacityLabel": "capacidad media",
-      "systemStatus": "Estado del sistema"
+      "systemStatus": "Estado del sistema",
+      "chart": {
+        "usersByRole": "Usuarios por Rol",
+        "servicesByType": "Servicios Fiscales por Tipo",
+        "topServices": "Top 10 Servicios más Utilizados",
+        "servicesByMinistry": "Servicios por Ministerio",
+        "calculations": "Cálculos",
+        "views": "Vistas",
+        "services": "Servicios",
+        "noData": "Sin datos disponibles",
+        "errorUsers": "Error al cargar datos de usuarios",
+        "errorServices": "Error al cargar datos de servicios",
+        "role": {
+          "citizen": "Ciudadano",
+          "business": "Empresa",
+          "accountant": "Contable",
+          "admin": "Administrador",
+          "supervisor": "Supervisor",
+          "agent": "Agente"
+        }
+      }
     },
     "delete": "Eliminar",
     "edit": "Editar",
