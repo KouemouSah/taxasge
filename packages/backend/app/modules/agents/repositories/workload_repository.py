@@ -367,7 +367,7 @@ class WorkloadRepository:
             lock_stats AS (
                 SELECT COUNT(*)::int as active_locks
                 FROM service_payments
-                WHERE locked_by_agent_profile_id = $1::uuid
+                WHERE assigned_agent_id = $1::uuid
                 AND workflow_status IN ('locked_by_agent', 'agent_reviewing')
             )
             SELECT
@@ -767,15 +767,15 @@ class WorkloadRepository:
             stale_locks AS (
                 SELECT sp.id as payment_id,
                        sp.payment_reference,
-                       sp.locked_by_agent_profile_id as agent_profile_id,
+                       sp.assigned_agent_id as agent_profile_id,
                        u.full_name as agent_name,
-                       sp.locked_at,
-                       EXTRACT(EPOCH FROM (NOW() - sp.locked_at)) / 3600 as locked_hours
+                       sp.assigned_at as locked_at,
+                       EXTRACT(EPOCH FROM (NOW() - sp.assigned_at)) / 3600 as locked_hours
                 FROM service_payments sp
-                JOIN agent_profiles ap ON ap.id = sp.locked_by_agent_profile_id
+                JOIN agent_profiles ap ON ap.id = sp.assigned_agent_id
                 JOIN users u ON u.id = ap.user_id
-                WHERE sp.locked_by_agent_profile_id IS NOT NULL
-                AND sp.locked_at < NOW() - INTERVAL '4 hours'
+                WHERE sp.assigned_agent_id IS NOT NULL
+                AND sp.assigned_at < NOW() - INTERVAL '4 hours'
                 AND sp.workflow_status IN ('locked_by_agent', 'agent_reviewing')
             ),
             sla_at_risk AS (

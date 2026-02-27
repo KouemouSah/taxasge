@@ -952,8 +952,8 @@ async def get_alerts_dashboard(
         try:
             briefing = await llm_briefing_service.generate_briefing(result)
             if briefing:
-                # Same TTL as dashboard (60s) to keep data and analysis in sync
-                await cache.set(briefing_key, briefing, ttl=60)
+                # 5min TTL to reduce Gemini API calls and avoid 429 rate limits
+                await cache.set(briefing_key, briefing, ttl=300)
         except Exception as e:
             logger.warning(f"LLM briefing failed (graceful): {e}")
 

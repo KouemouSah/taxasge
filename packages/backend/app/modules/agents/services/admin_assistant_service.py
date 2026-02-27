@@ -951,17 +951,14 @@ class AdminAssistantService:
             # Step 4: Send function results back to Gemini for natural language answer
             from vertexai.generative_models import Part, Content
 
-            # Build function response parts with STRUCTURED dicts (not json.dumps strings)
-            # This is critical — Gemini processes structured data much better than JSON strings
+            # Build function response parts as JSON strings wrapped in {"result": ...}
+            # Part.from_function_response expects a dict with string values for protobuf Struct
             function_response_parts = []
             for fn_name, fn_result in tool_results.items():
-                # Convert non-serializable types (datetime, UUID) to strings
-                # while keeping the dict structure intact for Gemini
-                safe_result = _make_json_safe(fn_result)
                 function_response_parts.append(
                     Part.from_function_response(
                         name=fn_name,
-                        response=safe_result,
+                        response={"result": json.dumps(fn_result, default=str, ensure_ascii=False)},
                     )
                 )
 

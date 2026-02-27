@@ -181,7 +181,11 @@ class LLMBriefingService:
             logger.warning(f"LLM briefing returned invalid JSON: {e}")
             return None
         except Exception as e:
-            logger.error(f"LLM briefing error: {e}")
+            error_str = str(e)
+            if "429" in error_str or "Resource exhausted" in error_str:
+                logger.warning(f"LLM briefing rate-limited (429): {e}")
+            else:
+                logger.error(f"LLM briefing error: {e}")
             return None
 
 
