@@ -33,8 +33,8 @@ RULE_COLUMNS = """
 class RulesRepository:
     """Repository for assignment rules data operations"""
 
-    def __init__(self):
-        logger.info("RulesRepository initialized")
+    def __init__(self, db=None):
+        self._db = db
 
     def _process_row(self, row) -> dict:
         """Process DB row to handle JSONB fields"""
@@ -284,6 +284,97 @@ class RulesRepository:
         """
         await db.execute(query, rule_id, matched, successful)
 
+    async def get_all(
+        self,
+        db=None,
+        entity_type: Optional[str] = None,
+        entity_id: Optional[str] = None,
+        status: Optional[RuleStatus] = None,
+        order_by_priority: bool = True,
+        limit: int = 100,
+        offset: int = 0
+    ) -> List[AssignmentRule]:
+        """Get all assignment rules with filters (used by supervisor_routes)
+
+        Args:
+            db: Database connection (falls back to self._db)
+            entity_type: Filter by entity type (optional)
+            entity_id: Filter by entity ID (optional)
+            status: Filter by status (optional)
+            order_by_priority: Sort by priority DESC (default True)
+            limit: Max results
+            offset: Pagination offset
+        """
+        conn = db or self._db
+        conditions = []
+        values = []
+        param_count = 1
+
+        if entity_type:
+            conditions.append(f"entity_type = ${param_count}")
+            values.append(entity_type)
+            param_count += 1
+
+        if entity_id:
+            conditions.append(f"entity_id = ${param_count}")
+            values.append(str(entity_id))
+            param_count += 1
+
+        if status:
+            conditions.append(f"status = ${param_count}")
+            values.append(status.value if hasattr(status, 'value') else str(status))
+            param_count += 1
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        order = "ORDER BY priority DESC, created_at DESC" if order_by_priority else "ORDER BY created_at DESC"
+
+        values.extend([limit, offset])
+        query = f"""
+            SELECT {RULE_COLUMNS}
+            FROM assignment_rules
+            {where_clause}
+            {order}
+            LIMIT ${param_count} OFFSET ${param_count + 1}
+        """
+        rows = await conn.fetch(query, *values)
+        return [AssignmentRule(**self._process_row(row)) for row in rows]
+
+    async def activate(self, db=None, rule_id: UUID = None) -> Optional[AssignmentRule]:
+        """Activate a rule (draft/inactive → active)"""
+        conn = db or self._db
+        # Accept positional: activate(db, rule_id) or activate(rule_id)
+        if rule_id is None and db is not None and isinstance(db, UUID):
+            rule_id = db
+            conn = self._db
+        query = f"""
+            UPDATE assignment_rules
+            SET status = 'active',
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING {RULE_COLUMNS}
+        """
+        row = await conn.fetchrow(query, rule_id)
+        processed = self._process_row(row)
+        return AssignmentRule(**processed) if processed else None
+
+    async def deactivate(self, db=None, rule_id: UUID = None) -> Optional[AssignmentRule]:
+        """Deactivate a rule (active → inactive)"""
+        conn = db or self._db
+        # Accept positional: deactivate(db, rule_id) or deactivate(rule_id)
+        if rule_id is None and db is not None and isinstance(db, UUID):
+            rule_id = db
+            conn = self._db
+        query = f"""
+            UPDATE assignment_rules
+            SET status = 'inactive',
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING {RULE_COLUMNS}
+        """
+        row = await conn.fetchrow(query, rule_id)
+        processed = self._process_row(row)
+        return AssignmentRule(**processed) if processed else None
+
     async def delete(self, db, rule_id: UUID) -> bool:
         """Delete an assignment rule (hard delete)"""
         query = "DELETE FROM assignment_rules WHERE id = $1"
@@ -313,4 +404,4 @@ class RulesRepository:
 
 def get_rules_repository(db=None) -> RulesRepository:
     """Dependency injection for RulesRepository"""
-    return RulesRepository()
+    return RulesRepository(db=db)

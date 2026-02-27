@@ -346,12 +346,12 @@ class TreasuryExportService:
         params = [period_start, period_end]
         param_idx = 3
 
-        conditions.append("sp.completed_at >= $1::date")
-        conditions.append("sp.completed_at < $2::date + INTERVAL '1 day'")
+        conditions.append("sp.paid_at >= $1::date")
+        conditions.append("sp.paid_at < $2::date + INTERVAL '1 day'")
 
         if filters:
             if filters.get("ministry_id"):
-                conditions.append(f"sr.ministry_id = ${param_idx}::uuid")
+                conditions.append(f"sp.ministry_id = ${param_idx}::uuid")
                 params.append(filters["ministry_id"])
                 param_idx += 1
             if filters.get("payment_method"):
@@ -367,7 +367,7 @@ class TreasuryExportService:
                 sp.total_amount,
                 sp.currency,
                 sp.payment_method,
-                sp.completed_at,
+                sp.paid_at AS completed_at,
                 sr.workflow_code,
                 sr.reference as service_request_reference,
                 fs.name_es as service_name_es,
@@ -377,9 +377,9 @@ class TreasuryExportService:
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
-            LEFT JOIN ministries m ON m.id = sr.ministry_id
+            LEFT JOIN ministries m ON m.id = sp.ministry_id
             WHERE {where_clause}
-            ORDER BY sp.completed_at ASC
+            ORDER BY sp.paid_at ASC
         """
 
         rows = await db.fetch(query, *params)
@@ -396,12 +396,12 @@ class TreasuryExportService:
         conditions = ["sp.workflow_status = 'completed'"]
         params = [period_start, period_end]
 
-        conditions.append("sp.completed_at >= $1::date")
-        conditions.append("sp.completed_at < $2::date + INTERVAL '1 day'")
+        conditions.append("sp.paid_at >= $1::date")
+        conditions.append("sp.paid_at < $2::date + INTERVAL '1 day'")
 
         ministry_filter = ""
         if filters and filters.get("ministry_id"):
-            ministry_filter = "AND sr.ministry_id = $3::uuid"
+            ministry_filter = "AND sp.ministry_id = $3::uuid"
             params.append(filters["ministry_id"])
 
         where_clause = " AND ".join(conditions)
@@ -416,7 +416,7 @@ class TreasuryExportService:
                 AVG(sp.total_amount) as avg_amount
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN ministries m ON m.id = sr.ministry_id
+            JOIN ministries m ON m.id = sp.ministry_id
             WHERE {where_clause} {ministry_filter}
             GROUP BY m.id, m.name_es
             ORDER BY total_amount DESC
@@ -458,7 +458,7 @@ class TreasuryExportService:
                 sp.total_amount,
                 sp.currency,
                 sp.payment_method,
-                sp.completed_at,
+                sp.paid_at AS completed_at,
                 sr.reference as request_reference,
                 fs.name_es as service_name,
                 u.full_name as user_name
@@ -467,7 +467,7 @@ class TreasuryExportService:
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             WHERE {where_clause} {ministry_filter}
-            ORDER BY sp.completed_at DESC
+            ORDER BY sp.paid_at DESC
             LIMIT 100
         """
 
@@ -563,7 +563,7 @@ class TreasuryExportService:
                 sp.payment_method,
                 sp.workflow_status::text,
                 sp.created_at,
-                sp.completed_at,
+                sp.paid_at AS completed_at,
                 sr.reference as request_reference,
                 sr.workflow_code,
                 fs.name_es as service_name,
@@ -573,7 +573,7 @@ class TreasuryExportService:
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
-            LEFT JOIN ministries m ON m.id = sr.ministry_id
+            LEFT JOIN ministries m ON m.id = sp.ministry_id
             WHERE sp.created_at >= $1::date
               AND sp.created_at < $2::date + INTERVAL '1 day'
             ORDER BY sp.created_at DESC
@@ -592,16 +592,16 @@ class TreasuryExportService:
         # Summary aggregations for central bank reporting
         summary_query = """
             SELECT
-                DATE(sp.completed_at) as transaction_date,
+                DATE(sp.paid_at) as transaction_date,
                 sp.payment_method,
                 COUNT(*) as transaction_count,
                 SUM(sp.total_amount) as total_amount,
                 sp.currency
             FROM service_payments sp
             WHERE sp.workflow_status = 'completed'
-              AND sp.completed_at >= $1::date
-              AND sp.completed_at < $2::date + INTERVAL '1 day'
-            GROUP BY DATE(sp.completed_at), sp.payment_method, sp.currency
+              AND sp.paid_at >= $1::date
+              AND sp.paid_at < $2::date + INTERVAL '1 day'
+            GROUP BY DATE(sp.paid_at), sp.payment_method, sp.currency
             ORDER BY transaction_date, sp.payment_method
         """
 
@@ -612,7 +612,7 @@ class TreasuryExportService:
                 sp.total_amount as montant,
                 sp.currency as devise,
                 sp.payment_method as methode_paiement,
-                sp.completed_at as date_execution,
+                sp.paid_at as date_execution,
                 u.full_name as nom_payeur,
                 u.phone as telephone_payeur,
                 sr.reference as reference_dossier,
@@ -623,11 +623,11 @@ class TreasuryExportService:
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
-            LEFT JOIN ministries m ON m.id = sr.ministry_id
+            LEFT JOIN ministries m ON m.id = sp.ministry_id
             WHERE sp.workflow_status = 'completed'
-              AND sp.completed_at >= $1::date
-              AND sp.completed_at < $2::date + INTERVAL '1 day'
-            ORDER BY sp.completed_at ASC
+              AND sp.paid_at >= $1::date
+              AND sp.paid_at < $2::date + INTERVAL '1 day'
+            ORDER BY sp.paid_at ASC
         """
 
         summary = await db.fetch(summary_query, period_start, period_end)

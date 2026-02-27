@@ -791,9 +791,6 @@ async def create_rule(
     rules_repo = get_rules_repository(db)
 
     try:
-        # Set created_by
-        rule_data.created_by = UUID(current_user.id)
-
         # Validate entity context (Migration 048: uses agent_profiles)
         # Admin can create rules for any entity_type
         if current_user.role == "admin":
@@ -809,7 +806,7 @@ async def create_rule(
                 detail=f"Can only create rules for {entity_type}"
             )
 
-        rule = await rules_repo.create(rule_data)
+        rule = await rules_repo.create(db, rule_data, created_by=UUID(current_user.id))
 
         logger.info(
             f"Assignment rule created by {current_user.email} - "
@@ -861,8 +858,9 @@ async def list_rules(
 
     try:
         rules = await rules_repo.get_all(
+            db=db,
             entity_type=entity_type,
-            entity_id=entity_id,
+            entity_id=str(entity_id) if entity_id else None,
             status=status_filter,
             order_by_priority=True
         )
@@ -890,7 +888,7 @@ async def get_rule(
     rules_repo = get_rules_repository(db)
 
     try:
-        rule = await rules_repo.get_by_id(rule_id)
+        rule = await rules_repo.get_by_id(db, rule_id)
 
         if not rule:
             raise HTTPException(
@@ -923,6 +921,7 @@ async def update_rule(
 
     try:
         updated = await rules_repo.update(
+            db,
             rule_id,
             update_data,
             updated_by=UUID(current_user.id)
@@ -959,7 +958,7 @@ async def activate_rule(
     rules_repo = get_rules_repository(db)
 
     try:
-        activated = await rules_repo.activate(rule_id)
+        activated = await rules_repo.activate(db, rule_id)
 
         if not activated:
             raise HTTPException(
@@ -992,7 +991,7 @@ async def deactivate_rule(
     rules_repo = get_rules_repository(db)
 
     try:
-        deactivated = await rules_repo.deactivate(rule_id)
+        deactivated = await rules_repo.deactivate(db, rule_id)
 
         if not deactivated:
             raise HTTPException(
@@ -1025,7 +1024,7 @@ async def archive_rule(
     rules_repo = get_rules_repository(db)
 
     try:
-        archived = await rules_repo.archive(rule_id)
+        archived = await rules_repo.archive(db, rule_id, updated_by=UUID(current_user.id))
 
         if not archived:
             raise HTTPException(

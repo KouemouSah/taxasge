@@ -4456,7 +4456,7 @@ class PaymentMethodReorderRequest(BaseModel):
 
 
 @router.get(
-    "/payment-methods",
+    "/treasury/payment-methods",
     response_model=List[PaymentMethodConfigResponse],
     summary="List payment method configurations",
     description="""
@@ -4512,7 +4512,7 @@ async def list_payment_methods(
 
 
 @router.get(
-    "/payment-methods/{code}",
+    "/treasury/payment-methods/{code}",
     response_model=PaymentMethodConfigResponse,
     summary="Get payment method by code",
     description="""
@@ -4568,7 +4568,7 @@ async def get_payment_method(
 
 
 @router.post(
-    "/payment-methods",
+    "/treasury/payment-methods",
     response_model=PaymentMethodConfigResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create payment method configuration",
@@ -4635,7 +4635,7 @@ async def create_payment_method(
 
 
 @router.put(
-    "/payment-methods/{code}",
+    "/treasury/payment-methods/{code}",
     response_model=PaymentMethodConfigResponse,
     summary="Update payment method configuration",
     description="""
@@ -4718,7 +4718,7 @@ async def update_payment_method(
 
 
 @router.delete(
-    "/payment-methods/{code}",
+    "/treasury/payment-methods/{code}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete payment method configuration",
     description="""
@@ -4758,7 +4758,7 @@ async def delete_payment_method(
 
 
 @router.patch(
-    "/payment-methods/reorder",
+    "/treasury/payment-methods/reorder",
     response_model=List[PaymentMethodConfigResponse],
     summary="Reorder payment methods",
     description="""
@@ -5778,7 +5778,7 @@ async def get_agent_performance(
             as2.rejections,
             as2.avg_minutes,
             as2.sla_rate,
-            COALESCE(aw.current_load, 0) AS current_workload
+            COALESCE(aw.current_assignments, 0) AS current_workload
         FROM agent_summary as2
         LEFT JOIN agent_workloads aw ON aw.agent_profile_id = as2.agent_profile_id
         ORDER BY (as2.validations + as2.rejections) DESC
