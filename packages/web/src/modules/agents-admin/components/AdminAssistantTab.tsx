@@ -4,18 +4,20 @@
  * Admin Assistant Tab - LLM-powered Q&A for agent management.
  * All UI text from useTranslations('admin.agents').
  * LLM responses rendered as markdown.
+ * Features: quick actions, free-text Q&A, markdown export, retry on failure.
  *
  * @module agents-admin/components
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Sparkles, Send, AlertTriangle, Users, BarChart3, Clock, UserX, Loader2, Wrench,
+  Sparkles, Send, AlertTriangle, Users, BarChart3, Clock, UserX,
+  Loader2, Wrench, Download, RefreshCw,
 } from 'lucide-react';
 import { renderMarkdown } from '@/core/utils/markdown';
 import { useAdminAssistant } from '../hooks';
@@ -26,9 +28,29 @@ interface QAEntry {
   question: string;
   response: AdminAssistantResponse;
   timestamp: Date;
+  isError?: boolean;
 }
 
 let _qaCounter = 0;
+
+/**
+ * Download markdown content as a .md file
+ */
+function downloadMarkdown(content: string, question: string) {
+  const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  const filename = `assistant-${timestamp}.md`;
+
+  // Build full markdown with question as header
+  const markdown = `# ${question}\n\n_Generado: ${new Date().toLocaleString()}_\n\n---\n\n${content}\n`;
+
+  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function AdminAssistantTab() {
   const [inputValue, setInputValue] = useState('');
@@ -67,7 +89,7 @@ export function AdminAssistantTab() {
     },
   ];
 
-  const handleAsk = async (question: string) => {
+  const handleAsk = useCallback(async (question: string) => {
     if (!question.trim()) return;
     setInputValue('');
 
@@ -75,7 +97,7 @@ export function AdminAssistantTab() {
       const response = await assistantMutation.mutateAsync(question);
       setHistory(prev => [
         { id: `qa-${++_qaCounter}`, question, response, timestamp: new Date() },
-        ...prev.slice(0, 4),
+        ...prev.slice(0, 9), // Keep last 10
       ]);
     } catch {
       setHistory(prev => [
@@ -84,11 +106,12 @@ export function AdminAssistantTab() {
           question,
           response: { answer: t('assistantError'), tools_used: [], data: {} },
           timestamp: new Date(),
+          isError: true,
         },
-        ...prev.slice(0, 4),
+        ...prev.slice(0, 9),
       ]);
     }
-  };
+  }, [assistantMutation, t]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,35 +185,67 @@ export function AdminAssistantTab() {
 
       {/* History */}
       {history.map((entry) => (
-        <Card key={entry.id} className="border-muted">
+        <Card key={entry.id} className={`border-muted ${entry.isError ? 'border-red-200' : ''}`}>
           <CardContent className="py-4 space-y-3">
             {/* Question */}
             <div className="flex items-start gap-2">
               <Badge variant="outline" className="shrink-0 mt-0.5 text-[10px]">Q</Badge>
-              <p className="text-sm text-muted-foreground">{entry.question}</p>
+              <p className="text-sm text-muted-foreground flex-1">{entry.question}</p>
             </div>
 
             {/* Answer — rendered as markdown */}
             <div className="flex items-start gap-2">
               <Badge className="shrink-0 mt-0.5 text-[10px] bg-blue-100 text-blue-800 border-0">IA</Badge>
               <div
-                className="text-sm prose prose-sm max-w-none"
+                className="text-sm prose prose-sm max-w-none flex-1"
                 dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.response.answer) }}
               />
             </div>
 
-            {/* Tools used footer */}
-            {entry.response.tools_used.length > 0 && (
-              <div className="flex items-center gap-1.5 pt-2 border-t">
-                <Wrench className="h-3 w-3 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground">
-                  {t('assistantToolsUsed')}: {entry.response.tools_used.join(', ')}
-                </span>
-                <span className="text-[10px] text-muted-foreground ml-auto">
-                  {entry.timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            )}
+            {/* Footer: tools used + actions */}
+            <div className="flex items-center gap-1.5 pt-2 border-t flex-wrap">
+              {/* Tools used */}
+              {entry.response.tools_used.length > 0 && (
+                <>
+                  <Wrench className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">
+                    {t('assistantToolsUsed')}: {entry.response.tools_used.join(', ')}
+                  </span>
+                </>
+              )}
+
+              <span className="text-[10px] text-muted-foreground ml-auto flex items-center gap-2">
+                {/* Retry button on error */}
+                {entry.isError && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => handleAsk(entry.question)}
+                    disabled={assistantMutation.isPending}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    {t('assistantRetry')}
+                  </Button>
+                )}
+
+                {/* Download button (only on successful responses) */}
+                {!entry.isError && entry.response.answer && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px]"
+                    onClick={() => downloadMarkdown(entry.response.answer, entry.question)}
+                    title={t('assistantDownloadTooltip')}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    {t('assistantDownload')}
+                  </Button>
+                )}
+
+                {entry.timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
           </CardContent>
         </Card>
       ))}

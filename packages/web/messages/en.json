@@ -128,6 +128,9 @@
       "assistantEmptyState": "Use quick actions or type a question",
       "assistantEmptyExamples": "Examples: \"Why does María have a high rejection rate?\", \"Compare TESORO agents\"",
       "assistantError": "Error processing the query. Try again.",
+      "assistantRetry": "Retry",
+      "assistantDownload": "Download",
+      "assistantDownloadTooltip": "Download response as Markdown",
       "assistantQuickActions": {
         "daySummary": "Day Summary",
         "inactiveAgents": "Inactive Agents",

@@ -128,6 +128,9 @@
       "assistantEmptyState": "Utilisez les actions rapides ou écrivez une question",
       "assistantEmptyExamples": "Exemples : \"Pourquoi María a un taux de rejet élevé ?\", \"Compare les agents de TESORO\"",
       "assistantError": "Erreur lors du traitement de la requête. Réessayez.",
+      "assistantRetry": "Réessayer",
+      "assistantDownload": "Télécharger",
+      "assistantDownloadTooltip": "Télécharger la réponse en Markdown",
       "assistantQuickActions": {
         "daySummary": "Résumé du jour",
         "inactiveAgents": "Agents inactifs",

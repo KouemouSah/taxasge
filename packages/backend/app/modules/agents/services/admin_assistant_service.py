@@ -7,6 +7,8 @@ FORMATS the response. It also ANALYZES data for anomalies and patterns.
 Language: Spanish by default (Equatorial Guinea admin context).
 
 Design: Same pattern as LLMRoutingService (lazy init, graceful fallback).
+Production-ready: retry on init failure, structured function responses,
+multi-function support for broad questions.
 """
 
 import asyncio
@@ -33,6 +35,12 @@ except ImportError:
     VERTEX_AI_AVAILABLE = False
     logger.warning("Vertex AI SDK not available - Admin assistant disabled")
 
+# Max retries for Gemini API calls (per-call, not total)
+_GEMINI_TIMEOUT_FIRST_CALL = 25.0   # Function routing call
+_GEMINI_TIMEOUT_SECOND_CALL = 30.0  # Final analysis call (needs more time for large data)
+_MAX_INIT_RETRIES = 3
+_INIT_RETRY_DELAY = 2.0  # seconds
+
 
 # ============================================================================
 # SYSTEM PROMPT
@@ -51,9 +59,19 @@ REGLAS ESTRICTAS:
 - Analiza los datos para detectar anomalías y patrones (agentes siempre sobrecargados,
   patrones de inactividad, distribución desigual de carga, SLA recurrentemente en riesgo)
 - Propón acciones concretas cuando sea pertinente
-- Sé factual y conciso (máximo 400 palabras)
+- Sé factual y conciso (máximo 500 palabras)
 - Si una función retorna datos vacíos, menciónalo
 - NO hagas suposiciones sobre datos que no tienes
+
+ESTRATEGIA DE FUNCIONES — MUY IMPORTANTE:
+- Para preguntas AMPLIAS ("resumen del día", "estado general", "reporte completo"),
+  DEBES llamar MÚLTIPLES funciones simultáneamente para recopilar datos de todas las áreas.
+  Ejemplo: "resumen del día" → llama get_alerts_summary + get_workload_distribution + get_inactive_agents + get_sla_report
+  Ejemplo: "reporte SLA completo" → llama get_sla_report + get_processing_trends + analyze_performance_ranking
+  Ejemplo: "estado de los agentes" → llama get_workload_distribution + get_inactive_agents + detect_anomalies
+- Para preguntas ESPECÍFICAS, llama solo la función relevante.
+- SIEMPRE llama al menos una función. NUNCA respondas sin datos.
+- Si dudas sobre qué función usar, llama get_alerts_summary como base.
 
 FORMATO DE RESPUESTA (Markdown):
 - Usa encabezados ## y ### para estructurar
@@ -64,16 +82,19 @@ FORMATO DE RESPUESTA (Markdown):
   | María  | 85%       | ⚠️ Sobrecargado |
 - Usa listas con - para acciones recomendadas
 - Usa `código` para códigos de entidad o referencias técnicas
+- Al final, incluye una sección "### Acciones recomendadas" con pasos concretos
 
-CAPACIDADES:
-- Consultar resumen de alertas activas
-- Consultar estadísticas individuales de agentes
-- Comparar agentes de una entidad (con ranking y análisis de desequilibrios)
-- Analizar distribución de carga entre entidades
-- Detectar agentes inactivos
-- Generar reportes SLA
-- Analizar rendimiento y tendencias (tasa de éxito, rechazo, cumplimiento SLA)
-- Detectar anomalías estadísticas (desviaciones significativas de la media)"""
+FUNCIONES DISPONIBLES:
+- get_alerts_summary: alertas activas (inactividad, sobrecarga, bloqueos, SLA)
+- get_agent_summary: estadísticas completas de UN agente por nombre
+- compare_entity_agents: comparar agentes dentro de una entidad
+- get_workload_distribution: carga por entidad (vista global)
+- get_inactive_agents: agentes sin actividad reciente
+- get_sla_report: cumplimiento SLA de pagos
+- analyze_performance_ranking: ranking por métrica (éxito, calidad, SLA, productividad)
+- detect_anomalies: desviaciones estadísticas en métricas de agentes
+- analyze_entity_balance: equilibrio de carga entre entidades
+- get_processing_trends: tendencias de volumen (aprobados, rechazados, escalados)"""
 
 
 # ============================================================================
@@ -376,6 +397,12 @@ async def _exec_get_sla_report(db) -> Dict[str, Any]:
 
 async def _exec_analyze_performance_ranking(db, metric: str = "success_rate") -> Dict[str, Any]:
     """Rank all agents by a performance metric with statistical analysis."""
+    # Validate metric to prevent injection (only allow known values)
+    valid_metrics = {"success_rate", "quality", "sla_compliance", "productivity"}
+    if metric not in valid_metrics:
+        metric = "success_rate"
+
+    # Use Python-side sorting instead of CASE $1 (avoids type mixing in SQL CASE branches)
     rows = await db.fetch("""
         SELECT u.full_name, e.code as entity_code,
                aw.capacity_percentage,
@@ -395,27 +422,26 @@ async def _exec_analyze_performance_ranking(db, metric: str = "success_rate") ->
         LEFT JOIN agent_performance_stats aps ON aps.agent_profile_id = ap.id
             AND aps.period_start = date_trunc('month', CURRENT_DATE)
         WHERE ap.is_active = true
-        ORDER BY CASE $1
-            WHEN 'success_rate' THEN COALESCE(aw.success_rate, 0)
-            WHEN 'quality' THEN COALESCE(aw.quality_score_avg, 0)
-            WHEN 'sla_compliance' THEN COALESCE(aw.deadline_compliance_rate, 0)
-            WHEN 'productivity' THEN COALESCE(aps.total_processed, 0)
-            ELSE COALESCE(aw.success_rate, 0)
-        END DESC NULLS LAST
-    """, metric)
+    """)
 
     if not rows:
         return {"error": "No hay agentes activos con datos de rendimiento"}
 
+    # Map metric to column name for sorting
+    metric_col = {
+        "success_rate": "success_rate",
+        "quality": "quality_score_avg",
+        "sla_compliance": "deadline_compliance_rate",
+        "productivity": "total_processed",
+    }.get(metric, "success_rate")
+
+    # Sort in Python (avoids CASE type-mixing in SQL)
+    sorted_rows = sorted(rows, key=lambda r: float(r[metric_col] or 0), reverse=True)
+
     agents = []
     metric_values = []
-    for rank, r in enumerate(rows, 1):
-        val = float(r[{
-            "success_rate": "success_rate",
-            "quality": "quality_score_avg",
-            "sla_compliance": "deadline_compliance_rate",
-            "productivity": "total_processed",
-        }.get(metric, "success_rate")] or 0)
+    for rank, r in enumerate(sorted_rows, 1):
+        val = float(r[metric_col] or 0)
         metric_values.append(val)
         agents.append({
             "rank": rank,
@@ -736,20 +762,44 @@ FUNCTION_MAP = {
 # SERVICE CLASS
 # ============================================================================
 
+def _make_json_safe(obj: Any) -> Any:
+    """Convert object to JSON-safe types while keeping dict structure.
+
+    Vertex AI Part.from_function_response expects a dict with JSON-safe values.
+    This round-trips through JSON to convert datetime, UUID, Decimal etc. to
+    strings/numbers, but returns a dict (NOT a JSON string).
+    """
+    return json.loads(json.dumps(obj, default=str, ensure_ascii=False))
+
+
 class AdminAssistantService:
-    """Gemini function-calling admin assistant."""
+    """Gemini function-calling admin assistant.
+
+    Production-ready: retries init on failure, structured function responses,
+    proper timeouts, multi-function support.
+    """
 
     def __init__(self):
         self._model: Optional[GenerativeModel] = None
         self._initialized = False
+        self._init_failures = 0
 
     def _ensure_initialized(self):
-        """Lazy initialization."""
-        if self._initialized:
+        """Lazy initialization with retry on failure.
+
+        Unlike the old code, does NOT mark as initialized on failure.
+        Retries up to _MAX_INIT_RETRIES times before giving up permanently.
+        """
+        if self._initialized and self._model is not None:
             return
 
         if not VERTEX_AI_AVAILABLE:
             self._initialized = True
+            return
+
+        if self._init_failures >= _MAX_INIT_RETRIES:
+            # Exceeded retry limit — don't keep hammering Vertex AI
+            logger.debug("Admin Assistant init skipped (exceeded retry limit)")
             return
 
         try:
@@ -766,10 +816,13 @@ class AdminAssistantService:
                 tools=tools,
             )
             self._initialized = True
-            logger.info("Admin Assistant Service initialized")
+            self._init_failures = 0
+            logger.info("Admin Assistant Service initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize Admin Assistant: {e}")
-            self._initialized = True
+            self._init_failures += 1
+            logger.error(
+                f"Failed to initialize Admin Assistant (attempt {self._init_failures}/{_MAX_INIT_RETRIES}): {e}"
+            )
 
     async def process_question(
         self, db, question: str
@@ -778,6 +831,12 @@ class AdminAssistantService:
         Process an admin question using Gemini function calling.
 
         Flow: question → Gemini → picks tool(s) → safe SQL → data → Gemini → answer
+
+        Key improvements over v1:
+        - Structured function responses (dict, not json.dumps string)
+        - Multi-function support for broad questions
+        - Separate timeouts for routing vs analysis calls
+        - Better error messages with context
 
         Args:
             db: Database connection
@@ -810,22 +869,23 @@ class AdminAssistantService:
                         question,
                         generation_config=GenerationConfig(
                             temperature=0.2,
-                            max_output_tokens=1024,
+                            max_output_tokens=512,  # Routing call: only needs function names
                         ),
                     ),
                 ),
-                timeout=15.0,
+                timeout=_GEMINI_TIMEOUT_FIRST_CALL,
             )
 
             # Safely handle empty response
             if not response.candidates:
+                logger.warning("Admin assistant: empty candidates from Gemini")
                 return {
-                    "answer": "No se obtuvo respuesta del modelo. Intenta de nuevo.",
+                    "answer": "No se obtuvo respuesta del modelo. Intenta reformular tu pregunta.",
                     "tools_used": [],
                     "data": {},
                 }
 
-            # Step 2: Execute function calls
+            # Step 2: Extract function calls from response
             function_calls = []
             for candidate in response.candidates:
                 if not hasattr(candidate, 'content') or not candidate.content:
@@ -835,28 +895,29 @@ class AdminAssistantService:
                         function_calls.append(part.function_call)
 
             if not function_calls:
-                # No function call — direct text response
+                # No function call — direct text response (rare with good prompt)
                 try:
                     text = (response.text or "").strip()
                 except (ValueError, AttributeError):
                     text = ""
                 latency = int((time.monotonic() - start_time) * 1000)
-                logger.info(f"Admin assistant (direct): latency={latency}ms")
+                logger.info(f"Admin assistant (direct text, no function calls): latency={latency}ms q={question[:50]}")
                 return {
-                    "answer": text or "No puedo responder a esta pregunta con los datos disponibles.",
+                    "answer": text or "No puedo responder a esta pregunta con los datos disponibles. Intenta ser más específico.",
                     "tools_used": [],
                     "data": {},
                 }
 
-            # Execute function calls in parallel
+            # Step 3: Execute function calls in parallel
             async def _exec_fn(fn_name: str, fn_args: dict):
                 if fn_name not in FUNCTION_MAP:
+                    logger.warning(f"Admin assistant: unknown function '{fn_name}'")
                     return fn_name, {"error": f"Función desconocida: {fn_name}"}
                 try:
                     result = await FUNCTION_MAP[fn_name](db, **fn_args)
                     return fn_name, result
                 except Exception as e:
-                    logger.error(f"Function {fn_name} failed: {e}")
+                    logger.error(f"Admin assistant function {fn_name} failed: {e}")
                     return fn_name, {"error": str(e)}
 
             tasks = []
@@ -865,6 +926,8 @@ class AdminAssistantService:
                 # Safely convert protobuf MapComposite to plain dict
                 try:
                     fn_args = {k: v for k, v in fc.args.items()} if fc.args else {}
+                    # Convert protobuf numeric types to Python types
+                    fn_args = {k: (int(v) if isinstance(v, float) and v == int(v) else v) for k, v in fn_args.items()}
                 except (TypeError, AttributeError):
                     fn_args = {}
                 tools_used.append(fn_name)
@@ -873,34 +936,40 @@ class AdminAssistantService:
             results = await asyncio.gather(*tasks, return_exceptions=True)
             for r in results:
                 if isinstance(r, Exception):
-                    logger.error(f"Function execution error: {r}")
+                    logger.error(f"Admin assistant function execution error: {r}")
                     continue
                 fn_name, fn_result = r
                 tool_results[fn_name] = fn_result
 
-            # Step 3: Send function results back to Gemini for natural language answer
+            if not tool_results:
+                return {
+                    "answer": "Error ejecutando las funciones de datos. Intenta de nuevo.",
+                    "tools_used": tools_used,
+                    "data": {},
+                }
+
+            # Step 4: Send function results back to Gemini for natural language answer
             from vertexai.generative_models import Part, Content
 
-            # Build the function response parts
+            # Build function response parts with STRUCTURED dicts (not json.dumps strings)
+            # This is critical — Gemini processes structured data much better than JSON strings
             function_response_parts = []
             for fn_name, fn_result in tool_results.items():
+                # Convert non-serializable types (datetime, UUID) to strings
+                # while keeping the dict structure intact for Gemini
+                safe_result = _make_json_safe(fn_result)
                 function_response_parts.append(
                     Part.from_function_response(
                         name=fn_name,
-                        response={"result": json.dumps(fn_result, default=str, ensure_ascii=False)},
+                        response=safe_result,
                     )
                 )
 
-            # Multi-turn: [user question, model function calls, function responses + format instruction]
-            format_hint = Part.from_text(
-                "Analiza estos datos y responde en Markdown. "
-                "Usa tablas cuando presentes datos comparativos de múltiples agentes o entidades. "
-                "Usa **negrita** para datos clave y listas - para acciones recomendadas."
-            )
+            # Multi-turn conversation: user question → model function calls → function responses
             chat_history = [
                 Content(role="user", parts=[Part.from_text(question)]),
                 response.candidates[0].content,
-                Content(role="user", parts=function_response_parts + [format_hint]),
+                Content(role="user", parts=function_response_parts),
             ]
 
             final_response = await asyncio.wait_for(
@@ -910,11 +979,11 @@ class AdminAssistantService:
                         chat_history,
                         generation_config=GenerationConfig(
                             temperature=0.2,
-                            max_output_tokens=1024,
+                            max_output_tokens=2048,  # Analysis: needs space for tables + recommendations
                         ),
                     ),
                 ),
-                timeout=15.0,
+                timeout=_GEMINI_TIMEOUT_SECOND_CALL,
             )
 
             try:
@@ -922,30 +991,38 @@ class AdminAssistantService:
             except (ValueError, AttributeError):
                 answer = ""
             if not answer:
-                answer = "No se pudo generar una respuesta. Los datos están disponibles en los paneles."
+                answer = "No se pudo generar un análisis. Los datos fueron obtenidos correctamente — consulta los paneles para más detalles."
             latency = int((time.monotonic() - start_time) * 1000)
 
             logger.info(
-                f"Admin assistant: tools={tools_used} latency={latency}ms"
+                f"Admin assistant: tools={tools_used} latency={latency}ms q={question[:50]}"
             )
 
             return {
                 "answer": answer,
                 "tools_used": tools_used,
-                "data": {k: v for k, v in tool_results.items() if "error" not in v},
+                "data": {k: v for k, v in tool_results.items() if not isinstance(v, dict) or "error" not in v},
             }
 
         except asyncio.TimeoutError:
-            logger.warning("Admin assistant timed out")
+            latency = int((time.monotonic() - start_time) * 1000)
+            logger.warning(f"Admin assistant timed out after {latency}ms, tools={tools_used}")
+            # If we have partial results, return them with a note
+            if tool_results:
+                return {
+                    "answer": "El análisis tardó demasiado, pero se obtuvieron datos parciales. Consulta los paneles para el detalle completo.",
+                    "tools_used": tools_used,
+                    "data": {k: v for k, v in tool_results.items() if not isinstance(v, dict) or "error" not in v},
+                }
             return {
                 "answer": "La consulta tardó demasiado. Intenta con una pregunta más específica.",
                 "tools_used": tools_used,
                 "data": {},
             }
         except Exception as e:
-            logger.error(f"Admin assistant error: {e}")
+            logger.error(f"Admin assistant error: {type(e).__name__}: {e}")
             return {
-                "answer": f"Error procesando la consulta. Intenta de nuevo.",
+                "answer": "Error procesando la consulta. Intenta de nuevo.",
                 "tools_used": tools_used,
                 "data": {},
             }

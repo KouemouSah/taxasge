@@ -128,6 +128,9 @@
       "assistantEmptyState": "Usa las acciones rápidas o escribe una pregunta",
       "assistantEmptyExamples": "Ejemplos: \"¿Por qué María tiene una alta tasa de rechazo?\", \"Compara los agentes de TESORO\"",
       "assistantError": "Error al procesar la consulta. Intenta de nuevo.",
+      "assistantRetry": "Reintentar",
+      "assistantDownload": "Descargar",
+      "assistantDownloadTooltip": "Descargar respuesta en Markdown",
       "assistantQuickActions": {
         "daySummary": "Resumen del día",
         "inactiveAgents": "Agentes inactivos",
