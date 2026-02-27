@@ -1,8 +1,8 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { auditLogsApi } from '../services/api'
-import type { PaginatedAuditLogsResponse } from '../types'
+import { auditLogsApi, geminiStatsApi } from '../services/api'
+import type { PaginatedAuditLogsResponse, AuditLogStats, GeminiUsageStats } from '../types'
 
 export const auditLogsKeys = {
   all: ['audit-logs'] as const,
@@ -12,6 +12,8 @@ export const auditLogsKeys = {
   details: () => [...auditLogsKeys.all, 'detail'] as const,
   detail: (id: string) => [...auditLogsKeys.details(), id] as const,
   user: (userId: string) => [...auditLogsKeys.all, 'user', userId] as const,
+  stats: () => [...auditLogsKeys.all, 'stats'] as const,
+  gemini: (days: number) => [...auditLogsKeys.all, 'gemini', days] as const,
 }
 
 export function useAuditLogs(params?: {
@@ -50,5 +52,25 @@ export function useUserAuditLogs(
     queryKey: [...auditLogsKeys.user(userId), params],
     queryFn: () => auditLogsApi.getByUser(userId, params),
     enabled: !!userId,
+  })
+}
+
+export function useAuditLogStats(params?: {
+  start_date?: string
+  end_date?: string
+}) {
+  return useQuery<AuditLogStats>({
+    queryKey: [...auditLogsKeys.stats(), params],
+    queryFn: () => auditLogsApi.getStats(params),
+    staleTime: 30_000,
+  })
+}
+
+export function useGeminiStats(days: number = 30) {
+  return useQuery<GeminiUsageStats>({
+    queryKey: auditLogsKeys.gemini(days),
+    queryFn: () => geminiStatsApi.getStats(days),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   })
 }

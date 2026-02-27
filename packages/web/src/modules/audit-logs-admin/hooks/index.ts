@@ -9,5 +9,7 @@ export {
   useAuditLogs,
   useAuditLog,
   useUserAuditLogs,
+  useAuditLogStats,
+  useGeminiStats,
   auditLogsKeys,
 } from './useAuditLogs'

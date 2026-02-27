@@ -1,17 +1,12 @@
 -- Migration 140: Create supervisor roles for each entity
 -- Currently only supervisor_tesoro exists. Each entity needs its own supervisor role
--- with proper permissions assigned.
+-- with proper permissions.
 --
--- Entities needing supervisor roles:
---   CNEDOGE_PASAPORTE, CNEDOGE_RESIDENCIA, ONRC, OFIVE, DGT
---   (TESORO already has supervisor_tesoro)
+-- KEY DISTINCTION:
+--   Workflow supervisors (CNEDOGE, ONRC, OFIVE, DGT) → service_request.process/escalate
+--   Treasury supervisor (TESORO) → treasury.* permissions only (NO service_request.process)
 --
--- Each supervisor gets:
---   - All supervisor.* permissions (dashboard, team, workload, rules, stats, escalations)
---   - Agent self-management permissions
---   - Assignment team permissions
---   - Workload team permissions
---   - Entity-scoped workflow permissions
+-- Idempotent: ON CONFLICT DO NOTHING everywhere.
 
 DO $$
 DECLARE
@@ -19,20 +14,12 @@ DECLARE
   v_perm_id UUID;
   v_inserted_roles INT := 0;
   v_inserted_perms INT := 0;
-  v_role RECORD;
   v_perm TEXT;
 
-  -- Supervisor roles to create (code, name, description)
-  v_supervisor_roles TEXT[][] := ARRAY[
-    ARRAY['supervisor_cnedoge_pasaporte', 'Supervisor CNEDOGE Pasaportes', 'Supervisor del servicio de pasaportes - CNEDOGE'],
-    ARRAY['supervisor_cnedoge_residencia', 'Supervisor CNEDOGE Residencias', 'Supervisor del servicio de residencias - CNEDOGE'],
-    ARRAY['supervisor_onrc', 'Supervisor ONRC', 'Supervisor de la Oficina Nacional de Registro de Contratos'],
-    ARRAY['supervisor_ofive', 'Supervisor OFIVE', 'Supervisor de la Oficina de Vehículos - CUVE'],
-    ARRAY['supervisor_dgt', 'Supervisor DGT', 'Supervisor de la Dirección General de Tráfico']
-  ];
-
-  -- Core supervisor permissions (must exist in permissions table)
-  v_supervisor_permissions TEXT[] := ARRAY[
+  -- ============================================================
+  -- SHARED supervisor permissions (ALL supervisors get these)
+  -- ============================================================
+  v_shared_permissions TEXT[] := ARRAY[
     -- Supervisor dashboard & team
     'supervisor.dashboard.view',
     'supervisor.team.view',
@@ -66,42 +53,36 @@ DECLARE
     'workloads.view_own',
     'workloads.view_team',
     'workloads.manage',
-    -- Service request processing
-    'service_request.process',
-    'service_request.escalate',
     -- Notifications
     'notifications.log.read'
   ];
 
-  v_role_arr TEXT[];
+  -- ============================================================
+  -- WORKFLOW-ONLY permissions (NOT for treasury)
+  -- ============================================================
+  v_workflow_permissions TEXT[] := ARRAY[
+    'service_request.process',
+    'service_request.escalate'
+  ];
+
 BEGIN
   -- ============================================================
-  -- Step 1: Create supervisor roles (ON CONFLICT skip if exists)
+  -- Step 1: Create workflow supervisor roles
   -- ============================================================
-  FOREACH v_role_arr SLICE 1 IN ARRAY v_supervisor_roles LOOP
-    INSERT INTO roles (id, code, name, description, role_type, is_system, created_at, updated_at)
-    VALUES (
-      gen_random_uuid(),
-      v_role_arr[1],
-      v_role_arr[2],
-      v_role_arr[3],
-      'agent',
-      false,
-      NOW(),
-      NOW()
-    )
-    ON CONFLICT (code) DO NOTHING;
+  INSERT INTO roles (id, code, name, description, role_type, is_system, created_at, updated_at)
+  VALUES
+    (gen_random_uuid(), 'supervisor_cnedoge_pasaporte', 'Supervisor CNEDOGE Pasaportes', 'Supervisor del servicio de pasaportes - CNEDOGE', 'agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_cnedoge_residencia', 'Supervisor CNEDOGE Residencias', 'Supervisor del servicio de residencias - CNEDOGE', 'agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_onrc', 'Supervisor ONRC', 'Supervisor de la Oficina Nacional de Registro de Contratos', 'agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_ofive', 'Supervisor OFIVE', 'Supervisor de la Oficina de Vehículos - CUVE', 'agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_dgt', 'Supervisor DGT', 'Supervisor de la Dirección General de Tráfico', 'agent', false, NOW(), NOW())
+  ON CONFLICT (code) DO NOTHING;
 
-    IF FOUND THEN
-      v_inserted_roles := v_inserted_roles + 1;
-      RAISE NOTICE 'Created role: %', v_role_arr[1];
-    ELSE
-      RAISE NOTICE 'Role already exists: %', v_role_arr[1];
-    END IF;
-  END LOOP;
+  GET DIAGNOSTICS v_inserted_roles = ROW_COUNT;
+  RAISE NOTICE '% new supervisor roles created', v_inserted_roles;
 
   -- ============================================================
-  -- Step 2: Set default_agent_config for new supervisor roles
+  -- Step 2: Set default_agent_config for ALL supervisor roles
   -- ============================================================
   UPDATE roles
   SET default_agent_config = jsonb_build_object(
@@ -115,28 +96,53 @@ BEGIN
   AND default_agent_config IS NULL;
 
   -- ============================================================
-  -- Step 3: Assign permissions to ALL supervisor roles
-  --         (including supervisor_tesoro and supervisor_agent)
+  -- Step 3: Assign SHARED permissions to ALL supervisor roles
   -- ============================================================
-  FOR v_role IN
-    SELECT id, code FROM roles WHERE code LIKE 'supervisor_%'
+  FOR v_role_id IN
+    SELECT id FROM roles WHERE code LIKE 'supervisor_%'
   LOOP
-    FOREACH v_perm IN ARRAY v_supervisor_permissions LOOP
+    FOREACH v_perm IN ARRAY v_shared_permissions LOOP
       SELECT id INTO v_perm_id FROM permissions WHERE name = v_perm LIMIT 1;
-
       IF v_perm_id IS NOT NULL THEN
         INSERT INTO role_permissions (role_id, permission_id, granted_at)
-        VALUES (v_role.id, v_perm_id, NOW())
+        VALUES (v_role_id, v_perm_id, NOW())
         ON CONFLICT (role_id, permission_id) DO NOTHING;
-
-        IF FOUND THEN
-          v_inserted_perms := v_inserted_perms + 1;
-        END IF;
+        IF FOUND THEN v_inserted_perms := v_inserted_perms + 1; END IF;
       ELSE
-        RAISE NOTICE 'Permission % not found — skipping for role %', v_perm, v_role.code;
+        RAISE NOTICE 'Permission % not found — skipping', v_perm;
       END IF;
     END LOOP;
   END LOOP;
+
+  -- ============================================================
+  -- Step 4: Assign WORKFLOW permissions to non-treasury supervisors ONLY
+  -- ============================================================
+  FOR v_role_id IN
+    SELECT id FROM roles
+    WHERE code LIKE 'supervisor_%'
+    AND code != 'supervisor_tesoro'
+    AND code != 'supervisor_agent'
+  LOOP
+    FOREACH v_perm IN ARRAY v_workflow_permissions LOOP
+      SELECT id INTO v_perm_id FROM permissions WHERE name = v_perm LIMIT 1;
+      IF v_perm_id IS NOT NULL THEN
+        INSERT INTO role_permissions (role_id, permission_id, granted_at)
+        VALUES (v_role_id, v_perm_id, NOW())
+        ON CONFLICT (role_id, permission_id) DO NOTHING;
+        IF FOUND THEN v_inserted_perms := v_inserted_perms + 1; END IF;
+      END IF;
+    END LOOP;
+  END LOOP;
+
+  -- ============================================================
+  -- Step 5: Remove workflow permissions from supervisor_tesoro
+  -- (may have been added incorrectly by migration 122)
+  -- ============================================================
+  DELETE FROM role_permissions
+  WHERE role_id = (SELECT id FROM roles WHERE code = 'supervisor_tesoro' LIMIT 1)
+  AND permission_id IN (
+    SELECT id FROM permissions WHERE name IN ('service_request.process', 'service_request.escalate')
+  );
 
   RAISE NOTICE 'Migration 140 complete: % roles created, % permission assignments added',
     v_inserted_roles, v_inserted_perms;

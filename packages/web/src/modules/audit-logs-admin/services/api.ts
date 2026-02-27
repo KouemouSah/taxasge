@@ -8,6 +8,7 @@ import type {
   AuditLog,
   PaginatedAuditLogsResponse,
   AuditLogStats,
+  GeminiUsageStats,
 } from '../types'
 
 export const auditLogsApi = {
@@ -73,6 +74,15 @@ export const auditLogsApi = {
       }
     )
     return response || []
+  },
+}
+
+export const geminiStatsApi = {
+  /**
+   * GET /audit-logs/gemini-stats
+   */
+  getStats: async (days: number = 30): Promise<GeminiUsageStats> => {
+    return fetchClient.get<GeminiUsageStats>('/audit-logs/gemini-stats', { days })
   },
 }
 

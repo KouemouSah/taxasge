@@ -32,3 +32,32 @@ export interface AuditLogStats {
 
 // Keep for backward compatibility — used in filters
 export type AuditAction = string
+
+export interface GeminiUsageStats {
+  total_calls: number
+  total_input_tokens: number
+  total_output_tokens: number
+  total_tokens: number
+  estimated_cost_usd: number
+  error_count: number
+  fallback_count: number
+  avg_processing_time_ms: number
+  avg_confidence: number
+  daily_breakdown: Array<{
+    day: string
+    calls: number
+    tokens: number
+    errors: number
+  }>
+  by_workflow: Array<{
+    workflow: string
+    calls: number
+    tokens: number
+  }>
+  by_document_category: Array<{
+    category: string
+    calls: number
+    tokens: number
+    avg_confidence: number
+  }>
+}

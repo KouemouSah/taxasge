@@ -366,24 +366,25 @@ export default function OperationalOverview() {
           </CardTitle>
           {geminiStats && (
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-              <span>{geminiStats.total_calls} llamadas</span>
+              <span>{geminiStats.total_calls} {t('chart.geminiCalls')}</span>
               <span className="flex items-center gap-1">
                 <DollarSign className="h-3 w-3" />${geminiStats.estimated_cost_usd.toFixed(2)}
               </span>
               {geminiStats.error_count > 0 && (
-                <span className="text-red-500">{geminiStats.error_count} errores</span>
+                <span className="text-red-500">{geminiStats.error_count} {t('chart.geminiErrors')}</span>
               )}
             </div>
           )}
         </CardHeader>
         <CardContent>
-          {geminiDaily.length > 0 ? (
+          {geminiStats && geminiDaily.length > 0 ? (
             <div className="h-48">
               <Line data={geminiLineData} options={geminiLineOptions} />
             </div>
           ) : (
             <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <span className="text-sm">{t('chart.noData')}</span>
+              <Cpu className="h-5 w-5 opacity-40" />
+              <span className="text-sm">{geminiStats ? t('chart.noData') : t('chart.geminiNoActivity')}</span>
             </div>
           )}
         </CardContent>

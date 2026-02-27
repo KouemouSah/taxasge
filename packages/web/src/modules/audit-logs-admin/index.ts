@@ -15,5 +15,5 @@ export * from './hooks'
 export * from './types'
 
 // Services
-export { auditLogsApi } from './services/api'
+export { auditLogsApi, geminiStatsApi } from './services/api'
 export { default as auditLogsAdminApi } from './services/api'

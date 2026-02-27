@@ -290,15 +290,26 @@ async def get_gemini_usage_stats(
     Queries gemini_processing_logs table for token usage, cost estimation,
     error rates, and breakdown by workflow/document type.
 
-    Requires audit.view_stats permission.
+    Cached 60s per days param. Requires audit.view_stats permission.
     """
+    from app.core.cache import get_cache
+
+    cache = get_cache()
+    cache_key = f"admin:gemini-stats:{days}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return GeminiUsageStats(**cached)
+
     try:
-        # Gemini Flash pricing (USD per 1M tokens)
-        INPUT_RATE = 0.075  # $0.075 per 1M input tokens
+        # Gemini Flash pricing (USD per 1M tokens) — from Google AI pricing page
+        INPUT_RATE = 0.075   # $0.075 per 1M input tokens
         OUTPUT_RATE = 0.30   # $0.30 per 1M output tokens
 
+        # Use parameterized interval: $1::int * interval '1 day'
+        interval_clause = "$1::int * interval '1 day'"
+
         # Overall stats
-        overall_query = """
+        overall_query = f"""
             SELECT
                 COUNT(*) as total_calls,
                 COALESCE(SUM(input_tokens), 0)::bigint as total_input_tokens,
@@ -309,71 +320,71 @@ async def get_gemini_usage_stats(
                 COALESCE(AVG(processing_time_ms), 0)::numeric as avg_processing_time_ms,
                 COALESCE(AVG(extraction_confidence) FILTER (WHERE extraction_confidence IS NOT NULL), 0)::numeric as avg_confidence
             FROM gemini_processing_logs
-            WHERE created_at >= NOW() - ($1 || ' days')::interval
+            WHERE created_at >= NOW() - {interval_clause}
         """
-        overall = await db.fetchrow(overall_query, str(days))
+        overall = await db.fetchrow(overall_query, days)
 
         total_input = int(overall['total_input_tokens']) if overall else 0
         total_output = int(overall['total_output_tokens']) if overall else 0
         estimated_cost = (total_input * INPUT_RATE + total_output * OUTPUT_RATE) / 1_000_000
 
         # Daily breakdown (for chart)
-        daily_query = """
+        daily_query = f"""
             SELECT
                 created_at::date as day,
                 COUNT(*) as calls,
                 COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0)::bigint as tokens,
                 COUNT(*) FILTER (WHERE has_error = true) as errors
             FROM gemini_processing_logs
-            WHERE created_at >= NOW() - ($1 || ' days')::interval
+            WHERE created_at >= NOW() - {interval_clause}
             GROUP BY created_at::date
             ORDER BY day DESC
             LIMIT 60
         """
-        daily_rows = await db.fetch(daily_query, str(days))
+        daily_rows = await db.fetch(daily_query, days)
         daily_breakdown = [
             {"day": str(r['day']), "calls": r['calls'], "tokens": int(r['tokens']), "errors": r['errors']}
             for r in daily_rows
         ]
 
         # By workflow
-        workflow_query = """
+        workflow_query = f"""
             SELECT
                 COALESCE(workflow_code, 'unknown') as workflow,
                 COUNT(*) as calls,
                 COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0)::bigint as tokens
             FROM gemini_processing_logs
-            WHERE created_at >= NOW() - ($1 || ' days')::interval
+            WHERE created_at >= NOW() - {interval_clause}
             GROUP BY workflow_code
             ORDER BY tokens DESC
             LIMIT 15
         """
-        wf_rows = await db.fetch(workflow_query, str(days))
+        wf_rows = await db.fetch(workflow_query, days)
         by_workflow = [
             {"workflow": r['workflow'], "calls": r['calls'], "tokens": int(r['tokens'])}
             for r in wf_rows
         ]
 
         # By document category
-        category_query = """
+        category_query = f"""
             SELECT
                 COALESCE(document_category, 'other') as category,
                 COUNT(*) as calls,
                 COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0)::bigint as tokens,
                 COALESCE(AVG(extraction_confidence) FILTER (WHERE extraction_confidence IS NOT NULL), 0)::numeric as avg_confidence
             FROM gemini_processing_logs
-            WHERE created_at >= NOW() - ($1 || ' days')::interval
+            WHERE created_at >= NOW() - {interval_clause}
             GROUP BY document_category
             ORDER BY tokens DESC
         """
-        cat_rows = await db.fetch(category_query, str(days))
+        cat_rows = await db.fetch(category_query, days)
         by_document_category = [
             {"category": r['category'], "calls": r['calls'], "tokens": int(r['tokens']),
              "avg_confidence": float(round(r['avg_confidence'], 2))}
             for r in cat_rows
         ]
 
-        return GeminiUsageStats(
+        result = GeminiUsageStats(
             total_calls=overall['total_calls'] if overall else 0,
             total_input_tokens=total_input,
             total_output_tokens=total_output,
@@ -387,6 +398,9 @@ async def get_gemini_usage_stats(
             by_workflow=by_workflow,
             by_document_category=by_document_category,
         )
+
+        await cache.set(cache_key, result.model_dump(), ttl=60)
+        return result
 
     except Exception as e:
         logger.error(f"Error getting Gemini usage stats: {e}")
