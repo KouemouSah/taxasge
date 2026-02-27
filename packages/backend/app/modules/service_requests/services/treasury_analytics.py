@@ -189,35 +189,6 @@ class TreasuryAnalyticsService:
             logger.error(f"Error fetching KPI data: {e}")
             return pd.DataFrame()
 
-    async def get_agent_performance_data(
-        self,
-        db: asyncpg.Connection,
-        date_from: str,
-        date_to: str,
-    ) -> pd.DataFrame:
-        """Extract agent performance data"""
-        query = """
-            SELECT
-                agent_id,
-                month_year,
-                validations_count,
-                rejections_count,
-                avg_processing_minutes,
-                sla_respect_rate,
-                workload_score
-            FROM agent_performance_stats
-            WHERE month_year BETWEEN $1 AND $2
-        """
-
-        try:
-            rows = await db.fetch(query, date_from[:7], date_to[:7])  # YYYY-MM format
-            if not rows:
-                return pd.DataFrame()
-            return pd.DataFrame([dict(row) for row in rows])
-        except Exception as e:
-            logger.error(f"Error fetching agent data: {e}")
-            return pd.DataFrame()
-
     # =========================================================================
     # DESCRIPTIVE STATISTICS
     # =========================================================================

@@ -3608,7 +3608,7 @@ class PendingPaymentsWidgetResponse(BaseModel):
 )
 async def get_pending_payments_widget(
     workflow_code: Optional[str] = Query(None, description="Filter by workflow code"),
-    workflow_status: Optional[str] = Query(None, description="Filter by workflow status (e.g. locked_by_agent, completed)"),
+    workflow_status: Optional[str] = Query(None, description="Filter by workflow status (e.g. pending_agent_review, agent_reviewing, approved_by_agent, completed)"),
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db=Depends(get_database),
