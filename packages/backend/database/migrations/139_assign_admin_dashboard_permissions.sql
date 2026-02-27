@@ -37,8 +37,8 @@ BEGIN
 
     IF v_perm_id IS NOT NULL THEN
       -- Insert if not already assigned
-      INSERT INTO role_permissions (role_id, permission_id, granted_at)
-      VALUES (v_admin_role_id, v_perm_id, NOW())
+      INSERT INTO role_permissions (role_id, permission_id, granted, created_at)
+      VALUES (v_admin_role_id, v_perm_id, TRUE, NOW())
       ON CONFLICT (role_id, permission_id) DO NOTHING;
 
       IF FOUND THEN

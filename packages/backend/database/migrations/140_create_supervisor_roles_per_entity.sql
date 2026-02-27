@@ -69,13 +69,13 @@ BEGIN
   -- ============================================================
   -- Step 1: Create workflow supervisor roles
   -- ============================================================
-  INSERT INTO roles (id, code, name, description, role_type, is_system, created_at, updated_at)
+  INSERT INTO roles (id, code, name, description, entity_type, is_system, created_at, updated_at)
   VALUES
-    (gen_random_uuid(), 'supervisor_cnedoge_pasaporte', 'Supervisor CNEDOGE Pasaportes', 'Supervisor del servicio de pasaportes - CNEDOGE', 'agent', false, NOW(), NOW()),
-    (gen_random_uuid(), 'supervisor_cnedoge_residencia', 'Supervisor CNEDOGE Residencias', 'Supervisor del servicio de residencias - CNEDOGE', 'agent', false, NOW(), NOW()),
-    (gen_random_uuid(), 'supervisor_onrc', 'Supervisor ONRC', 'Supervisor de la Oficina Nacional de Registro de Contratos', 'agent', false, NOW(), NOW()),
-    (gen_random_uuid(), 'supervisor_ofive', 'Supervisor OFIVE', 'Supervisor de la Oficina de Vehículos - CUVE', 'agent', false, NOW(), NOW()),
-    (gen_random_uuid(), 'supervisor_dgt', 'Supervisor DGT', 'Supervisor de la Dirección General de Tráfico', 'agent', false, NOW(), NOW())
+    (gen_random_uuid(), 'supervisor_cnedoge_pasaporte', 'Supervisor CNEDOGE Pasaportes', 'Supervisor del servicio de pasaportes - CNEDOGE', 'entity_agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_cnedoge_residencia', 'Supervisor CNEDOGE Residencias', 'Supervisor del servicio de residencias - CNEDOGE', 'entity_agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_onrc', 'Supervisor ONRC', 'Supervisor de la Oficina Nacional de Registro de Contratos', 'entity_agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_ofive', 'Supervisor OFIVE', 'Supervisor de la Oficina de Vehículos - CUVE', 'entity_agent', false, NOW(), NOW()),
+    (gen_random_uuid(), 'supervisor_dgt', 'Supervisor DGT', 'Supervisor de la Dirección General de Tráfico', 'entity_agent', false, NOW(), NOW())
   ON CONFLICT (code) DO NOTHING;
 
   GET DIAGNOSTICS v_inserted_roles = ROW_COUNT;
@@ -104,8 +104,8 @@ BEGIN
     FOREACH v_perm IN ARRAY v_shared_permissions LOOP
       SELECT id INTO v_perm_id FROM permissions WHERE name = v_perm LIMIT 1;
       IF v_perm_id IS NOT NULL THEN
-        INSERT INTO role_permissions (role_id, permission_id, granted_at)
-        VALUES (v_role_id, v_perm_id, NOW())
+        INSERT INTO role_permissions (role_id, permission_id, granted, created_at)
+        VALUES (v_role_id, v_perm_id, TRUE, NOW())
         ON CONFLICT (role_id, permission_id) DO NOTHING;
         IF FOUND THEN v_inserted_perms := v_inserted_perms + 1; END IF;
       ELSE
@@ -126,8 +126,8 @@ BEGIN
     FOREACH v_perm IN ARRAY v_workflow_permissions LOOP
       SELECT id INTO v_perm_id FROM permissions WHERE name = v_perm LIMIT 1;
       IF v_perm_id IS NOT NULL THEN
-        INSERT INTO role_permissions (role_id, permission_id, granted_at)
-        VALUES (v_role_id, v_perm_id, NOW())
+        INSERT INTO role_permissions (role_id, permission_id, granted, created_at)
+        VALUES (v_role_id, v_perm_id, TRUE, NOW())
         ON CONFLICT (role_id, permission_id) DO NOTHING;
         IF FOUND THEN v_inserted_perms := v_inserted_perms + 1; END IF;
       END IF;
