@@ -402,104 +402,98 @@ class WorkloadRepository:
             logger.warning(f"Error fetching performance by profile_id {agent_profile_id}: {e}")
             return None
 
-    async def create_performance_stats(
+    async def ensure_performance_stats(
         self,
         conn: asyncpg.Connection,
-        agent_id: int,
-        ministry_id: int,
-    ) -> Dict[str, Any]:
-        """Create initial performance stats for agent"""
-        query = """
+        agent_profile_id: str,
+    ) -> None:
+        """Ensure performance stats row exists for agent (UPSERT on agent_profile_id)."""
+        await conn.execute("""
             INSERT INTO agent_performance_stats (
-                agent_id, ministry_id, current_month_processed,
-                current_month_approved, current_month_rejected,
-                current_month_escalated, sla_respected_count,
-                sla_missed_count, current_active_locks,
-                max_concurrent_locks, stats_period_start, updated_at
+                agent_id, agent_profile_id, ministry_id,
+                current_month_processed, current_month_approved,
+                current_month_rejected, current_month_escalated,
+                sla_respected_count, sla_missed_count,
+                current_active_locks, max_concurrent_locks,
+                stats_period_start, updated_at
             )
-            VALUES ($1, $2, 0, 0, 0, 0, 0, 0, 0, 0, CURRENT_DATE, NOW())
-            ON CONFLICT (agent_id) DO NOTHING
-            RETURNING *
-        """
-        result = await conn.fetchrow(query, agent_id, ministry_id)
-        return dict(result) if result else None
+            SELECT
+                0, ap.id, ap.ministry_id,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                date_trunc('month', CURRENT_DATE)::date, NOW()
+            FROM agent_profiles ap WHERE ap.id = $1::uuid
+            ON CONFLICT (agent_profile_id) DO NOTHING
+        """, agent_profile_id)
 
     async def increment_processed(
         self,
         conn: asyncpg.Connection,
-        agent_id: int,
-    ) -> Dict[str, Any]:
+        agent_profile_id: str,
+    ) -> None:
         """Increment processed count"""
-        query = """
+        await self.ensure_performance_stats(conn, agent_profile_id)
+        await conn.execute("""
             UPDATE agent_performance_stats
             SET current_month_processed = current_month_processed + 1,
                 updated_at = NOW()
-            WHERE agent_id = $1
-            RETURNING *
-        """
-        result = await conn.fetchrow(query, agent_id)
-        return dict(result)
+            WHERE agent_profile_id = $1::uuid
+        """, agent_profile_id)
 
     async def increment_approved(
         self,
         conn: asyncpg.Connection,
-        agent_id: int,
-    ) -> Dict[str, Any]:
+        agent_profile_id: str,
+    ) -> None:
         """Increment approved count"""
-        query = """
+        await self.ensure_performance_stats(conn, agent_profile_id)
+        await conn.execute("""
             UPDATE agent_performance_stats
             SET current_month_approved = current_month_approved + 1,
                 last_action_at = NOW(),
                 updated_at = NOW()
-            WHERE agent_id = $1
-            RETURNING *
-        """
-        result = await conn.fetchrow(query, agent_id)
-        return dict(result)
+            WHERE agent_profile_id = $1::uuid
+        """, agent_profile_id)
 
     async def increment_rejected(
         self,
         conn: asyncpg.Connection,
-        agent_id: int,
-    ) -> Dict[str, Any]:
+        agent_profile_id: str,
+    ) -> None:
         """Increment rejected count"""
-        query = """
+        await self.ensure_performance_stats(conn, agent_profile_id)
+        await conn.execute("""
             UPDATE agent_performance_stats
             SET current_month_rejected = current_month_rejected + 1,
                 last_action_at = NOW(),
                 updated_at = NOW()
-            WHERE agent_id = $1
-            RETURNING *
-        """
-        result = await conn.fetchrow(query, agent_id)
-        return dict(result)
+            WHERE agent_profile_id = $1::uuid
+        """, agent_profile_id)
 
     async def increment_escalated(
         self,
         conn: asyncpg.Connection,
-        agent_id: int,
-    ) -> Dict[str, Any]:
+        agent_profile_id: str,
+    ) -> None:
         """Increment escalated count"""
-        query = """
+        await self.ensure_performance_stats(conn, agent_profile_id)
+        await conn.execute("""
             UPDATE agent_performance_stats
             SET current_month_escalated = current_month_escalated + 1,
                 last_action_at = NOW(),
                 updated_at = NOW()
-            WHERE agent_id = $1
-            RETURNING *
-        """
-        result = await conn.fetchrow(query, agent_id)
-        return dict(result)
+            WHERE agent_profile_id = $1::uuid
+        """, agent_profile_id)
 
     async def update_sla_stats(
         self,
         conn: asyncpg.Connection,
-        agent_id: int,
+        agent_profile_id: str,
         sla_respected: bool,
-    ) -> Dict[str, Any]:
+    ) -> None:
         """Update SLA statistics"""
+        await self.ensure_performance_stats(conn, agent_profile_id)
         field = "sla_respected_count" if sla_respected else "sla_missed_count"
-        query = f"""
+        await conn.execute(f"""
             UPDATE agent_performance_stats
             SET {field} = {field} + 1,
                 sla_respect_percentage = (
@@ -507,11 +501,8 @@ class WorkloadRepository:
                     (sla_respected_count + sla_missed_count + 1)::numeric
                 ) * 100,
                 updated_at = NOW()
-            WHERE agent_id = $1
-            RETURNING *
-        """
-        result = await conn.fetchrow(query, agent_id, sla_respected)
-        return dict(result)
+            WHERE agent_profile_id = $1::uuid
+        """, agent_profile_id, sla_respected)
 
     async def get_top_performers(
         self,

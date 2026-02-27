@@ -3714,6 +3714,12 @@ async def validate_payment(
                 $4, NOW())
         """, payment_id, agent_profile_id, current_user.id, body.comment)
 
+        # Update agent performance stats
+        from app.modules.agents.repositories.workload_repository import WorkloadRepository
+        _workload_repo = WorkloadRepository()
+        await _workload_repo.increment_processed(db, str(agent_profile_id))
+        await _workload_repo.increment_approved(db, str(agent_profile_id))
+
         # INSERT into assignment outbox (guaranteed delivery for entity agent assignment)
         # No try/except: if enqueue fails, the entire transaction rolls back.
         # This guarantees that a validated payment ALWAYS has an outbox entry.
@@ -3953,6 +3959,12 @@ async def reject_payment(
                 'rejected_by_agent'::payment_workflow_status,
                 $4, NOW())
     """, payment_id, agent_profile_id, current_user.id, body.reason)
+
+    # Update agent performance stats
+    from app.modules.agents.repositories.workload_repository import WorkloadRepository
+    _workload_repo = WorkloadRepository()
+    await _workload_repo.increment_processed(db, str(agent_profile_id))
+    await _workload_repo.increment_rejected(db, str(agent_profile_id))
 
     # Publish PAYMENT_CASH_REJECTED event
     try:
@@ -4321,6 +4333,11 @@ async def escalate_payment(
                     'escalated_supervisor'::payment_workflow_status,
                     $4, NOW())
         """, payment_id, agent_profile_id, current_user.id, body.reason)
+
+        # Update agent performance stats
+        from app.modules.agents.repositories.workload_repository import WorkloadRepository
+        _workload_repo = WorkloadRepository()
+        await _workload_repo.increment_escalated(db, str(agent_profile_id))
 
         logger.info(
             f"[Treasury] Payment {payment_id} escalated to supervisor {supervisor_id} "

@@ -89,14 +89,20 @@ CREATE TABLE service_payments (
     workflow_status payment_workflow_status DEFAULT 'submitted',
     payment_reference VARCHAR(100) UNIQUE,
     bange_transaction_id VARCHAR(100),
-    requires_agent_validation BOOLEAN DEFAULT false,
-    -- Agent workflow fields
-    locked_by_agent_id INTEGER,
-    lock_expires_at TIMESTAMP,
-    validated_by_agent_id INTEGER,
-    validated_at TIMESTAMP,
+    requires_agent_validation BOOLEAN DEFAULT true,
+    -- Agent assignment (auto-assignment replaces manual locking)
+    assigned_agent_id UUID REFERENCES agent_profiles(id),
+    assigned_at TIMESTAMPTZ,
+    validated_by_agent_id UUID,
+    validated_at TIMESTAMPTZ,
     validation_comment TEXT,
     rejection_reason TEXT,
+    -- Escalation
+    escalated_to_agent_id UUID,
+    escalation_level escalation_level,
+    escalation_reason TEXT,
+    escalated_at TIMESTAMPTZ,
+    sla_escalated BOOLEAN DEFAULT false,
     -- Receipt
     receipt_number VARCHAR(50),
     receipt_url TEXT,
@@ -158,12 +164,20 @@ CREATE TYPE payment_status_enum AS ENUM (
 CREATE TYPE payment_workflow_status AS ENUM (
     'submitted',
     'auto_processing',
+    'auto_approved',
     'pending_agent_review',
     'locked_by_agent',
-    'approved',
-    'rejected',
+    'agent_reviewing',
+    'requires_documents',
+    'docs_resubmitted',
+    'approved_by_agent',
+    'rejected_by_agent',
+    'escalated_supervisor',
+    'supervisor_reviewing',
     'completed',
-    'cancelled'
+    'cancelled_by_user',
+    'cancelled_by_agent',
+    'expired'
 );
 ```
 
@@ -249,15 +263,15 @@ CREATE TYPE payment_workflow_status AS ENUM (
    GET /treasury/payments/pending
    |
    v
-4. Agent locks payment
-   POST /treasury/payments/{id}/lock
-   - locked_by_agent_id set
-   - lock_expires_at = now + 15min
+4. Agent assigned automatically (or manually by supervisor)
+   - assigned_agent_id set
+   - assigned_at = now
+   - workflow_status: 'locked_by_agent' → 'agent_reviewing'
    |
    v
 5. Agent validates or rejects
    POST /treasury/payments/{id}/validate
-   - workflow_status: 'approved'
+   - workflow_status: 'approved_by_agent'
    - receipt_number generated
    - service_request.payment_status = 'completed'
    |
@@ -385,11 +399,12 @@ is_valid, error = await hmac_service.validate_webhook(
 - `payments.idempotency_key`: Prevents duplicate payments
 - `bank_transactions.bank_reference`: UNIQUE constraint prevents duplicate webhooks
 
-### Agent Locking
+### Agent Assignment
 
-- Pessimistic locking for payment validation
-- Lock expires after configurable duration (default: 15 minutes)
-- Only lock holder can validate/reject
+- Auto-assignment via rules engine (replaces manual pessimistic locking)
+- `assigned_agent_id` tracks which agent is working on the payment
+- Only assigned agent (or supervisor) can validate/reject
+- Escalation path: agent → supervisor → admin
 
 ---
 
