@@ -71,6 +71,12 @@ export {
   useSupervisorOverview,
   SUPERVISOR_OVERVIEW_QUERY_KEY,
 } from './useSupervisorOverview';
+// Phase 5 - Reconciliation Suggestions
+export {
+  useReconciliationSuggestions,
+  useAutoMatch,
+  RECONCILIATION_SUGGESTIONS_KEY,
+} from './useReconciliationSuggestions';
 // Phase 4 - AI Analyst
 export {
   useTreasuryAnalyst,

@@ -7735,6 +7735,48 @@ async def treasury_analyst_briefing(
 
 
 # ═══════════════════════════════════════════════════════════════
+# TREASURY RECONCILIATION — Automated matching suggestions
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/treasury/reconciliation/suggestions",
+    summary="Get reconciliation matching suggestions",
+    description="For each unreconciled bank transaction, returns top 3 matching payment candidates with confidence scores.",
+)
+async def get_reconciliation_suggestions(
+    limit: int = Query(50, ge=1, le=200),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.reconcile")),
+):
+    """Get automated matching suggestions for bank reconciliation."""
+    from ..services.treasury_reconciliation_service import get_matching_suggestions
+
+    suggestions = await get_matching_suggestions(db, limit=limit)
+    return {"suggestions": suggestions, "count": len(suggestions)}
+
+
+@router.post(
+    "/treasury/reconciliation/auto-match",
+    summary="Auto-reconcile high-confidence matches",
+    description="Automatically reconcile bank transactions where best match score >= threshold (default 80).",
+)
+async def auto_match_reconciliation(
+    threshold: int = Query(80, ge=40, le=100),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.reconcile")),
+):
+    """Auto-reconcile bank transactions with high-confidence payment matches."""
+    from ..services.treasury_reconciliation_service import auto_match
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    result = await auto_match(db, str(user_id), threshold=threshold)
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════
 # WORKFLOW SYNC - Sync predefined workflows to database
 # ═══════════════════════════════════════════════════════════════
 # All sync logic is in workflow_sync_service.sync_all_workflows().

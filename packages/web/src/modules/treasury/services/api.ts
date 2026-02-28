@@ -63,6 +63,9 @@ import type {
   // Phase 4 - AI Analyst
   TreasuryAnalystResponse,
   TreasuryBriefingResponse,
+  // Phase 5 - Reconciliation
+  ReconciliationSuggestionsResponse,
+  AutoMatchResponse,
 } from '../types';
 import type {
   // Phase 5 - Analytics
@@ -347,6 +350,25 @@ export const treasuryApi = {
       }
     );
     return transformTransaction(response);
+  },
+
+  // ─── Reconciliation Suggestions (Phase 5) ─────
+
+  getReconciliationSuggestions: async (limit: number = 50) => {
+    const response = await fetchClient.get<Record<string, unknown>>(
+      `${TREASURY_BASE}/reconciliation/suggestions`,
+      { limit: limit.toString() }
+    );
+    return toCamelCase<ReconciliationSuggestionsResponse>(response);
+  },
+
+  autoMatchReconciliation: async (threshold: number = 80) => {
+    const response = await fetchClient.post<Record<string, unknown>>(
+      `${TREASURY_BASE}/reconciliation/auto-match`,
+      {},
+      { threshold: threshold.toString() }
+    );
+    return toCamelCase<AutoMatchResponse>(response);
   },
 
   // -------------------------------------------------------------------------

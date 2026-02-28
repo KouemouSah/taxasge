@@ -38,8 +38,8 @@ import {
   Building2,
   ArrowRight,
 } from 'lucide-react';
-import { useUnreconciledTransactions, useReconcileTransaction } from '@/modules/treasury/hooks';
-import type { BankTransaction } from '@/modules/treasury/types';
+import { useUnreconciledTransactions, useReconcileTransaction, useReconciliationSuggestions, useAutoMatch } from '@/modules/treasury/hooks';
+import type { BankTransaction, ReconciliationSuggestion } from '@/modules/treasury/types';
 
 export default function TreasuryReconciliationPage() {
   const t = useTranslations('treasury');
@@ -59,6 +59,12 @@ export default function TreasuryReconciliationPage() {
   // Reconcile mutation
   const reconcileMutation = useReconcileTransaction();
   const isReconciling = reconcileMutation.isPending;
+
+  // Smart matching suggestions
+  const { data: suggestionsData, isLoading: suggestionsLoading } = useReconciliationSuggestions();
+  const autoMatchMutation = useAutoMatch();
+  const suggestions = suggestionsData?.suggestions || [];
+  const highConfidenceSuggestions = suggestions.filter((s: ReconciliationSuggestion) => s.bestScore >= 80);
 
   // Filter transactions by search term
   const filteredTransactions = useMemo(() => {
@@ -180,6 +186,86 @@ export default function TreasuryReconciliationPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Smart Matching Suggestions */}
+      {suggestions.length > 0 && (
+        <Card className="border-green-200">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-green-800">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Sugerencias de Matching Automatico
+                  <Badge variant="secondary" className="ml-2">{suggestions.length}</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Transacciones bancarias con pagos candidatos detectados por el algoritmo de scoring
+                </CardDescription>
+              </div>
+              {highConfidenceSuggestions.length > 0 && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => autoMatchMutation.mutate(80)}
+                  disabled={autoMatchMutation.isPending}
+                >
+                  {autoMatchMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
+                  Auto-reconciliar ({highConfidenceSuggestions.length})
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {autoMatchMutation.isSuccess && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                {autoMatchMutation.data.matchedCount} transaccion(es) reconciliada(s) automaticamente.
+                {autoMatchMutation.data.skippedCount > 0 && (
+                  <span className="text-yellow-700 ml-2">
+                    {autoMatchMutation.data.skippedCount} omitida(s).
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="space-y-3">
+              {suggestions.slice(0, 10).map((suggestion: ReconciliationSuggestion) => (
+                <div key={suggestion.transactionId} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm">{suggestion.bankReference}</span>
+                      <Badge variant="outline">{formatCurrency(suggestion.bankAmount, suggestion.bankCurrency)}</Badge>
+                    </div>
+                    <Badge
+                      variant={suggestion.bestScore >= 80 ? 'default' : 'secondary'}
+                      className={suggestion.bestScore >= 80 ? 'bg-green-600' : suggestion.bestScore >= 60 ? 'bg-yellow-600' : ''}
+                    >
+                      Score: {suggestion.bestScore}
+                    </Badge>
+                  </div>
+                  {suggestion.candidates.length > 0 && (
+                    <div className="text-xs text-muted-foreground space-y-1 ml-4">
+                      {suggestion.candidates.map((c, idx) => (
+                        <div key={c.paymentId} className="flex items-center gap-2">
+                          <span className="text-muted-foreground">#{idx + 1}</span>
+                          <span className="font-mono">{c.paymentReference}</span>
+                          <span>{formatCurrency(c.paymentAmount)}</span>
+                          <span className="italic">{c.payerName}</span>
+                          <Badge variant="outline" className="text-[10px] h-4">
+                            {c.reasons.join(', ')}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Transactions Table */}
       <Card>

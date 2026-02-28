@@ -913,3 +913,50 @@ export interface TreasuryBriefingResponse {
   recommendations: string[];
   data?: Record<string, unknown>;
 }
+
+// ─── Phase 5: Reconciliation Matching ────────────────────────
+
+export interface MatchCandidate {
+  paymentId: string;
+  paymentReference: string;
+  paymentAmount: number;
+  payerName: string;
+  paymentMethod: string;
+  paymentDate: string | null;
+  score: number;
+  reasons: string[];
+}
+
+export interface ReconciliationSuggestion {
+  transactionId: string;
+  bankReference: string;
+  bankAmount: number;
+  bankCurrency: string;
+  bankDate: string;
+  accountHolder: string | null;
+  bankCode: string;
+  candidates: MatchCandidate[];
+  bestScore: number;
+}
+
+export interface ReconciliationSuggestionsResponse {
+  suggestions: ReconciliationSuggestion[];
+  count: number;
+}
+
+export interface AutoMatchResult {
+  transactionId: string;
+  bankReference: string;
+  paymentId: string;
+  paymentReference: string;
+  score: number;
+  reasons: string[];
+}
+
+export interface AutoMatchResponse {
+  matched: AutoMatchResult[];
+  matchedCount: number;
+  skipped: { transactionId: string; bankReference: string; bestScore: number; reason: string }[];
+  skippedCount: number;
+  threshold: number;
+}
