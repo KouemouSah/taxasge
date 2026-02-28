@@ -3037,6 +3037,26 @@ async def get_agent_profile_id(db: asyncpg.Connection, user_id: str) -> Optional
     return str(result) if result else None
 
 
+async def is_treasury_supervisor(db: asyncpg.Connection, user_id: str) -> bool:
+    """
+    Check if user has treasury supervisor privileges.
+    Returns True if user has 'treasury.view_all' permission via direct assignment or role.
+    """
+    return await db.fetchval("""
+        SELECT EXISTS(
+            SELECT 1 FROM user_permissions up
+            JOIN permissions p ON p.id = up.permission_id
+            WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
+            UNION
+            SELECT 1 FROM users u
+            JOIN roles r ON u.role_id = r.id
+            JOIN role_permissions rp ON rp.role_id = r.id
+            JOIN permissions p ON p.id = rp.permission_id
+            WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
+        )
+    """, user_id) or False
+
+
 class PaymentValidationRequest(BaseModel):
     """Request model for agent validation."""
     comment: Optional[str] = Field(None, max_length=500, description="Validation comment")
@@ -3166,20 +3186,8 @@ async def get_pending_payments(
         user_id = current_user.id
         logger.info(f"[Treasury] get_pending_payments called by user {user_id}: method={payment_method}, status={workflow_status}, page={page}")
 
-        # Check if user is a supervisor (has treasury.view_all permission or supervisor_tesoro role)
-        is_supervisor = await db.fetchval("""
-            SELECT EXISTS(
-                SELECT 1 FROM user_permissions up
-                JOIN permissions p ON p.id = up.permission_id
-                WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
-                UNION
-                SELECT 1 FROM users u
-                JOIN roles r ON u.role_id = r.id
-                JOIN role_permissions rp ON rp.role_id = r.id
-                JOIN permissions p ON p.id = rp.permission_id
-                WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
-            )
-        """, user_id) or False
+        # Check if user is a supervisor (has treasury.view_all permission)
+        is_supervisor = await is_treasury_supervisor(db, user_id)
 
         # Get current user's agent_profile_id (if they're an agent)
         current_agent_profile_id = await db.fetchval("""
@@ -3937,34 +3945,36 @@ async def reject_payment(
         reason=body.reason
     )
 
-    # Update assignment status to REJECTED
-    await db.execute("""
-        UPDATE assignments
-        SET status = 'rejected',
-            completed_at = NOW(),
-            processing_duration_hours = EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, assigned_at))) / 3600,
-            updated_at = NOW()
-        WHERE item_id = $1::uuid AND item_type = 'payment_validation'
-          AND status NOT IN ('completed', 'cancelled', 'rejected')
-    """, payment_id)
+    # Wrap post-rejection updates in a single transaction for atomicity
+    async with db.transaction():
+        # Update assignment status to REJECTED
+        await db.execute("""
+            UPDATE assignments
+            SET status = 'rejected',
+                completed_at = NOW(),
+                processing_duration_hours = EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, assigned_at))) / 3600,
+                updated_at = NOW()
+            WHERE item_id = $1::uuid AND item_type = 'payment_validation'
+              AND status NOT IN ('completed', 'cancelled', 'rejected')
+        """, payment_id)
 
-    # Insert audit record
-    await db.execute("""
-        INSERT INTO payment_validation_audit
-            (id, payment_id, agent_profile_id, agent_user_id, action,
-             from_status, to_status, comment, created_at)
-        VALUES (gen_random_uuid(), $1::uuid, $2, $3,
-                'reject'::agent_action_type,
-                'pending_agent_review'::payment_workflow_status,
-                'rejected_by_agent'::payment_workflow_status,
-                $4, NOW())
-    """, payment_id, agent_profile_id, current_user.id, body.reason)
+        # Insert audit record
+        await db.execute("""
+            INSERT INTO payment_validation_audit
+                (id, payment_id, agent_profile_id, agent_user_id, action,
+                 from_status, to_status, comment, created_at)
+            VALUES (gen_random_uuid(), $1::uuid, $2, $3,
+                    'reject'::agent_action_type,
+                    'pending_agent_review'::payment_workflow_status,
+                    'rejected_by_agent'::payment_workflow_status,
+                    $4, NOW())
+        """, payment_id, agent_profile_id, current_user.id, body.reason)
 
-    # Update agent performance stats
-    from app.modules.agents.repositories.workload_repository import WorkloadRepository
-    _workload_repo = WorkloadRepository()
-    await _workload_repo.increment_processed(db, str(agent_profile_id))
-    await _workload_repo.increment_rejected(db, str(agent_profile_id))
+        # Update agent performance stats
+        from app.modules.agents.repositories.workload_repository import WorkloadRepository
+        _workload_repo = WorkloadRepository()
+        await _workload_repo.increment_processed(db, str(agent_profile_id))
+        await _workload_repo.increment_rejected(db, str(agent_profile_id))
 
     # Publish PAYMENT_CASH_REJECTED event
     try:
@@ -5114,19 +5124,7 @@ async def get_treasury_dashboard_stats(
     user_id = current_user.id
 
     # Check if user is a supervisor
-    is_supervisor = await db.fetchval("""
-        SELECT EXISTS(
-            SELECT 1 FROM user_permissions up
-            JOIN permissions p ON p.id = up.permission_id
-            WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
-            UNION
-            SELECT 1 FROM users u
-            JOIN roles r ON u.role_id = r.id
-            JOIN role_permissions rp ON rp.role_id = r.id
-            JOIN permissions p ON p.id = rp.permission_id
-            WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
-        )
-    """, user_id) or False
+    is_supervisor = await is_treasury_supervisor(db, user_id)
 
     # Resolve agent profile for non-supervisors
     current_agent_profile_id = None
@@ -5161,7 +5159,7 @@ async def get_treasury_dashboard_stats(
         pending_count = await db.fetchval("""
             SELECT COUNT(*)
             FROM service_payments
-            WHERE workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
+            WHERE workflow_status IN ('pending_agent_review', 'docs_resubmitted')
               AND requires_agent_validation = true
               AND assigned_agent_id = $1::uuid
         """, agent_id)
@@ -5185,7 +5183,7 @@ async def get_treasury_dashboard_stats(
             SELECT COUNT(*)
             FROM service_payments sp
             JOIN service_requests sr_loc ON sr_loc.id = sp.service_request_id
-            WHERE sp.workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
+            WHERE sp.workflow_status IN ('pending_agent_review', 'docs_resubmitted')
               AND sp.requires_agent_validation = true
               AND sr_loc.entity_location_id = $1::uuid
         """, loc_id)
@@ -5206,7 +5204,7 @@ async def get_treasury_dashboard_stats(
         pending_count = await db.fetchval("""
             SELECT COUNT(*)
             FROM service_payments
-            WHERE workflow_status IN ('submitted', 'pending_agent_review', 'docs_resubmitted')
+            WHERE workflow_status IN ('pending_agent_review', 'docs_resubmitted')
               AND requires_agent_validation = true
         """)
 
@@ -5545,7 +5543,7 @@ async def get_treasury_kpis(
             COALESCE(AVG(total_amount), 0) AS avg_amount
         FROM service_payments
         WHERE workflow_status = 'completed'
-          AND completed_at BETWEEN $1 AND $2
+          AND validated_at BETWEEN $1 AND $2
     """, start_date, end_date)
 
     # Get SLA respect rate
@@ -5555,7 +5553,7 @@ async def get_treasury_kpis(
             COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL) AS respected
         FROM service_payments
         WHERE workflow_status = 'completed'
-          AND completed_at BETWEEN $1 AND $2
+          AND validated_at BETWEEN $1 AND $2
     """, start_date, end_date)
 
     total_for_sla = sla_stats["total"] or 0
@@ -5567,12 +5565,12 @@ async def get_treasury_kpis(
             payment_method::text AS method,
             COUNT(*) AS count,
             COALESCE(SUM(total_amount), 0) AS amount,
-            AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) / 60) AS avg_minutes,
+            AVG(EXTRACT(EPOCH FROM (validated_at - created_at)) / 60) AS avg_minutes,
             COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL)::float /
                 NULLIF(COUNT(*), 0) * 100 AS success_rate
         FROM service_payments
         WHERE workflow_status = 'completed'
-          AND completed_at BETWEEN $1 AND $2
+          AND validated_at BETWEEN $1 AND $2
         GROUP BY payment_method
         ORDER BY amount DESC
     """, start_date, end_date)
@@ -5600,7 +5598,7 @@ async def get_treasury_kpis(
         FROM service_payments sp
         LEFT JOIN ministries m ON m.id = sp.ministry_id
         WHERE sp.workflow_status = 'completed'
-          AND sp.completed_at BETWEEN $1 AND $2
+          AND sp.validated_at BETWEEN $1 AND $2
         GROUP BY sp.ministry_id, m.name_es
         ORDER BY amount DESC
         LIMIT 10
@@ -5620,13 +5618,13 @@ async def get_treasury_kpis(
     # Get daily trend
     daily_stats = await db.fetch("""
         SELECT
-            DATE(completed_at) AS date,
+            DATE(validated_at) AS date,
             COUNT(*) AS count,
             COALESCE(SUM(total_amount), 0) AS amount
         FROM service_payments
         WHERE workflow_status = 'completed'
-          AND completed_at BETWEEN $1 AND $2
-        GROUP BY DATE(completed_at)
+          AND validated_at BETWEEN $1 AND $2
+        GROUP BY DATE(validated_at)
         ORDER BY date
     """, start_date, end_date)
 
@@ -5650,7 +5648,7 @@ async def get_treasury_kpis(
             COUNT(*) AS total_transactions
         FROM service_payments
         WHERE workflow_status = 'completed'
-          AND completed_at BETWEEN $1 AND $2
+          AND validated_at BETWEEN $1 AND $2
     """, prev_start, prev_end)
 
     prev_collected = float(prev_stats["total_collected"]) if prev_stats["total_collected"] else 0
