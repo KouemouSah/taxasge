@@ -4289,7 +4289,14 @@
     "createdAt": "Creado",
     "updatedAt": "Actualizado",
     "type": "Tipo",
-    "id": "ID"
+    "id": "ID",
+    "viewDetails": "Ver detalles",
+    "characters": "caracteres",
+    "total": "Total",
+    "noResults": "Sin resultados",
+    "errorGeneric": "Ocurrió un error inesperado",
+    "deleteConfirm": "¿Está seguro de que desea eliminar?",
+    "updated": "Actualizado"
   },
   "dashboard": {
     "actionRequired": "Acción requerida en las siguientes solicitudes",
@@ -6579,6 +6586,34 @@
     "batch": {
       "validateAll": "Validar todo el lote",
       "validateSuccess": "{count} pago(s) del lote validados. Ref: {reference}"
+    },
+    "analyst": {
+      "title": "Analista Financiero IA",
+      "description": "Asistente inteligente para analisis financiero del Tesoro",
+      "placeholder": "Escribe tu pregunta financiera...",
+      "analyzing": "Analizando datos financieros...",
+      "analyzingDesc": "Consultando funciones de datos y generando analisis",
+      "error": "Error al procesar la consulta. Intenta de nuevo.",
+      "emptyState": "Haz una pregunta sobre ingresos, pagos, SLA o rendimiento de agentes",
+      "emptyExamples": "Ej: \"Resumen de ingresos del mes\" o \"Estado de alertas SLA\"",
+      "toolsUsed": "Fuentes",
+      "retry": "Reintentar",
+      "download": "Descargar",
+      "downloadTooltip": "Descargar respuesta como Markdown",
+      "briefingTitle": "Resumen Ejecutivo",
+      "briefingPriority": {
+        "normal": "Normal",
+        "attention": "Atencion",
+        "urgent": "Urgente"
+      },
+      "quickActions": {
+        "revenueSummary": "Ingresos del mes",
+        "pendingSla": "Pagos pendientes y SLA",
+        "agentPerformance": "Rendimiento agentes",
+        "anomalies": "Anomalias detectadas",
+        "forecast": "Tendencias 7 dias"
+      },
+      "nav": "Analista IA"
     }
   },
   "agent": {
@@ -7416,7 +7451,11 @@
       "manualAssignment": "Asignación Manual",
       "settings": "Configuración",
       "banks": "Bancos",
-      "paymentMethods": "Métodos de Pago"
+      "paymentMethods": "Métodos de Pago",
+      "teamAgents": "Agentes del Equipo",
+      "teamWorkload": "Carga de Trabajo",
+      "teamPerformance": "Rendimiento del Equipo",
+      "workloadBalance": "Balance de Carga"
     },
     "team": {
       "title": "Gestión del Equipo",
@@ -7434,7 +7473,20 @@
       "workflow": "Trámite",
       "reassignSelected": "{count} seleccionados a reasignar",
       "reassignSuccess": "{count} dossier(s) reasignados",
-      "reassignError": "Error al reasignar"
+      "reassignError": "Error al reasignar",
+      "totalAgents": "Agentes Totales",
+      "available": "Disponibles",
+      "overloaded": "Sobrecargados",
+      "avgCapacity": "Capacidad Promedio",
+      "agentsDescription": "Gestionar agentes y distribución de trabajo",
+      "showUnavailable": "Mostrar no disponibles",
+      "agent": "Agente",
+      "assignments": "Asignaciones",
+      "capacity": "Capacidad",
+      "workloadStatus": "Estado de Carga",
+      "availability": "Disponibilidad",
+      "successRate": "Tasa de Éxito",
+      "avgAssignments": "Asignaciones Promedio"
     },
     "workload": {
       "title": "Distribución de Carga",
@@ -7448,7 +7500,16 @@
       "moderate": "Moderado",
       "poor": "Deficiente",
       "rebalanceSuccess": "{count} asignaciones reequilibradas",
-      "rebalanceError": "Error al reequilibrar la carga"
+      "rebalanceError": "Error al reequilibrar la carga",
+      "description": "Distribución y equilibrio de carga de trabajo del equipo",
+      "balanceScore": "Puntuación de Equilibrio",
+      "balanceScoreDescription": "Indicador general de distribución de carga",
+      "needsAttention": "Necesita Atención",
+      "unavailableAgents": "Agentes No Disponibles",
+      "recommendations": "Recomendaciones",
+      "recommendationsDescription": "Acciones sugeridas para mejorar el equilibrio de carga",
+      "agentDistribution": "Distribución de Agentes",
+      "agentDistributionDescription": "Carga de trabajo actual por agente"
     },
     "rules": {
       "title": "Reglas de Asignación",
@@ -7482,7 +7543,17 @@
       "createDescription": "Crear una nueva regla de asignación automática",
       "noRules": "No se encontraron reglas de asignación",
       "confirmDelete": "¿Está seguro de que desea eliminar esta regla?",
-      "confirmDeleteDescription": "Esta acción archivará la regla. Puede ser restaurada más tarde."
+      "confirmDeleteDescription": "Esta acción archivará la regla. Puede ser restaurada más tarde.",
+      "description": "Configurar reglas de asignación automática",
+      "ruleTypes": "Tipos de Regla",
+      "deleteWarning": "Esta acción no se puede deshacer. La regla será eliminada permanentemente.",
+      "showing": "Mostrando",
+      "of": "de",
+      "deactivate": "Desactivar",
+      "activate": "Activar",
+      "activeHelp": "Las reglas activas procesarán las asignaciones entrantes",
+      "notFound": "Regla no encontrada",
+      "backToList": "Volver a las reglas"
     },
     "escalations": {
       "title": "Gestión de Escalaciones",
@@ -7562,7 +7633,45 @@
       "excellent": "Excelente",
       "good": "Bueno",
       "average": "Promedio",
-      "needsImprovement": "Necesita Mejora"
+      "needsImprovement": "Necesita Mejora",
+      "description": "Métricas de rendimiento y análisis del equipo",
+      "teamSize": "Tamaño del Equipo",
+      "activeAgents": "Agentes Activos",
+      "avgSuccessRate": "Tasa de Éxito Promedio",
+      "teamAverage": "Promedio del equipo",
+      "avgProcessingTime": "Tiempo de Procesamiento Promedio",
+      "perAssignment": "por asignación",
+      "topPerformers": "Mejores Rendimientos",
+      "above90": "por encima del 90%",
+      "agentMetrics": "Métricas por Agente",
+      "agentMetricsDescription": "Rendimiento individual detallado de cada agente",
+      "successRate": "Tasa de Éxito",
+      "processingTime": "Tiempo de Procesamiento",
+      "rating": "Calificación",
+      "viewStats": "Ver Estadísticas",
+      "detailedStats": "Estadísticas Detalladas",
+      "period": "Período",
+      "days": "días",
+      "totalAssignments": "Asignaciones Totales",
+      "completed": "Completadas",
+      "qualityScore": "Puntuación de Calidad",
+      "deadlineCompliance": "Cumplimiento de Plazos",
+      "byStatus": "Por Estado",
+      "byType": "Por Tipo",
+      "noStats": "No hay estadísticas disponibles para este agente",
+      "proficiencyBreakdown": "Desglose de Competencias",
+      "proficiencyDescription": "Competencia por tipo de trámite y agente",
+      "workflow": "Trámite",
+      "completions": "Completados",
+      "escalations": "Escalaciones",
+      "avgHours": "Horas Promedio",
+      "last30d": "Últimos 30d",
+      "skillsGap": "Brechas de Competencias",
+      "skillsGapDescription": "Cobertura de especialización por tipo de trámite",
+      "pending": "Pendientes",
+      "specialists": "Especialistas",
+      "avgSuccess": "Éxito Promedio",
+      "coverage": "Cobertura"
     },
     "reports": {
       "title": "Informes",

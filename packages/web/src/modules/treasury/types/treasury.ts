@@ -898,3 +898,18 @@ export interface SupervisorOverviewResponse {
   periodDays: number;
   generatedAt: string;
 }
+
+// ─── Phase 4: Treasury AI Analyst ────────────────────────────
+
+export interface TreasuryAnalystResponse {
+  answer: string;
+  toolsUsed: string[];
+  data: Record<string, unknown>;
+}
+
+export interface TreasuryBriefingResponse {
+  briefing: string;
+  priority: 'normal' | 'attention' | 'urgent';
+  recommendations: string[];
+  data?: Record<string, unknown>;
+}

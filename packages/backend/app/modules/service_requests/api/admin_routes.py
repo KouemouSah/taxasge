@@ -7647,6 +7647,94 @@ async def explore_analytics(
 
 
 # ═══════════════════════════════════════════════════════════════
+# TREASURY AI ANALYST - Gemini function-calling for financial Q&A
+# ═══════════════════════════════════════════════════════════════
+
+
+class TreasuryAnalystRequest(BaseModel):
+    question: str = Field(..., min_length=3, max_length=1000, description="Financial question in any language")
+
+
+@router.post(
+    "/treasury/analyst/ask",
+    summary="Ask treasury financial analyst AI",
+    description="Process a financial question using Gemini function calling with 8 predefined safe SQL functions.",
+)
+async def treasury_analyst_ask(
+    request: TreasuryAnalystRequest,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury_stat.view")),
+):
+    """
+    Ask the treasury AI analyst a financial question.
+    Uses Gemini function calling — the LLM never generates SQL.
+    Rate limited: 20 requests/hour per user.
+    """
+    from app.core.cache import check_rate_limit, get_cache
+    from ..services.treasury_analyst_service import treasury_analyst_service
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    # Rate limit: 20 requests/hour
+    is_allowed, remaining = await check_rate_limit(
+        str(user_id), "/treasury/analyst/ask", max_requests=20, window_seconds=3600
+    )
+    if not is_allowed:
+        return {
+            "answer": "Has alcanzado el límite de consultas (20/hora). Espera antes de intentar de nuevo.",
+            "tools_used": [],
+            "data": {},
+        }
+
+    # Check cache (5 min, keyed by question hash)
+    import hashlib
+    cache = get_cache()
+    question_hash = hashlib.md5(request.question.strip().lower().encode()).hexdigest()
+    cache_key = f"treasury:analyst:ask:{question_hash}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    result = await treasury_analyst_service.process_question(db, request.question.strip())
+
+    # Cache successful results
+    if result.get("tools_used"):
+        await cache.set(cache_key, result, ttl=300)
+
+    return result
+
+
+@router.get(
+    "/treasury/analyst/briefing",
+    summary="Get automated treasury briefing",
+    description="Auto-generated briefing of current financial situation with priority and recommendations.",
+)
+async def treasury_analyst_briefing(
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury_stat.view")),
+):
+    """
+    Get automated treasury financial briefing.
+    Pre-computed data → LLM summary with priority classification.
+    Cached for 5 minutes.
+    """
+    from app.core.cache import get_cache
+    from ..services.treasury_analyst_service import treasury_analyst_service
+
+    cache = get_cache()
+    cache_key = "treasury:analyst:briefing"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    result = await treasury_analyst_service.generate_briefing(db)
+    await cache.set(cache_key, result, ttl=300)
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════
 # WORKFLOW SYNC - Sync predefined workflows to database
 # ═══════════════════════════════════════════════════════════════
 # All sync logic is in workflow_sync_service.sync_all_workflows().

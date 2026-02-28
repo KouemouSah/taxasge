@@ -71,6 +71,12 @@ export {
   useSupervisorOverview,
   SUPERVISOR_OVERVIEW_QUERY_KEY,
 } from './useSupervisorOverview';
+// Phase 4 - AI Analyst
+export {
+  useTreasuryAnalyst,
+  useTreasuryBriefing,
+  TREASURY_BRIEFING_QUERY_KEY,
+} from './useTreasuryAnalyst';
 // Phase 5 - Analytics
 export {
   useAnalyticsReport,

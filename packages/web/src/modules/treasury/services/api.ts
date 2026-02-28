@@ -60,6 +60,9 @@ import type {
   AgentStats,
   // Phase 3 - Supervisor Overview
   SupervisorOverviewResponse,
+  // Phase 4 - AI Analyst
+  TreasuryAnalystResponse,
+  TreasuryBriefingResponse,
 } from '../types';
 import type {
   // Phase 5 - Analytics
@@ -1112,6 +1115,23 @@ export const treasuryApi = {
       { days: days.toString() }
     );
     return toCamelCase<SupervisorOverviewResponse>(response);
+  },
+
+  // ─── AI Analyst (Phase 4) ─────
+
+  askAnalyst: async (question: string) => {
+    const response = await fetchClient.post<Record<string, unknown>>(
+      `${TREASURY_BASE}/analyst/ask`,
+      { question }
+    );
+    return toCamelCase<TreasuryAnalystResponse>(response);
+  },
+
+  getAnalystBriefing: async () => {
+    const response = await fetchClient.get<Record<string, unknown>>(
+      `${TREASURY_BASE}/analyst/briefing`
+    );
+    return toCamelCase<TreasuryBriefingResponse>(response);
   },
 };
 

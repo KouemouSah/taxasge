@@ -4068,7 +4068,14 @@
     "createdAt": "Created",
     "updatedAt": "Updated",
     "type": "Type",
-    "id": "ID"
+    "id": "ID",
+    "viewDetails": "View details",
+    "characters": "characters",
+    "total": "Total",
+    "noResults": "No results",
+    "errorGeneric": "An unexpected error occurred",
+    "deleteConfirm": "Are you sure you want to delete?",
+    "updated": "Updated"
   },
   "dashboard": {
     "actionRequired": "Action required on the following requests",
@@ -6477,6 +6484,34 @@
     "batch": {
       "validateAll": "Validate entire batch",
       "validateSuccess": "{count} payment(s) in batch validated. Ref: {reference}"
+    },
+    "analyst": {
+      "title": "AI Financial Analyst",
+      "description": "Intelligent assistant for Treasury financial analysis",
+      "placeholder": "Type your financial question...",
+      "analyzing": "Analyzing financial data...",
+      "analyzingDesc": "Querying data functions and generating analysis",
+      "error": "Error processing the query. Please try again.",
+      "emptyState": "Ask a question about revenue, payments, SLA or agent performance",
+      "emptyExamples": "E.g.: \"Monthly revenue summary\" or \"SLA alerts status\"",
+      "toolsUsed": "Sources",
+      "retry": "Retry",
+      "download": "Download",
+      "downloadTooltip": "Download response as Markdown",
+      "briefingTitle": "Executive Briefing",
+      "briefingPriority": {
+        "normal": "Normal",
+        "attention": "Attention",
+        "urgent": "Urgent"
+      },
+      "quickActions": {
+        "revenueSummary": "Monthly revenue",
+        "pendingSla": "Pending payments & SLA",
+        "agentPerformance": "Agent performance",
+        "anomalies": "Detected anomalies",
+        "forecast": "7-day trends"
+      },
+      "nav": "AI Analyst"
     }
   },
   "agent": {
@@ -7314,7 +7349,11 @@
       "manualAssignment": "Manual Assignment",
       "settings": "Settings",
       "banks": "Banks",
-      "paymentMethods": "Payment Methods"
+      "paymentMethods": "Payment Methods",
+      "teamAgents": "Team Agents",
+      "teamWorkload": "Workload Balance",
+      "teamPerformance": "Team Performance",
+      "workloadBalance": "Workload Balance"
     },
     "team": {
       "title": "Team Management",
@@ -7332,7 +7371,20 @@
       "workflow": "Workflow",
       "reassignSelected": "Reassign {count} selected",
       "reassignSuccess": "{count} assignment(s) reassigned",
-      "reassignError": "Error during reassignment"
+      "reassignError": "Error during reassignment",
+      "totalAgents": "Total Agents",
+      "available": "Available",
+      "overloaded": "Overloaded",
+      "avgCapacity": "Average Capacity",
+      "agentsDescription": "Manage agents and work distribution",
+      "showUnavailable": "Show unavailable",
+      "agent": "Agent",
+      "assignments": "Assignments",
+      "capacity": "Capacity",
+      "workloadStatus": "Workload Status",
+      "availability": "Availability",
+      "successRate": "Success Rate",
+      "avgAssignments": "Average Assignments"
     },
     "workload": {
       "title": "Workload Distribution",
@@ -7346,7 +7398,16 @@
       "moderate": "Moderate",
       "poor": "Poor",
       "rebalanceSuccess": "{count} assignments rebalanced",
-      "rebalanceError": "Failed to rebalance workload"
+      "rebalanceError": "Failed to rebalance workload",
+      "description": "Team workload distribution and balance",
+      "balanceScore": "Balance Score",
+      "balanceScoreDescription": "Overall workload distribution indicator",
+      "needsAttention": "Needs Attention",
+      "unavailableAgents": "Unavailable Agents",
+      "recommendations": "Recommendations",
+      "recommendationsDescription": "Suggested actions to improve workload balance",
+      "agentDistribution": "Agent Distribution",
+      "agentDistributionDescription": "Current workload per agent"
     },
     "rules": {
       "title": "Assignment Rules",
@@ -7358,7 +7419,17 @@
       "ruleType": "Rule Type",
       "condition": "Condition",
       "priority": "Priority",
-      "effectiveness": "Effectiveness"
+      "effectiveness": "Effectiveness",
+      "description": "Configure automatic assignment rules",
+      "ruleTypes": "Rule Types",
+      "deleteWarning": "This action cannot be undone. The rule will be permanently deleted.",
+      "showing": "Showing",
+      "of": "of",
+      "deactivate": "Deactivate",
+      "activate": "Activate",
+      "activeHelp": "Active rules will process incoming assignments",
+      "notFound": "Rule not found",
+      "backToList": "Back to rules"
     },
     "escalations": {
       "title": "Escalation Management",
@@ -7438,7 +7509,45 @@
       "excellent": "Excellent",
       "good": "Good",
       "average": "Average",
-      "needsImprovement": "Needs Improvement"
+      "needsImprovement": "Needs Improvement",
+      "description": "Performance metrics and team analysis",
+      "teamSize": "Team Size",
+      "activeAgents": "Active Agents",
+      "avgSuccessRate": "Average Success Rate",
+      "teamAverage": "Team average",
+      "avgProcessingTime": "Average Processing Time",
+      "perAssignment": "per assignment",
+      "topPerformers": "Top Performers",
+      "above90": "above 90%",
+      "agentMetrics": "Agent Metrics",
+      "agentMetricsDescription": "Detailed individual performance per agent",
+      "successRate": "Success Rate",
+      "processingTime": "Processing Time",
+      "rating": "Rating",
+      "viewStats": "View Stats",
+      "detailedStats": "Detailed Statistics",
+      "period": "Period",
+      "days": "days",
+      "totalAssignments": "Total Assignments",
+      "completed": "Completed",
+      "qualityScore": "Quality Score",
+      "deadlineCompliance": "Deadline Compliance",
+      "byStatus": "By Status",
+      "byType": "By Type",
+      "noStats": "No statistics available for this agent",
+      "proficiencyBreakdown": "Proficiency Breakdown",
+      "proficiencyDescription": "Proficiency by workflow type and agent",
+      "workflow": "Workflow",
+      "completions": "Completions",
+      "escalations": "Escalations",
+      "avgHours": "Avg Hours",
+      "last30d": "Last 30d",
+      "skillsGap": "Skills Gap",
+      "skillsGapDescription": "Specialization coverage by workflow type",
+      "pending": "Pending",
+      "specialists": "Specialists",
+      "avgSuccess": "Avg Success",
+      "coverage": "Coverage"
     },
     "reports": {
       "title": "Reports",

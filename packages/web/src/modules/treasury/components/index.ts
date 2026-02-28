@@ -13,3 +13,5 @@ export { AgentWorkloadPanel } from './AgentWorkloadPanel';
 export { SLAAlertsPanel } from './SLAAlertsPanel';
 export { ServiceDistributionChart } from './ServiceDistributionChart';
 export { RecentActivityTimeline } from './RecentActivityTimeline';
+// Phase 4 - AI Analyst
+export { TreasuryAnalystTab } from './TreasuryAnalystTab';
