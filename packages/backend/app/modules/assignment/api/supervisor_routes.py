@@ -1304,7 +1304,16 @@ async def assign_escalation(
 
     queue_id is actually the service_request.id (frontend compatibility).
     """
-    target_agent = agent_id or UUID(current_user.id)
+    # agent_id from frontend is an agent_profile_id; resolve to user_id
+    if agent_id:
+        target_row = await db.fetchrow(
+            "SELECT user_id FROM agent_profiles WHERE id = $1 AND is_active = true", agent_id
+        )
+        if not target_row:
+            raise HTTPException(status_code=404, detail="Target agent not found")
+        target_user_id = target_row['user_id']
+    else:
+        target_user_id = UUID(current_user.id)
 
     result = await db.fetchrow("""
         UPDATE service_requests
@@ -1314,7 +1323,7 @@ async def assign_escalation(
         WHERE id = $1
         AND escalated = true
         RETURNING id, reference
-    """, queue_id, target_agent)
+    """, queue_id, target_user_id)
 
     if not result:
         raise HTTPException(
@@ -1331,9 +1340,9 @@ async def assign_escalation(
                 'escalation_assigned')
     """, queue_id, UUID(current_user.id))
 
-    logger.info(f"Escalation {queue_id} assigned to {target_agent} by {current_user.email}")
+    logger.info(f"Escalation {queue_id} assigned to {target_user_id} by {current_user.email}")
 
-    return {"message": "Escalation assigned", "queue_id": str(queue_id), "assigned_to": str(target_agent)}
+    return {"message": "Escalation assigned", "queue_id": str(queue_id), "assigned_to": str(target_user_id)}
 
 
 class ResolveEscalationRequest(BaseModel):
@@ -1626,7 +1635,7 @@ async def bulk_escalation_action(
     supervisor_entity = await db.fetchrow("""
         SELECT e.id, e.workflow_codes
         FROM agent_profiles ap
-        JOIN entities e ON e.code = ap.entity_code
+        JOIN entities e ON e.id = ap.entity_id
         WHERE ap.user_id = $1
     """, UUID(current_user.id))
 
@@ -1680,7 +1689,12 @@ async def bulk_escalation_action(
             """, row['id'], row['status'], performer_id, body.resolution_notes)
 
     elif body.action == 'assign':
-        # Bulk assign to agent
+        # Bulk assign to agent — resolve agent_profile_id to user_id
+        agent_user_row = await db.fetchrow(
+            "SELECT user_id FROM agent_profiles WHERE id = $1 AND is_active = true", body.agent_id
+        )
+        if not agent_user_row:
+            raise HTTPException(status_code=404, detail="Target agent not found")
         result = await db.fetch("""
             UPDATE service_requests
             SET assigned_to = $2,
@@ -1689,7 +1703,7 @@ async def bulk_escalation_action(
             WHERE id = ANY($1::uuid[])
               AND escalated = true
             RETURNING id, reference, status
-        """, valid_id_list, body.agent_id)
+        """, valid_id_list, agent_user_row['user_id'])
         processed = len(result)
 
         for row in result:
@@ -2352,7 +2366,7 @@ async def reassign_request(
 
     # Verify target agent exists (target_agent_id is an agent_profile_id)
     target = await db.fetchrow(
-        "SELECT ap.id, u.full_name FROM agent_profiles ap JOIN users u ON u.id = ap.user_id WHERE ap.id = $1 AND ap.is_active = true",
+        "SELECT ap.id, ap.user_id, u.full_name FROM agent_profiles ap JOIN users u ON u.id = ap.user_id WHERE ap.id = $1 AND ap.is_active = true",
         body.target_agent_id
     )
     if not target:
@@ -2377,10 +2391,10 @@ async def reassign_request(
     if not assignment:
         raise HTTPException(status_code=404, detail="No active assignment found for this request")
 
-    # Update service_request.assigned_to
+    # Update service_request.assigned_to (stores user_id, not agent_profile_id)
     await db.execute(
         "UPDATE service_requests SET assigned_to = $1 WHERE id = $2",
-        body.target_agent_id, request_id
+        target['user_id'], request_id
     )
 
     # Insert history
