@@ -214,10 +214,11 @@ export default function TreasuryExportsPage() {
         description: t('exports.messages.exportStartedDescription'),
       });
       setIsNewExportOpen(false);
-    } catch {
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : t('exports.messages.errorGenerating');
       toast({
         title: t('common.error'),
-        description: t('exports.messages.errorGenerating'),
+        description: detail,
         variant: 'destructive',
       });
     }

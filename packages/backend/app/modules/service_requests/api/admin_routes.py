@@ -6631,12 +6631,12 @@ async def list_treasury_exports(
     if period_start:
         param_count += 1
         conditions.append(f"te.period_start >= ${param_count}::date")
-        params.append(period_start)
+        params.append(datetime.strptime(period_start, '%Y-%m-%d').date())
 
     if period_end:
         param_count += 1
         conditions.append(f"te.period_end <= ${param_count}::date")
-        params.append(period_end)
+        params.append(datetime.strptime(period_end, '%Y-%m-%d').date())
 
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
@@ -6793,7 +6793,11 @@ async def generate_treasury_export(
     _=Depends(permission_required("treasury_export.create"))
 ):
     """Generate a new treasury export."""
-    from ..services.treasury_export_service import treasury_export_service
+    try:
+        from ..services.treasury_export_service import treasury_export_service
+    except Exception as e:
+        logger.error(f"Failed to import treasury_export_service: {e}")
+        raise HTTPException(status_code=500, detail=f"Export service unavailable: {e}")
 
     # Validate period
     start_date = datetime.strptime(request.period_start, '%Y-%m-%d').date()
