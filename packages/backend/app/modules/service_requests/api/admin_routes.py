@@ -4463,14 +4463,14 @@ class PaymentMethodReorderRequest(BaseModel):
     Get all payment method configurations.
 
     **Permissions:**
-    - Requires 'webhooks.view' permission
+    - Requires 'treasury.view_payment' permission
     """
 )
 async def list_payment_methods(
     active_only: bool = Query(False, description="Show only active methods"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("webhooks.view"))
+    _=Depends(permission_required("treasury.view_payment"))
 ):
     """List all payment method configurations"""
     query = """
@@ -4519,14 +4519,14 @@ async def list_payment_methods(
     Get a specific payment method configuration by code.
 
     **Permissions:**
-    - Requires 'webhooks.view' permission
+    - Requires 'treasury.view_payment' permission
     """
 )
 async def get_payment_method(
     code: str = Path(..., description="Payment method code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("webhooks.view"))
+    _=Depends(permission_required("treasury.view_payment"))
 ):
     """Get payment method configuration by code"""
     query = """
@@ -4576,14 +4576,14 @@ async def get_payment_method(
     Create a new payment method configuration.
 
     **Permissions:**
-    - Requires 'webhooks.create' permission
+    - Requires 'treasury.manage_settings' permission
     """
 )
 async def create_payment_method(
     body: PaymentMethodConfigCreate,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("webhooks.create"))
+    _=Depends(permission_required("treasury.manage_settings"))
 ):
     """Create new payment method configuration"""
     # Check if code already exists
@@ -4642,7 +4642,7 @@ async def create_payment_method(
     Update an existing payment method configuration.
 
     **Permissions:**
-    - Requires 'webhooks.update' permission
+    - Requires 'treasury.manage_settings' permission
     """
 )
 async def update_payment_method(
@@ -4650,7 +4650,7 @@ async def update_payment_method(
     body: PaymentMethodConfigUpdate = ...,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("webhooks.update"))
+    _=Depends(permission_required("treasury.manage_settings"))
 ):
     """Update payment method configuration"""
     # Check if exists
@@ -4727,14 +4727,14 @@ async def update_payment_method(
     **Note:** Cannot delete default system methods (mobile_money, card, bank_transfer, cash, check).
 
     **Permissions:**
-    - Requires 'webhooks.delete' permission
+    - Requires 'treasury.manage_settings' permission
     """
 )
 async def delete_payment_method(
     code: str = Path(..., description="Payment method code"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("webhooks.delete"))
+    _=Depends(permission_required("treasury.manage_settings"))
 ):
     """Delete payment method configuration"""
     # Prevent deletion of default methods
@@ -4765,14 +4765,14 @@ async def delete_payment_method(
     Update the display order of payment methods.
 
     **Permissions:**
-    - Requires 'webhooks.update' permission
+    - Requires 'treasury.manage_settings' permission
     """
 )
 async def reorder_payment_methods(
     body: PaymentMethodReorderRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
-    _=Depends(permission_required("webhooks.update"))
+    _=Depends(permission_required("treasury.manage_settings"))
 ):
     """Reorder payment methods by updating display_order"""
     # Update display_order for each method in the list

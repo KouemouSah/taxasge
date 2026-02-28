@@ -364,9 +364,9 @@ async def list_unreconciled_transactions(
     page_size: int = Query(20, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("webhooks.view"))
+    _: None = Depends(permission_required("webhook.view"))
 ):
-    """List unreconciled bank transactions - Requires webhooks.view permission"""
+    """List unreconciled bank transactions - Requires webhook.view permission"""
 
     offset = (page - 1) * page_size
     transactions, total = await repository.list_unreconciled(db, page_size, offset)
@@ -384,9 +384,9 @@ async def get_bank_transaction(
     transaction_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("webhooks.view"))
+    _: None = Depends(permission_required("webhook.view"))
 ):
-    """Get bank transaction by ID - Requires webhooks.view permission"""
+    """Get bank transaction by ID - Requires webhook.view permission"""
 
     transaction = await repository.get_transaction_by_id(db, transaction_id)
     if not transaction:
@@ -400,10 +400,10 @@ async def manual_reconcile(
     reconcile: ReconcileRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("webhooks.update"))
+    _: None = Depends(permission_required("webhook.update"))
 ):
     """
-    Manual reconciliation - Requires webhooks.update permission
+    Manual reconciliation - Requires webhook.update permission
 
     Liens bidirectionnels:
     - bank_transactions.payment_id → payments.id
@@ -450,9 +450,9 @@ async def create_bank_configuration(
     config: BankConfigurationCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("webhooks.create"))
+    _: None = Depends(permission_required("webhook.create"))
 ):
-    """Create bank configuration - Requires webhooks.create permission"""
+    """Create bank configuration - Requires webhook.create permission"""
 
     result = await repository.create_bank_config(db, config)
     admin_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
@@ -466,9 +466,9 @@ async def update_bank_configuration(
     update_data: BankConfigurationUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _: None = Depends(permission_required("webhooks.update"))
+    _: None = Depends(permission_required("webhook.update"))
 ):
-    """Update bank configuration - Requires webhooks.update permission"""
+    """Update bank configuration - Requires webhook.update permission"""
 
     updated = await repository.update_bank_config(db, config_id, update_data)
     if not updated:

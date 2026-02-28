@@ -117,11 +117,11 @@ class AdminPermissionService:
             "fiscal_services.manage",
         ],
         "webhooks": [
-            "webhooks.view",
-            "webhooks.create",
-            "webhooks.update",
-            "webhooks.delete",
-            "webhooks.test",
+            "webhook.view",
+            "webhook.create",
+            "webhook.update",
+            "webhook.delete",
+            "webhook.test",
         ],
         "reports": [
             "reports.view",
