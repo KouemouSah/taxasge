@@ -7647,6 +7647,31 @@
       "PRORROGA_VISADO": "Prórroga de Visado",
       "PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
       "CERTIFICADO_ADMIN": "Certificado Administrativo"
+    },
+    "ruleType": {
+      "round_robin": "Rotación",
+      "load_balance": "Equilibrio de Carga",
+      "specialization": "Especialización",
+      "priority_based": "Basado en Prioridad"
+    },
+    "ruleTypeDescription": {
+      "round_robin": "Distribuye las asignaciones equitativamente entre todos los agentes disponibles.",
+      "load_balance": "Asigna al agente con menor porcentaje de carga actual.",
+      "specialization": "Asigna según las habilidades y experiencia del agente.",
+      "priority_based": "Dirige los elementos de alta prioridad a agentes senior."
+    },
+    "criteriaLabel": {
+      "max_workload_pct": "Carga máxima (%)",
+      "balance_threshold": "Umbral de equilibrio",
+      "required_specializations": "Especializaciones requeridas (separadas por comas)",
+      "min_experience_months": "Experiencia mínima (meses)",
+      "high_priority_min_level": "Nivel mínimo para alta prioridad",
+      "escalation_hours": "Escalamiento después de (horas)"
+    },
+    "coverageStatus": {
+      "critical": "Crítico",
+      "warning": "Alerta",
+      "ok": "Adecuado"
     }
   },
   "verification": {

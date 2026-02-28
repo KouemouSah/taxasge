@@ -253,11 +253,11 @@ export const AVAILABILITY_COLORS: Record<string, string> = {
   temporarily_unavailable: 'bg-gray-100 text-gray-800',
 };
 
-export const RULE_TYPE_LABELS: Record<RuleType, { label: string; description: string; color: string }> = {
-  round_robin: { label: 'Round Robin', description: 'Distribute equally among agents', color: 'bg-blue-100 text-blue-800' },
-  load_balance: { label: 'Load Balance', description: 'Assign based on current workload', color: 'bg-green-100 text-green-800' },
-  specialization: { label: 'Specialization', description: 'Match agent skills to task type', color: 'bg-purple-100 text-purple-800' },
-  priority_based: { label: 'Priority Based', description: 'Route high-priority items first', color: 'bg-orange-100 text-orange-800' },
+export const RULE_TYPE_COLORS: Record<RuleType, string> = {
+  round_robin: 'bg-blue-100 text-blue-800',
+  load_balance: 'bg-green-100 text-green-800',
+  specialization: 'bg-purple-100 text-purple-800',
+  priority_based: 'bg-orange-100 text-orange-800',
 };
 
 export function getBalanceColor(score: number): string {

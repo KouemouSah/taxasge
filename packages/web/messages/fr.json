@@ -7763,6 +7763,31 @@
       "CONDUCIR_DUPLICADO": "Duplicata Permis de Conduire",
       "RESIDENCIA_PRORROGA": "Prolongation de Séjour",
       "PRORROGA_VISADO": "Prolongation de Visa"
+    },
+    "ruleType": {
+      "round_robin": "Tourniquet",
+      "load_balance": "Equilibrage de Charge",
+      "specialization": "Spécialisation",
+      "priority_based": "Basé sur la Priorité"
+    },
+    "ruleTypeDescription": {
+      "round_robin": "Distribue les assignations de manière égale entre tous les agents disponibles.",
+      "load_balance": "Assigne à l agent avec le plus faible taux de charge actuel.",
+      "specialization": "Assigne selon les compétences et l expérience de l agent.",
+      "priority_based": "Dirige les éléments haute priorité vers les agents seniors."
+    },
+    "criteriaLabel": {
+      "max_workload_pct": "Charge max (%)",
+      "balance_threshold": "Seuil d équilibrage",
+      "required_specializations": "Spécialisations requises (séparées par virgules)",
+      "min_experience_months": "Expérience minimum (mois)",
+      "high_priority_min_level": "Niveau minimum pour haute priorité",
+      "escalation_hours": "Escalade après (heures)"
+    },
+    "coverageStatus": {
+      "critical": "Critique",
+      "warning": "Alerte",
+      "ok": "Adéquat"
     }
   },
   "verification": {

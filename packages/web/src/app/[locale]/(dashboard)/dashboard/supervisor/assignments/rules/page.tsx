@@ -78,7 +78,7 @@ import { es, fr, enUS } from 'date-fns/locale';
 // ============================================================================
 
 import type { AssignmentRule } from '../../types';
-import { RULE_TYPE_LABELS } from '../../types';
+import { RULE_TYPE_COLORS } from '../../types';
 
 const PAGE_SIZE = 10;
 
@@ -368,7 +368,6 @@ export default function AssignmentRulesPage() {
                 </TableRow>
               ) : (
                 paginatedRules.map((rule) => {
-                  const typeInfo = RULE_TYPE_LABELS[rule.rule_type];
                   return (
                     <TableRow key={rule.id}>
                       <TableCell>
@@ -382,8 +381,8 @@ export default function AssignmentRulesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={typeInfo?.color || 'bg-gray-100'}>
-                          {typeInfo?.label || rule.rule_type}
+                        <Badge className={RULE_TYPE_COLORS[rule.rule_type] || 'bg-gray-100'}>
+                          {t('ruleType.' + rule.rule_type)}
                         </Badge>
                       </TableCell>
                       <TableCell>

@@ -498,7 +498,7 @@ export default function TeamPerformancePage() {
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge className={COVERAGE_STATUS_COLORS[sg.coverage_status] || ''}>
-                        {sg.coverage_status}
+                        {t('coverageStatus.' + sg.coverage_status)}
                       </Badge>
                     </TableCell>
                   </TableRow>

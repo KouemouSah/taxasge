@@ -7523,6 +7523,31 @@
       "CONDUCIR_DUPLICADO": "Driver License Duplicate",
       "RESIDENCIA_PRORROGA": "Residence Extension",
       "PRORROGA_VISADO": "Visa Extension"
+    },
+    "ruleType": {
+      "round_robin": "Round Robin",
+      "load_balance": "Load Balance",
+      "specialization": "Specialization",
+      "priority_based": "Priority Based"
+    },
+    "ruleTypeDescription": {
+      "round_robin": "Distributes assignments equally among all available agents in rotation order.",
+      "load_balance": "Assigns to the agent with the lowest current workload percentage.",
+      "specialization": "Matches tasks to agents based on their skills and experience.",
+      "priority_based": "Routes high-priority items to senior agents, low-priority to available agents."
+    },
+    "criteriaLabel": {
+      "max_workload_pct": "Max Workload %",
+      "balance_threshold": "Balance Threshold",
+      "required_specializations": "Required Specializations (comma-separated)",
+      "min_experience_months": "Min Experience (months)",
+      "high_priority_min_level": "Min Level for High Priority",
+      "escalation_hours": "Escalation After (hours)"
+    },
+    "coverageStatus": {
+      "critical": "Critical",
+      "warning": "Warning",
+      "ok": "Adequate"
     }
   },
   "verification": {
