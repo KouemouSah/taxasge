@@ -559,3 +559,48 @@ async def assignment_health_check(
         )
 
     return {"message": "Assignment health check completed", **results}
+
+
+# ============================================================
+# Treasury Materialized Views Refresh
+# ============================================================
+
+
+@router.post(
+    "/treasury-refresh-views",
+    summary="Refresh treasury materialized views",
+    description="""
+    Called every 4 hours by Cloud Scheduler.
+
+    Refreshes materialized views used by treasury dashboard:
+    - mv_treasury_daily_kpis: daily payment KPIs (365 days window)
+    - mv_reconciliation_stats: bank reconciliation stats (90 days window)
+
+    Uses CONCURRENTLY to avoid locking reads during refresh.
+    Requires unique indexes on the views (already created).
+    """,
+)
+async def treasury_refresh_views(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Refresh treasury materialized views concurrently."""
+    refreshed = []
+    errors = []
+
+    views = ["mv_treasury_daily_kpis", "mv_reconciliation_stats"]
+
+    for view in views:
+        try:
+            await db.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}")
+            refreshed.append(view)
+            logger.info(f"Refreshed materialized view: {view}")
+        except Exception as e:
+            logger.error(f"Failed to refresh {view}: {e}")
+            errors.append({"view": view, "error": str(e)})
+
+    return {
+        "message": "Treasury views refresh completed",
+        "refreshed": refreshed,
+        "errors": errors,
+    }

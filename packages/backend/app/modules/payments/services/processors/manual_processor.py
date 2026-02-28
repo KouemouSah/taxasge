@@ -527,12 +527,14 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 payment_type, payment_method, base_amount, total_amount, currency,
                 calculation_details,
                 status, workflow_status, requires_agent_validation,
+                sla_target_date,
                 created_at, updated_at
             ) VALUES (
                 $1::uuid, $2, $3::uuid, $4::uuid,
                 'full', $5, $6, $7, $8,
                 $9::jsonb,
                 'pending', 'pending_agent_review', true,
+                NOW() + INTERVAL '48 hours',
                 NOW(), NOW()
             )
         """
