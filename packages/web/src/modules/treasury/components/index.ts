@@ -7,3 +7,9 @@ export { SLABadge, SLAIndicator } from './SLABadge';
 export { PaymentDetailPanel } from './PaymentDetailPanel';
 // Receipt success dialog
 export { ReceiptSuccessDialog } from './ReceiptSuccessDialog';
+// Phase 3 - Supervisor Piloting Dashboard
+export { CashFlowChart } from './CashFlowChart';
+export { AgentWorkloadPanel } from './AgentWorkloadPanel';
+export { SLAAlertsPanel } from './SLAAlertsPanel';
+export { ServiceDistributionChart } from './ServiceDistributionChart';
+export { RecentActivityTimeline } from './RecentActivityTimeline';

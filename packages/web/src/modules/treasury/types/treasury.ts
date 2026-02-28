@@ -830,3 +830,71 @@ export interface AgentPerformanceResponse {
   totalValidations: number;
   totalRejections: number;
 }
+
+// ─── Supervisor Overview (Phase 3 - Pilotage Dashboard) ─────
+
+export interface PaymentFlowPoint {
+  date: string;
+  count: number;
+  amount: number;
+}
+
+export interface AgentLoadItem {
+  agentProfileId: string;
+  agentName: string;
+  pending: number;
+  inProgress: number;
+  completedToday: number;
+  capacityPct: number;
+  status: string;
+}
+
+export interface SLAAlertItem {
+  paymentId: string;
+  paymentReference: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  userName: string;
+  requestReference: string;
+  slaStatus: 'breached' | 'critical' | 'warning' | 'ok';
+  hoursRemaining: number;
+  createdAt: string | null;
+}
+
+export interface MethodDistributionItem {
+  method: string;
+  count: number;
+  amount: number;
+  percentage: number;
+}
+
+export interface TopServiceItem {
+  workflowCode: string;
+  serviceName: string;
+  count: number;
+  amount: number;
+}
+
+export interface RecentActivityItem {
+  action: string;
+  agentName: string;
+  paymentReference: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  comment: string | null;
+  createdAt: string | null;
+}
+
+export interface SupervisorOverviewResponse {
+  paymentFlow: PaymentFlowPoint[];
+  agentLoad: AgentLoadItem[];
+  slaAlerts: SLAAlertItem[];
+  slaAlertsCount: number;
+  methodDistribution: MethodDistributionItem[];
+  topServices: TopServiceItem[];
+  recentActivity: RecentActivityItem[];
+  periodDays: number;
+  generatedAt: string;
+}

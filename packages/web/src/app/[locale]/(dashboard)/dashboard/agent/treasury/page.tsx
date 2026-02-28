@@ -1,15 +1,15 @@
 /**
  * Treasury Dashboard Overview
- * Main dashboard for Treasury Agents showing stats and quick actions.
+ * Main dashboard for Treasury Agents and Supervisors.
  *
- * Quick actions are derived from the dynamic menu_config (roles.menu_config JSON).
- * Stats cards are kept as-is (API-driven, TESORO-specific).
- * Widgets section uses DynamicDashboard + WidgetRegistry from dashboard_config.
+ * - Agents: Stats cards + quick actions + widgets
+ * - Supervisors: Enhanced with cash flow chart, agent workload,
+ *   SLA alerts, service distribution, and recent activity
  */
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
@@ -23,8 +23,16 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
+  TrendingUp,
 } from 'lucide-react';
-import { useTreasuryStats } from '@/modules/treasury/hooks';
+import { useTreasuryStats, useSupervisorOverview } from '@/modules/treasury/hooks';
+import {
+  CashFlowChart,
+  AgentWorkloadPanel,
+  SLAAlertsPanel,
+  ServiceDistributionChart,
+  RecentActivityTimeline,
+} from '@/modules/treasury/components';
 import { useMenuConfig } from '@/modules/agent-dashboard/hooks/useMenuConfig';
 import { DynamicDashboard } from '@/modules/agent-dashboard/components/DynamicDashboard';
 import { renderWidget } from '@/modules/agent-dashboard/components/widgets/WidgetRegistry';
@@ -36,10 +44,21 @@ const TREASURY_ENTITY_CODE: EntityCode = 'TESORO';
 
 export default function TreasuryDashboardPage() {
   const t = useTranslations('treasury');
-  const tMenu = useTranslations();  // No namespace — resolves menu titleKeys like 'agent.nav.validation'
+  const tMenu = useTranslations();
   const locale = useLocale();
   const { data: stats, isLoading, error } = useTreasuryStats();
   const { menuConfig, dashboardConfig, isLoading: menuLoading } = useMenuConfig();
+
+  // Supervisor overview data (only fetched if supervisor via permission check in backend)
+  const [overviewDays, setOverviewDays] = useState(30);
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    error: overviewError,
+  } = useSupervisorOverview(overviewDays);
+
+  // Detect supervisor: if overview data loads successfully, user is supervisor
+  const isSupervisor = !!overview && !overviewError;
 
   const formatCurrency = (amount: number) => {
     const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
@@ -50,22 +69,17 @@ export default function TreasuryDashboardPage() {
     }).format(amount);
   };
 
-  // Derive quick actions from menu_config (replaces 9 hardcoded cards)
+  // Derive quick actions from menu_config
   const quickActions = useMemo(() => {
     if (!menuConfig?.menus) return [];
-
     const actions: (DynamicMenuItem | SubMenuItem)[] = [];
     for (const menu of menuConfig.menus) {
-      // Skip dashboard itself and settings
       if (menu.id === 'dashboard' || menu.id === 'settings') continue;
-
       if (menu.items?.length) {
-        // Group: take up to 2 sub-items as quick actions
         for (const item of menu.items.slice(0, 2)) {
           actions.push(item);
         }
       } else if (menu.href) {
-        // Direct link item
         actions.push(menu);
       }
     }
@@ -75,11 +89,19 @@ export default function TreasuryDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
-        <p className="text-muted-foreground mt-1">
-          {t('dashboardDescription')}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-1">
+            {t('dashboardDescription')}
+          </p>
+        </div>
+        {isSupervisor && (
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Supervisor</span>
+          </div>
+        )}
       </div>
 
       {/* Error State */}
@@ -92,8 +114,8 @@ export default function TreasuryDashboardPage() {
         </Card>
       )}
 
-      {/* Stats Cards (API-driven, TESORO-specific) */}
-      <div className={`grid gap-4 ${(stats?.unreconciledCount ?? 0) > 0 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
+      {/* Row 1: Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -116,26 +138,6 @@ export default function TreasuryDashboardPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Sin Reconciliar — only visible for supervisors (backend returns 0 for agents) */}
-        {(stats?.unreconciledCount ?? 0) > 0 && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {t('stats.unreconciled')}
-              </CardTitle>
-              <RefreshCw className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {stats?.unreconciledCount ?? 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t('stats.unreconciledDescription')}
-              </p>
-            </CardContent>
-          </Card>
-        )}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -182,7 +184,72 @@ export default function TreasuryDashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* SLA Alerts Count — supervisors see alert count, agents see unreconciled */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {isSupervisor ? 'Alertas SLA' : t('stats.unreconciled')}
+            </CardTitle>
+            {isSupervisor ? (
+              <AlertCircle className="h-4 w-4 text-orange-500" />
+            ) : (
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            )}
+          </CardHeader>
+          <CardContent>
+            {isLoading || overviewLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <div className={`text-2xl font-bold ${
+                  isSupervisor && (overview?.slaAlertsCount ?? 0) > 0
+                    ? 'text-orange-600'
+                    : ''
+                }`}>
+                  {isSupervisor
+                    ? overview?.slaAlertsCount ?? 0
+                    : stats?.unreconciledCount ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isSupervisor
+                    ? 'Pagos en riesgo SLA'
+                    : t('stats.unreconciledDescription')}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Row 2: Supervisor Charts (only for supervisors) */}
+      {isSupervisor && overview && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <CashFlowChart
+              data={overview.paymentFlow}
+              periodDays={overviewDays}
+              onPeriodChange={setOverviewDays}
+            />
+          </div>
+          <div>
+            <ServiceDistributionChart data={overview.topServices} />
+          </div>
+        </div>
+      )}
+
+      {/* Row 3: Supervisor Panels (only for supervisors) */}
+      {isSupervisor && overview && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <AgentWorkloadPanel agents={overview.agentLoad} />
+          <SLAAlertsPanel alerts={overview.slaAlerts} />
+        </div>
+      )}
+
+      {/* Row 4: Recent Activity (only for supervisors) */}
+      {isSupervisor && overview && (
+        <RecentActivityTimeline activities={overview.recentActivity} />
+      )}
 
       {/* Quick Actions (derived from menu_config — dynamic) */}
       {menuLoading ? (
@@ -193,7 +260,6 @@ export default function TreasuryDashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {quickActions.map((action) => {
             const ActionIcon = getIconComponent(action.icon);
-            // href is already locale-prefixed by useMenuConfig hook
             const href = action.href || '#';
             const titleKey = action.titleKey;
 

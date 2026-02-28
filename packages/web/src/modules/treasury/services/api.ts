@@ -58,6 +58,8 @@ import type {
   PeriodComparison,
   AgentPerformanceResponse,
   AgentStats,
+  // Phase 3 - Supervisor Overview
+  SupervisorOverviewResponse,
 } from '../types';
 import type {
   // Phase 5 - Analytics
@@ -1100,6 +1102,16 @@ export const treasuryApi = {
     );
 
     return toCamelCase<ExploreResponse>(response);
+  },
+
+  // ─── Supervisor Overview (Phase 3) ─────
+
+  getSupervisorOverview: async (days: number = 30) => {
+    const response = await fetchClient.get<Record<string, unknown>>(
+      `${TREASURY_BASE}/stats/supervisor-overview`,
+      { days: days.toString() }
+    );
+    return toCamelCase<SupervisorOverviewResponse>(response);
   },
 };
 

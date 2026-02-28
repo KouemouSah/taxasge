@@ -66,6 +66,11 @@ export {
 } from './useKPIs';
 // Location filter
 export { useTreasuryLocations } from './useTreasuryLocations';
+// Phase 3 - Supervisor Overview
+export {
+  useSupervisorOverview,
+  SUPERVISOR_OVERVIEW_QUERY_KEY,
+} from './useSupervisorOverview';
 // Phase 5 - Analytics
 export {
   useAnalyticsReport,
