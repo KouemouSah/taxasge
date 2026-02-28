@@ -460,7 +460,7 @@ export default function PendingEscalationsPage() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{esc.case_reference || 'N/A'}</p>
-                          <p className="text-xs text-muted-foreground">{esc.case_type}</p>
+                          <p className="text-xs text-muted-foreground">{t('workflowNames.' + esc.case_type)}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -590,11 +590,11 @@ export default function PendingEscalationsPage() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">{t('escalations.caseType')}</Label>
-                  <p>{selectedEscalation.case_type}</p>
+                  <p>{t('workflowNames.' + selectedEscalation.case_type)}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">{tCommon('status')}</Label>
-                  <Badge variant="outline">{selectedEscalation.escalation_status}</Badge>
+                  <Badge variant="outline">{t('escalationStatus.' + selectedEscalation.escalation_status)}</Badge>
                 </div>
               </div>
               <div>
@@ -819,7 +819,7 @@ export default function PendingEscalationsPage() {
                 <SelectContent>
                   {agents?.map((agent) => (
                     <SelectItem key={agent.agent_profile_id} value={agent.agent_profile_id}>
-                      {agent.agent_name} ({agent.capacity_percentage.toFixed(0)}%) - {agent.workload_status}
+                      {agent.agent_name} ({agent.capacity_percentage.toFixed(0)}%) - {t('workloadStatus.' + agent.workload_status)}
                     </SelectItem>
                   ))}
                 </SelectContent>

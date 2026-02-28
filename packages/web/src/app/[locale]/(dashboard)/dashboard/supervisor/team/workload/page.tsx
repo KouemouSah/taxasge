@@ -275,7 +275,7 @@ export default function TeamWorkloadPage() {
                       <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
                     )}
                     <div>
-                      <p className="font-medium capitalize">{rec.type.replace(/_/g, ' ')}</p>
+                      <p className="font-medium">{t('recommendationType.' + rec.type)}</p>
                       <p className="text-sm text-muted-foreground">{rec.message}</p>
                     </div>
                     <Badge
@@ -288,7 +288,7 @@ export default function TeamWorkloadPage() {
                           : 'border-blue-300 text-blue-700'
                       }
                     >
-                      {rec.priority}
+                      {t('priorityLabel.' + rec.priority)}
                     </Badge>
                   </div>
                 </div>
@@ -321,7 +321,7 @@ export default function TeamWorkloadPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Badge className={WORKLOAD_STATUS_COLORS[agent.workload_status] || 'bg-gray-100'}>
-                      {agent.workload_status}
+                      {t('workloadStatus.' + agent.workload_status)}
                     </Badge>
                     <span className="text-sm font-medium w-12 text-right">
                       {agent.capacity_percentage.toFixed(0)}%

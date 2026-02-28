@@ -7456,6 +7456,73 @@
       "selectPeriod": "Select period",
       "downloadCsv": "Download CSV",
       "noRules": "No rules with enough applications"
+    },
+    "workloadStatus": {
+      "available": "Available",
+      "normal": "Normal",
+      "busy": "Busy",
+      "overloaded": "Overloaded",
+      "unavailable": "Unavailable"
+    },
+    "availabilityStatus": {
+      "available": "Available",
+      "on_leave": "On Leave",
+      "sick_leave": "Sick Leave",
+      "training": "In Training",
+      "mission": "On Mission",
+      "temporarily_unavailable": "Temporarily Unavailable"
+    },
+    "escalationStatus": {
+      "pending": "Pending",
+      "in_review": "In Review",
+      "resolved": "Resolved",
+      "reassigned": "Reassigned"
+    },
+    "assignmentStatus": {
+      "assigned": "Assigned",
+      "in_progress": "In Progress",
+      "pending_review": "Pending Review",
+      "completed": "Completed",
+      "reassigned": "Reassigned",
+      "cancelled": "Cancelled",
+      "rejected": "Rejected"
+    },
+    "recommendationType": {
+      "rebalance": "Rebalancing Needed",
+      "overload": "Agent Overloaded",
+      "urgent_rebalance": "Urgent Rebalancing"
+    },
+    "priorityLabel": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "workflowNames": {
+      "PASAPORTE": "Passport",
+      "CONDUCIR": "Driver License",
+      "CONTRATO_LABORAL": "Employment Contract",
+      "RESIDENCIA": "Residence Permit",
+      "MATRICULACION": "Vehicle Registration",
+      "INSPECCION_TECNICA": "Technical Inspection",
+      "DUPLICADO_VEHICULO": "Vehicle Duplicate",
+      "PROMOCION_ADMINISTRATIVA": "Administrative Promotion",
+      "CARNET_FUNCIONARIO": "Civil Servant ID",
+      "VERIFICACION_FUNCIONARIO": "Civil Servant Verification",
+      "TRAMITES_VISADO": "Visa Procedures",
+      "PERMISO_EXTRAORDINARIO": "Extraordinary Permit",
+      "CERTIFICADO_ADMIN": "Admin Certificate",
+      "PASAPORTE_ORDINARIO": "Ordinary Passport",
+      "PASAPORTE_DIPLOMATICO": "Diplomatic Passport",
+      "PASAPORTE_SERVICIO": "Service Passport",
+      "PASAPORTE_MENOR": "Minor Passport",
+      "PASAPORTE_RENOVACION": "Passport Renewal",
+      "PASAPORTE_DUPLICADO": "Passport Duplicate",
+      "CONDUCIR_NUEVO": "New Driver License",
+      "CONDUCIR_RENOVACION": "Driver License Renewal",
+      "CONDUCIR_DUPLICADO": "Driver License Duplicate",
+      "RESIDENCIA_PRORROGA": "Residence Extension",
+      "PRORROGA_VISADO": "Visa Extension"
     }
   },
   "verification": {

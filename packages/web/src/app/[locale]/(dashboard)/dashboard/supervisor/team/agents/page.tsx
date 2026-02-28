@@ -350,7 +350,7 @@ export default function TeamAgentsPage() {
                           <div className="flex gap-1 mt-1">
                             {agent.specializations.slice(0, 2).map((spec) => (
                               <Badge key={spec} variant="outline" className="text-xs">
-                                {spec}
+                                {t('workflowNames.' + spec)}
                               </Badge>
                             ))}
                             {agent.specializations.length > 2 && (
@@ -378,12 +378,12 @@ export default function TeamAgentsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge className={WORKLOAD_STATUS_COLORS[agent.workload_status] || 'bg-gray-100'}>
-                        {agent.workload_status}
+                        {t('workloadStatus.' + agent.workload_status)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className={AVAILABILITY_COLORS[agent.availability] || 'bg-gray-100'}>
-                        {agent.availability.replace(/_/g, ' ')}
+                        {t('availabilityStatus.' + agent.availability)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -446,7 +446,7 @@ export default function TeamAgentsPage() {
                   a.availability === 'available'
                 ).map(a => (
                   <SelectItem key={a.agent_profile_id} value={a.agent_profile_id}>
-                    {a.agent_name} ({a.capacity_percentage.toFixed(0)}%)
+                    {a.agent_name} ({a.capacity_percentage.toFixed(0)}%) - {t('workloadStatus.' + a.workload_status)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -492,12 +492,12 @@ export default function TeamAgentsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {item.workflow_code || '-'}
+                          {item.workflow_code ? t('workflowNames.' + item.workflow_code) : '-'}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="text-xs">
-                          {item.status}
+                          {t('assignmentStatus.' + item.status)}
                         </Badge>
                       </TableCell>
                     </TableRow>

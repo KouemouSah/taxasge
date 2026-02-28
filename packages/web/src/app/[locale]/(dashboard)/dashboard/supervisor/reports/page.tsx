@@ -522,7 +522,7 @@ export default function SupervisorReportsPage() {
                             <TableCell>{agent.current_assignments}</TableCell>
                             <TableCell>
                               <Badge className={`text-xs ${WORKLOAD_STATUS_COLORS[agent.workload_status] || ''}`}>
-                                {t(`workload.status.${agent.workload_status}`, { defaultValue: agent.workload_status })}
+                                {t('workloadStatus.' + agent.workload_status)}
                               </Badge>
                             </TableCell>
                           </TableRow>

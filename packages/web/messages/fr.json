@@ -7696,6 +7696,73 @@
       "selectPeriod": "Sélectionner une période",
       "downloadCsv": "Télécharger CSV",
       "noRules": "Aucune règle avec suffisamment d'applications"
+    },
+    "workloadStatus": {
+      "available": "Disponible",
+      "normal": "Normal",
+      "busy": "Occupé",
+      "overloaded": "Surchargé",
+      "unavailable": "Indisponible"
+    },
+    "availabilityStatus": {
+      "available": "Disponible",
+      "on_leave": "En congé",
+      "sick_leave": "Arrêt maladie",
+      "training": "En formation",
+      "mission": "En mission",
+      "temporarily_unavailable": "Temporairement indisponible"
+    },
+    "escalationStatus": {
+      "pending": "En attente",
+      "in_review": "En cours de revue",
+      "resolved": "Résolue",
+      "reassigned": "Réassignée"
+    },
+    "assignmentStatus": {
+      "assigned": "Assignée",
+      "in_progress": "En cours",
+      "pending_review": "En révision",
+      "completed": "Terminée",
+      "reassigned": "Réassignée",
+      "cancelled": "Annulée",
+      "rejected": "Rejetée"
+    },
+    "recommendationType": {
+      "rebalance": "Rééquilibrage nécessaire",
+      "overload": "Agent surchargé",
+      "urgent_rebalance": "Rééquilibrage urgent"
+    },
+    "priorityLabel": {
+      "urgent": "Urgent",
+      "high": "Haute",
+      "medium": "Moyenne",
+      "low": "Basse"
+    },
+    "workflowNames": {
+      "PASAPORTE": "Passeport",
+      "CONDUCIR": "Permis de Conduire",
+      "CONTRATO_LABORAL": "Contrat de Travail",
+      "RESIDENCIA": "Carte de Séjour",
+      "MATRICULACION": "Immatriculation",
+      "INSPECCION_TECNICA": "Contrôle Technique",
+      "DUPLICADO_VEHICULO": "Duplicata Véhicule",
+      "PROMOCION_ADMINISTRATIVA": "Promotion Administrative",
+      "CARNET_FUNCIONARIO": "Carte Fonctionnaire",
+      "VERIFICACION_FUNCIONARIO": "Vérification Fonctionnaire",
+      "TRAMITES_VISADO": "Procédures de Visa",
+      "PERMISO_EXTRAORDINARIO": "Permis Extraordinaire",
+      "CERTIFICADO_ADMIN": "Certificat Administratif",
+      "PASAPORTE_ORDINARIO": "Passeport Ordinaire",
+      "PASAPORTE_DIPLOMATICO": "Passeport Diplomatique",
+      "PASAPORTE_SERVICIO": "Passeport de Service",
+      "PASAPORTE_MENOR": "Passeport Mineur",
+      "PASAPORTE_RENOVACION": "Renouvellement de Passeport",
+      "PASAPORTE_DUPLICADO": "Duplicata de Passeport",
+      "CONDUCIR_NUEVO": "Nouveau Permis de Conduire",
+      "CONDUCIR_RENOVACION": "Renouvellement Permis de Conduire",
+      "CONDUCIR_DUPLICADO": "Duplicata Permis de Conduire",
+      "RESIDENCIA_PRORROGA": "Prolongation de Séjour",
+      "PRORROGA_VISADO": "Prolongation de Visa"
     }
   },
   "verification": {

@@ -372,7 +372,7 @@ export default function TeamPerformancePage() {
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(agentStats.by_status).map(([status, count]) => (
                         <Badge key={status} variant="outline">
-                          {status}: {count}
+                          {t('assignmentStatus.' + status)}: {count}
                         </Badge>
                       ))}
                     </div>
@@ -386,7 +386,7 @@ export default function TeamPerformancePage() {
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(agentStats.by_type).map(([type, count]) => (
                         <Badge key={type} variant="secondary">
-                          {type}: {count}
+                          {t('workflowNames.' + type)}: {count}
                         </Badge>
                       ))}
                     </div>
@@ -435,7 +435,7 @@ export default function TeamPerformancePage() {
                   <TableRow key={`${p.agent_profile_id}-${p.workflow_code}`}>
                     <TableCell className="font-medium">{p.agent_name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{p.workflow_code}</Badge>
+                      <Badge variant="outline">{t('workflowNames.' + p.workflow_code)}</Badge>
                     </TableCell>
                     <TableCell className="text-center">{p.completions_total}</TableCell>
                     <TableCell className="text-center">{p.escalations_total}</TableCell>
@@ -489,7 +489,7 @@ export default function TeamPerformancePage() {
                 {skillsGap.map((sg) => (
                   <TableRow key={sg.workflow_code}>
                     <TableCell>
-                      <Badge variant="outline">{sg.workflow_code}</Badge>
+                      <Badge variant="outline">{t('workflowNames.' + sg.workflow_code)}</Badge>
                     </TableCell>
                     <TableCell className="text-center font-medium">{sg.pending_count}</TableCell>
                     <TableCell className="text-center">{sg.specialist_count}</TableCell>

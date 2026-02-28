@@ -7580,6 +7580,73 @@
       "selectPeriod": "Seleccionar período",
       "downloadCsv": "Descargar CSV",
       "noRules": "No hay reglas con suficientes aplicaciones"
+    },
+    "workloadStatus": {
+      "available": "Disponible",
+      "normal": "Normal",
+      "busy": "Ocupado",
+      "overloaded": "Sobrecargado",
+      "unavailable": "No disponible"
+    },
+    "availabilityStatus": {
+      "available": "Disponible",
+      "on_leave": "De permiso",
+      "sick_leave": "Baja médica",
+      "training": "En capacitación",
+      "mission": "En misión",
+      "temporarily_unavailable": "No disponible temporalmente"
+    },
+    "escalationStatus": {
+      "pending": "Pendiente",
+      "in_review": "En revisión",
+      "resolved": "Resuelta",
+      "reassigned": "Reasignada"
+    },
+    "assignmentStatus": {
+      "assigned": "Asignada",
+      "in_progress": "En curso",
+      "pending_review": "En revisión",
+      "completed": "Completada",
+      "reassigned": "Reasignada",
+      "cancelled": "Cancelada",
+      "rejected": "Rechazada"
+    },
+    "recommendationType": {
+      "rebalance": "Reequilibrio necesario",
+      "overload": "Agente sobrecargado",
+      "urgent_rebalance": "Reequilibrio urgente"
+    },
+    "priorityLabel": {
+      "urgent": "Urgente",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "workflowNames": {
+      "PASAPORTE": "Pasaporte",
+      "PASAPORTE_ORDINARIO": "Pasaporte Ordinario",
+      "PASAPORTE_DIPLOMATICO": "Pasaporte Diplomático",
+      "PASAPORTE_SERVICIO": "Pasaporte de Servicio",
+      "PASAPORTE_MENOR": "Pasaporte de Menor",
+      "PASAPORTE_RENOVACION": "Renovación de Pasaporte",
+      "PASAPORTE_DUPLICADO": "Duplicado de Pasaporte",
+      "CONDUCIR": "Permiso de Conducir",
+      "CONDUCIR_NUEVO": "Nuevo Permiso de Conducir",
+      "CONDUCIR_RENOVACION": "Renovación Permiso de Conducir",
+      "CONDUCIR_DUPLICADO": "Duplicado Permiso de Conducir",
+      "CONTRATO_LABORAL": "Contrato Laboral ONRC",
+      "RESIDENCIA": "Tarjeta de Residencia",
+      "RESIDENCIA_PRORROGA": "Prórroga de Residencia",
+      "MATRICULACION": "Matriculación DGT",
+      "INSPECCION_TECNICA": "Inspección Técnica ITVE",
+      "DUPLICADO_VEHICULO": "Duplicado de Vehículo",
+      "PROMOCION_ADMINISTRATIVA": "Promoción Administrativa",
+      "CARNET_FUNCIONARIO": "Carnet de Funcionario",
+      "VERIFICACION_FUNCIONARIO": "Verificación Funcionario",
+      "TRAMITES_VISADO": "Trámites de Visado",
+      "PRORROGA_VISADO": "Prórroga de Visado",
+      "PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
+      "CERTIFICADO_ADMIN": "Certificado Administrativo"
     }
   },
   "verification": {

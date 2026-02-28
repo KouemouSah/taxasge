@@ -205,7 +205,7 @@ export default function ResolvedEscalationsPage() {
                       >
                         <TableCell>
                           <span className="font-mono text-sm">{esc.case_reference}</span>
-                          <p className="text-xs text-muted-foreground">{esc.case_type}</p>
+                          <p className="text-xs text-muted-foreground">{t('workflowNames.' + esc.case_type)}</p>
                         </TableCell>
                         <TableCell>
                           <Badge className={PRIORITY_COLORS[priority]}>
@@ -242,7 +242,7 @@ export default function ResolvedEscalationsPage() {
                 {/* Reference + Status */}
                 <div>
                   <h3 className="text-lg font-semibold">{selectedEscalation.case_reference}</h3>
-                  <Badge variant="secondary" className="mt-1">{selectedEscalation.case_type}</Badge>
+                  <Badge variant="secondary" className="mt-1">{t('workflowNames.' + selectedEscalation.case_type)}</Badge>
                 </div>
 
                 {/* Priority */}
