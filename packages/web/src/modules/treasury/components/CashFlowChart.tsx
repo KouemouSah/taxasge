@@ -103,7 +103,7 @@ export function CashFlowChart({ data, periodDays, onPeriodChange }: CashFlowChar
         legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
         tooltip: {
           callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${formatXAF(ctx.parsed.y)}`,
+            label: (ctx) => `${ctx.dataset.label}: ${formatXAF(ctx.parsed.y ?? 0)}`,
           },
         },
       },
@@ -112,6 +112,7 @@ export function CashFlowChart({ data, periodDays, onPeriodChange }: CashFlowChar
           beginAtZero: true,
           ticks: {
             callback: (value) => {
+              if (value == null) return '';
               const num = typeof value === 'string' ? parseFloat(value) : value;
               return num >= 1000 ? `${(num / 1000).toFixed(0)}K` : String(num);
             },
