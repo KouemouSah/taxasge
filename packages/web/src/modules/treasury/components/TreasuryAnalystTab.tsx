@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Sparkles, Send, AlertTriangle, BarChart3, Clock, TrendingUp,
+  Sparkles, Send, BarChart3, Clock, TrendingUp,
   Loader2, Wrench, Download, RefreshCw, Users, ShieldAlert,
 } from 'lucide-react';
 import { renderMarkdown } from '@/core/utils/markdown';

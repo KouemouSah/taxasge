@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import type { ChartOptions } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,17 +94,16 @@ export function CashFlowChart({ data, periodDays, onPeriodChange }: CashFlowChar
     };
   }, [data, showCumulative]);
 
-  const options = useMemo(
+  const options = useMemo<ChartOptions<'line'>>(
     () => ({
       responsive: true,
       maintainAspectRatio: false,
-      interaction: { intersect: false, mode: 'index' as const },
+      interaction: { intersect: false, mode: 'index' },
       plugins: {
-        legend: { position: 'top' as const, labels: { usePointStyle: true, boxWidth: 8 } },
+        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
         tooltip: {
           callbacks: {
-            label: (ctx: { dataset: { label?: string }; parsed: { y: number } }) =>
-              `${ctx.dataset.label}: ${formatXAF(ctx.parsed.y)}`,
+            label: (ctx) => `${ctx.dataset.label}: ${formatXAF(ctx.parsed.y)}`,
           },
         },
       },
@@ -111,7 +111,7 @@ export function CashFlowChart({ data, periodDays, onPeriodChange }: CashFlowChar
         y: {
           beginAtZero: true,
           ticks: {
-            callback: (value: string | number) => {
+            callback: (value) => {
               const num = typeof value === 'string' ? parseFloat(value) : value;
               return num >= 1000 ? `${(num / 1000).toFixed(0)}K` : String(num);
             },
