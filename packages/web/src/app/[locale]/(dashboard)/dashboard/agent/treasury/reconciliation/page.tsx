@@ -61,7 +61,7 @@ export default function TreasuryReconciliationPage() {
   const isReconciling = reconcileMutation.isPending;
 
   // Smart matching suggestions
-  const { data: suggestionsData, isLoading: suggestionsLoading } = useReconciliationSuggestions();
+  const { data: suggestionsData } = useReconciliationSuggestions();
   const autoMatchMutation = useAutoMatch();
   const suggestions = suggestionsData?.suggestions || [];
   const highConfidenceSuggestions = suggestions.filter((s: ReconciliationSuggestion) => s.bestScore >= 80);
