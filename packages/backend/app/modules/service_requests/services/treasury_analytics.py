@@ -157,6 +157,10 @@ class TreasuryAnalyticsService:
             days = days_map.get(period, 30)
             date_from = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
+        # asyncpg requires datetime.date objects for date columns (not strings)
+        date_from_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
+        date_to_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
+
         query = """
             SELECT
                 report_date,
@@ -175,7 +179,7 @@ class TreasuryAnalyticsService:
         """
 
         try:
-            rows = await db.fetch(query, date_from, date_to)
+            rows = await db.fetch(query, date_from_obj, date_to_obj)
             if not rows:
                 logger.warning(f"No KPI data found for period {date_from} to {date_to}")
                 return pd.DataFrame()
@@ -224,7 +228,10 @@ class TreasuryAnalyticsService:
         """
 
         try:
-            rows = await db.fetch(query, date_from, date_to)
+            # asyncpg requires datetime.date objects for date columns
+            df_obj = datetime.strptime(date_from, "%Y-%m-%d").date() if isinstance(date_from, str) else date_from
+            dt_obj = datetime.strptime(date_to, "%Y-%m-%d").date() if isinstance(date_to, str) else date_to
+            rows = await db.fetch(query, df_obj, dt_obj)
             if not rows:
                 return pd.DataFrame()
             return pd.DataFrame([dict(row) for row in rows])
