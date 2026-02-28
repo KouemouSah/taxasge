@@ -460,7 +460,7 @@ async def get_dashboard(
 async def get_escalation_count(
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.view")),
+    _: None = Depends(permission_required("queue.view")),
 ):
     """Lightweight endpoint to get pending escalation count for sidebar badge."""
     if current_user.role == "admin":
@@ -1128,7 +1128,7 @@ async def list_escalations(
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.view"))
+    _: None = Depends(permission_required("queue.view"))
 ):
     """
     **List all escalated service requests for supervisor review**
@@ -1239,7 +1239,7 @@ async def list_escalations(
 async def get_escalation_stats(
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.view"))
+    _: None = Depends(permission_required("queue.view"))
 ):
     """
     **Get escalation statistics from service_requests**
@@ -1297,7 +1297,7 @@ async def assign_escalation(
     agent_id: Optional[UUID] = None,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.assign"))
+    _: None = Depends(permission_required("queue.assign"))
 ):
     """
     **Assign an escalated service request to an agent (or self)**
@@ -1347,7 +1347,7 @@ async def resolve_escalation(
     request_data: ResolveEscalationRequest,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.resolve"))
+    _: None = Depends(permission_required("queue.complete"))
 ):
     """
     **Resolve an escalation on a service request**
@@ -1417,7 +1417,7 @@ async def supervisor_approve(
     request_data: SupervisorApproveRequest,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.resolve"))
+    _: None = Depends(permission_required("queue.complete"))
 ):
     """
     **Supervisor approves an escalated service request directly**
@@ -1503,7 +1503,7 @@ async def supervisor_reject(
     request_data: SupervisorRejectRequest,
     current_user: UserResponse = Depends(get_current_user),
     db = Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.resolve"))
+    _: None = Depends(permission_required("queue.complete"))
 ):
     """
     **Supervisor rejects an escalated service request directly**
@@ -1603,7 +1603,7 @@ async def bulk_escalation_action(
     body: BulkEscalationAction,
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.resolve"))
+    _: None = Depends(permission_required("queue.complete"))
 ):
     """
     **Bulk action on multiple escalated service requests**
@@ -2337,7 +2337,7 @@ async def reassign_request(
     body: ReassignRequestBody,
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_db_connection),
-    _: None = Depends(permission_required("escalations.assign"))
+    _: None = Depends(permission_required("queue.assign"))
 ):
     """
     Reassign a single service request to another agent.
@@ -2350,9 +2350,9 @@ async def reassign_request(
     if not agent_ctx or not agent_ctx.get("is_supervisor"):
         raise HTTPException(status_code=403, detail="Supervisor access required")
 
-    # Verify target agent exists
+    # Verify target agent exists (target_agent_id is an agent_profile_id)
     target = await db.fetchrow(
-        "SELECT ap.id, u.full_name FROM agent_profiles ap JOIN users u ON u.id = ap.user_id WHERE ap.user_id = $1 AND ap.is_active = true",
+        "SELECT ap.id, u.full_name FROM agent_profiles ap JOIN users u ON u.id = ap.user_id WHERE ap.id = $1 AND ap.is_active = true",
         body.target_agent_id
     )
     if not target:
@@ -2695,7 +2695,7 @@ async def retry_dead_letter(
     item_id: UUID,
     current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_db_connection),
-    _: None = Depends(permission_required("agent.manage_assignments")),
+    _: None = Depends(permission_required("assignment.reassign")),
 ):
     """
     Reset a dead-letter item back to pending for retry.
