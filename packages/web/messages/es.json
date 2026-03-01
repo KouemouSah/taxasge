@@ -6259,6 +6259,8 @@
         "byPaymentMethodDescription": "Distribucion de montos por metodo",
         "topMinistries": "Top 10 Ministerios",
         "topMinistriesDescription": "Ministerios con mayor recaudacion",
+        "topEntities": "Top 10 Entidades",
+        "topEntitiesDescription": "Entidades con mayor recaudacion",
         "amount": "Monto",
         "count": "Cantidad"
       },

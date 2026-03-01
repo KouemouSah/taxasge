@@ -5424,9 +5424,9 @@ class PaymentMethodKPI(BaseModel):
     avg_processing_minutes: Optional[float] = None
 
 
-class MinistryKPI(BaseModel):
-    ministry_id: int
-    ministry_name: str
+class EntityKPI(BaseModel):
+    entity_code: str
+    entity_name: str
     count: int
     amount: float
     percentage: float
@@ -5453,7 +5453,7 @@ class KPIResponse(BaseModel):
     avg_transaction_amount: float
     sla_respect_rate: float
     by_payment_method: List[PaymentMethodKPI]
-    by_ministry: List[MinistryKPI]
+    by_entity: List[EntityKPI]
     daily_trend: List[DailyTrend]
     previous_period: Optional[PeriodComparison] = None
 
@@ -5588,31 +5588,31 @@ async def get_treasury_kpis(
         for row in method_stats
     ]
 
-    # Get top 10 ministries
-    ministry_stats = await db.fetch("""
+    # Get top 10 entities
+    entity_stats = await db.fetch("""
         SELECT
-            sp.ministry_id,
-            COALESCE(m.name_es, 'Sin Ministerio') AS ministry_name,
+            sp.entity_code,
+            COALESCE(e.name, sp.entity_code) AS entity_name,
             COUNT(*) AS count,
             COALESCE(SUM(sp.total_amount), 0) AS amount
         FROM service_payments sp
-        LEFT JOIN ministries m ON m.id = sp.ministry_id
+        LEFT JOIN entities e ON e.code = sp.entity_code
         WHERE sp.workflow_status = 'completed'
           AND sp.validated_at BETWEEN $1 AND $2
-        GROUP BY sp.ministry_id, m.name_es
+        GROUP BY sp.entity_code, e.name
         ORDER BY amount DESC
         LIMIT 10
     """, start_date, end_date)
 
-    by_ministry = [
-        MinistryKPI(
-            ministry_id=row["ministry_id"] or 0,
-            ministry_name=row["ministry_name"],
+    by_entity = [
+        EntityKPI(
+            entity_code=row["entity_code"],
+            entity_name=row["entity_name"],
             count=row["count"],
             amount=float(row["amount"]),
             percentage=round(float(row["amount"]) / total_amount * 100, 1) if total_amount > 0 else 0
         )
-        for row in ministry_stats
+        for row in entity_stats
     ]
 
     # Get daily trend
@@ -5680,7 +5680,7 @@ async def get_treasury_kpis(
         avg_transaction_amount=float(main_stats["avg_amount"]),
         sla_respect_rate=round(sla_rate, 1),
         by_payment_method=by_payment_method,
-        by_ministry=by_ministry,
+        by_entity=by_entity,
         daily_trend=daily_trend,
         previous_period=previous_period
     )
@@ -6748,7 +6748,7 @@ class ExportStatus(str, Enum):
 
 class ExportFilters(BaseModel):
     """Filters for export generation."""
-    ministry_id: Optional[str] = None
+    entity_code: Optional[str] = None
     payment_method: Optional[str] = None
     workflow_code: Optional[str] = None
     status: Optional[str] = None

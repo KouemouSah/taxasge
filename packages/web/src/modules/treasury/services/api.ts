@@ -53,7 +53,7 @@ import type {
   // Phase 4 - KPIs
   KPIResponse,
   PaymentMethodKPI,
-  MinistryKPI,
+  EntityKPI,
   DailyTrend,
   PeriodComparison,
   AgentPerformanceResponse,
@@ -885,7 +885,7 @@ export const treasuryApi = {
     };
     if (request.filters) {
       payload.filters = {
-        ministry_id: request.filters.ministryId,
+        entity_code: request.filters.entityCode,
         payment_method: request.filters.paymentMethod,
         workflow_code: request.filters.workflowCode,
         status: request.filters.status,
@@ -937,7 +937,7 @@ export const treasuryApi = {
 
     // Transform response with nested arrays
     const byPaymentMethod = (response.by_payment_method as Record<string, unknown>[]) || [];
-    const byMinistry = (response.by_ministry as Record<string, unknown>[]) || [];
+    const byEntity = (response.by_entity as Record<string, unknown>[]) || [];
     const dailyTrend = (response.daily_trend as Record<string, unknown>[]) || [];
     const previousPeriod = response.previous_period as Record<string, unknown> | undefined;
 
@@ -950,7 +950,7 @@ export const treasuryApi = {
       avgTransactionAmount: (response.avg_transaction_amount as number) || 0,
       slaRespectRate: (response.sla_respect_rate as number) || 100,
       byPaymentMethod: byPaymentMethod.map((m) => toCamelCase<PaymentMethodKPI>(m)),
-      byMinistry: byMinistry.map((m) => toCamelCase<MinistryKPI>(m)),
+      byEntity: byEntity.map((m) => toCamelCase<EntityKPI>(m)),
       dailyTrend: dailyTrend.map((d) => toCamelCase<DailyTrend>(d)),
       previousPeriod: previousPeriod ? toCamelCase<PeriodComparison>(previousPeriod) : undefined,
     };

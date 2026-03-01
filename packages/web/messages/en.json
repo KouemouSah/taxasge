@@ -6157,6 +6157,8 @@
         "byPaymentMethodDescription": "Amount distribution by method",
         "topMinistries": "Top 10 Ministries",
         "topMinistriesDescription": "Ministries with highest collections",
+        "topEntities": "Top 10 Entities",
+        "topEntitiesDescription": "Entities with highest collections",
         "amount": "Amount",
         "count": "Count"
       },

@@ -688,7 +688,7 @@ export type ExportFormat = 'csv' | 'xlsx' | 'pdf' | 'xml' | 'json';
 export type ExportStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface ExportFilters {
-  ministryId?: string;
+  entityCode?: string;
   paymentMethod?: string;
   workflowCode?: string;
   status?: string;
@@ -777,13 +777,16 @@ export interface PaymentMethodKPI {
   avgProcessingMinutes?: number;
 }
 
-export interface MinistryKPI {
-  ministryId: number;
-  ministryName: string;
+export interface EntityKPI {
+  entityCode: string;
+  entityName: string;
   count: number;
   amount: number;
   percentage: number;
 }
+
+/** @deprecated Use EntityKPI instead */
+export type MinistryKPI = EntityKPI;
 
 export interface DailyTrend {
   date: string;
@@ -806,7 +809,7 @@ export interface KPIResponse {
   avgTransactionAmount: number;
   slaRespectRate: number;
   byPaymentMethod: PaymentMethodKPI[];
-  byMinistry: MinistryKPI[];
+  byEntity: EntityKPI[];
   dailyTrend: DailyTrend[];
   previousPeriod?: PeriodComparison;
 }

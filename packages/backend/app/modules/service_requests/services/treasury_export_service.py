@@ -350,9 +350,9 @@ class TreasuryExportService:
         conditions.append("sp.paid_at < $2::date + INTERVAL '1 day'")
 
         if filters:
-            if filters.get("ministry_id"):
-                conditions.append(f"sp.ministry_id = ${param_idx}::uuid")
-                params.append(filters["ministry_id"])
+            if filters.get("entity_code"):
+                conditions.append(f"sp.entity_code = ${param_idx}")
+                params.append(filters["entity_code"])
                 param_idx += 1
             if filters.get("payment_method"):
                 conditions.append(f"sp.payment_method = ${param_idx}")
@@ -372,12 +372,14 @@ class TreasuryExportService:
                 sr.reference as service_request_reference,
                 fs.name_es as service_name_es,
                 u.full_name as user_name,
+                e.name as entity_name,
                 m.name_es as ministry_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
-            LEFT JOIN ministries m ON m.id = sp.ministry_id
+            LEFT JOIN entities e ON e.code = sp.entity_code
+            LEFT JOIN ministries m ON m.id = e.ministry_id
             WHERE {where_clause}
             ORDER BY sp.paid_at ASC
         """
@@ -399,26 +401,29 @@ class TreasuryExportService:
         conditions.append("sp.paid_at >= $1::date")
         conditions.append("sp.paid_at < $2::date + INTERVAL '1 day'")
 
-        ministry_filter = ""
-        if filters and filters.get("ministry_id"):
-            ministry_filter = "AND sp.ministry_id = $3::uuid"
-            params.append(filters["ministry_id"])
+        entity_filter = ""
+        if filters and filters.get("entity_code"):
+            entity_filter = "AND sp.entity_code = $3"
+            params.append(filters["entity_code"])
 
         where_clause = " AND ".join(conditions)
 
-        # Summary by ministry
+        # Summary by entity (with optional ministry)
         summary_query = f"""
             SELECT
-                m.id as ministry_id,
+                sp.entity_code,
+                e.name as entity_name,
+                e.ministry_id,
                 m.name_es as ministry_name,
                 COUNT(*) as payment_count,
                 SUM(sp.total_amount) as total_amount,
                 AVG(sp.total_amount) as avg_amount
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN ministries m ON m.id = sp.ministry_id
-            WHERE {where_clause} {ministry_filter}
-            GROUP BY m.id, m.name_es
+            LEFT JOIN entities e ON e.code = sp.entity_code
+            LEFT JOIN ministries m ON m.id = e.ministry_id
+            WHERE {where_clause} {entity_filter}
+            GROUP BY sp.entity_code, e.name, e.ministry_id, m.name_es
             ORDER BY total_amount DESC
         """
 
@@ -430,7 +435,7 @@ class TreasuryExportService:
                 SUM(sp.total_amount) as total_amount
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            WHERE {where_clause} {ministry_filter}
+            WHERE {where_clause} {entity_filter}
             GROUP BY sp.payment_method
             ORDER BY total_amount DESC
         """
@@ -445,7 +450,7 @@ class TreasuryExportService:
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
-            WHERE {where_clause} {ministry_filter}
+            WHERE {where_clause} {entity_filter}
             GROUP BY fs.code, fs.name_es
             ORDER BY total_amount DESC
             LIMIT 20
@@ -466,22 +471,22 @@ class TreasuryExportService:
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
-            WHERE {where_clause} {ministry_filter}
+            WHERE {where_clause} {entity_filter}
             ORDER BY sp.paid_at DESC
             LIMIT 100
         """
 
-        by_ministry = await db.fetch(summary_query, *params)
+        by_entity = await db.fetch(summary_query, *params)
         by_method = await db.fetch(method_query, *params)
         by_service = await db.fetch(service_query, *params)
         details = await db.fetch(detail_query, *params)
 
         # Calculate totals
-        total_amount = sum(float(row["total_amount"] or 0) for row in by_ministry)
-        total_count = sum(row["payment_count"] for row in by_ministry)
+        total_amount = sum(float(row["total_amount"] or 0) for row in by_entity)
+        total_count = sum(row["payment_count"] for row in by_entity)
 
         return {
-            "by_ministry": [dict(row) for row in by_ministry],
+            "by_entity": [dict(row) for row in by_entity],
             "by_method": [dict(row) for row in by_method],
             "by_service": [dict(row) for row in by_service],
             "details": [dict(row) for row in details],
@@ -568,12 +573,14 @@ class TreasuryExportService:
                 sr.workflow_code,
                 fs.name_es as service_name,
                 u.full_name as user_name,
+                e.name as entity_name,
                 m.name_es as ministry_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
-            LEFT JOIN ministries m ON m.id = sp.ministry_id
+            LEFT JOIN entities e ON e.code = sp.entity_code
+            LEFT JOIN ministries m ON m.id = e.ministry_id
             WHERE sp.created_at >= $1::date
               AND sp.created_at < $2::date + INTERVAL '1 day'
             ORDER BY sp.created_at DESC
@@ -618,12 +625,15 @@ class TreasuryExportService:
                 sr.reference as reference_dossier,
                 fs.code as code_service,
                 fs.name_es as libelle_service,
+                sp.entity_code as code_entite,
+                e.name as nom_entite,
                 m.code as code_ministere
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
-            LEFT JOIN ministries m ON m.id = sp.ministry_id
+            LEFT JOIN entities e ON e.code = sp.entity_code
+            LEFT JOIN ministries m ON m.id = e.ministry_id
             WHERE sp.workflow_status = 'completed'
               AND sp.paid_at >= $1::date
               AND sp.paid_at < $2::date + INTERVAL '1 day'
@@ -1065,10 +1075,10 @@ class TreasuryExportService:
         file_path = self.EXPORT_DIR / f"{export_id}.xlsx"
 
         with pd.ExcelWriter(str(file_path), engine="openpyxl") as writer:
-            # Summary by ministry
-            if data.get("by_ministry"):
-                df_ministry = pd.DataFrame(data["by_ministry"])
-                df_ministry.to_excel(writer, sheet_name="Por Ministerio", index=False)
+            # Summary by entity
+            if data.get("by_entity"):
+                df_entity = pd.DataFrame(data["by_entity"])
+                df_entity.to_excel(writer, sheet_name="Por Entidad", index=False)
 
             # Summary by payment method
             if data.get("by_method"):
@@ -1148,11 +1158,11 @@ class TreasuryExportService:
                 <p><strong>Total Transacciones:</strong> {total_count:,}</p>
             </div>
 
-            <h2>Recaudacion por Ministerio</h2>
+            <h2>Recaudacion por Entidad</h2>
             <table>
                 <thead>
                     <tr>
-                        <th>Ministerio</th>
+                        <th>Entidad</th>
                         <th class="amount">Transacciones</th>
                         <th class="amount">Monto Total</th>
                     </tr>
@@ -1160,12 +1170,12 @@ class TreasuryExportService:
                 <tbody>
         """
 
-        for ministry in data.get("by_ministry", []):
+        for entity in data.get("by_entity", []):
             html += f"""
                     <tr>
-                        <td>{ministry.get('ministry_name', 'N/A')}</td>
-                        <td class="amount">{ministry.get('payment_count', 0):,}</td>
-                        <td class="amount">{format_xaf(ministry.get('total_amount', 0))}</td>
+                        <td>{entity.get('entity_name', 'N/A')}</td>
+                        <td class="amount">{entity.get('payment_count', 0):,}</td>
+                        <td class="amount">{format_xaf(entity.get('total_amount', 0))}</td>
                     </tr>
             """
 

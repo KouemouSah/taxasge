@@ -192,16 +192,16 @@ export default function TreasuryStatsPage() {
     },
   };
 
-  // Prepare chart data for top ministries (Horizontal Bar Chart)
-  const ministryChartData = {
-    labels: kpiData?.byMinistry.slice(0, 8).map((m) => {
-      const name = m.ministryName || 'N/A';
+  // Prepare chart data for top entities (Horizontal Bar Chart)
+  const entityChartData = {
+    labels: kpiData?.byEntity.slice(0, 8).map((m) => {
+      const name = m.entityName || 'N/A';
       return name.length > 25 ? name.substring(0, 25) + '...' : name;
     }) || [],
     datasets: [
       {
         label: t('kpis.charts.amount'),
-        data: kpiData?.byMinistry.slice(0, 8).map((m) => m.amount) || [],
+        data: kpiData?.byEntity.slice(0, 8).map((m) => m.amount) || [],
         backgroundColor: '#8b5cf6',
         borderRadius: 4,
       },
@@ -417,16 +417,16 @@ export default function TreasuryStatsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                {t('kpis.charts.topMinistries')}
+                {t('kpis.charts.topEntities')}
               </CardTitle>
               <CardDescription>
-                {t('kpis.charts.topMinistriesDescription')}
+                {t('kpis.charts.topEntitiesDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {kpiData.byMinistry.length > 0 ? (
+              {kpiData.byEntity.length > 0 ? (
                 <div className="h-[350px]">
-                  <Bar data={ministryChartData} options={barChartOptions} />
+                  <Bar data={entityChartData} options={barChartOptions} />
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-[300px] text-muted-foreground">

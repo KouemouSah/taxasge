@@ -6397,6 +6397,8 @@
         "byPaymentMethodDescription": "Repartition des montants par methode",
         "topMinistries": "Top 10 Ministeres",
         "topMinistriesDescription": "Ministeres avec le plus d encaissements",
+        "topEntities": "Top 10 Entites",
+        "topEntitiesDescription": "Entites avec le plus d encaissements",
         "amount": "Montant",
         "count": "Nombre"
       },
