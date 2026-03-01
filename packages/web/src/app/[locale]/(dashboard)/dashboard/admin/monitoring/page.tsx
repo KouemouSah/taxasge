@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Database,
   Activity,
+  Server,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -31,6 +32,7 @@ import {
   CreditCard,
   GitBranch,
   Zap,
+  Play,
   Loader2,
   Clock,
 } from 'lucide-react'
