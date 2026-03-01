@@ -6186,28 +6186,41 @@ async def get_workload_dashboard(
     lookback_start = datetime.utcnow() - timedelta(days=days)
 
     # 7 parallel queries — each acquires its own connection from the pool.
+    # Q1/Q5/Q7 use mv_agent_daily_workload (materialized view, refreshed every 15min)
+    # Q2 uses CTE pre-aggregation (no correlated subqueries)
+    # All queries use partial indexes on (action IN approve/reject)
+
     async def q_daily_velocity():
         async with db_manager.get_connection() as conn:
             rows = await conn.fetch("""
                 SELECT
-                    pva.created_at::date as date,
-                    u.full_name as agent_name,
-                    COUNT(*) FILTER (WHERE pva.action = 'approve') as approved,
-                    COUNT(*) FILTER (WHERE pva.action = 'reject') as rejected
-                FROM payment_validation_audit pva
-                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
-                JOIN users u ON u.id = ap.user_id
-                WHERE pva.created_at >= $1
-                  AND pva.action IN ('approve', 'reject')
-                GROUP BY pva.created_at::date, u.full_name
-                ORDER BY date
+                    report_date::text as date,
+                    agent_name,
+                    approved,
+                    rejected
+                FROM mv_agent_daily_workload
+                WHERE report_date >= $1::date
+                ORDER BY report_date
             """, lookback_start)
-            return [{"date": str(r["date"]), "agent_name": r["agent_name"],
+            return [{"date": r["date"], "agent_name": r["agent_name"],
                      "approved": r["approved"], "rejected": r["rejected"]} for r in rows]
 
     async def q_agent_load():
         async with db_manager.get_connection() as conn:
             rows = await conn.fetch("""
+                WITH agent_period_stats AS (
+                    SELECT
+                        agent_profile_id,
+                        SUM(total_actions) as completed_period,
+                        COALESCE(
+                            SUM(avg_duration_seconds * total_actions)
+                            / NULLIF(SUM(total_actions), 0) / 3600.0,
+                            0
+                        ) as avg_hours
+                    FROM mv_agent_daily_workload
+                    WHERE report_date >= $1::date
+                    GROUP BY agent_profile_id
+                )
                 SELECT
                     u.full_name as agent_name,
                     COALESCE(aw.pending_declarations, 0) as pending,
@@ -6226,23 +6239,13 @@ async def get_workload_dashboard(
                             / NULLIF(COALESCE(aw.max_concurrent_assignments, 10), 0) >= 0.5 THEN 'busy'
                         ELSE 'normal'
                     END as status,
-                    COALESCE((
-                        SELECT COUNT(*) FROM payment_validation_audit pva2
-                        WHERE pva2.agent_profile_id = ap.id
-                          AND pva2.action IN ('approve','reject')
-                          AND pva2.created_at >= $1
-                    ), 0) as completed_period,
-                    COALESCE((
-                        SELECT AVG(pva2.action_duration_seconds) / 3600.0
-                        FROM payment_validation_audit pva2
-                        WHERE pva2.agent_profile_id = ap.id
-                          AND pva2.action IN ('approve','reject')
-                          AND pva2.created_at >= $1
-                    ), 0) as avg_hours
+                    COALESCE(aps.completed_period, 0)::int as completed_period,
+                    ROUND(COALESCE(aps.avg_hours, 0)::numeric, 1) as avg_hours
                 FROM agent_profiles ap
                 JOIN entities e ON e.id = ap.entity_id
                 JOIN users u ON u.id = ap.user_id
                 LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                LEFT JOIN agent_period_stats aps ON aps.agent_profile_id = ap.id
                 WHERE e.code = 'TESORO' AND ap.is_active = true
                 ORDER BY completed_period DESC
             """, lookback_start)
@@ -6322,25 +6325,23 @@ async def get_workload_dashboard(
         async with db_manager.get_connection() as conn:
             rows = await conn.fetch("""
                 SELECT
-                    u.full_name as agent_name,
-                    ROUND(MIN(pva.action_duration_seconds / 3600.0)::numeric, 2) as min_hours,
-                    ROUND(AVG(pva.action_duration_seconds / 3600.0)::numeric, 2) as avg_hours,
-                    ROUND(MAX(pva.action_duration_seconds / 3600.0)::numeric, 2) as max_hours,
-                    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP
-                        (ORDER BY pva.action_duration_seconds / 3600.0)::numeric, 2) as p50_hours,
-                    COUNT(*) as count
-                FROM payment_validation_audit pva
-                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
-                JOIN users u ON u.id = ap.user_id
-                WHERE pva.action IN ('approve', 'reject')
-                  AND pva.action_duration_seconds IS NOT NULL
-                  AND pva.created_at >= $1
-                GROUP BY u.full_name
+                    agent_name,
+                    ROUND((MIN(min_duration_seconds) / 3600.0)::numeric, 2) as min_hours,
+                    ROUND((SUM(avg_duration_seconds * total_actions)
+                        / NULLIF(SUM(total_actions), 0) / 3600.0)::numeric, 2) as avg_hours,
+                    ROUND((MAX(max_duration_seconds) / 3600.0)::numeric, 2) as max_hours,
+                    ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP
+                        (ORDER BY COALESCE(p50_duration_seconds, 0)) / 3600.0)::numeric, 2) as p50_hours,
+                    SUM(total_actions)::int as count
+                FROM mv_agent_daily_workload
+                WHERE report_date >= $1::date
+                  AND avg_duration_seconds IS NOT NULL
+                GROUP BY agent_profile_id, agent_name
                 ORDER BY avg_hours
             """, lookback_start)
-            return [{"agent_name": r["agent_name"], "min_hours": float(r["min_hours"]),
-                     "avg_hours": float(r["avg_hours"]), "max_hours": float(r["max_hours"]),
-                     "p50_hours": float(r["p50_hours"]), "count": r["count"]} for r in rows]
+            return [{"agent_name": r["agent_name"], "min_hours": float(r["min_hours"] or 0),
+                     "avg_hours": float(r["avg_hours"] or 0), "max_hours": float(r["max_hours"] or 0),
+                     "p50_hours": float(r["p50_hours"] or 0), "count": r["count"]} for r in rows]
 
     async def q_kpis():
         async with db_manager.get_connection() as conn:
@@ -6389,40 +6390,40 @@ async def get_workload_dashboard(
     async def q_rankings():
         async with db_manager.get_connection() as conn:
             rows = await conn.fetch("""
-                WITH max_validated AS (
-                    SELECT GREATEST(MAX(cnt), 1) as max_cnt
-                    FROM (
-                        SELECT COUNT(*) as cnt
-                        FROM payment_validation_audit
-                        WHERE action IN ('approve','reject')
-                          AND created_at >= $1
-                        GROUP BY agent_profile_id
-                    ) sub
+                WITH agent_totals AS (
+                    SELECT
+                        agent_profile_id,
+                        agent_name,
+                        SUM(approved) as validated,
+                        SUM(rejected) as rejected,
+                        SUM(total_actions) as total,
+                        COALESCE(
+                            SUM(avg_duration_seconds * total_actions)
+                            / NULLIF(SUM(total_actions), 0),
+                            0
+                        ) as avg_seconds
+                    FROM mv_agent_daily_workload
+                    WHERE report_date >= $1::date
+                    GROUP BY agent_profile_id, agent_name
+                ),
+                max_validated AS (
+                    SELECT GREATEST(MAX(total), 1) as max_cnt FROM agent_totals
                 )
                 SELECT
-                    u.full_name as agent_name,
-                    COUNT(*) FILTER (WHERE pva.action IN ('approve','reject')) as validated,
-                    COUNT(*) FILTER (WHERE pva.action = 'reject') as rejected,
-                    COALESCE(AVG(pva.action_duration_seconds) FILTER (
-                        WHERE pva.action IN ('approve','reject')), 0) as avg_seconds,
+                    at.agent_name,
+                    at.validated::int,
+                    at.rejected::int,
+                    at.avg_seconds,
                     ROUND((
-                        COUNT(*) FILTER (WHERE pva.action IN ('approve','reject'))
-                            * 40.0 / mv.max_cnt
-                        + (100 - LEAST(COALESCE(AVG(pva.action_duration_seconds)
-                            FILTER (WHERE pva.action IN ('approve','reject')), 0) / 36, 100)) * 0.3
-                        + CASE WHEN COUNT(*) FILTER (
-                            WHERE pva.action IN ('approve','reject')) > 0
-                            THEN COUNT(*) FILTER (WHERE pva.action = 'approve')::numeric
-                                / COUNT(*) FILTER (WHERE pva.action IN ('approve','reject')) * 30
+                        at.total * 40.0 / mv.max_cnt
+                        + (100 - LEAST(at.avg_seconds / 36, 100)) * 0.3
+                        + CASE WHEN at.total > 0
+                            THEN at.validated::numeric / at.total * 30
                             ELSE 0
                         END
                     )::numeric, 1) as score
-                FROM payment_validation_audit pva
-                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
-                JOIN users u ON u.id = ap.user_id
+                FROM agent_totals at
                 CROSS JOIN max_validated mv
-                WHERE pva.created_at >= $1
-                GROUP BY u.full_name, ap.id, mv.max_cnt
                 ORDER BY score DESC
                 LIMIT 10
             """, lookback_start)

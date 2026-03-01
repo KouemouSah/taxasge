@@ -416,7 +416,7 @@ class InternalScheduler:
             # Override statement_timeout: REFRESH can exceed 60s at 1M+ rows
             await db.execute("SET LOCAL statement_timeout = '300000'")
             refreshed = []
-            for view in ("mv_treasury_daily_kpis", "mv_reconciliation_stats"):
+            for view in ("mv_treasury_daily_kpis", "mv_reconciliation_stats", "mv_agent_daily_workload"):
                 try:
                     await db.execute(
                         f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}"

@@ -19,6 +19,7 @@
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import * as XLSX from 'xlsx';
 import {
   Card,
   CardContent,
@@ -40,6 +41,7 @@ import {
   AlertCircle,
   RotateCcw,
   Download,
+  FileSpreadsheet,
   Printer,
   ArrowUpDown,
   ArrowUp,
@@ -216,75 +218,171 @@ export default function AgentStatisticsPage() {
     return { totalValidated, totalRejected, avgApprovalRate, topPerformer };
   }, [rows, sortedRows]);
 
+  // ─── Export helpers ─────────────────────────────────────────────
+
+  const getExportData = useCallback(() => {
+    return sortedRows.map((row, idx) => ({
+      '#': idx + 1,
+      [t('agentStats.agent')]: row.name,
+      [t('agentStats.validated')]: row.validated,
+      [t('agentStats.rejected')]: row.rejected,
+      [t('agentStats.approvalRate')]: Number(row.approvalRate.toFixed(1)),
+      [`${t('agentStats.avgTime')} (h)`]: Number(row.avgHours.toFixed(1)),
+      [t('agentStats.score')]: Number(row.score.toFixed(1)),
+      [`${t('agentStats.load')} %`]: Number(row.capacityPct.toFixed(0)),
+      [t('agentStats.status')]: row.status,
+    }));
+  }, [sortedRows, t]);
+
+  const filePrefix = `agent-statistics-${days}d-${new Date().toISOString().slice(0, 10)}`;
+
   // ─── Export CSV ──────────────────────────────────────────────────
 
   const handleExportCSV = useCallback(() => {
     if (sortedRows.length === 0) return;
-    const headers = [
-      t('agentStats.agent'),
-      t('agentStats.validated'),
-      t('agentStats.rejected'),
-      t('agentStats.approvalRate'),
-      t('agentStats.avgTime'),
-      t('agentStats.load'),
-      t('agentStats.score'),
-      t('agentStats.status'),
-    ];
-    const csvRows = [headers.join(',')];
-    for (const row of sortedRows) {
-      csvRows.push([
-        `"${row.name}"`,
-        row.validated,
-        row.rejected,
-        `${row.approvalRate.toFixed(1)}%`,
-        `${row.avgHours.toFixed(1)}h`,
-        `${row.capacityPct.toFixed(0)}%`,
-        row.score.toFixed(0),
-        row.status,
-      ].join(','));
-    }
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const exportData = getExportData();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `agent-statistics-${days}d-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `${filePrefix}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-  }, [sortedRows, days, t]);
+  }, [sortedRows, getExportData, filePrefix]);
+
+  // ─── Export XLSX ─────────────────────────────────────────────────
+
+  const handleExportXLSX = useCallback(() => {
+    if (sortedRows.length === 0) return;
+    const exportData = getExportData();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Auto-width columns
+    const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+      wch: Math.max(
+        key.length,
+        ...exportData.map(row => String(row[key as keyof typeof row] ?? '').length)
+      ) + 2,
+    }));
+    ws['!cols'] = colWidths;
+
+    // Summary row at the bottom
+    if (summary) {
+      const summaryRowIdx = exportData.length + 2;
+      XLSX.utils.sheet_add_aoa(ws, [
+        [],
+        [
+          t('agentStats.totalValidated'), summary.totalValidated,
+          t('agentStats.totalRejected'), summary.totalRejected,
+          t('agentStats.avgApprovalRate'), `${summary.avgApprovalRate.toFixed(1)}%`,
+          t('agentStats.topPerformer'), summary.topPerformer,
+        ],
+      ], { origin: `A${summaryRowIdx}` });
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, t('agentStats.title').slice(0, 31));
+    XLSX.writeFile(wb, `${filePrefix}.xlsx`);
+  }, [sortedRows, getExportData, filePrefix, summary, t]);
 
   // ─── Print PDF ───────────────────────────────────────────────────
 
   const handlePrint = useCallback(() => {
-    const printContent = tableRef.current;
-    if (!printContent) return;
+    if (sortedRows.length === 0) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    printWindow.document.write(`
-      <html><head>
-        <title>${t('agentStats.printTitle')}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          h1 { font-size: 18px; margin-bottom: 4px; }
-          p { font-size: 12px; color: #666; margin-bottom: 16px; }
-          table { width: 100%; border-collapse: collapse; font-size: 13px; }
-          th, td { padding: 6px 10px; border: 1px solid #ddd; text-align: left; }
-          th { background: #f5f5f5; font-weight: 600; }
-          .right { text-align: right; }
-          .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
-          .green { background: #dcfce7; color: #166534; }
-          .yellow { background: #fef9c3; color: #854d0e; }
-          .red { background: #fee2e2; color: #991b1b; }
-          @media print { body { margin: 0; } }
-        </style>
-      </head><body>
-        <h1>${t('agentStats.printTitle')}</h1>
-        <p>${t('agentStats.description')} — ${days} ${t('agentStats.period' + days + 'd').toLowerCase()}</p>
-        ${printContent.innerHTML}
-      </body></html>
-    `);
+
+    const dateStr = new Date().toLocaleDateString();
+    const periodLabel = t(`agentStats.period${days}d`);
+
+    // Build clean table rows from data (not innerHTML copy)
+    const tableRows = sortedRows.map((row, idx) => {
+      const rateColor = row.approvalRate >= 80 ? '#166534' : row.approvalRate >= 60 ? '#854d0e' : '#991b1b';
+      const scoreColor = row.score >= 70 ? '#166534' : row.score >= 50 ? '#854d0e' : '#991b1b';
+      const scoreBg = row.score >= 70 ? '#dcfce7' : row.score >= 50 ? '#f5f5f5' : '#fee2e2';
+      const anomalyStr = row.anomalies.length > 0 ? row.anomalies.map(a => {
+        if (a === 'high') return '▲';
+        if (a === 'low') return '▼';
+        if (a === 'slaLow') return '⚠';
+        if (a === 'overloaded') return '●';
+        return '';
+      }).join(' ') : '';
+
+      return `<tr${row.anomalies.length > 0 ? ' style="background:#fffbeb"' : ''}>
+        <td style="text-align:center;color:#888">${idx + 1}</td>
+        <td><b>${row.name}</b></td>
+        <td style="text-align:right;color:#166534">${row.validated}</td>
+        <td style="text-align:right;color:#991b1b">${row.rejected}</td>
+        <td style="text-align:right;color:${rateColor}">${row.approvalRate.toFixed(1)}%</td>
+        <td style="text-align:right">${row.avgHours.toFixed(1)}h</td>
+        <td style="text-align:center"><span style="background:${scoreBg};color:${scoreColor};padding:2px 8px;border-radius:4px;font-weight:600">${row.score.toFixed(0)}</span></td>
+        <td style="text-align:right">${row.capacityPct.toFixed(0)}%</td>
+        <td>${row.status}</td>
+        <td style="text-align:center">${anomalyStr}</td>
+      </tr>`;
+    }).join('');
+
+    const summaryHtml = summary ? `
+      <div style="display:flex;gap:24px;margin-bottom:16px;font-size:13px">
+        <div><b>${t('agentStats.totalValidated')}:</b> ${summary.totalValidated}</div>
+        <div><b>${t('agentStats.totalRejected')}:</b> ${summary.totalRejected}</div>
+        <div><b>${t('agentStats.avgApprovalRate')}:</b> ${summary.avgApprovalRate.toFixed(1)}%</div>
+        <div><b>${t('agentStats.topPerformer')}:</b> ${summary.topPerformer}</div>
+      </div>
+    ` : '';
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html><head>
+  <title>${t('agentStats.printTitle')}</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 24px; color: #1a1a1a; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; }
+    .header h1 { font-size: 20px; margin: 0; }
+    .header p { font-size: 12px; color: #666; margin: 4px 0 0; }
+    .meta { font-size: 11px; color: #888; text-align: right; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    th { background: #f0f0f0; font-weight: 600; padding: 8px 10px; border: 1px solid #ddd; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; }
+    td { padding: 6px 10px; border: 1px solid #ddd; }
+    .footer { margin-top: 20px; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 8px; display: flex; justify-content: space-between; }
+    @media print { body { margin: 12px; } @page { margin: 1cm; } }
+  </style>
+</head><body>
+  <div class="header">
+    <div>
+      <h1>${t('agentStats.printTitle')}</h1>
+      <p>${t('agentStats.description')}</p>
+    </div>
+    <div class="meta">
+      <div>${dateStr}</div>
+      <div>${periodLabel}</div>
+    </div>
+  </div>
+  ${summaryHtml}
+  <table>
+    <thead><tr>
+      <th style="text-align:center;width:30px">#</th>
+      <th>${t('agentStats.agent')}</th>
+      <th style="text-align:right">${t('agentStats.validated')}</th>
+      <th style="text-align:right">${t('agentStats.rejected')}</th>
+      <th style="text-align:right">${t('agentStats.approvalRate')}</th>
+      <th style="text-align:right">${t('agentStats.avgTime')}</th>
+      <th style="text-align:center">${t('agentStats.score')}</th>
+      <th style="text-align:right">${t('agentStats.load')}</th>
+      <th>${t('agentStats.status')}</th>
+      <th style="text-align:center;width:30px"></th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">
+    <span>TaxasGE — ${t('agentStats.printTitle')}</span>
+    <span>${dateStr} | ${periodLabel} | ${sortedRows.length} agents</span>
+  </div>
+</body></html>`);
     printWindow.document.close();
-    printWindow.print();
-  }, [days, t]);
+    setTimeout(() => printWindow.print(), 250);
+  }, [sortedRows, days, summary, t]);
 
   // ─── Sort header helper ──────────────────────────────────────────
 
@@ -383,7 +481,17 @@ export default function AgentStatisticsPage() {
             disabled={!data || sortedRows.length === 0}
           >
             <Download className="h-3 w-3" />
-            {t('agentStats.exportCsv')}
+            CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportXLSX}
+            className="h-7 gap-1.5 text-xs"
+            disabled={!data || sortedRows.length === 0}
+          >
+            <FileSpreadsheet className="h-3 w-3" />
+            XLSX
           </Button>
           <Button
             variant="outline"
@@ -393,7 +501,7 @@ export default function AgentStatisticsPage() {
             disabled={!data || sortedRows.length === 0}
           >
             <Printer className="h-3 w-3" />
-            {t('agentStats.printPdf')}
+            PDF
           </Button>
           <Button variant="outline" size="sm" onClick={handleRetry} className="h-7 gap-1.5" disabled={isLoading}>
             <RotateCcw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
