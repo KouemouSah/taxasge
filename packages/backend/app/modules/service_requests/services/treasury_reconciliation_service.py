@@ -174,23 +174,13 @@ async def auto_match(
         best = suggestion["candidates"][0]
 
         try:
-            # Atomic reconciliation
-            async with db.transaction():
-                # Update bank transaction
-                await db.execute("""
-                    UPDATE bank_transactions
-                    SET payment_id = $1, status = 'reconciled',
-                        reconciled_at = NOW(), reconciled_by = $2
-                    WHERE id = $3 AND payment_id IS NULL
-                """, best["paymentId"], agent_user_id, suggestion["transactionId"])
-
-                # Audit log
-                await db.execute("""
-                    INSERT INTO payment_validation_audit
-                        (payment_id, agent_user_id, action, notes, created_at)
-                    VALUES ($1, $2, 'reconcile', $3, NOW())
-                """, best["paymentId"], agent_user_id,
-                    f"Auto-reconciled (score={best['score']}, reasons={','.join(best['reasons'])})")
+            # Reconcile: update bank_transactions (audit trail via reconciled_at/reconciled_by)
+            await db.execute("""
+                UPDATE bank_transactions
+                SET payment_id = $1, status = 'reconciled',
+                    reconciled_at = NOW(), reconciled_by = $2
+                WHERE id = $3 AND payment_id IS NULL
+            """, best["paymentId"], agent_user_id, suggestion["transactionId"])
 
             matched.append({
                 "transactionId": suggestion["transactionId"],

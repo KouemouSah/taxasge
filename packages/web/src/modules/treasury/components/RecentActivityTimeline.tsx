@@ -33,6 +33,7 @@ function getActionLabel(action: string): string {
 function formatRelativeTime(dateStr: string | null): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.round(diffMs / 60000);

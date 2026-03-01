@@ -21,12 +21,6 @@ function getStatusColor(status: string): string {
   }
 }
 
-function getCapacityColor(pct: number): string {
-  if (pct >= 80) return 'bg-red-500';
-  if (pct >= 60) return 'bg-yellow-500';
-  return 'bg-green-500';
-}
-
 function getStatusLabel(status: string): string {
   switch (status) {
     case 'available': return 'Disponible';
@@ -80,7 +74,7 @@ export function AgentWorkloadPanel({ agents }: AgentWorkloadPanelProps) {
               <div className="flex items-center gap-2">
                 <Progress
                   value={Math.min(agent.capacityPct, 100)}
-                  className={`h-1.5 flex-1 [&>div]:${getCapacityColor(agent.capacityPct)}`}
+                  className={`h-1.5 flex-1 ${agent.capacityPct >= 80 ? '[&>div]:bg-red-500' : agent.capacityPct >= 60 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'}`}
                 />
                 <span className="text-xs text-muted-foreground w-10 text-right">
                   {agent.capacityPct}%
