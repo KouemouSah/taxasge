@@ -1,8 +1,8 @@
 /**
- * Treasury Dashboard Overview — Single-viewport layout
+ * Treasury Supervisor Dashboard — Single-viewport layout
  *
- * - Agents: Compact stats + quick actions + widgets
- * - Supervisors: Stats + alert banner + charts + panels + quick actions
+ * This page is supervisor-only (agents use generic entity dashboard at /agent/tesoro).
+ * Always shows: Stats + SLA alert banner + charts + panels + quick actions.
  */
 
 'use client';
@@ -24,7 +24,6 @@ import {
   AlertCircle,
   TrendingUp,
   AlertTriangle,
-  RefreshCw,
   RotateCcw,
 } from 'lucide-react';
 import { useTreasuryStats, useSupervisorOverview } from '@/modules/treasury/hooks';
@@ -36,13 +35,8 @@ import {
   RecentActivityTimeline,
 } from '@/modules/treasury/components';
 import { useMenuConfig } from '@/modules/agent-dashboard/hooks/useMenuConfig';
-import { DynamicDashboard } from '@/modules/agent-dashboard/components/DynamicDashboard';
-import { renderWidget } from '@/modules/agent-dashboard/components/widgets/WidgetRegistry';
 import { getIconComponent } from '@/modules/agent-dashboard/utils/menu-helpers';
-import type { EntityCode } from '@/modules/agent-dashboard/types';
 import type { DynamicMenuItem, SubMenuItem } from '@/modules/agent-dashboard/types/menu-config';
-
-const TREASURY_ENTITY_CODE: EntityCode = 'TESORO';
 
 export default function TreasuryDashboardPage() {
   const t = useTranslations('treasury');
@@ -50,7 +44,7 @@ export default function TreasuryDashboardPage() {
   const locale = useLocale();
   const queryClient = useQueryClient();
   const { data: stats, isLoading, error } = useTreasuryStats();
-  const { menuConfig, dashboardConfig, isLoading: menuLoading } = useMenuConfig();
+  const { menuConfig, isLoading: menuLoading } = useMenuConfig();
 
   const [overviewDays, setOverviewDays] = useState(30);
   const {
@@ -58,9 +52,6 @@ export default function TreasuryDashboardPage() {
     isLoading: overviewLoading,
     error: overviewError,
   } = useSupervisorOverview(overviewDays);
-
-  // F1: Wait for loading to finish before deciding supervisor status
-  const isSupervisor = !overviewLoading && !!overview && !overviewError;
 
   const formatCurrency = useCallback((amount: number) => {
     const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
@@ -76,7 +67,7 @@ export default function TreasuryDashboardPage() {
     if (!menuConfig?.menus) return [];
     const actions: (DynamicMenuItem | SubMenuItem)[] = [];
     for (const menu of menuConfig.menus) {
-      if (menu.id === 'dashboard' || menu.id === 'settings') continue;
+      if (menu.id === 'dashboard' || menu.id === 'settings' || menu.id === 'treasury_overview') continue;
       if (menu.items?.length) {
         for (const item of menu.items.slice(0, 2)) {
           actions.push(item);
@@ -93,7 +84,7 @@ export default function TreasuryDashboardPage() {
     (a: { slaStatus: string }) => a.slaStatus === 'breached'
   ).length ?? 0;
 
-  // F8: Retry handler
+  // Retry handler
   const handleRetry = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['treasury-stats'] });
     queryClient.invalidateQueries({ queryKey: ['treasury-supervisor-overview'] });
@@ -108,15 +99,13 @@ export default function TreasuryDashboardPage() {
             <h1 className="text-2xl font-bold tracking-tight">{t('pageTitle')}</h1>
             <p className="text-sm text-muted-foreground">{t('dashboardDescription')}</p>
           </div>
-          {isSupervisor && (
-            <div className="flex items-center gap-1.5 bg-primary/10 rounded-full px-3 py-1">
-              <TrendingUp className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-medium text-primary">{t('overview.supervisor')}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 bg-primary/10 rounded-full px-3 py-1">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-medium text-primary">{t('overview.supervisor')}</span>
+          </div>
         </div>
 
-        {/* F7: Compact inline stats — flex-wrap for smaller screens */}
+        {/* Compact inline stats */}
         <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
           <StatCell
             icon={<Clock className="h-4 w-4 text-orange-500" />}
@@ -137,25 +126,17 @@ export default function TreasuryDashboardPage() {
             isLoading={isLoading}
           />
           <StatCell
-            icon={
-              isSupervisor
-                ? <AlertCircle className="h-4 w-4 text-orange-500" />
-                : <RefreshCw className="h-4 w-4 text-muted-foreground" />
-            }
-            value={
-              isSupervisor
-                ? overview?.slaAlertsCount ?? 0
-                : stats?.unreconciledCount ?? 0
-            }
-            label={isSupervisor ? t('overview.slaAlerts') : t('stats.unreconciled')}
+            icon={<AlertCircle className="h-4 w-4 text-orange-500" />}
+            value={overview?.slaAlertsCount ?? 0}
+            label={t('overview.slaAlerts')}
             isLoading={isLoading || overviewLoading}
-            highlight={isSupervisor && (overview?.slaAlertsCount ?? 0) > 0}
+            highlight={(overview?.slaAlertsCount ?? 0) > 0}
           />
         </div>
       </div>
 
-      {/* F8: Error State with retry button */}
-      {error && (
+      {/* Error State with retry button */}
+      {(error || overviewError) && (
         <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
@@ -168,8 +149,8 @@ export default function TreasuryDashboardPage() {
         </div>
       )}
 
-      {/* Conditional Alert Banner */}
-      {isSupervisor && breachedCount > 0 && (
+      {/* SLA Alert Banner */}
+      {breachedCount > 0 && (
         <div className="flex items-center gap-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg" role="alert">
           <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
           <span className="text-sm font-medium text-amber-800">
@@ -178,8 +159,8 @@ export default function TreasuryDashboardPage() {
         </div>
       )}
 
-      {/* Supervisor sections */}
-      {isSupervisor && overview && (
+      {/* Charts + Panels */}
+      {overview ? (
         <>
           {/* Row 2: Charts — 2/3 + 1/3 */}
           <div className="grid gap-3 lg:grid-cols-3">
@@ -203,10 +184,7 @@ export default function TreasuryDashboardPage() {
             <RecentActivityTimeline activities={overview.recentActivity} t={t} />
           </div>
         </>
-      )}
-
-      {/* Supervisor loading skeleton */}
-      {overviewLoading && !overview && (
+      ) : overviewLoading ? (
         <div className="space-y-3">
           <div className="grid gap-3 lg:grid-cols-3">
             <Skeleton className="h-[230px] lg:col-span-2" />
@@ -218,48 +196,36 @@ export default function TreasuryDashboardPage() {
             <Skeleton className="h-[200px]" />
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Quick Actions (inline buttons) + Widgets */}
-      <div className="flex items-start gap-3">
-        {menuLoading ? (
-          <div className="flex items-center justify-center py-4 flex-1">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : quickActions.length > 0 ? (
-          <Card className="flex-1">
-            <CardContent className="py-3 px-4">
-              <div className="flex flex-wrap gap-2">
-                {quickActions.map((action) => {
-                  const ActionIcon = getIconComponent(action.icon);
-                  const href = action.href || '#';
-                  const titleKey = action.titleKey;
+      {/* Quick Actions (inline buttons) */}
+      {menuLoading ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : quickActions.length > 0 ? (
+        <Card>
+          <CardContent className="py-3 px-4">
+            <div className="flex flex-wrap gap-2">
+              {quickActions.map((action) => {
+                const ActionIcon = getIconComponent(action.icon);
+                const href = action.href || '#';
+                const titleKey = action.titleKey;
 
-                  return (
-                    <Link key={action.id} href={href}>
-                      <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                        <ActionIcon className="h-3.5 w-3.5" />
-                        {tMenu.has(titleKey) ? tMenu(titleKey) : titleKey}
-                        <ArrowRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </Link>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
-
-      {/* Widgets (from dashboard_config — dynamic) */}
-      {dashboardConfig && dashboardConfig.widgets?.length > 0 && (
-        <DynamicDashboard
-          config={dashboardConfig}
-          renderWidget={(widget) =>
-            renderWidget(widget.id, TREASURY_ENTITY_CODE, widget)
-          }
-        />
-      )}
+                return (
+                  <Link key={action.id} href={href}>
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                      <ActionIcon className="h-3.5 w-3.5" />
+                      {tMenu.has(titleKey) ? tMenu(titleKey) : titleKey}
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

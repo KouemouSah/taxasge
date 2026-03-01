@@ -1,358 +1,310 @@
 'use client';
 
 /**
- * Supervisor Dashboard - Main Page
- * Overview of team, escalations, assignments, and performance metrics
+ * Enhanced Supervisor Dashboard — Single-viewport layout
  *
- * @route /[locale]/dashboard/supervisor
- * @date 2026-01-19
+ * Combines team overview (stats, quick actions, anomalies)
+ * with treasury analytics (charts, panels, badges) in one page.
+ *
+ * Layout (~600px total):
+ *   Row 1: Header + 6 compact stat cells (team + treasury)
+ *   Row 2: Alert banners (anomalies + SLA, conditional)
+ *   Row 3: Quick action buttons (compact inline)
+ *   Row 4: CashFlowChart (2/3) + ServiceDistribution (1/3)
+ *   Row 5: AgentWorkload + SLAAlerts + RecentActivity (1/3 each)
  */
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback, useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Loader2,
-  AlertCircle,
   Users,
   AlertTriangle,
-  TrendingUp,
   CheckCircle,
   Clock,
+  CreditCard,
   ArrowRight,
-  Settings2,
+  AlertCircle,
+  RotateCcw,
   BarChart2,
+  Settings2,
   FileBarChart,
+  RefreshCw,
 } from 'lucide-react';
 import apiClient from '@/core/api/client';
+import { useTreasuryStats, useSupervisorOverview } from '@/modules/treasury/hooks';
+import {
+  CashFlowChart,
+  AgentWorkloadPanel,
+  SLAAlertsPanel,
+  ServiceDistributionChart,
+  RecentActivityTimeline,
+} from '@/modules/treasury/components';
 import type { SupervisorDashboardStats, AnomalyResponse } from './types';
 
 export default function SupervisorDashboardPage() {
-  const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('supervisor');
+  const tTreasury = useTranslations('treasury');
   const tCommon = useTranslations('common');
+  const queryClient = useQueryClient();
 
-  // Fetch supervisor dashboard stats
-  const { data: stats, isLoading, isError, error } = useQuery<SupervisorDashboardStats>({
+  // Supervisor team stats
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = useQuery<SupervisorDashboardStats>({
     queryKey: ['supervisor', 'dashboard', 'stats'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/dashboard');
       return response.data;
     },
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // Refresh every minute
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 
-  // Fetch anomaly alerts
+  // Anomaly alerts
   const { data: anomalies } = useQuery<AnomalyResponse>({
     queryKey: ['supervisor', 'anomalies'],
     queryFn: async () => {
       const response = await apiClient.get('/supervisor/anomalies');
       return response.data;
     },
-    staleTime: 300000, // 5 minutes
+    staleTime: 300000,
   });
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">{tCommon('loading')}</p>
-        </div>
-      </div>
-    );
-  }
+  // Treasury stats (badges: monto hoy, sin reconciliar)
+  const { data: treasuryStats, isLoading: treasuryLoading } = useTreasuryStats();
 
-  // Error state
-  if (isError) {
-    return (
-      <div className="space-y-6">
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              {tCommon('error')}
-            </CardTitle>
-            <CardDescription>
-              {(error as Error)?.message || tCommon('errorGeneric')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={() => router.refresh()}>
-              {tCommon('retry')}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Treasury supervisor overview (charts + panels)
+  const [overviewDays, setOverviewDays] = useState(30);
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    error: overviewError,
+  } = useSupervisorOverview(overviewDays);
+
+  const isLoading = statsLoading || treasuryLoading;
+
+  const formatCurrency = useCallback((amount: number) => {
+    const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
+    return new Intl.NumberFormat(intlLocale, {
+      style: 'currency',
+      currency: 'XAF',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  }, [locale]);
+
+  // SLA breached count
+  const breachedCount = overview?.slaAlerts?.filter(
+    (a: { slaStatus: string }) => a.slaStatus === 'breached'
+  ).length ?? 0;
+
+  // Retry handler
+  const handleRetry = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['supervisor', 'dashboard', 'stats'] });
+    queryClient.invalidateQueries({ queryKey: ['treasury-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['treasury-supervisor-overview'] });
+  }, [queryClient]);
+
+  // Quick actions from supervisor menu structure
+  const quickActions = useMemo(() => [
+    { id: 'team', icon: Users, label: t('nav.team'), description: t('team.title'), href: `/${locale}/dashboard/supervisor/team/agents`, color: 'text-blue-500' },
+    { id: 'workload', icon: BarChart2, label: t('nav.workload'), description: t('workload.title'), href: `/${locale}/dashboard/supervisor/team/workload`, color: 'text-purple-500' },
+    { id: 'rules', icon: Settings2, label: t('nav.rules'), description: t('rules.title'), href: `/${locale}/dashboard/supervisor/assignments/rules`, color: 'text-gray-500' },
+    { id: 'escalations', icon: AlertTriangle, label: t('nav.escalations'), href: `/${locale}/dashboard/supervisor/escalations/pending`, color: 'text-orange-500', badge: stats?.escalations.pending },
+    { id: 'reports', icon: FileBarChart, label: t('nav.reports'), href: `/${locale}/dashboard/supervisor/reports`, color: 'text-teal-500' },
+  ], [t, locale, stats?.escalations.pending]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">{t('dashboard.title')}</h1>
-        <p className="text-muted-foreground mt-1">{t('dashboard.welcome', { name: '' })}</p>
+    <div className="space-y-3">
+      {/* Row 1: Header + 6 Compact Stats */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t('dashboard.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('dashboard.welcome', { name: '' })}</p>
+        </div>
+
+        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+          {/* Team stats */}
+          <StatCell
+            icon={<Users className="h-4 w-4 text-blue-500" />}
+            value={`${stats?.team.activeAgents ?? 0}/${stats?.team.totalAgents ?? 0}`}
+            label={t('team.activeAgents')}
+            isLoading={isLoading}
+          />
+          <StatCell
+            icon={<Clock className="h-4 w-4 text-orange-500" />}
+            value={stats?.escalations.pending ?? 0}
+            label={t('escalations.pending')}
+            isLoading={isLoading}
+            highlight={(stats?.escalations.pending ?? 0) > 0}
+          />
+          <StatCell
+            icon={<CheckCircle className="h-4 w-4 text-green-500" />}
+            value={stats?.assignments.completedToday ?? 0}
+            label={t('stats.teamCompleted')}
+            isLoading={isLoading}
+          />
+          {/* Treasury stats */}
+          <StatCell
+            icon={<CreditCard className="h-4 w-4 text-blue-500" />}
+            value={formatCurrency(treasuryStats?.todayValidatedAmount ?? 0)}
+            label={tTreasury('stats.todayAmount')}
+            isLoading={isLoading}
+          />
+          <StatCell
+            icon={<AlertCircle className="h-4 w-4 text-orange-500" />}
+            value={overview?.slaAlertsCount ?? 0}
+            label={tTreasury('overview.slaAlerts')}
+            isLoading={isLoading || overviewLoading}
+            highlight={(overview?.slaAlertsCount ?? 0) > 0}
+          />
+          <StatCell
+            icon={<RefreshCw className="h-4 w-4 text-muted-foreground" />}
+            value={treasuryStats?.unreconciledCount ?? 0}
+            label={tTreasury('stats.unreconciled')}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Active Agents */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('team.activeAgents')}</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.team.activeAgents || 0} / {stats?.team.totalAgents || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('team.utilizationRate')}: {stats?.team.utilizationRate || 0}%
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Pending Escalations */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('escalations.pending')}</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold flex items-center gap-2">
-              {stats?.escalations.pending || 0}
-              {(stats?.escalations.pending || 0) > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  {tCommon('attention')}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t('escalations.resolved')}: {stats?.escalations.resolvedToday || 0} {tCommon('today')}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Pending Assignments */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.teamPending')}</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.assignments.pending || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              {t('stats.teamInProgress')}: {stats?.assignments.inProgress || 0}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Completed Today */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.teamCompleted')}</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.assignments.completedToday || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              SLA: {stats?.performance.slaCompliance || 0}%
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Anomaly Alerts */}
-      {anomalies && anomalies.count > 0 && (
-        <Card className="border-orange-300 bg-orange-50 dark:bg-orange-950/20">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              {t('anomalies.title', { defaultValue: 'Alertas del Sistema' })} ({anomalies.count})
-            </CardTitle>
-            <CardDescription>
-              {t('anomalies.detectedAt', {
-                defaultValue: 'Detected: {date}',
-                date: anomalies.detected_at
-                  ? new Date(anomalies.detected_at).toLocaleString()
-                  : '-',
-              })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {anomalies.anomalies.map((a, i) => (
-              <div key={i} className="flex items-center gap-2 py-1">
-                <Badge variant={a.severity === 'critical' ? 'destructive' : 'secondary'}>
-                  {a.type}
-                </Badge>
-                <span className="text-sm">{a.message}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+      {/* Error State */}
+      {(statsError || overviewError) && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <p className="text-sm text-red-700">{tCommon('errorGeneric')}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRetry} className="h-7 gap-1.5">
+            <RotateCcw className="h-3 w-3" />
+            {tTreasury('overview.retry')}
+          </Button>
+        </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {/* Team Management */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-500" />
-              {t('nav.team')}
-            </CardTitle>
-            <CardDescription>{t('team.title')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/supervisor/team/agents`}>
-              <Button className="w-full">
-                {t('nav.agents')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Workload */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart2 className="h-5 w-5 text-purple-500" />
-              {t('nav.workload')}
-            </CardTitle>
-            <CardDescription>{t('workload.title')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/supervisor/team/workload`}>
-              <Button variant="outline" className="w-full">
-                {t('workload.title')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Assignment Rules */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-gray-500" />
-              {t('nav.rules')}
-            </CardTitle>
-            <CardDescription>{t('rules.title')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/supervisor/assignments/rules`}>
-              <Button variant="outline" className="w-full">
-                {t('rules.title')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Escalations */}
-        <Card className="hover:shadow-md transition-shadow border-orange-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              {t('nav.escalations')}
-              {(stats?.escalations.pending || 0) > 0 && (
-                <Badge variant="destructive">{stats?.escalations.pending}</Badge>
-              )}
-            </CardTitle>
-            <CardDescription>{t('escalations.title')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/supervisor/escalations/pending`}>
-              <Button variant="default" className="w-full bg-orange-500 hover:bg-orange-600">
-                {t('nav.pendingEscalations')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href={`/${locale}/dashboard/supervisor/escalations/resolved`}>
-              <Button variant="ghost" size="sm" className="w-full mt-2">
-                {t('nav.resolvedEscalations')}
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* Reports */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileBarChart className="h-5 w-5 text-teal-500" />
-              {t('nav.reports')}
-            </CardTitle>
-            <CardDescription>{t('reports.description', { defaultValue: 'Informes y métricas' })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href={`/${locale}/dashboard/supervisor/reports`}>
-              <Button variant="outline" className="w-full">
-                {t('nav.reports')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            {t('nav.performance')}
-          </CardTitle>
-          <CardDescription>{t('stats.performanceScore')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600">
-                {stats?.performance.avgResponseTime || 0}h
-              </p>
-              <p className="text-sm text-muted-foreground">{t('stats.avgResponseTime')}</p>
-            </div>
-            <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <p className="text-2xl font-bold text-green-600">
-                {stats?.performance.slaCompliance || 0}%
-              </p>
-              <p className="text-sm text-muted-foreground">{t('stats.slaCompliance', { defaultValue: 'SLA Compliance' })}</p>
-            </div>
-            <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <p className="text-2xl font-bold text-purple-600">
-                {stats?.performance.qualityScore || 0}/100
-              </p>
-              <p className="text-sm text-muted-foreground">{t('stats.performanceScore')}</p>
-            </div>
+      {/* Alert Banners (anomalies + SLA) */}
+      {anomalies && anomalies.count > 0 && (
+        <div className="flex items-center gap-3 p-2.5 bg-orange-50 border border-orange-200 rounded-lg" role="alert">
+          <AlertTriangle className="h-4 w-4 text-orange-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-orange-800">
+            {t('anomalies.title', { defaultValue: 'Alertas del Sistema' })} ({anomalies.count})
+          </span>
+          <div className="flex gap-1 ml-2">
+            {anomalies.anomalies.slice(0, 3).map((a, i) => (
+              <Badge key={i} variant={a.severity === 'critical' ? 'destructive' : 'secondary'} className="text-xs">
+                {a.type}
+              </Badge>
+            ))}
           </div>
-          <div className="mt-4 flex justify-center">
-            <Link href={`/${locale}/dashboard/supervisor/team/performance`}>
-              <Button variant="outline">
-                {t('nav.performance')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+        </div>
+      )}
+      {breachedCount > 0 && (
+        <div className="flex items-center gap-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg" role="alert">
+          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-amber-800">
+            {tTreasury('overview.breachedCount', { count: breachedCount })} — {tTreasury('overview.slaAtRisk')}
+          </span>
+        </div>
+      )}
+
+      {/* Row 3: Quick Actions (compact inline buttons) */}
+      <Card>
+        <CardContent className="py-3 px-4">
+          <div className="flex flex-wrap gap-2">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link key={action.id} href={action.href}>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                    <Icon className={`h-3.5 w-3.5 ${action.color}`} />
+                    {action.label}
+                    {action.badge != null && action.badge > 0 && (
+                      <Badge variant="destructive" className="h-4 px-1 text-[10px] ml-0.5">
+                        {action.badge}
+                      </Badge>
+                    )}
+                    <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </Link>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
+
+      {/* Row 4-5: Treasury Charts + Panels */}
+      {overview ? (
+        <>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <CashFlowChart
+                data={overview.paymentFlow}
+                periodDays={overviewDays}
+                onPeriodChange={setOverviewDays}
+                t={tTreasury}
+              />
+            </div>
+            <div>
+              <ServiceDistributionChart data={overview.topServices} t={tTreasury} />
+            </div>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <AgentWorkloadPanel agents={overview.agentLoad} t={tTreasury} />
+            <SLAAlertsPanel alerts={overview.slaAlerts} t={tTreasury} />
+            <RecentActivityTimeline activities={overview.recentActivity} t={tTreasury} />
+          </div>
+        </>
+      ) : overviewLoading ? (
+        <div className="space-y-3">
+          <div className="grid gap-3 lg:grid-cols-3">
+            <Skeleton className="h-[230px] lg:col-span-2" />
+            <Skeleton className="h-[230px]" />
+          </div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <Skeleton className="h-[200px]" />
+            <Skeleton className="h-[200px]" />
+            <Skeleton className="h-[200px]" />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Compact stat cell for inline display */
+function StatCell({
+  icon,
+  value,
+  label,
+  isLoading,
+  highlight,
+}: {
+  icon: React.ReactNode;
+  value: number | string;
+  label: string;
+  isLoading: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+      {icon}
+      <div>
+        {isLoading ? (
+          <Skeleton className="h-5 w-12" />
+        ) : (
+          <p className={`text-lg font-bold leading-tight ${highlight ? 'text-orange-600' : ''}`}>
+            {value}
+          </p>
+        )}
+        <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{label}</p>
+      </div>
     </div>
   );
 }

@@ -285,10 +285,18 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     }));
   }, [menuConfigData?.menu_config?.menus, locale]);
 
-  // Derive base path from entity code (dynamic, no static config dependency)
+  // Derive base path from menu_config dashboard href (role-aware)
+  // Priority: 1) ministry agent → /ministry  2) menu_config dashboard href  3) entity code fallback
   const getBasePath = (): string => {
     if (isMinistryAgent) {
       return `/${locale}/dashboard/agent/ministry`;
+    }
+    // Use the role's menu_config dashboard href (isLoading waits for menuConfigLoading)
+    const dashboardMenu = menuConfigData?.menu_config?.menus?.find(
+      (m: { id: string }) => m.id === 'dashboard'
+    );
+    if (dashboardMenu?.href) {
+      return `/${locale}${dashboardMenu.href}`;
     }
     if (!entityCode) return `/${locale}/dashboard/agent`;
     const entityPath = entityCode.toLowerCase().replace(/_/g, '-');
@@ -324,12 +332,9 @@ export function useAgentEntityRedirect(): {
   redirectUrl: string | null;
   entityCode: EntityCode | null;
 } {
-  const locale = useLocale();
-  const { isLoading, entityCode } = useAgentDashboard();
+  const { isLoading, entityCode, getBasePath } = useAgentDashboard();
 
-  const redirectUrl = entityCode
-    ? `/${locale}/dashboard/agent/${entityCode.toLowerCase().replace(/_/g, '-')}`
-    : null;
+  const redirectUrl = entityCode ? getBasePath() : null;
 
   return {
     isLoading,
