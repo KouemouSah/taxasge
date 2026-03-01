@@ -23,7 +23,6 @@ import {
   RefreshCw,
   Database,
   Activity,
-  Server,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -32,7 +31,6 @@ import {
   CreditCard,
   GitBranch,
   Zap,
-  Play,
   Loader2,
   Clock,
 } from 'lucide-react'
@@ -53,7 +51,6 @@ import { useToast } from '@/hooks/use-toast'
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 // ---------- helpers ----------
-const formatNumber = (n: number) => n.toLocaleString()
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat('es-GQ', { style: 'decimal', maximumFractionDigits: 0 }).format(n)
 
