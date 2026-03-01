@@ -2017,7 +2017,8 @@
       "menuTemplates": "Modèles de Menu",
       "workflowMappings": "Mappages Workflow",
       "displayConfig": "Configuration des Colonnes",
-      "roleMenuConfig": "Menus par Rôle"
+      "roleMenuConfig": "Menus par Rôle",
+      "monitoring": "Monitoring BD"
     },
     "noResults": "Aucun résultat trouvé",
     "pageSubtitle": "Vue d'ensemble du système et des activités",

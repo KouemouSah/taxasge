@@ -52,6 +52,7 @@ import {
   Cog,
   LayoutList,
   Link2,
+  Activity,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -279,6 +280,11 @@ export default function AdminSidebar() {
               title: t('nav.settings'),
               href: `/${locale}/dashboard/admin/settings`,
               icon: Settings,
+            },
+            {
+              title: t('nav.monitoring'),
+              href: `/${locale}/dashboard/admin/monitoring`,
+              icon: Activity,
             },
           ],
         },

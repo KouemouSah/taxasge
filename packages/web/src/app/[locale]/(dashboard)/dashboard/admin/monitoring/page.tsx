@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useTranslations } from 'next-intl'
 import {
   Card,
   CardContent,
@@ -37,7 +36,6 @@ import type {
 } from '@/modules/admin/services/monitoringApi'
 
 export default function MonitoringPage() {
-  const t = useTranslations('admin')
   const [activeTab, setActiveTab] = useState('slow-queries')
 
   const {
