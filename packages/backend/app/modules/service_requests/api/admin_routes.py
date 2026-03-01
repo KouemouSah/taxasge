@@ -3653,7 +3653,7 @@ async def validate_payment(
 
     # Get payment with workflow status
     payment = await db.fetchrow(
-        "SELECT id, service_request_id, workflow_status FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, service_request_id, workflow_status, sla_target_date FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
@@ -3731,6 +3731,22 @@ async def validate_payment(
         _workload_repo = WorkloadRepository()
         await _workload_repo.increment_processed(db, str(agent_profile_id))
         await _workload_repo.increment_approved(db, str(agent_profile_id))
+
+        # Track SLA compliance (was payment validated within SLA target?)
+        sla_respected = (
+            payment.get("sla_target_date") is None
+            or datetime.utcnow() <= payment["sla_target_date"].replace(tzinfo=None)
+        )
+        await _workload_repo.update_sla_stats(db, str(agent_profile_id), sla_respected)
+
+        # Decrement agent workload cache
+        await db.execute("""
+            UPDATE agent_workloads
+            SET current_assignments = GREATEST(current_assignments - 1, 0),
+                last_completion_at = NOW(),
+                last_updated_at = NOW()
+            WHERE agent_profile_id = $1::uuid
+        """, str(agent_profile_id))
 
         # INSERT into assignment outbox (guaranteed delivery for entity agent assignment)
         # No try/except: if enqueue fails, the entire transaction rolls back.
@@ -3925,7 +3941,7 @@ async def reject_payment(
 
     # Get payment with workflow status
     payment = await db.fetchrow(
-        "SELECT id, workflow_status FROM service_payments WHERE id = $1::uuid",
+        "SELECT id, workflow_status, sla_target_date FROM service_payments WHERE id = $1::uuid",
         payment_id
     )
 
@@ -3983,6 +3999,22 @@ async def reject_payment(
         _workload_repo = WorkloadRepository()
         await _workload_repo.increment_processed(db, str(agent_profile_id))
         await _workload_repo.increment_rejected(db, str(agent_profile_id))
+
+        # Track SLA compliance
+        sla_respected = (
+            payment.get("sla_target_date") is None
+            or datetime.utcnow() <= payment["sla_target_date"].replace(tzinfo=None)
+        )
+        await _workload_repo.update_sla_stats(db, str(agent_profile_id), sla_respected)
+
+        # Decrement agent workload cache
+        await db.execute("""
+            UPDATE agent_workloads
+            SET current_assignments = GREATEST(current_assignments - 1, 0),
+                last_completion_at = NOW(),
+                last_updated_at = NOW()
+            WHERE agent_profile_id = $1::uuid
+        """, str(agent_profile_id))
 
     # Publish PAYMENT_CASH_REJECTED event
     try:
@@ -4358,6 +4390,14 @@ async def escalate_payment(
         from app.modules.agents.repositories.workload_repository import WorkloadRepository
         _workload_repo = WorkloadRepository()
         await _workload_repo.increment_escalated(db, str(agent_profile_id))
+
+        # Decrement agent workload cache (escalated = no longer in this agent's queue)
+        await db.execute("""
+            UPDATE agent_workloads
+            SET current_assignments = GREATEST(current_assignments - 1, 0),
+                last_updated_at = NOW()
+            WHERE agent_profile_id = $1::uuid
+        """, str(agent_profile_id))
 
         logger.info(
             f"[Treasury] Payment {payment_id} escalated to supervisor {supervisor_id} "
@@ -6096,6 +6136,317 @@ async def get_supervisor_overview(
         "recent_activity": recent,
         "period_days": days,
         "generated_at": now.isoformat(),
+    }
+
+    await cache.set(cache_key, result, ttl=300)
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════
+# TREASURY WORKLOAD DASHBOARD (Carga de Trabajo)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get(
+    "/treasury/stats/workload-dashboard",
+    summary="Get Workload Dashboard data for Treasury agents",
+    description="""
+    Combined endpoint returning 7 datasets for the Carga de Trabajo page.
+    Uses asyncio.gather with separate DB connections for parallel queries.
+
+    **Returns:**
+    - daily_velocity: Daily approve/reject per agent (line chart)
+    - agent_load: Current load per agent with capacity (horizontal bar)
+    - sla_breakdown: On-time vs breached (donut chart)
+    - volume_trend: Daily incoming vs outgoing (stacked area)
+    - processing_times: Min/avg/max/p50 per agent (grouped bar)
+    - kpis: Summary KPIs
+    - rankings: Top agents by score
+
+    **Permissions:** treasury_stat.view
+    """
+)
+async def get_workload_dashboard(
+    days: int = Query(30, ge=7, le=90, description="Lookback period in days"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury_stat.view"))
+):
+    """Get workload dashboard data for Carga de Trabajo page."""
+    import asyncio
+    from app.core.cache import get_cache
+    from app.database.connection import db_manager
+
+    cache = get_cache()
+    cache_key = f"treasury:workload_dashboard:{days}"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    lookback_start = datetime.utcnow() - timedelta(days=days)
+
+    # 7 parallel queries — each acquires its own connection from the pool.
+    async def q_daily_velocity():
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    pva.created_at::date as date,
+                    u.full_name as agent_name,
+                    COUNT(*) FILTER (WHERE pva.action = 'approve') as approved,
+                    COUNT(*) FILTER (WHERE pva.action = 'reject') as rejected
+                FROM payment_validation_audit pva
+                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
+                JOIN users u ON u.id = ap.user_id
+                WHERE pva.created_at >= $1
+                  AND pva.action IN ('approve', 'reject')
+                GROUP BY pva.created_at::date, u.full_name
+                ORDER BY date
+            """, lookback_start)
+            return [{"date": str(r["date"]), "agent_name": r["agent_name"],
+                     "approved": r["approved"], "rejected": r["rejected"]} for r in rows]
+
+    async def q_agent_load():
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    u.full_name as agent_name,
+                    COALESCE(aw.pending_declarations, 0) as pending,
+                    COALESCE(aw.current_assignments, 0) as in_progress,
+                    COALESCE(aw.max_concurrent_assignments, 10) as capacity_max,
+                    CASE WHEN COALESCE(aw.max_concurrent_assignments, 10) > 0
+                        THEN ROUND(COALESCE(aw.current_assignments, 0)::numeric
+                            / COALESCE(aw.max_concurrent_assignments, 10) * 100, 1)
+                        ELSE 0
+                    END as capacity_pct,
+                    CASE
+                        WHEN COALESCE(aw.current_assignments, 0) = 0 THEN 'available'
+                        WHEN COALESCE(aw.current_assignments, 0)::numeric
+                            / NULLIF(COALESCE(aw.max_concurrent_assignments, 10), 0) >= 0.8 THEN 'overloaded'
+                        WHEN COALESCE(aw.current_assignments, 0)::numeric
+                            / NULLIF(COALESCE(aw.max_concurrent_assignments, 10), 0) >= 0.5 THEN 'busy'
+                        ELSE 'normal'
+                    END as status,
+                    COALESCE((
+                        SELECT COUNT(*) FROM payment_validation_audit pva2
+                        WHERE pva2.agent_profile_id = ap.id
+                          AND pva2.action IN ('approve','reject')
+                          AND pva2.created_at >= $1
+                    ), 0) as completed_period,
+                    COALESCE((
+                        SELECT AVG(pva2.action_duration_seconds) / 3600.0
+                        FROM payment_validation_audit pva2
+                        WHERE pva2.agent_profile_id = ap.id
+                          AND pva2.action IN ('approve','reject')
+                          AND pva2.created_at >= $1
+                    ), 0) as avg_hours
+                FROM agent_profiles ap
+                JOIN entities e ON e.id = ap.entity_id
+                JOIN users u ON u.id = ap.user_id
+                LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                WHERE e.code = 'TESORO' AND ap.is_active = true
+                ORDER BY completed_period DESC
+            """, lookback_start)
+            return [{"agent_name": r["agent_name"], "pending": r["pending"],
+                     "in_progress": r["in_progress"], "capacity_max": r["capacity_max"],
+                     "capacity_pct": float(r["capacity_pct"]),
+                     "status": r["status"],
+                     "completed_period": r["completed_period"],
+                     "avg_hours": round(float(r["avg_hours"]), 1)} for r in rows]
+
+    async def q_sla_breakdown():
+        async with db_manager.get_connection() as conn:
+            row = await conn.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE
+                        sp.sla_target_date IS NOT NULL
+                        AND pva.created_at <= sp.sla_target_date
+                    ) as on_time,
+                    COUNT(*) FILTER (WHERE
+                        sp.sla_target_date IS NOT NULL
+                        AND pva.created_at > sp.sla_target_date
+                    ) as breached,
+                    COUNT(*) FILTER (WHERE sp.sla_target_date IS NULL) as no_sla,
+                    CASE WHEN COUNT(*) FILTER (WHERE sp.sla_target_date IS NOT NULL) > 0
+                        THEN ROUND(
+                            COUNT(*) FILTER (WHERE sp.sla_target_date IS NOT NULL
+                                AND pva.created_at <= sp.sla_target_date)::numeric
+                            / COUNT(*) FILTER (WHERE sp.sla_target_date IS NOT NULL) * 100, 1
+                        )
+                        ELSE 0
+                    END as compliance_pct,
+                    COALESCE(AVG(EXTRACT(EPOCH FROM (pva.created_at - sp.created_at)) / 3600.0)
+                        FILTER (WHERE pva.action IN ('approve','reject')), 0) as avg_resolution_hours
+                FROM payment_validation_audit pva
+                JOIN service_payments sp ON sp.id = pva.payment_id
+                WHERE pva.action IN ('approve', 'reject')
+                  AND pva.created_at >= $1
+            """, lookback_start)
+            return {
+                "on_time": row["on_time"],
+                "breached": row["breached"],
+                "no_sla": row["no_sla"],
+                "compliance_pct": float(row["compliance_pct"] or 0),
+                "avg_resolution_hours": round(float(row["avg_resolution_hours"]), 1),
+            }
+
+    async def q_volume_trend():
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT d.date::date,
+                    COALESCE(incoming.cnt, 0) as incoming,
+                    COALESCE(outgoing.cnt, 0) as outgoing
+                FROM generate_series(
+                    $1::date,
+                    CURRENT_DATE,
+                    '1 day'::interval
+                ) d(date)
+                LEFT JOIN (
+                    SELECT created_at::date as date, COUNT(*) as cnt
+                    FROM service_payments
+                    WHERE created_at >= $1
+                    GROUP BY created_at::date
+                ) incoming ON incoming.date = d.date::date
+                LEFT JOIN (
+                    SELECT pva.created_at::date as date, COUNT(*) as cnt
+                    FROM payment_validation_audit pva
+                    WHERE pva.action IN ('approve','reject')
+                      AND pva.created_at >= $1
+                    GROUP BY pva.created_at::date
+                ) outgoing ON outgoing.date = d.date::date
+                ORDER BY d.date
+            """, lookback_start)
+            return [{"date": str(r["date"]), "incoming": r["incoming"],
+                     "outgoing": r["outgoing"]} for r in rows]
+
+    async def q_processing_times():
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    u.full_name as agent_name,
+                    ROUND(MIN(pva.action_duration_seconds / 3600.0)::numeric, 2) as min_hours,
+                    ROUND(AVG(pva.action_duration_seconds / 3600.0)::numeric, 2) as avg_hours,
+                    ROUND(MAX(pva.action_duration_seconds / 3600.0)::numeric, 2) as max_hours,
+                    ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP
+                        (ORDER BY pva.action_duration_seconds / 3600.0)::numeric, 2) as p50_hours,
+                    COUNT(*) as count
+                FROM payment_validation_audit pva
+                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
+                JOIN users u ON u.id = ap.user_id
+                WHERE pva.action IN ('approve', 'reject')
+                  AND pva.action_duration_seconds IS NOT NULL
+                  AND pva.created_at >= $1
+                GROUP BY u.full_name
+                ORDER BY avg_hours
+            """, lookback_start)
+            return [{"agent_name": r["agent_name"], "min_hours": float(r["min_hours"]),
+                     "avg_hours": float(r["avg_hours"]), "max_hours": float(r["max_hours"]),
+                     "p50_hours": float(r["p50_hours"]), "count": r["count"]} for r in rows]
+
+    async def q_kpis():
+        async with db_manager.get_connection() as conn:
+            row = await conn.fetchrow("""
+                WITH period_stats AS (
+                    SELECT
+                        COUNT(DISTINCT pva.agent_profile_id) as active_agents,
+                        COUNT(*) as total_validated
+                    FROM payment_validation_audit pva
+                    WHERE pva.action IN ('approve','reject')
+                      AND pva.created_at >= $1
+                ),
+                queue AS (
+                    SELECT
+                        COUNT(*) as queue_size,
+                        COALESCE(AVG(EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600.0), 0)
+                            as avg_wait_hours
+                    FROM service_payments sp
+                    WHERE sp.workflow_status IN (
+                        'pending_agent_review', 'submitted', 'auto_processing'
+                    )
+                )
+                SELECT
+                    (SELECT COUNT(*) FROM agent_profiles ap
+                     JOIN entities e ON e.id = ap.entity_id
+                     WHERE e.code = 'TESORO' AND ap.is_active = true) as total_agents,
+                    ps.active_agents,
+                    q.queue_size,
+                    ROUND(q.avg_wait_hours::numeric, 1) as avg_queue_wait_hours,
+                    CASE WHEN $2 > 0
+                        THEN ROUND(ps.total_validated::numeric / $2, 1)
+                        ELSE 0
+                    END as velocity_per_day,
+                    ps.total_validated as total_validated_period
+                FROM period_stats ps, queue q
+            """, lookback_start, days)
+            return {
+                "total_agents": row["total_agents"],
+                "active_agents": row["active_agents"],
+                "queue_size": row["queue_size"],
+                "avg_queue_wait_hours": float(row["avg_queue_wait_hours"] or 0),
+                "velocity_per_day": float(row["velocity_per_day"] or 0),
+                "total_validated_period": row["total_validated_period"],
+            }
+
+    async def q_rankings():
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                WITH max_validated AS (
+                    SELECT GREATEST(MAX(cnt), 1) as max_cnt
+                    FROM (
+                        SELECT COUNT(*) as cnt
+                        FROM payment_validation_audit
+                        WHERE action IN ('approve','reject')
+                          AND created_at >= $1
+                        GROUP BY agent_profile_id
+                    ) sub
+                )
+                SELECT
+                    u.full_name as agent_name,
+                    COUNT(*) FILTER (WHERE pva.action IN ('approve','reject')) as validated,
+                    COUNT(*) FILTER (WHERE pva.action = 'reject') as rejected,
+                    COALESCE(AVG(pva.action_duration_seconds) FILTER (
+                        WHERE pva.action IN ('approve','reject')), 0) as avg_seconds,
+                    ROUND((
+                        COUNT(*) FILTER (WHERE pva.action IN ('approve','reject'))
+                            * 40.0 / mv.max_cnt
+                        + (100 - LEAST(COALESCE(AVG(pva.action_duration_seconds)
+                            FILTER (WHERE pva.action IN ('approve','reject')), 0) / 36, 100)) * 0.3
+                        + CASE WHEN COUNT(*) FILTER (
+                            WHERE pva.action IN ('approve','reject')) > 0
+                            THEN COUNT(*) FILTER (WHERE pva.action = 'approve')::numeric
+                                / COUNT(*) FILTER (WHERE pva.action IN ('approve','reject')) * 30
+                            ELSE 0
+                        END
+                    )::numeric, 1) as score
+                FROM payment_validation_audit pva
+                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
+                JOIN users u ON u.id = ap.user_id
+                CROSS JOIN max_validated mv
+                WHERE pva.created_at >= $1
+                GROUP BY u.full_name, ap.id, mv.max_cnt
+                ORDER BY score DESC
+                LIMIT 10
+            """, lookback_start)
+            return [{"agent_name": r["agent_name"], "validated": r["validated"],
+                     "rejected": r["rejected"],
+                     "avg_minutes": round(float(r["avg_seconds"]) / 60, 1),
+                     "score": float(r["score"])} for r in rows]
+
+    (daily_velocity, agent_load, sla_breakdown, volume_trend,
+     processing_times, kpis, rankings) = await asyncio.gather(
+        q_daily_velocity(), q_agent_load(), q_sla_breakdown(),
+        q_volume_trend(), q_processing_times(), q_kpis(), q_rankings()
+    )
+
+    result = {
+        "daily_velocity": daily_velocity,
+        "agent_load": agent_load,
+        "sla_breakdown": sla_breakdown,
+        "volume_trend": volume_trend,
+        "processing_times": processing_times,
+        "kpis": kpis,
+        "rankings": rankings,
+        "period_days": days,
+        "generated_at": datetime.utcnow().isoformat(),
     }
 
     await cache.set(cache_key, result, ttl=300)

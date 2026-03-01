@@ -975,3 +975,75 @@ export interface AutoMatchResponse {
   skippedCount: number;
   threshold: number;
 }
+
+// ─── Workload Dashboard (Carga de Trabajo) ────────────────────
+
+export interface DailyVelocityPoint {
+  date: string;
+  agentName: string;
+  approved: number;
+  rejected: number;
+}
+
+export interface WorkloadAgentLoad {
+  agentName: string;
+  pending: number;
+  inProgress: number;
+  capacityMax: number;
+  capacityPct: number;
+  status: string;
+  completedPeriod: number;
+  avgHours: number;
+}
+
+export interface SLABreakdown {
+  onTime: number;
+  breached: number;
+  noSla: number;
+  compliancePct: number;
+  avgResolutionHours: number;
+}
+
+export interface VolumeTrendPoint {
+  date: string;
+  incoming: number;
+  outgoing: number;
+}
+
+export interface ProcessingTimeAgent {
+  agentName: string;
+  minHours: number;
+  avgHours: number;
+  maxHours: number;
+  p50Hours: number;
+  count: number;
+}
+
+export interface WorkloadKPIs {
+  totalAgents: number;
+  activeAgents: number;
+  queueSize: number;
+  avgQueueWaitHours: number;
+  velocityPerDay: number;
+  totalValidatedPeriod: number;
+}
+
+export interface AgentRanking {
+  agentName: string;
+  validated: number;
+  rejected: number;
+  avgMinutes: number;
+  score: number;
+}
+
+export interface WorkloadDashboardResponse {
+  dailyVelocity: DailyVelocityPoint[];
+  agentLoad: WorkloadAgentLoad[];
+  slaBreakdown: SLABreakdown;
+  volumeTrend: VolumeTrendPoint[];
+  processingTimes: ProcessingTimeAgent[];
+  kpis: WorkloadKPIs;
+  rankings: AgentRanking[];
+  periodDays: number;
+  generatedAt: string;
+}

@@ -66,6 +66,8 @@ import type {
   // Phase 5 - Reconciliation
   ReconciliationSuggestionsResponse,
   AutoMatchResponse,
+  // Workload Dashboard
+  WorkloadDashboardResponse,
 } from '../types';
 import type {
   // Phase 5 - Analytics
@@ -1137,6 +1139,16 @@ export const treasuryApi = {
       { days: days.toString() }
     );
     return toCamelCase<SupervisorOverviewResponse>(response);
+  },
+
+  // ─── Workload Dashboard (Carga de Trabajo) ─────
+
+  getWorkloadDashboard: async (days: number = 30): Promise<WorkloadDashboardResponse> => {
+    const response = await fetchClient.get<Record<string, unknown>>(
+      `${TREASURY_BASE}/stats/workload-dashboard`,
+      { days: days.toString() }
+    );
+    return toCamelCase<WorkloadDashboardResponse>(response);
   },
 
   // ─── AI Analyst (Phase 4) ─────

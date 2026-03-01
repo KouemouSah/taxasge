@@ -407,7 +407,12 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_profile_id: str,
     ) -> None:
-        """Ensure performance stats row exists for agent (UPSERT on agent_profile_id)."""
+        """Ensure performance stats row exists for agent (UPSERT on agent_profile_id).
+
+        After migration 157, agent_profile_id is PK (was agent_id INT before).
+        ministry_id resolved via entity chain: agent_profile → entity → entity.ministry_id
+        (ap.ministry_id is legacy and NULL for some agents like CNEDOGE).
+        """
         await conn.execute("""
             INSERT INTO agent_performance_stats (
                 agent_id, agent_profile_id, ministry_id,
@@ -418,10 +423,12 @@ class WorkloadRepository:
                 stats_period_start, updated_at
             )
             SELECT
-                0, ap.id, ap.ministry_id,
+                0, ap.id, COALESCE(e.ministry_id, ap.ministry_id, 0),
                 0, 0, 0, 0, 0, 0, 0, 0,
                 date_trunc('month', CURRENT_DATE)::date, NOW()
-            FROM agent_profiles ap WHERE ap.id = $1::uuid
+            FROM agent_profiles ap
+            LEFT JOIN entities e ON e.id = ap.entity_id
+            WHERE ap.id = $1::uuid
             ON CONFLICT (agent_profile_id) DO NOTHING
         """, agent_profile_id)
 

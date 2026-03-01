@@ -94,3 +94,8 @@ export {
   useExploreAnalytics,
   ANALYTICS_QUERY_KEYS,
 } from './useAnalytics';
+// Workload Dashboard
+export {
+  useWorkloadDashboard,
+  WORKLOAD_DASHBOARD_QUERY_KEY,
+} from './useWorkloadDashboard';

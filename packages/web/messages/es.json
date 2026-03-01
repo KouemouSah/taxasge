@@ -6742,6 +6742,38 @@
         "forecast": "Tendencias 7 dias"
       },
       "nav": "Analista IA"
+    },
+    "workload": {
+      "title": "Carga de Trabajo",
+      "description": "Gestión de la carga de agentes del Tesoro",
+      "velocity": "Velocidad de Procesamiento",
+      "slaCompliance": "Cumplimiento SLA",
+      "agentLoad": "Carga por Agente",
+      "processingTime": "Tiempo de Procesamiento",
+      "volumeTrend": "Tendencia de Volumen",
+      "incoming": "Entrantes",
+      "outgoing": "Procesados",
+      "queueSize": "Cola actual",
+      "velocityPerDay": "Validaciones/día",
+      "activeAgents": "Agentes activos",
+      "onTime": "A tiempo",
+      "breached": "Vencidos",
+      "noSla": "Sin SLA",
+      "rankings": "Ranking",
+      "score": "Puntuación",
+      "avgTime": "Tiempo prom.",
+      "minTime": "Mín",
+      "maxTime": "Máx",
+      "hours": "Horas",
+      "validated": "Validados",
+      "noAgents": "Sin agentes activos",
+      "approvals": "Aprobaciones",
+      "rejections": "Rechazos",
+      "completedPeriod": "Completados",
+      "pending": "Pendientes",
+      "period7d": "7 días",
+      "period30d": "30 días",
+      "period90d": "90 días"
     }
   },
   "agent": {

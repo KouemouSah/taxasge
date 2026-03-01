@@ -6880,6 +6880,38 @@
         "forecast": "Tendances 7 jours"
       },
       "nav": "Analyste IA"
+    },
+    "workload": {
+      "title": "Charge de Travail",
+      "description": "Gestion de la charge des agents du Trésor",
+      "velocity": "Vitesse de Traitement",
+      "slaCompliance": "Conformité SLA",
+      "agentLoad": "Charge par Agent",
+      "processingTime": "Temps de Traitement",
+      "volumeTrend": "Tendance de Volume",
+      "incoming": "Entrants",
+      "outgoing": "Traités",
+      "queueSize": "File actuelle",
+      "velocityPerDay": "Validations/jour",
+      "activeAgents": "Agents actifs",
+      "onTime": "À temps",
+      "breached": "En retard",
+      "noSla": "Sans SLA",
+      "rankings": "Classement",
+      "score": "Score",
+      "avgTime": "Temps moy.",
+      "minTime": "Min",
+      "maxTime": "Max",
+      "hours": "Heures",
+      "validated": "Validés",
+      "noAgents": "Aucun agent actif",
+      "approvals": "Approbations",
+      "rejections": "Rejets",
+      "completedPeriod": "Complétés",
+      "pending": "En attente",
+      "period7d": "7 jours",
+      "period30d": "30 jours",
+      "period90d": "90 jours"
     }
   },
   "agent": {

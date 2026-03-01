@@ -6640,6 +6640,38 @@
         "forecast": "7-day trends"
       },
       "nav": "AI Analyst"
+    },
+    "workload": {
+      "title": "Workload",
+      "description": "Treasury agent workload management",
+      "velocity": "Processing Velocity",
+      "slaCompliance": "SLA Compliance",
+      "agentLoad": "Agent Load",
+      "processingTime": "Processing Time",
+      "volumeTrend": "Volume Trend",
+      "incoming": "Incoming",
+      "outgoing": "Processed",
+      "queueSize": "Current queue",
+      "velocityPerDay": "Validations/day",
+      "activeAgents": "Active agents",
+      "onTime": "On time",
+      "breached": "Breached",
+      "noSla": "No SLA",
+      "rankings": "Rankings",
+      "score": "Score",
+      "avgTime": "Avg time",
+      "minTime": "Min",
+      "maxTime": "Max",
+      "hours": "Hours",
+      "validated": "Validated",
+      "noAgents": "No active agents",
+      "approvals": "Approvals",
+      "rejections": "Rejections",
+      "completedPeriod": "Completed",
+      "pending": "Pending",
+      "period7d": "7 days",
+      "period30d": "30 days",
+      "period90d": "90 days"
     }
   },
   "agent": {

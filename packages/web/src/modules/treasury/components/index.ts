@@ -15,3 +15,9 @@ export { ServiceDistributionChart } from './ServiceDistributionChart';
 export { RecentActivityTimeline } from './RecentActivityTimeline';
 // Phase 4 - AI Analyst
 export { TreasuryAnalystTab } from './TreasuryAnalystTab';
+// Workload Dashboard Charts
+export { VelocityChart } from './VelocityChart';
+export { SLAComplianceDonut } from './SLAComplianceDonut';
+export { AgentLoadChart } from './AgentLoadChart';
+export { ProcessingTimeChart } from './ProcessingTimeChart';
+export { VolumeTrendChart } from './VolumeTrendChart';
