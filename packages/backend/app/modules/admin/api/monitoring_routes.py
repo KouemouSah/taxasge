@@ -7,7 +7,7 @@ Protected by admin.monitoring permission.
 """
 
 from fastapi import APIRouter, Depends, Query, HTTPException
-from typing import Dict, Any, List
+from typing import Dict, Any
 from enum import Enum
 from datetime import datetime, timezone
 import asyncio
@@ -192,7 +192,6 @@ async def get_lock_status(
 
 @router.get("/operations/dashboard")
 async def get_operations_dashboard(
-    db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
     _=Depends(permission_required("admin.monitoring")),
 ):
@@ -205,97 +204,109 @@ async def get_operations_dashboard(
     if cached:
         return cached
 
-    # Query 1: Payment queue by entity
-    payment_rows = await db.fetch("""
-        SELECT
-            sp.entity_code,
-            COUNT(*) FILTER (WHERE sp.workflow_status IN
-                ('pending_agent_review', 'agent_reviewing', 'auto_processing', 'submitted')
-            ) as pending_count,
-            COALESCE(SUM(sp.total_amount) FILTER (WHERE sp.workflow_status IN
-                ('pending_agent_review', 'agent_reviewing', 'auto_processing', 'submitted')
-            ), 0) as pending_amount,
-            ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600)
-                FILTER (WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
-            ), 0)::numeric, 1) as avg_wait_hours,
-            COUNT(*) FILTER (WHERE sp.sla_target_date IS NOT NULL
-                AND sp.sla_target_date < NOW()
-                AND sp.workflow_status NOT IN
+    # Run 4 independent queries in parallel using separate pool connections
+    pool = db_manager.pool
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database pool not initialized")
+
+    async def _query_payments():
+        async with pool.acquire() as conn:
+            return await conn.fetch("""
+                SELECT
+                    sp.entity_code,
+                    COUNT(*) FILTER (WHERE sp.workflow_status IN
+                        ('pending_agent_review', 'agent_reviewing', 'auto_processing', 'submitted')
+                    ) as pending_count,
+                    COALESCE(SUM(sp.total_amount) FILTER (WHERE sp.workflow_status IN
+                        ('pending_agent_review', 'agent_reviewing', 'auto_processing', 'submitted')
+                    ), 0) as pending_amount,
+                    ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600)
+                        FILTER (WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
+                    ), 0)::numeric, 1) as avg_wait_hours,
+                    COUNT(*) FILTER (WHERE sp.sla_target_date IS NOT NULL
+                        AND sp.sla_target_date < NOW()
+                        AND sp.workflow_status NOT IN
+                            ('completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired')
+                    ) as sla_violated_count
+                FROM service_payments sp
+                WHERE sp.workflow_status NOT IN
                     ('completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired')
-            ) as sla_violated_count
-        FROM service_payments sp
-        WHERE sp.workflow_status NOT IN
-            ('completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired')
-        GROUP BY sp.entity_code
-        ORDER BY pending_count DESC
-    """)
+                GROUP BY sp.entity_code
+                ORDER BY pending_count DESC
+            """)
+
+    async def _query_agents():
+        async with pool.acquire() as conn:
+            return await conn.fetchrow("""
+                SELECT
+                    COUNT(*) as total_agents,
+                    COUNT(*) FILTER (WHERE aw.availability = 'available'
+                        AND aw.workload_status NOT IN ('unavailable', 'overloaded')
+                    ) as agents_available,
+                    COUNT(*) FILTER (WHERE aw.workload_status = 'overloaded') as agents_overloaded,
+                    COUNT(*) FILTER (WHERE aw.availability != 'available') as agents_unavailable,
+                    COUNT(*) FILTER (
+                        WHERE GREATEST(
+                            COALESCE(aw.last_assignment_at, ap.created_at),
+                            COALESCE(aw.last_completion_at, ap.created_at)
+                        ) < NOW() - INTERVAL '48 hours'
+                        AND aw.availability = 'available'
+                    ) as agents_inactive_48h,
+                    ROUND(COALESCE(AVG(aw.capacity_percentage), 0)::numeric, 1) as avg_capacity
+                FROM agent_profiles ap
+                JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                WHERE ap.is_active = true
+            """)
+
+    async def _query_pipeline():
+        async with pool.acquire() as conn:
+            return await conn.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE sr.status = 'SUBMITTED') as submitted,
+                    COUNT(*) FILTER (WHERE sr.status = 'UNDER_REVIEW') as under_review,
+                    COUNT(*) FILTER (WHERE sr.status = 'IN_PROGRESS') as in_progress,
+                    COUNT(*) FILTER (WHERE sr.status IN ('PAYMENT_PENDING', 'PAYMENT_PROCESSING')
+                    ) as payment_phase,
+                    COUNT(*) FILTER (WHERE sr.status = 'PAID') as paid,
+                    COUNT(*) FILTER (WHERE sr.escalated = true
+                        AND sr.status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+                    ) as active_escalations,
+                    COUNT(*) FILTER (WHERE sr.priority IN ('URGENT', 'HIGH')
+                        AND sr.status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+                    ) as high_priority,
+                    COUNT(*) FILTER (WHERE sr.created_at >= NOW() - INTERVAL '24 hours'
+                    ) as new_24h,
+                    COUNT(*) FILTER (WHERE sr.status IN ('COMPLETED', 'DOSSIER_VALIDE')
+                        AND sr.updated_at >= NOW() - INTERVAL '24 hours'
+                    ) as completed_24h
+                FROM service_requests sr
+                WHERE sr.status != 'DRAFT'
+            """)
+
+    async def _query_stale_locks():
+        async with pool.acquire() as conn:
+            return await conn.fetchval("""
+                SELECT COUNT(*) FROM service_payments sp
+                WHERE sp.assigned_agent_id IS NOT NULL
+                  AND sp.assigned_at < NOW() - INTERVAL '4 hours'
+                  AND sp.workflow_status = 'agent_reviewing'
+            """)
+
+    payment_rows, agent_row, pipeline_row, stale_locks = await asyncio.gather(
+        _query_payments(), _query_agents(), _query_pipeline(), _query_stale_locks()
+    )
 
     by_entity = [dict(r) for r in payment_rows]
     total_pending = sum(r["pending_count"] for r in by_entity)
     total_pending_amount = float(sum(r["pending_amount"] for r in by_entity))
 
-    # Query 2: Agent status summary
-    agent_row = await db.fetchrow("""
-        SELECT
-            COUNT(*) as total_agents,
-            COUNT(*) FILTER (WHERE aw.availability = 'available'
-                AND aw.workload_status NOT IN ('unavailable', 'overloaded')
-            ) as agents_available,
-            COUNT(*) FILTER (WHERE aw.workload_status = 'overloaded') as agents_overloaded,
-            COUNT(*) FILTER (WHERE aw.availability != 'available') as agents_unavailable,
-            COUNT(*) FILTER (
-                WHERE GREATEST(
-                    COALESCE(aw.last_assignment_at, ap.created_at),
-                    COALESCE(aw.last_completion_at, ap.created_at)
-                ) < NOW() - INTERVAL '48 hours'
-                AND aw.availability = 'available'
-            ) as agents_inactive_48h,
-            ROUND(COALESCE(AVG(aw.capacity_percentage), 0)::numeric, 1) as avg_capacity
-        FROM agent_profiles ap
-        JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
-        WHERE ap.is_active = true
-    """)
-
-    # Query 3: Pipeline service requests
-    pipeline_row = await db.fetchrow("""
-        SELECT
-            COUNT(*) FILTER (WHERE sr.status = 'SUBMITTED') as submitted,
-            COUNT(*) FILTER (WHERE sr.status = 'UNDER_REVIEW') as under_review,
-            COUNT(*) FILTER (WHERE sr.status = 'IN_PROGRESS') as in_progress,
-            COUNT(*) FILTER (WHERE sr.status IN ('PAYMENT_PENDING', 'PAYMENT_PROCESSING')
-            ) as payment_phase,
-            COUNT(*) FILTER (WHERE sr.status = 'PAID') as paid,
-            COUNT(*) FILTER (WHERE sr.escalated = true
-                AND sr.status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
-            ) as active_escalations,
-            COUNT(*) FILTER (WHERE sr.priority IN ('URGENT', 'HIGH')
-                AND sr.status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
-            ) as high_priority,
-            COUNT(*) FILTER (WHERE sr.created_at >= NOW() - INTERVAL '24 hours'
-            ) as new_24h,
-            COUNT(*) FILTER (WHERE sr.status IN ('COMPLETED', 'DOSSIER_VALIDE')
-                AND sr.updated_at >= NOW() - INTERVAL '24 hours'
-            ) as completed_24h
-        FROM service_requests sr
-        WHERE sr.status != 'DRAFT'
-    """)
-
-    # Query 4: Stale payment locks
-    stale_locks = await db.fetchval("""
-        SELECT COUNT(*) FROM service_payments sp
-        WHERE sp.assigned_agent_id IS NOT NULL
-          AND sp.assigned_at < NOW() - INTERVAL '4 hours'
-          AND sp.workflow_status = 'agent_reviewing'
-    """)
-
-    # Pool stats
-    pool = db_manager.pool
+    # Pool stats (synchronous, no query needed)
     pool_stats = {
         "max_size": pool.get_max_size(),
         "current_size": pool.get_size(),
         "free": pool.get_idle_size(),
         "used": pool.get_size() - pool.get_idle_size(),
-    } if pool else None
+    }
 
     result = {
         "payments": {
@@ -323,7 +334,6 @@ async def get_operations_dashboard(
 
 @router.get("/operations/integrations")
 async def get_integration_health(
-    db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
     _=Depends(permission_required("admin.monitoring")),
 ):
@@ -336,10 +346,15 @@ async def get_integration_health(
     if cached:
         return cached
 
-    # 1. Database
+    # 1. Database — real connectivity check via pool
     db_status = "ok"
     try:
-        await db.fetchval("SELECT 1")
+        pool = db_manager.pool
+        if pool:
+            async with pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+        else:
+            db_status = "error: pool not initialized"
     except Exception as e:
         db_status = f"error: {str(e)[:100]}"
 
@@ -398,6 +413,13 @@ class CronJobName(str, Enum):
     assignment_health_check = "assignment_health_check"
 
 
+# Whitelist for REFRESH MATERIALIZED VIEW — prevents SQL injection
+_ALLOWED_MATERIALIZED_VIEWS = frozenset({
+    "mv_treasury_daily_kpis",
+    "mv_reconciliation_stats",
+})
+
+
 @router.post("/operations/trigger/{job_name}")
 async def trigger_cron_job(
     job_name: CronJobName,
@@ -416,6 +438,9 @@ async def trigger_cron_job(
             detail=f"Job {job_name.value} was triggered recently. Wait 60 seconds.",
         )
 
+    # Set rate-limit BEFORE execution to prevent double-trigger during long jobs
+    await cache.set(rate_key, {"triggered": True}, ttl=60)
+
     user_email = current_user.get("email", "unknown")
     logger.info(f"CRON_MANUAL_TRIGGER: {job_name.value} by {user_email}")
 
@@ -425,8 +450,9 @@ async def trigger_cron_job(
         await db.execute("SET LOCAL statement_timeout = '300000'")
         refreshed = []
         errors = []
-        for view in ("mv_treasury_daily_kpis", "mv_reconciliation_stats"):
+        for view in _ALLOWED_MATERIALIZED_VIEWS:
             try:
+                # view is from frozen whitelist — safe for string interpolation
                 await db.execute(
                     f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}"
                 )
@@ -454,7 +480,10 @@ async def trigger_cron_job(
                 rebalance_entity_workload,
             )
             entities = await db.fetch(
-                "SELECT DISTINCT entity_code FROM agent_profiles WHERE is_active = true AND entity_code IS NOT NULL"
+                "SELECT DISTINCT e.code AS entity_code "
+                "FROM agent_profiles ap "
+                "JOIN entities e ON e.id = ap.entity_id "
+                "WHERE ap.is_active = true AND ap.entity_id IS NOT NULL"
             )
             total_reassigned = 0
             for row in entities:
@@ -477,8 +506,6 @@ async def trigger_cron_job(
             result = r if isinstance(r, dict) else {"status": "completed"}
         except ImportError:
             result = {"error": "assignment_outbox_service not available"}
-
-    await cache.set(rate_key, {"triggered": True}, ttl=60)
 
     return {
         "job": job_name.value,
