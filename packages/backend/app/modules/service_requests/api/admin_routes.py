@@ -5919,7 +5919,7 @@ async def get_supervisor_overview(
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             JOIN users u ON u.id = sp.user_id
-            WHERE sp.workflow_status IN ('pending_agent_review', 'locked_by_agent')
+            WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
               AND sp.requires_agent_validation = true
               AND sp.sla_target_date IS NOT NULL
               AND sp.sla_target_date < NOW() + INTERVAL '6 hours'

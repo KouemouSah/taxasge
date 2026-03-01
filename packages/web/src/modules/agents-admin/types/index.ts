@@ -547,8 +547,8 @@ export interface OverloadedAgentAlert {
 export interface StaleLockAlert {
   payment_id: string;
   payment_reference: string;
-  locked_by_agent_profile_id: string;
-  locked_agent_name?: string;
+  agent_profile_id: string;
+  agent_name?: string;
   locked_at: string;
   locked_hours: number;
 }

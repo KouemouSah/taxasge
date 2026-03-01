@@ -375,7 +375,7 @@ async def _exec_get_sla_report(db) -> Dict[str, Any]:
     row = await db.fetchrow("""
         SELECT
             COUNT(*) FILTER (WHERE workflow_status = 'pending_agent_review') as pending_review,
-            COUNT(*) FILTER (WHERE workflow_status IN ('locked_by_agent', 'agent_reviewing')) as in_review,
+            COUNT(*) FILTER (WHERE workflow_status = 'agent_reviewing') as in_review,
             COUNT(*) FILTER (WHERE sla_target_date < NOW() AND workflow_status NOT IN ('completed', 'cancelled', 'rejected')) as sla_expired,
             COUNT(*) FILTER (WHERE sla_target_date BETWEEN NOW() AND NOW() + INTERVAL '24 hours'
                 AND workflow_status NOT IN ('completed', 'cancelled', 'rejected')) as sla_at_risk,

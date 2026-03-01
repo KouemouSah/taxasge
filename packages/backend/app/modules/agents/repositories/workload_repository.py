@@ -368,7 +368,7 @@ class WorkloadRepository:
                 SELECT COUNT(*)::int as active_locks
                 FROM service_payments
                 WHERE assigned_agent_id = $1::uuid
-                AND workflow_status IN ('locked_by_agent', 'agent_reviewing')
+                AND workflow_status = 'agent_reviewing'
             )
             SELECT
                 $1 as agent_profile_id,
@@ -767,7 +767,7 @@ class WorkloadRepository:
                 JOIN users u ON u.id = ap.user_id
                 WHERE sp.assigned_agent_id IS NOT NULL
                 AND sp.assigned_at < NOW() - INTERVAL '4 hours'
-                AND sp.workflow_status IN ('locked_by_agent', 'agent_reviewing')
+                AND sp.workflow_status = 'agent_reviewing'
             ),
             sla_at_risk AS (
                 SELECT sp.id as payment_id,

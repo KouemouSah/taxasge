@@ -177,8 +177,8 @@ async def _get_revenue_summary(db, days: int = 30) -> Dict[str, Any]:
             COALESCE(SUM(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS completed_amount,
             COUNT(*) FILTER (WHERE workflow_status = 'completed') AS completed_count,
             COALESCE(AVG(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS avg_amount,
-            COALESCE(SUM(total_amount) FILTER (WHERE workflow_status IN ('pending_agent_review', 'locked_by_agent')), 0) AS pending_amount,
-            COUNT(*) FILTER (WHERE workflow_status IN ('pending_agent_review', 'locked_by_agent')) AS pending_count,
+            COALESCE(SUM(total_amount) FILTER (WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')), 0) AS pending_amount,
+            COUNT(*) FILTER (WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')) AS pending_count,
             COUNT(*) FILTER (WHERE workflow_status = 'rejected_by_agent') AS rejected_count
         FROM service_payments
         WHERE created_at >= NOW() - make_interval(days => $1)
@@ -245,7 +245,7 @@ async def _get_sla_status(db) -> Dict[str, Any]:
             COUNT(*) FILTER (WHERE sla_target_date IS NOT NULL AND sla_target_date BETWEEN NOW() + INTERVAL '2 hours' AND NOW() + INTERVAL '6 hours') AS warning,
             COUNT(*) FILTER (WHERE sla_target_date IS NULL OR sla_target_date > NOW() + INTERVAL '6 hours') AS on_time
         FROM service_payments
-        WHERE workflow_status IN ('pending_agent_review', 'locked_by_agent')
+        WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
     """)
     total = row["total_pending"] or 0
