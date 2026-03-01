@@ -413,6 +413,8 @@ class InternalScheduler:
         from app.database.connection import db_manager
 
         async with db_manager.get_connection() as db:
+            # Override statement_timeout: REFRESH can exceed 60s at 1M+ rows
+            await db.execute("SET LOCAL statement_timeout = '300000'")
             refreshed = []
             for view in ("mv_treasury_daily_kpis", "mv_reconciliation_stats"):
                 try:

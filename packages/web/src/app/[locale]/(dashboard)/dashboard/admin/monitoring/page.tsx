@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Card,
@@ -29,6 +29,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   Lock,
+  ShieldAlert,
+  Copy,
+  XCircle,
 } from 'lucide-react'
 import {
   Chart as ChartJS,
@@ -73,7 +76,34 @@ const CHART_COLORS = [
   '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
 ]
 
-// ---------- small gauge component ----------
+function getErrorMessage(error: unknown): { code: number; message: string } {
+  const err = error as { response?: { status?: number } }
+  const status = err?.response?.status ?? 500
+  if (status === 403) return { code: 403, message: 'Permiso denegado — se requiere admin.monitoring' }
+  if (status === 401) return { code: 401, message: 'Sesión expirada — inicie sesión de nuevo' }
+  return { code: status, message: `Error del servidor (${status}) — reintente en unos segundos` }
+}
+
+// ---------- error banner ----------
+function ErrorBanner({ error, label, onRetry }: { error: unknown; label: string; onRetry: () => void }) {
+  const { code, message } = getErrorMessage(error)
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800">
+      <XCircle className="h-5 w-5 text-red-500 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-red-700 dark:text-red-400">{label}</span>
+        <p className="text-xs text-red-600 dark:text-red-500">{message}</p>
+      </div>
+      {code !== 403 && (
+        <Button variant="outline" size="sm" onClick={onRetry} className="shrink-0">
+          <RefreshCw className="h-3 w-3 mr-1" /> Reintentar
+        </Button>
+      )}
+    </div>
+  )
+}
+
+// ---------- pool gauge ----------
 function PoolGauge({ used, max }: { used: number; max: number }) {
   const pct = max > 0 ? Math.round((used / max) * 100) : 0
   const color = pct >= 80 ? '#ef4444' : pct >= 50 ? '#f59e0b' : '#10b981'
@@ -106,45 +136,104 @@ function PoolGauge({ used, max }: { used: number; max: number }) {
 // ---------- page ----------
 export default function MonitoringPage() {
   const [activeTab, setActiveTab] = useState('slow-queries')
+  const [copiedIndex, setCopiedIndex] = useState<string | null>(null)
 
-  const { data: slowQueries, isLoading: loadingSlow, refetch: refetchSlow } =
-    useQuery({
-      queryKey: ['monitoring', 'slow-queries'],
-      queryFn: () => monitoringApi.getSlowQueries(20, 5),
-      refetchInterval: 30000,
-    })
+  const {
+    data: slowQueries, isLoading: loadingSlow, isError: errorSlow,
+    error: slowError, refetch: refetchSlow,
+  } = useQuery({
+    queryKey: ['monitoring', 'slow-queries'],
+    queryFn: () => monitoringApi.getSlowQueries(20, 5),
+    refetchInterval: 30000,
+    retry: 1,
+  })
 
-  const { data: frequentQueries, isLoading: loadingFrequent, refetch: refetchFrequent } =
-    useQuery({
-      queryKey: ['monitoring', 'frequent-queries'],
-      queryFn: () => monitoringApi.getFrequentQueries(20),
-      refetchInterval: 30000,
-    })
+  const {
+    data: frequentQueries, isLoading: loadingFrequent, isError: errorFrequent,
+    error: frequentError, refetch: refetchFrequent,
+  } = useQuery({
+    queryKey: ['monitoring', 'frequent-queries'],
+    queryFn: () => monitoringApi.getFrequentQueries(20),
+    refetchInterval: 30000,
+    retry: 1,
+  })
 
-  const { data: poolStats, isLoading: loadingPool, refetch: refetchPool } =
-    useQuery({
-      queryKey: ['monitoring', 'pool'],
-      queryFn: () => monitoringApi.getPoolStats(),
-      refetchInterval: 10000,
-    })
+  const {
+    data: poolStats, isLoading: loadingPool, isError: errorPool,
+    error: poolError, refetch: refetchPool,
+  } = useQuery({
+    queryKey: ['monitoring', 'pool'],
+    queryFn: () => monitoringApi.getPoolStats(),
+    refetchInterval: 10000,
+    retry: 1,
+  })
 
-  const { data: dbStats, isLoading: loadingDb, refetch: refetchDb } =
-    useQuery({
-      queryKey: ['monitoring', 'db-stats'],
-      queryFn: () => monitoringApi.getDatabaseStats(),
-      refetchInterval: 60000,
-    })
+  const {
+    data: dbStats, isLoading: loadingDb, isError: errorDb,
+    error: dbError, refetch: refetchDb,
+  } = useQuery({
+    queryKey: ['monitoring', 'db-stats'],
+    queryFn: () => monitoringApi.getDatabaseStats(),
+    refetchInterval: 60000,
+    retry: 1,
+  })
 
-  const { data: lockStatus, isLoading: loadingLocks, refetch: refetchLocks } =
-    useQuery({
-      queryKey: ['monitoring', 'locks'],
-      queryFn: () => monitoringApi.getLockStatus(),
-      refetchInterval: 15000,
-    })
+  const {
+    data: lockStatus, isLoading: loadingLocks, isError: errorLocks,
+    error: locksError, refetch: refetchLocks,
+  } = useQuery({
+    queryKey: ['monitoring', 'locks'],
+    queryFn: () => monitoringApi.getLockStatus(),
+    refetchInterval: 15000,
+    retry: 1,
+  })
 
   const handleRefreshAll = () => {
     refetchSlow(); refetchFrequent(); refetchPool(); refetchDb(); refetchLocks()
   }
+
+  const handleCopyDropIndex = useCallback((indexName: string) => {
+    navigator.clipboard.writeText(`DROP INDEX IF EXISTS ${indexName};`)
+    setCopiedIndex(indexName)
+    setTimeout(() => setCopiedIndex(null), 2000)
+  }, [])
+
+  // ---------- critical alerts detection ----------
+  const criticalAlerts = useMemo(() => {
+    const alerts: { severity: 'critical' | 'warning'; message: string }[] = []
+
+    // Pool saturation
+    if (poolStats) {
+      const pct = poolStats.max_size > 0
+        ? Math.round((poolStats.used_connections / poolStats.max_size) * 100)
+        : 0
+      if (pct >= 90) alerts.push({ severity: 'critical', message: `Pool a ${pct}% de capacidad (${poolStats.used_connections}/${poolStats.max_size})` })
+      else if (pct >= 70) alerts.push({ severity: 'warning', message: `Pool a ${pct}% de capacidad` })
+    }
+
+    // Slow queries > 1s mean
+    const criticalSlowCount = (slowQueries?.queries ?? []).filter(q => q.mean_exec_time_ms > 1000).length
+    if (criticalSlowCount > 0)
+      alerts.push({ severity: 'critical', message: `${criticalSlowCount} consulta(s) con media > 1s` })
+
+    // Waiting locks (not granted)
+    const waitingLocks = (lockStatus?.lock_counts ?? []).filter(lc => !lc.granted)
+    const waitingTotal = waitingLocks.reduce((s, lc) => s + lc.count, 0)
+    if (waitingTotal > 0)
+      alerts.push({ severity: 'critical', message: `${waitingTotal} lock(s) en espera (bloqueados)` })
+
+    // Long-running connections > 60s
+    const longRunning = (lockStatus?.active_connections ?? []).filter(c => c.query_seconds > 60)
+    if (longRunning.length > 0)
+      alerts.push({ severity: 'warning', message: `${longRunning.length} conexión(es) activa(s) > 60s` })
+
+    // Unused indexes wasting space
+    const unusedCount = dbStats?.unused_indexes?.length ?? 0
+    if (unusedCount >= 5)
+      alerts.push({ severity: 'warning', message: `${unusedCount} índices no utilizados (candidatos DROP)` })
+
+    return alerts
+  }, [poolStats, slowQueries, lockStatus, dbStats])
 
   // ---------- chart data: slow queries horizontal bar ----------
   const slowBarData = useMemo(() => {
@@ -232,6 +321,7 @@ export default function MonitoringPage() {
   }, [slowQueries])
 
   const unusedCount = dbStats?.unused_indexes?.length ?? 0
+  const hasAnyError = errorSlow || errorFrequent || errorPool || errorDb || errorLocks
 
   return (
     <div className="space-y-4">
@@ -249,6 +339,39 @@ export default function MonitoringPage() {
         </Button>
       </div>
 
+      {/* ═══════ CRITICAL ALERTS BANNER ═══════ */}
+      {criticalAlerts.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-amber-600" />
+            <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              {criticalAlerts.filter(a => a.severity === 'critical').length > 0
+                ? 'Alertas Criticas Detectadas'
+                : 'Advertencias'}
+            </span>
+          </div>
+          {criticalAlerts.map((alert, i) => (
+            <div key={i} className="flex items-center gap-2 ml-7">
+              {alert.severity === 'critical'
+                ? <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                : <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+              <span className="text-xs text-amber-700 dark:text-amber-400">{alert.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ═══════ ERROR BANNERS ═══════ */}
+      {hasAnyError && (
+        <div className="space-y-2">
+          {errorPool && <ErrorBanner error={poolError} label="Connection Pool" onRetry={() => refetchPool()} />}
+          {errorSlow && <ErrorBanner error={slowError} label="Slow Queries" onRetry={() => refetchSlow()} />}
+          {errorLocks && <ErrorBanner error={locksError} label="Lock Status" onRetry={() => refetchLocks()} />}
+          {errorDb && <ErrorBanner error={dbError} label="Database Stats" onRetry={() => refetchDb()} />}
+          {errorFrequent && <ErrorBanner error={frequentError} label="Frequent Queries" onRetry={() => refetchFrequent()} />}
+        </div>
+      )}
+
       {/* ═══════ VISUAL DASHBOARD (always visible) ═══════ */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
 
@@ -263,6 +386,10 @@ export default function MonitoringPage() {
           <CardContent className="pb-3 px-4">
             {loadingPool ? (
               <div className="h-[140px] flex items-center justify-center text-muted-foreground">...</div>
+            ) : errorPool ? (
+              <div className="h-[140px] flex items-center justify-center">
+                <XCircle className="h-8 w-8 text-red-300" />
+              </div>
             ) : poolStats ? (
               <PoolGauge used={poolStats.used_connections} max={poolStats.max_size} />
             ) : null}
@@ -281,19 +408,19 @@ export default function MonitoringPage() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Tracked Queries</span>
               <span className="font-mono font-bold text-sm">
-                {loadingSlow ? '...' : formatNumber(slowQueries?.total_tracked ?? 0)}
+                {loadingSlow ? '...' : errorSlow ? <XCircle className="h-4 w-4 text-red-400 inline" /> : formatNumber(slowQueries?.total_tracked ?? 0)}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Active Connections</span>
               <span className="font-mono font-bold text-sm">
-                {loadingLocks ? '...' : lockStatus?.active_connections?.length ?? 0}
+                {loadingLocks ? '...' : errorLocks ? <XCircle className="h-4 w-4 text-red-400 inline" /> : lockStatus?.active_connections?.length ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Avg Cache Hit</span>
               <span className="font-mono font-bold text-sm">
-                {avgCacheHit != null ? (
+                {errorSlow ? <XCircle className="h-4 w-4 text-red-400 inline" /> : avgCacheHit != null ? (
                   <Badge variant={avgCacheHit > 95 ? 'default' : avgCacheHit > 80 ? 'secondary' : 'destructive'}>
                     {avgCacheHit}%
                   </Badge>
@@ -303,7 +430,7 @@ export default function MonitoringPage() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Unused Indexes</span>
               <span className="font-mono font-bold text-sm">
-                {loadingDb ? '...' : (
+                {loadingDb ? '...' : errorDb ? <XCircle className="h-4 w-4 text-red-400 inline" /> : (
                   <span className="flex items-center gap-1">
                     {unusedCount === 0
                       ? <><CheckCircle2 className="h-3.5 w-3.5 text-green-500" />{unusedCount}</>
@@ -315,7 +442,7 @@ export default function MonitoringPage() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Lock Modes</span>
               <span className="font-mono font-bold text-sm flex items-center gap-1">
-                {loadingLocks ? '...' : (
+                {loadingLocks ? '...' : errorLocks ? <XCircle className="h-4 w-4 text-red-400 inline" /> : (
                   <>
                     <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                     {lockStatus?.lock_counts?.length ?? 0}
@@ -340,6 +467,10 @@ export default function MonitoringPage() {
           <CardContent className="pb-3 px-4">
             {loadingSlow ? (
               <div className="h-[160px] flex items-center justify-center text-muted-foreground">...</div>
+            ) : errorSlow ? (
+              <div className="h-[160px] flex items-center justify-center">
+                <XCircle className="h-8 w-8 text-red-300" />
+              </div>
             ) : (slowQueries?.queries?.length ?? 0) === 0 ? (
               <div className="h-[160px] flex items-center justify-center text-muted-foreground text-sm">
                 No slow queries detected
@@ -365,6 +496,10 @@ export default function MonitoringPage() {
           <CardContent className="pb-3 px-4">
             {loadingDb ? (
               <div className="h-[180px] flex items-center justify-center text-muted-foreground">...</div>
+            ) : errorDb ? (
+              <div className="h-[180px] flex items-center justify-center">
+                <XCircle className="h-8 w-8 text-red-300" />
+              </div>
             ) : (
               <div className="h-[180px]">
                 <Doughnut data={tableSizeData} options={doughnutOptions} />
@@ -384,6 +519,10 @@ export default function MonitoringPage() {
           <CardContent className="pb-3 px-2">
             {loadingDb ? (
               <div className="h-[180px] flex items-center justify-center text-muted-foreground">...</div>
+            ) : errorDb ? (
+              <div className="h-[180px] flex items-center justify-center">
+                <XCircle className="h-8 w-8 text-red-300" />
+              </div>
             ) : (
               <Table>
                 <TableHeader>
@@ -437,6 +576,8 @@ export default function MonitoringPage() {
             <CardContent>
               {loadingSlow ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : errorSlow ? (
+                <ErrorBanner error={slowError} label="Slow Queries" onRetry={() => refetchSlow()} />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -452,7 +593,7 @@ export default function MonitoringPage() {
                     </TableHeader>
                     <TableBody>
                       {slowQueries?.queries?.map((q: SlowQuery, i: number) => (
-                        <TableRow key={q.queryid || i}>
+                        <TableRow key={q.queryid || i} className={q.mean_exec_time_ms > 1000 ? 'bg-red-50/50 dark:bg-red-950/10' : ''}>
                           <TableCell>
                             <code className="text-xs break-all">{q.query_preview}</code>
                           </TableCell>
@@ -468,7 +609,11 @@ export default function MonitoringPage() {
                           <TableCell className="text-right font-mono">{formatMs(q.max_exec_time_ms)}</TableCell>
                           <TableCell className="text-right font-mono">{formatMs(q.total_exec_time_ms)}</TableCell>
                           <TableCell className="text-right font-mono">
-                            {q.cache_hit_ratio != null ? `${q.cache_hit_ratio}%` : '-'}
+                            {q.cache_hit_ratio != null ? (
+                              <span className={q.cache_hit_ratio < 80 ? 'text-red-500 font-bold' : ''}>
+                                {q.cache_hit_ratio}%
+                              </span>
+                            ) : '-'}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -490,6 +635,8 @@ export default function MonitoringPage() {
             <CardContent>
               {loadingFrequent ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : errorFrequent ? (
+                <ErrorBanner error={frequentError} label="Frequent Queries" onRetry={() => refetchFrequent()} />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -514,7 +661,11 @@ export default function MonitoringPage() {
                           <TableCell className="text-right font-mono">{formatMs(q.total_exec_time_ms)}</TableCell>
                           <TableCell className="text-right font-mono">{formatNumber(q.total_rows)}</TableCell>
                           <TableCell className="text-right font-mono">
-                            {q.cache_hit_ratio != null ? `${q.cache_hit_ratio}%` : '-'}
+                            {q.cache_hit_ratio != null ? (
+                              <span className={q.cache_hit_ratio < 80 ? 'text-red-500 font-bold' : ''}>
+                                {q.cache_hit_ratio}%
+                              </span>
+                            ) : '-'}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -536,6 +687,8 @@ export default function MonitoringPage() {
             <CardContent>
               {loadingDb ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : errorDb ? (
+                <ErrorBanner error={dbError} label="Database Stats" onRetry={() => refetchDb()} />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -571,11 +724,13 @@ export default function MonitoringPage() {
           <Card>
             <CardHeader>
               <CardTitle>Unused Indexes</CardTitle>
-              <CardDescription>Non-unique indexes with fewer than 10 scans. Candidates for removal.</CardDescription>
+              <CardDescription>Non-unique indexes with fewer than 10 scans. Copy the DROP command to execute in Supabase SQL Editor.</CardDescription>
             </CardHeader>
             <CardContent>
               {loadingDb ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : errorDb ? (
+                <ErrorBanner error={dbError} label="Database Stats" onRetry={() => refetchDb()} />
               ) : (dbStats?.unused_indexes?.length ?? 0) === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
@@ -590,6 +745,7 @@ export default function MonitoringPage() {
                         <TableHead>Index</TableHead>
                         <TableHead className="text-right">Size</TableHead>
                         <TableHead className="text-right">Scans</TableHead>
+                        <TableHead className="text-center w-[80px]">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -602,6 +758,19 @@ export default function MonitoringPage() {
                             <Badge variant={idx.scan_count === 0 ? 'destructive' : 'secondary'}>
                               {idx.scan_count}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2"
+                              title={`Copy: DROP INDEX IF EXISTS ${idx.index_name};`}
+                              onClick={() => handleCopyDropIndex(idx.index_name)}
+                            >
+                              {copiedIndex === idx.index_name
+                                ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -623,6 +792,8 @@ export default function MonitoringPage() {
             <CardContent className="space-y-6">
               {loadingLocks ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
+              ) : errorLocks ? (
+                <ErrorBanner error={locksError} label="Lock Status" onRetry={() => refetchLocks()} />
               ) : (
                 <>
                   {lockStatus?.lock_counts && lockStatus.lock_counts.length > 0 && (
@@ -658,11 +829,18 @@ export default function MonitoringPage() {
                           </TableHeader>
                           <TableBody>
                             {lockStatus?.active_connections?.map((conn) => (
-                              <TableRow key={conn.pid}>
+                              <TableRow
+                                key={conn.pid}
+                                className={conn.query_seconds > 60 ? 'bg-red-50/50 dark:bg-red-950/10' : ''}
+                              >
                                 <TableCell className="font-mono">{conn.pid}</TableCell>
                                 <TableCell><Badge variant="outline">{conn.state}</Badge></TableCell>
                                 <TableCell className="text-right font-mono">
-                                  {conn.query_seconds != null ? `${conn.query_seconds}s` : '-'}
+                                  {conn.query_seconds != null ? (
+                                    <span className={conn.query_seconds > 60 ? 'text-red-500 font-bold' : ''}>
+                                      {conn.query_seconds}s
+                                    </span>
+                                  ) : '-'}
                                 </TableCell>
                                 <TableCell className="text-sm">{conn.wait_event ?? '-'}</TableCell>
                                 <TableCell>
