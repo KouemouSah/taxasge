@@ -185,16 +185,17 @@ class TreasuryAnalyticsService:
                 logger.warning(f"No KPI data found for period {date_from} to {date_to}")
                 return pd.DataFrame()
 
-            # Convert to DataFrame and fill NaN for numeric columns
-            # NULL values come from FILTER clauses in mv_treasury_daily_kpis
-            # (e.g. total_amount is NULL when 0 payments are completed).
-            # NaN propagates to sklearn/numpy and breaks JSON serialization.
+            # Convert to DataFrame and fix types.
+            # asyncpg returns decimal.Decimal for numeric/money columns;
+            # pandas/numpy cannot do quantile/corr interpolation on Decimal.
+            # Also fill NaN for numeric columns (NULL from FILTER clauses).
             df = pd.DataFrame([dict(row) for row in rows])
             df["report_date"] = pd.to_datetime(df["report_date"])
-            for col in ["total_amount", "transaction_count", "success_count",
-                         "failed_count", "avg_processing_minutes"]:
+            numeric_cols = ["total_amount", "transaction_count", "success_count",
+                            "failed_count", "avg_processing_minutes"]
+            for col in numeric_cols:
                 if col in df.columns:
-                    df[col] = df[col].fillna(0)
+                    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
             return df
 
         except Exception as e:
@@ -242,7 +243,13 @@ class TreasuryAnalyticsService:
             rows = await db.fetch(query, df_obj, dt_obj)
             if not rows:
                 return pd.DataFrame()
-            return pd.DataFrame([dict(row) for row in rows])
+            df = pd.DataFrame([dict(row) for row in rows])
+            # Convert Decimal → float for numeric columns (asyncpg returns Decimal)
+            for col in ["validations_count", "rejections_count", "avg_processing_minutes",
+                         "sla_respect_rate", "unique_payments"]:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+            return df
         except Exception as e:
             logger.error(f"Error fetching agent performance data: {e}")
             return pd.DataFrame()
@@ -275,6 +282,10 @@ class TreasuryAnalyticsService:
             data = df[col].dropna()
             if len(data) == 0:
                 continue
+
+            # asyncpg returns decimal.Decimal for numeric columns;
+            # pandas/numpy quantile cannot interpolate Decimal * float.
+            data = data.astype(float)
 
             desc = data.describe()
             q1, q3 = data.quantile([0.25, 0.75])
