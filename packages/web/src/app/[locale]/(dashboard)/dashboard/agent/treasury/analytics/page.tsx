@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -89,18 +92,72 @@ ChartJS.register(
   Filler
 );
 
-type Period = 'week' | 'month' | 'year';
+type Period = 'week' | 'month' | 'year' | 'prev_week' | 'prev_month' | 'quarter' | 'prev_quarter' | 'custom';
+
+/** Compute dateFrom/dateTo for each preset period */
+function getDateRange(period: Period, customFrom?: string, customTo?: string): { dateFrom?: string; dateTo?: string; backendPeriod: string } {
+  if (period === 'custom') {
+    return { dateFrom: customFrom, dateTo: customTo, backendPeriod: 'month' };
+  }
+
+  const now = new Date();
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+  switch (period) {
+    case 'week':
+      return { backendPeriod: 'week' };
+    case 'month':
+      return { backendPeriod: 'month' };
+    case 'year':
+      return { backendPeriod: 'year' };
+    case 'prev_week': {
+      const end = new Date(now);
+      end.setDate(end.getDate() - end.getDay()); // Start of current week (Sunday)
+      const start = new Date(end);
+      start.setDate(start.getDate() - 7);
+      return { dateFrom: fmt(start), dateTo: fmt(end), backendPeriod: 'week' };
+    }
+    case 'prev_month': {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of prev month
+      return { dateFrom: fmt(start), dateTo: fmt(end), backendPeriod: 'month' };
+    }
+    case 'quarter': {
+      const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+      return { dateFrom: fmt(qStart), dateTo: fmt(now), backendPeriod: 'month' };
+    }
+    case 'prev_quarter': {
+      const curQStart = Math.floor(now.getMonth() / 3) * 3;
+      const start = new Date(now.getFullYear(), curQStart - 3, 1);
+      const end = new Date(now.getFullYear(), curQStart, 0); // Last day of prev quarter
+      return { dateFrom: fmt(start), dateTo: fmt(end), backendPeriod: 'month' };
+    }
+    default:
+      return { backendPeriod: 'month' };
+  }
+}
 
 export default function TreasuryAnalyticsPage() {
   const t = useTranslations('treasury');
   const locale = useLocale();
 
   const [period, setPeriod] = useState<Period>('month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [activeTab, setActiveTab] = useState('report');
 
   // Explore tab state
   const [primaryVariable, setPrimaryVariable] = useState('total_amount');
   const [secondaryVariable, setSecondaryVariable] = useState<string | undefined>();
+
+  // Compute date range from period selection
+  const { dateFrom, dateTo, backendPeriod } = useMemo(
+    () => getDateRange(period, customFrom, customTo),
+    [period, customFrom, customTo]
+  );
+
+  // For custom period, only fetch when both dates are set
+  const isCustomReady = period !== 'custom' || (!!customFrom && !!customTo);
 
   // Report data
   const {
@@ -109,7 +166,9 @@ export default function TreasuryAnalyticsPage() {
     error: reportError,
     refetch: refetchReport,
   } = useAnalyticsReport({
-    period,
+    period: backendPeriod,
+    dateFrom,
+    dateTo,
     language: locale,
   });
 
@@ -123,9 +182,11 @@ export default function TreasuryAnalyticsPage() {
     {
       primaryVariable,
       secondaryVariable,
-      period,
+      period: backendPeriod,
+      dateFrom,
+      dateTo,
     },
-    { enabled: activeTab === 'explore' && !!primaryVariable }
+    { enabled: activeTab === 'explore' && !!primaryVariable && isCustomReady }
   );
 
   const formatCurrency = (amount: number) => {
@@ -247,18 +308,51 @@ export default function TreasuryAnalyticsPage() {
             {t('analytics.description')}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-48">
               <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="week">{t('analytics.periods.week')}</SelectItem>
-              <SelectItem value="month">{t('analytics.periods.month')}</SelectItem>
+              <SelectGroup>
+                <SelectLabel>{t('analytics.periods.week')}</SelectLabel>
+                <SelectItem value="week">{t('analytics.periods.week')}</SelectItem>
+                <SelectItem value="prev_week">{t('analytics.periods.prev_week')}</SelectItem>
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel>{t('analytics.periods.month')}</SelectLabel>
+                <SelectItem value="month">{t('analytics.periods.month')}</SelectItem>
+                <SelectItem value="prev_month">{t('analytics.periods.prev_month')}</SelectItem>
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel>{t('analytics.periods.quarter')}</SelectLabel>
+                <SelectItem value="quarter">{t('analytics.periods.quarter')}</SelectItem>
+                <SelectItem value="prev_quarter">{t('analytics.periods.prev_quarter')}</SelectItem>
+              </SelectGroup>
               <SelectItem value="year">{t('analytics.periods.year')}</SelectItem>
+              <SelectItem value="custom">{t('analytics.periods.custom')}</SelectItem>
             </SelectContent>
           </Select>
+          {period === 'custom' && (
+            <>
+              <Input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="w-36"
+                aria-label={t('analytics.dateFrom')}
+              />
+              <span className="text-sm text-muted-foreground">—</span>
+              <Input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="w-36"
+                aria-label={t('analytics.dateTo')}
+              />
+            </>
+          )}
           <Button
             onClick={() => activeTab === 'report' ? refetchReport() : refetchExplore()}
             variant="outline"

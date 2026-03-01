@@ -180,7 +180,7 @@ export default function TreasuryDashboardPage() {
           {/* Row 3: Three panels side-by-side */}
           <div className="grid gap-3 lg:grid-cols-3">
             <AgentWorkloadPanel agents={overview.agentLoad} t={t} />
-            <SLAAlertsPanel alerts={overview.slaAlerts} t={t} />
+            <SLAAlertsPanel alerts={overview.slaAlerts} compliance={overview.slaCompliance} t={t} />
             <RecentActivityTimeline activities={overview.recentActivity} t={t} />
           </div>
         </>

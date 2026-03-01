@@ -5801,7 +5801,17 @@
       "actionRelease": "Liberado",
       "actionDocs": "Docs solicitados",
       "moreItems": "+{count} mas",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "slaCompliance": "Cumplimiento SLA",
+      "complianceRate": "{pct}% dentro del SLA",
+      "totalValidated": "{count} validados",
+      "slaBreachedCount": "{count} fuera del SLA",
+      "avgProcessingTime": "Tiempo promedio",
+      "minTime": "Min",
+      "maxTime": "Max",
+      "hours": "{value}h",
+      "noValidations": "Sin validaciones en este periodo",
+      "pendingNow": "{count} pendientes ahora"
     },
     "validation": {
       "title": "Validacion de Pagos",
@@ -6433,10 +6443,17 @@
         "explore": "Explorar"
       },
       "periods": {
-        "week": "Semana",
-        "month": "Mes",
-        "year": "Ano"
+        "week": "Esta semana",
+        "month": "Este mes",
+        "year": "Este ano",
+        "prev_week": "Semana anterior",
+        "prev_month": "Mes anterior",
+        "quarter": "Este trimestre",
+        "prev_quarter": "Trimestre anterior",
+        "custom": "Personalizado"
       },
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
       "healthScore": "Puntuacion de Salud",
       "healthScoreDescription": "Indicador general basado en hallazgos y umbrales",
       "totalRecords": "Registros",

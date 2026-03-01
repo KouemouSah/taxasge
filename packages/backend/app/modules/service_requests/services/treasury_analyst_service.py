@@ -451,12 +451,16 @@ class TreasuryAnalystService:
                     text = ""
                 return {"answer": text or "No puedo responder sin datos. Sé más específico.", "tools_used": [], "data": {}}
 
-            # Step 3: Execute function calls in parallel
+            # Step 3: Execute function calls in parallel — each with its own
+            # pooled connection (asyncpg forbids concurrent ops on 1 connection).
+            from app.database.connection import db_manager as _db_mgr
+
             async def _exec_fn(fn_name: str, fn_args: dict):
                 if fn_name not in FUNCTION_MAP:
                     return fn_name, {"error": f"Función desconocida: {fn_name}"}
                 try:
-                    result = await FUNCTION_MAP[fn_name](db, **fn_args)
+                    async with _db_mgr.get_connection() as conn:
+                        result = await FUNCTION_MAP[fn_name](conn, **fn_args)
                     return fn_name, result
                 except Exception as e:
                     logger.error(f"Treasury analyst function {fn_name} failed: {e}")
@@ -534,12 +538,31 @@ class TreasuryAnalystService:
         """Generate automated briefing from pre-computed data."""
         self._ensure_initialized()
 
-        # Gather key metrics in parallel
+        # Gather key metrics in parallel — each with its own pooled connection.
+        # asyncpg does NOT support concurrent operations on a single connection.
+        from app.database.connection import db_manager
+
+        async def _safe_revenue():
+            async with db_manager.get_connection() as conn:
+                return await _get_revenue_summary(conn, days=7)
+
+        async def _safe_sla():
+            async with db_manager.get_connection() as conn:
+                return await _get_sla_status(conn)
+
+        async def _safe_anomalies():
+            async with db_manager.get_connection() as conn:
+                return await _get_anomaly_summary(conn)
+
+        async def _safe_trends():
+            async with db_manager.get_connection() as conn:
+                return await _get_payment_trends(conn, days=7)
+
         revenue, sla, anomalies, trends = await asyncio.gather(
-            _get_revenue_summary(db, days=7),
-            _get_sla_status(db),
-            _get_anomaly_summary(db),
-            _get_payment_trends(db, days=7),
+            _safe_revenue(),
+            _safe_sla(),
+            _safe_anomalies(),
+            _safe_trends(),
         )
 
         # Determine priority

@@ -5699,7 +5699,17 @@
       "actionRelease": "Released",
       "actionDocs": "Docs requested",
       "moreItems": "+{count} more",
-      "retry": "Retry"
+      "retry": "Retry",
+      "slaCompliance": "SLA Compliance",
+      "complianceRate": "{pct}% within SLA",
+      "totalValidated": "{count} validated",
+      "slaBreachedCount": "{count} breached SLA",
+      "avgProcessingTime": "Avg processing time",
+      "minTime": "Min",
+      "maxTime": "Max",
+      "hours": "{value}h",
+      "noValidations": "No validations in this period",
+      "pendingNow": "{count} pending now"
     },
     "validation": {
       "title": "Payment Validation",
@@ -6331,10 +6341,17 @@
         "explore": "Explore"
       },
       "periods": {
-        "week": "Week",
-        "month": "Month",
-        "year": "Year"
+        "week": "This week",
+        "month": "This month",
+        "year": "This year",
+        "prev_week": "Previous week",
+        "prev_month": "Previous month",
+        "quarter": "This quarter",
+        "prev_quarter": "Previous quarter",
+        "custom": "Custom"
       },
+      "dateFrom": "From",
+      "dateTo": "To",
       "healthScore": "Health Score",
       "healthScoreDescription": "Overall indicator based on findings and thresholds",
       "totalRecords": "Records",

@@ -890,11 +890,23 @@ export interface RecentActivityItem {
   createdAt: string | null;
 }
 
+export interface SLAComplianceData {
+  totalValidated: number;
+  withinSla: number;
+  slaBreached: number;
+  compliancePct: number;
+  avgHours: number;
+  minHours: number;
+  maxHours: number;
+  currentlyPending: number;
+}
+
 export interface SupervisorOverviewResponse {
   paymentFlow: PaymentFlowPoint[];
   agentLoad: AgentLoadItem[];
   slaAlerts: SLAAlertItem[];
   slaAlertsCount: number;
+  slaCompliance: SLAComplianceData;
   methodDistribution: MethodDistributionItem[];
   topServices: TopServiceItem[];
   recentActivity: RecentActivityItem[];

@@ -5939,7 +5939,17 @@
       "actionRelease": "Libere",
       "actionDocs": "Docs demandes",
       "moreItems": "+{count} de plus",
-      "retry": "Reessayer"
+      "retry": "Reessayer",
+      "slaCompliance": "Conformite SLA",
+      "complianceRate": "{pct}% dans le SLA",
+      "totalValidated": "{count} valides",
+      "slaBreachedCount": "{count} hors SLA",
+      "avgProcessingTime": "Temps moyen",
+      "minTime": "Min",
+      "maxTime": "Max",
+      "hours": "{value}h",
+      "noValidations": "Aucune validation sur cette periode",
+      "pendingNow": "{count} en attente"
     },
     "validation": {
       "title": "Validation des Paiements",
@@ -6571,10 +6581,17 @@
         "explore": "Explorer"
       },
       "periods": {
-        "week": "Semaine",
-        "month": "Mois",
-        "year": "Annee"
+        "week": "Cette semaine",
+        "month": "Ce mois",
+        "year": "Cette annee",
+        "prev_week": "Semaine precedente",
+        "prev_month": "Mois precedent",
+        "quarter": "Ce trimestre",
+        "prev_quarter": "Trimestre precedent",
+        "custom": "Personnalise"
       },
+      "dateFrom": "Du",
+      "dateTo": "Au",
       "healthScore": "Score de Sante",
       "healthScoreDescription": "Indicateur global base sur les constats et les seuils",
       "totalRecords": "Enregistrements",

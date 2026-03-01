@@ -185,9 +185,16 @@ class TreasuryAnalyticsService:
                 logger.warning(f"No KPI data found for period {date_from} to {date_to}")
                 return pd.DataFrame()
 
-            # Convert to DataFrame
+            # Convert to DataFrame and fill NaN for numeric columns
+            # NULL values come from FILTER clauses in mv_treasury_daily_kpis
+            # (e.g. total_amount is NULL when 0 payments are completed).
+            # NaN propagates to sklearn/numpy and breaks JSON serialization.
             df = pd.DataFrame([dict(row) for row in rows])
             df["report_date"] = pd.to_datetime(df["report_date"])
+            for col in ["total_amount", "transaction_count", "success_count",
+                         "failed_count", "avg_processing_minutes"]:
+                if col in df.columns:
+                    df[col] = df[col].fillna(0)
             return df
 
         except Exception as e:

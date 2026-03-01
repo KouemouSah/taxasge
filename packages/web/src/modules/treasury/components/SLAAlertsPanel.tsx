@@ -2,13 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Clock } from 'lucide-react';
-import type { SLAAlertItem } from '../types';
+import { AlertTriangle, Clock, TrendingDown, TrendingUp, Timer } from 'lucide-react';
+import type { SLAAlertItem, SLAComplianceData } from '../types';
 
 const MAX_DISPLAY = 5;
 
 interface SLAAlertsPanelProps {
   alerts: SLAAlertItem[];
+  compliance?: SLAComplianceData;
   t: (key: string, params?: Record<string, string | number>) => string;
 }
 
@@ -39,7 +40,7 @@ function formatAmount(amount: number, currency: string): string {
   }).format(amount);
 }
 
-export function SLAAlertsPanel({ alerts, t }: SLAAlertsPanelProps) {
+export function SLAAlertsPanel({ alerts, compliance, t }: SLAAlertsPanelProps) {
   const breachedCount = alerts.filter(a => a.slaStatus === 'breached').length;
   const criticalCount = alerts.filter(a => a.slaStatus === 'critical').length;
   const displayAlerts = alerts.slice(0, MAX_DISPLAY);
@@ -72,7 +73,59 @@ export function SLAAlertsPanel({ alerts, t }: SLAAlertsPanelProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-2">
+        {/* Historical SLA Compliance Summary */}
+        {compliance && compliance.totalValidated > 0 && (
+          <div className="rounded-md border p-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t('overview.slaCompliance')}
+              </span>
+              <span className={`text-sm font-bold ${compliance.compliancePct >= 80 ? 'text-green-600' : compliance.compliancePct >= 50 ? 'text-orange-600' : 'text-red-600'}`}>
+                {t('overview.complianceRate', { pct: compliance.compliancePct })}
+              </span>
+            </div>
+            {/* Compliance bar */}
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${compliance.compliancePct >= 80 ? 'bg-green-500' : compliance.compliancePct >= 50 ? 'bg-orange-500' : 'bg-red-500'}`}
+                style={{ width: `${Math.min(compliance.compliancePct, 100)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span>{t('overview.totalValidated', { count: compliance.withinSla })}</span>
+              </div>
+              {compliance.slaBreached > 0 && (
+                <div className="flex items-center gap-1">
+                  <TrendingDown className="h-3 w-3 text-red-500" />
+                  <span>{t('overview.slaBreachedCount', { count: compliance.slaBreached })}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Timer className="h-3 w-3" />
+              <span>{t('overview.avgProcessingTime')}: {t('overview.hours', { value: compliance.avgHours })}</span>
+              {compliance.currentlyPending > 0 && (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-orange-600 font-medium">
+                    {t('overview.pendingNow', { count: compliance.currentlyPending })}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {compliance && compliance.totalValidated === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-1">
+            {t('overview.noValidations')}
+          </p>
+        )}
+
+        {/* Active SLA Alerts */}
         {alerts.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4" role="status">
             {t('overview.allWithinSLA')}
@@ -87,7 +140,6 @@ export function SLAAlertsPanel({ alerts, t }: SLAAlertsPanelProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     {getSLABadge(alert.slaStatus, t)}
-                    {/* F6: Truncated reference with title tooltip */}
                     <span className="text-sm font-medium truncate" title={alert.paymentReference}>
                       {alert.paymentReference}
                     </span>

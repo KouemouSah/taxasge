@@ -3712,16 +3712,18 @@ async def validate_payment(
               AND status NOT IN ('completed', 'cancelled', 'rejected')
         """, payment_id)
 
-        # Insert audit record
+        # Insert audit record (action_duration_seconds = time from payment creation to now)
         await db.execute("""
             INSERT INTO payment_validation_audit
                 (id, payment_id, agent_profile_id, agent_user_id, action,
-                 from_status, to_status, comment, created_at)
+                 from_status, to_status, comment, action_duration_seconds, created_at)
             VALUES (gen_random_uuid(), $1::uuid, $2, $3,
                     'approve'::agent_action_type,
                     'pending_agent_review'::payment_workflow_status,
-                'completed'::payment_workflow_status,
-                $4, NOW())
+                    'completed'::payment_workflow_status,
+                    $4,
+                    (SELECT EXTRACT(EPOCH FROM (NOW() - sp.created_at))::int FROM service_payments sp WHERE sp.id = $1::uuid),
+                    NOW())
         """, payment_id, agent_profile_id, current_user.id, body.comment)
 
         # Update agent performance stats
@@ -3962,16 +3964,18 @@ async def reject_payment(
               AND status NOT IN ('completed', 'cancelled', 'rejected')
         """, payment_id)
 
-        # Insert audit record
+        # Insert audit record (action_duration_seconds = time from payment creation to now)
         await db.execute("""
             INSERT INTO payment_validation_audit
                 (id, payment_id, agent_profile_id, agent_user_id, action,
-                 from_status, to_status, comment, created_at)
+                 from_status, to_status, comment, action_duration_seconds, created_at)
             VALUES (gen_random_uuid(), $1::uuid, $2, $3,
                     'reject'::agent_action_type,
                     'pending_agent_review'::payment_workflow_status,
                     'rejected_by_agent'::payment_workflow_status,
-                    $4, NOW())
+                    $4,
+                    (SELECT EXTRACT(EPOCH FROM (NOW() - sp.created_at))::int FROM service_payments sp WHERE sp.id = $1::uuid),
+                    NOW())
         """, payment_id, agent_profile_id, current_user.id, body.reason)
 
         # Update agent performance stats
@@ -4336,16 +4340,18 @@ async def escalate_payment(
               AND status NOT IN ('completed', 'cancelled', 'rejected')
         """, payment_id, body.reason)
 
-        # 6. Insert audit record
+        # 6. Insert audit record (action_duration_seconds = time from payment creation to now)
         await db.execute("""
             INSERT INTO payment_validation_audit
                 (id, payment_id, agent_profile_id, agent_user_id, action,
-                 from_status, to_status, comment, created_at)
+                 from_status, to_status, comment, action_duration_seconds, created_at)
             VALUES (gen_random_uuid(), $1::uuid, $2, $3,
                     'escalate'::agent_action_type,
                     'pending_agent_review'::payment_workflow_status,
                     'escalated_supervisor'::payment_workflow_status,
-                    $4, NOW())
+                    $4,
+                    (SELECT EXTRACT(EPOCH FROM (NOW() - sp.created_at))::int FROM service_payments sp WHERE sp.id = $1::uuid),
+                    NOW())
         """, payment_id, agent_profile_id, current_user.id, body.reason)
 
         # Update agent performance stats
@@ -5845,6 +5851,7 @@ async def get_supervisor_overview(
     """Get supervisor overview for treasury piloting dashboard."""
     import asyncio
     from app.core.cache import get_cache
+    from app.database.connection import db_manager
 
     cache = get_cache()
     cache_key = f"treasury:supervisor_overview:{days}"
@@ -5856,172 +5863,226 @@ async def get_supervisor_overview(
     lookback_start = now - timedelta(days=days)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # 6 parallel queries
+    # 6 parallel queries — each acquires its own connection from the pool.
+    # asyncpg does NOT support concurrent operations on a single connection,
+    # so we must use db_manager.get_connection() per coroutine.
     async def q_payment_flow():
-        rows = await db.fetch("""
-            SELECT
-                DATE(validated_at) AS date,
-                COUNT(*) AS count,
-                COALESCE(SUM(total_amount), 0) AS amount
-            FROM service_payments
-            WHERE workflow_status = 'completed'
-              AND validated_at >= $1
-            GROUP BY DATE(validated_at)
-            ORDER BY date
-        """, lookback_start)
-        return [{"date": str(r["date"]), "count": r["count"], "amount": float(r["amount"])} for r in rows]
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    DATE(validated_at) AS date,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(total_amount), 0) AS amount
+                FROM service_payments
+                WHERE workflow_status = 'completed'
+                  AND validated_at >= $1
+                GROUP BY DATE(validated_at)
+                ORDER BY date
+            """, lookback_start)
+            return [{"date": str(r["date"]), "count": r["count"], "amount": float(r["amount"])} for r in rows]
 
     async def q_agent_load():
-        rows = await db.fetch("""
-            WITH daily_completions AS (
-                SELECT pva.agent_profile_id, COUNT(*) AS completed_today
-                FROM payment_validation_audit pva
-                WHERE pva.action IN ('approve', 'reject')
-                  AND pva.created_at >= $1
-                GROUP BY pva.agent_profile_id
-            )
-            SELECT
-                ap.id AS agent_profile_id,
-                u.full_name AS agent_name,
-                COALESCE(aw.current_assignments, 0) AS pending,
-                COALESCE(aw.total_assignments_today, 0) AS in_progress,
-                COALESCE(dc.completed_today, 0) AS completed_today,
-                aw.workload_status,
-                COALESCE(aw.max_concurrent, 5) AS max_concurrent
-            FROM agent_profiles ap
-            JOIN users u ON u.id = ap.user_id
-            LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
-            LEFT JOIN daily_completions dc ON dc.agent_profile_id = ap.id
-            JOIN entities e ON e.id = ap.entity_id
-            WHERE e.code = 'TESORO'
-              AND ap.is_active = true
-              AND ap.is_supervisor = false
-            ORDER BY u.full_name
-        """, today_start)
-        return [{
-            "agent_profile_id": str(r["agent_profile_id"]),
-            "agent_name": r["agent_name"] or "Unknown",
-            "pending": r["pending"],
-            "in_progress": r["in_progress"],
-            "completed_today": r["completed_today"],
-            "capacity_pct": round(r["pending"] / max(r["max_concurrent"], 1) * 100),
-            "status": r["workload_status"] or "available",
-        } for r in rows]
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                WITH daily_completions AS (
+                    SELECT pva.agent_profile_id, COUNT(*) AS completed_today
+                    FROM payment_validation_audit pva
+                    WHERE pva.action IN ('approve', 'reject')
+                      AND pva.created_at >= $1
+                    GROUP BY pva.agent_profile_id
+                )
+                SELECT
+                    ap.id AS agent_profile_id,
+                    u.full_name AS agent_name,
+                    COALESCE(aw.current_assignments, 0) AS pending,
+                    COALESCE(aw.pending_declarations, 0) AS in_progress,
+                    COALESCE(dc.completed_today, 0) AS completed_today,
+                    aw.workload_status,
+                    COALESCE(aw.max_concurrent_assignments, 5) AS max_concurrent
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                LEFT JOIN daily_completions dc ON dc.agent_profile_id = ap.id
+                JOIN entities e ON e.id = ap.entity_id
+                WHERE e.code = 'TESORO'
+                  AND ap.is_active = true
+                  AND ap.is_supervisor = false
+                ORDER BY u.full_name
+            """, today_start)
+            return [{
+                "agent_profile_id": str(r["agent_profile_id"]),
+                "agent_name": r["agent_name"] or "Unknown",
+                "pending": r["pending"],
+                "in_progress": r["in_progress"],
+                "completed_today": r["completed_today"],
+                "capacity_pct": round(r["pending"] / max(r["max_concurrent"], 1) * 100),
+                "status": r["workload_status"] or "available",
+            } for r in rows]
 
     async def q_sla_alerts():
-        rows = await db.fetch("""
-            SELECT
-                sp.id, sp.payment_reference, sp.total_amount, sp.currency,
-                sp.payment_method::text AS payment_method,
-                sp.created_at, sp.sla_target_date,
-                u.full_name AS user_name,
-                sr.reference AS request_reference,
-                CASE
-                    WHEN sp.sla_target_date < NOW() THEN 'breached'
-                    WHEN sp.sla_target_date < NOW() + INTERVAL '2 hours' THEN 'critical'
-                    WHEN sp.sla_target_date < NOW() + INTERVAL '6 hours' THEN 'warning'
-                    ELSE 'ok'
-                END AS sla_status,
-                EXTRACT(EPOCH FROM (sp.sla_target_date - NOW())) / 3600 AS hours_remaining
-            FROM service_payments sp
-            JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN users u ON u.id = sp.user_id
-            WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
-              AND sp.requires_agent_validation = true
-              AND sp.sla_target_date IS NOT NULL
-              AND sp.sla_target_date < NOW() + INTERVAL '6 hours'
-            ORDER BY sp.sla_target_date ASC
-            LIMIT 20
-        """)
-        return [{
-            "payment_id": str(r["id"]),
-            "payment_reference": r["payment_reference"],
-            "amount": float(r["total_amount"]),
-            "currency": r["currency"] or "XAF",
-            "payment_method": r["payment_method"],
-            "user_name": r["user_name"],
-            "request_reference": r["request_reference"],
-            "sla_status": r["sla_status"],
-            "hours_remaining": round(float(r["hours_remaining"]), 1) if r["hours_remaining"] else 0,
-            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-        } for r in rows]
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    sp.id, sp.payment_reference, sp.total_amount, sp.currency,
+                    sp.payment_method::text AS payment_method,
+                    sp.created_at, sp.sla_target_date,
+                    u.full_name AS user_name,
+                    sr.reference AS request_reference,
+                    CASE
+                        WHEN sp.sla_target_date < NOW() THEN 'breached'
+                        WHEN sp.sla_target_date < NOW() + INTERVAL '2 hours' THEN 'critical'
+                        WHEN sp.sla_target_date < NOW() + INTERVAL '6 hours' THEN 'warning'
+                        ELSE 'ok'
+                    END AS sla_status,
+                    EXTRACT(EPOCH FROM (sp.sla_target_date - NOW())) / 3600 AS hours_remaining
+                FROM service_payments sp
+                JOIN service_requests sr ON sr.id = sp.service_request_id
+                JOIN users u ON u.id = sp.user_id
+                WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
+                  AND sp.requires_agent_validation = true
+                  AND sp.sla_target_date IS NOT NULL
+                  AND sp.sla_target_date < NOW() + INTERVAL '6 hours'
+                ORDER BY sp.sla_target_date ASC
+                LIMIT 20
+            """)
+            return [{
+                "payment_id": str(r["id"]),
+                "payment_reference": r["payment_reference"],
+                "amount": float(r["total_amount"]),
+                "currency": r["currency"] or "XAF",
+                "payment_method": r["payment_method"],
+                "user_name": r["user_name"],
+                "request_reference": r["request_reference"],
+                "sla_status": r["sla_status"],
+                "hours_remaining": round(float(r["hours_remaining"]), 1) if r["hours_remaining"] else 0,
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            } for r in rows]
 
     async def q_method_distribution():
-        rows = await db.fetch("""
-            SELECT
-                payment_method::text AS method,
-                COUNT(*) AS count,
-                COALESCE(SUM(total_amount), 0) AS amount
-            FROM service_payments
-            WHERE workflow_status = 'completed'
-              AND validated_at >= $1
-            GROUP BY payment_method
-            ORDER BY amount DESC
-        """, lookback_start)
-        total = sum(float(r["amount"]) for r in rows) or 1
-        return [{
-            "method": r["method"] or "unknown",
-            "count": r["count"],
-            "amount": float(r["amount"]),
-            "percentage": round(float(r["amount"]) / total * 100, 1),
-        } for r in rows]
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    payment_method::text AS method,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(total_amount), 0) AS amount
+                FROM service_payments
+                WHERE workflow_status = 'completed'
+                  AND validated_at >= $1
+                GROUP BY payment_method
+                ORDER BY amount DESC
+            """, lookback_start)
+            total = sum(float(r["amount"]) for r in rows) or 1
+            return [{
+                "method": r["method"] or "unknown",
+                "count": r["count"],
+                "amount": float(r["amount"]),
+                "percentage": round(float(r["amount"]) / total * 100, 1),
+            } for r in rows]
 
     async def q_top_services():
-        rows = await db.fetch("""
-            SELECT
-                sr.workflow_code,
-                COALESCE(fs.name_es, sr.workflow_code) AS service_name,
-                COUNT(*) AS count,
-                COALESCE(SUM(sp.total_amount), 0) AS amount
-            FROM service_payments sp
-            JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
-            WHERE sp.workflow_status = 'completed'
-              AND sp.validated_at >= $1
-            GROUP BY sr.workflow_code, fs.name_es
-            ORDER BY amount DESC
-            LIMIT 5
-        """, lookback_start)
-        return [{
-            "workflow_code": r["workflow_code"],
-            "service_name": r["service_name"],
-            "count": r["count"],
-            "amount": float(r["amount"]),
-        } for r in rows]
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    sr.workflow_code,
+                    COALESCE(fs.name_es, sr.workflow_code) AS service_name,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(sp.total_amount), 0) AS amount
+                FROM service_payments sp
+                JOIN service_requests sr ON sr.id = sp.service_request_id
+                LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
+                WHERE sp.workflow_status = 'completed'
+                  AND sp.validated_at >= $1
+                GROUP BY sr.workflow_code, fs.name_es
+                ORDER BY amount DESC
+                LIMIT 5
+            """, lookback_start)
+            return [{
+                "workflow_code": r["workflow_code"],
+                "service_name": r["service_name"],
+                "count": r["count"],
+                "amount": float(r["amount"]),
+            } for r in rows]
 
     async def q_recent_activity():
-        rows = await db.fetch("""
-            SELECT
-                pva.id, pva.action::text, pva.created_at, pva.comment,
-                u.full_name AS agent_name,
-                sp.payment_reference, sp.total_amount, sp.currency,
-                sp.payment_method::text AS payment_method
-            FROM payment_validation_audit pva
-            JOIN users u ON u.id = pva.agent_user_id
-            JOIN service_payments sp ON sp.id = pva.payment_id
-            WHERE pva.created_at >= $1
-            ORDER BY pva.created_at DESC
-            LIMIT 10
-        """, lookback_start)
-        return [{
-            "action": r["action"],
-            "agent_name": r["agent_name"],
-            "payment_reference": r["payment_reference"],
-            "amount": float(r["total_amount"]),
-            "currency": r["currency"] or "XAF",
-            "payment_method": r["payment_method"],
-            "comment": r["comment"],
-            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-        } for r in rows]
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT
+                    pva.id, pva.action::text, pva.created_at, pva.comment,
+                    u.full_name AS agent_name,
+                    sp.payment_reference, sp.total_amount, sp.currency,
+                    sp.payment_method::text AS payment_method
+                FROM payment_validation_audit pva
+                JOIN users u ON u.id = pva.agent_user_id
+                JOIN service_payments sp ON sp.id = pva.payment_id
+                WHERE pva.created_at >= $1
+                ORDER BY pva.created_at DESC
+                LIMIT 10
+            """, lookback_start)
+            return [{
+                "action": r["action"],
+                "agent_name": r["agent_name"],
+                "payment_reference": r["payment_reference"],
+                "amount": float(r["total_amount"]),
+                "currency": r["currency"] or "XAF",
+                "payment_method": r["payment_method"],
+                "comment": r["comment"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            } for r in rows]
 
-    # Execute all 6 queries in parallel
-    payment_flow, agent_load, sla_alerts, method_dist, top_services, recent = await asyncio.gather(
+    async def q_sla_compliance():
+        """Historical SLA compliance — validated payments within lookback period."""
+        async with db_manager.get_connection() as conn:
+            row = await conn.fetchrow("""
+                SELECT
+                    COUNT(*) AS total_validated,
+                    COUNT(*) FILTER (
+                        WHERE EXTRACT(EPOCH FROM (pva.created_at - sp.created_at)) / 3600 <= 24
+                    ) AS within_sla,
+                    COUNT(*) FILTER (
+                        WHERE EXTRACT(EPOCH FROM (pva.created_at - sp.created_at)) / 3600 > 24
+                    ) AS sla_breached,
+                    COALESCE(
+                        ROUND(AVG(EXTRACT(EPOCH FROM (pva.created_at - sp.created_at)) / 3600)::numeric, 1),
+                        0
+                    ) AS avg_hours,
+                    COALESCE(
+                        ROUND(MIN(EXTRACT(EPOCH FROM (pva.created_at - sp.created_at)) / 3600)::numeric, 1),
+                        0
+                    ) AS min_hours,
+                    COALESCE(
+                        ROUND(MAX(EXTRACT(EPOCH FROM (pva.created_at - sp.created_at)) / 3600)::numeric, 1),
+                        0
+                    ) AS max_hours,
+                    COUNT(*) FILTER (
+                        WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
+                    ) AS currently_pending
+                FROM payment_validation_audit pva
+                JOIN service_payments sp ON sp.id = pva.payment_id
+                WHERE pva.action IN ('approve', 'reject')
+                  AND pva.created_at >= $1
+            """, lookback_start)
+            total = row["total_validated"] or 0
+            within = row["within_sla"] or 0
+            return {
+                "total_validated": total,
+                "within_sla": within,
+                "sla_breached": row["sla_breached"] or 0,
+                "compliance_pct": round(within / max(total, 1) * 100, 1),
+                "avg_hours": float(row["avg_hours"]),
+                "min_hours": float(row["min_hours"]),
+                "max_hours": float(row["max_hours"]),
+                "currently_pending": row["currently_pending"] or 0,
+            }
+
+    # Execute all 7 queries in parallel — each with its own pooled connection
+    payment_flow, agent_load, sla_alerts, method_dist, top_services, recent, sla_compliance = await asyncio.gather(
         q_payment_flow(),
         q_agent_load(),
         q_sla_alerts(),
         q_method_distribution(),
         q_top_services(),
         q_recent_activity(),
+        q_sla_compliance(),
     )
 
     result = {
@@ -6029,6 +6090,7 @@ async def get_supervisor_overview(
         "agent_load": agent_load,
         "sla_alerts": sla_alerts,
         "sla_alerts_count": len(sla_alerts),
+        "sla_compliance": sla_compliance,
         "method_distribution": method_dist,
         "top_services": top_services,
         "recent_activity": recent,
