@@ -1188,7 +1188,21 @@
       "workflowMappings": "Workflow Mappings",
       "displayConfig": "Column Configuration",
       "roleMenuConfig": "Role Menu Config",
-      "monitoring": "DB Monitoring"
+      "monitoring": "Operations Center"
+    },
+    "operations": {
+      "title": "Operations Center",
+      "subtitle": "Integrations, payments, agents, pipeline and CRON actions",
+      "paymentsPending": "Payments Pending",
+      "agentStatus": "Agent Status",
+      "pipeline": "Pipeline",
+      "escalations": "Escalations",
+      "paymentQueue": "Payment Queue by Entity",
+      "quickActions": "Quick Actions",
+      "entity": "Entity",
+      "pending": "Pend.",
+      "amount": "Amount",
+      "avgHours": "Avg Hrs"
     },
     "menuConfig": {
       "title": "Menu Configuration",

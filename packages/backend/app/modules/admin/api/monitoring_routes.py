@@ -1,12 +1,16 @@
 """
-Admin Monitoring Endpoints — Database performance, locks, pool stats.
+Admin Operations Center + legacy Monitoring Endpoints.
 
-Queries pg_stat_statements, pg_stat_activity, pg_locks, and asyncpg pool.
+Operations Center: aggregated business metrics (payments, agents, pipeline, integrations).
+Legacy Monitoring: pg_stat_statements, pg_stat_activity, pg_locks (kept as fallback).
 Protected by admin.monitoring permission.
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import Dict, Any, List
+from enum import Enum
+from datetime import datetime, timezone
+import asyncio
 import asyncpg
 from loguru import logger
 
@@ -178,4 +182,307 @@ async def get_lock_status(
     return {
         "active_connections": [dict(r) for r in active_connections],
         "lock_counts": [dict(r) for r in lock_counts],
+    }
+
+
+# ============================================================================
+# OPERATIONS CENTER ENDPOINTS
+# ============================================================================
+
+
+@router.get("/operations/dashboard")
+async def get_operations_dashboard(
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _=Depends(permission_required("admin.monitoring")),
+):
+    """Aggregated operational dashboard: payments, agents, pipeline, locks."""
+    from app.core.cache import get_cache
+
+    cache = get_cache()
+    cache_key = "admin:ops:dashboard"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    # Query 1: Payment queue by entity
+    payment_rows = await db.fetch("""
+        SELECT
+            sp.entity_code,
+            COUNT(*) FILTER (WHERE sp.workflow_status IN
+                ('pending_agent_review', 'agent_reviewing', 'auto_processing', 'submitted')
+            ) as pending_count,
+            COALESCE(SUM(sp.total_amount) FILTER (WHERE sp.workflow_status IN
+                ('pending_agent_review', 'agent_reviewing', 'auto_processing', 'submitted')
+            ), 0) as pending_amount,
+            ROUND(COALESCE(AVG(EXTRACT(EPOCH FROM (NOW() - sp.created_at)) / 3600)
+                FILTER (WHERE sp.workflow_status IN ('pending_agent_review', 'agent_reviewing')
+            ), 0)::numeric, 1) as avg_wait_hours,
+            COUNT(*) FILTER (WHERE sp.sla_target_date IS NOT NULL
+                AND sp.sla_target_date < NOW()
+                AND sp.workflow_status NOT IN
+                    ('completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired')
+            ) as sla_violated_count
+        FROM service_payments sp
+        WHERE sp.workflow_status NOT IN
+            ('completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired')
+        GROUP BY sp.entity_code
+        ORDER BY pending_count DESC
+    """)
+
+    by_entity = [dict(r) for r in payment_rows]
+    total_pending = sum(r["pending_count"] for r in by_entity)
+    total_pending_amount = float(sum(r["pending_amount"] for r in by_entity))
+
+    # Query 2: Agent status summary
+    agent_row = await db.fetchrow("""
+        SELECT
+            COUNT(*) as total_agents,
+            COUNT(*) FILTER (WHERE aw.availability = 'available'
+                AND aw.workload_status NOT IN ('unavailable', 'overloaded')
+            ) as agents_available,
+            COUNT(*) FILTER (WHERE aw.workload_status = 'overloaded') as agents_overloaded,
+            COUNT(*) FILTER (WHERE aw.availability != 'available') as agents_unavailable,
+            COUNT(*) FILTER (
+                WHERE GREATEST(
+                    COALESCE(aw.last_assignment_at, ap.created_at),
+                    COALESCE(aw.last_completion_at, ap.created_at)
+                ) < NOW() - INTERVAL '48 hours'
+                AND aw.availability = 'available'
+            ) as agents_inactive_48h,
+            ROUND(COALESCE(AVG(aw.capacity_percentage), 0)::numeric, 1) as avg_capacity
+        FROM agent_profiles ap
+        JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+        WHERE ap.is_active = true
+    """)
+
+    # Query 3: Pipeline service requests
+    pipeline_row = await db.fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE sr.status = 'SUBMITTED') as submitted,
+            COUNT(*) FILTER (WHERE sr.status = 'UNDER_REVIEW') as under_review,
+            COUNT(*) FILTER (WHERE sr.status = 'IN_PROGRESS') as in_progress,
+            COUNT(*) FILTER (WHERE sr.status IN ('PAYMENT_PENDING', 'PAYMENT_PROCESSING')
+            ) as payment_phase,
+            COUNT(*) FILTER (WHERE sr.status = 'PAID') as paid,
+            COUNT(*) FILTER (WHERE sr.escalated = true
+                AND sr.status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+            ) as active_escalations,
+            COUNT(*) FILTER (WHERE sr.priority IN ('URGENT', 'HIGH')
+                AND sr.status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+            ) as high_priority,
+            COUNT(*) FILTER (WHERE sr.created_at >= NOW() - INTERVAL '24 hours'
+            ) as new_24h,
+            COUNT(*) FILTER (WHERE sr.status IN ('COMPLETED', 'DOSSIER_VALIDE')
+                AND sr.updated_at >= NOW() - INTERVAL '24 hours'
+            ) as completed_24h
+        FROM service_requests sr
+        WHERE sr.status != 'DRAFT'
+    """)
+
+    # Query 4: Stale payment locks
+    stale_locks = await db.fetchval("""
+        SELECT COUNT(*) FROM service_payments sp
+        WHERE sp.assigned_agent_id IS NOT NULL
+          AND sp.assigned_at < NOW() - INTERVAL '4 hours'
+          AND sp.workflow_status = 'agent_reviewing'
+    """)
+
+    # Pool stats
+    pool = db_manager.pool
+    pool_stats = {
+        "max_size": pool.get_max_size(),
+        "current_size": pool.get_size(),
+        "free": pool.get_idle_size(),
+        "used": pool.get_size() - pool.get_idle_size(),
+    } if pool else None
+
+    result = {
+        "payments": {
+            "by_entity": by_entity,
+            "total_pending": total_pending,
+            "total_pending_amount": total_pending_amount,
+        },
+        "agents": dict(agent_row) if agent_row else {
+            "total_agents": 0, "agents_available": 0, "agents_overloaded": 0,
+            "agents_unavailable": 0, "agents_inactive_48h": 0, "avg_capacity": 0,
+        },
+        "pipeline": dict(pipeline_row) if pipeline_row else {
+            "submitted": 0, "under_review": 0, "in_progress": 0,
+            "payment_phase": 0, "paid": 0, "active_escalations": 0,
+            "high_priority": 0, "new_24h": 0, "completed_24h": 0,
+        },
+        "stale_locks": stale_locks or 0,
+        "pool": pool_stats,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await cache.set(cache_key, result, ttl=30)
+    return result
+
+
+@router.get("/operations/integrations")
+async def get_integration_health(
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _=Depends(permission_required("admin.monitoring")),
+):
+    """Health status of all external integrations: DB, Redis, BANGE, Gemini."""
+    from app.core.cache import get_cache
+
+    cache = get_cache()
+    cache_key = "admin:ops:integrations"
+    cached = await cache.get(cache_key)
+    if cached:
+        return cached
+
+    # 1. Database
+    db_status = "ok"
+    try:
+        await db.fetchval("SELECT 1")
+    except Exception as e:
+        db_status = f"error: {str(e)[:100]}"
+
+    # 2. Redis
+    redis_result = {"status": "unknown"}
+    try:
+        from app.core.cache import get_cache_health
+        redis_result = await get_cache_health()
+        redis_status = redis_result.get("redis_status", "unknown")
+    except Exception as e:
+        redis_status = f"error: {str(e)[:100]}"
+        redis_result = {"status": redis_status}
+
+    # 3. BANGE
+    bange_status = "unknown"
+    bange_ms = None
+    try:
+        from app.modules.payments.services.bange_service import bange_service
+        import time
+        start = time.monotonic()
+        bange_ok = await asyncio.wait_for(bange_service.health_check(), timeout=5.0)
+        bange_ms = round((time.monotonic() - start) * 1000)
+        bange_status = "ok" if bange_ok else "error"
+    except asyncio.TimeoutError:
+        bange_status = "timeout"
+    except Exception as e:
+        bange_status = f"error: {str(e)[:100]}"
+
+    # 4. Gemini (SDK availability check only)
+    try:
+        from google.cloud import aiplatform  # noqa: F401
+        gemini_status = "available"
+    except ImportError:
+        gemini_status = "unavailable"
+
+    result = {
+        "database": {"status": db_status},
+        "redis": {
+            "status": redis_status,
+            "type": redis_result.get("cache_type", "unknown"),
+            "enabled": redis_result.get("redis_enabled", False),
+        },
+        "bange": {"status": bange_status, "response_ms": bange_ms},
+        "gemini": {"status": gemini_status},
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await cache.set(cache_key, result, ttl=15)
+    return result
+
+
+class CronJobName(str, Enum):
+    treasury_refresh_views = "treasury_refresh_views"
+    cleanup_expired_holds = "cleanup_expired_holds"
+    workload_rebalance = "workload_rebalance"
+    assignment_health_check = "assignment_health_check"
+
+
+@router.post("/operations/trigger/{job_name}")
+async def trigger_cron_job(
+    job_name: CronJobName,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _=Depends(permission_required("admin.monitoring")),
+):
+    """Manually trigger a CRON job. Rate limited to 1 per minute per job."""
+    from app.core.cache import get_cache
+
+    cache = get_cache()
+    rate_key = f"admin:ops:trigger:{job_name.value}"
+    if await cache.get(rate_key):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Job {job_name.value} was triggered recently. Wait 60 seconds.",
+        )
+
+    user_email = current_user.get("email", "unknown")
+    logger.info(f"CRON_MANUAL_TRIGGER: {job_name.value} by {user_email}")
+
+    result: Dict[str, Any] = {}
+
+    if job_name == CronJobName.treasury_refresh_views:
+        await db.execute("SET LOCAL statement_timeout = '300000'")
+        refreshed = []
+        errors = []
+        for view in ("mv_treasury_daily_kpis", "mv_reconciliation_stats"):
+            try:
+                await db.execute(
+                    f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}"
+                )
+                refreshed.append(view)
+            except Exception as e:
+                errors.append({"view": view, "error": str(e)[:200]})
+        result = {"refreshed": refreshed, "errors": errors}
+
+    elif job_name == CronJobName.cleanup_expired_holds:
+        released = await db.fetchval("""
+            WITH updated AS (
+                UPDATE appointment_holds
+                SET status = 'expired'
+                WHERE status = 'held'
+                  AND expires_at < NOW()
+                RETURNING id
+            )
+            SELECT COUNT(*) FROM updated
+        """)
+        result = {"released_count": released or 0}
+
+    elif job_name == CronJobName.workload_rebalance:
+        try:
+            from app.modules.assignment.services.workload_rebalance_service import (
+                rebalance_entity_workload,
+            )
+            entities = await db.fetch(
+                "SELECT DISTINCT entity_code FROM agent_profiles WHERE is_active = true AND entity_code IS NOT NULL"
+            )
+            total_reassigned = 0
+            for row in entities:
+                try:
+                    r = await rebalance_entity_workload(db, row["entity_code"])
+                    if r and isinstance(r, dict):
+                        total_reassigned += r.get("reassigned", 0)
+                except Exception as e:
+                    logger.warning(f"Rebalance {row['entity_code']} failed: {e}")
+            result = {"total_reassigned": total_reassigned, "entities_processed": len(entities)}
+        except ImportError:
+            result = {"error": "workload_rebalance_service not available"}
+
+    elif job_name == CronJobName.assignment_health_check:
+        try:
+            from app.modules.service_requests.services.assignment_outbox_service import (
+                assignment_outbox_service,
+            )
+            r = await assignment_outbox_service.run_health_check(db)
+            result = r if isinstance(r, dict) else {"status": "completed"}
+        except ImportError:
+            result = {"error": "assignment_outbox_service not available"}
+
+    await cache.set(rate_key, {"triggered": True}, ttl=60)
+
+    return {
+        "job": job_name.value,
+        "result": result,
+        "triggered_by": user_email,
+        "triggered_at": datetime.now(timezone.utc).isoformat(),
     }

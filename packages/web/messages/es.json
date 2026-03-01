@@ -1983,7 +1983,21 @@
       "workflowMappings": "Mapeos de Workflow",
       "displayConfig": "Configuración de Columnas",
       "roleMenuConfig": "Menús por Rol",
-      "monitoring": "Monitoreo BD"
+      "monitoring": "Centro de Operaciones"
+    },
+    "operations": {
+      "title": "Centro de Operaciones",
+      "subtitle": "Integraciones, pagos, agentes, pipeline y acciones CRON",
+      "paymentsPending": "Pagos Pendientes",
+      "agentStatus": "Estado de Agentes",
+      "pipeline": "Pipeline",
+      "escalations": "Escalaciones",
+      "paymentQueue": "Cola de Pagos por Entidad",
+      "quickActions": "Acciones Rapidas",
+      "entity": "Entidad",
+      "pending": "Pend.",
+      "amount": "Monto",
+      "avgHours": "Avg Hrs"
     },
     "noResults": "No se encontraron resultados",
     "pageSubtitle": "Vista general del sistema y actividades",

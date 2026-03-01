@@ -2018,7 +2018,21 @@
       "workflowMappings": "Mappages Workflow",
       "displayConfig": "Configuration des Colonnes",
       "roleMenuConfig": "Menus par Rôle",
-      "monitoring": "Monitoring BD"
+      "monitoring": "Centre d'Operations"
+    },
+    "operations": {
+      "title": "Centre d'Operations",
+      "subtitle": "Integrations, paiements, agents, pipeline et actions CRON",
+      "paymentsPending": "Paiements en attente",
+      "agentStatus": "Statut des Agents",
+      "pipeline": "Pipeline",
+      "escalations": "Escalades",
+      "paymentQueue": "File de paiements par entite",
+      "quickActions": "Actions rapides",
+      "entity": "Entite",
+      "pending": "Att.",
+      "amount": "Montant",
+      "avgHours": "Moy. Hrs"
     },
     "noResults": "Aucun résultat trouvé",
     "pageSubtitle": "Vue d'ensemble du système et des activités",

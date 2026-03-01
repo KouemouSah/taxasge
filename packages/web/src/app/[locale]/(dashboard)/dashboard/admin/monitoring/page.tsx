@@ -1,17 +1,16 @@
 'use client'
 
-import React, { useState, useMemo, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import React, { useState, useMemo } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { useTranslations } from 'next-intl'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -24,87 +23,46 @@ import {
   RefreshCw,
   Database,
   Activity,
-  Zap,
   Server,
   AlertTriangle,
   CheckCircle2,
-  Lock,
-  ShieldAlert,
-  Copy,
   XCircle,
+  ShieldAlert,
+  Users,
+  CreditCard,
+  GitBranch,
+  Zap,
+  Play,
+  Loader2,
+  Clock,
 } from 'lucide-react'
 import {
   Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
   ArcElement,
-  Title,
   Tooltip,
-  Legend,
 } from 'chart.js'
-import { Bar, Doughnut } from 'react-chartjs-2'
+import { Doughnut } from 'react-chartjs-2'
 import { monitoringApi } from '@/modules/admin/services/monitoringApi'
-import type {
-  SlowQuery,
-  FrequentQuery,
-  TableStat,
-  UnusedIndex,
-} from '@/modules/admin/services/monitoringApi'
+import type { PaymentEntityRow } from '@/modules/admin/services/monitoringApi'
+import { useToast } from '@/hooks/use-toast'
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-)
+ChartJS.register(ArcElement, Tooltip)
 
 // ---------- helpers ----------
-const formatMs = (ms: number | null) => {
-  if (ms == null) return '-'
-  if (ms < 1) return `${(ms * 1000).toFixed(0)}us`
-  if (ms < 1000) return `${ms.toFixed(1)}ms`
-  return `${(ms / 1000).toFixed(2)}s`
-}
 const formatNumber = (n: number) => n.toLocaleString()
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat('es-GQ', { style: 'decimal', maximumFractionDigits: 0 }).format(n)
 
-const CHART_COLORS = [
-  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-]
-
-function getErrorMessage(error: unknown): { code: number; message: string } {
+function getErrorMessage(error: unknown): string {
   const err = error as { response?: { status?: number } }
   const status = err?.response?.status ?? 500
-  if (status === 403) return { code: 403, message: 'Permiso denegado — se requiere admin.monitoring' }
-  if (status === 401) return { code: 401, message: 'Sesión expirada — inicie sesión de nuevo' }
-  return { code: status, message: `Error del servidor (${status}) — reintente en unos segundos` }
+  if (status === 403) return 'Permiso denegado — se requiere admin.monitoring'
+  if (status === 401) return 'Sesion expirada'
+  return `Error del servidor (${status})`
 }
 
-// ---------- error banner ----------
-function ErrorBanner({ error, label, onRetry }: { error: unknown; label: string; onRetry: () => void }) {
-  const { code, message } = getErrorMessage(error)
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800">
-      <XCircle className="h-5 w-5 text-red-500 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium text-red-700 dark:text-red-400">{label}</span>
-        <p className="text-xs text-red-600 dark:text-red-500">{message}</p>
-      </div>
-      {code !== 403 && (
-        <Button variant="outline" size="sm" onClick={onRetry} className="shrink-0">
-          <RefreshCw className="h-3 w-3 mr-1" /> Reintentar
-        </Button>
-      )}
-    </div>
-  )
-}
-
-// ---------- pool gauge ----------
-function PoolGauge({ used, max }: { used: number; max: number }) {
+// ---------- mini pool gauge ----------
+function MiniPoolGauge({ used, max }: { used: number; max: number }) {
   const pct = max > 0 ? Math.round((used / max) * 100) : 0
   const color = pct >= 80 ? '#ef4444' : pct >= 50 ? '#f59e0b' : '#10b981'
   const data = {
@@ -117,221 +75,127 @@ function PoolGauge({ used, max }: { used: number; max: number }) {
     }],
   }
   const options = {
-    cutout: '75%',
+    cutout: '70%',
     responsive: true,
     maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
   }
   return (
-    <div className="relative h-[140px] w-[140px] mx-auto">
+    <div className="relative h-[50px] w-[50px]">
       <Doughnut data={data} options={options} />
-      <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
-        <span className="text-2xl font-bold" style={{ color }}>{pct}%</span>
-        <span className="text-[10px] text-muted-foreground">{used}/{max}</span>
+      <div className="absolute inset-0 flex items-center justify-center pt-0.5">
+        <span className="text-[10px] font-bold" style={{ color }}>{pct}%</span>
       </div>
     </div>
   )
 }
 
+// ---------- status dot ----------
+function StatusDot({ status, label }: { status: string; label: string }) {
+  const isOk = ['ok', 'connected', 'available'].includes(status)
+  const isWarn = ['degraded', 'timeout', 'disabled'].includes(status)
+  const color = isOk ? 'bg-green-500' : isWarn ? 'bg-amber-400' : 'bg-red-500'
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className={`h-2.5 w-2.5 rounded-full ${color} ${isOk ? '' : 'animate-pulse'}`} />
+      <span className="text-xs font-medium">{label}</span>
+      <span className="text-[10px] text-muted-foreground">{status}</span>
+    </div>
+  )
+}
+
+// ---------- error inline ----------
+function ErrorInline({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <div className="flex items-center gap-2 p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20">
+      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+      <span className="text-xs text-red-600 flex-1">{getErrorMessage(error)}</span>
+      <Button variant="ghost" size="sm" onClick={onRetry} className="h-6 px-2 text-xs">
+        <RefreshCw className="h-3 w-3" />
+      </Button>
+    </div>
+  )
+}
+
+// ---------- CRON job config ----------
+const CRON_JOBS = [
+  { key: 'treasury_refresh_views', icon: Database, label: 'Refresh Vistas Tesoro' },
+  { key: 'workload_rebalance', icon: Users, label: 'Reequilibrar Cargas' },
+  { key: 'cleanup_expired_holds', icon: Clock, label: 'Limpiar Holds Expirados' },
+  { key: 'assignment_health_check', icon: Activity, label: 'Health Check Asignaciones' },
+] as const
+
 // ---------- page ----------
-export default function MonitoringPage() {
-  const [activeTab, setActiveTab] = useState('slow-queries')
-  const [copiedIndex, setCopiedIndex] = useState<string | null>(null)
+export default function OperationsCenterPage() {
+  const t = useTranslations('admin')
+  const { toast } = useToast()
+  const [triggeredJobs, setTriggeredJobs] = useState<Record<string, string>>({})
 
+  // --- data queries ---
   const {
-    data: slowQueries, isLoading: loadingSlow, isError: errorSlow,
-    error: slowError, refetch: refetchSlow,
+    data: dashboard, isLoading: loadingDash, isError: errorDash,
+    error: dashError, refetch: refetchDash,
   } = useQuery({
-    queryKey: ['monitoring', 'slow-queries'],
-    queryFn: () => monitoringApi.getSlowQueries(20, 5),
+    queryKey: ['ops', 'dashboard'],
+    queryFn: () => monitoringApi.getOperationsDashboard(),
     refetchInterval: 30000,
     retry: 1,
   })
 
   const {
-    data: frequentQueries, isLoading: loadingFrequent, isError: errorFrequent,
-    error: frequentError, refetch: refetchFrequent,
+    data: integrations, isLoading: loadingInt, isError: errorInt,
+    error: intError, refetch: refetchInt,
   } = useQuery({
-    queryKey: ['monitoring', 'frequent-queries'],
-    queryFn: () => monitoringApi.getFrequentQueries(20),
-    refetchInterval: 30000,
-    retry: 1,
-  })
-
-  const {
-    data: poolStats, isLoading: loadingPool, isError: errorPool,
-    error: poolError, refetch: refetchPool,
-  } = useQuery({
-    queryKey: ['monitoring', 'pool'],
-    queryFn: () => monitoringApi.getPoolStats(),
-    refetchInterval: 10000,
-    retry: 1,
-  })
-
-  const {
-    data: dbStats, isLoading: loadingDb, isError: errorDb,
-    error: dbError, refetch: refetchDb,
-  } = useQuery({
-    queryKey: ['monitoring', 'db-stats'],
-    queryFn: () => monitoringApi.getDatabaseStats(),
-    refetchInterval: 60000,
-    retry: 1,
-  })
-
-  const {
-    data: lockStatus, isLoading: loadingLocks, isError: errorLocks,
-    error: locksError, refetch: refetchLocks,
-  } = useQuery({
-    queryKey: ['monitoring', 'locks'],
-    queryFn: () => monitoringApi.getLockStatus(),
+    queryKey: ['ops', 'integrations'],
+    queryFn: () => monitoringApi.getIntegrationsHealth(),
     refetchInterval: 15000,
     retry: 1,
   })
 
-  const handleRefreshAll = () => {
-    refetchSlow(); refetchFrequent(); refetchPool(); refetchDb(); refetchLocks()
-  }
-
-  const handleCopyDropIndex = useCallback((indexName: string) => {
-    navigator.clipboard.writeText(`DROP INDEX IF EXISTS ${indexName};`)
-    setCopiedIndex(indexName)
-    setTimeout(() => setCopiedIndex(null), 2000)
-  }, [])
-
-  // ---------- critical alerts detection ----------
-  const criticalAlerts = useMemo(() => {
-    const alerts: { severity: 'critical' | 'warning'; message: string }[] = []
-
-    // Pool saturation
-    if (poolStats) {
-      const pct = poolStats.max_size > 0
-        ? Math.round((poolStats.used_connections / poolStats.max_size) * 100)
-        : 0
-      if (pct >= 90) alerts.push({ severity: 'critical', message: `Pool a ${pct}% de capacidad (${poolStats.used_connections}/${poolStats.max_size})` })
-      else if (pct >= 70) alerts.push({ severity: 'warning', message: `Pool a ${pct}% de capacidad` })
-    }
-
-    // Slow queries > 1s mean
-    const criticalSlowCount = (slowQueries?.queries ?? []).filter(q => q.mean_exec_time_ms > 1000).length
-    if (criticalSlowCount > 0)
-      alerts.push({ severity: 'critical', message: `${criticalSlowCount} consulta(s) con media > 1s` })
-
-    // Waiting locks (not granted)
-    const waitingLocks = (lockStatus?.lock_counts ?? []).filter(lc => !lc.granted)
-    const waitingTotal = waitingLocks.reduce((s, lc) => s + lc.count, 0)
-    if (waitingTotal > 0)
-      alerts.push({ severity: 'critical', message: `${waitingTotal} lock(s) en espera (bloqueados)` })
-
-    // Long-running connections > 60s
-    const longRunning = (lockStatus?.active_connections ?? []).filter(c => c.query_seconds > 60)
-    if (longRunning.length > 0)
-      alerts.push({ severity: 'warning', message: `${longRunning.length} conexión(es) activa(s) > 60s` })
-
-    // Unused indexes wasting space
-    const unusedCount = dbStats?.unused_indexes?.length ?? 0
-    if (unusedCount >= 5)
-      alerts.push({ severity: 'warning', message: `${unusedCount} índices no utilizados (candidatos DROP)` })
-
-    return alerts
-  }, [poolStats, slowQueries, lockStatus, dbStats])
-
-  // ---------- chart data: slow queries horizontal bar ----------
-  const slowBarData = useMemo(() => {
-    const top = (slowQueries?.queries ?? []).slice(0, 10)
-    return {
-      labels: top.map(q => {
-        const preview = q.query_preview.replace(/\s+/g, ' ').trim()
-        return preview.length > 50 ? preview.slice(0, 47) + '...' : preview
-      }),
-      datasets: [{
-        label: 'Mean exec (ms)',
-        data: top.map(q => q.mean_exec_time_ms),
-        backgroundColor: top.map((q) =>
-          q.mean_exec_time_ms > 1000 ? '#ef4444'
-            : q.mean_exec_time_ms > 100 ? '#f59e0b'
-            : '#10b981'
-        ),
-        borderRadius: 4,
-      }],
-    }
-  }, [slowQueries])
-
-  const slowBarOptions = useMemo(() => ({
-    indexAxis: 'y' as const,
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (ctx: { raw: unknown }) => `${formatMs(ctx.raw as number)}`,
-        },
-      },
+  // --- CRON trigger mutation ---
+  const triggerMutation = useMutation({
+    mutationFn: (jobName: string) => monitoringApi.triggerCronJob(jobName),
+    onSuccess: (data) => {
+      setTriggeredJobs(prev => ({ ...prev, [data.job]: JSON.stringify(data.result) }))
+      toast({ title: `${data.job}`, description: 'Ejecutado correctamente' })
+      refetchDash()
     },
-    scales: {
-      x: {
-        title: { display: true, text: 'ms', font: { size: 10 } },
-        grid: { display: false },
-      },
-      y: {
-        ticks: { font: { size: 9, family: 'monospace' } },
-        grid: { display: false },
-      },
+    onError: (err: unknown) => {
+      const e = err as { response?: { status?: number; data?: { detail?: string } } }
+      const msg = e?.response?.status === 429
+        ? 'Espere 60s antes de re-ejecutar'
+        : e?.response?.data?.detail || 'Error al ejecutar'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
     },
-  }), [])
+  })
 
-  // ---------- chart data: table sizes doughnut ----------
-  const tableSizeData = useMemo(() => {
-    const tables = (dbStats?.tables ?? []).slice(0, 8)
-    return {
-      labels: tables.map(t => t.table_name),
-      datasets: [{
-        data: tables.map(t => t.row_estimate),
-        backgroundColor: CHART_COLORS.slice(0, tables.length),
-        borderWidth: 1,
-        borderColor: '#fff',
-      }],
+  const handleRefreshAll = () => { refetchDash(); refetchInt() }
+
+  // --- critical alerts detection ---
+  const alerts = useMemo(() => {
+    if (!dashboard) return []
+    const list: { severity: 'critical' | 'warning'; msg: string }[] = []
+
+    const slaViolated = dashboard.payments.by_entity.reduce((s, e) => s + e.sla_violated_count, 0)
+    if (slaViolated > 0) list.push({ severity: 'critical', msg: `${slaViolated} SLA de pago expirado(s)` })
+    if (dashboard.stale_locks > 0) list.push({ severity: 'critical', msg: `${dashboard.stale_locks} lock(s) de pago > 4h` })
+    if (dashboard.agents.agents_overloaded > 2) list.push({ severity: 'warning', msg: `${dashboard.agents.agents_overloaded} agente(s) sobrecargado(s)` })
+    if (dashboard.agents.agents_inactive_48h > 0) list.push({ severity: 'warning', msg: `${dashboard.agents.agents_inactive_48h} agente(s) inactivo(s) > 48h` })
+    if (dashboard.pipeline.high_priority > 0) list.push({ severity: 'warning', msg: `${dashboard.pipeline.high_priority} solicitud(es) alta prioridad` })
+    if (dashboard.pool && dashboard.pool.max_size > 0) {
+      const pct = Math.round((dashboard.pool.used / dashboard.pool.max_size) * 100)
+      if (pct >= 85) list.push({ severity: 'critical', msg: `Pool BD a ${pct}%` })
     }
-  }, [dbStats])
-
-  const doughnutOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'right' as const,
-        labels: { font: { size: 10 }, boxWidth: 12 },
-      },
-      tooltip: {
-        callbacks: {
-          label: (ctx: { label: string; raw: unknown }) =>
-            `${ctx.label}: ${formatNumber(ctx.raw as number)} rows`,
-        },
-      },
-    },
-  }), [])
-
-  // ---------- derived metrics ----------
-  const avgCacheHit = useMemo(() => {
-    const queries = slowQueries?.queries ?? []
-    const withCache = queries.filter(q => q.cache_hit_ratio != null)
-    if (withCache.length === 0) return null
-    const avg = withCache.reduce((s, q) => s + (q.cache_hit_ratio ?? 0), 0) / withCache.length
-    return Math.round(avg * 10) / 10
-  }, [slowQueries])
-
-  const unusedCount = dbStats?.unused_indexes?.length ?? 0
-  const hasAnyError = errorSlow || errorFrequent || errorPool || errorDb || errorLocks
+    return list
+  }, [dashboard])
 
   return (
-    <div className="space-y-4">
-      {/* ═══════ HEADER ═══════ */}
+    <div className="space-y-3">
+      {/* ═══ HEADER ═══ */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Database Monitoring</h1>
-          <p className="text-muted-foreground text-sm">
-            pg_stat_statements &middot; pool &middot; locks &middot; tables
-          </p>
+          <h1 className="text-2xl font-bold">{t('operations.title')}</h1>
+          <p className="text-muted-foreground text-sm">{t('operations.subtitle')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={handleRefreshAll}>
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -339,526 +203,262 @@ export default function MonitoringPage() {
         </Button>
       </div>
 
-      {/* ═══════ CRITICAL ALERTS BANNER ═══════ */}
-      {criticalAlerts.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 space-y-1.5">
+      {/* ═══ INTEGRATION HEALTH BAR ═══ */}
+      <Card className="p-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          {loadingInt ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-xs">
+              <Loader2 className="h-3 w-3 animate-spin" /> Verificando integraciones...
+            </div>
+          ) : errorInt ? (
+            <ErrorInline error={intError} onRetry={() => refetchInt()} />
+          ) : integrations ? (
+            <>
+              <div className="flex items-center gap-4 flex-wrap">
+                <StatusDot status={integrations.database.status} label="Database" />
+                <StatusDot status={integrations.redis.status} label="Redis" />
+                <StatusDot status={integrations.bange.status} label="BANGE" />
+                <StatusDot status={integrations.gemini.status} label="Gemini" />
+              </div>
+              {dashboard?.pool && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Pool</span>
+                  <MiniPoolGauge used={dashboard.pool.used} max={dashboard.pool.max_size} />
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
+      </Card>
+
+      {/* ═══ CRITICAL ALERTS ═══ */}
+      {alerts.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 space-y-1">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-amber-600" />
+            <ShieldAlert className="h-4 w-4 text-amber-600" />
             <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-              {criticalAlerts.filter(a => a.severity === 'critical').length > 0
-                ? 'Alertas Criticas Detectadas'
-                : 'Advertencias'}
+              {alerts.filter(a => a.severity === 'critical').length > 0 ? 'Alertas Criticas' : 'Advertencias'}
             </span>
           </div>
-          {criticalAlerts.map((alert, i) => (
-            <div key={i} className="flex items-center gap-2 ml-7">
-              {alert.severity === 'critical'
-                ? <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
-                : <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-              <span className="text-xs text-amber-700 dark:text-amber-400">{alert.message}</span>
+          {alerts.map((a, i) => (
+            <div key={i} className="flex items-center gap-2 ml-6">
+              {a.severity === 'critical'
+                ? <XCircle className="h-3 w-3 text-red-500 shrink-0" />
+                : <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
+              <span className="text-xs text-amber-700 dark:text-amber-400">{a.msg}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* ═══════ ERROR BANNERS ═══════ */}
-      {hasAnyError && (
-        <div className="space-y-2">
-          {errorPool && <ErrorBanner error={poolError} label="Connection Pool" onRetry={() => refetchPool()} />}
-          {errorSlow && <ErrorBanner error={slowError} label="Slow Queries" onRetry={() => refetchSlow()} />}
-          {errorLocks && <ErrorBanner error={locksError} label="Lock Status" onRetry={() => refetchLocks()} />}
-          {errorDb && <ErrorBanner error={dbError} label="Database Stats" onRetry={() => refetchDb()} />}
-          {errorFrequent && <ErrorBanner error={frequentError} label="Frequent Queries" onRetry={() => refetchFrequent()} />}
+      {/* ═══ SUMMARY CARDS ═══ */}
+      {loadingDash ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i}><CardContent className="pt-6 text-center text-muted-foreground">...</CardContent></Card>
+          ))}
         </div>
-      )}
-
-      {/* ═══════ VISUAL DASHBOARD (always visible) ═══════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-
-        {/* Card 1: Pool Gauge */}
-        <Card>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Server className="h-4 w-4 text-blue-500" />
-              Connection Pool
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            {loadingPool ? (
-              <div className="h-[140px] flex items-center justify-center text-muted-foreground">...</div>
-            ) : errorPool ? (
-              <div className="h-[140px] flex items-center justify-center">
-                <XCircle className="h-8 w-8 text-red-300" />
+      ) : errorDash ? (
+        <ErrorInline error={dashError} onRetry={() => refetchDash()} />
+      ) : dashboard ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Card 1: Payments */}
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-blue-500" />
+                {t('operations.paymentsPending')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 space-y-1">
+              <div className="text-3xl font-bold">{dashboard.payments.total_pending}</div>
+              <div className="text-sm text-muted-foreground">
+                {formatCurrency(dashboard.payments.total_pending_amount)} XAF
               </div>
-            ) : poolStats ? (
-              <PoolGauge used={poolStats.used_connections} max={poolStats.max_size} />
-            ) : null}
-          </CardContent>
-        </Card>
+              {dashboard.payments.by_entity.some(e => e.sla_violated_count > 0) && (
+                <Badge variant="destructive" className="text-[10px]">
+                  {dashboard.payments.by_entity.reduce((s, e) => s + e.sla_violated_count, 0)} SLA violados
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Card 2: Key Metrics */}
-        <Card>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Zap className="h-4 w-4 text-amber-500" />
-              Health Metrics
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4 space-y-3 pt-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Tracked Queries</span>
-              <span className="font-mono font-bold text-sm">
-                {loadingSlow ? '...' : errorSlow ? <XCircle className="h-4 w-4 text-red-400 inline" /> : formatNumber(slowQueries?.total_tracked ?? 0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Active Connections</span>
-              <span className="font-mono font-bold text-sm">
-                {loadingLocks ? '...' : errorLocks ? <XCircle className="h-4 w-4 text-red-400 inline" /> : lockStatus?.active_connections?.length ?? 0}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Avg Cache Hit</span>
-              <span className="font-mono font-bold text-sm">
-                {errorSlow ? <XCircle className="h-4 w-4 text-red-400 inline" /> : avgCacheHit != null ? (
-                  <Badge variant={avgCacheHit > 95 ? 'default' : avgCacheHit > 80 ? 'secondary' : 'destructive'}>
-                    {avgCacheHit}%
+          {/* Card 2: Agents */}
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-green-500" />
+                {t('operations.agentStatus')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 space-y-1">
+              <div className="text-3xl font-bold">
+                {dashboard.agents.agents_available}
+                <span className="text-base font-normal text-muted-foreground">/{dashboard.agents.total_agents}</span>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {dashboard.agents.agents_overloaded > 0 && (
+                  <Badge variant="destructive" className="text-[10px]">
+                    {dashboard.agents.agents_overloaded} sobrecargados
                   </Badge>
-                ) : '-'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Unused Indexes</span>
-              <span className="font-mono font-bold text-sm">
-                {loadingDb ? '...' : errorDb ? <XCircle className="h-4 w-4 text-red-400 inline" /> : (
-                  <span className="flex items-center gap-1">
-                    {unusedCount === 0
-                      ? <><CheckCircle2 className="h-3.5 w-3.5 text-green-500" />{unusedCount}</>
-                      : <><AlertTriangle className="h-3.5 w-3.5 text-amber-500" />{unusedCount}</>}
-                  </span>
                 )}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Lock Modes</span>
-              <span className="font-mono font-bold text-sm flex items-center gap-1">
-                {loadingLocks ? '...' : errorLocks ? <XCircle className="h-4 w-4 text-red-400 inline" /> : (
-                  <>
-                    <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                    {lockStatus?.lock_counts?.length ?? 0}
-                  </>
+                {dashboard.agents.agents_inactive_48h > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {dashboard.agents.agents_inactive_48h} inactivos
+                  </Badge>
                 )}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {dashboard.agents.avg_capacity}% capacidad promedio
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Card 3: Slow Queries Bar Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4 text-red-500" />
-              Top 10 Slowest Queries
-            </CardTitle>
-            <CardDescription className="text-[10px]">
-              Mean execution time (ms). Red &gt; 1s, Yellow &gt; 100ms, Green &lt; 100ms
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            {loadingSlow ? (
-              <div className="h-[160px] flex items-center justify-center text-muted-foreground">...</div>
-            ) : errorSlow ? (
-              <div className="h-[160px] flex items-center justify-center">
-                <XCircle className="h-8 w-8 text-red-300" />
+          {/* Card 3: Pipeline */}
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-violet-500" />
+                {t('operations.pipeline')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 space-y-1">
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold">{dashboard.pipeline.new_24h}</span>
+                <span className="text-xs text-muted-foreground">nuevas 24h</span>
               </div>
-            ) : (slowQueries?.queries?.length ?? 0) === 0 ? (
-              <div className="h-[160px] flex items-center justify-center text-muted-foreground text-sm">
-                No slow queries detected
+              <div className="flex items-baseline gap-2">
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                <span className="text-sm font-medium">{dashboard.pipeline.completed_24h} completadas</span>
               </div>
-            ) : (
-              <div className="h-[160px]">
-                <Bar data={slowBarData} options={slowBarOptions} />
+              <div className="text-xs text-muted-foreground">
+                {dashboard.pipeline.under_review} en revision · {dashboard.pipeline.in_progress} en curso
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
 
-      {/* Row 2: Table sizes doughnut */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Database className="h-4 w-4 text-violet-500" />
-              Table Size Distribution (by rows)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-4">
-            {loadingDb ? (
-              <div className="h-[180px] flex items-center justify-center text-muted-foreground">...</div>
-            ) : errorDb ? (
-              <div className="h-[180px] flex items-center justify-center">
-                <XCircle className="h-8 w-8 text-red-300" />
-              </div>
-            ) : (
-              <div className="h-[180px]">
-                <Doughnut data={tableSizeData} options={doughnutOptions} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          {/* Card 4: Escalations */}
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-500" />
+                {t('operations.escalations')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3 space-y-1">
+              <div className="text-3xl font-bold">{dashboard.pipeline.active_escalations}</div>
+              <div className="text-xs text-muted-foreground">escalaciones activas</div>
+              {dashboard.pipeline.high_priority > 0 && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {dashboard.pipeline.high_priority} alta prioridad
+                </Badge>
+              )}
+              {dashboard.stale_locks > 0 && (
+                <Badge variant="destructive" className="text-[10px]">
+                  {dashboard.stale_locks} locks bloqueados
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
-        {/* Quick table: Top 5 heaviest tables */}
-        <Card>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Database className="h-4 w-4 text-blue-500" />
-              Heaviest Tables (disk)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-3 px-2">
-            {loadingDb ? (
-              <div className="h-[180px] flex items-center justify-center text-muted-foreground">...</div>
-            ) : errorDb ? (
-              <div className="h-[180px] flex items-center justify-center">
-                <XCircle className="h-8 w-8 text-red-300" />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Table</TableHead>
-                    <TableHead className="text-xs text-right">Total</TableHead>
-                    <TableHead className="text-xs text-right">Rows</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(dbStats?.tables ?? []).slice(0, 6).map((t: TableStat) => (
-                    <TableRow key={t.table_name}>
-                      <TableCell className="font-mono text-xs py-1.5">{t.table_name}</TableCell>
-                      <TableCell className="text-right font-mono text-xs py-1.5">{t.total_size}</TableCell>
-                      <TableCell className="text-right font-mono text-xs py-1.5">{formatNumber(t.row_estimate)}</TableCell>
+      {/* ═══ BOTTOM ROW: Payment Queue + Quick Actions ═══ */}
+      {dashboard && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Payment Queue by Entity */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Server className="h-4 w-4 text-blue-500" />
+                {t('operations.paymentQueue')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-3">
+              {dashboard.payments.by_entity.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-sm flex flex-col items-center gap-2">
+                  <CheckCircle2 className="h-6 w-6 text-green-500" />
+                  Sin pagos pendientes
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">{t('operations.entity')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('operations.pending')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('operations.amount')}</TableHead>
+                      <TableHead className="text-xs text-right">{t('operations.avgHours')}</TableHead>
+                      <TableHead className="text-xs text-right">SLA</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ═══════ DETAIL TABS ═══════ */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="slow-queries">Slow Queries</TabsTrigger>
-          <TabsTrigger value="frequent-queries">Most Called</TabsTrigger>
-          <TabsTrigger value="tables">Table Sizes</TabsTrigger>
-          <TabsTrigger value="indexes">
-            Unused Indexes
-            {unusedCount > 0 && (
-              <Badge variant="destructive" className="ml-1.5 px-1.5 py-0 text-[10px]">
-                {unusedCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="locks">Locks</TabsTrigger>
-        </TabsList>
-
-        {/* Slow Queries */}
-        <TabsContent value="slow-queries">
-          <Card>
-            <CardHeader>
-              <CardTitle>Slowest Queries (by mean exec time)</CardTitle>
-              <CardDescription>
-                Top 20 queries with mean execution time DESC. Min 5 calls.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingSlow ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : errorSlow ? (
-                <ErrorBanner error={slowError} label="Slow Queries" onRetry={() => refetchSlow()} />
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[400px]">Query</TableHead>
-                        <TableHead className="text-right">Calls</TableHead>
-                        <TableHead className="text-right">Mean</TableHead>
-                        <TableHead className="text-right">Max</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right">Cache Hit</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {slowQueries?.queries?.map((q: SlowQuery, i: number) => (
-                        <TableRow key={q.queryid || i} className={q.mean_exec_time_ms > 1000 ? 'bg-red-50/50 dark:bg-red-950/10' : ''}>
-                          <TableCell>
-                            <code className="text-xs break-all">{q.query_preview}</code>
-                          </TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(q.calls)}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            <Badge variant={
-                              q.mean_exec_time_ms > 1000 ? 'destructive'
-                                : q.mean_exec_time_ms > 100 ? 'secondary' : 'outline'
-                            }>
-                              {formatMs(q.mean_exec_time_ms)}
+                  </TableHeader>
+                  <TableBody>
+                    {dashboard.payments.by_entity.map((row: PaymentEntityRow) => (
+                      <TableRow key={row.entity_code}>
+                        <TableCell className="font-mono text-xs py-2 font-medium">{row.entity_code}</TableCell>
+                        <TableCell className="text-right font-mono text-xs py-2">{row.pending_count}</TableCell>
+                        <TableCell className="text-right font-mono text-xs py-2">{formatCurrency(row.pending_amount)}</TableCell>
+                        <TableCell className="text-right font-mono text-xs py-2">
+                          <span className={row.avg_wait_hours > 24 ? 'text-red-500 font-bold' : ''}>
+                            {row.avg_wait_hours}h
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right py-2">
+                          {row.sla_violated_count > 0 ? (
+                            <Badge variant="destructive" className="text-[10px]">
+                              {row.sla_violated_count}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-mono">{formatMs(q.max_exec_time_ms)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatMs(q.total_exec_time_ms)}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            {q.cache_hit_ratio != null ? (
-                              <span className={q.cache_hit_ratio < 80 ? 'text-red-500 font-bold' : ''}>
-                                {q.cache_hit_ratio}%
-                              </span>
-                            ) : '-'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Frequent Queries */}
-        <TabsContent value="frequent-queries">
-          <Card>
-            <CardHeader>
-              <CardTitle>Most Called Queries</CardTitle>
-              <CardDescription>Top 20 queries by call count.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingFrequent ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : errorFrequent ? (
-                <ErrorBanner error={frequentError} label="Frequent Queries" onRetry={() => refetchFrequent()} />
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[400px]">Query</TableHead>
-                        <TableHead className="text-right">Calls</TableHead>
-                        <TableHead className="text-right">Mean</TableHead>
-                        <TableHead className="text-right">Total Time</TableHead>
-                        <TableHead className="text-right">Rows</TableHead>
-                        <TableHead className="text-right">Cache Hit</TableHead>
+                          ) : (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500 inline" />
+                          )}
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {frequentQueries?.queries?.map((q: FrequentQuery, i: number) => (
-                        <TableRow key={q.queryid || i}>
-                          <TableCell>
-                            <code className="text-xs break-all">{q.query_preview}</code>
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-bold">{formatNumber(q.calls)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatMs(q.mean_exec_time_ms)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatMs(q.total_exec_time_ms)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(q.total_rows)}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            {q.cache_hit_ratio != null ? (
-                              <span className={q.cache_hit_ratio < 80 ? 'text-red-500 font-bold' : ''}>
-                                {q.cache_hit_ratio}%
-                              </span>
-                            ) : '-'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Table Sizes */}
-        <TabsContent value="tables">
+          {/* Quick Actions */}
           <Card>
-            <CardHeader>
-              <CardTitle>Table Sizes</CardTitle>
-              <CardDescription>Top 30 tables by total size (data + indexes).</CardDescription>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Play className="h-4 w-4 text-green-500" />
+                {t('operations.quickActions')}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              {loadingDb ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : errorDb ? (
-                <ErrorBanner error={dbError} label="Database Stats" onRetry={() => refetchDb()} />
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Table</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right">Data</TableHead>
-                        <TableHead className="text-right">Indexes</TableHead>
-                        <TableHead className="text-right">Rows (est.)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dbStats?.tables?.map((t: TableStat) => (
-                        <TableRow key={t.table_name}>
-                          <TableCell className="font-mono text-sm">{t.table_name}</TableCell>
-                          <TableCell className="text-right font-mono">{t.total_size}</TableCell>
-                          <TableCell className="text-right font-mono">{t.data_size}</TableCell>
-                          <TableCell className="text-right font-mono">{t.index_size}</TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(t.row_estimate)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Unused Indexes */}
-        <TabsContent value="indexes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Unused Indexes</CardTitle>
-              <CardDescription>Non-unique indexes with fewer than 10 scans. Copy the DROP command to execute in Supabase SQL Editor.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingDb ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : errorDb ? (
-                <ErrorBanner error={dbError} label="Database Stats" onRetry={() => refetchDb()} />
-              ) : (dbStats?.unused_indexes?.length ?? 0) === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                  No unused indexes found.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Table</TableHead>
-                        <TableHead>Index</TableHead>
-                        <TableHead className="text-right">Size</TableHead>
-                        <TableHead className="text-right">Scans</TableHead>
-                        <TableHead className="text-center w-[80px]">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dbStats?.unused_indexes?.map((idx: UnusedIndex) => (
-                        <TableRow key={idx.index_name}>
-                          <TableCell className="font-mono text-sm">{idx.table_name}</TableCell>
-                          <TableCell className="font-mono text-sm">{idx.index_name}</TableCell>
-                          <TableCell className="text-right font-mono">{idx.size}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            <Badge variant={idx.scan_count === 0 ? 'destructive' : 'secondary'}>
-                              {idx.scan_count}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2"
-                              title={`Copy: DROP INDEX IF EXISTS ${idx.index_name};`}
-                              onClick={() => handleCopyDropIndex(idx.index_name)}
-                            >
-                              {copiedIndex === idx.index_name
-                                ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                                : <Copy className="h-3.5 w-3.5" />}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Locks */}
-        <TabsContent value="locks">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Locks</CardTitle>
-              <CardDescription>Current lock modes and active (non-idle) connections.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {loadingLocks ? (
-                <div className="text-center py-8 text-muted-foreground">Loading...</div>
-              ) : errorLocks ? (
-                <ErrorBanner error={locksError} label="Lock Status" onRetry={() => refetchLocks()} />
-              ) : (
-                <>
-                  {lockStatus?.lock_counts && lockStatus.lock_counts.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Lock Modes</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {lockStatus.lock_counts.map((lc, i) => (
-                          <Badge key={i} variant={lc.granted ? 'outline' : 'destructive'}>
-                            {lc.mode}: {lc.count}
-                            {!lc.granted && ' (waiting)'}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">
-                      Active Connections ({lockStatus?.active_connections?.length ?? 0})
-                    </h4>
-                    {(lockStatus?.active_connections?.length ?? 0) === 0 ? (
-                      <p className="text-muted-foreground text-sm">No active queries.</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>PID</TableHead>
-                              <TableHead>State</TableHead>
-                              <TableHead className="text-right">Duration</TableHead>
-                              <TableHead>Wait</TableHead>
-                              <TableHead className="w-[400px]">Query</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {lockStatus?.active_connections?.map((conn) => (
-                              <TableRow
-                                key={conn.pid}
-                                className={conn.query_seconds > 60 ? 'bg-red-50/50 dark:bg-red-950/10' : ''}
-                              >
-                                <TableCell className="font-mono">{conn.pid}</TableCell>
-                                <TableCell><Badge variant="outline">{conn.state}</Badge></TableCell>
-                                <TableCell className="text-right font-mono">
-                                  {conn.query_seconds != null ? (
-                                    <span className={conn.query_seconds > 60 ? 'text-red-500 font-bold' : ''}>
-                                      {conn.query_seconds}s
-                                    </span>
-                                  ) : '-'}
-                                </TableCell>
-                                <TableCell className="text-sm">{conn.wait_event ?? '-'}</TableCell>
-                                <TableCell>
-                                  <code className="text-xs break-all">{conn.query}</code>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
+            <CardContent className="px-4 pb-3 space-y-2">
+              {CRON_JOBS.map(job => {
+                const isRunning = triggerMutation.isPending && triggerMutation.variables === job.key
+                const lastResult = triggeredJobs[job.key]
+                return (
+                  <div key={job.key}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start text-xs h-8"
+                      disabled={isRunning}
+                      onClick={() => triggerMutation.mutate(job.key)}
+                    >
+                      {isRunning ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                      ) : (
+                        <job.icon className="h-3.5 w-3.5 mr-2" />
+                      )}
+                      {job.label}
+                    </Button>
+                    {lastResult && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-6 truncate" title={lastResult}>
+                        {lastResult.length > 60 ? lastResult.slice(0, 57) + '...' : lastResult}
+                      </p>
                     )}
                   </div>
-                </>
-              )}
+                )
+              })}
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   )
 }
