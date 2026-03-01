@@ -165,7 +165,8 @@ class TreasuryAnalyticsService:
             SELECT
                 report_date,
                 payment_method,
-                ministry_id,
+                entity_code,
+                entity_name,
                 service_code,
                 workflow_code,
                 total_amount,
