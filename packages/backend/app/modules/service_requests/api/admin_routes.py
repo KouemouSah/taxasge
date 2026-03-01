@@ -5873,22 +5873,25 @@ async def get_supervisor_overview(
 
     async def q_agent_load():
         rows = await db.fetch("""
+            WITH daily_completions AS (
+                SELECT pva.agent_profile_id, COUNT(*) AS completed_today
+                FROM payment_validation_audit pva
+                WHERE pva.action IN ('approve', 'reject')
+                  AND pva.created_at >= $1
+                GROUP BY pva.agent_profile_id
+            )
             SELECT
                 ap.id AS agent_profile_id,
                 u.full_name AS agent_name,
                 COALESCE(aw.current_assignments, 0) AS pending,
                 COALESCE(aw.total_assignments_today, 0) AS in_progress,
-                (
-                    SELECT COUNT(*) FROM payment_validation_audit pva
-                    WHERE pva.agent_profile_id = ap.id
-                      AND pva.action IN ('approve', 'reject')
-                      AND pva.created_at >= $1
-                ) AS completed_today,
+                COALESCE(dc.completed_today, 0) AS completed_today,
                 aw.workload_status,
                 COALESCE(aw.max_concurrent, 5) AS max_concurrent
             FROM agent_profiles ap
             JOIN users u ON u.id = ap.user_id
             LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+            LEFT JOIN daily_completions dc ON dc.agent_profile_id = ap.id
             JOIN entities e ON e.id = ap.entity_id
             WHERE e.code = 'TESORO'
               AND ap.is_active = true
@@ -6033,7 +6036,7 @@ async def get_supervisor_overview(
         "generated_at": now.isoformat(),
     }
 
-    await cache.set(cache_key, result, ttl=120)
+    await cache.set(cache_key, result, ttl=300)
     return result
 
 

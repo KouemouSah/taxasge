@@ -1,29 +1,31 @@
 /**
- * Treasury Dashboard Overview
- * Main dashboard for Treasury Agents and Supervisors.
+ * Treasury Dashboard Overview — Single-viewport layout
  *
- * - Agents: Stats cards + quick actions + widgets
- * - Supervisors: Enhanced with cash flow chart, agent workload,
- *   SLA alerts, service distribution, and recent activity
+ * - Agents: Compact stats + quick actions + widgets
+ * - Supervisors: Stats + alert banner + charts + panels + quick actions
  */
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   CreditCard,
   CheckCircle,
-  RefreshCw,
   Clock,
   ArrowRight,
   Loader2,
   AlertCircle,
   TrendingUp,
+  AlertTriangle,
+  RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 import { useTreasuryStats, useSupervisorOverview } from '@/modules/treasury/hooks';
 import {
@@ -46,10 +48,10 @@ export default function TreasuryDashboardPage() {
   const t = useTranslations('treasury');
   const tMenu = useTranslations();
   const locale = useLocale();
+  const queryClient = useQueryClient();
   const { data: stats, isLoading, error } = useTreasuryStats();
   const { menuConfig, dashboardConfig, isLoading: menuLoading } = useMenuConfig();
 
-  // Supervisor overview data (only fetched if supervisor via permission check in backend)
   const [overviewDays, setOverviewDays] = useState(30);
   const {
     data: overview,
@@ -57,17 +59,17 @@ export default function TreasuryDashboardPage() {
     error: overviewError,
   } = useSupervisorOverview(overviewDays);
 
-  // Detect supervisor: if overview data loads successfully, user is supervisor
-  const isSupervisor = !!overview && !overviewError;
+  // F1: Wait for loading to finish before deciding supervisor status
+  const isSupervisor = !overviewLoading && !!overview && !overviewError;
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
     return new Intl.NumberFormat(intlLocale, {
       style: 'currency',
       currency: 'XAF',
       minimumFractionDigits: 0,
     }).format(amount);
-  };
+  }, [locale]);
 
   // Derive quick actions from menu_config
   const quickActions = useMemo(() => {
@@ -86,204 +88,168 @@ export default function TreasuryDashboardPage() {
     return actions;
   }, [menuConfig]);
 
+  // SLA alert count for conditional banner
+  const breachedCount = overview?.slaAlerts?.filter(
+    (a: { slaStatus: string }) => a.slaStatus === 'breached'
+  ).length ?? 0;
+
+  // F8: Retry handler
+  const handleRetry = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['treasury-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['treasury-supervisor-overview'] });
+  }, [queryClient]);
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('pageTitle')}</h1>
-          <p className="text-muted-foreground mt-1">
-            {t('dashboardDescription')}
-          </p>
-        </div>
-        {isSupervisor && (
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Supervisor</span>
-          </div>
-        )}
-      </div>
-
-      {/* Error State */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="flex items-center gap-3 py-4">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <p className="text-red-700">{t('errors.loadingStats')}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Row 1: Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t('stats.pendingValidation')}
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {stats?.pendingValidationCount ?? 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('stats.pendingDescription')}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t('stats.todayValidated')}
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {stats?.todayValidatedCount ?? 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('stats.todayValidatedDescription')}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t('stats.todayAmount')}
-            </CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(stats?.todayValidatedAmount ?? 0)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t('stats.todayAmountDescription')}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* SLA Alerts Count — supervisors see alert count, agents see unreconciled */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {isSupervisor ? 'Alertas SLA' : t('stats.unreconciled')}
-            </CardTitle>
-            {isSupervisor ? (
-              <AlertCircle className="h-4 w-4 text-orange-500" />
-            ) : (
-              <RefreshCw className="h-4 w-4 text-muted-foreground" />
-            )}
-          </CardHeader>
-          <CardContent>
-            {isLoading || overviewLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <div className={`text-2xl font-bold ${
-                  isSupervisor && (overview?.slaAlertsCount ?? 0) > 0
-                    ? 'text-orange-600'
-                    : ''
-                }`}>
-                  {isSupervisor
-                    ? overview?.slaAlertsCount ?? 0
-                    : stats?.unreconciledCount ?? 0}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {isSupervisor
-                    ? 'Pagos en riesgo SLA'
-                    : t('stats.unreconciledDescription')}
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 2: Supervisor Charts (only for supervisors) */}
-      {isSupervisor && overview && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <CashFlowChart
-              data={overview.paymentFlow}
-              periodDays={overviewDays}
-              onPeriodChange={setOverviewDays}
-            />
-          </div>
+    <div className="space-y-3">
+      {/* Row 1: Header + Compact Stats */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
           <div>
-            <ServiceDistributionChart data={overview.topServices} />
+            <h1 className="text-2xl font-bold tracking-tight">{t('pageTitle')}</h1>
+            <p className="text-sm text-muted-foreground">{t('dashboardDescription')}</p>
+          </div>
+          {isSupervisor && (
+            <div className="flex items-center gap-1.5 bg-primary/10 rounded-full px-3 py-1">
+              <TrendingUp className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium text-primary">{t('overview.supervisor')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* F7: Compact inline stats — flex-wrap for smaller screens */}
+        <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+          <StatCell
+            icon={<Clock className="h-4 w-4 text-orange-500" />}
+            value={stats?.pendingValidationCount ?? 0}
+            label={t('stats.pendingValidation')}
+            isLoading={isLoading}
+          />
+          <StatCell
+            icon={<CheckCircle className="h-4 w-4 text-green-500" />}
+            value={stats?.todayValidatedCount ?? 0}
+            label={t('stats.todayValidated')}
+            isLoading={isLoading}
+          />
+          <StatCell
+            icon={<CreditCard className="h-4 w-4 text-blue-500" />}
+            value={formatCurrency(stats?.todayValidatedAmount ?? 0)}
+            label={t('stats.todayAmount')}
+            isLoading={isLoading}
+          />
+          <StatCell
+            icon={
+              isSupervisor
+                ? <AlertCircle className="h-4 w-4 text-orange-500" />
+                : <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            }
+            value={
+              isSupervisor
+                ? overview?.slaAlertsCount ?? 0
+                : stats?.unreconciledCount ?? 0
+            }
+            label={isSupervisor ? t('overview.slaAlerts') : t('stats.unreconciled')}
+            isLoading={isLoading || overviewLoading}
+            highlight={isSupervisor && (overview?.slaAlertsCount ?? 0) > 0}
+          />
+        </div>
+      </div>
+
+      {/* F8: Error State with retry button */}
+      {error && (
+        <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+            <p className="text-sm text-red-700">{t('errors.loadingStats')}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRetry} className="h-7 gap-1.5">
+            <RotateCcw className="h-3 w-3" />
+            {t('overview.retry')}
+          </Button>
+        </div>
+      )}
+
+      {/* Conditional Alert Banner */}
+      {isSupervisor && breachedCount > 0 && (
+        <div className="flex items-center gap-3 p-2.5 bg-amber-50 border border-amber-200 rounded-lg" role="alert">
+          <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-amber-800">
+            {t('overview.breachedCount', { count: breachedCount })} — {t('overview.slaAtRisk')}
+          </span>
+        </div>
+      )}
+
+      {/* Supervisor sections */}
+      {isSupervisor && overview && (
+        <>
+          {/* Row 2: Charts — 2/3 + 1/3 */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <CashFlowChart
+                data={overview.paymentFlow}
+                periodDays={overviewDays}
+                onPeriodChange={setOverviewDays}
+                t={t}
+              />
+            </div>
+            <div>
+              <ServiceDistributionChart data={overview.topServices} t={t} />
+            </div>
+          </div>
+
+          {/* Row 3: Three panels side-by-side */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            <AgentWorkloadPanel agents={overview.agentLoad} t={t} />
+            <SLAAlertsPanel alerts={overview.slaAlerts} t={t} />
+            <RecentActivityTimeline activities={overview.recentActivity} t={t} />
+          </div>
+        </>
+      )}
+
+      {/* Supervisor loading skeleton */}
+      {overviewLoading && !overview && (
+        <div className="space-y-3">
+          <div className="grid gap-3 lg:grid-cols-3">
+            <Skeleton className="h-[230px] lg:col-span-2" />
+            <Skeleton className="h-[230px]" />
+          </div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <Skeleton className="h-[200px]" />
+            <Skeleton className="h-[200px]" />
+            <Skeleton className="h-[200px]" />
           </div>
         </div>
       )}
 
-      {/* Row 3: Supervisor Panels (only for supervisors) */}
-      {isSupervisor && overview && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <AgentWorkloadPanel agents={overview.agentLoad} />
-          <SLAAlertsPanel alerts={overview.slaAlerts} />
-        </div>
-      )}
+      {/* Quick Actions (inline buttons) + Widgets */}
+      <div className="flex items-start gap-3">
+        {menuLoading ? (
+          <div className="flex items-center justify-center py-4 flex-1">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : quickActions.length > 0 ? (
+          <Card className="flex-1">
+            <CardContent className="py-3 px-4">
+              <div className="flex flex-wrap gap-2">
+                {quickActions.map((action) => {
+                  const ActionIcon = getIconComponent(action.icon);
+                  const href = action.href || '#';
+                  const titleKey = action.titleKey;
 
-      {/* Row 4: Recent Activity (only for supervisors) */}
-      {isSupervisor && overview && (
-        <RecentActivityTimeline activities={overview.recentActivity} />
-      )}
-
-      {/* Quick Actions (derived from menu_config — dynamic) */}
-      {menuLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : quickActions.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {quickActions.map((action) => {
-            const ActionIcon = getIconComponent(action.icon);
-            const href = action.href || '#';
-            const titleKey = action.titleKey;
-
-            return (
-              <Card key={action.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ActionIcon className="h-5 w-5 text-primary" />
-                    {tMenu.has(titleKey) ? tMenu(titleKey) : titleKey}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Link href={href}>
-                    <Button variant="outline" className="w-full">
-                      {t.has('actions.view') ? t('actions.view') : 'Ver'}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      ) : null}
+                  return (
+                    <Link key={action.id} href={href}>
+                      <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                        <ActionIcon className="h-3.5 w-3.5" />
+                        {tMenu.has(titleKey) ? tMenu(titleKey) : titleKey}
+                        <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </Link>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
 
       {/* Widgets (from dashboard_config — dynamic) */}
       {dashboardConfig && dashboardConfig.widgets?.length > 0 && (
@@ -294,6 +260,37 @@ export default function TreasuryDashboardPage() {
           }
         />
       )}
+    </div>
+  );
+}
+
+/** Compact stat cell for inline display */
+function StatCell({
+  icon,
+  value,
+  label,
+  isLoading,
+  highlight,
+}: {
+  icon: React.ReactNode;
+  value: number | string;
+  label: string;
+  isLoading: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+      {icon}
+      <div>
+        {isLoading ? (
+          <Skeleton className="h-5 w-12" />
+        ) : (
+          <p className={`text-lg font-bold leading-tight ${highlight ? 'text-orange-600' : ''}`}>
+            {value}
+          </p>
+        )}
+        <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{label}</p>
+      </div>
     </div>
   );
 }

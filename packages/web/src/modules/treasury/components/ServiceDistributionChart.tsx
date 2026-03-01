@@ -15,6 +15,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface ServiceDistributionChartProps {
   data: TopServiceItem[];
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const COLORS = [
@@ -33,7 +34,7 @@ function formatXAF(value: number): string {
   }).format(value) + ' XAF';
 }
 
-export function ServiceDistributionChart({ data }: ServiceDistributionChartProps) {
+export function ServiceDistributionChart({ data, t }: ServiceDistributionChartProps) {
   const totalAmount = data.reduce((sum, d) => sum + d.amount, 0);
 
   const chartData = useMemo(() => ({
@@ -66,9 +67,9 @@ export function ServiceDistributionChart({ data }: ServiceDistributionChartProps
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Distribución por Servicio</CardTitle>
+        <CardTitle className="text-base">{t('overview.serviceDistribution')}</CardTitle>
         <p className="text-sm text-muted-foreground">
-          {formatXAF(totalAmount)} total
+          {formatXAF(totalAmount)} {t('overview.totalLabel')}
         </p>
       </CardHeader>
       <CardContent>
@@ -76,7 +77,7 @@ export function ServiceDistributionChart({ data }: ServiceDistributionChartProps
           {data.length > 0 ? (
             <Doughnut data={chartData} options={options} />
           ) : (
-            <p className="text-sm text-muted-foreground">Sin datos</p>
+            <p className="text-sm text-muted-foreground">{t('overview.noData')}</p>
           )}
         </div>
         {data.length > 0 && (
