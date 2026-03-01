@@ -20,7 +20,7 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Optional[Dict[str, Any]]:
-        """Get agent workload by agent_id (legacy)"""
+        """DEPRECATED: agent_workloads.agent_id is 100% NULL. Use get_workload_by_profile_id()."""
         query = """
             SELECT * FROM agent_workloads WHERE agent_id = $1
         """
@@ -44,7 +44,7 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Dict[str, Any]:
-        """Create initial workload record for agent (legacy method using agent_id)"""
+        """DEPRECATED: agent_workloads.agent_id is 100% NULL. Use create_workload_for_profile()."""
         query = """
             INSERT INTO agent_workloads (
                 agent_id, current_assignments, pending_declarations,
@@ -85,12 +85,12 @@ class WorkloadRepository:
     async def update_workload(
         self,
         conn: asyncpg.Connection,
-        agent_id: str,
+        agent_profile_id: str,
         update_data: AgentWorkloadUpdate,
     ) -> Optional[Dict[str, Any]]:
-        """Update agent workload"""
+        """Update agent workload by agent_profile_id"""
         updates = []
-        params = [agent_id]
+        params = [agent_profile_id]
         param_idx = 2
 
         for field, value in update_data.dict(exclude_unset=True).items():
@@ -102,7 +102,7 @@ class WorkloadRepository:
                 param_idx += 1
 
         if not updates:
-            return await self.get_workload(conn, agent_id)
+            return await self.get_workload_by_profile_id(conn, agent_profile_id)
 
         updates.append(f"last_updated_at = ${param_idx}")
         params.append("NOW()")
@@ -110,7 +110,7 @@ class WorkloadRepository:
         query = f"""
             UPDATE agent_workloads
             SET {', '.join(updates)}
-            WHERE agent_id = $1
+            WHERE agent_profile_id = $1
             RETURNING *
         """
         result = await conn.fetchrow(query, *params)
@@ -121,7 +121,7 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Dict[str, Any]:
-        """Increment current assignments and recalculate capacity"""
+        """DEPRECATED: Uses dead agent_id column. No live callers."""
         query = """
             UPDATE agent_workloads
             SET current_assignments = current_assignments + 1,
@@ -146,7 +146,7 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Dict[str, Any]:
-        """Decrement current assignments and recalculate capacity"""
+        """DEPRECATED: Uses dead agent_id column. No live callers."""
         query = """
             UPDATE agent_workloads
             SET current_assignments = GREATEST(0, current_assignments - 1),
@@ -171,7 +171,7 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Dict[str, Any]:
-        """Move assignment from pending to in_progress"""
+        """DEPRECATED: Uses dead agent_id column. No live callers."""
         query = """
             UPDATE agent_workloads
             SET pending_declarations = GREATEST(0, pending_declarations - 1),
@@ -188,7 +188,7 @@ class WorkloadRepository:
         conn: asyncpg.Connection,
         agent_id: str,
     ) -> Dict[str, Any]:
-        """Complete assignment (decrement in_progress and current)"""
+        """DEPRECATED: Uses dead agent_id column. No live callers."""
         query = """
             UPDATE agent_workloads
             SET in_progress_declarations = GREATEST(0, in_progress_declarations - 1),

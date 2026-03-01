@@ -604,3 +604,138 @@ async def treasury_refresh_views(
         "refreshed": refreshed,
         "errors": errors,
     }
+
+
+# ============================================================================
+# LOCK HEALTH CHECK (every 15 min)
+# ============================================================================
+
+@router.post(
+    "/lock-health-check",
+    summary="Monitor PostgreSQL locks and stuck transactions",
+    description="""
+    Called by Cloud Scheduler every 15 minutes.
+    Checks for: waiting locks, long-running transactions (>60s),
+    stale payment locks (>4h in locked_by_agent status).
+    """
+)
+async def lock_health_check(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth)
+):
+    """Monitor database locks and stuck transactions for alerting."""
+
+    # 1. Waiting locks (blocked queries)
+    waiting_locks = await db.fetch("""
+        SELECT blocked.pid AS blocked_pid,
+               LEFT(blocked_activity.query, 200) AS blocked_query,
+               blocking.pid AS blocking_pid,
+               LEFT(blocking_activity.query, 200) AS blocking_query,
+               ROUND(EXTRACT(EPOCH FROM (NOW() - blocked_activity.query_start))::numeric, 1) AS wait_seconds
+        FROM pg_locks blocked
+        JOIN pg_stat_activity blocked_activity ON blocked.pid = blocked_activity.pid
+        JOIN pg_locks blocking
+            ON blocked.transactionid = blocking.transactionid
+            AND blocked.pid != blocking.pid
+        JOIN pg_stat_activity blocking_activity ON blocking.pid = blocking_activity.pid
+        WHERE NOT blocked.granted
+    """)
+
+    # 2. Long-running transactions (>60s)
+    long_txns = await db.fetch("""
+        SELECT pid,
+               LEFT(query, 200) AS query,
+               state,
+               ROUND(EXTRACT(EPOCH FROM (NOW() - xact_start))::numeric, 1) AS txn_seconds
+        FROM pg_stat_activity
+        WHERE state != 'idle'
+          AND xact_start < NOW() - INTERVAL '60 seconds'
+          AND query NOT LIKE '%pg_stat%'
+          AND query NOT LIKE '%cron%'
+    """)
+
+    # 3. Stale payment locks (agent_reviewing > 4h)
+    stale_payment_locks = await db.fetch("""
+        SELECT sp.id AS payment_id,
+               sp.payment_reference,
+               sp.assigned_agent_id,
+               u.full_name AS agent_name,
+               sp.assigned_at AS locked_at,
+               ROUND(EXTRACT(EPOCH FROM (NOW() - sp.assigned_at))::numeric / 3600, 1) AS locked_hours
+        FROM service_payments sp
+        LEFT JOIN agent_profiles ap ON ap.id = sp.assigned_agent_id
+        LEFT JOIN users u ON u.id = ap.user_id
+        WHERE sp.assigned_agent_id IS NOT NULL
+          AND sp.assigned_at < NOW() - INTERVAL '4 hours'
+          AND sp.workflow_status = 'agent_reviewing'
+    """)
+
+    # Log warnings for alerting via Cloud Logging
+    if waiting_locks:
+        logger.warning(f"LOCK_HEALTH: {len(waiting_locks)} waiting locks detected")
+    if long_txns:
+        logger.warning(f"LOCK_HEALTH: {len(long_txns)} long-running transactions (>60s)")
+    if stale_payment_locks:
+        logger.warning(f"LOCK_HEALTH: {len(stale_payment_locks)} stale payment locks (>4h)")
+
+    return {
+        "waiting_locks": len(waiting_locks),
+        "long_transactions": len(long_txns),
+        "stale_payment_locks": len(stale_payment_locks),
+        "details": {
+            "waiting": [dict(r) for r in waiting_locks],
+            "long_txns": [dict(r) for r in long_txns],
+            "stale_payments": [dict(r) for r in stale_payment_locks],
+        }
+    }
+
+
+# ============================================================================
+# SLOW QUERY SNAPSHOT (every 6h)
+# ============================================================================
+
+@router.post(
+    "/slow-query-snapshot",
+    summary="Capture periodic snapshot of slow queries",
+    description="""
+    Called by Cloud Scheduler every 6 hours.
+    Captures top 10 slowest queries from pg_stat_statements for trend analysis.
+    Logs to structured logging for Cloud Logging indexing.
+    """
+)
+async def slow_query_snapshot(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth)
+):
+    """Capture slow query snapshot from pg_stat_statements."""
+    try:
+        slow_queries = await db.fetch("""
+            SELECT queryid,
+                   LEFT(query, 300) AS query_preview,
+                   calls,
+                   ROUND(mean_exec_time::numeric, 2) AS mean_ms,
+                   ROUND(max_exec_time::numeric, 2) AS max_ms,
+                   ROUND(total_exec_time::numeric, 2) AS total_ms,
+                   rows AS total_rows
+            FROM pg_stat_statements
+            WHERE calls >= 10
+              AND mean_exec_time > 100
+              AND query NOT LIKE '%pg_stat%'
+            ORDER BY mean_exec_time DESC
+            LIMIT 10
+        """)
+
+        for row in slow_queries:
+            logger.warning(
+                f"SLOW_QUERY_SNAPSHOT queryid={row['queryid']} "
+                f"calls={row['calls']} mean_ms={row['mean_ms']} "
+                f"max_ms={row['max_ms']} query={row['query_preview'][:100]}"
+            )
+
+        return {
+            "snapshot_count": len(slow_queries),
+            "queries": [dict(r) for r in slow_queries],
+        }
+    except Exception as e:
+        logger.error(f"Failed to capture slow query snapshot: {e}")
+        return {"snapshot_count": 0, "error": str(e)}

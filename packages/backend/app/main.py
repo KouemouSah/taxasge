@@ -905,11 +905,12 @@ except Exception as e:
 
 # Try to load admin routers (Module - Admin System)
 try:
-    from app.modules.admin.api import admin_router, user_management_router
+    from app.modules.admin.api import admin_router, user_management_router, monitoring_router
     app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin-diagnostics"])
     app.include_router(user_management_router, prefix="/api/v1/admin/users", tags=["admin-user-management"])
-    routers_loaded.extend(["admin", "admin_users"])
-    logger.info("✅ Admin routers loaded (diagnostics + user management)")
+    app.include_router(monitoring_router, prefix="/api/v1/admin/monitoring", tags=["admin-monitoring"])
+    routers_loaded.extend(["admin", "admin_users", "admin_monitoring"])
+    logger.info("✅ Admin routers loaded (diagnostics + user management + monitoring)")
 except Exception as e:
     logger.error(f"❌ Admin routers failed: {e}")
     logger.error(traceback.format_exc())

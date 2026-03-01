@@ -828,8 +828,8 @@ async def update_profile_workload(
             detail="Workload not found for this agent profile"
         )
 
-    # Update workload using the existing agent_id from the workload record
-    updated = await workload_repository.update_workload(db, existing['agent_id'], update_data)
+    # Update workload using agent_profile_id (agent_id column is deprecated/NULL)
+    updated = await workload_repository.update_workload(db, str(profile_id), update_data)
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -53,7 +53,8 @@ class DatabaseManager:
                     max_inactive_connection_lifetime=300,  # Close idle connections after 5min
                     server_settings={
                         'jit': 'off',  # Disable JIT for faster connection
-                        'application_name': f'taxasge-{settings.ENVIRONMENT}'
+                        'application_name': f'taxasge-{settings.ENVIRONMENT}',
+                        'statement_timeout': '60000',  # 60s (override Supabase 2min default)
                     }
                 )
 

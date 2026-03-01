@@ -3688,6 +3688,8 @@ async def validate_payment(
     # Wrap post-validation updates + outbox INSERT in a single transaction
     # so the outbox item is guaranteed to exist if payment is validated.
     async with db.transaction():
+        await db.execute("SET LOCAL lock_timeout = '5s'")
+        await db.execute("SET LOCAL statement_timeout = '30s'")
         # Update service_request if linked
         if payment["service_request_id"]:
             await db.execute(
@@ -3947,6 +3949,8 @@ async def reject_payment(
 
     # Wrap post-rejection updates in a single transaction for atomicity
     async with db.transaction():
+        await db.execute("SET LOCAL lock_timeout = '5s'")
+        await db.execute("SET LOCAL statement_timeout = '30s'")
         # Update assignment status to REJECTED
         await db.execute("""
             UPDATE assignments
