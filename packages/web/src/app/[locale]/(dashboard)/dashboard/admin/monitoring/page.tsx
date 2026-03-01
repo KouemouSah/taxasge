@@ -38,15 +38,19 @@ import {
 } from 'lucide-react'
 import {
   Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
   ArcElement,
   Tooltip,
+  Legend,
 } from 'chart.js'
-import { Doughnut } from 'react-chartjs-2'
+import { Doughnut, Bar } from 'react-chartjs-2'
 import { monitoringApi } from '@/modules/admin/services/monitoringApi'
 import type { PaymentEntityRow } from '@/modules/admin/services/monitoringApi'
 import { useToast } from '@/hooks/use-toast'
 
-ChartJS.register(ArcElement, Tooltip)
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 // ---------- helpers ----------
 const formatNumber = (n: number) => n.toLocaleString()
@@ -362,6 +366,136 @@ export default function OperationsCenterPage() {
           </Card>
         </div>
       ) : null}
+
+      {/* ═══ CHARTS ROW ═══ */}
+      {dashboard && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Agent Distribution Doughnut */}
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Users className="h-4 w-4 text-green-500" />
+                Distribucion de Agentes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <div className="h-[160px]">
+                <Doughnut
+                  data={{
+                    labels: ['Disponibles', 'Sobrecargados', 'No disponibles', 'Inactivos 48h'],
+                    datasets: [{
+                      data: [
+                        dashboard.agents.agents_available,
+                        dashboard.agents.agents_overloaded,
+                        dashboard.agents.agents_unavailable,
+                        dashboard.agents.agents_inactive_48h,
+                      ],
+                      backgroundColor: ['#10b981', '#ef4444', '#6b7280', '#f59e0b'],
+                      borderWidth: 1,
+                      borderColor: '#fff',
+                    }],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: 'right', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } },
+                    },
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pipeline Funnel Bar Chart */}
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <GitBranch className="h-4 w-4 text-violet-500" />
+                Pipeline de Solicitudes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <div className="h-[160px]">
+                <Bar
+                  data={{
+                    labels: ['Enviadas', 'Pago', 'Pagadas', 'En Revision', 'En Curso', 'Escaladas'],
+                    datasets: [{
+                      data: [
+                        dashboard.pipeline.submitted,
+                        dashboard.pipeline.payment_phase,
+                        dashboard.pipeline.paid,
+                        dashboard.pipeline.under_review,
+                        dashboard.pipeline.in_progress,
+                        dashboard.pipeline.active_escalations,
+                      ],
+                      backgroundColor: ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#06b6d4', '#ef4444'],
+                      borderRadius: 4,
+                    }],
+                  }}
+                  options={{
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                      y: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                    },
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Wait Time by Entity */}
+          <Card>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-500" />
+                Tiempo de Espera por Entidad
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-3">
+              <div className="h-[160px]">
+                {dashboard.payments.by_entity.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-xs">
+                    Sin datos
+                  </div>
+                ) : (
+                  <Bar
+                    data={{
+                      labels: dashboard.payments.by_entity.map(e => e.entity_code),
+                      datasets: [{
+                        label: 'Horas promedio',
+                        data: dashboard.payments.by_entity.map(e => e.avg_wait_hours),
+                        backgroundColor: dashboard.payments.by_entity.map(e =>
+                          e.avg_wait_hours > 24 ? '#ef4444'
+                            : e.avg_wait_hours > 12 ? '#f59e0b'
+                            : '#10b981'
+                        ),
+                        borderRadius: 4,
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: { legend: { display: false } },
+                      scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                        y: {
+                          grid: { display: false },
+                          ticks: { font: { size: 9 }, callback: (v) => `${v}h` },
+                        },
+                      },
+                    }}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ═══ BOTTOM ROW: Payment Queue + Quick Actions ═══ */}
       {dashboard && (
