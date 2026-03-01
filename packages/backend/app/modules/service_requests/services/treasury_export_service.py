@@ -627,7 +627,7 @@ class TreasuryExportService:
                 fs.name_es as libelle_service,
                 sp.entity_code as code_entite,
                 e.name as nom_entite,
-                m.code as code_ministere
+                m.ministry_code as code_ministere
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
