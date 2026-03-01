@@ -190,12 +190,21 @@ async def _get_revenue_summary(db, days: int = 30) -> Dict[str, Any]:
         WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1)
         GROUP BY payment_method ORDER BY amount DESC
     """, days)
+    by_entity = await db.fetch("""
+        SELECT sp.entity_code, e.name AS entity_name,
+               COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
+        FROM service_payments sp
+        LEFT JOIN entities e ON e.code = sp.entity_code
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+        GROUP BY sp.entity_code, e.name ORDER BY amount DESC
+    """, days)
     return {
         "period_days": days,
         "completed": {"amount": float(row["completed_amount"]), "count": row["completed_count"], "avg": float(row["avg_amount"])},
         "pending": {"amount": float(row["pending_amount"]), "count": row["pending_count"]},
         "rejected_count": row["rejected_count"],
         "by_method": [{"method": m["method"], "count": m["count"], "amount": float(m["amount"])} for m in methods],
+        "by_entity": [{"entity_code": r["entity_code"], "entity_name": r["entity_name"], "count": r["count"], "amount": float(r["amount"])} for r in by_entity],
     }
 
 
@@ -209,9 +218,18 @@ async def _get_revenue_by_service(db, days: int = 30) -> Dict[str, Any]:
         WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
         GROUP BY sr.workflow_code, fs.name_es ORDER BY amount DESC LIMIT 10
     """, days)
+    by_entity = await db.fetch("""
+        SELECT sp.entity_code, e.name AS entity_name,
+               COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
+        FROM service_payments sp
+        LEFT JOIN entities e ON e.code = sp.entity_code
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+        GROUP BY sp.entity_code, e.name ORDER BY amount DESC LIMIT 10
+    """, days)
     return {
         "period_days": days,
         "services": [{"code": r["workflow_code"], "name": r["service_name"], "count": r["count"], "amount": float(r["amount"])} for r in rows],
+        "by_entity": [{"entity_code": r["entity_code"], "entity_name": r["entity_name"], "count": r["count"], "amount": float(r["amount"])} for r in by_entity],
     }
 
 
