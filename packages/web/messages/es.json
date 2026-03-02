@@ -6025,10 +6025,15 @@
         "accountHolderLabel": "Titular",
         "accountNumberLabel": "Cuenta",
         "paymentReferenceLabel": "Referencia de Pago",
-        "paymentReferencePlaceholder": "Ej: PAY-2024-000123",
-        "paymentReferenceHint": "Ingrese la referencia del pago en el sistema TaxasGE",
+        "paymentReferencePlaceholder": "Ej: CSH-20260212135644-961478D9",
+        "paymentReferenceHint": "Busque el pago por referencia (CSH-..., SR-..., CHK-...) o nombre del pagador",
         "reconciling": "Reconciliando...",
-        "confirmButton": "Confirmar Reconciliacion"
+        "confirmButton": "Confirmar Reconciliacion",
+        "searchPayments": "Buscar pagos...",
+        "noPaymentsFound": "No se encontraron pagos",
+        "typeToSearch": "Escriba al menos 2 caracteres para buscar",
+        "selectedPayment": "Pago seleccionado",
+        "changePayment": "Cambiar"
       },
       "suggestions": {
         "title": "Sugerencias de Matching Automático",
@@ -6047,6 +6052,23 @@
       },
       "pagination": {
         "showing": "Mostrando {from}-{to} de {total}"
+      },
+      "toast": {
+        "reconcileSuccess": "Reconciliacion exitosa",
+        "reconcileSuccessDesc": "La transaccion ha sido vinculada correctamente.",
+        "reconcileError": "Error de reconciliacion",
+        "reconcileErrorDesc": "No se pudo reconciliar la transaccion. Intente nuevamente.",
+        "autoMatchError": "Error en auto-reconciliacion",
+        "autoMatchErrorDesc": "No se pudo ejecutar la reconciliacion automatica."
+      },
+      "noSearchResults": "Sin resultados",
+      "noSearchResultsDescription": "No se encontraron transacciones con ese criterio de busqueda.",
+      "reasons": {
+        "exact_reference": "Referencia exacta",
+        "exact_amount": "Monto exacto",
+        "amount_1pct_same_day": "Monto ±1% mismo dia",
+        "amount_1pct_3days": "Monto ±1% ±3 dias",
+        "amount_5pct_3days": "Monto ±5% ±3 dias"
       }
     },
     "anomaliesPage": {

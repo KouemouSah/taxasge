@@ -21,6 +21,14 @@ from app.modules.webhooks.models import (
 class WebhookRepository:
     """Repository for webhooks and bank transactions"""
 
+    # C6: Allowlist of fields that can be updated via dynamic SQL
+    ALLOWED_CONFIG_UPDATE_FIELDS = frozenset({
+        "bank_name", "api_endpoint", "api_version",
+        "api_key_encrypted", "webhook_secret",
+        "treasury_account_number", "is_active",
+        "supports_webhooks", "supports_direct_integration",
+    })
+
     # ========== BANK CONFIGURATIONS ==========
 
     async def create_bank_config(
@@ -83,6 +91,9 @@ class WebhookRepository:
 
         for field, value in update_data.model_dump(exclude_unset=True).items():
             if value is not None:
+                if field not in self.ALLOWED_CONFIG_UPDATE_FIELDS:
+                    logger.warning(f"Rejected unknown field in bank config update: {field}")
+                    continue
                 updates.append(f"{field} = ${param_idx}")
                 params.append(value)
                 param_idx += 1
@@ -154,13 +165,30 @@ class WebhookRepository:
         return dict(result) if result else None
 
     async def list_unreconciled(
-        self, conn: asyncpg.Connection, limit: int = 50, offset: int = 0
+        self, conn: asyncpg.Connection, limit: int = 50, offset: int = 0,
+        search: Optional[str] = None,
     ) -> tuple[List[Dict[str, Any]], int]:
-        """List unreconciled transactions"""
-        count_query = "SELECT COUNT(*) FROM bank_transactions WHERE status = 'unreconciled'"
-        total = await conn.fetchval(count_query)
+        """List unreconciled transactions with optional search filter"""
+        where = "bt.status = 'unreconciled'"
+        params: list = []
+        param_idx = 1
 
-        data_query = """
+        if search:
+            search_pattern = f"%{search}%"
+            where += f"""
+                AND (
+                    bt.bank_reference ILIKE ${param_idx}
+                    OR bt.account_holder_name ILIKE ${param_idx}
+                    OR bt.account_number ILIKE ${param_idx}
+                )
+            """
+            params.append(search_pattern)
+            param_idx += 1
+
+        count_query = f"SELECT COUNT(*) FROM bank_transactions bt WHERE {where}"
+        total = await conn.fetchval(count_query, *params)
+
+        data_query = f"""
             SELECT
                 bt.*,
                 sp.payment_reference,
@@ -168,11 +196,11 @@ class WebhookRepository:
             FROM bank_transactions bt
             LEFT JOIN service_payments sp ON bt.service_payment_id = sp.id
             LEFT JOIN users u ON sp.user_id = u.id
-            WHERE bt.status = 'unreconciled'
+            WHERE {where}
             ORDER BY bt.bank_transaction_date DESC
-            LIMIT $1 OFFSET $2
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
-        results = await conn.fetch(data_query, limit, offset)
+        results = await conn.fetch(data_query, *params, limit, offset)
         return [dict(r) for r in results], total
 
     async def reconcile(
@@ -186,6 +214,14 @@ class WebhookRepository:
         - Met à jour service_payments.bank_transaction_id
         Uses explicit transaction for atomicity.
         """
+        # M6: Validate payment exists before starting transaction
+        payment_exists = await conn.fetchval(
+            "SELECT id FROM service_payments WHERE id = $1",
+            service_payment_id,
+        )
+        if not payment_exists:
+            raise ValueError(f"Service payment {service_payment_id} not found")
+
         async with conn.transaction():
             # 1. Update bank_transaction
             tx_query = """
@@ -207,7 +243,11 @@ class WebhookRepository:
                 WHERE id = $1
             """, service_payment_id, transaction_id)
 
-            logger.info(f"Reconciled transaction {transaction_id} with service_payment {service_payment_id} by user {reconciled_by}")
+            logger.info(
+                "Reconciliation completed | "
+                "transaction_id={} service_payment_id={} reconciled_by={} action=manual_reconcile",
+                transaction_id, service_payment_id, reconciled_by,
+            )
             return dict(tx_result)
 
     async def auto_reconcile_by_reference(

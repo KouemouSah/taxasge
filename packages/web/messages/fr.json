@@ -6163,10 +6163,15 @@
         "accountHolderLabel": "Titulaire",
         "accountNumberLabel": "Compte",
         "paymentReferenceLabel": "Reference de Paiement",
-        "paymentReferencePlaceholder": "Ex : PAY-2024-000123",
-        "paymentReferenceHint": "Saisissez la reference du paiement dans le systeme TaxasGE",
+        "paymentReferencePlaceholder": "Ex : CSH-20260212135644-961478D9",
+        "paymentReferenceHint": "Recherchez le paiement par reference (CSH-..., SR-..., CHK-...) ou nom du payeur",
         "reconciling": "Reconciliation en cours...",
-        "confirmButton": "Confirmer la Reconciliation"
+        "confirmButton": "Confirmer la Reconciliation",
+        "searchPayments": "Rechercher des paiements...",
+        "noPaymentsFound": "Aucun paiement trouve",
+        "typeToSearch": "Saisissez au moins 2 caracteres pour rechercher",
+        "selectedPayment": "Paiement selectionne",
+        "changePayment": "Changer"
       },
       "suggestions": {
         "title": "Suggestions de Matching Automatique",
@@ -6185,6 +6190,23 @@
       },
       "pagination": {
         "showing": "Affichage {from}-{to} sur {total}"
+      },
+      "toast": {
+        "reconcileSuccess": "Reconciliation reussie",
+        "reconcileSuccessDesc": "La transaction a ete liee correctement.",
+        "reconcileError": "Erreur de reconciliation",
+        "reconcileErrorDesc": "Impossible de reconcilier la transaction. Reessayez.",
+        "autoMatchError": "Erreur de reconciliation automatique",
+        "autoMatchErrorDesc": "Impossible d'executer la reconciliation automatique."
+      },
+      "noSearchResults": "Aucun resultat",
+      "noSearchResultsDescription": "Aucune transaction trouvee avec ce critere de recherche.",
+      "reasons": {
+        "exact_reference": "Reference exacte",
+        "exact_amount": "Montant exact",
+        "amount_1pct_same_day": "Montant ±1% meme jour",
+        "amount_1pct_3days": "Montant ±1% ±3 jours",
+        "amount_5pct_3days": "Montant ±5% ±3 jours"
       }
     },
     "anomaliesPage": {

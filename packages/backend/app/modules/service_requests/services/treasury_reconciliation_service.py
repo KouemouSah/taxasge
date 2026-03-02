@@ -24,6 +24,7 @@ AUTO_MATCH_THRESHOLD = 80
 MAX_CANDIDATES_PER_TX = 10
 TOP_MATCHES = 3
 DATE_WINDOW_DAYS = 30
+MAX_AUTO_MATCH_ITERATIONS = 100
 
 # SQL scoring query using LATERAL JOIN — replaces Python O(n*m) loop.
 # For each unreconciled bank transaction, finds top 10 candidate service_payments
@@ -229,8 +230,10 @@ async def auto_match(
     matched_details = []
     skipped_details = []
     offset = 0
+    iteration = 0
 
-    while True:
+    while iteration < MAX_AUTO_MATCH_ITERATIONS:
+        iteration += 1
         suggestions = await get_matching_suggestions(db, limit=batch_size, offset=offset)
         if not suggestions:
             break
@@ -287,8 +290,10 @@ async def auto_match(
                     "reasons": best["reasons"],
                 })
                 logger.info(
-                    f"Auto-reconciled: tx={suggestion['transactionId']} "
-                    f"→ service_payment={best['paymentId']} (score={best['score']})"
+                    "Auto-reconciliation match | "
+                    "transaction_id={} payment_id={} score={} reasons={} agent_id={} action=auto_match",
+                    suggestion["transactionId"], best["paymentId"],
+                    best["score"], best["reasons"], agent_user_id,
                 )
             except Exception as e:
                 logger.error(f"Auto-match failed for tx={suggestion['transactionId']}: {e}")
@@ -305,6 +310,12 @@ async def auto_match(
 
         # Don't increment offset — reconciled rows are removed from results
         # so next batch starts from the new "first" unreconciled
+
+    if iteration >= MAX_AUTO_MATCH_ITERATIONS:
+        logger.warning(
+            "Auto-match hit max iterations | iterations={} matched={} skipped={}",
+            iteration, total_matched, total_skipped,
+        )
 
     return {
         "matched": matched_details,

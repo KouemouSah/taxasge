@@ -66,6 +66,7 @@ import type {
   // Phase 5 - Reconciliation
   ReconciliationSuggestionsResponse,
   AutoMatchResponse,
+  SearchPaymentResult,
   // Workload Dashboard
   WorkloadDashboardResponse,
 } from '../types';
@@ -310,6 +311,7 @@ export const treasuryApi = {
     const queryParams: Record<string, string | number | undefined> = {
       page: params.page || 1,
       page_size: params.pageSize || 20,
+      ...(params.search ? { search: params.search } : {}),
     };
 
     const response = await fetchClient.get<Record<string, unknown>>(
@@ -352,6 +354,23 @@ export const treasuryApi = {
       }
     );
     return transformTransaction(response);
+  },
+
+  /**
+   * Search completed service_payments for manual reconciliation ComboBox
+   */
+  searchPaymentsForReconciliation: async (
+    q: string,
+    currency?: string
+  ): Promise<SearchPaymentResult[]> => {
+    const params: Record<string, string> = { q };
+    if (currency) params.currency = currency;
+    const response = await fetchClient.get<Record<string, unknown>>(
+      `${WEBHOOKS_BASE}/transactions/search-payments`,
+      params
+    );
+    const payments = (response.payments as Record<string, unknown>[]) || [];
+    return payments.map((p) => toCamelCase<SearchPaymentResult>(p));
   },
 
   // ─── Reconciliation Suggestions (Phase 5) ─────

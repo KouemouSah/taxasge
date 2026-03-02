@@ -323,6 +323,18 @@ export interface BankTransactionParams {
   bankCode?: BankCode;
   page?: number;
   pageSize?: number;
+  search?: string;
+}
+
+export interface SearchPaymentResult {
+  id: string;
+  paymentReference: string;
+  totalAmount: number;
+  currency: string;
+  paymentMethod: string;
+  paymentDate: string | null;
+  payerName: string;
+  payerEmail: string;
 }
 
 export interface ReconcileRequest {

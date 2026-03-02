@@ -351,6 +351,7 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
 async def list_unreconciled_transactions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None, min_length=1, max_length=200, description="Search by reference, holder name, or account number"),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
     _: None = Depends(permission_required("webhook.view"))
@@ -358,7 +359,7 @@ async def list_unreconciled_transactions(
     """List unreconciled bank transactions - Requires webhook.view permission"""
 
     offset = (page - 1) * page_size
-    transactions, total = await repository.list_unreconciled(db, page_size, offset)
+    transactions, total = await repository.list_unreconciled(db, page_size, offset, search=search)
 
     return BankTransactionListResponse(
         transactions=[BankTransactionResponse(**t) for t in transactions],
@@ -366,6 +367,62 @@ async def list_unreconciled_transactions(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/transactions/search-payments")
+async def search_payments_for_reconciliation(
+    q: str = Query(..., min_length=2, max_length=100, description="Search by reference, payer name, or amount"),
+    currency: Optional[str] = Query(None, description="Filter by currency code"),
+    limit: int = Query(10, ge=1, le=50),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("webhook.view")),
+):
+    """Search completed service_payments for manual reconciliation ComboBox"""
+    search_pattern = f"%{q}%"
+
+    query = """
+        SELECT sp.id, sp.payment_reference, sp.total_amount, sp.currency,
+               sp.payment_method::text,
+               COALESCE(sp.validated_at, sp.created_at) as payment_date,
+               u.full_name as payer_name, u.email as payer_email
+        FROM service_payments sp
+        JOIN users u ON u.id = sp.user_id
+        WHERE sp.workflow_status = 'completed'
+          AND sp.bank_transaction_id IS NULL
+          AND (
+              sp.payment_reference ILIKE $1
+              OR u.full_name ILIKE $1
+              OR CAST(sp.total_amount AS TEXT) LIKE $1
+          )
+    """
+    params: list = [search_pattern]
+    param_idx = 2
+
+    if currency:
+        query += f" AND sp.currency = ${param_idx}"
+        params.append(currency)
+        param_idx += 1
+
+    query += f" ORDER BY sp.validated_at DESC NULLS LAST LIMIT ${param_idx}"
+    params.append(limit)
+
+    results = await db.fetch(query, *params)
+    return {
+        "payments": [
+            {
+                "id": str(r["id"]),
+                "paymentReference": r["payment_reference"],
+                "totalAmount": float(r["total_amount"]) if r["total_amount"] else 0,
+                "currency": r["currency"],
+                "paymentMethod": r["payment_method"],
+                "paymentDate": str(r["payment_date"]) if r["payment_date"] else None,
+                "payerName": r["payer_name"],
+                "payerEmail": r["payer_email"],
+            }
+            for r in results
+        ]
+    }
 
 
 @router.get("/transactions/{transaction_id}", response_model=BankTransactionResponse)

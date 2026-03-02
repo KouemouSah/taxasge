@@ -5923,10 +5923,15 @@
         "accountHolderLabel": "Account Holder",
         "accountNumberLabel": "Account",
         "paymentReferenceLabel": "Payment Reference",
-        "paymentReferencePlaceholder": "E.g.: PAY-2024-000123",
-        "paymentReferenceHint": "Enter the payment reference from the TaxasGE system",
+        "paymentReferencePlaceholder": "E.g.: CSH-20260212135644-961478D9",
+        "paymentReferenceHint": "Search by payment reference (CSH-..., SR-..., CHK-...) or payer name",
         "reconciling": "Reconciling...",
-        "confirmButton": "Confirm Reconciliation"
+        "confirmButton": "Confirm Reconciliation",
+        "searchPayments": "Search payments...",
+        "noPaymentsFound": "No payments found",
+        "typeToSearch": "Type at least 2 characters to search",
+        "selectedPayment": "Selected payment",
+        "changePayment": "Change"
       },
       "suggestions": {
         "title": "Automatic Matching Suggestions",
@@ -5945,6 +5950,23 @@
       },
       "pagination": {
         "showing": "Showing {from}-{to} of {total}"
+      },
+      "toast": {
+        "reconcileSuccess": "Reconciliation successful",
+        "reconcileSuccessDesc": "Transaction linked successfully.",
+        "reconcileError": "Reconciliation error",
+        "reconcileErrorDesc": "Could not reconcile the transaction. Please try again.",
+        "autoMatchError": "Auto-reconciliation error",
+        "autoMatchErrorDesc": "Could not execute automatic reconciliation."
+      },
+      "noSearchResults": "No results",
+      "noSearchResultsDescription": "No transactions found matching your search criteria.",
+      "reasons": {
+        "exact_reference": "Exact reference",
+        "exact_amount": "Exact amount",
+        "amount_1pct_same_day": "Amount ±1% same day",
+        "amount_1pct_3days": "Amount ±1% ±3 days",
+        "amount_5pct_3days": "Amount ±5% ±3 days"
       }
     },
     "anomaliesPage": {
