@@ -108,7 +108,7 @@ async def bange_webhook_callback(
     # Try auto-reconciliation (match by merchant_reference)
     if payload.merchant_reference:
         try:
-            # First try service_payments (service requests - passport, residence, etc.)
+            # Reconcile via service_payments (unified payment module)
             service_reconciled = await reconcile_service_payment(
                 db,
                 payload.merchant_reference,
@@ -116,17 +116,6 @@ async def bange_webhook_callback(
             )
             if service_reconciled:
                 logger.info(f"Auto-reconciled transaction {transaction_id} with service_payment")
-                return {"message": "Transaction processed and reconciled (service_payment)", "transaction_id": transaction_id}
-
-            # Then try payments table (tax declarations)
-            reconciled = await repository.auto_reconcile_by_reference(db, payload.merchant_reference)
-            if reconciled:
-                logger.info(f"Auto-reconciled transaction {transaction_id} with payment")
-
-                # Confirm appointment hold if this payment is for a service_request
-                if reconciled.get("payment_id"):
-                    await confirm_appointment_for_payment(db, str(reconciled["payment_id"]))
-
                 return {"message": "Transaction processed and reconciled", "transaction_id": transaction_id}
         except Exception as e:
             logger.warning(f"Auto-reconciliation failed: {e}, will require manual reconciliation")
@@ -406,8 +395,8 @@ async def manual_reconcile(
     Manual reconciliation - Requires webhook.update permission
 
     Liens bidirectionnels:
-    - bank_transactions.payment_id → payments.id
-    - payments.bank_transaction_id → bank_transactions.id
+    - bank_transactions.service_payment_id → service_payments.id
+    - service_payments.bank_transaction_id → bank_transactions.id
     """
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
@@ -415,14 +404,14 @@ async def manual_reconcile(
         result = await repository.reconcile(
             db,
             reconcile.bank_transaction_id,
-            reconcile.payment_id,
+            reconcile.service_payment_id,
             user_id
         )
         logger.info(f"Admin {user_id} reconciled transaction {reconcile.bank_transaction_id}")
-        
+
         # Confirm appointment hold if this payment is for a service_request
-        await confirm_appointment_for_payment(db, reconcile.payment_id)
-        
+        await confirm_appointment_for_payment(db, reconcile.service_payment_id)
+
         return BankTransactionResponse(**result)
 
     except ValueError as e:

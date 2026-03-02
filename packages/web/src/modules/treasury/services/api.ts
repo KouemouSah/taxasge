@@ -348,7 +348,7 @@ export const treasuryApi = {
       `${WEBHOOKS_BASE}/transactions/reconcile`,
       {
         bank_transaction_id: request.bankTransactionId,
-        payment_id: request.paymentId,
+        service_payment_id: request.servicePaymentId,
       }
     );
     return transformTransaction(response);

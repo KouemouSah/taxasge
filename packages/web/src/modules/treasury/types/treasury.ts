@@ -301,7 +301,7 @@ export interface BankTransaction {
   accountHolderName?: string;
   senderName?: string; // Alias for accountHolderName
   senderPhone?: string;
-  paymentId?: string;
+  servicePaymentId?: string;
   status: TransactionStatus;
   reconciledAt?: string;
   reconciledBy?: string;
@@ -327,7 +327,7 @@ export interface BankTransactionParams {
 
 export interface ReconcileRequest {
   bankTransactionId: string;
-  paymentId: string;
+  servicePaymentId: string;
 }
 
 // =============================================================================

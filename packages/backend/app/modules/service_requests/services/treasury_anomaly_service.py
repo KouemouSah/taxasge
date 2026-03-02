@@ -264,7 +264,7 @@ class TreasuryAnomalyService:
                 END as diff_percentage
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            JOIN bank_transactions bt ON bt.payment_id = sp.id
+            JOIN bank_transactions bt ON bt.service_payment_id = sp.id
             WHERE bt.status = 'reconciled'
               AND bt.reconciled_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
               AND sp.total_amount > 0
@@ -333,7 +333,7 @@ class TreasuryAnomalyService:
                 bt.bank_transaction_date,
                 EXTRACT(EPOCH FROM (NOW() - bt.created_at)) / 3600 as hours_since_creation
             FROM bank_transactions bt
-            WHERE bt.payment_id IS NULL
+            WHERE bt.service_payment_id IS NULL
               AND bt.status = 'unreconciled'
               AND bt.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
               AND NOT EXISTS (

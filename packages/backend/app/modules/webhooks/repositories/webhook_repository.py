@@ -4,7 +4,7 @@ Webhook Repository - Bank transactions and configurations
 Handles:
 - bank_configurations table
 - bank_transactions table
-- Reconciliation avec module PAYMENTS
+- Reconciliation avec module SERVICE_PAYMENTS
 """
 
 from typing import Optional, List, Dict, Any
@@ -143,11 +143,11 @@ class WebhookRepository:
         query = """
             SELECT
                 bt.*,
-                p.bank_reference as payment_reference,
+                sp.payment_reference,
                 u.email as user_email
             FROM bank_transactions bt
-            LEFT JOIN payments p ON bt.payment_id = p.id
-            LEFT JOIN users u ON p.user_id = u.id
+            LEFT JOIN service_payments sp ON bt.service_payment_id = sp.id
+            LEFT JOIN users u ON sp.user_id = u.id
             WHERE bt.id = $1
         """
         result = await conn.fetchrow(query, transaction_id)
@@ -163,11 +163,11 @@ class WebhookRepository:
         data_query = """
             SELECT
                 bt.*,
-                p.bank_reference as payment_reference,
+                sp.payment_reference,
                 u.email as user_email
             FROM bank_transactions bt
-            LEFT JOIN payments p ON bt.payment_id = p.id
-            LEFT JOIN users u ON p.user_id = u.id
+            LEFT JOIN service_payments sp ON bt.service_payment_id = sp.id
+            LEFT JOIN users u ON sp.user_id = u.id
             WHERE bt.status = 'unreconciled'
             ORDER BY bt.bank_transaction_date DESC
             LIMIT $1 OFFSET $2
@@ -176,56 +176,55 @@ class WebhookRepository:
         return [dict(r) for r in results], total
 
     async def reconcile(
-        self, conn: asyncpg.Connection, transaction_id: str, payment_id: str, reconciled_by: str
+        self, conn: asyncpg.Connection, transaction_id: str, service_payment_id: str, reconciled_by: str
     ) -> Dict[str, Any]:
         """
-        Reconcile bank transaction with payment
+        Reconcile bank transaction with service_payment
 
-        IMPORTANT: Cohérence bidirectionnelle avec module PAYMENTS
-        - Met à jour bank_transactions.payment_id
-        - Met à jour payments.bank_transaction_id
+        IMPORTANT: Cohérence bidirectionnelle avec module SERVICE_PAYMENTS
+        - Met à jour bank_transactions.service_payment_id
+        - Met à jour service_payments.bank_transaction_id
+        Uses explicit transaction for atomicity.
         """
-        # Update bank_transaction
-        tx_query = """
-            UPDATE bank_transactions
-            SET payment_id = $2, status = 'reconciled',
-                reconciled_at = NOW(), reconciled_by = $3
-            WHERE id = $1
-            RETURNING *
-        """
-        tx_result = await conn.fetchrow(tx_query, transaction_id, payment_id, reconciled_by)
+        async with conn.transaction():
+            # 1. Update bank_transaction
+            tx_query = """
+                UPDATE bank_transactions
+                SET service_payment_id = $2, status = 'reconciled',
+                    reconciled_at = NOW(), reconciled_by = $3
+                WHERE id = $1 AND status = 'unreconciled'
+                RETURNING *
+            """
+            tx_result = await conn.fetchrow(tx_query, transaction_id, service_payment_id, reconciled_by)
 
-        if not tx_result:
-            raise ValueError(f"Transaction {transaction_id} not found")
+            if not tx_result:
+                raise ValueError(f"Transaction {transaction_id} not found or already reconciled")
 
-        # Update payment (bidirectional link)
-        payment_query = """
-            UPDATE payments
-            SET bank_transaction_id = $2, updated_at = NOW()
-            WHERE id = $1
-        """
-        await conn.execute(payment_query, payment_id, transaction_id)
+            # 2. Update service_payment (bidirectional link)
+            await conn.execute("""
+                UPDATE service_payments
+                SET bank_transaction_id = $2, updated_at = NOW()
+                WHERE id = $1
+            """, service_payment_id, transaction_id)
 
-        logger.info(f"Reconciled transaction {transaction_id} with payment {payment_id} by user {reconciled_by}")
-        return dict(tx_result)
+            logger.info(f"Reconciled transaction {transaction_id} with service_payment {service_payment_id} by user {reconciled_by}")
+            return dict(tx_result)
 
     async def auto_reconcile_by_reference(
         self, conn: asyncpg.Connection, bank_reference: str
     ) -> Optional[Dict[str, Any]]:
         """
-        Auto-reconcile transaction by matching bank_reference
-
-        Cherche un payment avec le même bank_reference et réconcilie automatiquement
+        Auto-reconcile transaction by matching payment_reference in service_payments
         """
-        # Find payment with matching bank_reference
-        payment_query = "SELECT id FROM payments WHERE bank_reference = $1"
+        # Find service_payment with matching payment_reference
+        payment_query = "SELECT id FROM service_payments WHERE payment_reference = $1 AND workflow_status = 'completed'"
         payment = await conn.fetchrow(payment_query, bank_reference)
 
         if not payment:
-            logger.warning(f"No payment found with bank_reference {bank_reference}")
+            logger.warning(f"No service_payment found with payment_reference {bank_reference}")
             return None
 
-        payment_id = payment["id"]
+        service_payment_id = str(payment["id"])
 
         # Find unreconciled transaction with this reference
         tx_query = """
@@ -238,5 +237,5 @@ class WebhookRepository:
             logger.warning(f"No unreconciled transaction found with reference {bank_reference}")
             return None
 
-        # Reconcile
-        return await self.reconcile(conn, transaction["id"], payment_id, None)  # Auto = system user
+        # Reconcile atomically
+        return await self.reconcile(conn, str(transaction["id"]), service_payment_id, None)

@@ -19,14 +19,14 @@ Module critique pour réception des callbacks BANGE:
 2. bank_transactions (transactions reçues webhooks)
    - bank_code, bank_reference (UNIQUE composite)
    - amount, currency, bank_transaction_date
-   - payment_id (FK → payments - réconciliation)
+   - service_payment_id (FK → service_payments - réconciliation)
    - status: unreconciled, reconciled, disputed
    - raw_data JSONB (payload complet pour audit)
    - reconciled_at, reconciled_by
 
 Relations clés:
-- bank_transactions.payment_id → payments.id (réconciliation)
-- payments.bank_transaction_id → bank_transactions.id (bidirectionnelle)
+- bank_transactions.service_payment_id → service_payments.id (réconciliation)
+- service_payments.bank_transaction_id → bank_transactions.id (bidirectionnelle)
 - bank_transactions.reconciled_by → users.id (qui a réconcilié)
 
 Endpoints: ~10
@@ -42,7 +42,7 @@ Endpoints: ~10
 Features:
 - HMAC signature validation (webhook_secret)
 - Idempotency (bank_code + bank_reference UNIQUE)
-- Auto-reconciliation (match bank_reference → payment.bank_reference)
+- Auto-reconciliation (match bank_reference → service_payment.payment_reference)
 - Manual reconciliation (admin override)
 - Raw data JSONB (audit trail complet)
 - Multi-bank support (5 banques Guinée)

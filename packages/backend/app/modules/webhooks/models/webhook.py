@@ -94,7 +94,7 @@ class BankTransactionResponse(BankTransactionBase):
     id: str
 
     # Reconciliation
-    payment_id: Optional[str] = Field(None, description="FK payments (si réconciliée)")
+    service_payment_id: Optional[str] = Field(None, description="FK service_payments (si réconciliée)")
     status: TransactionStatus
     reconciled_at: Optional[datetime] = Field(None, description="Date réconciliation")
     reconciled_by: Optional[str] = Field(None, description="UUID user qui a réconcilié")
@@ -123,7 +123,7 @@ class BankTransactionListResponse(BaseModel):
 class ReconcileRequest(BaseModel):
     """Manual reconciliation request"""
     bank_transaction_id: str = Field(..., description="ID transaction bancaire")
-    payment_id: str = Field(..., description="ID payment à réconcilier")
+    service_payment_id: str = Field(..., description="ID service_payment à réconcilier")
 
 
 # ========== BANGE WEBHOOK PAYLOAD ==========

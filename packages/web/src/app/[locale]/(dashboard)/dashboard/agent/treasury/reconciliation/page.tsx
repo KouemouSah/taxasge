@@ -109,7 +109,7 @@ export default function TreasuryReconciliationPage() {
 
     await reconcileMutation.mutateAsync({
       bankTransactionId: selectedTransaction.id,
-      paymentId: paymentReference.trim(),
+      servicePaymentId: paymentReference.trim(),
     });
 
     setIsReconcileDialogOpen(false);

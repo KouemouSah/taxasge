@@ -514,7 +514,7 @@ class TreasuryExportService:
                 bt.status::text,
                 u.full_name as user_name
             FROM bank_transactions bt
-            LEFT JOIN service_payments sp ON sp.id = bt.payment_id
+            LEFT JOIN service_payments sp ON sp.id = bt.service_payment_id
             LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN users u ON u.id = sr.user_id
             WHERE bt.created_at >= $1::date

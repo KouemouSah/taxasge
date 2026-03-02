@@ -32,7 +32,7 @@ async def get_matching_suggestions(
         SELECT id, bank_reference, amount, currency, bank_transaction_date,
                account_holder_name, bank_code
         FROM bank_transactions
-        WHERE payment_id IS NULL AND status = 'unreconciled'
+        WHERE service_payment_id IS NULL AND status = 'unreconciled'
         ORDER BY bank_transaction_date DESC
         LIMIT $1
     """, limit)
@@ -51,7 +51,7 @@ async def get_matching_suggestions(
         WHERE sp.workflow_status = 'completed'
           AND NOT EXISTS (
               SELECT 1 FROM bank_transactions bt
-              WHERE bt.payment_id = sp.id
+              WHERE bt.service_payment_id = sp.id AND bt.status = 'reconciled'
           )
         ORDER BY sp.validated_at DESC
         LIMIT 200
@@ -174,13 +174,21 @@ async def auto_match(
         best = suggestion["candidates"][0]
 
         try:
-            # Reconcile: update bank_transactions (audit trail via reconciled_at/reconciled_by)
-            await db.execute("""
-                UPDATE bank_transactions
-                SET payment_id = $1, status = 'reconciled',
-                    reconciled_at = NOW(), reconciled_by = $2
-                WHERE id = $3 AND payment_id IS NULL
-            """, best["paymentId"], agent_user_id, suggestion["transactionId"])
+            # Atomic reconcile: updates both bank_transactions AND service_payments
+            async with db.transaction():
+                await db.execute("""
+                    UPDATE bank_transactions
+                    SET service_payment_id = $1, status = 'reconciled',
+                        reconciled_at = NOW(), reconciled_by = $2
+                    WHERE id = $3 AND service_payment_id IS NULL
+                """, best["paymentId"], agent_user_id, suggestion["transactionId"])
+
+                # Bidirectional link
+                await db.execute("""
+                    UPDATE service_payments
+                    SET bank_transaction_id = $2, updated_at = NOW()
+                    WHERE id = $1
+                """, best["paymentId"], suggestion["transactionId"])
 
             matched.append({
                 "transactionId": suggestion["transactionId"],
@@ -192,7 +200,7 @@ async def auto_match(
             })
             logger.info(
                 f"Auto-reconciled: tx={suggestion['transactionId']} "
-                f"→ payment={best['paymentId']} (score={best['score']})"
+                f"→ service_payment={best['paymentId']} (score={best['score']})"
             )
         except Exception as e:
             logger.error(f"Auto-match failed for tx={suggestion['transactionId']}: {e}")

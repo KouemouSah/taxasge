@@ -769,17 +769,21 @@ class ReceiptService:
         """
         await db.execute(update_query, receipt_number, receipt_url, payment_id)
 
-        # Optionally store in payment_receipts table for audit
+        # Store in payment_receipts table for audit trail
         try:
+            import uuid
             insert_query = """
                 INSERT INTO payment_receipts (
-                    id, payment_id, receipt_number, file_path,
+                    id, service_payment_id, receipt_number, file_path,
                     file_size_bytes, qr_code_data, generated_at, generated_by
-                ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+                ) VALUES ($1, $2::uuid, $3, $4, $5, $6, NOW(), $7)
                 ON CONFLICT (receipt_number) DO NOTHING
             """
-            # Note: payment_receipts references payments table, not service_payments
-            # We'll skip this if the FK doesn't match
+            await db.execute(
+                insert_query,
+                str(uuid.uuid4()), payment_id, receipt_number,
+                receipt_url, 0, None, None,
+            )
         except Exception as e:
             logger.warning(f"Could not insert into payment_receipts: {e}")
 
