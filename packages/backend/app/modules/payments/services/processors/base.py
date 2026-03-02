@@ -18,7 +18,8 @@ from app.modules.payments.models.payment import PaymentMethod, PaymentStatus
 
 class ProcessorType(str, Enum):
     """Type of payment processor."""
-    BANGE_API = "bange_api"           # Processes via BANGE API
+    GATEWAY_API = "gateway_api"        # Any bank gateway (BANGE, Ecobank, etc.)
+    BANGE_API = "gateway_api"          # Backward compat alias → same as GATEWAY_API
     MANUAL_VALIDATION = "manual"       # Requires agent validation
 
 

@@ -271,6 +271,14 @@ class Settings(BaseSettings):
     BANGE_API_KEY: Optional[str] = Field(default=None, env="BANGE_API_KEY")
     BANGE_MERCHANT_ID: Optional[str] = Field(default=None, env="BANGE_MERCHANT_ID")
     BANGE_WEBHOOK_SECRET: Optional[str] = Field(default=None, env="BANGE_WEBHOOK_SECRET")
+
+    # Ecobank Payment Integration (developer.ecobank.com)
+    ECOBANK_API_URL: Optional[str] = Field(default=None, env="ECOBANK_API_URL")
+    ECOBANK_CLIENT_ID: Optional[str] = Field(default=None, env="ECOBANK_CLIENT_ID")
+    ECOBANK_CLIENT_SECRET: Optional[str] = Field(default=None, env="ECOBANK_CLIENT_SECRET")
+    ECOBANK_WEBHOOK_SECRET: Optional[str] = Field(default=None, env="ECOBANK_WEBHOOK_SECRET")
+    # Comma-separated methods to force Ecobank as primary (e.g., "mobile_money,card")
+    ECOBANK_PRIMARY_METHODS: Optional[str] = Field(default=None, env="ECOBANK_PRIMARY_METHODS")
     
     # Email Service (MODULE_02)
     SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")

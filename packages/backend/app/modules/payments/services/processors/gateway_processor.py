@@ -1,16 +1,24 @@
 """
-BANGE Payment Processor.
+Gateway Payment Processor — Generic processor for any bank gateway.
 
-Handles payments via BANGE API:
-- Mobile Money (MTN, Orange)
-- Card payments
-- Bank transfers
+Handles orchestration logic (DB records, events, outbox) generically.
+Delegates API communication to a GatewayServiceBase implementation.
 
-Uses the existing BANGEService for API communication.
+Architecture:
+    GatewayProcessor(BANGEGateway)    → BANGE payments
+    GatewayProcessor(EcobankGateway)  → Ecobank payments
+    GatewayProcessor(FutureGateway)   → Future bank payments
+
+The GatewayProcessor is NOT bank-specific. It only knows about:
+- Creating service_payment records (DB)
+- Building GatewayPaymentRequest (generic)
+- Calling gateway.create_payment() (polymorphic)
+- Publishing events (EventBus)
+- Creating outbox items (assignment)
 """
 
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 import json
@@ -20,12 +28,15 @@ from loguru import logger
 from app.modules.payments.models.payment import (
     PaymentMethod,
     PaymentStatus,
-    BANGEPaymentRequest,
 )
-from app.modules.payments.services.bange_service import BANGEService
-from app.modules.payments.services.gateways.bange_gateway import BANGEGateway
 from app.config import get_settings
+
 from app.core.events import EventBus, EventType
+
+from app.modules.payments.services.gateways.base import (
+    GatewayServiceBase,
+    GatewayPaymentRequest,
+)
 
 from .base import (
     PaymentProcessorBase,
@@ -36,28 +47,29 @@ from .base import (
 )
 
 
-class BangeProcessor(PaymentProcessorBase):
+class GatewayProcessor(PaymentProcessorBase):
     """
-    Payment processor for BANGE API payments.
+    Generic payment processor for any bank gateway API.
 
-    Handles Mobile Money, Card, and Bank Transfer payments
-    via the BANGE payment gateway.
+    Accepts a GatewayServiceBase instance and uses it for all
+    API communication. The orchestration logic (DB, events, outbox)
+    is identical regardless of which bank.
+
+    Usage:
+        bange_gateway = BANGEGateway()
+        processor = GatewayProcessor(bange_gateway)
+        result = await processor.initiate(db, context)
     """
 
-    processor_type = ProcessorType.BANGE_API
+    processor_type = ProcessorType.GATEWAY_API
 
-    def __init__(self):
-        self.bange_service = BANGEService()
-        self.gateway = BANGEGateway()  # For registry bank_code/bank_name access
+    def __init__(self, gateway: GatewayServiceBase):
+        self.gateway = gateway
         self.settings = get_settings()
 
     def get_supported_methods(self) -> list[PaymentMethod]:
-        """Return payment methods handled by BANGE API."""
-        return [
-            PaymentMethod.MOBILE_MONEY,
-            PaymentMethod.CARD,
-            PaymentMethod.BANK_TRANSFER,
-        ]
+        """Return payment methods supported by the underlying gateway."""
+        return [PaymentMethod(m) for m in self.gateway.get_supported_methods()]
 
     async def initiate(
         self,
@@ -65,20 +77,21 @@ class BangeProcessor(PaymentProcessorBase):
         context: PaymentContext
     ) -> PaymentInitResult:
         """
-        Initiate a payment via BANGE API.
+        Initiate a payment via the bank gateway API.
 
         1. Generate unique payment reference
         2. Create service_payment record in DB
-        3. Call BANGE API to create payment
-        4. Update record with BANGE transaction ID
-        5. Return redirect URL for user
+        3. Build gateway-agnostic payment request
+        4. Call gateway.create_payment() (polymorphic)
+        5. Update record with external transaction ID
+        6. Return redirect URL or confirmation
 
         Args:
             db: Database connection
             context: Payment context
 
         Returns:
-            PaymentInitResult with redirect URL for BANGE payment page
+            PaymentInitResult with redirect URL for bank payment page
         """
         try:
             # 1. Generate payment reference
@@ -90,44 +103,51 @@ class BangeProcessor(PaymentProcessorBase):
                 db=db,
                 payment_id=payment_id,
                 context=context,
-                payment_reference=payment_reference
+                payment_reference=payment_reference,
             )
 
-            # 3. Build callback URLs (Note: Settings fields are UPPERCASE)
-            callback_url = f"{self.settings.API_BASE_URL}/api/v1/webhooks/bange"
-            return_url = f"{self.settings.FRONTEND_URL}/dashboard/service-requests/{context.service_request_id}/payment/result"
+            # 3. Build callback URL using gateway's bank_code
+            bank_code = self.gateway.bank_code.lower()
+            callback_url = f"{self.settings.API_BASE_URL}/api/v1/webhooks/{bank_code}"
+            return_url = (
+                f"{self.settings.FRONTEND_URL}/dashboard/service-requests/"
+                f"{context.service_request_id}/payment/result"
+            )
 
-            # 4. Create BANGE payment request
-            bange_request = BANGEPaymentRequest(
+            # 4. Build gateway-agnostic payment request
+            gw_request = GatewayPaymentRequest(
                 amount=context.amount,
                 currency=context.currency,
-                description=f"Pago {context.service_name or context.workflow_code} - {context.reference_number}",
                 reference=payment_reference,
-                customer_email=context.user_email,
-                customer_phone=context.user_phone,
+                description=(
+                    f"Pago {context.service_name or context.workflow_code} "
+                    f"- {context.reference_number}"
+                ),
                 callback_url=callback_url,
                 return_url=return_url,
+                customer_email=context.user_email,
+                customer_phone=context.user_phone,
                 metadata={
                     "service_request_id": context.service_request_id,
                     "payment_id": payment_id,
                     "workflow_code": context.workflow_code,
                     "user_id": context.user_id,
-                }
+                },
             )
 
-            # 5. Call BANGE API
-            bange_response = await self.bange_service.create_payment(bange_request)
+            # 5. Call gateway API (polymorphic)
+            gw_response = await self.gateway.create_payment(gw_request)
 
-            if not bange_response:
-                # BANGE API call failed
+            if not gw_response.success:
+                # Gateway API call failed
                 await self._update_payment_status(
                     db=db,
                     payment_id=payment_id,
                     status=PaymentStatus.FAILED,
-                    error="BANGE API call failed"
+                    error=gw_response.error or f"{self.gateway.bank_code} API call failed",
                 )
 
-                # Publish PAYMENT_FAILED event for notifications
+                # Publish PAYMENT_FAILED event
                 try:
                     EventBus.publish_nowait(EventType.PAYMENT_FAILED, {
                         "payment_id": payment_id,
@@ -139,9 +159,12 @@ class BangeProcessor(PaymentProcessorBase):
                         "user_email": context.user_email,
                         "user_phone": context.user_phone,
                         "preferred_language": "es",
-                        "reason": "Error al conectar con el sistema de pago BANGE",
+                        "reason": (
+                            f"Error al conectar con el sistema de pago "
+                            f"{self.gateway.bank_name}"
+                        ),
+                        "bank_code": self.gateway.bank_code,
                     })
-                    logger.info(f"PAYMENT_FAILED event published for payment {payment_id}")
                 except Exception as e:
                     logger.error(f"Failed to publish PAYMENT_FAILED event: {e}")
 
@@ -149,46 +172,51 @@ class BangeProcessor(PaymentProcessorBase):
                     success=False,
                     payment_id=payment_id,
                     status=PaymentStatus.FAILED,
-                    error="Error al conectar con el sistema de pago. Intente nuevamente.",
-                    message_es="Error al conectar con el sistema de pago. Intente nuevamente."
+                    error=gw_response.error,
+                    message_es=(
+                        "Error al conectar con el sistema de pago. "
+                        "Intente nuevamente."
+                    ),
                 )
 
-            # 6. Update record with BANGE transaction ID
-            await self._update_bange_reference(
+            # 6. Update record with external transaction ID
+            await self._update_gateway_reference(
                 db=db,
                 payment_id=payment_id,
-                bange_transaction_id=bange_response.payment_id,
-                expires_at=bange_response.expires_at
+                external_id=gw_response.external_id,
+                expires_at=gw_response.expires_at,
             )
 
             logger.info(
-                f"BANGE payment initiated: {payment_id} -> {bange_response.payment_id}"
+                f"{self.gateway.bank_code} payment initiated: "
+                f"{payment_id} -> {gw_response.external_id}"
             )
 
             return PaymentInitResult(
                 success=True,
                 payment_id=payment_id,
-                external_reference=bange_response.payment_id,
-                redirect_url=bange_response.payment_url,
+                external_reference=gw_response.external_id,
+                redirect_url=gw_response.redirect_url,
                 status=PaymentStatus.PROCESSING,
                 requires_action=True,
                 action_type="redirect",
                 message_es="Redirigiendo al sistema de pago...",
-                expires_at=bange_response.expires_at,
+                expires_at=gw_response.expires_at,
                 metadata={
-                    "bange_payment_id": bange_response.payment_id,
+                    "gateway_payment_id": gw_response.external_id,
                     "payment_reference": payment_reference,
-                }
+                    "bank_code": self.gateway.bank_code,
+                },
             )
 
         except Exception as e:
-            logger.error(f"Error initiating BANGE payment: {e}")
+            logger.error(f"Error initiating {self.gateway.bank_code} payment: {e}")
             return PaymentInitResult(
                 success=False,
                 payment_id=str(uuid4()),
                 status=PaymentStatus.FAILED,
                 error=str(e),
-                message_es="Error interno. Contacte soporte técnico."
+                message_es="Error interno. Contacte soporte técnico.",
             )
 
     async def check_status(
@@ -199,14 +227,7 @@ class BangeProcessor(PaymentProcessorBase):
         """
         Check payment status.
 
-        First checks local DB, then verifies with BANGE API if still processing.
-
-        Args:
-            db: Database connection
-            payment_id: Internal payment ID
-
-        Returns:
-            PaymentStatusResult with current status
+        First checks local DB, then verifies with gateway API if still processing.
         """
         try:
             # 1. Get local payment record
@@ -215,13 +236,17 @@ class BangeProcessor(PaymentProcessorBase):
                 return PaymentStatusResult(
                     payment_id=payment_id,
                     status=PaymentStatus.FAILED,
-                    error="Payment not found"
+                    error="Payment not found",
                 )
 
             local_status = PaymentStatus(payment["status"])
 
-            # 2. If already completed or failed, return local status
-            if local_status in [PaymentStatus.COMPLETED, PaymentStatus.FAILED, PaymentStatus.CANCELLED]:
+            # 2. If terminal status, return local
+            if local_status in [
+                PaymentStatus.COMPLETED,
+                PaymentStatus.FAILED,
+                PaymentStatus.CANCELLED,
+            ]:
                 return PaymentStatusResult(
                     payment_id=payment_id,
                     status=local_status,
@@ -233,25 +258,24 @@ class BangeProcessor(PaymentProcessorBase):
                     receipt_url=payment.get("receipt_url"),
                 )
 
-            # 3. If still processing, verify with BANGE
+            # 3. If still processing, verify with gateway API
             bange_transaction_id = payment.get("bange_transaction_id")
             if bange_transaction_id:
-                bange_status = await self.bange_service.verify_payment(bange_transaction_id)
+                gw_status = await self.gateway.verify_payment(bange_transaction_id)
 
-                if bange_status and bange_status.get("status") == "completed":
-                    paid_at = datetime.utcnow()
+                if gw_status.paid:
+                    paid_at = gw_status.paid_at or datetime.utcnow()
                     sr_id = payment.get("service_request_id")
 
-                    # ATOMIC: mark_completed + outbox INSERT in same transaction
-                    # If outbox fails → payment stays 'processing' → next poll retries
+                    # ATOMIC: mark_completed + outbox INSERT
                     async with db.transaction():
                         await self._mark_payment_completed(
                             db=db,
                             payment_id=payment_id,
-                            paid_at=paid_at
+                            paid_at=paid_at,
                         )
 
-                        # Insert into assignment outbox (guaranteed delivery)
+                        # Insert into assignment outbox
                         if sr_id:
                             from app.modules.service_requests.services.assignment_outbox_service import (
                                 assignment_outbox_service,
@@ -269,21 +293,26 @@ class BangeProcessor(PaymentProcessorBase):
                                     entity_code=sr_data["entity_code"],
                                     entity_location_id=sr_data["entity_location_id"],
                                     payment_id=payment_id,
-                                    payment_method=payment.get("payment_method", "bange_wallet"),
+                                    payment_method=payment.get(
+                                        "payment_method", "mobile_money"
+                                    ),
                                 )
-                                logger.info(f"Outbox item created for BANGE payment {payment_id}")
+                                logger.info(
+                                    f"Outbox item created for "
+                                    f"{self.gateway.bank_code} payment {payment_id}"
+                                )
 
-                    # Get user data for notifications (outside transaction)
+                    # Publish PAYMENT_COMPLETED event (outside transaction)
                     user_data = None
                     try:
                         user_data = await db.fetchrow(
-                            "SELECT email, phone_number as phone, preferred_language FROM users WHERE id = $1",
-                            payment.get("user_id")
+                            "SELECT email, phone_number as phone, preferred_language "
+                            "FROM users WHERE id = $1",
+                            payment.get("user_id"),
                         )
                     except Exception as e:
-                        logger.warning(f"Failed to fetch user data for notification: {e}")
+                        logger.warning(f"Failed to fetch user for notification: {e}")
 
-                    # Publish PAYMENT_COMPLETED event (fallback + notifications)
                     try:
                         await EventBus.publish(EventType.PAYMENT_COMPLETED, {
                             "payment_id": payment_id,
@@ -291,17 +320,28 @@ class BangeProcessor(PaymentProcessorBase):
                             "service_request_id": str(sr_id) if sr_id else None,
                             "amount": float(payment.get("total_amount", 0)),
                             "currency": payment.get("currency", "XAF"),
-                            "payment_method": payment.get("payment_method", "bange_wallet"),
+                            "payment_method": payment.get(
+                                "payment_method", "mobile_money"
+                            ),
                             "receipt_number": payment.get("receipt_number"),
-                            "bange_transaction_id": bange_transaction_id,
-                            "user_email": user_data["email"] if user_data else None,
-                            "user_phone": user_data["phone"] if user_data else None,
-                            "preferred_language": user_data["preferred_language"] if user_data else "es",
+                            "gateway_transaction_id": bange_transaction_id,
+                            "bank_code": self.gateway.bank_code,
+                            "user_email": (
+                                user_data["email"] if user_data else None
+                            ),
+                            "user_phone": (
+                                user_data["phone"] if user_data else None
+                            ),
+                            "preferred_language": (
+                                user_data["preferred_language"]
+                                if user_data else "es"
+                            ),
                             "date": paid_at.strftime("%d/%m/%Y"),
                         })
-                        logger.info(f"PAYMENT_COMPLETED event published for BANGE payment {payment_id}")
                     except Exception as e:
-                        logger.error(f"Failed to publish PAYMENT_COMPLETED for BANGE payment: {e}")
+                        logger.error(
+                            f"Failed to publish PAYMENT_COMPLETED: {e}"
+                        )
 
                     return PaymentStatusResult(
                         payment_id=payment_id,
@@ -322,11 +362,13 @@ class BangeProcessor(PaymentProcessorBase):
             )
 
         except Exception as e:
-            logger.error(f"Error checking BANGE payment status: {e}")
+            logger.error(
+                f"Error checking {self.gateway.bank_code} payment status: {e}"
+            )
             return PaymentStatusResult(
                 payment_id=payment_id,
                 status=PaymentStatus.PENDING,
-                error=str(e)
+                error=str(e),
             )
 
     async def cancel(
@@ -335,43 +377,32 @@ class BangeProcessor(PaymentProcessorBase):
         payment_id: str,
         reason: Optional[str] = None
     ) -> bool:
-        """
-        Cancel a pending BANGE payment.
-
-        Args:
-            db: Database connection
-            payment_id: Internal payment ID
-            reason: Cancellation reason
-
-        Returns:
-            True if cancelled successfully
-        """
+        """Cancel a pending gateway payment."""
         try:
             payment = await self._get_payment(db, payment_id)
             if not payment:
                 return False
 
-            # Can only cancel pending/processing payments
             if payment["status"] not in ["pending", "processing"]:
                 return False
 
-            # Cancel with BANGE if we have a transaction ID
-            bange_id = payment.get("bange_transaction_id")
-            if bange_id:
-                # BANGE cancellation would go here
-                pass
+            # Cancel with gateway if we have an external ID
+            external_id = payment.get("bange_transaction_id")
+            if external_id:
+                await self.gateway.cancel_payment(external_id, reason or "")
 
-            # Update local status
             await self._update_payment_status(
                 db=db,
                 payment_id=payment_id,
                 status=PaymentStatus.CANCELLED,
-                error=reason
+                error=reason,
             )
-
             return True
+
         except Exception as e:
-            logger.error(f"Error cancelling BANGE payment: {e}")
+            logger.error(
+                f"Error cancelling {self.gateway.bank_code} payment: {e}"
+            )
             return False
 
     # === Private Helper Methods ===
@@ -387,23 +418,20 @@ class BangeProcessor(PaymentProcessorBase):
         db: asyncpg.Connection,
         payment_id: str,
         context: PaymentContext,
-        payment_reference: str
+        payment_reference: str,
     ) -> None:
         """Create service_payment record in database."""
-        # Serialize tariff_breakdown for calculation_details
         calculation_details = None
         if context.tariff_breakdown:
             calculation_details = json.dumps(context.tariff_breakdown)
 
-        # Use total from tariff_breakdown if available
         total_amount = context.get_total_amount()
-        base_amount = context.amount  # Original amount before supplements
+        base_amount = context.amount
 
         if context.tariff_breakdown:
-            base_amount = Decimal(str(context.tariff_breakdown.get('base_amount', context.amount)))
-
-        # fiscal_service_code column removed in migration 041
-        # All payments now link via service_request_id
+            base_amount = Decimal(
+                str(context.tariff_breakdown.get("base_amount", context.amount))
+            )
 
         query = """
             INSERT INTO service_payments (
@@ -433,14 +461,14 @@ class BangeProcessor(PaymentProcessorBase):
             calculation_details,
         )
 
-    async def _update_bange_reference(
+    async def _update_gateway_reference(
         self,
         db: asyncpg.Connection,
         payment_id: str,
-        bange_transaction_id: str,
-        expires_at: Optional[datetime] = None
+        external_id: str,
+        expires_at: Optional[datetime] = None,
     ) -> None:
-        """Update payment with BANGE transaction ID."""
+        """Update payment with gateway external transaction ID."""
         query = """
             UPDATE service_payments
             SET bange_transaction_id = $2,
@@ -448,14 +476,14 @@ class BangeProcessor(PaymentProcessorBase):
                 updated_at = NOW()
             WHERE id = $1
         """
-        await db.execute(query, payment_id, bange_transaction_id, expires_at)
+        await db.execute(query, payment_id, external_id, expires_at)
 
     async def _update_payment_status(
         self,
         db: asyncpg.Connection,
         payment_id: str,
         status: PaymentStatus,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ) -> None:
         """Update payment status."""
         query = """
@@ -470,15 +498,12 @@ class BangeProcessor(PaymentProcessorBase):
         self,
         db: asyncpg.Connection,
         payment_id: str,
-        paid_at: datetime
+        paid_at: datetime,
     ) -> None:
         """
         Mark payment as completed.
-
-        Updates both service_payments AND service_requests tables
-        to keep status in sync for frontend polling.
+        Updates both service_payments AND service_requests.
         """
-        # 1. Update service_payments
         query = """
             UPDATE service_payments
             SET status = 'completed',
@@ -490,8 +515,6 @@ class BangeProcessor(PaymentProcessorBase):
         """
         result = await db.fetchrow(query, payment_id, paid_at)
 
-        # 2. Update service_requests for frontend polling consistency
-        # Critical: checkPaymentStatus endpoint reads from service_requests
         if result and result["service_request_id"]:
             await db.execute(
                 """
@@ -503,24 +526,20 @@ class BangeProcessor(PaymentProcessorBase):
                 WHERE id = $1
                 """,
                 result["service_request_id"],
-                paid_at
+                paid_at,
             )
             logger.info(
-                f"BANGE payment {payment_id} completed - "
+                f"{self.gateway.bank_code} payment {payment_id} completed - "
                 f"service_request {result['service_request_id']} status=PAID"
             )
 
     async def _get_payment(
         self,
         db: asyncpg.Connection,
-        payment_id: str
+        payment_id: str,
     ) -> Optional[dict]:
         """Get payment record from database."""
         query = """
             SELECT * FROM service_payments WHERE id = $1::uuid
         """
         return await db.fetchrow(query, payment_id)
-
-
-# Singleton instance
-bange_processor = BangeProcessor()

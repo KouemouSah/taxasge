@@ -137,6 +137,25 @@ def get_cron_secret() -> Optional[str]:
     return get_secret("cron-secret")
 
 
+# Ecobank Payment Integration secrets
+@lru_cache(maxsize=1)
+def get_ecobank_client_id() -> Optional[str]:
+    """Get Ecobank API client ID"""
+    return get_secret("ecobank-client-id")
+
+
+@lru_cache(maxsize=1)
+def get_ecobank_client_secret() -> Optional[str]:
+    """Get Ecobank API client secret"""
+    return get_secret("ecobank-client-secret")
+
+
+@lru_cache(maxsize=1)
+def get_ecobank_webhook_secret() -> Optional[str]:
+    """Get Ecobank webhook HMAC secret"""
+    return get_secret("ecobank-webhook-secret")
+
+
 # Validation helper
 def validate_secrets_available() -> dict:
     """

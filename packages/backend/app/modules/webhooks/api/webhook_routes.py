@@ -1,7 +1,13 @@
 """
-Webhook Routes - BANGE Callback & Reconciliation API
+Webhook Routes - Bank Callback & Reconciliation API
 
-Endpoints pour webhooks BANGE et réconciliation transactions
+Endpoints:
+- POST /webhooks/bange     → BANGE webhook callback (legacy, backward compat)
+- POST /webhooks/{bank_code} → Generic webhook for any configured gateway
+- GET  /transactions/...   → Bank transaction management
+- POST /transactions/reconcile → Manual reconciliation
+- GET  /bank-configurations → Bank config management
+- GET  /gateways           → List registered payment gateways
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query, Request, Header
@@ -29,6 +35,9 @@ from app.database.connection import get_database
 
 # Import appointment service for post-payment confirmation
 from app.modules.service_requests.services.appointment_service import appointment_service
+
+# Import registry for multi-gateway webhook dispatch
+from app.modules.payments.services.processors.registry import payment_processor_registry
 
 router = APIRouter(tags=["Webhooks"])
 security = HTTPBearer()
@@ -121,6 +130,172 @@ async def bange_webhook_callback(
             logger.warning(f"Auto-reconciliation failed: {e}, will require manual reconciliation")
 
     return {"message": "Transaction processed, awaiting reconciliation", "transaction_id": transaction_id}
+
+
+# ========== GENERIC MULTI-GATEWAY WEBHOOK ==========
+
+@router.post("/{bank_code}", status_code=status.HTTP_200_OK)
+async def generic_webhook_callback(
+    bank_code: str,
+    request: Request,
+    db=Depends(get_database),
+):
+    """
+    Generic webhook receiver for any configured bank gateway.
+
+    Dispatches to the appropriate gateway based on bank_code path parameter.
+    Each gateway handles its own signature validation and payload parsing.
+
+    Supported bank codes: BANGE, ECOBANK, BGFI, SGBGE, CCEIBANK (if configured).
+
+    Security:
+    - bank_code validated against registered gateways (no SQL injection)
+    - HMAC signature validated per bank's algorithm
+    - Idempotency via bank_code + bank_reference UNIQUE constraint
+    """
+    bank_code_upper = bank_code.upper()
+
+    # Skip if this is the BANGE route (handled by dedicated endpoint above)
+    if bank_code_upper == "BANGE":
+        # Forward to the dedicated BANGE handler (avoids duplicate processing)
+        # The BANGE endpoint is already registered at /bange
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use /webhooks/bange endpoint for BANGE callbacks",
+        )
+
+    # 1. Get gateway processor from registry
+    gateway_proc = payment_processor_registry.get_gateway_by_bank_code(bank_code_upper)
+    if not gateway_proc:
+        logger.warning(f"Webhook received for unconfigured bank: {bank_code_upper}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No gateway configured for bank: {bank_code_upper}",
+        )
+
+    # 2. Get raw body for signature validation
+    body_bytes = await request.body()
+
+    # 3. Validate signature (bank-specific)
+    gateway = gateway_proc.gateway
+    sig_header = gateway.get_webhook_signature_header()
+    signature = request.headers.get(sig_header, "")
+
+    if not gateway.verify_webhook_signature(body_bytes, signature):
+        logger.warning(
+            f"Invalid {bank_code_upper} webhook signature "
+            f"(header: {sig_header})"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
+
+    # 4. Parse webhook data (bank-specific → standard format)
+    try:
+        payload_dict = json.loads(body_bytes.decode("utf-8"))
+        webhook_data = gateway.parse_webhook_data(payload_dict)
+    except Exception as e:
+        logger.error(f"Failed to parse {bank_code_upper} webhook payload: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid payload: {e}",
+        )
+
+    # 5. Check idempotency
+    existing = await repository.get_by_bank_reference(
+        db, bank_code_upper, webhook_data.bank_reference
+    )
+    if existing:
+        logger.info(
+            f"{bank_code_upper} webhook duplicate: "
+            f"{webhook_data.bank_reference}"
+        )
+        return {
+            "message": "Transaction already processed",
+            "transaction_id": existing["id"],
+        }
+
+    # 6. Create bank transaction record
+    bank_transaction = BankTransactionCreate(
+        bank_code=BankCode(bank_code_upper) if bank_code_upper in [e.value for e in BankCode] else BankCode.ECOBANK,
+        bank_reference=webhook_data.bank_reference,
+        bank_transaction_date=webhook_data.transaction_date,
+        amount=webhook_data.amount,
+        currency=webhook_data.currency,
+        account_number=webhook_data.account_number,
+        account_holder_name=webhook_data.account_holder_name,
+        raw_data=payload_dict,
+    )
+
+    result = await repository.create_bank_transaction(db, bank_transaction)
+    transaction_id = result["id"]
+
+    logger.info(
+        f"{bank_code_upper} webhook received: "
+        f"{webhook_data.bank_reference}, "
+        f"transaction_id: {transaction_id}"
+    )
+
+    # 7. Auto-reconciliation (reuse existing logic)
+    if webhook_data.merchant_reference:
+        try:
+            service_reconciled = await reconcile_service_payment(
+                db,
+                webhook_data.merchant_reference,
+                webhook_data.bank_reference,
+            )
+            if service_reconciled:
+                logger.info(
+                    f"Auto-reconciled {bank_code_upper} transaction "
+                    f"{transaction_id} with service_payment"
+                )
+                return {
+                    "message": "Transaction processed and reconciled",
+                    "transaction_id": transaction_id,
+                }
+        except Exception as e:
+            logger.warning(
+                f"Auto-reconciliation failed for {bank_code_upper}: {e}"
+            )
+
+    return {
+        "message": "Transaction processed, awaiting reconciliation",
+        "transaction_id": transaction_id,
+    }
+
+
+# ========== GATEWAYS INFO (ADMIN) ==========
+
+@router.get("/gateways/info")
+async def list_registered_gateways(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _: None = Depends(permission_required("webhook.view")),
+):
+    """
+    List all registered payment gateways with their status.
+    Requires webhook.view permission.
+    """
+    gateways = payment_processor_registry.get_registered_gateways()
+    gateway_list = []
+
+    for bank_code, proc in gateways.items():
+        gateway = proc.gateway if hasattr(proc, "gateway") else None
+        if gateway:
+            try:
+                healthy = await gateway.health_check()
+            except Exception:
+                healthy = False
+
+            gateway_list.append({
+                "bank_code": gateway.bank_code,
+                "bank_name": gateway.bank_name,
+                "supported_methods": gateway.get_supported_methods(),
+                "webhook_signature_header": gateway.get_webhook_signature_header(),
+                "healthy": healthy,
+            })
+
+    return {"gateways": gateway_list}
 
 
 # ========== BANK TRANSACTIONS (AUTHENTICATED) ==========

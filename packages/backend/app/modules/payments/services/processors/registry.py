@@ -2,7 +2,11 @@
 Payment Processor Registry.
 
 Central registry that maps payment methods to their appropriate processors.
-Provides a unified interface for payment operations.
+Supports multiple bank gateways with priority routing.
+
+Architecture:
+    _processors: PaymentMethod → PaymentProcessorBase (for payment initiation)
+    _gateways:   bank_code → GatewayProcessor (for webhook dispatch)
 """
 
 from typing import Optional, Dict, List
@@ -29,32 +33,118 @@ class PaymentProcessorRegistry:
     Routes payment operations to the appropriate processor
     based on payment method.
 
+    Multi-gateway support:
+    - Multiple gateways can be registered
+    - Each payment method maps to exactly one processor (primary)
+    - Gateways are also indexed by bank_code for webhook dispatch
+
     Usage:
         registry = PaymentProcessorRegistry()
         result = await registry.initiate_payment(db, context)
+
+        # Webhook dispatch
+        processor = registry.get_gateway_by_bank_code("ECOBANK")
     """
 
     def __init__(self):
-        # Register all processors
+        # PaymentMethod → processor (for payment initiation)
         self._processors: Dict[PaymentMethod, PaymentProcessorBase] = {}
+        # bank_code → GatewayProcessor (for webhook dispatch)
+        self._gateways: Dict[str, PaymentProcessorBase] = {}
         self._register_default_processors()
 
     def _register_default_processors(self) -> None:
         """Register default payment processors."""
-        # BANGE processor for electronic payments
+        # BANGE processor for electronic payments (backward compat)
         for method in bange_processor.get_supported_methods():
             self._processors[method] = bange_processor
+
+        # Register BANGE in gateway index for webhook dispatch
+        self._gateways["BANGE"] = bange_processor
 
         # Manual processor for cash/check
         for method in manual_processor.get_supported_methods():
             self._processors[method] = manual_processor
 
+        # Try to register additional gateways from config
+        self._register_configured_gateways()
+
         logger.info(
             f"PaymentProcessorRegistry initialized with {len(self._processors)} methods: "
             f"{[m.value for m in self._processors.keys()]}"
         )
+        if len(self._gateways) > 1:
+            logger.info(
+                f"  Gateways registered: {list(self._gateways.keys())}"
+            )
 
-    def register(self, method: PaymentMethod, processor: PaymentProcessorBase) -> None:
+    def _register_configured_gateways(self) -> None:
+        """
+        Register additional gateways based on configuration.
+
+        Checks for configured credentials and registers gateways
+        that have valid credentials. Uses GatewayProcessor wrapper.
+        """
+        try:
+            from app.config import get_settings
+            settings = get_settings()
+
+            # Ecobank: register if credentials are configured
+            ecobank_client_id = getattr(settings, "ECOBANK_CLIENT_ID", None)
+            if ecobank_client_id:
+                try:
+                    from app.modules.payments.services.gateways.ecobank_gateway import (
+                        EcobankGateway,
+                    )
+                    from .gateway_processor import GatewayProcessor
+
+                    ecobank_gateway = EcobankGateway()
+                    ecobank_processor = GatewayProcessor(ecobank_gateway)
+
+                    # Register in gateway index for webhook dispatch
+                    self._gateways["ECOBANK"] = ecobank_processor
+
+                    # Check which methods Ecobank should be primary for
+                    ecobank_primary_methods = getattr(
+                        settings, "ECOBANK_PRIMARY_METHODS", None
+                    )
+                    if ecobank_primary_methods:
+                        # Admin explicitly configured primary methods
+                        for method_str in ecobank_primary_methods.split(","):
+                            method_str = method_str.strip()
+                            try:
+                                method = PaymentMethod(method_str)
+                                self._processors[method] = ecobank_processor
+                                logger.info(
+                                    f"Ecobank is PRIMARY for {method.value}"
+                                )
+                            except ValueError:
+                                logger.warning(
+                                    f"Invalid payment method: {method_str}"
+                                )
+                    else:
+                        # Register only for methods not already claimed
+                        for method_str in ecobank_gateway.get_supported_methods():
+                            method = PaymentMethod(method_str)
+                            if method not in self._processors:
+                                self._processors[method] = ecobank_processor
+
+                    logger.info(
+                        "Ecobank gateway registered successfully"
+                    )
+                except ImportError:
+                    logger.debug(
+                        "EcobankGateway not yet implemented, skipping"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to register Ecobank gateway: {e}")
+
+        except Exception as e:
+            logger.warning(f"Error registering additional gateways: {e}")
+
+    def register(
+        self, method: PaymentMethod, processor: PaymentProcessorBase
+    ) -> None:
         """
         Register a custom processor for a payment method.
 
@@ -63,9 +153,39 @@ class PaymentProcessorRegistry:
             processor: Processor instance to handle this method
         """
         self._processors[method] = processor
-        logger.info(f"Registered processor {processor.__class__.__name__} for {method.value}")
+        logger.info(
+            f"Registered processor {processor.__class__.__name__} "
+            f"for {method.value}"
+        )
 
-    def get_processor(self, method: PaymentMethod) -> Optional[PaymentProcessorBase]:
+    def register_gateway(
+        self,
+        gateway_processor: PaymentProcessorBase,
+        bank_code: str,
+        primary_for: Optional[List[PaymentMethod]] = None,
+    ) -> None:
+        """
+        Register a gateway processor, optionally as primary for methods.
+
+        Args:
+            gateway_processor: GatewayProcessor instance
+            bank_code: Bank code for webhook dispatch (e.g., "ECOBANK")
+            primary_for: If set, override primary processor for these methods
+        """
+        self._gateways[bank_code.upper()] = gateway_processor
+
+        if primary_for:
+            for method in primary_for:
+                self._processors[method] = gateway_processor
+                logger.info(
+                    f"Gateway {bank_code} is PRIMARY for {method.value}"
+                )
+
+        logger.info(f"Registered gateway: {bank_code}")
+
+    def get_processor(
+        self, method: PaymentMethod
+    ) -> Optional[PaymentProcessorBase]:
         """
         Get the processor for a specific payment method.
 
@@ -76,6 +196,25 @@ class PaymentProcessorRegistry:
             Processor instance or None if not found
         """
         return self._processors.get(method)
+
+    def get_gateway_by_bank_code(
+        self, bank_code: str
+    ) -> Optional[PaymentProcessorBase]:
+        """
+        Get a gateway processor by bank code.
+        Used for webhook dispatch: /webhooks/{bank_code}
+
+        Args:
+            bank_code: Bank code (e.g., "BANGE", "ECOBANK")
+
+        Returns:
+            GatewayProcessor instance or None
+        """
+        return self._gateways.get(bank_code.upper())
+
+    def get_registered_gateways(self) -> Dict[str, PaymentProcessorBase]:
+        """Get all registered gateway processors."""
+        return dict(self._gateways)
 
     def get_available_methods(self) -> List[PaymentMethod]:
         """
@@ -90,21 +229,35 @@ class PaymentProcessorRegistry:
         """
         Get detailed information about available payment methods.
 
-        Returns list with method code, label, and processor type.
+        Returns list with method code, label, processor type, and bank info.
         Useful for frontend to display payment options.
         """
         methods_info = []
         for method, processor in self._processors.items():
-            methods_info.append({
+            info = {
                 "code": method.value,
                 "label_es": self._get_method_label_es(method),
                 "label_en": self._get_method_label_en(method),
                 "label_fr": self._get_method_label_fr(method),
                 "processor_type": processor.processor_type.value,
                 "requires_phone": method == PaymentMethod.MOBILE_MONEY,
-                "requires_redirect": processor.processor_type.value == "bange_api",
-                "requires_agent_validation": processor.processor_type.value == "manual",
-            })
+                "requires_redirect": (
+                    processor.processor_type.value in ("bange_api", "gateway_api")
+                ),
+                "requires_agent_validation": (
+                    processor.processor_type.value == "manual"
+                ),
+            }
+
+            # Add bank info for gateway processors
+            if hasattr(processor, "gateway"):
+                info["bank_code"] = processor.gateway.bank_code
+                info["bank_name"] = processor.gateway.bank_name
+            else:
+                info["bank_code"] = None
+                info["bank_name"] = None
+
+            methods_info.append(info)
         return methods_info
 
     async def initiate_payment(
@@ -124,17 +277,27 @@ class PaymentProcessorRegistry:
         """
         processor = self.get_processor(context.payment_method)
         if not processor:
-            logger.error(f"No processor registered for method: {context.payment_method}")
+            logger.error(
+                f"No processor registered for method: "
+                f"{context.payment_method}"
+            )
             return PaymentInitResult(
                 success=False,
                 payment_id="",
                 status=PaymentStatus.FAILED,
-                error=f"Payment method not supported: {context.payment_method.value}",
-                message_es=f"Método de pago no soportado: {context.payment_method.value}"
+                error=(
+                    f"Payment method not supported: "
+                    f"{context.payment_method.value}"
+                ),
+                message_es=(
+                    f"Método de pago no soportado: "
+                    f"{context.payment_method.value}"
+                ),
             )
 
         logger.info(
-            f"Initiating {context.payment_method.value} payment via {processor.__class__.__name__} "
+            f"Initiating {context.payment_method.value} payment via "
+            f"{processor.__class__.__name__} "
             f"for service_request {context.service_request_id}"
         )
 
@@ -151,23 +314,14 @@ class PaymentProcessorRegistry:
 
         If payment_method is provided, uses that processor.
         Otherwise, queries DB to find the payment and its method.
-
-        Args:
-            db: Database connection
-            payment_id: Internal payment ID
-            payment_method: Optional payment method (for optimization)
-
-        Returns:
-            PaymentStatusResult with current status
         """
-        # If method not provided, get it from DB
         if not payment_method:
             payment = await self._get_payment_method(db, payment_id)
             if not payment:
                 return PaymentStatusResult(
                     payment_id=payment_id,
                     status=PaymentStatus.FAILED,
-                    error="Payment not found"
+                    error="Payment not found",
                 )
             payment_method = PaymentMethod(payment["payment_method"])
 
@@ -176,7 +330,7 @@ class PaymentProcessorRegistry:
             return PaymentStatusResult(
                 payment_id=payment_id,
                 status=PaymentStatus.FAILED,
-                error=f"No processor for method: {payment_method.value}"
+                error=f"No processor for method: {payment_method.value}",
             )
 
         return await processor.check_status(db, payment_id)
@@ -187,22 +341,14 @@ class PaymentProcessorRegistry:
         payment_id: str,
         reason: Optional[str] = None
     ) -> bool:
-        """
-        Cancel a pending payment.
-
-        Args:
-            db: Database connection
-            payment_id: Internal payment ID
-            reason: Cancellation reason
-
-        Returns:
-            True if cancelled successfully
-        """
+        """Cancel a pending payment."""
         payment = await self._get_payment_method(db, payment_id)
         if not payment:
             return False
 
-        processor = self.get_processor(PaymentMethod(payment["payment_method"]))
+        processor = self.get_processor(
+            PaymentMethod(payment["payment_method"])
+        )
         if not processor:
             return False
 
@@ -219,25 +365,14 @@ class PaymentProcessorRegistry:
     ) -> PaymentStatusResult:
         """
         Validate a manual payment (cash/check).
-
         Called by Treasury agent when they confirm receipt.
-
-        Args:
-            db: Database connection
-            payment_id: Internal payment ID
-            agent_profile_id: UUID of the agent profile (from agent_profiles table)
-            comment: Optional validation comment
-
-        Returns:
-            PaymentStatusResult with updated status
         """
-        # Verify this is a manual payment
         payment = await self._get_payment_method(db, payment_id)
         if not payment:
             return PaymentStatusResult(
                 payment_id=payment_id,
                 status=PaymentStatus.FAILED,
-                error="Payment not found"
+                error="Payment not found",
             )
 
         method = PaymentMethod(payment["payment_method"])
@@ -245,10 +380,12 @@ class PaymentProcessorRegistry:
             return PaymentStatusResult(
                 payment_id=payment_id,
                 status=PaymentStatus.FAILED,
-                error="Payment method does not require manual validation"
+                error="Payment method does not require manual validation",
             )
 
-        return await manual_processor.validate_payment(db, payment_id, agent_profile_id, comment)
+        return await manual_processor.validate_payment(
+            db, payment_id, agent_profile_id, comment
+        )
 
     async def reject_manual_payment(
         self,
@@ -259,19 +396,11 @@ class PaymentProcessorRegistry:
     ) -> PaymentStatusResult:
         """
         Reject a manual payment (cash/check).
-
         Called by Treasury agent when they reject a payment.
-
-        Args:
-            db: Database connection
-            payment_id: Internal payment ID
-            agent_profile_id: UUID of the agent profile (from agent_profiles table)
-            reason: Rejection reason
-
-        Returns:
-            PaymentStatusResult with updated status
         """
-        return await manual_processor.reject_payment(db, payment_id, agent_profile_id, reason)
+        return await manual_processor.reject_payment(
+            db, payment_id, agent_profile_id, reason
+        )
 
     # === Private Helper Methods ===
 
@@ -289,7 +418,6 @@ class PaymentProcessorRegistry:
         return await db.fetchrow(query, payment_id)
 
     def _get_method_label_es(self, method: PaymentMethod) -> str:
-        """Get Spanish label for payment method."""
         labels = {
             PaymentMethod.MOBILE_MONEY: "Dinero Móvil",
             PaymentMethod.CARD: "Tarjeta Bancaria",
@@ -300,7 +428,6 @@ class PaymentProcessorRegistry:
         return labels.get(method, method.value)
 
     def _get_method_label_en(self, method: PaymentMethod) -> str:
-        """Get English label for payment method."""
         labels = {
             PaymentMethod.MOBILE_MONEY: "Mobile Money",
             PaymentMethod.CARD: "Bank Card",
@@ -311,7 +438,6 @@ class PaymentProcessorRegistry:
         return labels.get(method, method.value)
 
     def _get_method_label_fr(self, method: PaymentMethod) -> str:
-        """Get French label for payment method."""
         labels = {
             PaymentMethod.MOBILE_MONEY: "Mobile Money",
             PaymentMethod.CARD: "Carte Bancaire",
