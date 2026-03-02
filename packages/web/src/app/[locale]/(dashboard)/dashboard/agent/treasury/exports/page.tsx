@@ -166,8 +166,8 @@ export default function TreasuryExportsPage() {
     });
   };
 
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '-';
+  const formatCurrency = (amount?: number | null) => {
+    if (amount === undefined || amount === null) return '-';
     return new Intl.NumberFormat(intlLocale, {
       style: 'currency',
       currency: 'XAF',
@@ -245,12 +245,21 @@ export default function TreasuryExportsPage() {
 
     try {
       const result = await downloadExport.mutateAsync(exp.id);
+
+      // Trigger browser download from blob
+      const url = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = result.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
       toast({
         title: t('exports.messages.downloadStarted'),
         description: `${t('exports.fields.file')}: ${result.fileName}`,
       });
-      // In a real implementation, this would trigger the actual file download
-      // using the file_path from the response
     } catch {
       toast({
         title: t('common.error'),

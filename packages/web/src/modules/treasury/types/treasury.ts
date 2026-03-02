@@ -773,10 +773,8 @@ export interface ExportTemplate {
 }
 
 export interface ExportDownloadResponse {
+  blob: Blob;
   fileName: string;
-  filePath: string;
-  contentType: string;
-  message: string;
 }
 
 // =============================================================================

@@ -7661,9 +7661,10 @@ async def get_treasury_export(
     Download the generated export file.
 
     **Permissions:**
-    - Requires 'treasury.exports.download' permission
+    - Requires 'treasury_export.download' permission
 
-    Returns the file as a streaming response.
+    Returns the file directly as a streaming response with proper
+    Content-Disposition header for browser download.
     """
 )
 async def download_treasury_export(
@@ -7672,7 +7673,10 @@ async def download_treasury_export(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury_export.download"))
 ):
-    """Download treasury export file."""
+    """Download treasury export file — serves file content directly."""
+    from fastapi.responses import StreamingResponse
+    import io as _io
+
     # Get export details
     row = await db.fetchrow("""
         SELECT
@@ -7697,15 +7701,6 @@ async def download_treasury_export(
             status_code=status.HTTP_404_NOT_FOUND
         )
 
-    # Update download count
-    await db.execute("""
-        UPDATE treasury_exports
-        SET download_count = download_count + 1,
-            downloaded_at = NOW(),
-            downloaded_by = $2::uuid
-        WHERE id = $1::uuid
-    """, export_id, current_user.id)
-
     # Determine MIME type
     mime_types = {
         "csv": "text/csv",
@@ -7714,30 +7709,66 @@ async def download_treasury_export(
         "xml": "application/xml",
         "json": "application/json",
     }
-    content_type = row["file_mime_type"] or mime_types.get(row["export_format"], "application/octet-stream")
+    content_type = row["file_mime_type"] or mime_types.get(
+        row["export_format"], "application/octet-stream"
+    )
+    file_name = row["file_name"] or f"export_{export_id}.{row['export_format']}"
 
-    # Get signed download URL from Firebase Storage
+    # Get file content
     file_path = row["file_path"]
-    download_url = file_path  # Default to path
+    file_content = None
 
+    # Case 1: Firebase Storage (path starts with "treasury-exports/")
     if file_path and file_path.startswith("treasury-exports/"):
         try:
-            from app.modules.service_requests.services.treasury_export_service import treasury_export_service
-            download_url = await treasury_export_service.get_download_url(
-                file_path=file_path,
-                expiration_hours=24
+            from app.modules.service_requests.services.treasury_export_service import (
+                firebase_storage_service,
+                FIREBASE_AVAILABLE,
             )
+            if FIREBASE_AVAILABLE:
+                if not firebase_storage_service._initialized:
+                    await firebase_storage_service.initialize()
+                blob = firebase_storage_service.bucket.blob(file_path)
+                if blob.exists():
+                    file_content = blob.download_as_bytes()
+                else:
+                    logger.error(f"Firebase blob not found: {file_path}")
         except Exception as e:
-            logger.error(f"Failed to get download URL: {e}")
-            # Fall back to returning the path
-            download_url = file_path
+            logger.error(f"Failed to download from Firebase: {e}")
 
-    return {
-        "file_name": row["file_name"] or f"export_{export_id}.{row['export_format']}",
-        "download_url": download_url,
-        "content_type": content_type,
-        "expires_in_hours": 24
-    }
+    # Case 2: Local file (path starts with /tmp/ or similar)
+    if file_content is None:
+        import os
+        local_path = file_path
+        if os.path.exists(local_path):
+            with open(local_path, "rb") as f:
+                file_content = f.read()
+        else:
+            logger.error(f"Export file not found: {local_path}")
+            raise TreasuryError(
+                error_code=TreasuryErrorCode.EXPORT_EXPIRED,
+                status_code=status.HTTP_404_NOT_FOUND,
+                extra_info={"detail": "Export file no longer available. Please regenerate."}
+            )
+
+    # Update download count (after successful file read)
+    await db.execute("""
+        UPDATE treasury_exports
+        SET download_count = download_count + 1,
+            downloaded_at = NOW(),
+            downloaded_by = $2::uuid
+        WHERE id = $1::uuid
+    """, export_id, current_user.id)
+
+    # Serve file directly with Content-Disposition for browser download
+    return StreamingResponse(
+        _io.BytesIO(file_content),
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_name}"',
+            "Content-Length": str(len(file_content)),
+        },
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

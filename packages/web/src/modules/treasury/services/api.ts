@@ -929,14 +929,36 @@ export const treasuryApi = {
   },
 
   /**
-   * Download export file
+   * Download export file as blob
    * BACKEND: GET /api/v1/admin/service-requests/treasury/exports/{id}/download
+   * Returns StreamingResponse (file content) with Content-Disposition header
    */
   downloadExport: async (exportId: string): Promise<ExportDownloadResponse> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
-      `${TREASURY_BASE}/exports/${exportId}/download`
-    );
-    return toCamelCase<ExportDownloadResponse>(response);
+    const baseUrl = fetchClient.getBaseUrl();
+    const token = fetchClient.getAuthToken();
+    const url = `${baseUrl}${TREASURY_BASE}/exports/${exportId}/download`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+      throw new Error(
+        typeof errorData.detail === 'string' ? errorData.detail : `Download failed: ${response.status}`
+      );
+    }
+
+    // Extract filename from Content-Disposition header
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
+    const fileName = filenameMatch?.[1] || `export_${exportId}`;
+
+    const blob = await response.blob();
+    return { blob, fileName };
   },
 
   // -------------------------------------------------------------------------
