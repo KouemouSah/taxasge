@@ -1111,140 +1111,94 @@ class TreasuryExportService:
         period_start: date,
         period_end: date,
     ) -> str:
-        """Generate HTML for ministry PDF report."""
-        total_amount = data.get("total_amount", 0)
-        total_count = data.get("total_count", 0)
+        """Generate HTML for ministry PDF report using Jinja2 template."""
+        total_amount = float(data.get("total_amount", 0) or 0)
+        total_count = int(data.get("total_count", 0) or 0)
+        avg_amount = total_amount / total_count if total_count > 0 else 0
 
-        # Format currency
         def format_xaf(amount):
-            return f"{float(amount or 0):,.0f} XAF"
+            return f"{float(amount or 0):,.0f}"
 
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                body {{ font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }}
-                h1 {{ color: #1a365d; font-size: 18px; text-align: center; }}
-                h2 {{ color: #2d3748; font-size: 14px; margin-top: 20px; border-bottom: 1px solid #e2e8f0; }}
-                .header {{ text-align: center; margin-bottom: 30px; }}
-                .header img {{ height: 60px; }}
-                .period {{ text-align: center; color: #718096; margin-bottom: 20px; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
-                th {{ background-color: #edf2f7; padding: 8px; text-align: left; border: 1px solid #e2e8f0; }}
-                td {{ padding: 8px; border: 1px solid #e2e8f0; }}
-                .total-row {{ background-color: #f7fafc; font-weight: bold; }}
-                .amount {{ text-align: right; }}
-                .summary-box {{ background-color: #ebf8ff; padding: 15px; border-radius: 5px; margin: 20px 0; }}
-                .summary-box h3 {{ margin: 0 0 10px 0; color: #2b6cb0; }}
-                .footer {{ text-align: center; margin-top: 30px; font-size: 10px; color: #a0aec0; }}
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>MINISTERIO DE HACIENDA Y PRESUPUESTOS</h1>
-                <p>Republica de Guinea Ecuatorial</p>
-                <h1>INFORME DE RECAUDACION TREASURY</h1>
-            </div>
+        def format_count(count):
+            return f"{int(count or 0):,}"
 
-            <div class="period">
-                <strong>Periodo:</strong> {period_start.strftime('%d/%m/%Y')} - {period_end.strftime('%d/%m/%Y')}
-            </div>
+        # Payment method labels
+        method_labels = {
+            "mobile_money": "Mobile Money",
+            "card": "Tarjeta Bancaria",
+            "bank_transfer": "Transferencia Bancaria",
+            "cash": "Efectivo",
+            "check": "Cheque",
+            "bange_wallet": "BANGE Wallet",
+        }
 
-            <div class="summary-box">
-                <h3>Resumen General</h3>
-                <p><strong>Total Recaudado:</strong> {format_xaf(total_amount)}</p>
-                <p><strong>Total Transacciones:</strong> {total_count:,}</p>
-            </div>
-
-            <h2>Recaudacion por Entidad</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Entidad</th>
-                        <th class="amount">Transacciones</th>
-                        <th class="amount">Monto Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-
+        # Prepare entity data with percentages
+        by_entity = []
         for entity in data.get("by_entity", []):
-            html += f"""
-                    <tr>
-                        <td>{entity.get('entity_name', 'N/A')}</td>
-                        <td class="amount">{entity.get('payment_count', 0):,}</td>
-                        <td class="amount">{format_xaf(entity.get('total_amount', 0))}</td>
-                    </tr>
-            """
+            ent_amount = float(entity.get("total_amount", 0) or 0)
+            by_entity.append({
+                "entity_name": entity.get("entity_name", "N/A"),
+                "payment_count_formatted": format_count(entity.get("payment_count", 0)),
+                "total_amount_formatted": format_xaf(ent_amount),
+                "percentage": f"{(ent_amount / total_amount * 100):.1f}" if total_amount > 0 else "0.0",
+            })
 
-        html += f"""
-                    <tr class="total-row">
-                        <td>TOTAL</td>
-                        <td class="amount">{total_count:,}</td>
-                        <td class="amount">{format_xaf(total_amount)}</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h2>Recaudacion por Metodo de Pago</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Metodo</th>
-                        <th class="amount">Transacciones</th>
-                        <th class="amount">Monto Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-
+        # Prepare method data with percentages
+        by_method = []
         for method in data.get("by_method", []):
-            html += f"""
-                    <tr>
-                        <td>{method.get('payment_method', 'N/A')}</td>
-                        <td class="amount">{method.get('payment_count', 0):,}</td>
-                        <td class="amount">{format_xaf(method.get('total_amount', 0))}</td>
-                    </tr>
-            """
+            meth_amount = float(method.get("total_amount", 0) or 0)
+            raw_method = method.get("payment_method", "N/A")
+            by_method.append({
+                "payment_method_label": method_labels.get(raw_method, raw_method),
+                "payment_count_formatted": format_count(method.get("payment_count", 0)),
+                "total_amount_formatted": format_xaf(meth_amount),
+                "percentage": f"{(meth_amount / total_amount * 100):.1f}" if total_amount > 0 else "0.0",
+            })
 
-        html += """
-                </tbody>
-            </table>
-
-            <h2>Top 20 Servicios por Recaudacion</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Servicio</th>
-                        <th class="amount">Transacciones</th>
-                        <th class="amount">Monto Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-        """
-
+        # Top services
+        top_services = []
         for service in data.get("by_service", [])[:20]:
-            html += f"""
-                    <tr>
-                        <td>{service.get('service_name', 'N/A')[:50]}</td>
-                        <td class="amount">{service.get('payment_count', 0):,}</td>
-                        <td class="amount">{format_xaf(service.get('total_amount', 0))}</td>
-                    </tr>
-            """
+            top_services.append({
+                "service_name": (service.get("service_name", "N/A") or "N/A")[:60],
+                "payment_count_formatted": format_count(service.get("payment_count", 0)),
+                "total_amount_formatted": format_xaf(service.get("total_amount", 0)),
+            })
 
-        html += f"""
-                </tbody>
-            </table>
+        # Try Jinja2 template, fallback to inline
+        if self.jinja_env:
+            try:
+                template = self.jinja_env.get_template("treasury_ministry_report.html")
+                return template.render(
+                    period_start=period_start.strftime("%d/%m/%Y"),
+                    period_end=period_end.strftime("%d/%m/%Y"),
+                    report_ref=f"{period_start.strftime('%Y%m')}-{datetime.now().strftime('%H%M%S')}",
+                    generated_at=datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    total_amount_formatted=format_xaf(total_amount),
+                    total_count=format_count(total_count),
+                    avg_amount_formatted=format_xaf(avg_amount),
+                    success_rate="100",
+                    by_entity=by_entity,
+                    by_method=by_method,
+                    top_services=top_services,
+                    daily_breakdown=None,
+                )
+            except Exception as e:
+                logger.warning(f"Jinja2 template rendering failed, using fallback: {e}")
 
-            <div class="footer">
-                <p>Generado automaticamente por TaxasGE Treasury - {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
-            </div>
-        </body>
-        </html>
-        """
-
+        # Fallback inline HTML (minimal)
+        html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+        <style>body{{font-family:Arial;font-size:11px;margin:20px}}
+        h1{{color:#1a365d;font-size:16px;text-align:center}}
+        table{{width:100%;border-collapse:collapse;margin:10px 0}}
+        th{{background:#2d3748;color:white;padding:6px 8px;text-align:left}}
+        td{{padding:5px 8px;border-bottom:1px solid #e2e8f0}}
+        .amount{{text-align:right}}.total-row{{font-weight:bold;background:#ebf8ff}}</style>
+        </head><body>
+        <h1>INFORME DE RECAUDACIÓN - TESORERÍA</h1>
+        <p style="text-align:center">Período: {period_start.strftime('%d/%m/%Y')} - {period_end.strftime('%d/%m/%Y')}</p>
+        <p><strong>Total Recaudado:</strong> {format_xaf(total_amount)} XAF | <strong>Transacciones:</strong> {format_count(total_count)}</p>
+        <p style="text-align:center;font-size:9px;color:#999;margin-top:20px">Generado por Facil - {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+        </body></html>"""
         return html
 
     def _format_value(self, value):

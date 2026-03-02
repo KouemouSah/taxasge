@@ -298,7 +298,20 @@ export default function TreasuryExportsPage() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
               {templates.map((template) => (
-                <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                <Card
+                  key={template.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/40"
+                  onClick={() => {
+                    setExportType(template.exportType);
+                    setExportFormat(template.exportFormat);
+                    const now = new Date();
+                    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                    setPeriodStart(firstDay.toISOString().split('T')[0]);
+                    setPeriodEnd(lastDay.toISOString().split('T')[0]);
+                    setIsNewExportOpen(true);
+                  }}
+                >
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div>

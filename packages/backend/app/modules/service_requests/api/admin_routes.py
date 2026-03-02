@@ -7,7 +7,7 @@ RESTful endpoints for administrators to manage:
 - Tariff Configurations
 - Appointment Settings
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body, BackgroundTasks, Request
 from typing import List, Optional, Dict, Any
 from enum import Enum
 import asyncpg
@@ -6862,14 +6862,14 @@ async def create_anomaly(
         body.description,
         body.expected_amount,
         body.actual_amount,
-        str(current_user["id"]),
+        str(current_user.id),
     )
 
     # Record action
     await db.execute("""
         INSERT INTO anomaly_actions (anomaly_id, action, to_status, comment, performed_by)
         VALUES ($1, 'status_change', 'open', 'Anomalia creada manualmente', $2::uuid)
-    """, row["id"], current_user["id"])
+    """, row["id"], current_user.id)
 
     return AnomalyResponse(
         id=str(row["id"]),
@@ -6891,7 +6891,7 @@ async def create_anomaly(
         resolved_at=None,
         resolved_by_name=None,
         detected_at=row["detected_at"].isoformat(),
-        detected_by=str(current_user["id"]),
+        detected_by=str(current_user.id),
         updated_at=row["updated_at"].isoformat(),
     )
 
@@ -6958,7 +6958,7 @@ async def update_anomaly_status(
             )
         update_fields.append(f"resolved_at = NOW()")
         update_fields.append(f"resolved_by = ${param_idx}::uuid")
-        params.append(current_user["id"])
+        params.append(current_user.id)
         param_idx += 1
         update_fields.append(f"resolution_notes = ${param_idx}")
         params.append(body.resolution_notes)
@@ -6974,7 +6974,7 @@ async def update_anomaly_status(
     await db.execute("""
         INSERT INTO anomaly_actions (anomaly_id, action, from_status, to_status, comment, performed_by)
         VALUES ($1::uuid, 'status_change', $2::anomaly_status_enum, $3::anomaly_status_enum, $4, $5::uuid)
-    """, anomaly_id, from_status, to_status, body.comment, current_user["id"])
+    """, anomaly_id, from_status, to_status, body.comment, current_user.id)
 
     # Return updated anomaly
     return await get_anomaly(anomaly_id, db, current_user, None)
@@ -7065,7 +7065,7 @@ async def add_anomaly_comment(
         INSERT INTO anomaly_actions (anomaly_id, action, comment, performed_by)
         VALUES ($1::uuid, 'comment', $2, $3::uuid)
         RETURNING id, performed_at
-    """, anomaly_id, comment, current_user["id"])
+    """, anomaly_id, comment, current_user.id)
 
     return AnomalyActionResponse(
         id=str(row["id"]),
@@ -7373,35 +7373,48 @@ async def list_treasury_exports(
     """
 )
 async def list_export_templates(
+    request: Request,
     export_type: Optional[ExportType] = Query(None, description="Filter by type"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury_export.view"))
 ):
-    """List available export templates."""
+    """List available export templates (multilingual)."""
+    # Detect language from middleware
+    lang = getattr(request.state, "language", None)
+    lang_suffix = lang.value if lang else "es"
+    if lang_suffix not in ("es", "fr", "en"):
+        lang_suffix = "es"
+
+    # Use COALESCE: preferred language → Spanish fallback
+    name_col = f"COALESCE(name_{lang_suffix}, name_es)" if lang_suffix != "es" else "name_es"
+    desc_col = f"COALESCE(description_{lang_suffix}, description_es)" if lang_suffix != "es" else "description_es"
+
     if export_type:
-        rows = await db.fetch("""
-            SELECT id, code, name_es, export_type::text, export_format, description_es, is_active
+        rows = await db.fetch(f"""
+            SELECT id, code, {name_col} AS name, export_type::text, export_format,
+                   {desc_col} AS description, is_active
             FROM export_templates
             WHERE is_active = true AND export_type = $1::export_type_enum
-            ORDER BY name_es
+            ORDER BY name
         """, export_type.value)
     else:
-        rows = await db.fetch("""
-            SELECT id, code, name_es, export_type::text, export_format, description_es, is_active
+        rows = await db.fetch(f"""
+            SELECT id, code, {name_col} AS name, export_type::text, export_format,
+                   {desc_col} AS description, is_active
             FROM export_templates
             WHERE is_active = true
-            ORDER BY export_type, name_es
+            ORDER BY export_type, name
         """)
 
     return [
         ExportTemplateResponse(
             id=row["id"],
             code=row["code"],
-            name=row["name_es"],
+            name=row["name"],
             export_type=row["export_type"],
             export_format=row["export_format"],
-            description=row["description_es"],
+            description=row["description"],
             is_active=row["is_active"],
         )
         for row in rows
@@ -7485,7 +7498,7 @@ async def generate_treasury_export(
             filters, status::text, progress_percentage, requested_at
     """, request.export_type.value, request.export_format.value,
         start_date, end_date, json.dumps(filters_json) if filters_json else None,
-        current_user["id"], file_name)
+        current_user.id, file_name)
 
     export_id = str(row["id"])
 
@@ -7499,7 +7512,7 @@ async def generate_treasury_export(
             period_start=start_date,
             period_end=end_date,
             filters=filters_json,
-            requested_by=current_user["id"],
+            requested_by=current_user.id,
         )
 
         # Fetch updated record
@@ -7678,7 +7691,7 @@ async def download_treasury_export(
             downloaded_at = NOW(),
             downloaded_by = $2::uuid
         WHERE id = $1::uuid
-    """, export_id, current_user["id"])
+    """, export_id, current_user.id)
 
     # Determine MIME type
     mime_types = {

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Informe de Recaudación - Tesorería</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm 25mm 15mm;
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 8px;
+                color: #718096;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 10px;
+            color: #1a202c;
+            line-height: 1.4;
+        }
+
+        /* ====== HEADER / LETTERHEAD ====== */
+        .letterhead {
+            text-align: center;
+            border-bottom: 3px solid #1a365d;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+
+        .letterhead .country-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1a365d;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .letterhead .ministry-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #1a365d;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .letterhead .department {
+            font-size: 9px;
+            color: #4a5568;
+            margin-top: 2px;
+        }
+
+        .letterhead .motto {
+            font-size: 8px;
+            color: #718096;
+            font-style: italic;
+            margin-top: 4px;
+        }
+
+        /* ====== REPORT TITLE ====== */
+        .report-title {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+            color: white;
+            border-radius: 4px;
+        }
+
+        .report-title h1 {
+            font-size: 14px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .report-title .period {
+            font-size: 10px;
+            margin-top: 4px;
+            opacity: 0.9;
+        }
+
+        .report-title .report-ref {
+            font-size: 8px;
+            margin-top: 3px;
+            opacity: 0.7;
+        }
+
+        /* ====== SUMMARY BOX ====== */
+        .summary-section {
+            display: flex;
+            margin: 15px 0;
+        }
+
+        .summary-card {
+            flex: 1;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 0 4px;
+            text-align: center;
+        }
+
+        .summary-card:first-child { margin-left: 0; }
+        .summary-card:last-child { margin-right: 0; }
+
+        .summary-card .label {
+            font-size: 8px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a365d;
+            margin-top: 4px;
+        }
+
+        .summary-card .value.amount {
+            color: #2b6cb0;
+        }
+
+        .summary-card .subtext {
+            font-size: 8px;
+            color: #a0aec0;
+            margin-top: 2px;
+        }
+
+        /* ====== SECTION HEADERS ====== */
+        .section-header {
+            background: #edf2f7;
+            padding: 6px 10px;
+            margin: 15px 0 8px 0;
+            border-left: 3px solid #1a365d;
+            font-size: 11px;
+            font-weight: bold;
+            color: #1a365d;
+        }
+
+        .section-number {
+            display: inline-block;
+            background: #1a365d;
+            color: white;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            line-height: 18px;
+            border-radius: 50%;
+            font-size: 9px;
+            margin-right: 6px;
+        }
+
+        /* ====== TABLES ====== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 5px 0 10px 0;
+            font-size: 9px;
+        }
+
+        thead th {
+            background: #2d3748;
+            color: white;
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        thead th.amount {
+            text-align: right;
+        }
+
+        tbody td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f7fafc;
+        }
+
+        tbody tr:hover {
+            background: #edf2f7;
+        }
+
+        td.amount {
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-size: 9px;
+        }
+
+        .total-row {
+            background: #ebf8ff !important;
+            font-weight: bold;
+            border-top: 2px solid #2b6cb0;
+        }
+
+        .total-row td {
+            padding: 7px 8px;
+            color: #1a365d;
+        }
+
+        /* ====== PERCENTAGE BAR ====== */
+        .pct-bar-container {
+            display: inline-block;
+            width: 60px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .pct-bar {
+            height: 100%;
+            background: #2b6cb0;
+            border-radius: 4px;
+            min-width: 2px;
+        }
+
+        .pct-text {
+            font-size: 8px;
+            color: #718096;
+            margin-left: 4px;
+        }
+
+        /* ====== FOOTER ====== */
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 2px solid #1a365d;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8px;
+            color: #718096;
+        }
+
+        .confidential {
+            text-align: center;
+            font-size: 7px;
+            color: #a0aec0;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .signature-block {
+            margin-top: 20px;
+            text-align: right;
+            padding-right: 40px;
+        }
+
+        .signature-block .title {
+            font-size: 9px;
+            font-weight: bold;
+            color: #1a365d;
+        }
+
+        .signature-block .line {
+            margin-top: 30px;
+            border-top: 1px solid #1a365d;
+            width: 200px;
+            display: inline-block;
+        }
+
+        .signature-block .name {
+            font-size: 8px;
+            color: #4a5568;
+            margin-top: 4px;
+        }
+
+        /* ====== DETAIL TABLE ====== */
+        .detail-table {
+            font-size: 8px;
+        }
+
+        .detail-table th {
+            font-size: 7px;
+        }
+
+        .detail-table td {
+            padding: 3px 6px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 7px;
+            font-weight: 600;
+        }
+
+        .status-completed { background: #c6f6d5; color: #22543d; }
+        .status-pending { background: #fefcbf; color: #744210; }
+        .status-failed { background: #fed7d7; color: #742a2a; }
+    </style>
+</head>
+<body>
+    <!-- LETTERHEAD -->
+    <div class="letterhead">
+        <div class="country-name">República de Guinea Ecuatorial</div>
+        <div class="ministry-name">Ministerio de Hacienda y Presupuestos</div>
+        <div class="department">Dirección General de Impuestos y Contribuciones</div>
+        <div class="motto">Unidad · Paz · Justicia</div>
+    </div>
+
+    <!-- REPORT TITLE -->
+    <div class="report-title">
+        <h1>Informe de Recaudación del Tesoro</h1>
+        <div class="period">Período: {{ period_start }} - {{ period_end }}</div>
+        <div class="report-ref">Ref: TRS-{{ report_ref }} | Generado: {{ generated_at }}</div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-section">
+        <div class="summary-card">
+            <div class="label">Total Recaudado</div>
+            <div class="value amount">{{ total_amount_formatted }}</div>
+            <div class="subtext">XAF</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Transacciones</div>
+            <div class="value">{{ total_count }}</div>
+            <div class="subtext">operaciones procesadas</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Promedio por Transacción</div>
+            <div class="value amount">{{ avg_amount_formatted }}</div>
+            <div class="subtext">XAF</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Tasa de Éxito</div>
+            <div class="value">{{ success_rate }}%</div>
+            <div class="subtext">pagos completados</div>
+        </div>
+    </div>
+
+    <!-- SECTION 1: BY ENTITY -->
+    <div class="section-header">
+        <span class="section-number">1</span>
+        Recaudación por Entidad
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Entidad</th>
+                <th class="amount">Transacciones</th>
+                <th class="amount">Monto Total (XAF)</th>
+                <th class="amount">% del Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entity in by_entity %}
+            <tr>
+                <td>{{ entity.entity_name }}</td>
+                <td class="amount">{{ entity.payment_count_formatted }}</td>
+                <td class="amount">{{ entity.total_amount_formatted }}</td>
+                <td class="amount">
+                    {{ entity.percentage }}%
+                    <span class="pct-bar-container">
+                        <span class="pct-bar" style="width: {{ entity.percentage }}%"></span>
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td>TOTAL</td>
+                <td class="amount">{{ total_count }}</td>
+                <td class="amount">{{ total_amount_formatted }}</td>
+                <td class="amount">100%</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- SECTION 2: BY PAYMENT METHOD -->
+    <div class="section-header">
+        <span class="section-number">2</span>
+        Recaudación por Método de Pago
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Método de Pago</th>
+                <th class="amount">Transacciones</th>
+                <th class="amount">Monto Total (XAF)</th>
+                <th class="amount">% del Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for method in by_method %}
+            <tr>
+                <td>{{ method.payment_method_label }}</td>
+                <td class="amount">{{ method.payment_count_formatted }}</td>
+                <td class="amount">{{ method.total_amount_formatted }}</td>
+                <td class="amount">
+                    {{ method.percentage }}%
+                    <span class="pct-bar-container">
+                        <span class="pct-bar" style="width: {{ method.percentage }}%"></span>
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- SECTION 3: TOP SERVICES -->
+    <div class="section-header">
+        <span class="section-number">3</span>
+        Top 20 Servicios por Recaudación
+    </div>
+    <table class="detail-table">
+        <thead>
+            <tr>
+                <th style="width: 5%">#</th>
+                <th style="width: 55%">Servicio</th>
+                <th class="amount" style="width: 15%">Transacciones</th>
+                <th class="amount" style="width: 25%">Monto Total (XAF)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for service in top_services %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ service.service_name }}</td>
+                <td class="amount">{{ service.payment_count_formatted }}</td>
+                <td class="amount">{{ service.total_amount_formatted }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- SECTION 4: DAILY BREAKDOWN (if available) -->
+    {% if daily_breakdown %}
+    <div class="section-header">
+        <span class="section-number">4</span>
+        Desglose Diario
+    </div>
+    <table class="detail-table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th class="amount">Transacciones</th>
+                <th class="amount">Monto (XAF)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for day in daily_breakdown %}
+            <tr>
+                <td>{{ day.date }}</td>
+                <td class="amount">{{ day.count_formatted }}</td>
+                <td class="amount">{{ day.amount_formatted }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- SIGNATURE BLOCK -->
+    <div class="signature-block">
+        <div class="title">Director General de Impuestos</div>
+        <div class="line"></div>
+        <div class="name">Firma y Sello</div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-content">
+            <span>Facil - Sistema de Gestión Fiscal</span>
+            <span>Generado: {{ generated_at }}</span>
+        </div>
+        <div class="confidential">
+            Documento confidencial - Uso interno del Ministerio de Hacienda y Presupuestos
+        </div>
+    </div>
+</body>
+</html>
