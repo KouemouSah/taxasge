@@ -116,6 +116,9 @@ export interface PendingPayment {
     quantity: number;
     subtotal: number;
   }>;
+  // Reconciliation info
+  bankTransactionId?: string;
+  validatedAt?: string;
   // Assigned agent info (for supervisor view)
   assignedAgentId?: string;
   assignedAgentName?: string;
@@ -319,7 +322,7 @@ export interface BankTransactionListResponse {
 }
 
 export interface BankTransactionParams {
-  status?: TransactionStatus;
+  status?: TransactionStatus | 'all';
   bankCode?: BankCode;
   page?: number;
   pageSize?: number;

@@ -3116,6 +3116,9 @@ class PendingPaymentResponse(BaseModel):
     batch_total_items: Optional[int] = None
     # Beneficiary info (from service_request form_data, distinct from account holder)
     beneficiary_name: Optional[str] = None
+    # Reconciliation info
+    bank_transaction_id: Optional[str] = None
+    validated_at: Optional[str] = None
     # Escalation info
     escalation_level: Optional[str] = None
     escalation_reason: Optional[str] = None
@@ -3296,6 +3299,8 @@ async def get_pending_payments(
                 sp.escalation_reason,
                 sp.escalated_at,
                 sp.sla_escalated,
+                sp.bank_transaction_id,
+                sp.validated_at,
                 COALESCE(
                     sr.form_data->>'nombre_completo',
                     NULLIF(TRIM(COALESCE(sr.form_data->>'apellidos', '') || ' ' || COALESCE(sr.form_data->>'nombres', '')), ''),
@@ -3361,6 +3366,8 @@ async def get_pending_payments(
                     batch_reference=row["batch_reference"],
                     batch_total_items=row["batch_total_items"],
                     beneficiary_name=row.get("beneficiary_name"),
+                    bank_transaction_id=str(row["bank_transaction_id"]) if row["bank_transaction_id"] else None,
+                    validated_at=row["validated_at"].isoformat() if row["validated_at"] else None,
                     escalation_level=row["escalation_level"],
                     escalation_reason=row["escalation_reason"],
                     escalated_at=row["escalated_at"].isoformat() if row["escalated_at"] else None,

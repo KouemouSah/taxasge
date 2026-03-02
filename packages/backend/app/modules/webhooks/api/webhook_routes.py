@@ -352,14 +352,22 @@ async def list_unreconciled_transactions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None, min_length=1, max_length=200, description="Search by reference, holder name, or account number"),
+    status: Optional[str] = Query(None, description="Filter: unreconciled (default), reconciled, failed, all"),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
     _: None = Depends(permission_required("webhook.view"))
 ):
-    """List unreconciled bank transactions - Requires webhook.view permission"""
+    """List bank transactions with optional status filter. Defaults to unreconciled."""
+
+    # Default to unreconciled for backward compatibility; 'all' = no filter
+    effective_status = status if status else 'unreconciled'
+    if effective_status == 'all':
+        effective_status = None
 
     offset = (page - 1) * page_size
-    transactions, total = await repository.list_unreconciled(db, page_size, offset, search=search)
+    transactions, total = await repository.list_transactions(
+        db, page_size, offset, search=search, status=effective_status
+    )
 
     return BankTransactionListResponse(
         transactions=[BankTransactionResponse(**t) for t in transactions],

@@ -1,6 +1,7 @@
 /**
  * Treasury Reconciliation Page
  * Match bank transactions (from BANGE webhooks) with system payments
+ * + System Payments overview with validation/reconciliation status
  */
 
 'use client';
@@ -39,6 +40,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import {
   Search,
@@ -53,22 +61,31 @@ import {
   Zap,
   Target,
   ChevronsUpDown,
+  Minus,
+  Wallet,
+  TrendingUp,
+  CreditCard,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { useUnreconciledTransactions, useReconcileTransaction, useReconciliationSuggestions, useAutoMatch } from '@/modules/treasury/hooks';
+import { useUnreconciledTransactions, useReconcileTransaction, useReconciliationSuggestions, useAutoMatch, usePendingPayments } from '@/modules/treasury/hooks';
 import { useTreasuryStats } from '@/modules/treasury/hooks/useTreasuryStats';
 import { treasuryApi } from '@/modules/treasury/services/api';
-import type { BankTransaction, ReconciliationSuggestion, SearchPaymentResult } from '@/modules/treasury/types';
+import type { BankTransaction, BankTransactionParams, ReconciliationSuggestion, SearchPaymentResult, PendingPayment } from '@/modules/treasury/types';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
+const SP_PAGE_SIZE = 10;
 
 export default function TreasuryReconciliationPage() {
   const t = useTranslations('treasury');
   const locale = useLocale();
 
-  // Pagination
+  // Bank transactions pagination + filter
   const [page, setPage] = useState(1);
+  const [bankTxStatus, setBankTxStatus] = useState<string>('unreconciled');
+
+  // System payments pagination
+  const [spPage, setSpPage] = useState(1);
 
   // Search with debounce (C4 + M9)
   const [searchTerm, setSearchTerm] = useState('');
@@ -77,10 +94,15 @@ export default function TreasuryReconciliationPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-      setPage(1); // Reset to page 1 on search change
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // Reset page on status filter change
+  useEffect(() => {
+    setPage(1);
+  }, [bankTxStatus]);
 
   // Reconciliation dialog state
   const [selectedTransaction, setSelectedTransaction] = useState<BankTransaction | null>(null);
@@ -89,17 +111,25 @@ export default function TreasuryReconciliationPage() {
   const [paymentSearchOpen, setPaymentSearchOpen] = useState(false);
   const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
 
-  // Data fetching with server-side search (C4)
+  // Data fetching — bank transactions with status filter
   const { data: transactionsData, isLoading, error, refetch } = useUnreconciledTransactions({
     page,
     pageSize: PAGE_SIZE,
     search: debouncedSearch || undefined,
+    status: bankTxStatus === 'unreconciled' ? undefined : bankTxStatus as BankTransactionParams['status'],
   });
 
-  // Global stats for KPI (M5)
+  // System payments (all statuses)
+  const { data: systemPaymentsData, isLoading: spLoading } = usePendingPayments({
+    workflowStatus: 'all' as never,
+    page: spPage,
+    pageSize: SP_PAGE_SIZE,
+  });
+
+  // Global stats for KPI
   const { data: statsData } = useTreasuryStats();
 
-  // Reconcile mutation (C2 error handling in hook)
+  // Reconcile mutation
   const reconcileMutation = useReconcileTransaction();
   const isReconciling = reconcileMutation.isPending;
 
@@ -109,7 +139,7 @@ export default function TreasuryReconciliationPage() {
   const suggestions = suggestionsData?.suggestions || [];
   const highConfidenceSuggestions = suggestions.filter((s: ReconciliationSuggestion) => s.bestScore >= 80);
 
-  // Payment search for ComboBox (C3)
+  // Payment search for ComboBox
   const { data: searchPaymentResults } = useQuery({
     queryKey: ['reconciliation-payment-search', paymentSearchQuery, selectedTransaction?.currency],
     queryFn: () => treasuryApi.searchPaymentsForReconciliation(paymentSearchQuery, selectedTransaction?.currency),
@@ -117,10 +147,20 @@ export default function TreasuryReconciliationPage() {
     staleTime: 10 * 1000,
   });
 
-  // Pagination computed values
+  // Computed values
   const totalTransactions = transactionsData?.total || 0;
   const totalPages = Math.max(1, Math.ceil(totalTransactions / PAGE_SIZE));
   const transactions = transactionsData?.transactions || [];
+
+  const systemPayments = systemPaymentsData?.payments || [];
+  const spTotal = systemPaymentsData?.total || 0;
+  const spTotalPages = Math.max(1, Math.ceil(spTotal / SP_PAGE_SIZE));
+
+  // KPI computations
+  const completedPayments = systemPayments.filter((p: PendingPayment) => p.workflowStatus === 'completed').length;
+  const totalValidatedAmount = systemPayments
+    .filter((p: PendingPayment) => p.workflowStatus === 'completed')
+    .reduce((sum: number, p: PendingPayment) => sum + (p.totalAmount || 0), 0);
 
   const formatCurrency = useCallback((amount: number, currency: string = 'XAF') => {
     return new Intl.NumberFormat(locale, {
@@ -175,7 +215,33 @@ export default function TreasuryReconciliationPage() {
     }
   };
 
-  // m1: Score badge colors
+  const getWorkflowStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">{t('reconciliationPage.workflowStatus.completed')}</Badge>;
+      case 'rejected_by_agent':
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">{t('reconciliationPage.workflowStatus.rejected')}</Badge>;
+      case 'expired':
+        return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">{t('reconciliationPage.workflowStatus.expired')}</Badge>;
+      case 'pending_agent_review':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">{t('reconciliationPage.workflowStatus.pending')}</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      cash: 'Cash',
+      check: 'Cheque',
+      mobile_money: 'Mobile Money',
+      card: 'Tarjeta',
+      bank_transfer: 'Transferencia',
+      bange_wallet: 'BANGE Wallet',
+    };
+    return labels[method] || method;
+  };
+
   const getScoreBadgeClass = (score: number) => {
     if (score >= 80) return 'bg-green-600 text-white';
     if (score >= 60) return 'bg-yellow-500 text-white';
@@ -183,7 +249,7 @@ export default function TreasuryReconciliationPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -198,82 +264,87 @@ export default function TreasuryReconciliationPage() {
         </Button>
       </div>
 
-      {/* KPI Cards (m6: loading skeleton) */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardContent className="pt-4 pb-3">
-                <div className="animate-pulse flex items-center gap-3">
-                  <div className="h-9 w-9 bg-muted rounded-lg" />
-                  <div className="space-y-2">
-                    <div className="h-6 w-12 bg-muted rounded" />
-                    <div className="h-3 w-20 bg-muted rounded" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <Banknote className="h-5 w-5 text-yellow-700" />
-                </div>
-                <div>
-                  {/* M5: Use global stats count, not page-scoped count */}
-                  <p className="text-2xl font-bold">{statsData?.unreconciledCount ?? totalTransactions}</p>
-                  <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.unreconciled')}</p>
-                </div>
+      {/* Enriched KPIs — 6 cards (3x2 desktop, 2x3 mobile) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <Card>
+          <CardContent className="pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-blue-100 rounded-lg">
+                <Wallet className="h-4 w-4 text-blue-700" />
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Target className="h-5 w-5 text-blue-700" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{suggestions.length}</p>
-                  <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.suggestions')}</p>
-                </div>
+              <div>
+                <p className="text-xl font-bold">{spTotal}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t('reconciliationPage.kpiEnriched.totalSystemPayments')}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Zap className="h-5 w-5 text-green-700" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{highConfidenceSuggestions.length}</p>
-                  <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.highConfidence')}</p>
-                </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-green-100 rounded-lg">
+                <CheckCircle2 className="h-4 w-4 text-green-700" />
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <CheckCircle2 className="h-5 w-5 text-purple-700" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">
-                    {autoMatchMutation.isSuccess ? autoMatchMutation.data.matchedCount : '—'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.autoMatched')}</p>
-                </div>
+              <div>
+                <p className="text-xl font-bold">{completedPayments}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t('reconciliationPage.kpiEnriched.completedPayments')}</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-100 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-emerald-700" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{formatCurrency(totalValidatedAmount)}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t('reconciliationPage.kpiEnriched.totalValidatedAmount')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-purple-100 rounded-lg">
+                <CreditCard className="h-4 w-4 text-purple-700" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{statsData?.unreconciledCount ?? 0}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t('reconciliationPage.kpiEnriched.totalBankTransactions')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-yellow-100 rounded-lg">
+                <Banknote className="h-4 w-4 text-yellow-700" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{suggestions.length}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t('reconciliationPage.kpi.suggestions')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-3 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-indigo-100 rounded-lg">
+                <Zap className="h-4 w-4 text-indigo-700" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{highConfidenceSuggestions.length}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{t('reconciliationPage.kpi.highConfidence')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Error State */}
       {error && (
@@ -288,15 +359,15 @@ export default function TreasuryReconciliationPage() {
       {/* Smart Matching Suggestions */}
       {suggestions.length > 0 && (
         <Card className="border-green-200">
-          <CardHeader>
+          <CardHeader className="py-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2 text-green-800">
-                  <CheckCircle2 className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-green-800 text-base">
+                  <Target className="h-4 w-4" />
                   {t('reconciliationPage.suggestions.title')}
                   <Badge variant="secondary" className="ml-2">{suggestions.length}</Badge>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs">
                   {t('reconciliationPage.suggestions.description')}
                 </CardDescription>
               </div>
@@ -317,9 +388,9 @@ export default function TreasuryReconciliationPage() {
               )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {autoMatchMutation.isSuccess && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+              <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
                 {t('reconciliationPage.suggestions.matchedResult', { count: autoMatchMutation.data.matchedCount })}
                 {autoMatchMutation.data.skippedCount > 0 && (
                   <span className="text-yellow-700 ml-2">
@@ -328,10 +399,10 @@ export default function TreasuryReconciliationPage() {
                 )}
               </div>
             )}
-            <div className="space-y-3">
+            <div className="space-y-2">
               {suggestions.slice(0, 10).map((suggestion: ReconciliationSuggestion) => (
-                <div key={suggestion.transactionId} className="border rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
+                <div key={suggestion.transactionId} className="border rounded-lg p-2">
+                  <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm">{suggestion.bankReference}</span>
                       <Badge variant="outline">{formatCurrency(suggestion.bankAmount, suggestion.bankCurrency)}</Badge>
@@ -348,11 +419,9 @@ export default function TreasuryReconciliationPage() {
                           <span className="font-mono">{c.paymentReference}</span>
                           <span>{formatCurrency(c.paymentAmount)}</span>
                           <span className="italic">{c.payerName}</span>
-                          {/* m4: Translate reason strings */}
                           <Badge variant="outline" className="text-[10px] h-4">
                             {c.reasons.map((r) => t(`reconciliationPage.reasons.${r}`)).join(', ')}
                           </Badge>
-                          {/* C5: Reconciliar button on each suggestion */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -398,56 +467,73 @@ export default function TreasuryReconciliationPage() {
         </Card>
       )}
 
-      {/* Transactions Table */}
+      {/* Bank Transactions Table — with status filter */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <CardHeader className="py-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Link2 className="h-4 w-4" />
                 {t('reconciliationPage.tableTitle')}
                 {totalTransactions > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {totalTransactions}
-                  </Badge>
+                  <Badge variant="secondary" className="ml-2">{totalTransactions}</Badge>
                 )}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 {t('reconciliationPage.tableDescription')}
               </CardDescription>
             </div>
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={t('reconciliationPage.searchPlaceholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            <div className="flex items-center gap-2">
+              <Select value={bankTxStatus} onValueChange={setBankTxStatus}>
+                <SelectTrigger className="w-[160px] h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unreconciled">{t('reconciliationPage.statusFilter.unreconciled')}</SelectItem>
+                  <SelectItem value="reconciled">{t('reconciliationPage.statusFilter.reconciled')}</SelectItem>
+                  <SelectItem value="all">{t('reconciliationPage.statusFilter.all')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder={t('reconciliationPage.searchPlaceholder')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-9 w-[250px]"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : transactions.length === 0 ? (
-            /* M4: Differentiate "all reconciled" vs "no search results" */
             debouncedSearch ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Search className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">{t('reconciliationPage.noSearchResults')}</h3>
-                <p className="text-muted-foreground">
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Search className="h-10 w-10 text-muted-foreground mb-3" />
+                <h3 className="text-base font-semibold">{t('reconciliationPage.noSearchResults')}</h3>
+                <p className="text-sm text-muted-foreground">
                   {t('reconciliationPage.noSearchResultsDescription')}
                 </p>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-                <h3 className="text-lg font-semibold">{t('reconciliationPage.allReconciled')}</h3>
-                <p className="text-muted-foreground">
+            ) : bankTxStatus === 'unreconciled' ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <CheckCircle2 className="h-10 w-10 text-green-500 mb-3" />
+                <h3 className="text-base font-semibold">{t('reconciliationPage.allReconciled')}</h3>
+                <p className="text-sm text-muted-foreground">
                   {t('reconciliationPage.allReconciledDescription')}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <CreditCard className="h-10 w-10 text-muted-foreground mb-3" />
+                <h3 className="text-base font-semibold">{t('reconciliationPage.noBankTransactions')}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('reconciliationPage.noBankTransactionsDescription')}
                 </p>
               </div>
             )
@@ -469,44 +555,35 @@ export default function TreasuryReconciliationPage() {
                   <TableBody>
                     {transactions.map((tx: BankTransaction) => (
                       <TableRow key={tx.id}>
-                        <TableCell className="font-mono text-sm">
-                          {tx.bankReference}
-                        </TableCell>
+                        <TableCell className="font-mono text-sm">{tx.bankReference}</TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{tx.accountHolderName || 'N/A'}</p>
                             {tx.accountNumber && (
-                              <p className="text-xs text-muted-foreground">
-                                {tx.accountNumber}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{tx.accountNumber}</p>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-bold">
-                          {formatCurrency(tx.amount, tx.currency)}
-                        </TableCell>
+                        <TableCell className="font-bold">{formatCurrency(tx.amount, tx.currency)}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {tx.bankCode || 'BANGE'}
-                          </Badge>
+                          <Badge variant="outline">{tx.bankCode || 'BANGE'}</Badge>
                         </TableCell>
-                        <TableCell>
-                          {getStatusBadge(tx.status)}
-                        </TableCell>
-                        {/* m8: Use bankTransactionDate over createdAt */}
+                        <TableCell>{getStatusBadge(tx.status)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {formatDate(tx.bankTransactionDate || tx.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => openReconcileDialog(tx)}
-                            disabled={isReconciling}
-                          >
-                            <Link2 className="mr-2 h-4 w-4" />
-                            {t('reconciliationPage.reconcileButton')}
-                          </Button>
+                          {tx.status === 'unreconciled' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => openReconcileDialog(tx)}
+                              disabled={isReconciling}
+                            >
+                              <Link2 className="mr-2 h-4 w-4" />
+                              {t('reconciliationPage.reconcileButton')}
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -516,7 +593,7 @@ export default function TreasuryReconciliationPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t">
                   <p className="text-sm text-muted-foreground">
                     {t('reconciliationPage.pagination.showing', {
                       from: (page - 1) * PAGE_SIZE + 1,
@@ -525,23 +602,107 @@ export default function TreasuryReconciliationPage() {
                     })}
                   </p>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                      disabled={page <= 1}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <span className="text-sm font-medium px-2">
-                      {page} / {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                      disabled={page >= totalPages}
-                    >
+                    <span className="text-sm font-medium px-2">{page} / {totalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* System Payments Section */}
+      <Card>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Wallet className="h-4 w-4" />
+                {t('reconciliationPage.systemPayments.title')}
+                {spTotal > 0 && (
+                  <Badge variant="secondary" className="ml-2">{spTotal}</Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                {t('reconciliationPage.systemPayments.description')}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {spLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : systemPayments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Wallet className="h-10 w-10 text-muted-foreground mb-3" />
+              <h3 className="text-base font-semibold">{t('reconciliationPage.systemPayments.empty')}</h3>
+              <p className="text-sm text-muted-foreground">
+                {t('reconciliationPage.systemPayments.emptyDescription')}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('reconciliationPage.systemPayments.table.reference')}</TableHead>
+                      <TableHead>{t('reconciliationPage.systemPayments.table.method')}</TableHead>
+                      <TableHead>{t('reconciliationPage.systemPayments.table.amount')}</TableHead>
+                      <TableHead>{t('reconciliationPage.systemPayments.table.status')}</TableHead>
+                      <TableHead>{t('reconciliationPage.systemPayments.table.reconciled')}</TableHead>
+                      <TableHead>{t('reconciliationPage.systemPayments.table.validatedAt')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {systemPayments.map((sp: PendingPayment) => (
+                      <TableRow key={sp.id}>
+                        <TableCell className="font-mono text-sm">{sp.paymentReference}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{getPaymentMethodLabel(sp.paymentMethod as string)}</Badge>
+                        </TableCell>
+                        <TableCell className="font-bold">{formatCurrency(sp.totalAmount, sp.currency)}</TableCell>
+                        <TableCell>{getWorkflowStatusBadge(sp.workflowStatus as string)}</TableCell>
+                        <TableCell>
+                          {sp.bankTransactionId ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Minus className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(sp.validatedAt)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* System payments pagination */}
+              {spTotalPages > 1 && (
+                <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    {t('reconciliationPage.pagination.showing', {
+                      from: (spPage - 1) * SP_PAGE_SIZE + 1,
+                      to: Math.min(spPage * SP_PAGE_SIZE, spTotal),
+                      total: spTotal,
+                    })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setSpPage(p => Math.max(1, p - 1))} disabled={spPage <= 1}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium px-2">{spPage} / {spTotalPages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setSpPage(p => Math.min(spTotalPages, p + 1))} disabled={spPage >= spTotalPages}>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -591,7 +752,7 @@ export default function TreasuryReconciliationPage() {
                 )}
               </div>
 
-              {/* Payment Search ComboBox (C3) */}
+              {/* Payment Search ComboBox */}
               <div className="space-y-2">
                 <Label>{t('reconciliationPage.dialog.paymentReferenceLabel')} *</Label>
                 {selectedPayment ? (

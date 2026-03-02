@@ -6050,6 +6050,40 @@
         "highConfidence": "Alta confianza",
         "autoMatched": "Auto-reconciliadas"
       },
+      "kpiEnriched": {
+        "totalSystemPayments": "Total Pagos",
+        "completedPayments": "Validados",
+        "totalValidatedAmount": "Monto Validado",
+        "totalBankTransactions": "Tx. Bancarias",
+        "reconciliationRate": "Tasa Reconc."
+      },
+      "statusFilter": {
+        "unreconciled": "Sin reconciliar",
+        "reconciled": "Reconciliadas",
+        "all": "Todas"
+      },
+      "systemPayments": {
+        "title": "Pagos del Sistema",
+        "description": "Pagos registrados con su estado de validación y reconciliación",
+        "table": {
+          "reference": "Referencia",
+          "method": "Método",
+          "amount": "Monto",
+          "status": "Estado",
+          "reconciled": "Reconciliado",
+          "validatedAt": "Fecha Validación"
+        },
+        "empty": "No hay pagos registrados",
+        "emptyDescription": "Los pagos aparecerán aquí cuando los ciudadanos realicen solicitudes."
+      },
+      "workflowStatus": {
+        "completed": "Completado",
+        "rejected": "Rechazado",
+        "expired": "Expirado",
+        "pending": "Pendiente"
+      },
+      "noBankTransactions": "No hay transacciones bancarias",
+      "noBankTransactionsDescription": "Las transacciones llegan vía webhook desde BANGE.",
       "pagination": {
         "showing": "Mostrando {from}-{to} de {total}"
       },

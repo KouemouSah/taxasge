@@ -164,26 +164,36 @@ class WebhookRepository:
         result = await conn.fetchrow(query, transaction_id)
         return dict(result) if result else None
 
-    async def list_unreconciled(
+    async def list_transactions(
         self, conn: asyncpg.Connection, limit: int = 50, offset: int = 0,
-        search: Optional[str] = None,
+        search: Optional[str] = None, status: Optional[str] = None,
     ) -> tuple[List[Dict[str, Any]], int]:
-        """List unreconciled transactions with optional search filter"""
-        where = "bt.status = 'unreconciled'"
+        """List bank transactions with optional status and search filters.
+
+        Args:
+            status: None = all statuses, 'unreconciled', 'reconciled', 'failed'
+            search: ILIKE filter on bank_reference, account_holder_name, account_number
+        """
+        where_clauses: list[str] = []
         params: list = []
         param_idx = 1
 
+        if status:
+            where_clauses.append(f"bt.status = ${param_idx}")
+            params.append(status)
+            param_idx += 1
+
         if search:
             search_pattern = f"%{search}%"
-            where += f"""
-                AND (
-                    bt.bank_reference ILIKE ${param_idx}
-                    OR bt.account_holder_name ILIKE ${param_idx}
-                    OR bt.account_number ILIKE ${param_idx}
-                )
-            """
+            where_clauses.append(f"""(
+                bt.bank_reference ILIKE ${param_idx}
+                OR bt.account_holder_name ILIKE ${param_idx}
+                OR bt.account_number ILIKE ${param_idx}
+            )""")
             params.append(search_pattern)
             param_idx += 1
+
+        where = " AND ".join(where_clauses) if where_clauses else "TRUE"
 
         count_query = f"SELECT COUNT(*) FROM bank_transactions bt WHERE {where}"
         total = await conn.fetchval(count_query, *params)
@@ -202,6 +212,13 @@ class WebhookRepository:
         """
         results = await conn.fetch(data_query, *params, limit, offset)
         return [dict(r) for r in results], total
+
+    async def list_unreconciled(
+        self, conn: asyncpg.Connection, limit: int = 50, offset: int = 0,
+        search: Optional[str] = None,
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """Backward-compatible alias for list_transactions(status='unreconciled')."""
+        return await self.list_transactions(conn, limit, offset, search, status='unreconciled')
 
     async def reconcile(
         self, conn: asyncpg.Connection, transaction_id: str, service_payment_id: str, reconciled_by: str

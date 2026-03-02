@@ -312,6 +312,7 @@ export const treasuryApi = {
       page: params.page || 1,
       page_size: params.pageSize || 20,
       ...(params.search ? { search: params.search } : {}),
+      ...(params.status ? { status: params.status } : {}),
     };
 
     const response = await fetchClient.get<Record<string, unknown>>(
