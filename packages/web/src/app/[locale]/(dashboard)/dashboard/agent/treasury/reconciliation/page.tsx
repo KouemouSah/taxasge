@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,13 +37,23 @@ import {
   CheckCircle2,
   Building2,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Banknote,
+  Zap,
+  Target,
 } from 'lucide-react';
 import { useUnreconciledTransactions, useReconcileTransaction, useReconciliationSuggestions, useAutoMatch } from '@/modules/treasury/hooks';
 import type { BankTransaction, ReconciliationSuggestion } from '@/modules/treasury/types';
 
+const PAGE_SIZE = 20;
+
 export default function TreasuryReconciliationPage() {
   const t = useTranslations('treasury');
   const locale = useLocale();
+
+  // Pagination
+  const [page, setPage] = useState(1);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,8 +63,11 @@ export default function TreasuryReconciliationPage() {
   const [paymentReference, setPaymentReference] = useState('');
   const [isReconcileDialogOpen, setIsReconcileDialogOpen] = useState(false);
 
-  // Data fetching
-  const { data: transactionsData, isLoading, error, refetch } = useUnreconciledTransactions();
+  // Data fetching with pagination
+  const { data: transactionsData, isLoading, error, refetch } = useUnreconciledTransactions({
+    page,
+    pageSize: PAGE_SIZE,
+  });
 
   // Reconcile mutation
   const reconcileMutation = useReconcileTransaction();
@@ -66,9 +79,12 @@ export default function TreasuryReconciliationPage() {
   const suggestions = suggestionsData?.suggestions || [];
   const highConfidenceSuggestions = suggestions.filter((s: ReconciliationSuggestion) => s.bestScore >= 80);
 
+  // Pagination computed values
+  const totalTransactions = transactionsData?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(totalTransactions / PAGE_SIZE));
+
   // Filter transactions by search term
   const filteredTransactions = useMemo(() => {
-    // Extract transactions array inside useMemo to avoid dependency issues
     const transactions = transactionsData?.transactions || [];
     if (!searchTerm) return transactions;
 
@@ -80,15 +96,15 @@ export default function TreasuryReconciliationPage() {
     );
   }, [transactionsData?.transactions, searchTerm]);
 
-  const formatCurrency = (amount: number, currency: string = 'XAF') => {
+  const formatCurrency = useCallback((amount: number, currency: string = 'XAF') => {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
       minimumFractionDigits: 0,
     }).format(amount);
-  };
+  }, [locale]);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString(locale, {
       day: '2-digit',
       month: '2-digit',
@@ -96,7 +112,7 @@ export default function TreasuryReconciliationPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
+  }, [locale]);
 
   const openReconcileDialog = (transaction: BankTransaction) => {
     setSelectedTransaction(transaction);
@@ -146,18 +162,63 @@ export default function TreasuryReconciliationPage() {
         </Button>
       </div>
 
-      {/* Info Card */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="flex items-start gap-3 py-4">
-          <Building2 className="h-5 w-5 text-blue-500 mt-0.5" />
-          <div>
-            <p className="font-medium text-blue-900">{t('reconciliationPage.infoTitle')}</p>
-            <p className="text-sm text-blue-700">
-              {t('reconciliationPage.infoDescription')}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <Banknote className="h-5 w-5 text-yellow-700" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalTransactions}</p>
+                <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.unreconciled')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Target className="h-5 w-5 text-blue-700" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{suggestions.length}</p>
+                <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.suggestions')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Zap className="h-5 w-5 text-green-700" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{highConfidenceSuggestions.length}</p>
+                <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.highConfidence')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 text-purple-700" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {autoMatchMutation.isSuccess ? autoMatchMutation.data.matchedCount : '—'}
+                </p>
+                <p className="text-xs text-muted-foreground">{t('reconciliationPage.kpi.autoMatched')}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Error State */}
       {error && (
@@ -169,24 +230,6 @@ export default function TreasuryReconciliationPage() {
         </Card>
       )}
 
-      {/* Search */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('reconciliationPage.searchTitle')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t('reconciliationPage.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Smart Matching Suggestions */}
       {suggestions.length > 0 && (
         <Card className="border-green-200">
@@ -195,11 +238,11 @@ export default function TreasuryReconciliationPage() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-green-800">
                   <CheckCircle2 className="h-5 w-5" />
-                  Sugerencias de Matching Automatico
+                  {t('reconciliationPage.suggestions.title')}
                   <Badge variant="secondary" className="ml-2">{suggestions.length}</Badge>
                 </CardTitle>
                 <CardDescription>
-                  Transacciones bancarias con pagos candidatos detectados por el algoritmo de scoring
+                  {t('reconciliationPage.suggestions.description')}
                 </CardDescription>
               </div>
               {highConfidenceSuggestions.length > 0 && (
@@ -214,7 +257,7 @@ export default function TreasuryReconciliationPage() {
                   ) : (
                     <CheckCircle2 className="mr-2 h-4 w-4" />
                   )}
-                  Auto-reconciliar ({highConfidenceSuggestions.length})
+                  {t('reconciliationPage.suggestions.autoReconcile', { count: highConfidenceSuggestions.length })}
                 </Button>
               )}
             </div>
@@ -222,10 +265,10 @@ export default function TreasuryReconciliationPage() {
           <CardContent>
             {autoMatchMutation.isSuccess && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-                {autoMatchMutation.data.matchedCount} transaccion(es) reconciliada(s) automaticamente.
+                {t('reconciliationPage.suggestions.matchedResult', { count: autoMatchMutation.data.matchedCount })}
                 {autoMatchMutation.data.skippedCount > 0 && (
                   <span className="text-yellow-700 ml-2">
-                    {autoMatchMutation.data.skippedCount} omitida(s).
+                    {t('reconciliationPage.suggestions.skippedResult', { count: autoMatchMutation.data.skippedCount })}
                   </span>
                 )}
               </div>
@@ -242,7 +285,7 @@ export default function TreasuryReconciliationPage() {
                       variant={suggestion.bestScore >= 80 ? 'default' : 'secondary'}
                       className={suggestion.bestScore >= 80 ? 'bg-green-600' : suggestion.bestScore >= 60 ? 'bg-yellow-600' : ''}
                     >
-                      Score: {suggestion.bestScore}
+                      {t('reconciliationPage.suggestions.score', { score: suggestion.bestScore })}
                     </Badge>
                   </div>
                   {suggestion.candidates.length > 0 && (
@@ -270,18 +313,31 @@ export default function TreasuryReconciliationPage() {
       {/* Transactions Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link2 className="h-5 w-5" />
-            {t('reconciliationPage.tableTitle')}
-            {filteredTransactions.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {filteredTransactions.length}
-              </Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            {t('reconciliationPage.tableDescription')}
-          </CardDescription>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Link2 className="h-5 w-5" />
+                {t('reconciliationPage.tableTitle')}
+                {totalTransactions > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {totalTransactions}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {t('reconciliationPage.tableDescription')}
+              </CardDescription>
+            </div>
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={t('reconciliationPage.searchPlaceholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -297,65 +353,101 @@ export default function TreasuryReconciliationPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('reconciliationPage.table.bankReference')}</TableHead>
-                    <TableHead>{t('reconciliationPage.table.accountHolder')}</TableHead>
-                    <TableHead>{t('reconciliationPage.table.amount')}</TableHead>
-                    <TableHead>{t('reconciliationPage.table.bank')}</TableHead>
-                    <TableHead>{t('reconciliationPage.table.status')}</TableHead>
-                    <TableHead>{t('reconciliationPage.table.date')}</TableHead>
-                    <TableHead className="text-right">{t('reconciliationPage.table.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransactions.map((tx: BankTransaction) => (
-                    <TableRow key={tx.id}>
-                      <TableCell className="font-mono text-sm">
-                        {tx.bankReference}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{tx.accountHolderName || 'N/A'}</p>
-                          {tx.accountNumber && (
-                            <p className="text-xs text-muted-foreground">
-                              {tx.accountNumber}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-bold">
-                        {formatCurrency(tx.amount, tx.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {tx.bankCode || 'BANGE'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(tx.status)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(tx.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => openReconcileDialog(tx)}
-                          disabled={isReconciling}
-                        >
-                          <Link2 className="mr-2 h-4 w-4" />
-                          {t('reconciliationPage.reconcileButton')}
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('reconciliationPage.table.bankReference')}</TableHead>
+                      <TableHead>{t('reconciliationPage.table.accountHolder')}</TableHead>
+                      <TableHead>{t('reconciliationPage.table.amount')}</TableHead>
+                      <TableHead>{t('reconciliationPage.table.bank')}</TableHead>
+                      <TableHead>{t('reconciliationPage.table.status')}</TableHead>
+                      <TableHead>{t('reconciliationPage.table.date')}</TableHead>
+                      <TableHead className="text-right">{t('reconciliationPage.table.actions')}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTransactions.map((tx: BankTransaction) => (
+                      <TableRow key={tx.id}>
+                        <TableCell className="font-mono text-sm">
+                          {tx.bankReference}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{tx.accountHolderName || 'N/A'}</p>
+                            {tx.accountNumber && (
+                              <p className="text-xs text-muted-foreground">
+                                {tx.accountNumber}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-bold">
+                          {formatCurrency(tx.amount, tx.currency)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {tx.bankCode || 'BANGE'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(tx.status)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(tx.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => openReconcileDialog(tx)}
+                            disabled={isReconciling}
+                          >
+                            <Link2 className="mr-2 h-4 w-4" />
+                            {t('reconciliationPage.reconcileButton')}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    {t('reconciliationPage.pagination.showing', {
+                      from: (page - 1) * PAGE_SIZE + 1,
+                      to: Math.min(page * PAGE_SIZE, totalTransactions),
+                      total: totalTransactions,
+                    })}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium px-2">
+                      {page} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

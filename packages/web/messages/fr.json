@@ -6167,6 +6167,24 @@
         "paymentReferenceHint": "Saisissez la reference du paiement dans le systeme TaxasGE",
         "reconciling": "Reconciliation en cours...",
         "confirmButton": "Confirmer la Reconciliation"
+      },
+      "suggestions": {
+        "title": "Suggestions de Matching Automatique",
+        "description": "Transactions bancaires avec paiements candidats détectés par l'algorithme de scoring",
+        "autoReconcile": "Auto-reconcilier ({count})",
+        "autoReconciling": "Reconciliation...",
+        "matchedResult": "{count} transaction(s) reconciliée(s) automatiquement.",
+        "skippedResult": "{count} omise(s).",
+        "score": "Score : {score}"
+      },
+      "kpi": {
+        "unreconciled": "Non reconciliées",
+        "suggestions": "Suggestions",
+        "highConfidence": "Haute confiance",
+        "autoMatched": "Auto-reconciliées"
+      },
+      "pagination": {
+        "showing": "Affichage {from}-{to} sur {total}"
       }
     },
     "anomaliesPage": {

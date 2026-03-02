@@ -214,10 +214,10 @@ class SystemRepository:
         except:
             declarations_count = 0
 
-        # Count payments (if table exists)
+        # Count service_payments (active payment system)
         try:
-            payments_count = await conn.fetchval("SELECT COUNT(*) FROM payments")
-        except:
+            payments_count = await conn.fetchval("SELECT COUNT(*) FROM service_payments")
+        except Exception:
             payments_count = 0
 
         # Database size

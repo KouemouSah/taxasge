@@ -5927,6 +5927,24 @@
         "paymentReferenceHint": "Enter the payment reference from the TaxasGE system",
         "reconciling": "Reconciling...",
         "confirmButton": "Confirm Reconciliation"
+      },
+      "suggestions": {
+        "title": "Automatic Matching Suggestions",
+        "description": "Bank transactions with candidate payments detected by the scoring algorithm",
+        "autoReconcile": "Auto-reconcile ({count})",
+        "autoReconciling": "Reconciling...",
+        "matchedResult": "{count} transaction(s) reconciled automatically.",
+        "skippedResult": "{count} skipped.",
+        "score": "Score: {score}"
+      },
+      "kpi": {
+        "unreconciled": "Unreconciled",
+        "suggestions": "Suggestions",
+        "highConfidence": "High confidence",
+        "autoMatched": "Auto-reconciled"
+      },
+      "pagination": {
+        "showing": "Showing {from}-{to} of {total}"
       }
     },
     "anomaliesPage": {

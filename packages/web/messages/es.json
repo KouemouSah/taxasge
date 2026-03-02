@@ -6029,6 +6029,24 @@
         "paymentReferenceHint": "Ingrese la referencia del pago en el sistema TaxasGE",
         "reconciling": "Reconciliando...",
         "confirmButton": "Confirmar Reconciliacion"
+      },
+      "suggestions": {
+        "title": "Sugerencias de Matching Automático",
+        "description": "Transacciones bancarias con pagos candidatos detectados por el algoritmo de scoring",
+        "autoReconcile": "Auto-reconciliar ({count})",
+        "autoReconciling": "Reconciliando...",
+        "matchedResult": "{count} transacción(es) reconciliada(s) automáticamente.",
+        "skippedResult": "{count} omitida(s).",
+        "score": "Score: {score}"
+      },
+      "kpi": {
+        "unreconciled": "Sin reconciliar",
+        "suggestions": "Sugerencias",
+        "highConfidence": "Alta confianza",
+        "autoMatched": "Auto-reconciliadas"
+      },
+      "pagination": {
+        "showing": "Mostrando {from}-{to} de {total}"
       }
     },
     "anomaliesPage": {
