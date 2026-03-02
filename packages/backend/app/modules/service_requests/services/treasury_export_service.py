@@ -534,8 +534,7 @@ class TreasuryExportService:
             if data is None:
                 sections[section_name] = []
             elif isinstance(data, str):
-                import json as _json
-                sections[section_name] = _json.loads(data)
+                sections[section_name] = json.loads(data)
             else:
                 sections[section_name] = list(data)
 
@@ -1651,11 +1650,22 @@ class TreasuryExportService:
                 "total_amount_formatted": format_xaf(service.get("total_amount", 0)),
             })
 
-        # Prepare daily breakdown
+        # Prepare daily breakdown (dates may be date objects or ISO strings from CTE JSONB)
         daily_breakdown = []
         for day in data.get("daily_breakdown", []):
+            raw_date = day.get("date", "")
+            if hasattr(raw_date, "strftime"):
+                date_str = raw_date.strftime("%d/%m/%Y")
+            elif isinstance(raw_date, str) and len(raw_date) >= 10:
+                # Parse ISO date string "2026-02-23" → "23/02/2026"
+                try:
+                    date_str = datetime.strptime(raw_date[:10], "%Y-%m-%d").strftime("%d/%m/%Y")
+                except ValueError:
+                    date_str = raw_date
+            else:
+                date_str = str(raw_date)
             daily_breakdown.append({
-                "date": day.get("date").strftime("%d/%m/%Y") if hasattr(day.get("date", ""), "strftime") else str(day.get("date", "")),
+                "date": date_str,
                 "count_formatted": format_count(day.get("count", 0)),
                 "amount_formatted": format_xaf(day.get("amount", 0)),
             })
