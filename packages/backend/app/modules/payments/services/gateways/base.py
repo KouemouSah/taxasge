@@ -185,6 +185,19 @@ class GatewayServiceBase(ABC):
         """
         ...
 
+    def get_webhook_routing_code(self) -> str:
+        """
+        Return the code used for webhook URL routing.
+
+        Default: same as bank_code. Override in subclasses where the
+        registry key differs from bank_code (e.g., MPGS uses bank_code
+        "ECOBANK" for bank_transactions but "ECOBANK_MPGS" for routing).
+
+        Returns:
+            Routing code for webhook URL path (e.g., "BANGE", "ECOBANK_MPGS")
+        """
+        return self.bank_code
+
     def get_webhook_signature_header(self) -> str:
         """
         Return the HTTP header name for webhook signatures.

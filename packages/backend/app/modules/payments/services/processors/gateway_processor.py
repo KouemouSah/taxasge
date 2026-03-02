@@ -106,9 +106,11 @@ class GatewayProcessor(PaymentProcessorBase):
                 payment_reference=payment_reference,
             )
 
-            # 3. Build callback URL using gateway's bank_code
-            bank_code = self.gateway.bank_code.lower()
-            callback_url = f"{self.settings.API_BASE_URL}/api/v1/webhooks/{bank_code}"
+            # 3. Build callback URL using gateway's webhook routing code
+            # (may differ from bank_code: e.g., MPGS uses "ECOBANK_MPGS" for
+            # routing but "ECOBANK" for bank_transactions)
+            routing_code = self.gateway.get_webhook_routing_code().lower()
+            callback_url = f"{self.settings.API_BASE_URL}/api/v1/webhooks/{routing_code}"
             return_url = (
                 f"{self.settings.FRONTEND_URL}/dashboard/service-requests/"
                 f"{context.service_request_id}/payment/result"

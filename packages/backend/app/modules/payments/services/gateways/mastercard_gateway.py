@@ -74,6 +74,10 @@ class MastercardGateway(GatewayServiceBase):
     # Internal code for registry/webhook routing (distinct from bank_code)
     _internal_code = "ECOBANK_MPGS"
 
+    def get_webhook_routing_code(self) -> str:
+        """MPGS uses ECOBANK_MPGS for webhook URL routing."""
+        return self._internal_code
+
     def __init__(self):
         settings = get_settings()
         self.base_url = (
@@ -136,12 +140,21 @@ class MastercardGateway(GatewayServiceBase):
         order_id = request.reference  # Use our payment_reference as order ID
 
         try:
+            # Build return URL with order ID for result verification
+            return_url = request.return_url
+            if "?" in return_url:
+                return_url += f"&orderId={order_id}"
+            else:
+                return_url += f"?orderId={order_id}"
+
             # Create checkout session
             session_payload = {
                 "apiOperation": "CREATE_CHECKOUT_SESSION",
                 "interaction": {
                     "operation": "PURCHASE",
-                    "returnUrl": request.return_url,
+                    "returnUrl": return_url,
+                    "cancelUrl": return_url,
+                    "locale": "es",
                     "merchant": {
                         "name": "TaxasGE - Gobierno de Guinea Ecuatorial",
                     },
@@ -155,9 +168,12 @@ class MastercardGateway(GatewayServiceBase):
                     "id": order_id,
                     "amount": str(request.amount),
                     "currency": request.currency,
-                    "description": request.description[:100],
+                    "description": request.description[:127],
                     "reference": order_id,
                     "notificationUrl": request.callback_url,
+                },
+                "transaction": {
+                    "reference": order_id,
                 },
             }
 
@@ -263,10 +279,20 @@ class MastercardGateway(GatewayServiceBase):
                 amount = Decimal(str(response["amount"]))
 
             # Extract payment timestamp
+            # MPGS GET /order returns transaction as dict {"1": {...}, "2": {...}}
+            # NOT as an array. Handle both formats defensively.
             paid_at = None
             if internal_status == "completed":
-                # Look in transaction details for completion time
-                for txn in response.get("transaction", []):
+                transactions = response.get("transaction", {})
+                # Normalize: if it's a dict, iterate values; if array, iterate items
+                txn_items = (
+                    transactions.values()
+                    if isinstance(transactions, dict)
+                    else transactions
+                    if isinstance(transactions, list)
+                    else []
+                )
+                for txn in txn_items:
                     if txn.get("transaction", {}).get("type") == "PAYMENT":
                         ts = txn.get("timeOfLastUpdate")
                         if ts:
