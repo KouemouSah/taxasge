@@ -5,11 +5,12 @@ Tables: bank_configurations, bank_transactions
 Aligned with DATABASE_SCHEMA_REFERENCE.md
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+import json
 
 
 class BankCode(str, Enum):
@@ -75,6 +76,14 @@ class BankConfigurationResponse(BankConfigurationBase):
     is_primary: bool = False
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("supported_payment_methods", mode="before")
+    @classmethod
+    def parse_jsonb_methods(cls, v):
+        """asyncpg returns JSONB as raw JSON string — parse to list"""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
     # Ne pas exposer les secrets via API
     # api_key_encrypted et webhook_secret sont exclus
