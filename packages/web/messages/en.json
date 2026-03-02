@@ -7604,7 +7604,10 @@
       "processed": "Processed",
       "approvals": "Approvals",
       "rejections": "Rejections",
-      "printTitle": "Agent Statistics Report"
+      "printTitle": "Agent Statistics Report",
+      "searchAgent": "Search agent...",
+      "selected": "selected",
+      "clearSelection": "Clear"
     },
     "rules": {
       "title": "Assignment Rules",

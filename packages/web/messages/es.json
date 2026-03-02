@@ -7706,7 +7706,10 @@
       "processed": "Procesados",
       "approvals": "Aprobaciones",
       "rejections": "Rechazos",
-      "printTitle": "Informe de Estadísticas por Agente"
+      "printTitle": "Informe de Estadísticas por Agente",
+      "searchAgent": "Buscar agente...",
+      "selected": "seleccionados",
+      "clearSelection": "Limpiar"
     },
     "rules": {
       "title": "Reglas de Asignación",

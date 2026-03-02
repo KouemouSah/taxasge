@@ -29,6 +29,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -55,6 +57,9 @@ import {
   Target,
   Clock,
   BarChart3,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -85,6 +90,7 @@ interface AgentRow {
 type SortKey = 'name' | 'validated' | 'rejected' | 'approvalRate' | 'avgHours' | 'slaRate' | 'score';
 type SortDir = 'asc' | 'desc';
 type PeriodDays = 7 | 30 | 90;
+const PAGE_SIZE = 15;
 
 // ─── Page ────────────────────────────────────────────────────────────
 
@@ -96,6 +102,9 @@ export default function AgentStatisticsPage() {
   const [days, setDays] = useState<PeriodDays>(30);
   const [sortKey, setSortKey] = useState<SortKey>('score');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [searchFilter, setSearchFilter] = useState('');
+  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   const { data, isLoading, error } = useWorkloadDashboard(days);
 
@@ -180,10 +189,21 @@ export default function AgentStatisticsPage() {
     });
   }, [data]);
 
+  // ─── Filtering ───────────────────────────────────────────────────
+
+  const filteredRows = useMemo(() => {
+    if (!searchFilter.trim()) return rows;
+    const q = searchFilter.toLowerCase();
+    return rows.filter(r => r.name.toLowerCase().includes(q));
+  }, [rows, searchFilter]);
+
+  // Reset page when filter changes
+  React.useEffect(() => { setPage(1); }, [searchFilter]);
+
   // ─── Sorting ─────────────────────────────────────────────────────
 
   const sortedRows = useMemo(() => {
-    const sorted = [...rows];
+    const sorted = [...filteredRows];
     sorted.sort((a, b) => {
       const va = a[sortKey];
       const vb = b[sortKey];
@@ -195,7 +215,40 @@ export default function AgentStatisticsPage() {
       return sortDir === 'asc' ? na - nb : nb - na;
     });
     return sorted;
-  }, [rows, sortKey, sortDir]);
+  }, [filteredRows, sortKey, sortDir]);
+
+  // ─── Pagination ─────────────────────────────────────────────────
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sortedRows.slice(start, start + PAGE_SIZE);
+  }, [sortedRows, page]);
+
+  // ─── Agent selection ────────────────────────────────────────────
+
+  const toggleAgent = useCallback((name: string) => {
+    setSelectedAgents(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }, []);
+
+  const toggleAllVisible = useCallback(() => {
+    setSelectedAgents(prev => {
+      const visibleNames = paginatedRows.map(r => r.name);
+      const allSelected = visibleNames.every(n => prev.has(n));
+      const next = new Set(prev);
+      if (allSelected) {
+        visibleNames.forEach(n => next.delete(n));
+      } else {
+        visibleNames.forEach(n => next.add(n));
+      }
+      return next;
+    });
+  }, [paginatedRows]);
 
   const toggleSort = useCallback((key: SortKey) => {
     if (sortKey === key) {
@@ -220,8 +273,16 @@ export default function AgentStatisticsPage() {
 
   // ─── Export helpers ─────────────────────────────────────────────
 
+  // Export uses selected agents if any, otherwise all filtered+sorted rows
+  const exportRows = useMemo(() => {
+    if (selectedAgents.size > 0) {
+      return sortedRows.filter(r => selectedAgents.has(r.name));
+    }
+    return sortedRows;
+  }, [sortedRows, selectedAgents]);
+
   const getExportData = useCallback(() => {
-    return sortedRows.map((row, idx) => ({
+    return exportRows.map((row, idx) => ({
       '#': idx + 1,
       [t('agentStats.agent')]: row.name,
       [t('agentStats.validated')]: row.validated,
@@ -232,14 +293,14 @@ export default function AgentStatisticsPage() {
       [`${t('agentStats.load')} %`]: Number(row.capacityPct.toFixed(0)),
       [t('agentStats.status')]: row.status,
     }));
-  }, [sortedRows, t]);
+  }, [exportRows, t]);
 
   const filePrefix = `agent-statistics-${days}d-${new Date().toISOString().slice(0, 10)}`;
 
   // ─── Export CSV ──────────────────────────────────────────────────
 
   const handleExportCSV = useCallback(() => {
-    if (sortedRows.length === 0) return;
+    if (exportRows.length === 0) return;
     const exportData = getExportData();
     const ws = XLSX.utils.json_to_sheet(exportData);
     const csv = XLSX.utils.sheet_to_csv(ws);
@@ -250,12 +311,12 @@ export default function AgentStatisticsPage() {
     link.download = `${filePrefix}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-  }, [sortedRows, getExportData, filePrefix]);
+  }, [exportRows, getExportData, filePrefix]);
 
   // ─── Export XLSX ─────────────────────────────────────────────────
 
   const handleExportXLSX = useCallback(() => {
-    if (sortedRows.length === 0) return;
+    if (exportRows.length === 0) return;
     const exportData = getExportData();
     const ws = XLSX.utils.json_to_sheet(exportData);
 
@@ -285,12 +346,12 @@ export default function AgentStatisticsPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, t('agentStats.title').slice(0, 31));
     XLSX.writeFile(wb, `${filePrefix}.xlsx`);
-  }, [sortedRows, getExportData, filePrefix, summary, t]);
+  }, [exportRows, getExportData, filePrefix, summary, t]);
 
   // ─── Print PDF ───────────────────────────────────────────────────
 
   const handlePrint = useCallback(() => {
-    if (sortedRows.length === 0) return;
+    if (exportRows.length === 0) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -298,7 +359,7 @@ export default function AgentStatisticsPage() {
     const periodLabel = t(`agentStats.period${days}d`);
 
     // Build clean table rows from data (not innerHTML copy)
-    const tableRows = sortedRows.map((row, idx) => {
+    const tableRows = exportRows.map((row, idx) => {
       const rateColor = row.approvalRate >= 80 ? '#166534' : row.approvalRate >= 60 ? '#854d0e' : '#991b1b';
       const scoreColor = row.score >= 70 ? '#166534' : row.score >= 50 ? '#854d0e' : '#991b1b';
       const scoreBg = row.score >= 70 ? '#dcfce7' : row.score >= 50 ? '#f5f5f5' : '#fee2e2';
@@ -377,12 +438,12 @@ export default function AgentStatisticsPage() {
   </table>
   <div class="footer">
     <span>TaxasGE — ${t('agentStats.printTitle')}</span>
-    <span>${dateStr} | ${periodLabel} | ${sortedRows.length} agents</span>
+    <span>${dateStr} | ${periodLabel} | ${exportRows.length} agents</span>
   </div>
 </body></html>`);
     printWindow.document.close();
     setTimeout(() => printWindow.print(), 250);
-  }, [sortedRows, days, summary, t]);
+  }, [exportRows, days, summary, t]);
 
   // ─── Sort header helper ──────────────────────────────────────────
 
@@ -478,7 +539,7 @@ export default function AgentStatisticsPage() {
             size="sm"
             onClick={handleExportCSV}
             className="h-7 gap-1.5 text-xs"
-            disabled={!data || sortedRows.length === 0}
+            disabled={!data || exportRows.length === 0}
           >
             <Download className="h-3 w-3" />
             CSV
@@ -488,7 +549,7 @@ export default function AgentStatisticsPage() {
             size="sm"
             onClick={handleExportXLSX}
             className="h-7 gap-1.5 text-xs"
-            disabled={!data || sortedRows.length === 0}
+            disabled={!data || exportRows.length === 0}
           >
             <FileSpreadsheet className="h-3 w-3" />
             XLSX
@@ -498,7 +559,7 @@ export default function AgentStatisticsPage() {
             size="sm"
             onClick={handlePrint}
             className="h-7 gap-1.5 text-xs"
-            disabled={!data || sortedRows.length === 0}
+            disabled={!data || exportRows.length === 0}
           >
             <Printer className="h-3 w-3" />
             PDF
@@ -558,107 +619,9 @@ export default function AgentStatisticsPage() {
         </div>
       )}
 
-      {/* Main comparison table */}
-      {data && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              {t('agentStats.title')}
-              <Badge variant="outline" className="text-xs ml-auto">
-                {sortedRows.length} {t('team.totalAgents').toLowerCase()}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-0 pb-2">
-            <div ref={tableRef}>
-              {sortedRows.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="pl-4 text-xs w-8">#</TableHead>
-                      <SortHeader label={t('agentStats.agent')} field="name" />
-                      <SortHeader label={t('agentStats.validated')} field="validated" />
-                      <SortHeader label={t('agentStats.rejected')} field="rejected" />
-                      <SortHeader label={t('agentStats.approvalRate')} field="approvalRate" />
-                      <SortHeader label={t('agentStats.avgTime')} field="avgHours" />
-                      <SortHeader label={t('agentStats.score')} field="score" />
-                      <TableHead className="text-xs">{t('agentStats.load')}</TableHead>
-                      <TableHead className="text-xs">{t('agentStats.status')}</TableHead>
-                      <TableHead className="text-xs w-12" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedRows.map((row, idx) => (
-                      <TableRow key={row.name} className={row.anomalies.length > 0 ? 'bg-amber-50/30' : ''}>
-                        <TableCell className="pl-4 py-2 text-xs text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="py-2">
-                          <span className="text-sm font-medium truncate block max-w-[160px]" title={row.name}>
-                            {row.name}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-2 text-sm font-medium text-emerald-700">{row.validated}</TableCell>
-                        <TableCell className="py-2 text-sm text-red-600">{row.rejected}</TableCell>
-                        <TableCell className="py-2">
-                          <span className={`text-sm font-medium ${
-                            row.approvalRate >= 80 ? 'text-emerald-600' :
-                            row.approvalRate >= 60 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
-                            {row.approvalRate.toFixed(1)}%
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm">{row.avgHours.toFixed(1)}h</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <Badge
-                            variant={row.score >= 70 ? 'default' : row.score >= 50 ? 'secondary' : 'destructive'}
-                            className="text-xs"
-                          >
-                            {row.score.toFixed(0)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${
-                                  row.capacityPct > 90 ? 'bg-red-500' :
-                                  row.capacityPct > 70 ? 'bg-yellow-500' : 'bg-emerald-500'
-                                }`}
-                                style={{ width: `${Math.min(row.capacityPct, 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-muted-foreground w-8">{row.capacityPct.toFixed(0)}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-2">
-                          {statusBadge(row.status)}
-                        </TableCell>
-                        <TableCell className="py-2 pr-4">
-                          {anomalyIcons(row.anomalies)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  {t('agentStats.noData')}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Compact complement charts (2 small charts side by side) */}
+      {/* Charts ABOVE the table */}
       {data && data.dailyVelocity.length > 0 && (
         <div className="grid gap-3 lg:grid-cols-2">
-          {/* Mini velocity summary */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -670,8 +633,6 @@ export default function AgentStatisticsPage() {
               <MiniBarChart data={data.dailyVelocity} t={t} />
             </CardContent>
           </Card>
-
-          {/* Mini volume trend */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -684,6 +645,182 @@ export default function AgentStatisticsPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Main comparison table */}
+      {data && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                {t('agentStats.title')}
+                <Badge variant="outline" className="text-xs">
+                  {filteredRows.length} {t('team.totalAgents').toLowerCase()}
+                </Badge>
+                {selectedAgents.size > 0 && (
+                  <Badge className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200">
+                    {selectedAgents.size} {t('agentStats.selected')}
+                  </Badge>
+                )}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder={t('agentStats.searchAgent')}
+                    value={searchFilter}
+                    onChange={e => setSearchFilter(e.target.value)}
+                    className="h-8 w-48 pl-8 text-xs"
+                  />
+                </div>
+                {selectedAgents.size > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedAgents(new Set())}
+                    className="h-7 text-xs text-muted-foreground"
+                  >
+                    {t('agentStats.clearSelection')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-0 pb-2">
+            <div ref={tableRef}>
+              {sortedRows.length > 0 ? (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="pl-4 w-8">
+                          <Checkbox
+                            checked={paginatedRows.length > 0 && paginatedRows.every(r => selectedAgents.has(r.name))}
+                            onCheckedChange={toggleAllVisible}
+                            aria-label="Select all"
+                          />
+                        </TableHead>
+                        <TableHead className="text-xs w-8">#</TableHead>
+                        <SortHeader label={t('agentStats.agent')} field="name" />
+                        <SortHeader label={t('agentStats.validated')} field="validated" />
+                        <SortHeader label={t('agentStats.rejected')} field="rejected" />
+                        <SortHeader label={t('agentStats.approvalRate')} field="approvalRate" />
+                        <SortHeader label={t('agentStats.avgTime')} field="avgHours" />
+                        <SortHeader label={t('agentStats.score')} field="score" />
+                        <TableHead className="text-xs">{t('agentStats.load')}</TableHead>
+                        <TableHead className="text-xs">{t('agentStats.status')}</TableHead>
+                        <TableHead className="text-xs w-12" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedRows.map((row, idx) => (
+                        <TableRow
+                          key={row.name}
+                          className={`${row.anomalies.length > 0 ? 'bg-amber-50/30' : ''} ${selectedAgents.has(row.name) ? 'bg-blue-50/40' : ''}`}
+                        >
+                          <TableCell className="pl-4 py-2">
+                            <Checkbox
+                              checked={selectedAgents.has(row.name)}
+                              onCheckedChange={() => toggleAgent(row.name)}
+                              aria-label={`Select ${row.name}`}
+                            />
+                          </TableCell>
+                          <TableCell className="py-2 text-xs text-muted-foreground">
+                            {(page - 1) * PAGE_SIZE + idx + 1}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <span className="text-sm font-medium truncate block max-w-[160px]" title={row.name}>
+                              {row.name}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-2 text-sm font-medium text-emerald-700">{row.validated}</TableCell>
+                          <TableCell className="py-2 text-sm text-red-600">{row.rejected}</TableCell>
+                          <TableCell className="py-2">
+                            <span className={`text-sm font-medium ${
+                              row.approvalRate >= 80 ? 'text-emerald-600' :
+                              row.approvalRate >= 60 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {row.approvalRate.toFixed(1)}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-sm">{row.avgHours.toFixed(1)}h</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <Badge
+                              variant={row.score >= 70 ? 'default' : row.score >= 50 ? 'secondary' : 'destructive'}
+                              className="text-xs"
+                            >
+                              {row.score.toFixed(0)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    row.capacityPct > 90 ? 'bg-red-500' :
+                                    row.capacityPct > 70 ? 'bg-yellow-500' : 'bg-emerald-500'
+                                  }`}
+                                  style={{ width: `${Math.min(row.capacityPct, 100)}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground w-8">{row.capacityPct.toFixed(0)}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2">
+                            {statusBadge(row.status)}
+                          </TableCell>
+                          <TableCell className="py-2 pr-4">
+                            {anomalyIcons(row.anomalies)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 pt-3 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, sortedRows.length)} / {sortedRows.length}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(p => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                          className="h-7 w-7 p-0"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        <span className="text-xs px-2">{page} / {totalPages}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                          disabled={page === totalPages}
+                          className="h-7 w-7 p-0"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  {t('agentStats.noData')}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

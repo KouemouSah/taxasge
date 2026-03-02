@@ -7844,7 +7844,10 @@
       "processed": "Traités",
       "approvals": "Approbations",
       "rejections": "Rejets",
-      "printTitle": "Rapport de Statistiques par Agent"
+      "printTitle": "Rapport de Statistiques par Agent",
+      "searchAgent": "Rechercher un agent...",
+      "selected": "sélectionnés",
+      "clearSelection": "Effacer"
     },
     "rules": {
       "title": "Règles d'Affectation",
