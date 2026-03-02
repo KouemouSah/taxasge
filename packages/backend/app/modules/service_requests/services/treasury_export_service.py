@@ -56,6 +56,22 @@ except ImportError:
     LXML_AVAILABLE = False
     logger.warning("lxml not installed. XML generation disabled.")
 
+# ReportLab for chart generation (PNG → base64 → embed in PDF)
+try:
+    import io
+    import base64
+    from reportlab.graphics.shapes import Drawing, String
+    from reportlab.graphics.charts.barcharts import VerticalBarChart, HorizontalBarChart
+    from reportlab.graphics.charts.piecharts import Pie
+    from reportlab.graphics.charts.linecharts import HorizontalLineChart
+    from reportlab.graphics.charts.legends import Legend
+    from reportlab.graphics import renderPM
+    from reportlab.lib import colors as rl_colors
+    REPORTLAB_CHARTS_AVAILABLE = True
+except ImportError:
+    REPORTLAB_CHARTS_AVAILABLE = False
+    logger.warning("reportlab chart modules not available. Charts disabled in PDF reports.")
+
 # Firebase Storage for cloud persistence
 try:
     from app.modules.documents.services.storage_service import firebase_storage_service
@@ -70,6 +86,13 @@ class TreasuryExportService:
 
     # Export storage directory (configurable via env)
     EXPORT_DIR = Path("/tmp/treasury_exports")
+
+    # Chart color palette (professional navy/blue scale)
+    CHART_COLORS = [
+        "#1a365d", "#2b6cb0", "#3182ce", "#4299e1",
+        "#63b3ed", "#90cdf4", "#bee3f8", "#a0aec0",
+        "#718096", "#4a5568", "#2d3748", "#e2e8f0",
+    ]
 
     # SAGE X3 CSV column mapping
     SAGE_X3_COLUMNS = [
@@ -277,7 +300,7 @@ class TreasuryExportService:
             else:
                 # Generic export (custom or unknown type)
                 data = await self._fetch_generic_data(db, period_start, period_end, filters)
-                result = await self._generate_generic_export(data, export_format, export_id)
+                result = await self._generate_generic_export(data, export_format, export_id, period_start, period_end)
 
             # Update progress
             await db.execute("""
@@ -370,13 +393,12 @@ class TreasuryExportService:
                 sp.paid_at AS completed_at,
                 sr.workflow_code,
                 sr.reference as service_request_reference,
-                fs.name_es as service_name_es,
+                INITCAP(REPLACE(sr.workflow_code, '_', ' ')) as service_name_es,
                 u.full_name as user_name,
                 e.name as entity_name,
                 m.name_es as ministry_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             LEFT JOIN entities e ON e.code = sp.entity_code
             LEFT JOIN ministries m ON m.id = e.ministry_id
@@ -394,102 +416,142 @@ class TreasuryExportService:
         period_end: date,
         filters: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Fetch aggregated data for ministry report."""
-        conditions = ["sp.workflow_status = 'completed'"]
-        params = [period_start, period_end]
-
-        conditions.append("sp.paid_at >= $1::date")
-        conditions.append("sp.paid_at < $2::date + INTERVAL '1 day'")
+        """Fetch aggregated data for ministry report using CTE (single scan)."""
+        params: list = [period_start, period_end]
 
         entity_filter = ""
         if filters and filters.get("entity_code"):
             entity_filter = "AND sp.entity_code = $3"
             params.append(filters["entity_code"])
 
-        where_clause = " AND ".join(conditions)
-
-        # Summary by entity (with optional ministry)
-        summary_query = f"""
+        # Single CTE scans service_payments+service_requests once,
+        # then 5 aggregation queries read from the materialized CTE.
+        query = f"""
+            WITH base AS (
+                SELECT
+                    sp.payment_reference,
+                    sp.total_amount,
+                    sp.currency,
+                    sp.payment_method,
+                    sp.paid_at,
+                    sp.entity_code,
+                    sr.reference AS request_reference,
+                    sr.workflow_code,
+                    sr.user_id
+                FROM service_payments sp
+                JOIN service_requests sr ON sr.id = sp.service_request_id
+                WHERE sp.workflow_status = 'completed'
+                  AND sp.paid_at >= $1::date
+                  AND sp.paid_at < $2::date + INTERVAL '1 day'
+                  {entity_filter}
+            ),
+            agg_entity AS (
+                SELECT
+                    b.entity_code,
+                    e.name AS entity_name,
+                    e.ministry_id,
+                    m.name_es AS ministry_name,
+                    COUNT(*) AS payment_count,
+                    SUM(b.total_amount) AS total_amount,
+                    AVG(b.total_amount) AS avg_amount
+                FROM base b
+                LEFT JOIN entities e ON e.code = b.entity_code
+                LEFT JOIN ministries m ON m.id = e.ministry_id
+                GROUP BY b.entity_code, e.name, e.ministry_id, m.name_es
+                ORDER BY total_amount DESC
+            ),
+            agg_method AS (
+                SELECT
+                    payment_method,
+                    COUNT(*) AS payment_count,
+                    SUM(total_amount) AS total_amount
+                FROM base
+                GROUP BY payment_method
+                ORDER BY total_amount DESC
+            ),
+            agg_service AS (
+                SELECT
+                    INITCAP(REPLACE(workflow_code, '_', ' ')) AS service_name,
+                    COUNT(*) AS payment_count,
+                    SUM(total_amount) AS total_amount
+                FROM base
+                GROUP BY workflow_code
+                ORDER BY total_amount DESC
+                LIMIT 20
+            ),
+            agg_daily AS (
+                SELECT
+                    DATE(paid_at) AS date,
+                    COUNT(*) AS count,
+                    SUM(total_amount) AS amount
+                FROM base
+                GROUP BY DATE(paid_at)
+                ORDER BY date ASC
+            ),
+            detail AS (
+                SELECT
+                    b.payment_reference,
+                    b.total_amount,
+                    b.currency,
+                    b.payment_method,
+                    b.paid_at AS completed_at,
+                    b.request_reference,
+                    INITCAP(REPLACE(b.workflow_code, '_', ' ')) AS service_name,
+                    u.full_name AS user_name
+                FROM base b
+                LEFT JOIN users u ON u.id = b.user_id
+                ORDER BY b.paid_at DESC
+                LIMIT 100
+            )
             SELECT
-                sp.entity_code,
-                e.name as entity_name,
-                e.ministry_id,
-                m.name_es as ministry_name,
-                COUNT(*) as payment_count,
-                SUM(sp.total_amount) as total_amount,
-                AVG(sp.total_amount) as avg_amount
-            FROM service_payments sp
-            JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN entities e ON e.code = sp.entity_code
-            LEFT JOIN ministries m ON m.id = e.ministry_id
-            WHERE {where_clause} {entity_filter}
-            GROUP BY sp.entity_code, e.name, e.ministry_id, m.name_es
-            ORDER BY total_amount DESC
+                'entity' AS _section, to_jsonb(array_agg(row_to_json(agg_entity))) AS data
+            FROM agg_entity
+            UNION ALL
+            SELECT
+                'method', to_jsonb(array_agg(row_to_json(agg_method)))
+            FROM agg_method
+            UNION ALL
+            SELECT
+                'service', to_jsonb(array_agg(row_to_json(agg_service)))
+            FROM agg_service
+            UNION ALL
+            SELECT
+                'daily', to_jsonb(array_agg(row_to_json(agg_daily)))
+            FROM agg_daily
+            UNION ALL
+            SELECT
+                'detail', to_jsonb(array_agg(row_to_json(detail)))
+            FROM detail;
         """
 
-        # Summary by payment method
-        method_query = f"""
-            SELECT
-                sp.payment_method,
-                COUNT(*) as payment_count,
-                SUM(sp.total_amount) as total_amount
-            FROM service_payments sp
-            JOIN service_requests sr ON sr.id = sp.service_request_id
-            WHERE {where_clause} {entity_filter}
-            GROUP BY sp.payment_method
-            ORDER BY total_amount DESC
-        """
+        rows = await db.fetch(query, *params)
 
-        # Summary by service
-        service_query = f"""
-            SELECT
-                fs.code as service_code,
-                fs.name_es as service_name,
-                COUNT(*) as payment_count,
-                SUM(sp.total_amount) as total_amount
-            FROM service_payments sp
-            JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
-            WHERE {where_clause} {entity_filter}
-            GROUP BY fs.code, fs.name_es
-            ORDER BY total_amount DESC
-            LIMIT 20
-        """
+        # Parse CTE results by section
+        sections: Dict[str, list] = {}
+        for row in rows:
+            section_name = row["_section"]
+            data = row["data"]
+            if data is None:
+                sections[section_name] = []
+            elif isinstance(data, str):
+                import json as _json
+                sections[section_name] = _json.loads(data)
+            else:
+                sections[section_name] = list(data)
 
-        # Detailed transactions
-        detail_query = f"""
-            SELECT
-                sp.payment_reference,
-                sp.total_amount,
-                sp.currency,
-                sp.payment_method,
-                sp.paid_at AS completed_at,
-                sr.reference as request_reference,
-                fs.name_es as service_name,
-                u.full_name as user_name
-            FROM service_payments sp
-            JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
-            LEFT JOIN users u ON u.id = sr.user_id
-            WHERE {where_clause} {entity_filter}
-            ORDER BY sp.paid_at DESC
-            LIMIT 100
-        """
+        by_entity = sections.get("entity", [])
+        by_method = sections.get("method", [])
 
-        by_entity = await db.fetch(summary_query, *params)
-        by_method = await db.fetch(method_query, *params)
-        by_service = await db.fetch(service_query, *params)
-        details = await db.fetch(detail_query, *params)
-
-        # Calculate totals
-        total_amount = sum(float(row["total_amount"] or 0) for row in by_entity)
-        total_count = sum(row["payment_count"] for row in by_entity)
+        # Calculate totals from entity aggregation
+        total_amount = sum(float(e.get("total_amount", 0) or 0) for e in by_entity)
+        total_count = sum(int(e.get("payment_count", 0) or 0) for e in by_entity)
 
         return {
-            "by_entity": [dict(row) for row in by_entity],
-            "by_method": [dict(row) for row in by_method],
-            "by_service": [dict(row) for row in by_service],
-            "details": [dict(row) for row in details],
+            "by_entity": by_entity,
+            "by_method": by_method,
+            "by_service": sections.get("service", []),
+            "details": sections.get("detail", []),
+            "daily_breakdown": sections.get("daily", []),
             "total_amount": total_amount,
             "total_count": total_count,
         }
@@ -532,6 +594,8 @@ class TreasuryExportService:
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Fetch audit log data."""
+        # Note: pva.agent_id is integer, users.id is UUID — type mismatch.
+        # agent_id is currently always NULL so we skip the join.
         query = """
             SELECT
                 pva.payment_id::text,
@@ -541,10 +605,9 @@ class TreasuryExportService:
                 pva.to_status::text,
                 pva.comment,
                 pva.created_at,
-                u.full_name as agent_name
+                pva.agent_id::text as agent_id
             FROM payment_validation_audit pva
             JOIN service_payments sp ON sp.id = pva.payment_id
-            LEFT JOIN users u ON u.id = pva.agent_id
             WHERE pva.created_at >= $1::date
               AND pva.created_at < $2::date + INTERVAL '1 day'
             ORDER BY pva.created_at DESC
@@ -571,13 +634,12 @@ class TreasuryExportService:
                 sp.paid_at AS completed_at,
                 sr.reference as request_reference,
                 sr.workflow_code,
-                fs.name_es as service_name,
+                INITCAP(REPLACE(sr.workflow_code, '_', ' ')) as service_name,
                 u.full_name as user_name,
                 e.name as entity_name,
                 m.name_es as ministry_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             LEFT JOIN entities e ON e.code = sp.entity_code
             LEFT JOIN ministries m ON m.id = e.ministry_id
@@ -621,16 +683,15 @@ class TreasuryExportService:
                 sp.payment_method as methode_paiement,
                 sp.paid_at as date_execution,
                 u.full_name as nom_payeur,
-                u.phone as telephone_payeur,
+                u.phone_number as telephone_payeur,
                 sr.reference as reference_dossier,
-                fs.code as code_service,
-                fs.name_es as libelle_service,
+                sr.workflow_code as code_service,
+                INITCAP(REPLACE(sr.workflow_code, '_', ' ')) as libelle_service,
                 sp.entity_code as code_entite,
                 e.name as nom_entite,
                 m.ministry_code as code_ministere
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
             LEFT JOIN users u ON u.id = sr.user_id
             LEFT JOIN entities e ON e.code = sp.entity_code
             LEFT JOIN ministries m ON m.id = e.ministry_id
@@ -888,6 +949,8 @@ class TreasuryExportService:
         data: List[Dict[str, Any]],
         export_format: str,
         export_id: str,
+        period_start: date = None,
+        period_end: date = None,
     ) -> Dict[str, Any]:
         """Generate generic export."""
         total_amount = sum(float(r.get("total_amount", 0) or 0) for r in data)
@@ -897,7 +960,14 @@ class TreasuryExportService:
         else:
             columns = list(data[0].keys())
 
-        if export_format == "xlsx":
+        if export_format == "pdf":
+            return await self._write_generic_pdf(
+                data, export_id, columns, total_amount,
+                title="Exportación Personalizada",
+                period_start=period_start,
+                period_end=period_end,
+            )
+        elif export_format == "xlsx":
             return await self._write_xlsx(data, export_id, columns, total_amount)
         elif export_format == "json":
             return await self._write_json(data, export_id, total_amount)
@@ -905,6 +975,91 @@ class TreasuryExportService:
             return await self._write_csv(
                 data, export_id, [(c, c, lambda x: x) for c in columns], total_amount
             )
+
+    async def _write_generic_pdf(
+        self,
+        data: List[Dict[str, Any]],
+        export_id: str,
+        columns: List[str],
+        total_amount: float,
+        title: str = "Reporte",
+        period_start: date = None,
+        period_end: date = None,
+    ) -> Dict[str, Any]:
+        """Write generic PDF using Jinja2 template (landscape A4)."""
+        if not XHTML2PDF_AVAILABLE:
+            # Fallback to CSV if xhtml2pdf not available
+            return await self._write_csv(
+                data, export_id, [(c, c, lambda x: x) for c in columns], total_amount
+            )
+
+        def format_xaf(amount):
+            return f"{float(amount or 0):,.0f}"
+
+        # Column labels: clean up snake_case → Title Case
+        amount_keywords = {"amount", "total", "montant", "monto", "precio", "cost"}
+        col_defs = []
+        for col in columns:
+            label = col.replace("_", " ").title()
+            is_amount = any(kw in col.lower() for kw in amount_keywords)
+            col_defs.append({"key": col, "label": label, "is_amount": is_amount})
+
+        # Format row data
+        formatted_rows = []
+        for row in data:
+            formatted = {}
+            for col in columns:
+                val = row.get(col)
+                if val is None:
+                    formatted[col] = "-"
+                elif isinstance(val, (datetime, date)):
+                    formatted[col] = val.strftime("%d/%m/%Y %H:%M") if isinstance(val, datetime) else val.strftime("%d/%m/%Y")
+                elif isinstance(val, (Decimal, float, int)) and any(kw in col.lower() for kw in amount_keywords):
+                    formatted[col] = format_xaf(val)
+                else:
+                    formatted[col] = str(val)[:60]
+            formatted_rows.append(formatted)
+
+        p_start = period_start.strftime("%d/%m/%Y") if period_start else "-"
+        p_end = period_end.strftime("%d/%m/%Y") if period_end else "-"
+        now = datetime.now()
+
+        # Try Jinja2 template
+        html_content = None
+        if self.jinja_env:
+            try:
+                template = self.jinja_env.get_template("treasury_generic_report.html")
+                html_content = template.render(
+                    report_title=title,
+                    period_start=p_start,
+                    period_end=p_end,
+                    report_ref=f"{now.strftime('%Y%m%d-%H%M%S')}",
+                    generated_at=now.strftime("%d/%m/%Y %H:%M"),
+                    total_records=f"{len(data):,}",
+                    total_amount_formatted=format_xaf(total_amount),
+                    columns=col_defs,
+                    rows=formatted_rows,
+                    show_total=total_amount > 0,
+                )
+            except Exception as e:
+                logger.warning(f"Generic PDF template failed: {e}")
+
+        if not html_content:
+            # Minimal fallback
+            html_content = f"<html><body><h1>{title}</h1><p>{len(data)} registros, {format_xaf(total_amount)} XAF</p></body></html>"
+
+        file_path = self.EXPORT_DIR / f"{export_id}.pdf"
+        with open(file_path, "wb") as f:
+            pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=f)
+
+        file_size = file_path.stat().st_size
+        return {
+            "file_path": str(file_path),
+            "file_size": file_size,
+            "total_records": len(data),
+            "total_amount": float(total_amount),
+            "mime_type": "application/pdf",
+        }
 
     async def _write_csv(
         self,
@@ -1105,6 +1260,338 @@ class TreasuryExportService:
             "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }
 
+    # ── Chart Generation Utilities ───────────────────────────────────
+
+    def _chart_to_base64(self, drawing: "Drawing") -> str:
+        """Render a ReportLab Drawing to PNG and return base64 string."""
+        buf = io.BytesIO()
+        renderPM.drawToFile(drawing, buf, fmt="PNG", dpi=150)
+        return base64.b64encode(buf.getvalue()).decode()
+
+    def _get_chart_colors(self, n: int) -> list:
+        """Return list of n ReportLab color objects from the palette."""
+        palette = self.CHART_COLORS
+        result = []
+        for i in range(n):
+            hex_color = palette[i % len(palette)]
+            result.append(rl_colors.HexColor(hex_color))
+        return result
+
+    def _generate_bar_chart(
+        self,
+        labels: List[str],
+        values: List[float],
+        title: str = "",
+        width: int = 520,
+        height: int = 260,
+        value_suffix: str = "",
+    ) -> str:
+        """Generate vertical bar chart → base64 PNG."""
+        d = Drawing(width, height)
+        chart = VerticalBarChart()
+        chart.x = 60
+        chart.y = 40
+        chart.width = width - 100
+        chart.height = height - 80
+        chart.data = [values]
+        chart.categoryAxis.categoryNames = labels
+        chart.categoryAxis.labels.fontSize = 7
+        chart.categoryAxis.labels.angle = 30
+        chart.categoryAxis.labels.dy = -5
+        chart.valueAxis.labels.fontSize = 7
+        chart.valueAxis.valueMin = 0
+        chart.valueAxis.labelTextFormat = "%s"
+
+        bar_colors = self._get_chart_colors(len(values))
+        for i, c in enumerate(bar_colors):
+            chart.bars[0].fillColor = self._get_chart_colors(1)[0]
+            if i < len(values):
+                try:
+                    chart.bars[(0, i)].fillColor = c
+                except (IndexError, KeyError):
+                    pass
+
+        d.add(chart)
+
+        if title:
+            d.add(String(width / 2, height - 10, title,
+                         fontSize=10, fontName="Helvetica-Bold",
+                         fillColor=rl_colors.HexColor("#1a365d"),
+                         textAnchor="middle"))
+
+        return self._chart_to_base64(d)
+
+    def _generate_pie_chart(
+        self,
+        labels: List[str],
+        values: List[float],
+        title: str = "",
+        width: int = 420,
+        height: int = 260,
+    ) -> str:
+        """Generate pie chart with legend → base64 PNG."""
+        d = Drawing(width, height)
+        pie = Pie()
+        pie.x = 30
+        pie.y = 30
+        pie.width = 160
+        pie.height = 160
+        pie.data = values
+        pie.labels = None  # We use legend instead
+        pie.sideLabels = False
+
+        pie_colors = self._get_chart_colors(len(values))
+        for i, c in enumerate(pie_colors):
+            pie.slices[i].fillColor = c
+            pie.slices[i].strokeColor = rl_colors.white
+            pie.slices[i].strokeWidth = 1
+
+        d.add(pie)
+
+        # Legend on the right
+        legend = Legend()
+        legend.x = 220
+        legend.y = height - 60
+        legend.columnMaximum = 10
+        legend.fontSize = 8
+        legend.fontName = "Helvetica"
+        legend.dx = 8
+        legend.dy = 8
+        legend.dxTextSpace = 5
+        legend.deltay = 12
+        legend.alignment = "right"
+
+        total = sum(values) if values else 1
+        legend.colorNamePairs = [
+            (pie_colors[i], f"{labels[i]} ({values[i] / total * 100:.1f}%)")
+            for i in range(len(labels))
+        ]
+        d.add(legend)
+
+        if title:
+            d.add(String(width / 2, height - 10, title,
+                         fontSize=10, fontName="Helvetica-Bold",
+                         fillColor=rl_colors.HexColor("#1a365d"),
+                         textAnchor="middle"))
+
+        return self._chart_to_base64(d)
+
+    def _generate_horizontal_bar_chart(
+        self,
+        labels: List[str],
+        values: List[float],
+        title: str = "",
+        width: int = 520,
+        height: int = 300,
+    ) -> str:
+        """Generate horizontal bar chart → base64 PNG. Good for long labels."""
+        d = Drawing(width, height)
+        chart = HorizontalBarChart()
+        chart.x = 180
+        chart.y = 30
+        chart.width = width - 210
+        chart.height = height - 70
+        chart.data = [values[::-1]]  # Reverse so top = highest
+        chart.categoryAxis.categoryNames = labels[::-1]
+        chart.categoryAxis.labels.fontSize = 7
+        chart.categoryAxis.labels.dx = -5
+        chart.valueAxis.labels.fontSize = 7
+        chart.valueAxis.valueMin = 0
+
+        bar_colors = self._get_chart_colors(len(values))
+        chart.bars[0].fillColor = bar_colors[0]
+        for i in range(len(values)):
+            try:
+                chart.bars[(0, i)].fillColor = bar_colors[i % len(bar_colors)]
+            except (IndexError, KeyError):
+                pass
+
+        d.add(chart)
+
+        if title:
+            d.add(String(width / 2, height - 10, title,
+                         fontSize=10, fontName="Helvetica-Bold",
+                         fillColor=rl_colors.HexColor("#1a365d"),
+                         textAnchor="middle"))
+
+        return self._chart_to_base64(d)
+
+    def _generate_line_chart(
+        self,
+        x_labels: List[str],
+        data_series: List[List[float]],
+        series_names: List[str],
+        title: str = "",
+        width: int = 520,
+        height: int = 260,
+    ) -> str:
+        """Generate line chart (one or more series) → base64 PNG."""
+        d = Drawing(width, height)
+        chart = HorizontalLineChart()
+        chart.x = 60
+        chart.y = 40
+        chart.width = width - 100
+        chart.height = height - 90
+        chart.data = data_series
+        chart.categoryAxis.categoryNames = x_labels
+        chart.categoryAxis.labels.fontSize = 7
+        chart.categoryAxis.labels.angle = 30
+        chart.categoryAxis.labels.dy = -5
+        chart.valueAxis.labels.fontSize = 7
+        chart.valueAxis.valueMin = 0
+
+        line_colors = self._get_chart_colors(len(data_series))
+        for i, c in enumerate(line_colors):
+            chart.lines[i].strokeColor = c
+            chart.lines[i].strokeWidth = 2
+            chart.lines[i].symbol = None
+
+        d.add(chart)
+
+        # Legend
+        if len(data_series) > 1 or series_names:
+            legend = Legend()
+            legend.x = 70
+            legend.y = height - 10
+            legend.fontSize = 8
+            legend.columnMaximum = 1
+            legend.alignment = "right"
+            legend.dx = 8
+            legend.dy = 8
+            legend.dxTextSpace = 5
+            legend.colorNamePairs = [
+                (line_colors[i], series_names[i])
+                for i in range(len(series_names))
+            ]
+            d.add(legend)
+
+        if title:
+            d.add(String(width / 2, height - 10, title,
+                         fontSize=10, fontName="Helvetica-Bold",
+                         fillColor=rl_colors.HexColor("#1a365d"),
+                         textAnchor="middle"))
+
+        return self._chart_to_base64(d)
+
+    def _generate_ministry_charts(self, data: Dict[str, Any]) -> Dict[str, str]:
+        """Generate all charts for the ministry report. Returns dict of base64 PNGs."""
+        charts = {}
+
+        if not REPORTLAB_CHARTS_AVAILABLE:
+            return charts
+
+        try:
+            total_amount = float(data.get("total_amount", 0) or 0)
+
+            # Chart 1: Revenue by Entity (vertical bar)
+            by_entity = data.get("by_entity", [])
+            if by_entity:
+                entity_labels = [
+                    (e.get("entity_name", "N/A") or "N/A")[:20]
+                    for e in by_entity
+                ]
+                entity_values = [
+                    float(e.get("total_amount", 0) or 0) / 1000  # In thousands
+                    for e in by_entity
+                ]
+                charts["entity_bar"] = self._generate_bar_chart(
+                    entity_labels, entity_values,
+                    title="Recaudación por Entidad (miles XAF)",
+                )
+
+            # Chart 2: Payment Method Distribution (pie)
+            by_method = data.get("by_method", [])
+            if by_method:
+                method_labels_map = {
+                    "mobile_money": "Mobile Money",
+                    "card": "Tarjeta",
+                    "bank_transfer": "Transferencia",
+                    "cash": "Efectivo",
+                    "check": "Cheque",
+                    "bange_wallet": "BANGE Wallet",
+                }
+                method_labels = [
+                    method_labels_map.get(m.get("payment_method", ""), m.get("payment_method", "N/A"))
+                    for m in by_method
+                ]
+                method_values = [
+                    float(m.get("total_amount", 0) or 0)
+                    for m in by_method
+                ]
+                charts["method_pie"] = self._generate_pie_chart(
+                    method_labels, method_values,
+                    title="Distribución por Método de Pago",
+                )
+
+            # Chart 3: Top 10 Services (horizontal bar)
+            by_service = data.get("by_service", [])[:10]
+            if by_service:
+                svc_labels = [
+                    (s.get("service_name", "N/A") or "N/A")[:35]
+                    for s in by_service
+                ]
+                svc_values = [
+                    float(s.get("total_amount", 0) or 0) / 1000
+                    for s in by_service
+                ]
+                charts["service_hbar"] = self._generate_horizontal_bar_chart(
+                    svc_labels, svc_values,
+                    title="Top 10 Servicios por Recaudación (miles XAF)",
+                    height=280,
+                )
+
+            # Chart 4: Daily Revenue Trend (line)
+            daily = data.get("daily_breakdown", [])
+            if daily and len(daily) > 1:
+                day_labels = [
+                    d.get("date", "").strftime("%d/%m") if hasattr(d.get("date", ""), "strftime")
+                    else str(d.get("date", ""))[-5:]
+                    for d in daily
+                ]
+                day_amounts = [
+                    float(d.get("amount", 0) or 0) / 1000
+                    for d in daily
+                ]
+                day_counts = [
+                    float(d.get("count", 0) or 0)
+                    for d in daily
+                ]
+                charts["daily_line"] = self._generate_line_chart(
+                    day_labels,
+                    [day_amounts],
+                    ["Monto (miles XAF)"],
+                    title="Evolución Diaria de Recaudación",
+                )
+                # Also generate transaction count trend
+                charts["daily_count_line"] = self._generate_line_chart(
+                    day_labels,
+                    [day_counts],
+                    ["Nº Transacciones"],
+                    title="Evolución Diaria de Transacciones",
+                )
+
+            # Chart 5: Entity contribution pie (complementary to bar)
+            if by_entity and len(by_entity) > 1:
+                ent_pie_labels = [
+                    (e.get("entity_name", "N/A") or "N/A")[:25]
+                    for e in by_entity
+                ]
+                ent_pie_values = [
+                    float(e.get("total_amount", 0) or 0)
+                    for e in by_entity
+                ]
+                charts["entity_pie"] = self._generate_pie_chart(
+                    ent_pie_labels, ent_pie_values,
+                    title="Participación por Entidad (%)",
+                )
+
+        except Exception as e:
+            logger.warning(f"Chart generation failed (non-blocking): {e}")
+
+        return charts
+
+    # ── Ministry HTML Generation ──────────────────────────────────────
+
     def _generate_ministry_html(
         self,
         data: Dict[str, Any],
@@ -1164,6 +1651,18 @@ class TreasuryExportService:
                 "total_amount_formatted": format_xaf(service.get("total_amount", 0)),
             })
 
+        # Prepare daily breakdown
+        daily_breakdown = []
+        for day in data.get("daily_breakdown", []):
+            daily_breakdown.append({
+                "date": day.get("date").strftime("%d/%m/%Y") if hasattr(day.get("date", ""), "strftime") else str(day.get("date", "")),
+                "count_formatted": format_count(day.get("count", 0)),
+                "amount_formatted": format_xaf(day.get("amount", 0)),
+            })
+
+        # Generate charts (base64 PNG images)
+        charts = self._generate_ministry_charts(data)
+
         # Try Jinja2 template, fallback to inline
         if self.jinja_env:
             try:
@@ -1180,7 +1679,8 @@ class TreasuryExportService:
                     by_entity=by_entity,
                     by_method=by_method,
                     top_services=top_services,
-                    daily_breakdown=None,
+                    daily_breakdown=daily_breakdown if daily_breakdown else None,
+                    charts=charts,
                 )
             except Exception as e:
                 logger.warning(f"Jinja2 template rendering failed, using fallback: {e}")

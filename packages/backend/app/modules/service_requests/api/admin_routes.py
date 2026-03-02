@@ -7472,9 +7472,22 @@ async def generate_treasury_export(
             detail="period_end must be >= period_start"
         )
 
-    # Validate format for export type
-    if request.export_type.value == "ministry_report" and request.export_format.value not in ["pdf", "xlsx"]:
-        request.export_format = ExportFormat.PDF
+    # Validate format for export type — reject unsupported combinations
+    SUPPORTED_FORMATS = {
+        "sage_x3":         ["csv", "xlsx"],
+        "ministry_report": ["pdf", "xlsx", "csv"],
+        "bank_central":    ["xml", "xlsx"],
+        "audit_report":    ["xlsx", "csv"],
+        "reconciliation":  ["xlsx", "csv"],
+        "custom":          ["csv", "xlsx", "pdf", "json"],
+    }
+    allowed = SUPPORTED_FORMATS.get(request.export_type.value, ["csv", "xlsx"])
+    if request.export_format.value not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Format '{request.export_format.value}' not supported for type "
+                   f"'{request.export_type.value}'. Supported: {', '.join(allowed)}"
+        )
 
     # Generate filename using DB function
     file_name = await db.fetchval("""

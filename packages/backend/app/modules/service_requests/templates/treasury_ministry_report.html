@@ -7,11 +7,6 @@
         @page {
             size: A4;
             margin: 20mm 15mm 25mm 15mm;
-            @bottom-center {
-                content: "Página " counter(page) " de " counter(pages);
-                font-size: 8px;
-                color: #718096;
-            }
         }
 
         * {
@@ -69,7 +64,7 @@
             text-align: center;
             margin: 15px 0;
             padding: 10px;
-            background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+            background: #1a365d;
             color: white;
             border-radius: 4px;
         }
@@ -95,21 +90,28 @@
 
         /* ====== SUMMARY BOX ====== */
         .summary-section {
-            display: flex;
+            display: block;
             margin: 15px 0;
         }
 
+        .summary-row {
+            display: block;
+            width: 100%;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
         .summary-card {
-            flex: 1;
+            float: left;
+            width: 23%;
+            margin-right: 2%;
             background: #f7fafc;
             border: 1px solid #e2e8f0;
             border-radius: 4px;
             padding: 10px;
-            margin: 0 4px;
             text-align: center;
         }
 
-        .summary-card:first-child { margin-left: 0; }
         .summary-card:last-child { margin-right: 0; }
 
         .summary-card .label {
@@ -192,10 +194,6 @@
             background: #f7fafc;
         }
 
-        tbody tr:hover {
-            background: #edf2f7;
-        }
-
         td.amount {
             text-align: right;
             font-family: 'Courier New', monospace;
@@ -231,58 +229,31 @@
             min-width: 2px;
         }
 
-        .pct-text {
-            font-size: 8px;
-            color: #718096;
-            margin-left: 4px;
-        }
-
-        /* ====== FOOTER ====== */
-        .footer {
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 2px solid #1a365d;
-        }
-
-        .footer-content {
-            display: flex;
-            justify-content: space-between;
-            font-size: 8px;
-            color: #718096;
-        }
-
-        .confidential {
+        /* ====== CHART CONTAINERS ====== */
+        .chart-container {
             text-align: center;
+            margin: 10px 0 15px 0;
+            padding: 8px;
+            background: #fafafa;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .chart-caption {
             font-size: 7px;
-            color: #a0aec0;
-            margin-top: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .signature-block {
-            margin-top: 20px;
-            text-align: right;
-            padding-right: 40px;
-        }
-
-        .signature-block .title {
-            font-size: 9px;
-            font-weight: bold;
-            color: #1a365d;
-        }
-
-        .signature-block .line {
-            margin-top: 30px;
-            border-top: 1px solid #1a365d;
-            width: 200px;
-            display: inline-block;
-        }
-
-        .signature-block .name {
-            font-size: 8px;
-            color: #4a5568;
+            color: #718096;
             margin-top: 4px;
+            font-style: italic;
+        }
+
+        /* ====== PAGE BREAK ====== */
+        .page-break {
+            page-break-before: always;
         }
 
         /* ====== DETAIL TABLE ====== */
@@ -298,20 +269,47 @@
             padding: 3px 6px;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 1px 6px;
-            border-radius: 8px;
-            font-size: 7px;
-            font-weight: 600;
+        /* ====== FOOTER ====== */
+        .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 2px solid #1a365d;
+            text-align: center;
         }
 
-        .status-completed { background: #c6f6d5; color: #22543d; }
-        .status-pending { background: #fefcbf; color: #744210; }
-        .status-failed { background: #fed7d7; color: #742a2a; }
+        .footer-brand {
+            font-size: 9px;
+            color: #1a365d;
+            font-weight: bold;
+        }
+
+        .footer-tagline {
+            font-size: 7px;
+            color: #718096;
+            font-style: italic;
+            margin-top: 2px;
+        }
+
+        .confidential {
+            font-size: 7px;
+            color: #a0aec0;
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .generated-at {
+            font-size: 7px;
+            color: #a0aec0;
+            margin-top: 3px;
+        }
     </style>
 </head>
 <body>
+    <!-- ================================================================ -->
+    <!-- PAGE 1: COVER + EXECUTIVE SUMMARY                                -->
+    <!-- ================================================================ -->
+
     <!-- LETTERHEAD -->
     <div class="letterhead">
         <div class="country-name">República de Guinea Ecuatorial</div>
@@ -327,35 +325,45 @@
         <div class="report-ref">Ref: TRS-{{ report_ref }} | Generado: {{ generated_at }}</div>
     </div>
 
-    <!-- SUMMARY CARDS -->
+    <!-- EXECUTIVE SUMMARY CARDS -->
     <div class="summary-section">
-        <div class="summary-card">
-            <div class="label">Total Recaudado</div>
-            <div class="value amount">{{ total_amount_formatted }}</div>
-            <div class="subtext">XAF</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Transacciones</div>
-            <div class="value">{{ total_count }}</div>
-            <div class="subtext">operaciones procesadas</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Promedio por Transacción</div>
-            <div class="value amount">{{ avg_amount_formatted }}</div>
-            <div class="subtext">XAF</div>
-        </div>
-        <div class="summary-card">
-            <div class="label">Tasa de Éxito</div>
-            <div class="value">{{ success_rate }}%</div>
-            <div class="subtext">pagos completados</div>
+        <div class="summary-row">
+            <div class="summary-card">
+                <div class="label">Total Recaudado</div>
+                <div class="value amount">{{ total_amount_formatted }}</div>
+                <div class="subtext">XAF</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Transacciones</div>
+                <div class="value">{{ total_count }}</div>
+                <div class="subtext">operaciones procesadas</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Promedio / Transacción</div>
+                <div class="value amount">{{ avg_amount_formatted }}</div>
+                <div class="subtext">XAF</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Tasa de Éxito</div>
+                <div class="value">{{ success_rate }}%</div>
+                <div class="subtext">pagos completados</div>
+            </div>
         </div>
     </div>
 
-    <!-- SECTION 1: BY ENTITY -->
+    <!-- SECTION 1: ENTITY ANALYSIS -->
     <div class="section-header">
         <span class="section-number">1</span>
         Recaudación por Entidad
     </div>
+
+    {% if charts and charts.entity_bar %}
+    <div class="chart-container">
+        <img src="data:image/png;base64,{{ charts.entity_bar }}" alt="Gráfico de barras por entidad" />
+        <div class="chart-caption">Figura 1.1 — Recaudación por entidad en miles de XAF</div>
+    </div>
+    {% endif %}
+
     <table>
         <thead>
             <tr>
@@ -388,11 +396,24 @@
         </tbody>
     </table>
 
-    <!-- SECTION 2: BY PAYMENT METHOD -->
+    <!-- ================================================================ -->
+    <!-- PAGE 2: PAYMENT METHODS + ENTITY DISTRIBUTION                    -->
+    <!-- ================================================================ -->
+    <div class="page-break"></div>
+
+    <!-- SECTION 2: PAYMENT METHOD ANALYSIS -->
     <div class="section-header">
         <span class="section-number">2</span>
-        Recaudación por Método de Pago
+        Análisis por Método de Pago
     </div>
+
+    {% if charts and charts.method_pie %}
+    <div class="chart-container">
+        <img src="data:image/png;base64,{{ charts.method_pie }}" alt="Gráfico circular métodos de pago" />
+        <div class="chart-caption">Figura 2.1 — Distribución porcentual por método de pago</div>
+    </div>
+    {% endif %}
+
     <table>
         <thead>
             <tr>
@@ -419,11 +440,34 @@
         </tbody>
     </table>
 
-    <!-- SECTION 3: TOP SERVICES -->
+    {% if charts and charts.entity_pie %}
+    <div class="section-header">
+        <span class="section-number">2b</span>
+        Participación por Entidad
+    </div>
+    <div class="chart-container">
+        <img src="data:image/png;base64,{{ charts.entity_pie }}" alt="Gráfico circular por entidad" />
+        <div class="chart-caption">Figura 2.2 — Participación porcentual de cada entidad en la recaudación total</div>
+    </div>
+    {% endif %}
+
+    <!-- ================================================================ -->
+    <!-- PAGE 3: TOP SERVICES RANKING                                     -->
+    <!-- ================================================================ -->
+    <div class="page-break"></div>
+
     <div class="section-header">
         <span class="section-number">3</span>
         Top 20 Servicios por Recaudación
     </div>
+
+    {% if charts and charts.service_hbar %}
+    <div class="chart-container">
+        <img src="data:image/png;base64,{{ charts.service_hbar }}" alt="Gráfico de barras horizontales servicios" />
+        <div class="chart-caption">Figura 3.1 — Top 10 servicios por monto recaudado (miles XAF)</div>
+    </div>
+    {% endif %}
+
     <table class="detail-table">
         <thead>
             <tr>
@@ -445,12 +489,31 @@
         </tbody>
     </table>
 
-    <!-- SECTION 4: DAILY BREAKDOWN (if available) -->
+    <!-- ================================================================ -->
+    <!-- PAGE 4: DAILY TREND ANALYSIS (if data available)                 -->
+    <!-- ================================================================ -->
     {% if daily_breakdown %}
+    <div class="page-break"></div>
+
     <div class="section-header">
         <span class="section-number">4</span>
-        Desglose Diario
+        Evolución Diaria de la Recaudación
     </div>
+
+    {% if charts and charts.daily_line %}
+    <div class="chart-container">
+        <img src="data:image/png;base64,{{ charts.daily_line }}" alt="Gráfico de línea evolución diaria montos" />
+        <div class="chart-caption">Figura 4.1 — Evolución diaria de la recaudación en miles de XAF</div>
+    </div>
+    {% endif %}
+
+    {% if charts and charts.daily_count_line %}
+    <div class="chart-container">
+        <img src="data:image/png;base64,{{ charts.daily_count_line }}" alt="Gráfico de línea evolución diaria transacciones" />
+        <div class="chart-caption">Figura 4.2 — Evolución diaria del número de transacciones procesadas</div>
+    </div>
+    {% endif %}
+
     <table class="detail-table">
         <thead>
             <tr>
@@ -471,22 +534,14 @@
     </table>
     {% endif %}
 
-    <!-- SIGNATURE BLOCK -->
-    <div class="signature-block">
-        <div class="title">Director General de Impuestos</div>
-        <div class="line"></div>
-        <div class="name">Firma y Sello</div>
-    </div>
-
-    <!-- FOOTER -->
+    <!-- ================================================================ -->
+    <!-- FOOTER                                                           -->
+    <!-- ================================================================ -->
     <div class="footer">
-        <div class="footer-content">
-            <span>Facil - Sistema de Gestión Fiscal</span>
-            <span>Generado: {{ generated_at }}</span>
-        </div>
-        <div class="confidential">
-            Documento confidencial - Uso interno del Ministerio de Hacienda y Presupuestos
-        </div>
+        <div class="footer-brand">Facil</div>
+        <div class="footer-tagline">Simplificarte la vida</div>
+        <div class="confidential">Documento confidencial - Uso interno</div>
+        <div class="generated-at">Generado: {{ generated_at }}</div>
     </div>
 </body>
 </html>

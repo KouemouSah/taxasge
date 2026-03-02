@@ -86,8 +86,17 @@ const _formatIcons: Record<ExportFormat, typeof FileSpreadsheet> = {
 
 // Export types list for iteration
 const exportTypes: ExportType[] = ['sage_x3', 'ministry_report', 'bank_central', 'audit_report', 'reconciliation', 'custom'];
-const exportFormats: ExportFormat[] = ['csv', 'xlsx', 'pdf', 'xml', 'json'];
 const exportStatuses: ExportStatus[] = ['pending', 'processing', 'completed', 'failed'];
+
+// Supported formats per export type — only show formats that produce real output
+const SUPPORTED_FORMATS: Record<ExportType, { formats: ExportFormat[]; default: ExportFormat }> = {
+  sage_x3:         { formats: ['csv', 'xlsx'],        default: 'csv'  },
+  ministry_report: { formats: ['pdf', 'xlsx', 'csv'], default: 'pdf'  },
+  bank_central:    { formats: ['xml', 'xlsx'],        default: 'xml'  },
+  audit_report:    { formats: ['xlsx', 'csv'],        default: 'xlsx' },
+  reconciliation:  { formats: ['xlsx', 'csv'],        default: 'xlsx' },
+  custom:          { formats: ['csv', 'xlsx', 'pdf', 'json'],default: 'csv'  },
+};
 
 function StatusBadge({ status, label }: { status: ExportStatus; label: string }) {
   const config = statusStyles[status];
@@ -302,8 +311,15 @@ export default function TreasuryExportsPage() {
                   key={template.id}
                   className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/40"
                   onClick={() => {
-                    setExportType(template.exportType);
-                    setExportFormat(template.exportFormat);
+                    const type = template.exportType;
+                    const supported = SUPPORTED_FORMATS[type];
+                    setExportType(type);
+                    // Use template's format if supported, otherwise use default
+                    setExportFormat(
+                      supported.formats.includes(template.exportFormat)
+                        ? template.exportFormat
+                        : supported.default
+                    );
                     const now = new Date();
                     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
                     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -523,7 +539,15 @@ export default function TreasuryExportsPage() {
           <div className="space-y-4">
             <div>
               <Label>{t('exports.types.label')}</Label>
-              <Select value={exportType} onValueChange={(v) => setExportType(v as ExportType)}>
+              <Select value={exportType} onValueChange={(v) => {
+                const newType = v as ExportType;
+                setExportType(newType);
+                // Auto-select best format for this type
+                const supported = SUPPORTED_FORMATS[newType];
+                if (!supported.formats.includes(exportFormat)) {
+                  setExportFormat(supported.default);
+                }
+              }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -547,7 +571,7 @@ export default function TreasuryExportsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {exportFormats.map((format) => (
+                  {SUPPORTED_FORMATS[exportType].formats.map((format) => (
                     <SelectItem key={format} value={format}>
                       {t(`exports.formats.${format}`)}
                     </SelectItem>
