@@ -6551,6 +6551,7 @@
         "gatewayTypeNone": "Not integrated",
         "gatewayTypeBange": "BANGE Gateway",
         "gatewayTypeEcobank": "Ecobank Gateway",
+        "gatewayTypeMpgs": "Mastercard MPGS (Cards)",
         "isPrimary": "Primary Gateway",
         "isPrimaryDescription": "Primary processor for its supported methods",
         "supportedMethods": "Supported Methods",

@@ -146,7 +146,7 @@ async def generic_webhook_callback(
     Dispatches to the appropriate gateway based on bank_code path parameter.
     Each gateway handles its own signature validation and payload parsing.
 
-    Supported bank codes: BANGE, ECOBANK, BGFI, SGBGE, CCEIBANK (if configured).
+    Supported bank codes: BANGE, ECOBANK, ECOBANK_MPGS, BGFI, SGBGE, CCEIBANK (if configured).
 
     Security:
     - bank_code validated against registered gateways (no SQL injection)
@@ -202,9 +202,11 @@ async def generic_webhook_callback(
             detail=f"Invalid payload: {e}",
         )
 
-    # 5. Check idempotency
+    # 5. Check idempotency — use webhook_data.bank_code (not URL path param)
+    # This handles sub-processors like ECOBANK_MPGS whose webhook_data.bank_code = "ECOBANK"
+    effective_bank_code = webhook_data.bank_code
     existing = await repository.get_by_bank_reference(
-        db, bank_code_upper, webhook_data.bank_reference
+        db, effective_bank_code, webhook_data.bank_reference
     )
     if existing:
         logger.info(
@@ -218,7 +220,7 @@ async def generic_webhook_callback(
 
     # 6. Create bank transaction record
     bank_transaction = BankTransactionCreate(
-        bank_code=BankCode(bank_code_upper) if bank_code_upper in [e.value for e in BankCode] else BankCode.ECOBANK,
+        bank_code=BankCode(effective_bank_code) if effective_bank_code in [e.value for e in BankCode] else BankCode.ECOBANK,
         bank_reference=webhook_data.bank_reference,
         bank_transaction_date=webhook_data.transaction_date,
         amount=webhook_data.amount,

@@ -6791,6 +6791,7 @@
         "gatewayTypeNone": "Non integre",
         "gatewayTypeBange": "Passerelle BANGE",
         "gatewayTypeEcobank": "Passerelle Ecobank",
+        "gatewayTypeMpgs": "Mastercard MPGS (Cartes)",
         "isPrimary": "Passerelle Principale",
         "isPrimaryDescription": "Processeur principal pour ses methodes supportees",
         "supportedMethods": "Methodes Supportees",

@@ -279,6 +279,14 @@ class Settings(BaseSettings):
     ECOBANK_WEBHOOK_SECRET: Optional[str] = Field(default=None, env="ECOBANK_WEBHOOK_SECRET")
     # Comma-separated methods to force Ecobank as primary (e.g., "mobile_money,card")
     ECOBANK_PRIMARY_METHODS: Optional[str] = Field(default=None, env="ECOBANK_PRIMARY_METHODS")
+
+    # Mastercard Payment Gateway Services (MPGS) via Ecobank
+    MPGS_API_URL: Optional[str] = Field(default=None, env="MPGS_API_URL")
+    MPGS_MERCHANT_ID: Optional[str] = Field(default=None, env="MPGS_MERCHANT_ID")
+    MPGS_API_PASSWORD: Optional[str] = Field(default=None, env="MPGS_API_PASSWORD")
+    MPGS_API_VERSION: str = Field(default="85", env="MPGS_API_VERSION")
+    MPGS_WEBHOOK_SECRET: Optional[str] = Field(default=None, env="MPGS_WEBHOOK_SECRET")
+    MPGS_PRIMARY_METHODS: Optional[str] = Field(default="card", env="MPGS_PRIMARY_METHODS")
     
     # Email Service (MODULE_02)
     SMTP_HOST: Optional[str] = Field(default=None, env="SMTP_HOST")

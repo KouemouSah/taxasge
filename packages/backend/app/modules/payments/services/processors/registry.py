@@ -139,6 +139,49 @@ class PaymentProcessorRegistry:
                 except Exception as e:
                     logger.warning(f"Failed to register Ecobank gateway: {e}")
 
+            # MPGS (Mastercard): register if merchant ID is configured
+            mpgs_merchant_id = getattr(settings, "MPGS_MERCHANT_ID", None)
+            if mpgs_merchant_id:
+                try:
+                    from app.modules.payments.services.gateways.mastercard_gateway import (
+                        MastercardGateway,
+                    )
+                    from .gateway_processor import GatewayProcessor as GwProc
+
+                    mpgs_gateway = MastercardGateway()
+                    mpgs_processor = GwProc(mpgs_gateway)
+
+                    # Register with internal code for webhook dispatch
+                    self._gateways["ECOBANK_MPGS"] = mpgs_processor
+
+                    # Route configured methods to MPGS (default: card)
+                    mpgs_primary = getattr(
+                        settings, "MPGS_PRIMARY_METHODS", "card"
+                    )
+                    if mpgs_primary:
+                        for method_str in mpgs_primary.split(","):
+                            method_str = method_str.strip()
+                            try:
+                                method = PaymentMethod(method_str)
+                                self._processors[method] = mpgs_processor
+                                logger.info(
+                                    f"MPGS is PRIMARY for {method.value}"
+                                )
+                            except ValueError:
+                                logger.warning(
+                                    f"Invalid MPGS method: {method_str}"
+                                )
+
+                    logger.info(
+                        "MPGS (Mastercard) gateway registered successfully"
+                    )
+                except ImportError:
+                    logger.debug(
+                        "MastercardGateway not available, skipping"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to register MPGS gateway: {e}")
+
         except Exception as e:
             logger.warning(f"Error registering additional gateways: {e}")
 

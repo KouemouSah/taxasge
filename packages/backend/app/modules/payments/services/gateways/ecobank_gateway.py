@@ -92,6 +92,24 @@ class EcobankGateway(GatewayServiceBase):
         self._token_expires: Optional[datetime] = None
         self._token_lock = asyncio.Lock()
 
+        # Persistent HTTP client (connection pooling)
+        self._client: Optional[httpx.AsyncClient] = None
+
+    # =========================================================================
+    # HTTP CLIENT (persistent, connection-pooled)
+    # =========================================================================
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create persistent httpx client with connection pooling."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=self.timeout,
+                limits=httpx.Limits(
+                    max_connections=20, max_keepalive_connections=10
+                ),
+            )
+        return self._client
+
     # =========================================================================
     # TOKEN MANAGEMENT (OAuth2 client_credentials)
     # =========================================================================
@@ -155,46 +173,46 @@ class EcobankGateway(GatewayServiceBase):
 
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    response = await client.post(
-                        url,
-                        json={
-                            "userId": self.client_id,
-                            "password": self.client_secret,
-                        },
-                        headers={"Content-Type": "application/json"},
-                    )
+                client = await self._get_client()
+                response = await client.post(
+                    url,
+                    json={
+                        "userId": self.client_id,
+                        "password": self.client_secret,
+                    },
+                    headers={"Content-Type": "application/json"},
+                )
 
-                    if response.status_code == 200:
-                        data = response.json()
-                        token = data.get("token") or data.get("access_token")
-                        if not token:
-                            raise RuntimeError(
-                                f"[ECOBANK:{correlation_id}] "
-                                f"Token response missing 'token' field: "
-                                f"{list(data.keys())}"
-                            )
-                        return {
-                            "token": token,
-                            "expires_in": data.get(
-                                "expires_in", data.get("expiresIn", 3600)
-                            ),
-                        }
-
-                    if response.status_code in _RETRYABLE_STATUS_CODES:
-                        delay = _BASE_RETRY_DELAY * (2 ** (attempt - 1))
-                        logger.warning(
-                            f"[ECOBANK:{correlation_id}] Token request "
-                            f"failed ({response.status_code}), "
-                            f"retry {attempt}/{_MAX_RETRIES} in {delay}s"
+                if response.status_code == 200:
+                    data = response.json()
+                    token = data.get("token") or data.get("access_token")
+                    if not token:
+                        raise RuntimeError(
+                            f"[ECOBANK:{correlation_id}] "
+                            f"Token response missing 'token' field: "
+                            f"{list(data.keys())}"
                         )
-                        await asyncio.sleep(delay)
-                        continue
+                    return {
+                        "token": token,
+                        "expires_in": data.get(
+                            "expires_in", data.get("expiresIn", 3600)
+                        ),
+                    }
 
-                    raise RuntimeError(
-                        f"[ECOBANK:{correlation_id}] Token request failed: "
-                        f"{response.status_code} - {response.text[:200]}"
+                if response.status_code in _RETRYABLE_STATUS_CODES:
+                    delay = _BASE_RETRY_DELAY * (2 ** (attempt - 1))
+                    logger.warning(
+                        f"[ECOBANK:{correlation_id}] Token request "
+                        f"failed ({response.status_code}), "
+                        f"retry {attempt}/{_MAX_RETRIES} in {delay}s"
                     )
+                    await asyncio.sleep(delay)
+                    continue
+
+                raise RuntimeError(
+                    f"[ECOBANK:{correlation_id}] Token request failed: "
+                    f"{response.status_code} - {response.text[:200]}"
+                )
 
             except httpx.TimeoutException:
                 if attempt < _MAX_RETRIES:
@@ -576,52 +594,52 @@ class EcobankGateway(GatewayServiceBase):
 
         for attempt in range(1, _MAX_RETRIES + 1):
             try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    if method.upper() == "POST":
-                        response = await client.post(
-                            url, json=json_data, headers=headers
-                        )
-                    else:
-                        response = await client.get(url, headers=headers)
-
-                    if response.status_code in (200, 201):
-                        return response.json()
-
-                    # Token expired → refresh and retry
-                    if response.status_code == 401:
-                        logger.warning(
-                            f"[ECOBANK:{correlation_id}] 401 Unauthorized, "
-                            f"refreshing token (attempt {attempt})"
-                        )
-                        # Force token refresh
-                        self._token = None
-                        self._token_expires = None
-                        token = await self._get_token()
-                        headers["Authorization"] = f"Bearer {token}"
-                        continue
-
-                    # Retryable errors
-                    if response.status_code in _RETRYABLE_STATUS_CODES:
-                        delay = _BASE_RETRY_DELAY * (2 ** (attempt - 1))
-                        logger.warning(
-                            f"[ECOBANK:{correlation_id}] {method} {path} "
-                            f"failed ({response.status_code}), "
-                            f"retry {attempt}/{_MAX_RETRIES} in {delay}s"
-                        )
-                        await asyncio.sleep(delay)
-                        continue
-
-                    # Non-retryable error
-                    logger.error(
-                        f"[ECOBANK:{correlation_id}] {method} {path} "
-                        f"failed: {response.status_code} - "
-                        f"{response.text[:300]}"
+                client = await self._get_client()
+                if method.upper() == "POST":
+                    response = await client.post(
+                        url, json=json_data, headers=headers
                     )
-                    # Try to parse error response
-                    try:
-                        return response.json()
-                    except Exception:
-                        return None
+                else:
+                    response = await client.get(url, headers=headers)
+
+                if response.status_code in (200, 201):
+                    return response.json()
+
+                # Token expired → refresh and retry
+                if response.status_code == 401:
+                    logger.warning(
+                        f"[ECOBANK:{correlation_id}] 401 Unauthorized, "
+                        f"refreshing token (attempt {attempt})"
+                    )
+                    # Force token refresh
+                    self._token = None
+                    self._token_expires = None
+                    token = await self._get_token()
+                    headers["Authorization"] = f"Bearer {token}"
+                    continue
+
+                # Retryable errors
+                if response.status_code in _RETRYABLE_STATUS_CODES:
+                    delay = _BASE_RETRY_DELAY * (2 ** (attempt - 1))
+                    logger.warning(
+                        f"[ECOBANK:{correlation_id}] {method} {path} "
+                        f"failed ({response.status_code}), "
+                        f"retry {attempt}/{_MAX_RETRIES} in {delay}s"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                # Non-retryable error
+                logger.error(
+                    f"[ECOBANK:{correlation_id}] {method} {path} "
+                    f"failed: {response.status_code} - "
+                    f"{response.text[:300]}"
+                )
+                # Try to parse error response
+                try:
+                    return response.json()
+                except Exception:
+                    return None
 
             except httpx.TimeoutException:
                 if attempt < _MAX_RETRIES:

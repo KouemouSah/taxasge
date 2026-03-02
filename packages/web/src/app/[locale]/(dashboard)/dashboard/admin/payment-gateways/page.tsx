@@ -183,19 +183,34 @@ export default function PaymentGatewaysPage() {
         </Badge>
       );
     }
+    const isMpgs = config.gatewayType === 'ecobank_mpgs';
     if (config.isPrimary) {
       return (
-        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">
-          <Crown className="h-3 w-3 mr-1" />
-          {t('banksPage.gatewayStatus.primary')}
-        </Badge>
+        <div className="flex flex-wrap gap-1">
+          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">
+            <Crown className="h-3 w-3 mr-1" />
+            {t('banksPage.gatewayStatus.primary')}
+          </Badge>
+          {isMpgs && (
+            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">
+              MPGS
+            </Badge>
+          )}
+        </div>
       );
     }
     return (
-      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-        <Zap className="h-3 w-3 mr-1" />
-        {t('banksPage.gatewayStatus.fallback')}
-      </Badge>
+      <div className="flex flex-wrap gap-1">
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+          <Zap className="h-3 w-3 mr-1" />
+          {t('banksPage.gatewayStatus.fallback')}
+        </Badge>
+        {isMpgs && (
+          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">
+            MPGS
+          </Badge>
+        )}
+      </div>
     );
   };
 
@@ -403,6 +418,7 @@ export default function PaymentGatewaysPage() {
                   <SelectItem value="_none">{t('banksPage.form.gatewayTypeNone')}</SelectItem>
                   <SelectItem value="bange">{t('banksPage.form.gatewayTypeBange')}</SelectItem>
                   <SelectItem value="ecobank">{t('banksPage.form.gatewayTypeEcobank')}</SelectItem>
+                  <SelectItem value="ecobank_mpgs">{t('banksPage.form.gatewayTypeMpgs')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

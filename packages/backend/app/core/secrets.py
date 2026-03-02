@@ -156,6 +156,25 @@ def get_ecobank_webhook_secret() -> Optional[str]:
     return get_secret("ecobank-webhook-secret")
 
 
+# Mastercard MPGS secrets (via Ecobank)
+@lru_cache(maxsize=1)
+def get_mpgs_merchant_id() -> Optional[str]:
+    """Get MPGS merchant ID"""
+    return get_secret("mpgs-merchant-id")
+
+
+@lru_cache(maxsize=1)
+def get_mpgs_api_password() -> Optional[str]:
+    """Get MPGS API password"""
+    return get_secret("mpgs-api-password")
+
+
+@lru_cache(maxsize=1)
+def get_mpgs_webhook_secret() -> Optional[str]:
+    """Get MPGS webhook shared secret"""
+    return get_secret("mpgs-webhook-secret")
+
+
 # Validation helper
 def validate_secrets_available() -> dict:
     """
