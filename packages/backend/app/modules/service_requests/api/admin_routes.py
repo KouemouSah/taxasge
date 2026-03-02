@@ -6186,25 +6186,21 @@ async def get_workload_dashboard(
     lookback_start = datetime.utcnow() - timedelta(days=days)
 
     # 7 parallel queries — each acquires its own connection from the pool.
-    # All queries use payment_validation_audit directly with partial indexes.
-    # Q2 uses CTE pre-aggregation (no correlated subqueries).
-    # If migration 158 is applied, partial indexes accelerate all queries.
+    # Q1/Q5/Q7 use mv_agent_daily_workload (materialized view, refreshed every 15min)
+    # Q2 uses CTE pre-aggregation from MV (no correlated subqueries)
+    # Q3/Q4/Q6 query raw tables with partial indexes
 
     async def q_daily_velocity():
         async with db_manager.get_connection() as conn:
             rows = await conn.fetch("""
                 SELECT
-                    pva.created_at::date::text as date,
-                    u.full_name as agent_name,
-                    COUNT(*) FILTER (WHERE pva.action = 'approve') as approved,
-                    COUNT(*) FILTER (WHERE pva.action = 'reject') as rejected
-                FROM payment_validation_audit pva
-                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
-                JOIN users u ON u.id = ap.user_id
-                WHERE pva.action IN ('approve', 'reject')
-                  AND pva.created_at >= $1
-                GROUP BY pva.created_at::date, u.full_name
-                ORDER BY pva.created_at::date
+                    report_date::text as date,
+                    agent_name,
+                    approved,
+                    rejected
+                FROM mv_agent_daily_workload
+                WHERE report_date >= $1::date
+                ORDER BY report_date
             """, lookback_start)
             return [{"date": r["date"], "agent_name": r["agent_name"],
                      "approved": r["approved"], "rejected": r["rejected"]} for r in rows]
@@ -6214,17 +6210,16 @@ async def get_workload_dashboard(
             rows = await conn.fetch("""
                 WITH agent_period_stats AS (
                     SELECT
-                        pva.agent_profile_id,
-                        COUNT(*) as completed_period,
+                        agent_profile_id,
+                        SUM(total_actions) as completed_period,
                         COALESCE(
-                            AVG(pva.action_duration_seconds)
-                            FILTER (WHERE pva.action_duration_seconds IS NOT NULL) / 3600.0,
+                            SUM(avg_duration_seconds * total_actions)
+                            / NULLIF(SUM(total_actions), 0) / 3600.0,
                             0
                         ) as avg_hours
-                    FROM payment_validation_audit pva
-                    WHERE pva.action IN ('approve', 'reject')
-                      AND pva.created_at >= $1
-                    GROUP BY pva.agent_profile_id
+                    FROM mv_agent_daily_workload
+                    WHERE report_date >= $1::date
+                    GROUP BY agent_profile_id
                 )
                 SELECT
                     u.full_name as agent_name,
@@ -6330,20 +6325,18 @@ async def get_workload_dashboard(
         async with db_manager.get_connection() as conn:
             rows = await conn.fetch("""
                 SELECT
-                    u.full_name as agent_name,
-                    ROUND((MIN(pva.action_duration_seconds) / 3600.0)::numeric, 2) as min_hours,
-                    ROUND((AVG(pva.action_duration_seconds) / 3600.0)::numeric, 2) as avg_hours,
-                    ROUND((MAX(pva.action_duration_seconds) / 3600.0)::numeric, 2) as max_hours,
+                    agent_name,
+                    ROUND((MIN(min_duration_seconds) / 3600.0)::numeric, 2) as min_hours,
+                    ROUND((SUM(avg_duration_seconds * total_actions)
+                        / NULLIF(SUM(total_actions), 0) / 3600.0)::numeric, 2) as avg_hours,
+                    ROUND((MAX(max_duration_seconds) / 3600.0)::numeric, 2) as max_hours,
                     ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP
-                        (ORDER BY pva.action_duration_seconds) / 3600.0)::numeric, 2) as p50_hours,
-                    COUNT(*)::int as count
-                FROM payment_validation_audit pva
-                JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
-                JOIN users u ON u.id = ap.user_id
-                WHERE pva.action IN ('approve', 'reject')
-                  AND pva.created_at >= $1
-                  AND pva.action_duration_seconds IS NOT NULL
-                GROUP BY pva.agent_profile_id, u.full_name
+                        (ORDER BY COALESCE(p50_duration_seconds, 0)) / 3600.0)::numeric, 2) as p50_hours,
+                    SUM(total_actions)::int as count
+                FROM mv_agent_daily_workload
+                WHERE report_date >= $1::date
+                  AND avg_duration_seconds IS NOT NULL
+                GROUP BY agent_profile_id, agent_name
                 ORDER BY avg_hours
             """, lookback_start)
             return [{"agent_name": r["agent_name"], "min_hours": float(r["min_hours"] or 0),
@@ -6399,20 +6392,19 @@ async def get_workload_dashboard(
             rows = await conn.fetch("""
                 WITH agent_totals AS (
                     SELECT
-                        pva.agent_profile_id,
-                        u.full_name as agent_name,
-                        COUNT(*) FILTER (WHERE pva.action = 'approve') as validated,
-                        COUNT(*) FILTER (WHERE pva.action = 'reject') as rejected,
-                        COUNT(*) as total,
-                        COALESCE(AVG(pva.action_duration_seconds)
-                            FILTER (WHERE pva.action_duration_seconds IS NOT NULL), 0
+                        agent_profile_id,
+                        agent_name,
+                        SUM(approved) as validated,
+                        SUM(rejected) as rejected,
+                        SUM(total_actions) as total,
+                        COALESCE(
+                            SUM(avg_duration_seconds * total_actions)
+                            / NULLIF(SUM(total_actions), 0),
+                            0
                         ) as avg_seconds
-                    FROM payment_validation_audit pva
-                    JOIN agent_profiles ap ON ap.id = pva.agent_profile_id
-                    JOIN users u ON u.id = ap.user_id
-                    WHERE pva.action IN ('approve', 'reject')
-                      AND pva.created_at >= $1
-                    GROUP BY pva.agent_profile_id, u.full_name
+                    FROM mv_agent_daily_workload
+                    WHERE report_date >= $1::date
+                    GROUP BY agent_profile_id, agent_name
                 ),
                 max_validated AS (
                     SELECT GREATEST(MAX(total), 1) as max_cnt FROM agent_totals
