@@ -1209,7 +1209,7 @@ class ServiceRequestsApiClient {
         labelEs: m.label_es,
         labelEn: m.label_en,
         labelFr: m.label_fr,
-        processorType: m.processor_type as 'bange_api' | 'manual',
+        processorType: m.processor_type as 'gateway_api' | 'bange_api' | 'manual',
         requiresPhone: m.requires_phone,
         requiresRedirect: m.requires_redirect,
         requiresAgentValidation: m.requires_agent_validation,

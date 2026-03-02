@@ -99,7 +99,7 @@ interface PaymentMethodFormData {
   code: string;
   labelEs: string;
   // Note: Translations (FR/EN) are managed via entity_translations table
-  processorType: 'bange_api' | 'manual';
+  processorType: 'gateway_api' | 'bange_api' | 'manual';
   requiresPhone: boolean;
   requiresRedirect: boolean;
   requiresAgentValidation: boolean;
@@ -471,7 +471,7 @@ export default function PaymentMethodsPage() {
               <Label className="text-right">{t('paymentMethodsPage.form.processor')}</Label>
               <Select
                 value={formData.processorType}
-                onValueChange={(value: 'bange_api' | 'manual') =>
+                onValueChange={(value: 'gateway_api' | 'bange_api' | 'manual') =>
                   setFormData({ ...formData, processorType: value })
                 }
               >
@@ -479,6 +479,7 @@ export default function PaymentMethodsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="gateway_api">{t('paymentMethodsPage.form.processorGatewayApi')}</SelectItem>
                   <SelectItem value="bange_api">{t('paymentMethodsPage.form.processorBangeApi')}</SelectItem>
                   <SelectItem value="manual">{t('paymentMethodsPage.form.processorManual')}</SelectItem>
                 </SelectContent>

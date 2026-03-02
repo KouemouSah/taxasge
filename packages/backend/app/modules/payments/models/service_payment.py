@@ -153,8 +153,8 @@ class ServicePaymentResponse(BaseModel):
     status: PaymentStatus
     workflow_status: PaymentWorkflowStatus
 
-    # BANGE integration
-    bange_transaction_id: Optional[str] = None
+    # Gateway integration (BANGE, Ecobank, etc.)
+    gateway_transaction_id: Optional[str] = None
 
     # Agent workflow
     requires_agent_validation: bool = False

@@ -237,7 +237,6 @@ export default function TreasuryReconciliationPage() {
       mobile_money: 'Mobile Money',
       card: 'Tarjeta',
       bank_transfer: 'Transferencia',
-      bange_wallet: 'BANGE Wallet',
     };
     return labels[method] || method;
   };

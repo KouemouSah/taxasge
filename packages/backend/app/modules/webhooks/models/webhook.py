@@ -1,5 +1,5 @@
 """
-Webhook Models - BANGE Bank Integration
+Webhook Models - Multi-Gateway Bank Integration
 
 Tables: bank_configurations, bank_transactions
 Aligned with DATABASE_SCHEMA_REFERENCE.md
@@ -46,6 +46,9 @@ class BankConfigurationCreate(BankConfigurationBase):
     """Create bank configuration (admin only)"""
     api_key_encrypted: Optional[str] = Field(None, description="Clé API chiffrée")
     webhook_secret: Optional[str] = Field(None, description="Secret HMAC webhooks")
+    gateway_type: Optional[str] = Field(None, description="Type gateway: bange, ecobank, null")
+    supported_payment_methods: Optional[List[str]] = Field(default=[], description="Méthodes supportées")
+    is_primary: bool = Field(default=False, description="Gateway principal pour ses méthodes")
 
 
 class BankConfigurationUpdate(BaseModel):
@@ -59,11 +62,17 @@ class BankConfigurationUpdate(BaseModel):
     is_active: Optional[bool] = None
     supports_webhooks: Optional[bool] = None
     supports_direct_integration: Optional[bool] = None
+    gateway_type: Optional[str] = None
+    supported_payment_methods: Optional[List[str]] = None
+    is_primary: Optional[bool] = None
 
 
 class BankConfigurationResponse(BankConfigurationBase):
     """Bank configuration response (sans secrets)"""
     id: int
+    gateway_type: Optional[str] = None
+    supported_payment_methods: Optional[List[str]] = None
+    is_primary: bool = False
     created_at: datetime
     updated_at: datetime
 

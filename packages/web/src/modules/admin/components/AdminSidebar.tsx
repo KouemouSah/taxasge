@@ -53,6 +53,7 @@ import {
   LayoutList,
   Link2,
   Activity,
+  CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData } from '@/core/auth/storage'
@@ -298,6 +299,19 @@ export default function AdminSidebar() {
               title: t('nav.workflowMappings'),
               href: `/${locale}/dashboard/admin/menu-config`,
               icon: Link2,
+            },
+          ],
+        },
+        // Payment Infrastructure sub-category
+        {
+          id: 'paymentInfra',
+          title: t('nav.paymentInfrastructure'),
+          icon: CreditCard,
+          items: [
+            {
+              title: t('nav.paymentGateways'),
+              href: `/${locale}/dashboard/admin/payment-gateways`,
+              icon: Landmark,
             },
           ],
         },

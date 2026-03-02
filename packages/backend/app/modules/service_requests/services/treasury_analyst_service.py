@@ -310,10 +310,10 @@ async def _get_payment_trends(db, days: int = 30) -> Dict[str, Any]:
 async def _get_reconciliation_status(db) -> Dict[str, Any]:
     row = await db.fetchrow("""
         SELECT
-            (SELECT COUNT(*) FROM bank_transactions WHERE payment_id IS NULL) AS unreconciled,
-            (SELECT COUNT(*) FROM bank_transactions WHERE payment_id IS NOT NULL) AS reconciled,
-            (SELECT COALESCE(SUM(amount), 0) FROM bank_transactions WHERE payment_id IS NULL) AS unreconciled_amount,
-            (SELECT COALESCE(SUM(amount), 0) FROM bank_transactions WHERE payment_id IS NOT NULL) AS reconciled_amount
+            (SELECT COUNT(*) FROM bank_transactions WHERE service_payment_id IS NULL) AS unreconciled,
+            (SELECT COUNT(*) FROM bank_transactions WHERE service_payment_id IS NOT NULL) AS reconciled,
+            (SELECT COALESCE(SUM(amount), 0) FROM bank_transactions WHERE service_payment_id IS NULL) AS unreconciled_amount,
+            (SELECT COALESCE(SUM(amount), 0) FROM bank_transactions WHERE service_payment_id IS NOT NULL) AS reconciled_amount
     """)
     return {
         "unreconciled_count": row["unreconciled"],

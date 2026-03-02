@@ -88,7 +88,7 @@ CREATE TABLE service_payments (
     status payment_status_enum DEFAULT 'pending',
     workflow_status payment_workflow_status DEFAULT 'submitted',
     payment_reference VARCHAR(100) UNIQUE,
-    bange_transaction_id VARCHAR(100),
+    gateway_transaction_id VARCHAR(100),
     requires_agent_validation BOOLEAN DEFAULT true,
     -- Agent assignment (auto-assignment replaces manual locking)
     assigned_agent_id UUID REFERENCES agent_profiles(id),
@@ -152,7 +152,7 @@ CREATE TABLE bank_transactions (
 ```sql
 -- payment_method_enum
 CREATE TYPE payment_method_enum AS ENUM (
-    'bank_transfer', 'card', 'mobile_money', 'cash', 'check', 'bange_wallet'
+    'bank_transfer', 'card', 'mobile_money', 'cash', 'check'
 );
 
 -- payment_status_enum

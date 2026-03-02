@@ -242,7 +242,7 @@ class PaymentProcessorRegistry:
                 "processor_type": processor.processor_type.value,
                 "requires_phone": method == PaymentMethod.MOBILE_MONEY,
                 "requires_redirect": (
-                    processor.processor_type.value in ("bange_api", "gateway_api")
+                    processor.processor_type.value != "manual"
                 ),
                 "requires_agent_validation": (
                     processor.processor_type.value == "manual"
@@ -260,6 +260,29 @@ class PaymentProcessorRegistry:
             methods_info.append(info)
         return methods_info
 
+    def _get_fallback_processor(
+        self,
+        method: PaymentMethod,
+        failed_processor: PaymentProcessorBase,
+    ) -> Optional[PaymentProcessorBase]:
+        """
+        Find alternative gateway for the same method if primary fails.
+
+        Iterates registered gateways and returns the first one that
+        supports the given method and is not the failed processor.
+        """
+        for bank_code, gw_proc in self._gateways.items():
+            if gw_proc is failed_processor:
+                continue
+            # Check if this gateway supports the method
+            supported = gw_proc.get_supported_methods()
+            if method in supported or method.value in supported:
+                logger.info(
+                    f"Fallback gateway found: {bank_code} for {method.value}"
+                )
+                return gw_proc
+        return None
+
     async def initiate_payment(
         self,
         db: asyncpg.Connection,
@@ -267,6 +290,7 @@ class PaymentProcessorRegistry:
     ) -> PaymentInitResult:
         """
         Initiate a payment using the appropriate processor.
+        If the primary processor fails, attempts fallback to another gateway.
 
         Args:
             db: Database connection
@@ -301,7 +325,27 @@ class PaymentProcessorRegistry:
             f"for service_request {context.service_request_id}"
         )
 
-        return await processor.initiate(db, context)
+        result = await processor.initiate(db, context)
+
+        # Fallback: if primary gateway fails, try alternative
+        if not result.success and hasattr(processor, 'gateway'):
+            fallback = self._get_fallback_processor(
+                context.payment_method, processor
+            )
+            if fallback:
+                logger.warning(
+                    f"Primary gateway {processor.__class__.__name__} failed "
+                    f"({result.error}), trying fallback "
+                    f"{fallback.__class__.__name__}"
+                )
+                result = await fallback.initiate(db, context)
+                if result.success:
+                    logger.info(
+                        f"Fallback gateway succeeded for "
+                        f"{context.payment_method.value}"
+                    )
+
+        return result
 
     async def check_status(
         self,

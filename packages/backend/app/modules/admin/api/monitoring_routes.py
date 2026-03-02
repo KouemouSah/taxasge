@@ -417,6 +417,7 @@ class CronJobName(str, Enum):
 _ALLOWED_MATERIALIZED_VIEWS = frozenset({
     "mv_treasury_daily_kpis",
     "mv_reconciliation_stats",
+    "mv_agent_daily_workload",
 })
 
 

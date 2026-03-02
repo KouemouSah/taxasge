@@ -193,7 +193,7 @@ class TreasuryAnomalyService:
                 FROM service_payments sp1
                 JOIN service_requests sr1 ON sr1.id = sp1.service_request_id
                 WHERE sp1.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
-                  AND sp1.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'failed')
+                  AND sp1.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
             )
             SELECT *
             FROM potential_duplicates
@@ -489,7 +489,7 @@ class TreasuryAnomalyService:
                 JOIN service_requests sr ON sr.id = sp.service_request_id
                 JOIN users u ON u.id = sr.user_id
                 WHERE sp.created_at > NOW() - INTERVAL '24 hours'
-                  AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'failed')
+                  AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
                 GROUP BY sr.user_id, u.full_name, u.email
                 HAVING COUNT(*) >= {self.SUSPICIOUS_PAYMENT_COUNT}
             )
@@ -566,7 +566,7 @@ class TreasuryAnomalyService:
                 COUNT(*) as total_count
             FROM service_payments
             WHERE created_at > NOW() - INTERVAL '30 days'
-              AND workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'failed')
+              AND workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
               AND total_amount > 0
         """
 
@@ -609,7 +609,7 @@ class TreasuryAnomalyService:
             LEFT JOIN users u ON u.id = sr.user_id
             WHERE sp.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
               AND sp.total_amount >= $3
-              AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'failed')
+              AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
               AND NOT EXISTS (
                 SELECT 1 FROM payment_anomalies pa
                 WHERE pa.entity_id = sp.id
@@ -682,7 +682,7 @@ class TreasuryAnomalyService:
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
             WHERE sp.created_at > NOW() - INTERVAL '{self.DETECTION_LOOKBACK_DAYS} days'
-              AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'failed')
+              AND sp.workflow_status NOT IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
               AND (
                 sp.payment_reference IS NULL
                 OR sp.payment_reference = ''

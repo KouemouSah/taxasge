@@ -742,7 +742,7 @@ class BatchPersistService:
 
         Unlike the processor pattern (which creates its own service_payment),
         we've already created N correct payments in B6. This just triggers
-        the BANGE payment and links them via bange_transaction_id.
+        the BANGE payment and links them via gateway_transaction_id.
         """
         from app.modules.payments.services.bange_service import BANGEService
         from app.modules.payments.models.payment import BANGEPaymentRequest
@@ -808,15 +808,15 @@ class BatchPersistService:
                 "error": "Error al conectar con el sistema de pago. Intente nuevamente.",
             }
 
-        # Store bange_transaction_id on batch_requests (NOT on individual
-        # service_payments — bange_transaction_id has UNIQUE constraint on
+        # Store gateway_transaction_id on batch_requests (NOT on individual
+        # service_payments — gateway_transaction_id has UNIQUE constraint on
         # service_payments, can't share across N rows).
-        # Webhook handler should look up batch_requests.bange_transaction_id
+        # Webhook handler should look up batch_requests.gateway_transaction_id
         # for batch payments, then call fan_out_batch_completion().
         await batch_repository.update_batch(
             db=db,
             batch_id=batch_id,
-            bange_transaction_id=bange_response.payment_id,
+            gateway_transaction_id=bange_response.payment_id,
         )
 
         # Set expires_at on individual payments (no UNIQUE constraint issue)
@@ -999,7 +999,7 @@ class BatchPersistService:
 
         Called from:
         - BANGE webhook handler (when webhook detects batch_id in metadata
-          or finds batch_requests.bange_transaction_id match)
+          or finds batch_requests.gateway_transaction_id match)
         - Manual validate_payment (when agent validates a batch payment)
 
         This is the batch equivalent of _mark_payment_completed() in processors.

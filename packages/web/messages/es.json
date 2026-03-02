@@ -1983,7 +1983,9 @@
       "workflowMappings": "Mapeos de Workflow",
       "displayConfig": "Configuración de Columnas",
       "roleMenuConfig": "Menús por Rol",
-      "monitoring": "Centro de Operaciones"
+      "monitoring": "Centro de Operaciones",
+      "paymentInfrastructure": "Infraestructura de Pagos",
+      "paymentGateways": "Pasarelas de Pago"
     },
     "operations": {
       "title": "Centro de Operaciones",
@@ -6268,8 +6270,7 @@
       "check": "Cheque",
       "mobile_money": "Mobile Money",
       "bank_transfer": "Transferencia",
-      "card": "Tarjeta",
-      "bange_wallet": "BANGE Wallet"
+      "card": "Tarjeta"
     },
     "slaLabels": {
       "on_time": "En plazo",
@@ -6618,7 +6619,10 @@
         "webhooks": "Webhooks",
         "directIntegration": "Integracion Directa",
         "status": "Estado",
-        "actions": "Acciones"
+        "actions": "Acciones",
+        "gatewayType": "Pasarela",
+        "primary": "Principal",
+        "supportedMethods": "Metodos"
       },
       "dialog": {
         "editTitle": "Editar Banco",
@@ -6634,16 +6638,41 @@
         "treasuryAccount": "Cuenta de Tesoreria",
         "treasuryAccountPlaceholder": "Ej: GE12345678901234",
         "apiEndpoint": "URL de API (opcional)",
+        "apiKeyEncrypted": "Clave API (cifrada)",
+        "apiKeyPlaceholder": "Almacenada de forma segura",
+        "webhookSecret": "Secreto Webhook (HMAC)",
+        "webhookSecretPlaceholder": "Almacenado de forma segura",
         "bankActive": "Banco Activo",
         "bankActiveDescription": "Habilitar este banco para procesar pagos",
         "supportsWebhooks": "Soporta Webhooks",
         "supportsWebhooksDescription": "Puede recibir notificaciones de pago via webhook",
         "directIntegration": "Integracion Directa",
-        "directIntegrationDescription": "Puede iniciar pagos via API"
+        "directIntegrationDescription": "Puede iniciar pagos via API",
+        "gatewayType": "Tipo de Pasarela",
+        "gatewayTypePlaceholder": "Seleccionar tipo",
+        "gatewayTypeNone": "No integrado",
+        "gatewayTypeBange": "BANGE Gateway",
+        "gatewayTypeEcobank": "Ecobank Gateway",
+        "isPrimary": "Pasarela Principal",
+        "isPrimaryDescription": "Procesador principal para sus metodos soportados",
+        "supportedMethods": "Metodos Soportados",
+        "supportedMethodsDescription": "Metodos de pago que puede procesar esta pasarela"
+      },
+      "gatewayStatus": {
+        "connected": "Conectado",
+        "notIntegrated": "No integrado",
+        "primary": "Principal",
+        "fallback": "Fallback"
+      },
+      "readOnly": {
+        "title": "Estado de Pasarelas de Pago",
+        "description": "Vista del estado de conectividad de las pasarelas de pago",
+        "adminContact": "Para modificar la configuracion, contacte al administrador del sistema."
       }
     },
     "paymentMethodsPage": {
       "loadError": "Error al cargar metodos de pago",
+      "processorGatewayApi": "Gateway API",
       "processorBangeApi": "BANGE API",
       "processorManual": "Manual",
       "requiresAgent": "Requiere Agente",
@@ -6679,6 +6708,7 @@
         "name": "Nombre",
         "namePlaceholder": "Nuevo Metodo",
         "processor": "Procesador",
+        "processorGatewayApi": "Gateway API (Automatico)",
         "processorBangeApi": "BANGE API (Automatico)",
         "processorManual": "Manual (Agente)",
         "icon": "Icono",

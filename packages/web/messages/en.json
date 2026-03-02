@@ -1188,7 +1188,9 @@
       "workflowMappings": "Workflow Mappings",
       "displayConfig": "Column Configuration",
       "roleMenuConfig": "Role Menu Config",
-      "monitoring": "Operations Center"
+      "monitoring": "Operations Center",
+      "paymentInfrastructure": "Payment Infrastructure",
+      "paymentGateways": "Payment Gateways"
     },
     "operations": {
       "title": "Operations Center",
@@ -6166,8 +6168,7 @@
       "check": "Check",
       "mobile_money": "Mobile Money",
       "bank_transfer": "Bank Transfer",
-      "card": "Card",
-      "bange_wallet": "BANGE Wallet"
+      "card": "Card"
     },
     "slaLabels": {
       "on_time": "On Time",
@@ -6516,7 +6517,10 @@
         "webhooks": "Webhooks",
         "directIntegration": "Direct Integration",
         "status": "Status",
-        "actions": "Actions"
+        "actions": "Actions",
+        "gatewayType": "Gateway",
+        "primary": "Primary",
+        "supportedMethods": "Methods"
       },
       "dialog": {
         "editTitle": "Edit Bank",
@@ -6532,16 +6536,41 @@
         "treasuryAccount": "Treasury Account",
         "treasuryAccountPlaceholder": "E.g.: GE12345678901234",
         "apiEndpoint": "API URL (optional)",
+        "apiKeyEncrypted": "API Key (encrypted)",
+        "apiKeyPlaceholder": "Stored securely",
+        "webhookSecret": "Webhook Secret (HMAC)",
+        "webhookSecretPlaceholder": "Stored securely",
         "bankActive": "Bank Active",
         "bankActiveDescription": "Enable this bank to process payments",
         "supportsWebhooks": "Supports Webhooks",
         "supportsWebhooksDescription": "Can receive payment notifications via webhook",
         "directIntegration": "Direct Integration",
-        "directIntegrationDescription": "Can initiate payments via API"
+        "directIntegrationDescription": "Can initiate payments via API",
+        "gatewayType": "Gateway Type",
+        "gatewayTypePlaceholder": "Select type",
+        "gatewayTypeNone": "Not integrated",
+        "gatewayTypeBange": "BANGE Gateway",
+        "gatewayTypeEcobank": "Ecobank Gateway",
+        "isPrimary": "Primary Gateway",
+        "isPrimaryDescription": "Primary processor for its supported methods",
+        "supportedMethods": "Supported Methods",
+        "supportedMethodsDescription": "Payment methods this gateway can process"
+      },
+      "gatewayStatus": {
+        "connected": "Connected",
+        "notIntegrated": "Not integrated",
+        "primary": "Primary",
+        "fallback": "Fallback"
+      },
+      "readOnly": {
+        "title": "Payment Gateway Status",
+        "description": "Connectivity status view of payment gateways",
+        "adminContact": "To modify configuration, contact the system administrator."
       }
     },
     "paymentMethodsPage": {
       "loadError": "Error loading payment methods",
+      "processorGatewayApi": "Gateway API",
       "processorBangeApi": "BANGE API",
       "processorManual": "Manual",
       "requiresAgent": "Requires Agent",
@@ -6577,6 +6606,7 @@
         "name": "Name",
         "namePlaceholder": "New Method",
         "processor": "Processor",
+        "processorGatewayApi": "Gateway API (Automatic)",
         "processorBangeApi": "BANGE API (Automatic)",
         "processorManual": "Manual (Agent)",
         "icon": "Icon",

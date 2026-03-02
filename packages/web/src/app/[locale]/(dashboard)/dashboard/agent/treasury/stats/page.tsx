@@ -79,7 +79,6 @@ const METHOD_COLORS: Record<string, string> = {
   bank_transfer: '#8b5cf6',
   cash: '#f59e0b',
   check: '#f97316',
-  bange_wallet: '#ec4899',
 };
 
 // METHOD_LABELS removed - use t('methodLabels.KEY') instead

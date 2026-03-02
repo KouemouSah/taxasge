@@ -4486,7 +4486,7 @@ class PaymentMethodConfigCreate(BaseModel):
     """
     code: str = Field(..., pattern=r'^[a-z_]+$', max_length=50)
     label_es: str = Field(..., max_length=100)
-    processor_type: str = Field(default="manual", pattern="^(bange_api|manual)$")
+    processor_type: str = Field(default="manual", pattern="^(gateway_api|bange_api|manual)$")
     requires_phone: bool = False
     requires_redirect: bool = False
     requires_agent_validation: bool = False
@@ -4504,7 +4504,7 @@ class PaymentMethodConfigUpdate(BaseModel):
     Note: Translations (FR/EN) are managed via entity_translations table.
     """
     label_es: Optional[str] = Field(None, max_length=100)
-    processor_type: Optional[str] = Field(None, pattern="^(bange_api|manual)$")
+    processor_type: Optional[str] = Field(None, pattern="^(gateway_api|bange_api|manual)$")
     requires_phone: Optional[bool] = None
     requires_redirect: Optional[bool] = None
     requires_agent_validation: Optional[bool] = None

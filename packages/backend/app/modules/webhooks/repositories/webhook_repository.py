@@ -27,6 +27,7 @@ class WebhookRepository:
         "api_key_encrypted", "webhook_secret",
         "treasury_account_number", "is_active",
         "supports_webhooks", "supports_direct_integration",
+        "gateway_type", "supported_payment_methods", "is_primary",
     })
 
     # ========== BANK CONFIGURATIONS ==========
@@ -35,14 +36,16 @@ class WebhookRepository:
         self, conn: asyncpg.Connection, config: BankConfigurationCreate
     ) -> Dict[str, Any]:
         """Create bank configuration (admin only)"""
+        import json
         query = """
             INSERT INTO bank_configurations (
                 bank_code, bank_name, api_endpoint, api_version,
                 api_key_encrypted, webhook_secret, treasury_account_number,
                 is_active, supports_webhooks, supports_direct_integration,
+                gateway_type, supported_payment_methods, is_primary,
                 created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, NOW(), NOW())
             RETURNING *
         """
         result = await conn.fetchrow(
@@ -57,6 +60,9 @@ class WebhookRepository:
             config.is_active,
             config.supports_webhooks,
             config.supports_direct_integration,
+            config.gateway_type,
+            json.dumps(config.supported_payment_methods or []),
+            config.is_primary,
         )
         return dict(result)
 
@@ -85,6 +91,7 @@ class WebhookRepository:
         self, conn: asyncpg.Connection, config_id: int, update_data: BankConfigurationUpdate
     ) -> Optional[Dict[str, Any]]:
         """Update bank configuration"""
+        import json
         updates = []
         params = [config_id]
         param_idx = 2
@@ -94,8 +101,13 @@ class WebhookRepository:
                 if field not in self.ALLOWED_CONFIG_UPDATE_FIELDS:
                     logger.warning(f"Rejected unknown field in bank config update: {field}")
                     continue
-                updates.append(f"{field} = ${param_idx}")
-                params.append(value)
+                # JSONB fields need json.dumps + cast
+                if field == "supported_payment_methods":
+                    updates.append(f"{field} = ${param_idx}::jsonb")
+                    params.append(json.dumps(value))
+                else:
+                    updates.append(f"{field} = ${param_idx}")
+                    params.append(value)
                 param_idx += 1
 
         if not updates:

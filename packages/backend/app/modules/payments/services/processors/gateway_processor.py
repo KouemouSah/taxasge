@@ -259,9 +259,9 @@ class GatewayProcessor(PaymentProcessorBase):
                 )
 
             # 3. If still processing, verify with gateway API
-            bange_transaction_id = payment.get("bange_transaction_id")
-            if bange_transaction_id:
-                gw_status = await self.gateway.verify_payment(bange_transaction_id)
+            gateway_transaction_id = payment.get("gateway_transaction_id")
+            if gateway_transaction_id:
+                gw_status = await self.gateway.verify_payment(gateway_transaction_id)
 
                 if gw_status.paid:
                     paid_at = gw_status.paid_at or datetime.utcnow()
@@ -324,7 +324,7 @@ class GatewayProcessor(PaymentProcessorBase):
                                 "payment_method", "mobile_money"
                             ),
                             "receipt_number": payment.get("receipt_number"),
-                            "gateway_transaction_id": bange_transaction_id,
+                            "gateway_transaction_id": gateway_transaction_id,
                             "bank_code": self.gateway.bank_code,
                             "user_email": (
                                 user_data["email"] if user_data else None
@@ -387,7 +387,7 @@ class GatewayProcessor(PaymentProcessorBase):
                 return False
 
             # Cancel with gateway if we have an external ID
-            external_id = payment.get("bange_transaction_id")
+            external_id = payment.get("gateway_transaction_id")
             if external_id:
                 await self.gateway.cancel_payment(external_id, reason or "")
 
@@ -471,7 +471,7 @@ class GatewayProcessor(PaymentProcessorBase):
         """Update payment with gateway external transaction ID."""
         query = """
             UPDATE service_payments
-            SET bange_transaction_id = $2,
+            SET gateway_transaction_id = $2,
                 expires_at = $3,
                 updated_at = NOW()
             WHERE id = $1

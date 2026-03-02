@@ -143,7 +143,7 @@ class BatchRepository:
             "notes", "entity_code", "shared_documents",
             "per_item_amount", "total_amount", "total_items",
             "items_ready", "items_submitted", "items_completed",
-            "submitted_at", "completed_at", "bange_transaction_id",
+            "submitted_at", "completed_at", "gateway_transaction_id",
         }
         sets = []
         params: List[Any] = [batch_id]

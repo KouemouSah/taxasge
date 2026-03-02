@@ -39,8 +39,7 @@ export type PaymentMethod =
   | 'card'
   | 'bank_transfer'
   | 'cash'
-  | 'check'
-  | 'bange_wallet';
+  | 'check';
 
 export type BankCode =
   | 'BANGE'
@@ -362,6 +361,9 @@ export interface BankConfiguration {
   supportsWebhooks: boolean;
   supportsDirectIntegration: boolean;
   requiresManualValidation: boolean;
+  gatewayType?: string | null;
+  supportedPaymentMethods?: string[];
+  isPrimary?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -377,6 +379,9 @@ export interface BankConfigurationCreate {
   isActive?: boolean;
   supportsWebhooks?: boolean;
   supportsDirectIntegration?: boolean;
+  gatewayType?: string | null;
+  supportedPaymentMethods?: string[];
+  isPrimary?: boolean;
 }
 
 export interface BankConfigurationUpdate {
@@ -389,6 +394,9 @@ export interface BankConfigurationUpdate {
   isActive?: boolean;
   supportsWebhooks?: boolean;
   supportsDirectIntegration?: boolean;
+  gatewayType?: string | null;
+  supportedPaymentMethods?: string[];
+  isPrimary?: boolean;
 }
 
 // =============================================================================
@@ -407,7 +415,7 @@ export interface TreasuryStats {
 // PAYMENT METHOD CONFIGURATIONS (from payment_method_configurations table)
 // =============================================================================
 
-export type ProcessorType = 'bange_api' | 'manual';
+export type ProcessorType = 'gateway_api' | 'bange_api' | 'manual';
 
 export interface PaymentMethodConfig {
   id: number;

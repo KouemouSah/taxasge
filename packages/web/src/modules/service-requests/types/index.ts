@@ -699,7 +699,7 @@ export interface PaymentMethodInfo {
   labelEs: string
   labelEn: string
   labelFr: string
-  processorType: 'bange_api' | 'manual'
+  processorType: 'gateway_api' | 'bange_api' | 'manual'
   requiresPhone: boolean
   requiresRedirect: boolean
   requiresAgentValidation: boolean

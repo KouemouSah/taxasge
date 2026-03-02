@@ -431,6 +431,9 @@ export const treasuryApi = {
         is_active: config.isActive ?? true,
         supports_webhooks: config.supportsWebhooks ?? false,
         supports_direct_integration: config.supportsDirectIntegration ?? false,
+        gateway_type: config.gatewayType || null,
+        supported_payment_methods: config.supportedPaymentMethods || [],
+        is_primary: config.isPrimary ?? false,
       }
     );
     return transformBankConfig(response);
@@ -454,6 +457,9 @@ export const treasuryApi = {
     if (update.isActive !== undefined) payload.is_active = update.isActive;
     if (update.supportsWebhooks !== undefined) payload.supports_webhooks = update.supportsWebhooks;
     if (update.supportsDirectIntegration !== undefined) payload.supports_direct_integration = update.supportsDirectIntegration;
+    if (update.gatewayType !== undefined) payload.gateway_type = update.gatewayType || null;
+    if (update.supportedPaymentMethods !== undefined) payload.supported_payment_methods = update.supportedPaymentMethods;
+    if (update.isPrimary !== undefined) payload.is_primary = update.isPrimary;
 
     const response = await fetchClient.put<Record<string, unknown>>(
       `${WEBHOOKS_BASE}/bank-configurations/${configId}`,

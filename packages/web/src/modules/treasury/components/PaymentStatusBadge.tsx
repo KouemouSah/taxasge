@@ -98,7 +98,6 @@ const methodColorConfig: Record<string, { color: string }> = {
   mobile_money: { color: 'bg-purple-100 text-purple-800 border-purple-200' },
   bank_transfer: { color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
   card: { color: 'bg-orange-100 text-orange-800 border-orange-200' },
-  bange_wallet: { color: 'bg-teal-100 text-teal-800 border-teal-200' },
 };
 
 export function PaymentMethodBadge({ method, className }: PaymentMethodBadgeProps) {

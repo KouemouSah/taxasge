@@ -154,10 +154,10 @@ class BangeProcessor(PaymentProcessorBase):
                 )
 
             # 6. Update record with BANGE transaction ID
-            await self._update_bange_reference(
+            await self._update_gateway_reference(
                 db=db,
                 payment_id=payment_id,
-                bange_transaction_id=bange_response.payment_id,
+                gateway_transaction_id=bange_response.payment_id,
                 expires_at=bange_response.expires_at
             )
 
@@ -234,9 +234,9 @@ class BangeProcessor(PaymentProcessorBase):
                 )
 
             # 3. If still processing, verify with BANGE
-            bange_transaction_id = payment.get("bange_transaction_id")
-            if bange_transaction_id:
-                bange_status = await self.bange_service.verify_payment(bange_transaction_id)
+            gateway_transaction_id = payment.get("gateway_transaction_id")
+            if gateway_transaction_id:
+                bange_status = await self.bange_service.verify_payment(gateway_transaction_id)
 
                 if bange_status and bange_status.get("status") == "completed":
                     paid_at = datetime.utcnow()
@@ -269,7 +269,7 @@ class BangeProcessor(PaymentProcessorBase):
                                     entity_code=sr_data["entity_code"],
                                     entity_location_id=sr_data["entity_location_id"],
                                     payment_id=payment_id,
-                                    payment_method=payment.get("payment_method", "bange_wallet"),
+                                    payment_method=payment.get("payment_method", "mobile_money"),
                                 )
                                 logger.info(f"Outbox item created for BANGE payment {payment_id}")
 
@@ -291,9 +291,9 @@ class BangeProcessor(PaymentProcessorBase):
                             "service_request_id": str(sr_id) if sr_id else None,
                             "amount": float(payment.get("total_amount", 0)),
                             "currency": payment.get("currency", "XAF"),
-                            "payment_method": payment.get("payment_method", "bange_wallet"),
+                            "payment_method": payment.get("payment_method", "mobile_money"),
                             "receipt_number": payment.get("receipt_number"),
-                            "bange_transaction_id": bange_transaction_id,
+                            "gateway_transaction_id": gateway_transaction_id,
                             "user_email": user_data["email"] if user_data else None,
                             "user_phone": user_data["phone"] if user_data else None,
                             "preferred_language": user_data["preferred_language"] if user_data else "es",
@@ -356,7 +356,7 @@ class BangeProcessor(PaymentProcessorBase):
                 return False
 
             # Cancel with BANGE if we have a transaction ID
-            bange_id = payment.get("bange_transaction_id")
+            bange_id = payment.get("gateway_transaction_id")
             if bange_id:
                 # BANGE cancellation would go here
                 pass
@@ -433,22 +433,22 @@ class BangeProcessor(PaymentProcessorBase):
             calculation_details,
         )
 
-    async def _update_bange_reference(
+    async def _update_gateway_reference(
         self,
         db: asyncpg.Connection,
         payment_id: str,
-        bange_transaction_id: str,
+        gateway_transaction_id: str,
         expires_at: Optional[datetime] = None
     ) -> None:
-        """Update payment with BANGE transaction ID."""
+        """Update payment with gateway transaction ID."""
         query = """
             UPDATE service_payments
-            SET bange_transaction_id = $2,
+            SET gateway_transaction_id = $2,
                 expires_at = $3,
                 updated_at = NOW()
             WHERE id = $1
         """
-        await db.execute(query, payment_id, bange_transaction_id, expires_at)
+        await db.execute(query, payment_id, gateway_transaction_id, expires_at)
 
     async def _update_payment_status(
         self,

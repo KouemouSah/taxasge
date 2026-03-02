@@ -330,10 +330,10 @@ async def confirm_appointment_for_payment(db, payment_id: str):
 
 
 
-async def reconcile_service_payment(db, merchant_reference: str, bange_transaction_id: str) -> bool:
+async def reconcile_service_payment(db, merchant_reference: str, gateway_transaction_id: str) -> bool:
     """
     Reconcile a service_payment based on merchant_reference (our payment_reference).
-    Called by BANGE webhook to mark payments as completed.
+    Called by bank webhook to mark payments as completed.
 
     Flow:
     1. Find pending payment by reference
@@ -360,14 +360,13 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
 
         if not payment:
             # Fallback: check if this is a batch payment
-            # Try matching by BANGE's transaction ID first, then by our merchant reference
             batch = await db.fetchrow(
                 """
                 SELECT id FROM batch_requests
-                WHERE (bange_transaction_id = $1 OR bange_transaction_id = $2)
+                WHERE (gateway_transaction_id = $1 OR gateway_transaction_id = $2)
                 AND status = 'PAYMENT_PENDING'
                 """,
-                bange_transaction_id,
+                gateway_transaction_id,
                 merchant_reference,
             )
             if batch:
@@ -381,7 +380,7 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
                 )
                 logger.info(
                     f"Batch payment reconciled: batch={batch['id']}, "
-                    f"bange_txn={bange_transaction_id}"
+                    f"gateway_txn={gateway_transaction_id}"
                 )
                 return True
             logger.debug(f"No pending service_payment found with reference {merchant_reference}")
@@ -415,12 +414,12 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
             SET status = 'completed',
                 workflow_status = 'completed',
                 paid_at = $2,
-                bange_transaction_id = $3,
+                gateway_transaction_id = $3,
                 updated_at = NOW()
             WHERE id = $1
             RETURNING *
         """
-        updated = await db.fetchrow(update_query, payment_id, paid_at, bange_transaction_id)
+        updated = await db.fetchrow(update_query, payment_id, paid_at, gateway_transaction_id)
 
         # 5. Generate and store receipt PDF
         receipt_number = None
@@ -505,7 +504,7 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
                 "payment_method": payment["payment_method"],
                 "receipt_number": receipt_number,
                 "receipt_url": receipt_url,
-                "bange_transaction_id": bange_transaction_id,
+                "gateway_transaction_id": gateway_transaction_id,
                 "user_email": user_data["email"] if user_data else None,
                 "user_phone": user_data["phone"] if user_data else None,
                 "preferred_language": user_data.get("preferred_language", "es") if user_data else "es",
@@ -515,7 +514,7 @@ async def reconcile_service_payment(db, merchant_reference: str, bange_transacti
         except Exception as e:
             logger.error(f"Failed to publish PAYMENT_COMPLETED event for BANGE payment: {e}")
 
-        logger.info(f"Service payment {payment_id} reconciled with BANGE transaction {bange_transaction_id}")
+        logger.info(f"Service payment {payment_id} reconciled with gateway transaction {gateway_transaction_id}")
         return True
 
     except Exception as e:
@@ -668,8 +667,9 @@ async def list_bank_configurations(
     active_only: bool = Query(True, description="Show only active banks"),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _: None = Depends(permission_required("webhook.view")),
 ):
-    """List bank configurations"""
+    """List bank configurations (requires webhook.view permission)"""
     configs = await repository.list_bank_configs(db, active_only)
     return [BankConfigurationResponse(**c) for c in configs]
 

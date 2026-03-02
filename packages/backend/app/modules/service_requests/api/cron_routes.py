@@ -588,7 +588,7 @@ async def treasury_refresh_views(
     refreshed = []
     errors = []
 
-    views = ["mv_treasury_daily_kpis", "mv_reconciliation_stats"]
+    views = ["mv_treasury_daily_kpis", "mv_reconciliation_stats", "mv_agent_daily_workload"]
 
     # Override statement_timeout: REFRESH can exceed 60s at 1M+ rows
     await db.execute("SET LOCAL statement_timeout = '300000'")
