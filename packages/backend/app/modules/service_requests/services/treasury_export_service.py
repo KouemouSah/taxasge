@@ -139,39 +139,36 @@ class TreasuryExportService:
 
     async def _upload_to_firebase(
         self,
-        local_path: Path,
+        content: bytes,
+        filename: str,
         export_id: str,
         mime_type: str,
         admin_user_id: str,
-    ) -> str:
+    ) -> Optional[str]:
         """
-        Upload export file to Firebase Storage.
+        Upload export content to Firebase Storage.
 
         Args:
-            local_path: Path to local file
+            content: File bytes
+            filename: Original filename (e.g. "RPT_MIN_...pdf")
             export_id: Export ID for naming
             mime_type: File MIME type
             admin_user_id: User who requested the export
 
         Returns:
-            Firebase Storage path (e.g., "treasury-exports/2026/01/export_id.csv")
+            Firebase Storage path (e.g., "treasury-exports/2026/01/...") or None on failure
         """
         if not FIREBASE_AVAILABLE:
-            logger.warning("Firebase not available, keeping local path")
-            return str(local_path)
+            logger.warning("Firebase not available, export will regenerate on download")
+            return None
 
         try:
             # Initialize Firebase if needed
             if not firebase_storage_service._initialized:
                 await firebase_storage_service.initialize()
 
-            # Read file content
-            with open(local_path, "rb") as f:
-                content = f.read()
-
             # Generate storage path with date organization
             now = datetime.now()
-            filename = local_path.name
             storage_path = f"treasury-exports/{now.year}/{now.month:02d}/{filename}"
 
             # Create blob and upload
@@ -190,18 +187,11 @@ class TreasuryExportService:
             blob.upload_from_string(content, content_type=mime_type, timeout=300)
 
             logger.info(f"Export uploaded to Firebase: {storage_path}")
-
-            # Clean up local file
-            try:
-                local_path.unlink()
-            except Exception as e:
-                logger.warning(f"Could not delete local file: {e}")
-
             return storage_path
 
         except Exception as e:
-            logger.error(f"Firebase upload failed, keeping local: {e}")
-            return str(local_path)
+            logger.error(f"Firebase upload failed, export will regenerate on download: {e}")
+            return None
 
     async def get_download_url(
         self,
@@ -309,23 +299,23 @@ class TreasuryExportService:
                 WHERE id = $1::uuid
             """, export_id)
 
-            # Calculate file checksum
-            file_path = Path(result["file_path"])
-            if file_path.exists():
-                with open(file_path, "rb") as f:
-                    checksum = hashlib.sha256(f.read()).hexdigest()
-                result["file_checksum"] = checksum
+            # result["file_content"] is bytes from in-memory generation
+            file_content: bytes = result["file_content"]
+            file_name = result.get("file_name", f"{export_id}.{export_format}")
 
-            # Upload to Firebase Storage
+            # Calculate checksum from in-memory content
+            checksum = hashlib.sha256(file_content).hexdigest()
+
+            # Try Firebase upload (optional cache for repeat downloads)
             firebase_path = await self._upload_to_firebase(
-                local_path=file_path,
+                content=file_content,
+                filename=file_name,
                 export_id=export_id,
                 mime_type=result.get("mime_type", "application/octet-stream"),
                 admin_user_id=requested_by,
             )
-            result["file_path"] = firebase_path
 
-            # Update export record with results
+            # Update export record with results (file_path = Firebase path or NULL)
             await db.execute("""
                 UPDATE treasury_exports
                 SET status = 'completed'::export_status_enum,
@@ -338,8 +328,8 @@ class TreasuryExportService:
                     total_amount = $6,
                     file_mime_type = $7
                 WHERE id = $1::uuid
-            """, export_id, result["file_path"], result["file_size"],
-                result.get("file_checksum"), result["total_records"],
+            """, export_id, firebase_path, result["file_size"],
+                checksum, result["total_records"],
                 result["total_amount"], result.get("mime_type"))
 
             logger.info(f"Export {export_id} completed: {result['total_records']} records")
@@ -744,9 +734,7 @@ class TreasuryExportService:
             # Fallback to JSON
             return await self._write_json(data.get("details", []), export_id, data.get("total_amount", 0))
 
-        file_path = self.EXPORT_DIR / f"{export_id}.xml"
-
-        # Build XML structure following BEAC format standards
+        # Build XML structure in-memory following BEAC format standards
         root = etree.Element("RapportBEAC")
         root.set("version", "1.0")
         root.set("xmlns", "urn:beac:cemac:treasury:report")
@@ -792,15 +780,15 @@ class TreasuryExportService:
             etree.SubElement(tx, "LibelleService").text = str(row.get("libelle_service", "") or "")[:100]
             etree.SubElement(tx, "CodeMinistere").text = str(row.get("code_ministere", "") or "")
 
-        # Write file
-        tree = etree.ElementTree(root)
-        tree.write(str(file_path), encoding="utf-8", xml_declaration=True, pretty_print=True)
-
-        file_size = file_path.stat().st_size
+        # Serialize to bytes in-memory
+        file_content = etree.tostring(
+            root, encoding="utf-8", xml_declaration=True, pretty_print=True
+        )
 
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.xml",
+            "file_size": len(file_content),
             "total_records": data.get("total_count", 0),
             "total_amount": float(data.get("total_amount", 0)),
             "mime_type": "application/xml",
@@ -813,13 +801,13 @@ class TreasuryExportService:
         period_start: date,
         period_end: date,
     ) -> Dict[str, Any]:
-        """Write BEAC report as Excel with multiple sheets."""
+        """Write BEAC report as Excel with multiple sheets (in-memory)."""
         if not PANDAS_AVAILABLE or not OPENPYXL_AVAILABLE:
             return await self._write_json(data.get("details", []), export_id, data.get("total_amount", 0))
 
-        file_path = self.EXPORT_DIR / f"{export_id}.xlsx"
+        buffer = BytesIO()
 
-        with pd.ExcelWriter(str(file_path), engine="openpyxl") as writer:
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
             # Summary sheet
             summary_data = {
                 "Indicateur": ["Periodo", "Total Transacciones", "Monto Total", "Divisa"],
@@ -843,11 +831,12 @@ class TreasuryExportService:
                 df_details = pd.DataFrame(data["details"])
                 df_details.to_excel(writer, sheet_name="Transacciones", index=False)
 
-        file_size = file_path.stat().st_size
+        file_content = buffer.getvalue()
 
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.xlsx",
+            "file_size": len(file_content),
             "total_records": data.get("total_count", 0),
             "total_amount": float(data.get("total_amount", 0)),
             "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1047,14 +1036,14 @@ class TreasuryExportService:
             # Minimal fallback
             html_content = f"<html><body><h1>{title}</h1><p>{len(data)} registros, {format_xaf(total_amount)} XAF</p></body></html>"
 
-        file_path = self.EXPORT_DIR / f"{export_id}.pdf"
-        with open(file_path, "wb") as f:
-            pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=f)
+        buffer = BytesIO()
+        pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=buffer)
+        file_content = buffer.getvalue()
 
-        file_size = file_path.stat().st_size
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.pdf",
+            "file_size": len(file_content),
             "total_records": len(data),
             "total_amount": float(total_amount),
             "mime_type": "application/pdf",
@@ -1067,31 +1056,31 @@ class TreasuryExportService:
         columns: List[tuple],
         total_amount: float,
     ) -> Dict[str, Any]:
-        """Write CSV file."""
-        file_path = self.EXPORT_DIR / f"{export_id}.csv"
+        """Write CSV file in-memory."""
+        output = StringIO()
 
-        with open(file_path, "w", newline="", encoding="utf-8-sig") as f:
-            if columns:
-                # Extract target column names
-                header = [c[1] if isinstance(c, tuple) else c for c in columns]
-                writer = csv.DictWriter(f, fieldnames=header, delimiter=";")
-                writer.writeheader()
+        if columns:
+            # Extract target column names
+            header = [c[1] if isinstance(c, tuple) else c for c in columns]
+            writer = csv.DictWriter(output, fieldnames=header, delimiter=";")
+            writer.writeheader()
 
-                for row in data:
-                    # Transform row if needed
-                    if isinstance(columns[0], tuple) and len(columns[0]) == 3:
-                        transformed = {}
-                        for source, target, transform in columns:
-                            transformed[target] = self._format_value(row.get(source))
-                        writer.writerow(transformed)
-                    else:
-                        writer.writerow({k: self._format_value(row.get(k)) for k in header})
+            for row in data:
+                # Transform row if needed
+                if isinstance(columns[0], tuple) and len(columns[0]) == 3:
+                    transformed = {}
+                    for source, target, transform in columns:
+                        transformed[target] = self._format_value(row.get(source))
+                    writer.writerow(transformed)
+                else:
+                    writer.writerow({k: self._format_value(row.get(k)) for k in header})
 
-        file_size = file_path.stat().st_size
+        file_content = output.getvalue().encode("utf-8-sig")
 
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.csv",
+            "file_size": len(file_content),
             "total_records": len(data),
             "total_amount": float(total_amount),
             "mime_type": "text/csv",
@@ -1104,34 +1093,26 @@ class TreasuryExportService:
         columns: List[str],
         total_amount: float,
     ) -> Dict[str, Any]:
-        """Write XLSX file using pandas."""
+        """Write XLSX file using pandas (in-memory)."""
         if not PANDAS_AVAILABLE:
             # Fallback to CSV
             return await self._write_csv(
                 data, export_id, [(c, c, lambda x: x) for c in columns], total_amount
             )
 
-        file_path = self.EXPORT_DIR / f"{export_id}.xlsx"
+        buffer = BytesIO()
 
         # Create DataFrame
         df = pd.DataFrame(data)
 
-        # Format datetime columns
-        for col in df.columns:
-            if df[col].dtype == "object":
-                try:
-                    df[col] = pd.to_datetime(df[col])
-                except (ValueError, TypeError):
-                    pass
-
-        # Write to Excel
-        df.to_excel(str(file_path), index=False, engine="openpyxl")
-
-        file_size = file_path.stat().st_size
+        # Write to Excel buffer
+        df.to_excel(buffer, index=False, engine="openpyxl")
+        file_content = buffer.getvalue()
 
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.xlsx",
+            "file_size": len(file_content),
             "total_records": len(data),
             "total_amount": float(total_amount),
             "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1143,9 +1124,7 @@ class TreasuryExportService:
         export_id: str,
         total_amount: float,
     ) -> Dict[str, Any]:
-        """Write JSON file."""
-        file_path = self.EXPORT_DIR / f"{export_id}.json"
-
+        """Write JSON file in-memory."""
         # Convert datetime objects
         def json_serializer(obj):
             if isinstance(obj, (datetime, date)):
@@ -1161,14 +1140,14 @@ class TreasuryExportService:
             "records": data,
         }
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(export_data, f, default=json_serializer, indent=2, ensure_ascii=False)
-
-        file_size = file_path.stat().st_size
+        output = StringIO()
+        json.dump(export_data, output, default=json_serializer, indent=2, ensure_ascii=False)
+        file_content = output.getvalue().encode("utf-8")
 
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.json",
+            "file_size": len(file_content),
             "total_records": len(data),
             "total_amount": float(total_amount),
             "mime_type": "application/json",
@@ -1181,7 +1160,7 @@ class TreasuryExportService:
         period_start: date,
         period_end: date,
     ) -> Dict[str, Any]:
-        """Write ministry report PDF."""
+        """Write ministry report PDF (in-memory)."""
         if not XHTML2PDF_AVAILABLE:
             # Fallback to CSV
             return await self._write_csv(
@@ -1191,20 +1170,18 @@ class TreasuryExportService:
                 data.get("total_amount", 0),
             )
 
-        file_path = self.EXPORT_DIR / f"{export_id}.pdf"
-
         # Generate HTML content
         html_content = self._generate_ministry_html(data, period_start, period_end)
 
-        # Convert to PDF
-        with open(file_path, "wb") as f:
-            pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=f)
-
-        file_size = file_path.stat().st_size
+        # Convert to PDF in-memory
+        buffer = BytesIO()
+        pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=buffer)
+        file_content = buffer.getvalue()
 
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.pdf",
+            "file_size": len(file_content),
             "total_records": data.get("total_count", 0),
             "total_amount": float(data.get("total_amount", 0)),
             "mime_type": "application/pdf",
@@ -1226,9 +1203,9 @@ class TreasuryExportService:
                 data.get("total_amount", 0),
             )
 
-        file_path = self.EXPORT_DIR / f"{export_id}.xlsx"
+        buffer = BytesIO()
 
-        with pd.ExcelWriter(str(file_path), engine="openpyxl") as writer:
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
             # Summary by entity
             if data.get("by_entity"):
                 df_entity = pd.DataFrame(data["by_entity"])
@@ -1249,11 +1226,12 @@ class TreasuryExportService:
                 df_details = pd.DataFrame(data["details"])
                 df_details.to_excel(writer, sheet_name="Detalle", index=False)
 
-        file_size = file_path.stat().st_size
+        file_content = buffer.getvalue()
 
         return {
-            "file_path": str(file_path),
-            "file_size": file_size,
+            "file_content": file_content,
+            "file_name": f"{export_id}.xlsx",
+            "file_size": len(file_content),
             "total_records": data.get("total_count", 0),
             "total_amount": float(data.get("total_amount", 0)),
             "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

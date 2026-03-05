@@ -267,7 +267,8 @@ app.add_middleware(
     allow_origin_regex=r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)",  # Allow staging channels
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"]
+    allow_headers=["*"],
+    expose_headers=["Content-Disposition", "Content-Length", "Content-Type"],
 )
 
 # Global exception handlers to ensure CORS headers are set on all error responses

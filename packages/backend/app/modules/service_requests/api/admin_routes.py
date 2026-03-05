@@ -7736,20 +7736,55 @@ async def download_treasury_export(
         except Exception as e:
             logger.error(f"Failed to download from Firebase: {e}")
 
-    # Case 2: Local file (path starts with /tmp/ or similar)
+    # Case 2: Local /tmp/ path (legacy) OR no path → regenerate on-the-fly
     if file_content is None:
         import os
-        local_path = file_path
-        if os.path.exists(local_path):
-            with open(local_path, "rb") as f:
+        if file_path and os.path.exists(file_path):
+            # Still exists on this instance (same-instance legacy /tmp/ access)
+            with open(file_path, "rb") as f:
                 file_content = f.read()
         else:
-            logger.error(f"Export file not found: {local_path}")
-            raise TreasuryError(
-                error_code=TreasuryErrorCode.EXPORT_EXPIRED,
-                status_code=status.HTTP_404_NOT_FOUND,
-                extra_info={"detail": "Export file no longer available. Please regenerate."}
+            # File not found (different instance, new deployment, or never uploaded) → regenerate
+            logger.info(f"Export {export_id} not in Firebase/local, regenerating on-the-fly")
+            from app.modules.service_requests.services.treasury_export_service import (
+                treasury_export_service,
             )
+            # Fetch export params from DB
+            params_row = await db.fetchrow("""
+                SELECT export_type::text, export_format, period_start, period_end, filters
+                FROM treasury_exports WHERE id = $1::uuid
+            """, export_id)
+            if not params_row:
+                raise TreasuryError(
+                    error_code=TreasuryErrorCode.EXPORT_EXPIRED,
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    extra_info={"detail": "Export record not found."}
+                )
+
+            # Regenerate without updating DB status
+            gen_result = await treasury_export_service.generate_export(
+                db=db,
+                export_id=export_id,
+                export_type=params_row["export_type"],
+                export_format=params_row["export_format"],
+                period_start=params_row["period_start"],
+                period_end=params_row["period_end"],
+                filters=(
+                    json.loads(params_row["filters"])
+                    if isinstance(params_row["filters"], str)
+                    else params_row["filters"]
+                ),
+                requested_by=str(current_user.id),
+            )
+            file_content = gen_result.get("file_content")
+            # Update content_type and file_name from regenerated result
+            content_type = gen_result.get("mime_type", content_type)
+            if not file_content:
+                raise TreasuryError(
+                    error_code=TreasuryErrorCode.EXPORT_EXPIRED,
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    extra_info={"detail": "Export regeneration failed."}
+                )
 
     # Update download count (after successful file read)
     await db.execute("""
