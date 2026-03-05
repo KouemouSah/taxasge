@@ -25,6 +25,9 @@ export {
 } from './widgets';
 export type { WidgetProps, WidgetComponent } from './widgets';
 
+// Supervisor Assistant
+export { SupervisorAssistantTab } from './SupervisorAssistantTab';
+
 // Appointments components
 export {
   AppointmentsPage,

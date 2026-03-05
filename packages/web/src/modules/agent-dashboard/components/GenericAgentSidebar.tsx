@@ -66,6 +66,8 @@ import {
   FileSignature,
   // Batch icons
   FileStack,
+  // AI Assistant
+  Sparkles,
   // Supervisor menu icons
   BarChart2,
   Settings2,
@@ -142,6 +144,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
   // Batch
   FileStack,
+
+  // AI Assistant
+  Sparkles,
 
   // Supervisor
   Users,

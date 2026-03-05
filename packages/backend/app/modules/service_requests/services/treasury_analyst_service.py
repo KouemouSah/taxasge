@@ -380,6 +380,35 @@ def _site_scope_direct(kwargs: dict, alias: str, param_offset: int, id_col: str 
     return clause, [location_id]
 
 
+def _site_scope_via_request(kwargs: dict, table_alias: str, param_offset: int,
+                            fk_col: str = "service_request_id"):
+    """Site-scope any table via its service_request's entity_location_id.
+
+    Used for tables that link to service_requests but lack entity_location_id
+    directly (service_payments, payment_anomalies, etc.).
+
+    Args:
+        kwargs: Entity context (**kwargs from function call)
+        table_alias: SQL alias for the source table (e.g., "sp", "pa", "service_payments")
+        param_offset: Number of params already used ($1..$N)
+        fk_col: Column linking to service_requests.id (default: "service_request_id")
+
+    Returns:
+        (sql_clause: str, params: list) — empty if no scoping needed
+    """
+    if not _needs_site_filter(kwargs):
+        return "", []
+
+    location_id = kwargs["_entity_location_id"]
+    param_num = param_offset + 1
+    clause = (
+        f"AND {table_alias}.{fk_col} IN ("
+        f"SELECT sr_s.id FROM service_requests sr_s "
+        f"WHERE sr_s.entity_location_id = ${param_num})"
+    )
+    return clause, [location_id]
+
+
 # ============================================================================
 # SAFE SQL FUNCTIONS (predefined queries — LLM never generates SQL)
 # ============================================================================
@@ -488,8 +517,9 @@ async def _get_agent_performance(db, days: int = 30, **kwargs) -> Dict[str, Any]
 
 
 async def _get_sla_status(db, **kwargs) -> Dict[str, Any]:
-    # Pending payments = centralized TESORO queue — no site scoping
-    row = await db.fetchrow("""
+    # Pending payments — site-scoped via service_request entity_location_id
+    sc, sp = _site_scope_via_request(kwargs, "service_payments", 0)
+    row = await db.fetchrow(f"""
         SELECT
             COUNT(*) AS total_pending,
             COUNT(*) FILTER (WHERE sla_target_date IS NOT NULL AND sla_target_date < NOW()) AS breached,
@@ -499,7 +529,8 @@ async def _get_sla_status(db, **kwargs) -> Dict[str, Any]:
         FROM service_payments
         WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
-    """)
+          {sc}
+    """, *sp)
     total = row["total_pending"] or 0
     return {
         "total_pending": total,
@@ -512,15 +543,23 @@ async def _get_sla_status(db, **kwargs) -> Dict[str, Any]:
 
 
 async def _get_anomaly_summary(db, **kwargs) -> Dict[str, Any]:
-    # Anomalies are system-level detection — no site scoping needed
-    rows = await db.fetch("""
-        SELECT anomaly_type, severity, status, COUNT(*) AS count
-        FROM payment_anomalies
-        GROUP BY anomaly_type, severity, status
+    # Site-scoped via service_request_id → service_requests.entity_location_id
+    # Satellite agents see only anomalies from their site's requests
+    sc, sp = _site_scope_via_request(kwargs, "pa", 0, fk_col="service_request_id")
+    rows = await db.fetch(f"""
+        SELECT pa.anomaly_type, pa.severity, pa.status, COUNT(*) AS count
+        FROM payment_anomalies pa
+        WHERE true {sc}
+        GROUP BY pa.anomaly_type, pa.severity, pa.status
         ORDER BY count DESC
-    """)
-    total = await db.fetchval("SELECT COUNT(*) FROM payment_anomalies")
-    open_count = await db.fetchval("SELECT COUNT(*) FROM payment_anomalies WHERE status NOT IN ('resolved', 'false_positive')")
+    """, *sp)
+    total = await db.fetchval(f"""
+        SELECT COUNT(*) FROM payment_anomalies pa WHERE true {sc}
+    """, *sp)
+    open_count = await db.fetchval(f"""
+        SELECT COUNT(*) FROM payment_anomalies pa
+        WHERE pa.status NOT IN ('resolved', 'false_positive') {sc}
+    """, *sp)
     return {
         "total": total or 0,
         "open": open_count or 0,
@@ -618,8 +657,9 @@ async def _get_entity_comparison(db, days: int = 30, **kwargs) -> Dict[str, Any]
 
 async def _get_payment_aging(db, **kwargs) -> Dict[str, Any]:
     """Time-in-status distribution for pending payments."""
-    # Pending payments = centralized TESORO queue — no site scoping
-    row = await db.fetchrow("""
+    # Pending payments — site-scoped via service_request entity_location_id
+    sc, sp = _site_scope_via_request(kwargs, "service_payments", 0)
+    row = await db.fetchrow(f"""
         SELECT
             COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 < 4) AS lt_4h,
             COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 BETWEEN 4 AND 12) AS h4_12,
@@ -631,7 +671,8 @@ async def _get_payment_aging(db, **kwargs) -> Dict[str, Any]:
         FROM service_payments
         WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
-    """)
+          {sc}
+    """, *sp)
     return {
         "total_pending": row["total"] or 0,
         "lt_4h": row["lt_4h"] or 0,
@@ -644,16 +685,18 @@ async def _get_payment_aging(db, **kwargs) -> Dict[str, Any]:
 
 
 async def _get_workflow_pipeline(db, **kwargs) -> Dict[str, Any]:
-    """Status funnel counts for the last 90 days. Pipeline = centralized view, no site scope."""
-    rows = await db.fetch("""
+    """Status funnel counts for the last 90 days — site-scoped via service_request."""
+    sc, sp = _site_scope_via_request(kwargs, "service_payments", 0)
+    rows = await db.fetch(f"""
         SELECT workflow_status::text AS status,
                COUNT(*) AS count,
                COALESCE(SUM(total_amount), 0) AS amount
         FROM service_payments
         WHERE created_at >= NOW() - INTERVAL '90 days'
+          {sc}
         GROUP BY workflow_status
         ORDER BY count DESC
-    """)
+    """, *sp)
     return {
         "period": "90 days",
         "statuses": [{
@@ -793,7 +836,7 @@ async def _get_rejection_analysis(db, days: int = 30, **kwargs) -> Dict[str, Any
 async def _get_anomaly_details(
     db, anomaly_type: str = None, severity: str = None, **kwargs
 ) -> Dict[str, Any]:
-    """Detailed anomaly drill-down with false positive rates."""
+    """Detailed anomaly drill-down with false positive rates. Site-scoped."""
     conditions: List[str] = []
     params: list = []
     idx = 1
@@ -805,6 +848,13 @@ async def _get_anomaly_details(
         conditions.append(f"pa.severity::text = ${idx}")
         params.append(severity)
         idx += 1
+    # Site scoping via service_request_id
+    sc, sp_site = _site_scope_via_request(kwargs, "pa", idx - 1, fk_col="service_request_id")
+    if sc:
+        # Strip leading "AND " since we build WHERE dynamically
+        conditions.append(sc.strip().removeprefix("AND "))
+        params.extend(sp_site)
+
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
     rows = await db.fetch(f"""
@@ -825,14 +875,18 @@ async def _get_anomaly_details(
         ORDER BY open_count DESC
     """, *params)
 
-    recent = await db.fetch("""
+    # Recent actions — also site-scoped
+    sc_aa, sp_aa = _site_scope_via_request(kwargs, "pa", 0, fk_col="service_request_id")
+    aa_where = f"WHERE true {sc_aa}" if sc_aa else ""
+    recent = await db.fetch(f"""
         SELECT aa.action, aa.from_status::text, aa.to_status::text,
                aa.comment, aa.performed_at,
                pa.anomaly_type::text
         FROM anomaly_actions aa
         JOIN payment_anomalies pa ON pa.id = aa.anomaly_id
+        {aa_where}
         ORDER BY aa.performed_at DESC LIMIT 10
-    """)
+    """, *sp_aa)
 
     return {
         "filters": {"anomaly_type": anomaly_type, "severity": severity},
@@ -961,17 +1015,19 @@ async def _get_workload_forecast(db, days_history: int = 90, **kwargs) -> Dict[s
     """Workload projection: volume of incoming payment requests.
 
     Tracks daily new payments (all statuses) to project future workload.
+    Site-scoped via service_request entity_location_id.
     """
-    # Workload = centralized queue — no site scoping
-    rows = await db.fetch("""
+    sc, sp = _site_scope_via_request(kwargs, "service_payments", 1)
+    rows = await db.fetch(f"""
         SELECT DATE(created_at) AS date,
                COUNT(*) AS new_payments,
                COUNT(*) FILTER (WHERE requires_agent_validation = true) AS requiring_validation
         FROM service_payments
         WHERE created_at >= NOW() - make_interval(days => $1)
+          {sc}
         GROUP BY DATE(created_at)
         ORDER BY date
-    """, days_history)
+    """, days_history, *sp)
 
     data_points = len(rows)
 
@@ -1011,13 +1067,14 @@ async def _get_workload_forecast(db, days_history: int = 90, **kwargs) -> Dict[s
     denominator = sum((i - x_mean) ** 2 for i in range(n))
     slope = numerator / denominator if denominator else 0
 
-    # Current pending backlog
-    # Pending = centralized queue — no site scoping
-    pending = await db.fetchval("""
+    # Current pending backlog — site-scoped
+    sc_p, sp_p = _site_scope_via_request(kwargs, "service_payments", 0)
+    pending = await db.fetchval(f"""
         SELECT COUNT(*) FROM service_payments
         WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
           AND requires_agent_validation = true
-    """)
+          {sc_p}
+    """, *sp_p)
 
     # Forecast
     forecasts = {}

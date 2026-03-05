@@ -63,6 +63,12 @@ try:
 except Exception:
     logger.warning("ToolConfig not available — Gemini may bypass function calling (mode=AUTO)")
 
+# Days of week in Spanish (shared across all analyst services)
+DAYS_ES = [
+    "lunes", "martes", "miércoles", "jueves",
+    "viernes", "sábado", "domingo",
+]
+
 # Shared constants
 GEMINI_TIMEOUT_FIRST_CALL = 25.0
 GEMINI_TIMEOUT_SECOND_CALL = 30.0
@@ -743,6 +749,7 @@ class BaseAnalystService(abc.ABC):
         - _entity_location_id: user's site UUID
         - _is_main_office: whether user's site is the main office (global view)
         - _user_id: current user UUID
+        - workflow_codes: entity's workflow codes (for config/tariff functions)
         """
         kwargs = {}
         if ctx.get("entity_code"):
@@ -753,4 +760,6 @@ class BaseAnalystService(abc.ABC):
             kwargs["_is_main_office"] = ctx["is_main_office"]
         if ctx.get("user_id"):
             kwargs["_user_id"] = ctx["user_id"]
+        if ctx.get("workflow_codes"):
+            kwargs["workflow_codes"] = ctx["workflow_codes"]
         return kwargs

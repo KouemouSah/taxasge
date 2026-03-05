@@ -271,7 +271,7 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     if (!menuConfigData?.menu_config?.menus) {
       return [];
     }
-    return menuConfigData.menu_config.menus.map((menu) => ({
+    const items = menuConfigData.menu_config.menus.map((menu) => ({
       ...menu,
       href: menu.href
         ? menu.href.startsWith('/')
@@ -283,7 +283,25 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
         href: item.href.startsWith('/') ? `/${locale}${item.href}` : item.href,
       })),
     }));
-  }, [menuConfigData?.menu_config?.menus, locale]);
+
+    // Inject AI Assistant right after dashboard item (i18n via agent.nav.assistant)
+    const hasAnalystPermission = context?.permissions?.includes('analyst.ask');
+    if (hasAnalystPermission) {
+      const dashboardIdx = items.findIndex((m) => m.id === 'dashboard');
+      if (dashboardIdx >= 0) {
+        const dashboardHref = items[dashboardIdx].href || '';
+        const assistantItem: DynamicMenuItem = {
+          id: 'assistant',
+          titleKey: 'agent.nav.assistant',
+          icon: 'Sparkles',
+          href: `${dashboardHref}/assistant`,
+        };
+        items.splice(dashboardIdx + 1, 0, assistantItem as typeof items[number]);
+      }
+    }
+
+    return items;
+  }, [menuConfigData?.menu_config?.menus, locale, context?.permissions]);
 
   // Derive base path from menu_config dashboard href (role-aware)
   // Priority: 1) ministry agent → /ministry  2) menu_config dashboard href  3) entity code fallback

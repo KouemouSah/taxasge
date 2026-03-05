@@ -198,6 +198,17 @@ FUNCTION_TO_INTENT: Dict[str, str] = {
     "detect_anomalies":                "anomaly",
     "analyze_entity_balance":          "entity_compare",
     "get_processing_trends":           "trend",
+    # ── Supervisor (10 functions) ───────────────────────────────────────────
+    "get_request_stats":        "revenue",           # request volume by status/workflow
+    "get_request_pipeline":     "revenue",           # status funnel with amounts
+    "get_request_sla":          "sla",               # processing times + overdue
+    "get_request_rejections":   "performance",       # rejection rates by workflow
+    "get_request_trends":       "trend",             # daily submission/completion
+    "get_entity_agents":        "agent_availability",# agent list + workload
+    "get_agent_ranking":        "performance",       # agent performance ranking
+    "get_pending_detail":       "sla",               # pending requests detail
+    "get_workflow_config":      "entity_compare",    # workflow docs/steps config
+    "get_workflow_tariffs":     "revenue",           # tariff breakdown
 }
 
 
