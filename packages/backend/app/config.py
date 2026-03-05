@@ -75,14 +75,23 @@ class Settings(BaseSettings):
         except Exception as e:
             logger.error(f"❌ Failed to load Firebase Admin Keys from Secret Manager: {e}")
 
-        # Warn if RECEIPT_VERIFICATION_SECRET not explicitly configured
+        # Load RECEIPT_VERIFICATION_SECRET from Secret Manager if not set via env
         if not self.RECEIPT_VERIFICATION_SECRET:
-            logger.warning(
-                "⚠️ RECEIPT_VERIFICATION_SECRET not set — QR code tokens will use JWT_SECRET_KEY "
-                "as fallback. Set RECEIPT_VERIFICATION_SECRET in Cloud Run env for production."
-            )
+            try:
+                from app.core.secrets import get_secret
+                receipt_secret = get_secret("receipt-verification-secret")
+                if receipt_secret:
+                    self.RECEIPT_VERIFICATION_SECRET = receipt_secret
+                    logger.info("✅ RECEIPT_VERIFICATION_SECRET loaded from Secret Manager")
+                else:
+                    logger.warning(
+                        "⚠️ RECEIPT_VERIFICATION_SECRET not found in Secret Manager — "
+                        "falling back to JWT_SECRET_KEY for QR code tokens"
+                    )
+            except Exception as e:
+                logger.warning(f"⚠️ Could not load RECEIPT_VERIFICATION_SECRET from Secret Manager: {e}")
         else:
-            logger.info("✅ RECEIPT_VERIFICATION_SECRET configured")
+            logger.info("✅ RECEIPT_VERIFICATION_SECRET configured (env var)")
 
     # ========================================================================
     # APPLICATION SETTINGS
