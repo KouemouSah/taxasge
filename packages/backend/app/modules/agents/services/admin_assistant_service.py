@@ -854,6 +854,9 @@ class AdminAssistantService(BaseAnalystService):
     def _get_service_name(self) -> str:
         return "Admin Assistant"
 
+    def _get_agent_type(self) -> str:
+        return "admin"
+
 
 # Singleton
 admin_assistant_service = AdminAssistantService()

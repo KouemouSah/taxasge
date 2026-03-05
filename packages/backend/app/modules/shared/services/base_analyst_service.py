@@ -105,6 +105,10 @@ class BaseAnalystService(abc.ABC):
         """Human-readable name for logging."""
         return self.__class__.__name__
 
+    def _get_agent_type(self) -> Optional[str]:
+        """Return agent type for query logging. Subclasses override: 'treasury' | 'admin'."""
+        return None
+
     def _get_model_name(self) -> str:
         """Gemini model name."""
         settings = get_settings()
@@ -136,6 +140,76 @@ class BaseAnalystService(abc.ABC):
         Final: Gemini generates text analysis from all accumulated data
         """
         return MAX_TOOL_ROUNDS
+
+    async def _log_query(
+        self,
+        session_id: Optional[str],
+        question: str,
+        slots: Any,                           # ExtractedSlots | None
+        tools_used: List[str],
+        response_time_ms: int,
+        was_successful: bool,
+    ) -> None:
+        """
+        Fire-and-forget query logger for ML training data collection.
+
+        Derives ground_truth_intent from tools_used via FUNCTION_TO_INTENT.
+        Never blocks the response — called via asyncio.create_task().
+        All exceptions are swallowed.
+        """
+        agent_type = self._get_agent_type()
+        if not agent_type:
+            return  # subclass hasn't opted in — skip
+
+        try:
+            from app.modules.shared.services.nlp_preprocessor import FUNCTION_TO_INTENT
+            from app.database.connection import db_manager
+            import json
+
+            # Derive ground truth: first recognized function → intent
+            ground_truth: Optional[str] = None
+            for fn in tools_used:
+                if fn in FUNCTION_TO_INTENT:
+                    ground_truth = FUNCTION_TO_INTENT[fn]
+                    break
+
+            probs_json: Optional[str] = None
+            if slots is not None and getattr(slots, "intent_probabilities", None):
+                probs_json = json.dumps(slots.intent_probabilities)
+
+            async with db_manager.get_connection() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO agent_query_logs (
+                        agent_type, session_id, question,
+                        detected_intent, actual_functions_called, ground_truth_intent,
+                        intent_confidence, intent_probabilities,
+                        was_successful, response_time_ms,
+                        entity_codes, time_period_days, metric
+                    ) VALUES (
+                        $1, $2, $3,
+                        $4, $5, $6,
+                        $7, $8::jsonb,
+                        $9, $10,
+                        $11, $12, $13
+                    )
+                    """,
+                    agent_type,
+                    session_id,
+                    question[:2000],
+                    slots.intent.value if slots else None,
+                    tools_used or [],
+                    ground_truth,
+                    float(slots.confidence) if slots else None,
+                    probs_json,
+                    was_successful,
+                    response_time_ms,
+                    getattr(slots, "entity_codes", []) or [],
+                    getattr(slots, "time_period_days", None) if slots else None,
+                    getattr(slots, "metric", None) if slots else None,
+                )
+        except Exception as exc:
+            logger.debug(f"{self._get_service_name()} query log skipped: {exc}")
 
     def _build_artifacts(self, tool_results: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Build typed artifacts from tool results. Override in subclass.
@@ -251,6 +325,15 @@ class BaseAnalystService(abc.ABC):
                 ConversationTurn,
                 conversation_memory,
             )
+
+            # One-shot Redis upgrade: try to load a better retrained model (Phase 3+)
+            # Runs only when the classifier hasn't been upgraded yet this instance lifetime
+            if not getattr(self, "_nlp_upgraded", False):
+                try:
+                    await nlp_preprocessor.ensure_redis_upgrade()
+                except Exception:
+                    pass
+                self._nlp_upgraded = True
 
             slots = nlp_preprocessor.extract_slots(question)
 
@@ -481,6 +564,18 @@ class BaseAnalystService(abc.ABC):
                 except Exception as mem_err:
                     logger.warning(f"{service_name} memory store failed (non-fatal): {mem_err}")
 
+            # Fire-and-forget query logging (never blocks response)
+            asyncio.create_task(
+                self._log_query(
+                    session_id=session_id,
+                    question=question,
+                    slots=slots,
+                    tools_used=tools_used,
+                    response_time_ms=latency,
+                    was_successful=True,
+                )
+            )
+
             return {
                 "answer": answer,
                 "tools_used": tools_used,
@@ -492,6 +587,16 @@ class BaseAnalystService(abc.ABC):
             latency = int((time.monotonic() - start_time) * 1000)
             logger.warning(
                 f"{service_name} timed out after {latency}ms, tools={tools_used}"
+            )
+            asyncio.create_task(
+                self._log_query(
+                    session_id=session_id,
+                    question=question,
+                    slots=slots,
+                    tools_used=tools_used,
+                    response_time_ms=latency,
+                    was_successful=False,
+                )
             )
             if tool_results:
                 clean_data = {
@@ -513,7 +618,18 @@ class BaseAnalystService(abc.ABC):
                 "artifacts": [],
             }
         except Exception as e:
+            latency = int((time.monotonic() - start_time) * 1000)
             logger.error(f"{service_name} error: {type(e).__name__}: {e}")
+            asyncio.create_task(
+                self._log_query(
+                    session_id=session_id,
+                    question=question,
+                    slots=slots,
+                    tools_used=tools_used,
+                    response_time_ms=latency,
+                    was_successful=False,
+                )
+            )
             return {
                 "answer": "Error procesando la consulta.",
                 "tools_used": tools_used,

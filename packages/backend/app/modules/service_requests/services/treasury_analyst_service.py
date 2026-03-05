@@ -1101,6 +1101,9 @@ class TreasuryAnalystService(BaseAnalystService):
     def _get_service_name(self) -> str:
         return "Treasury Analyst"
 
+    def _get_agent_type(self) -> str:
+        return "treasury"
+
     def _get_second_call_max_tokens(self) -> int:
         return 4096
 
