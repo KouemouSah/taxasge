@@ -795,6 +795,132 @@ class TreasuryExportService:
             "mime_type": "application/xml",
         }
 
+    # ── Excel Professional Styling ─────────────────────────────────────
+
+    def _xl_style(self):
+        """Return openpyxl style constants (lazy import)."""
+        from openpyxl.styles import (
+            PatternFill, Font, Alignment, Border, Side, numbers
+        )
+        return PatternFill, Font, Alignment, Border, Side, numbers
+
+    def _xl_apply_sheet_style(
+        self,
+        ws,
+        title: str,
+        subtitle: str,
+        col_headers: List[str],
+        rows_data: List[List[Any]],
+        amount_col_indices: List[int],
+        freeze_row: int = 4,
+    ) -> None:
+        """
+        Apply professional styling to a worksheet.
+        Row 1: merged title
+        Row 2: merged subtitle
+        Row 3: column headers (navy bg, white bold)
+        Row 4+: data (alternating white / light-blue)
+        """
+        from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+
+        num_cols = len(col_headers)
+        if num_cols == 0:
+            return
+
+        last_col_letter = get_column_letter(num_cols)
+
+        # --- Colour palette ---
+        NAVY_FILL = PatternFill("solid", fgColor="1A3A5C")
+        TITLE_FILL = PatternFill("solid", fgColor="0D2137")
+        EVEN_FILL = PatternFill("solid", fgColor="EBF5FB")
+        TOTAL_FILL = PatternFill("solid", fgColor="D4E6F1")
+
+        WHITE_BOLD = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
+        TITLE_FONT = Font(name="Calibri", bold=True, color="FFFFFF", size=14)
+        SUB_FONT = Font(name="Calibri", color="FFFFFF", size=10)
+        HEADER_FONT = Font(name="Calibri", bold=True, color="FFFFFF", size=10)
+        DATA_FONT = Font(name="Calibri", size=9)
+        TOTAL_FONT = Font(name="Calibri", bold=True, size=9)
+
+        CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        LEFT = Alignment(horizontal="left", vertical="center")
+        RIGHT = Alignment(horizontal="right", vertical="center")
+
+        thin = Side(style="thin", color="CCCCCC")
+        BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        # --- Row 1: Title ---
+        ws.row_dimensions[1].height = 28
+        ws.merge_cells(f"A1:{last_col_letter}1")
+        cell = ws["A1"]
+        cell.value = title
+        cell.font = TITLE_FONT
+        cell.fill = TITLE_FILL
+        cell.alignment = CENTER
+
+        # --- Row 2: Subtitle ---
+        ws.row_dimensions[2].height = 20
+        ws.merge_cells(f"A2:{last_col_letter}2")
+        cell = ws["A2"]
+        cell.value = subtitle
+        cell.font = SUB_FONT
+        cell.fill = NAVY_FILL
+        cell.alignment = CENTER
+
+        # --- Row 3: Column headers ---
+        ws.row_dimensions[3].height = 22
+        for col_idx, header in enumerate(col_headers, start=1):
+            cell = ws.cell(row=3, column=col_idx, value=header)
+            cell.font = HEADER_FONT
+            cell.fill = NAVY_FILL
+            cell.alignment = CENTER
+            cell.border = BORDER
+
+        # --- Rows 4+: Data ---
+        for row_idx, row_vals in enumerate(rows_data, start=4):
+            ws.row_dimensions[row_idx].height = 15
+            is_even = (row_idx % 2 == 0)
+            row_fill = EVEN_FILL if is_even else None
+
+            for col_idx, val in enumerate(row_vals, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                cell.font = DATA_FONT
+                cell.border = BORDER
+                if row_fill:
+                    cell.fill = row_fill
+                # Align & format
+                if col_idx in amount_col_indices:
+                    cell.alignment = RIGHT
+                    if isinstance(val, (int, float, Decimal)):
+                        cell.number_format = '#,##0.00 "XAF"'
+                elif isinstance(val, (int, float)) and col_idx not in amount_col_indices:
+                    cell.alignment = RIGHT
+                else:
+                    cell.alignment = LEFT
+
+        # --- Auto-size columns ---
+        for col_idx in range(1, num_cols + 1):
+            col_letter = get_column_letter(col_idx)
+            max_len = len(str(col_headers[col_idx - 1]))
+            for row_vals in rows_data:
+                if col_idx - 1 < len(row_vals):
+                    cell_val = row_vals[col_idx - 1]
+                    max_len = max(max_len, len(str(cell_val or "")))
+            ws.column_dimensions[col_letter].width = min(max(max_len + 2, 12), 45)
+
+        # --- Freeze panes below header ---
+        ws.freeze_panes = ws.cell(row=freeze_row, column=1)
+
+    def _xl_detect_amount_cols(self, col_headers: List[str]) -> List[int]:
+        """Return 1-based column indices where the header looks like an amount."""
+        amount_keywords = {"amount", "total", "monto", "montant", "importe", "recaudado", "saldo"}
+        return [
+            i + 1
+            for i, h in enumerate(col_headers)
+            if any(kw in h.lower() for kw in amount_keywords)
+        ]
+
     async def _write_beac_xlsx(
         self,
         data: Dict[str, Any],
@@ -802,36 +928,78 @@ class TreasuryExportService:
         period_start: date,
         period_end: date,
     ) -> Dict[str, Any]:
-        """Write BEAC report as Excel with multiple sheets (in-memory)."""
+        """Write BEAC report as Excel with multiple sheets — professional design."""
         if not PANDAS_AVAILABLE or not OPENPYXL_AVAILABLE:
             return await self._write_json(data.get("details", []), export_id, data.get("total_amount", 0))
 
+        import openpyxl
+
+        period_label = (
+            f"{period_start.strftime('%d/%m/%Y')} — {period_end.strftime('%d/%m/%Y')}"
+        )
+        now_label = datetime.now().strftime("%d/%m/%Y %H:%M")
+        main_title = "BANCO DE LOS ESTADOS DE ÁFRICA CENTRAL (BEAC)"
+        generated_by = f"Generado: {now_label}  |  Referencia: BEAC-{export_id[:8].upper()}"
+
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)  # remove default empty sheet
+
+        # ── Sheet 1: Resumen ──────────────────────────────────────────
+        ws_sum = wb.create_sheet("Resumen")
+        summary_headers = ["Indicateur", "Valor"]
+        summary_rows = [
+            ["Período", period_label],
+            ["Total Transacciones", data.get("total_count", 0)],
+            ["Monto Total (XAF)", float(data.get("total_amount", 0))],
+            ["Divisa", "XAF"],
+            ["Fecha Generación", now_label],
+            ["Referencia Reporte", f"BEAC-{export_id[:8].upper()}"],
+        ]
+        self._xl_apply_sheet_style(
+            ws_sum,
+            title=main_title,
+            subtitle=f"RESUMEN DEL REPORTE  |  {period_label}",
+            col_headers=summary_headers,
+            rows_data=summary_rows,
+            amount_col_indices=[2],
+        )
+
+        # ── Sheet 2: Síntesis Diaria ─────────────────────────────────
+        if data.get("summary"):
+            ws_daily = wb.create_sheet("Síntesis Diaria")
+            daily_data = data["summary"]
+            if daily_data:
+                daily_headers = list(daily_data[0].keys())
+                daily_rows = [[row.get(h) for h in daily_headers] for row in daily_data]
+                amount_cols = self._xl_detect_amount_cols(daily_headers)
+                self._xl_apply_sheet_style(
+                    ws_daily,
+                    title=main_title,
+                    subtitle=f"SÍNTESIS DIARIA  |  {period_label}  |  {generated_by}",
+                    col_headers=daily_headers,
+                    rows_data=daily_rows,
+                    amount_col_indices=amount_cols,
+                )
+
+        # ── Sheet 3: Transacciones Detalladas ─────────────────────────
+        if data.get("details"):
+            ws_det = wb.create_sheet("Transacciones")
+            det_data = data["details"]
+            if det_data:
+                det_headers = list(det_data[0].keys())
+                det_rows = [[row.get(h) for h in det_headers] for row in det_data]
+                amount_cols = self._xl_detect_amount_cols(det_headers)
+                self._xl_apply_sheet_style(
+                    ws_det,
+                    title=main_title,
+                    subtitle=f"TRANSACCIONES DETALLADAS  |  {period_label}  |  {generated_by}",
+                    col_headers=det_headers,
+                    rows_data=det_rows,
+                    amount_col_indices=amount_cols,
+                )
+
         buffer = BytesIO()
-
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            # Summary sheet
-            summary_data = {
-                "Indicateur": ["Periodo", "Total Transacciones", "Monto Total", "Divisa"],
-                "Valor": [
-                    f"{period_start.strftime('%d/%m/%Y')} - {period_end.strftime('%d/%m/%Y')}",
-                    data.get("total_count", 0),
-                    f"{data.get('total_amount', 0):,.2f}",
-                    "XAF"
-                ]
-            }
-            df_summary = pd.DataFrame(summary_data)
-            df_summary.to_excel(writer, sheet_name="Resumen", index=False)
-
-            # Daily summary
-            if data.get("summary"):
-                df_daily = pd.DataFrame(data["summary"])
-                df_daily.to_excel(writer, sheet_name="Sintesis Diaria", index=False)
-
-            # Detailed transactions
-            if data.get("details"):
-                df_details = pd.DataFrame(data["details"])
-                df_details.to_excel(writer, sheet_name="Transacciones", index=False)
-
+        wb.save(buffer)
         file_content = buffer.getvalue()
 
         return {
@@ -1013,6 +1181,16 @@ class TreasuryExportService:
         p_end = period_end.strftime("%d/%m/%Y") if period_end else "-"
         now = datetime.now()
 
+        # Load logo
+        logo_b64 = None
+        try:
+            import base64 as _b64
+            logo_path = Path(__file__).parent.parent / "templates" / "logo.png"
+            if logo_path.exists():
+                logo_b64 = _b64.b64encode(logo_path.read_bytes()).decode()
+        except Exception:
+            pass
+
         # Try Jinja2 template
         html_content = None
         if self.jinja_env:
@@ -1029,6 +1207,7 @@ class TreasuryExportService:
                     columns=col_defs,
                     rows=formatted_rows,
                     show_total=total_amount > 0,
+                    logo_base64=logo_b64,
                 )
             except Exception as e:
                 logger.warning(f"Generic PDF template failed: {e}")
@@ -1195,8 +1374,8 @@ class TreasuryExportService:
         period_start: date,
         period_end: date,
     ) -> Dict[str, Any]:
-        """Write ministry report XLSX with multiple sheets."""
-        if not PANDAS_AVAILABLE:
+        """Write ministry report XLSX with multiple styled sheets — professional design."""
+        if not OPENPYXL_AVAILABLE:
             return await self._write_csv(
                 data.get("details", []),
                 export_id,
@@ -1204,29 +1383,65 @@ class TreasuryExportService:
                 data.get("total_amount", 0),
             )
 
+        import openpyxl
+
+        period_label = (
+            f"{period_start.strftime('%d/%m/%Y')} — {period_end.strftime('%d/%m/%Y')}"
+        )
+        now_label = datetime.now().strftime("%d/%m/%Y %H:%M")
+        report_ref = f"MIN-{export_id[:8].upper()}"
+        main_title = "MINISTERIO DE HACIENDA — DIRECCIÓN GENERAL DE IMPUESTOS"
+        generated_by = f"Generado: {now_label}  |  Ref: {report_ref}"
+
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+
+        def _build_sheet(sheet_name: str, section_title: str, rows_source: List[Dict]):
+            if not rows_source:
+                return
+            ws = wb.create_sheet(sheet_name)
+            headers = list(rows_source[0].keys())
+            rows_data = [[row.get(h) for h in headers] for row in rows_source]
+            amount_cols = self._xl_detect_amount_cols(headers)
+            self._xl_apply_sheet_style(
+                ws,
+                title=main_title,
+                subtitle=f"{section_title}  |  {period_label}  |  {generated_by}",
+                col_headers=headers,
+                rows_data=rows_data,
+                amount_col_indices=amount_cols,
+            )
+
+        # ── Sheet 1: Resumen Ejecutivo ────────────────────────────────
+        ws_exec = wb.create_sheet("Resumen Ejecutivo")
+        exec_headers = ["Concepto", "Valor"]
+        exec_rows = [
+            ["Período", period_label],
+            ["Total Pagos Procesados", data.get("total_count", 0)],
+            ["Monto Total Recaudado (XAF)", float(data.get("total_amount", 0))],
+            ["Divisa", "XAF"],
+            ["Referencia Reporte", report_ref],
+            ["Fecha Generación", now_label],
+        ]
+        self._xl_apply_sheet_style(
+            ws_exec,
+            title=main_title,
+            subtitle=f"RESUMEN EJECUTIVO  |  {period_label}",
+            col_headers=exec_headers,
+            rows_data=exec_rows,
+            amount_col_indices=[2],
+        )
+
+        # ── Sheet 2–4: By entity / method / service ───────────────────
+        _build_sheet("Por Entidad", "RECAUDACIÓN POR ENTIDAD", data.get("by_entity") or [])
+        _build_sheet("Por Método Pago", "RECAUDACIÓN POR MÉTODO DE PAGO", data.get("by_method") or [])
+        _build_sheet("Por Servicio", "RECAUDACIÓN POR SERVICIO", data.get("by_service") or [])
+
+        # ── Sheet 5: Detalle ──────────────────────────────────────────
+        _build_sheet("Detalle Transacciones", "DETALLE DE TRANSACCIONES", data.get("details") or [])
+
         buffer = BytesIO()
-
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            # Summary by entity
-            if data.get("by_entity"):
-                df_entity = pd.DataFrame(data["by_entity"])
-                df_entity.to_excel(writer, sheet_name="Por Entidad", index=False)
-
-            # Summary by payment method
-            if data.get("by_method"):
-                df_method = pd.DataFrame(data["by_method"])
-                df_method.to_excel(writer, sheet_name="Por Metodo", index=False)
-
-            # Summary by service
-            if data.get("by_service"):
-                df_service = pd.DataFrame(data["by_service"])
-                df_service.to_excel(writer, sheet_name="Por Servicio", index=False)
-
-            # Detail transactions
-            if data.get("details"):
-                df_details = pd.DataFrame(data["details"])
-                df_details.to_excel(writer, sheet_name="Detalle", index=False)
-
+        wb.save(buffer)
         file_content = buffer.getvalue()
 
         return {
@@ -1652,6 +1867,16 @@ class TreasuryExportService:
         # Generate charts (base64 PNG images)
         charts = self._generate_ministry_charts(data)
 
+        # Load logo for PDF header
+        logo_b64 = None
+        try:
+            import base64 as _b64
+            logo_path = Path(__file__).parent.parent / "templates" / "logo.png"
+            if logo_path.exists():
+                logo_b64 = _b64.b64encode(logo_path.read_bytes()).decode()
+        except Exception:
+            pass
+
         # Try Jinja2 template, fallback to inline
         if self.jinja_env:
             try:
@@ -1670,6 +1895,7 @@ class TreasuryExportService:
                     top_services=top_services,
                     daily_breakdown=daily_breakdown if daily_breakdown else None,
                     charts=charts,
+                    logo_base64=logo_b64,
                 )
             except Exception as e:
                 logger.warning(f"Jinja2 template rendering failed, using fallback: {e}")

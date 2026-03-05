@@ -6,168 +6,201 @@
     <style>
         @page {
             size: A4 landscape;
-            margin: 15mm 12mm 20mm 12mm;
+            margin: 15mm 12mm 22mm 12mm;
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages) "  —  Documento Confidencial  —  Uso Interno";
+                font-family: Arial, sans-serif;
+                font-size: 7px;
+                color: #718096;
+            }
+            @top-right {
+                content: "GEN-{{ report_ref }}";
+                font-family: Arial, sans-serif;
+                font-size: 7px;
+                color: #a0aec0;
+            }
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; }
 
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 9px;
             color: #1a202c;
             line-height: 1.3;
         }
 
+        /* ── Letterhead ── */
         .letterhead {
-            text-align: center;
+            width: 100%;
+            border-collapse: collapse;
             border-bottom: 2px solid #1a365d;
-            padding-bottom: 8px;
             margin-bottom: 10px;
         }
-
-        .letterhead .country-name {
+        .letterhead td { vertical-align: middle; padding-bottom: 6px; }
+        .lh-logo { width: 55px; }
+        .lh-logo img { height: 42px; }
+        .lh-center { padding-left: 10px; }
+        .country-name {
+            font-size: 9px;
+            font-weight: bold;
+            color: #1a365d;
+            text-transform: uppercase;
+        }
+        .ministry-name {
             font-size: 10px;
             font-weight: bold;
             color: #1a365d;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
+            margin-top: 2px;
         }
-
-        .letterhead .ministry-name {
-            font-size: 11px;
+        .lh-ref { text-align: right; }
+        .stamp-box {
+            border: 1px solid #1a365d;
+            padding: 4px 8px;
+            text-align: center;
+            display: inline-block;
+        }
+        .stamp-ref {
+            font-size: 8px;
             font-weight: bold;
             color: #1a365d;
+        }
+        .stamp-date {
+            font-size: 7px;
+            color: #4a5568;
             margin-top: 2px;
         }
 
-        .report-title-bar {
-            text-align: center;
-            margin: 8px 0;
-            padding: 6px;
+        /* ── Title bar ── */
+        .title-bar {
             background: #1a365d;
             color: white;
-            border-radius: 3px;
-        }
-
-        .report-title-bar h1 {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .report-title-bar .period {
-            font-size: 9px;
-            margin-top: 2px;
-            opacity: 0.9;
-        }
-
-        .summary-row {
-            display: flex;
-            margin: 8px 0;
-            gap: 8px;
-        }
-
-        .summary-item {
-            flex: 1;
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 3px;
-            padding: 6px;
+            padding: 7px 10px;
             text-align: center;
+            margin-bottom: 8px;
         }
-
-        .summary-item .label {
-            font-size: 7px;
-            color: #718096;
+        .title-bar h1 {
+            font-size: 11px;
             text-transform: uppercase;
         }
+        .title-bar .period {
+            font-size: 8px;
+            margin-top: 2px;
+            color: #bee3f8;
+        }
 
-        .summary-item .value {
-            font-size: 13px;
+        /* ── KPI summary (table-based, no flexbox) ── */
+        .kpi-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 6px 0;
+            margin: 6px 0 10px 0;
+        }
+        .kpi-table td {
+            background: #ebf8ff;
+            border: 1px solid #bee3f8;
+            padding: 6px 8px;
+            text-align: center;
+            vertical-align: middle;
+            width: 50%;
+        }
+        .kpi-label {
+            font-size: 7px;
+            color: #2b6cb0;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .kpi-value {
+            font-size: 14px;
             font-weight: bold;
             color: #1a365d;
             margin-top: 2px;
         }
 
-        table {
+        /* ── Data table ── */
+        table.data-tbl {
             width: 100%;
             border-collapse: collapse;
-            margin: 5px 0;
+            margin: 4px 0;
             font-size: 8px;
         }
-
-        thead th {
-            background: #2d3748;
+        table.data-tbl thead th {
+            background: #1a365d;
             color: white;
             padding: 4px 6px;
             text-align: left;
-            font-weight: 600;
+            font-weight: bold;
             font-size: 7px;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            border: 1px solid #2d3748;
         }
+        table.data-tbl thead th.amount { text-align: right; }
 
-        thead th.amount { text-align: right; }
-
-        tbody td {
+        table.data-tbl tbody td {
             padding: 3px 6px;
-            border-bottom: 1px solid #e2e8f0;
+            border: 1px solid #e2e8f0;
         }
+        table.data-tbl tbody tr.row-even { background: #f0f8ff; }
+        table.data-tbl tbody tr.row-odd  { background: #ffffff; }
 
-        tbody tr:nth-child(even) { background: #f7fafc; }
-
-        td.amount {
+        table.data-tbl td.amount {
             text-align: right;
-            font-family: 'Courier New', monospace;
+            font-weight: bold;
         }
-
-        .total-row {
-            background: #ebf8ff !important;
+        table.data-tbl tr.total-row td {
+            background: #bee3f8;
             font-weight: bold;
             border-top: 2px solid #2b6cb0;
         }
-
-        .footer {
-            margin-top: 10px;
-            padding-top: 6px;
-            border-top: 1px solid #1a365d;
-            text-align: center;
-            font-size: 7px;
-            color: #718096;
-        }
-
-        .confidential {
-            font-size: 6px;
-            color: #a0aec0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 4px;
-        }
+        table.data-tbl tr.total-row td.amount { text-align: right; }
     </style>
 </head>
 <body>
-    <div class="letterhead">
-        <div class="country-name">República de Guinea Ecuatorial</div>
-        <div class="ministry-name">Ministerio de Hacienda y Presupuestos</div>
-    </div>
+    <!-- Letterhead -->
+    <table class="letterhead">
+        <tr>
+            {% if logo_base64 %}
+            <td class="lh-logo">
+                <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo" />
+            </td>
+            {% endif %}
+            <td class="lh-center">
+                <div class="country-name">República de Guinea Ecuatorial</div>
+                <div class="ministry-name">Ministerio de Hacienda y Presupuestos</div>
+            </td>
+            <td class="lh-ref">
+                <div class="stamp-box">
+                    <div class="stamp-ref">GEN-{{ report_ref }}</div>
+                    <div class="stamp-date">{{ generated_at }}</div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
-    <div class="report-title-bar">
+    <!-- Title bar -->
+    <div class="title-bar">
         <h1>{{ report_title }}</h1>
-        <div class="period">Período: {{ period_start }} - {{ period_end }} | Ref: {{ report_ref }} | {{ generated_at }}</div>
+        <div class="period">Período: {{ period_start }} — {{ period_end }}</div>
     </div>
 
-    <div class="summary-row">
-        <div class="summary-item">
-            <div class="label">Total Registros</div>
-            <div class="value">{{ total_records }}</div>
-        </div>
-        <div class="summary-item">
-            <div class="label">Monto Total</div>
-            <div class="value">{{ total_amount_formatted }} XAF</div>
-        </div>
-    </div>
+    <!-- KPI cards (table-based, CSS2-safe) -->
+    <table class="kpi-table">
+        <tr>
+            <td>
+                <div class="kpi-label">Total Registros</div>
+                <div class="kpi-value">{{ total_records }}</div>
+            </td>
+            {% if show_total %}
+            <td>
+                <div class="kpi-label">Monto Total</div>
+                <div class="kpi-value">{{ total_amount_formatted }} XAF</div>
+            </td>
+            {% endif %}
+        </tr>
+    </table>
 
-    <table>
+    <!-- Data table -->
+    <table class="data-tbl">
         <thead>
             <tr>
                 {% for col in columns %}
@@ -177,7 +210,7 @@
         </thead>
         <tbody>
             {% for row in rows %}
-            <tr>
+            <tr class="{{ 'row-even' if loop.index is even else 'row-odd' }}">
                 {% for col in columns %}
                 <td{% if col.is_amount %} class="amount"{% endif %}>{{ row[col.key] }}</td>
                 {% endfor %}
@@ -185,18 +218,11 @@
             {% endfor %}
             {% if show_total %}
             <tr class="total-row">
-                <td colspan="{{ columns|length - 1 }}">TOTAL</td>
-                <td class="amount">{{ total_amount_formatted }}</td>
+                <td colspan="{{ columns|length - 1 }}"><strong>TOTAL GENERAL</strong></td>
+                <td class="amount">{{ total_amount_formatted }} XAF</td>
             </tr>
             {% endif %}
         </tbody>
     </table>
-
-    <div class="footer" style="text-align: center; margin-top: 10px; padding-top: 6px; border-top: 1px solid #1a365d;">
-        <div style="font-size: 9px; font-weight: bold; color: #1a365d;">Facil</div>
-        <div style="font-size: 7px; color: #718096; font-style: italic;">Simplificarte la vida</div>
-        <div class="confidential">Documento confidencial - Uso interno</div>
-        <div style="font-size: 7px; color: #a0aec0; margin-top: 3px;">Generado: {{ generated_at }}</div>
-    </div>
 </body>
 </html>

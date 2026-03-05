@@ -99,10 +99,9 @@
            REFERENCE BOX
            ================================================================ */
         .reference-box {
-            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            background: #1d4ed8;
             color: white;
             padding: 10px 15px;
-            border-radius: 6px;
             margin-bottom: 15px;
             display: table;
             width: 100%;
@@ -134,11 +133,9 @@
         }
 
         .status-badge {
-            display: inline-block;
-            background: #22c55e;
+            background: #16a34a;
             color: white;
             padding: 3px 12px;
-            border-radius: 12px;
             font-size: 9pt;
             font-weight: bold;
             margin-top: 3px;
@@ -164,26 +161,21 @@
             width: 90px;
             height: 110px;
             border: 2px solid #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
             background: #f9fafb;
         }
 
         .photo-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+            width: 90px;
+            height: 110px;
         }
 
         .photo-placeholder {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 90px;
+            height: 110px;
             color: #9ca3af;
             font-size: 8pt;
             text-align: center;
+            padding-top: 42px;
         }
 
         .data-column {
@@ -344,9 +336,7 @@
         .appointment-box {
             background: #eff6ff;
             border: 1px solid #bfdbfe;
-            border-radius: 6px;
             padding: 10px;
-            height: 100%;
         }
 
         .appointment-title {
@@ -397,10 +387,8 @@
         .payment-box {
             background: #d1fae5;
             border: 1px solid #6ee7b7;
-            border-radius: 6px;
             padding: 8px;
             text-align: center;
-            height: 100%;
         }
 
         .payment-icon {
@@ -425,9 +413,7 @@
             font-size: 7pt;
             color: #047857;
             margin-top: 3px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            text-align: center;
         }
 
         .payment-status-icon {
@@ -464,23 +450,20 @@
             height: 70px;
             border: 1px solid #e5e7eb;
             background: #f9fafb;
-            display: inline-block;
         }
 
         .qr-box img {
-            width: 100%;
-            height: 100%;
+            width: 70px;
+            height: 70px;
         }
 
         .qr-placeholder {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 70px;
+            height: 70px;
             font-size: 7pt;
             color: #9ca3af;
             text-align: center;
+            padding-top: 22px;
         }
 
         .footer-text {
@@ -507,7 +490,6 @@
         .agent-box {
             background: #f9fafb;
             border: 1px solid #e5e7eb;
-            border-radius: 4px;
             padding: 8px 12px;
             margin-top: 10px;
             font-size: 8pt;
@@ -528,7 +510,6 @@
         .notice-box {
             background: #f0fdf4;
             border: 1px solid #bbf7d0;
-            border-radius: 4px;
             padding: 8px 12px;
             margin-top: 10px;
             font-size: 8pt;
@@ -550,7 +531,7 @@
             {% if logo_base64 %}
             <img src="{{ logo_base64 }}" class="logo" alt="Facil" />
             {% else %}
-            <div class="logo" style="background: linear-gradient(135deg, #2563eb, #22c55e); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16pt;">TGE</div>
+            <div class="logo" style="background: #1d4ed8; color: white; font-weight: bold; font-size: 16pt; text-align: center; padding-top: 15px;">TGE</div>
             {% endif %}
         </div>
         <div class="header-center">

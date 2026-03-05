@@ -7695,11 +7695,8 @@ async def download_treasury_export(
             extra_info={"current_status": row["status"]}
         )
 
-    if not row["file_path"]:
-        raise TreasuryError(
-            error_code=TreasuryErrorCode.EXPORT_EXPIRED,
-            status_code=status.HTTP_404_NOT_FOUND
-        )
+    # Note: file_path may be NULL (Firebase upload failed or not yet tried).
+    # Do NOT bail here — let the regeneration logic below handle it.
 
     # Determine MIME type
     mime_types = {
