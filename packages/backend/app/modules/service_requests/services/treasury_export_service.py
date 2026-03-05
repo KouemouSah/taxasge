@@ -271,13 +271,23 @@ class TreasuryExportService:
                 WHERE id = $1::uuid
             """, export_id)
 
+            # Resolve agent name for PDF footer
+            generated_by_name = None
+            if requested_by:
+                generated_by_name = await db.fetchval(
+                    "SELECT full_name FROM users WHERE id = $1", requested_by
+                )
+
             # Fetch payment data based on export type
             if export_type == "sage_x3":
                 data = await self._fetch_sage_x3_data(db, period_start, period_end, filters)
                 result = await self._generate_sage_x3_export(data, export_format, export_id)
             elif export_type == "ministry_report":
                 data = await self._fetch_ministry_data(db, period_start, period_end, filters)
-                result = await self._generate_ministry_report(data, export_format, export_id, period_start, period_end)
+                result = await self._generate_ministry_report(
+                    data, export_format, export_id, period_start, period_end,
+                    generated_by_name=generated_by_name,
+                )
             elif export_type == "reconciliation":
                 data = await self._fetch_reconciliation_data(db, period_start, period_end, filters)
                 result = await self._generate_reconciliation_export(data, export_format, export_id)
@@ -290,7 +300,10 @@ class TreasuryExportService:
             else:
                 # Generic export (custom or unknown type)
                 data = await self._fetch_generic_data(db, period_start, period_end, filters)
-                result = await self._generate_generic_export(data, export_format, export_id, period_start, period_end)
+                result = await self._generate_generic_export(
+                    data, export_format, export_id, period_start, period_end,
+                    generated_by_name=generated_by_name,
+                )
 
             # Update progress
             await db.execute("""
@@ -1045,10 +1058,11 @@ class TreasuryExportService:
         export_id: str,
         period_start: date,
         period_end: date,
+        generated_by_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate ministry report."""
         if export_format == "pdf":
-            return await self._write_ministry_pdf(data, export_id, period_start, period_end)
+            return await self._write_ministry_pdf(data, export_id, period_start, period_end, generated_by_name=generated_by_name)
         elif export_format == "xlsx":
             return await self._write_ministry_xlsx(data, export_id, period_start, period_end)
         else:
@@ -1108,6 +1122,7 @@ class TreasuryExportService:
         export_id: str,
         period_start: date = None,
         period_end: date = None,
+        generated_by_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate generic export."""
         total_amount = sum(float(r.get("total_amount", 0) or 0) for r in data)
@@ -1121,6 +1136,7 @@ class TreasuryExportService:
             return await self._write_generic_pdf(
                 data, export_id, columns, total_amount,
                 title="Exportación Personalizada",
+                generated_by_name=generated_by_name,
                 period_start=period_start,
                 period_end=period_end,
             )
@@ -1142,6 +1158,7 @@ class TreasuryExportService:
         title: str = "Reporte",
         period_start: date = None,
         period_end: date = None,
+        generated_by_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Write generic PDF using Jinja2 template (landscape A4)."""
         if not XHTML2PDF_AVAILABLE:
@@ -1208,6 +1225,7 @@ class TreasuryExportService:
                     rows=formatted_rows,
                     show_total=total_amount > 0,
                     logo_base64=logo_b64,
+                    generated_by_name=generated_by_name or "Sistema",
                 )
             except Exception as e:
                 logger.warning(f"Generic PDF template failed: {e}")
@@ -1339,6 +1357,7 @@ class TreasuryExportService:
         export_id: str,
         period_start: date,
         period_end: date,
+        generated_by_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Write ministry report PDF (in-memory)."""
         if not XHTML2PDF_AVAILABLE:
@@ -1351,7 +1370,7 @@ class TreasuryExportService:
             )
 
         # Generate HTML content
-        html_content = self._generate_ministry_html(data, period_start, period_end)
+        html_content = self._generate_ministry_html(data, period_start, period_end, generated_by_name=generated_by_name)
 
         # Convert to PDF in-memory
         buffer = BytesIO()
@@ -1390,7 +1409,7 @@ class TreasuryExportService:
         )
         now_label = datetime.now().strftime("%d/%m/%Y %H:%M")
         report_ref = f"MIN-{export_id[:8].upper()}"
-        main_title = "MINISTERIO DE HACIENDA — DIRECCIÓN GENERAL DE IMPUESTOS"
+        main_title = "MINISTERIO DE TESORERÍA Y PATRIMONIO DEL ESTADO"
         generated_by = f"Generado: {now_label}  |  Ref: {report_ref}"
 
         wb = openpyxl.Workbook()
@@ -1790,6 +1809,7 @@ class TreasuryExportService:
         data: Dict[str, Any],
         period_start: date,
         period_end: date,
+        generated_by_name: Optional[str] = None,
     ) -> str:
         """Generate HTML for ministry PDF report using Jinja2 template."""
         total_amount = float(data.get("total_amount", 0) or 0)
@@ -1896,6 +1916,7 @@ class TreasuryExportService:
                     daily_breakdown=daily_breakdown if daily_breakdown else None,
                     charts=charts,
                     logo_base64=logo_b64,
+                    generated_by_name=generated_by_name or "Sistema",
                 )
             except Exception as e:
                 logger.warning(f"Jinja2 template rendering failed, using fallback: {e}")

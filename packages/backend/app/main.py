@@ -301,7 +301,7 @@ def get_cors_headers(request: Request) -> dict:
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle uncaught exceptions and return JSON with proper status code and CORS headers."""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    logger.opt(exception=True).error("Unhandled exception: {}", str(exc))
     return JSONResponse(
         status_code=500,
         content={
@@ -991,6 +991,16 @@ try:
     logger.info("✅ Agent profile router loaded")
 except Exception as e:
     logger.error(f"❌ Agent profile router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load unified analyst router (Dynamic Agent Architecture - Phase 3)
+try:
+    from app.modules.agents.api.analyst_routes import router as analyst_router
+    app.include_router(analyst_router, prefix="/api/v1/agents", tags=["analyst"])
+    routers_loaded.append("analyst")
+    logger.info("✅ Unified analyst router loaded (POST /agents/analyst/ask)")
+except Exception as e:
+    logger.error(f"❌ Unified analyst router failed: {e}")
     logger.error(traceback.format_exc())
 
 # Try to load documents router (Module - Documents System)
