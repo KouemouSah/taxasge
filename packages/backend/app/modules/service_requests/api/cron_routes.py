@@ -742,3 +742,38 @@ async def slow_query_snapshot(
     except Exception as e:
         logger.error(f"Failed to capture slow query snapshot: {e}")
         return {"snapshot_count": 0, "error": str(e)}
+
+
+# ============================================================================
+# NLP INTENT CLASSIFIER RETRAIN (weekly, Sunday 02:00 UTC)
+# ============================================================================
+
+@router.post(
+    "/retrain-nlp-classifier",
+    summary="Retrain NLP intent classifier from real query data",
+    description="""
+    Called weekly by Cloud Scheduler (Sunday 02:00 UTC).
+
+    Pipeline:
+    1. Fetch last 90 days of agent_query_logs with ground_truth_intent
+    2. Cold start: < 50 samples → skip (seed model sufficient)
+    3. Retrain TF-IDF + LogisticRegression on seeds + real data (3× weight)
+    4. Evaluate on 20% held-out split → report accuracy
+    5. Save retrained model to Redis (7-day TTL)
+    6. All Cloud Run instances pick up new model on next request
+
+    Distant supervision: Gemini's function calls = free ground truth labels.
+    """,
+)
+async def retrain_nlp_classifier(
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Retrain NLP intent classifier from accumulated query logs."""
+    from app.modules.shared.services.nlp_retrain_service import retrain_nlp_classifier
+
+    report = await retrain_nlp_classifier()
+
+    level = "info" if report["status"] in ("retrained", "skipped_cold_start") else "warning"
+    getattr(logger, level)(f"NLP retrain: {report.get('message', report['status'])}")
+
+    return report

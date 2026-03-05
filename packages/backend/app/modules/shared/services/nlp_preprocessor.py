@@ -867,10 +867,12 @@ class IntentClassifier:
         if not _SKLEARN_AVAILABLE:
             return None
         try:
-            seed_texts  = [t for t, _ in _SEED_DATA]
+            seed_texts  = [normalize_text(t) for t, _ in _SEED_DATA]
             seed_labels = [l for _, l in _SEED_DATA]
+            # Normalize real examples too (same pipeline as predict)
+            norm_texts  = [normalize_text(t) for t in texts]
             # Real examples weighted 3× more than seeds
-            all_texts  = seed_texts + texts * 3
+            all_texts  = seed_texts + norm_texts * 3
             all_labels = seed_labels + labels * 3
 
             pipeline = Pipeline([
