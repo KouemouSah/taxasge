@@ -8174,6 +8174,11 @@ class TreasuryAnalystRequest(BaseModel):
         None,
         description="Previous Q&A context for drill-down (question + tools_used)",
     )
+    session_id: Optional[str] = Field(
+        None,
+        max_length=128,
+        description="Client-generated session UUID for conversation memory (slot inheritance)",
+    )
 
 
 async def _get_analyst_entity_context(db, user_id: str) -> dict:
@@ -8239,6 +8244,10 @@ async def treasury_analyst_ask(
         "user_id": str(user_id),
         **entity_ctx,
     }
+
+    # Attach session_id for conversation memory (Level 2 NLP)
+    if request.session_id:
+        context["session_id"] = request.session_id[:128]
 
     # Add previous context for drill-down if provided
     if request.previous_context:

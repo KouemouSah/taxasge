@@ -337,10 +337,12 @@ export const adminAssistantApi = {
   askQuestion: async (
     question: string,
     previousContext?: AdminAssistantPreviousContext,
+    sessionId?: string,
   ): Promise<AdminAssistantResponse> => {
     return fetchClient.post<AdminAssistantResponse>(`${AGENTS_BASE}/admin/assistant`, {
       question,
       ...(previousContext ? { previous_context: previousContext } : {}),
+      ...(sessionId ? { session_id: sessionId } : {}),
     });
   },
 };

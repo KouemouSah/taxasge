@@ -174,10 +174,12 @@ export function useAdminAssistant() {
     mutationFn: ({
       question,
       previousContext,
+      sessionId,
     }: {
       question: string;
       previousContext?: AdminAssistantPreviousContext;
-    }) => adminAssistantApi.askQuestion(question, previousContext),
+      sessionId?: string;
+    }) => adminAssistantApi.askQuestion(question, previousContext, sessionId),
   });
 }
 

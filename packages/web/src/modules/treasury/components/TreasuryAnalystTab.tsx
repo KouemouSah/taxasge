@@ -380,6 +380,8 @@ export function TreasuryAnalystTab() {
   const [inputValue, setInputValue] = useState('');
   const [history, setHistory] = useState<QAEntry[]>([]);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  // Stable session ID for conversation memory (persists for the lifetime of this component)
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
   const analystMutation = useTreasuryAnalyst();
   const { data: briefing, isLoading: briefingLoading } = useTreasuryBriefing();
   const t = useTranslations('treasury.analyst');
@@ -417,6 +419,7 @@ export function TreasuryAnalystTab() {
         const response = await analystMutation.mutateAsync({
           question,
           previousContext,
+          sessionId: sessionIdRef.current,
         });
         const newId = `qa-${++_qaCounter}`;
         setHistory((prev) => [

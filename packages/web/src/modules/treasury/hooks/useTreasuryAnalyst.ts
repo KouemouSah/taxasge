@@ -8,16 +8,17 @@ export const TREASURY_BRIEFING_QUERY_KEY = 'treasury-analyst-briefing';
 export interface AnalystMutationParams {
   question: string;
   previousContext?: { question: string; toolsUsed: string[] };
+  sessionId?: string;
 }
 
 /**
  * Mutation hook for treasury analyst Q&A.
- * Sends a question (+ optional previous context for drill-down).
+ * Sends a question (+ optional previous context for drill-down + session_id for memory).
  */
 export function useTreasuryAnalyst() {
   return useMutation({
     mutationFn: (params: AnalystMutationParams) =>
-      treasuryApi.askAnalyst(params.question, params.previousContext),
+      treasuryApi.askAnalyst(params.question, params.previousContext, params.sessionId),
   });
 }
 

@@ -990,6 +990,11 @@ class AdminAssistantRequest(PydanticBaseModel):
         default=None,
         description="Contexte de la question précédente: {question: str, tools_used: list[str]}"
     )
+    session_id: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="UUID de session pour la mémoire conversationnelle"
+    )
 
 
 class AdminAssistantResponse(PydanticBaseModel):

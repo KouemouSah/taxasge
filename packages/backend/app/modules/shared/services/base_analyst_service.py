@@ -236,16 +236,61 @@ class BaseAnalystService(abc.ABC):
         function_map = self._get_function_map()
         max_rounds = min(self._get_max_tool_rounds(), 3)  # Hard cap at 3
 
-        # Build the initial prompt with optional previous context for drill-down
-        prompt_text = question
-        prev = ctx.get("previous_context")
-        if prev and prev.get("question"):
-            prompt_text = (
-                f"Contexto previo — Pregunta anterior: \"{prev['question']}\"\n"
-                f"Funciones usadas: {', '.join(prev.get('tools_used', []))}\n"
-                f"---\n"
-                f"Nueva pregunta: {question}"
+        # ── NLP pre-processing ──────────────────────────────────────────────
+        # 1. Extract intent + slots from the raw question
+        # 2. Resolve missing slots via conversation memory (slot inheritance)
+        # 3. Build enriched prompt for better Gemini routing
+        session_id: Optional[str] = ctx.get("session_id")
+        slots = None
+        slot_kwargs: Dict[str, Any] = {}
+        memory_context: Dict[str, Any] = {}
+
+        try:
+            from app.modules.shared.services.nlp_preprocessor import nlp_preprocessor
+            from app.modules.shared.services.conversation_memory import (
+                ConversationTurn,
+                conversation_memory,
             )
+
+            slots = nlp_preprocessor.extract_slots(question)
+
+            # Resolve missing slots from conversation history (if session active)
+            if session_id:
+                slots = await conversation_memory.resolve_missing_slots(session_id, slots)
+                memory_context = await conversation_memory.get_accumulated_context(session_id)
+
+            # kwargs to inject into SQL function calls (NLP-derived defaults)
+            slot_kwargs = nlp_preprocessor.get_injected_kwargs(slots)
+
+            logger.debug(
+                f"{service_name} NLP: intent={slots.intent.value} "
+                f"entities={slots.entity_codes} days={slots.time_period_days} "
+                f"metric={slots.metric} conf={slots.confidence:.2f}"
+            )
+        except Exception as nlp_err:
+            logger.warning(f"{service_name} NLP pre-processing failed (non-fatal): {nlp_err}")
+
+        # ── Build enriched prompt ───────────────────────────────────────────
+        # Prefer NLP-enriched prompt; fall back to legacy previous_context pattern
+        prompt_text: str
+        if slots is not None:
+            try:
+                from app.modules.shared.services.nlp_preprocessor import nlp_preprocessor
+                prompt_text = nlp_preprocessor.build_enriched_prompt(
+                    question, slots, memory_context or None
+                )
+            except Exception:
+                prompt_text = question
+        else:
+            prompt_text = question
+            prev = ctx.get("previous_context")
+            if prev and prev.get("question"):
+                prompt_text = (
+                    f"Contexto previo — Pregunta anterior: \"{prev['question']}\"\n"
+                    f"Funciones usadas: {', '.join(prev.get('tools_used', []))}\n"
+                    f"---\n"
+                    f"Nueva pregunta: {question}"
+                )
 
         try:
             loop = asyncio.get_running_loop()
@@ -259,13 +304,13 @@ class BaseAnalystService(abc.ABC):
                     logger.warning(f"{service_name}: unknown function '{fn_name}'")
                     return fn_name, {"error": f"Función desconocida: {fn_name}"}
                 try:
-                    # Inject entity scope into every function call
-                    merged_args = {**fn_args, **entity_kwargs}
+                    # Precedence: entity_kwargs (auth scope) > fn_args (Gemini) > slot_kwargs (NLP defaults)
+                    merged_args = {**slot_kwargs, **fn_args, **entity_kwargs}
                     async with db_manager.get_connection() as conn:
                         result = await function_map[fn_name](conn, **merged_args)
                     return fn_name, result
                 except TypeError:
-                    # Function doesn't accept entity kwargs — call without them
+                    # Function doesn't accept some kwargs — fall back to fn_args only
                     try:
                         async with db_manager.get_connection() as conn:
                             result = await function_map[fn_name](conn, **fn_args)
@@ -414,6 +459,28 @@ class BaseAnalystService(abc.ABC):
                 if not isinstance(v, dict) or "error" not in v
             }
             artifacts = self._build_artifacts(clean_data)
+
+            # ── Store turn in conversation memory ───────────────────────────
+            if session_id and slots is not None:
+                try:
+                    from app.modules.shared.services.conversation_memory import (
+                        ConversationTurn,
+                        conversation_memory,
+                    )
+                    turn = ConversationTurn(
+                        question=question,
+                        intent=slots.intent.value,
+                        entity_codes=slots.entity_codes,
+                        agent_name=slots.agent_name,
+                        time_period_days=slots.time_period_days,
+                        metric=slots.metric,
+                        tools_used=tools_used,
+                        key_findings=answer[:200],
+                    )
+                    await conversation_memory.add_turn(session_id, turn)
+                except Exception as mem_err:
+                    logger.warning(f"{service_name} memory store failed (non-fatal): {mem_err}")
+
             return {
                 "answer": answer,
                 "tools_used": tools_used,

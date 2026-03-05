@@ -108,11 +108,13 @@ function toCamelCase<T>(obj: Record<string, unknown>): T {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       result[camelKey] = toCamelCase(value as Record<string, unknown>);
     } else if (Array.isArray(value)) {
-      result[camelKey] = value.map((item) =>
-        typeof item === 'object' && item !== null
+      result[camelKey] = value.map((item) => {
+        // Preserve nested arrays as-is (e.g. rows: string[][] in table artifacts)
+        if (Array.isArray(item)) return item;
+        return typeof item === 'object' && item !== null
           ? toCamelCase(item as Record<string, unknown>)
-          : item
-      );
+          : item;
+      });
     } else {
       result[camelKey] = value;
     }
@@ -1204,7 +1206,8 @@ export const treasuryApi = {
 
   askAnalyst: async (
     question: string,
-    previousContext?: { question: string; toolsUsed: string[] }
+    previousContext?: { question: string; toolsUsed: string[] },
+    sessionId?: string
   ) => {
     const body: Record<string, unknown> = { question };
     if (previousContext) {
@@ -1212,6 +1215,9 @@ export const treasuryApi = {
         question: previousContext.question,
         tools_used: previousContext.toolsUsed,
       };
+    }
+    if (sessionId) {
+      body.session_id = sessionId;
     }
     const response = await fetchClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/analyst/ask`,

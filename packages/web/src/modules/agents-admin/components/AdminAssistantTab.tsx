@@ -56,6 +56,8 @@ export function AdminAssistantTab() {
   const [inputValue, setInputValue] = useState('');
   const [history, setHistory] = useState<QAEntry[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Stable session ID for conversation memory (persists for the lifetime of this component)
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
   const assistantMutation = useAdminAssistant();
   const t = useTranslations('admin.agents');
 
@@ -100,7 +102,7 @@ export function AdminAssistantTab() {
       : undefined;
 
     try {
-      const response = await assistantMutation.mutateAsync({ question, previousContext });
+      const response = await assistantMutation.mutateAsync({ question, previousContext, sessionId: sessionIdRef.current });
       setHistory(prev => [
         { id: `qa-${++_qaCounter}`, question, response, timestamp: new Date() },
         ...prev.slice(0, 9), // Keep last 10
