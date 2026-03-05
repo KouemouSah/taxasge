@@ -154,6 +154,7 @@ class BaseAnalystService(abc.ABC):
         Fire-and-forget query logger for ML training data collection.
 
         Derives ground_truth_intent from tools_used via FUNCTION_TO_INTENT.
+        Also computes and stores Vertex AI embedding for pgvector similarity search.
         Never blocks the response — called via asyncio.create_task().
         All exceptions are swallowed.
         """
@@ -177,6 +178,16 @@ class BaseAnalystService(abc.ABC):
             if slots is not None and getattr(slots, "intent_probabilities", None):
                 probs_json = json.dumps(slots.intent_probabilities)
 
+            # Compute embedding (fire-and-forget, non-blocking)
+            embedding_str: Optional[str] = None
+            try:
+                from app.modules.shared.services.embedding_service import get_embedding
+                embedding = await get_embedding(question)
+                if embedding:
+                    embedding_str = str(embedding)
+            except Exception:
+                pass  # Embedding failure never blocks logging
+
             async with db_manager.get_connection() as conn:
                 await conn.execute(
                     """
@@ -185,13 +196,15 @@ class BaseAnalystService(abc.ABC):
                         detected_intent, actual_functions_called, ground_truth_intent,
                         intent_confidence, intent_probabilities,
                         was_successful, response_time_ms,
-                        entity_codes, time_period_days, metric
+                        entity_codes, time_period_days, metric,
+                        embedding
                     ) VALUES (
                         $1, $2, $3,
                         $4, $5, $6,
                         $7, $8::jsonb,
                         $9, $10,
-                        $11, $12, $13
+                        $11, $12, $13,
+                        $14::vector
                     )
                     """,
                     agent_type,
@@ -207,6 +220,7 @@ class BaseAnalystService(abc.ABC):
                     getattr(slots, "entity_codes", []) or [],
                     getattr(slots, "time_period_days", None) if slots else None,
                     getattr(slots, "metric", None) if slots else None,
+                    embedding_str,
                 )
         except Exception as exc:
             logger.debug(f"{self._get_service_name()} query log skipped: {exc}")
@@ -353,6 +367,23 @@ class BaseAnalystService(abc.ABC):
         except Exception as nlp_err:
             logger.warning(f"{service_name} NLP pre-processing failed (non-fatal): {nlp_err}")
 
+        # ── Dynamic few-shot retrieval (Phase 5) ─────────────────────────────
+        # Retrieve similar past successful queries to inject as few-shot examples.
+        # Cold start guard: < 10 successful logs → empty (no few-shot).
+        few_shot_section: Optional[str] = None
+        agent_type = self._get_agent_type()
+        if agent_type and slots is not None:
+            try:
+                from app.modules.shared.services.few_shot_retriever import (
+                    get_few_shot_examples,
+                    format_few_shot_prompt,
+                )
+                few_shot_examples = await get_few_shot_examples(question, agent_type)
+                if few_shot_examples:
+                    few_shot_section = format_few_shot_prompt(few_shot_examples)
+            except Exception as fs_err:
+                logger.debug(f"{service_name} few-shot retrieval failed (non-fatal): {fs_err}")
+
         # ── Build enriched prompt ───────────────────────────────────────────
         # Prefer NLP-enriched prompt; fall back to legacy previous_context pattern
         prompt_text: str
@@ -360,7 +391,7 @@ class BaseAnalystService(abc.ABC):
             try:
                 from app.modules.shared.services.nlp_preprocessor import nlp_preprocessor
                 prompt_text = nlp_preprocessor.build_enriched_prompt(
-                    question, slots, memory_context or None
+                    question, slots, memory_context or None, few_shot_section
                 )
             except Exception:
                 prompt_text = question

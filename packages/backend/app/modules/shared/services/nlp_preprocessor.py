@@ -1175,12 +1175,17 @@ class NLPPreprocessor:
         question: str,
         slots: ExtractedSlots,
         memory_context: Optional[Dict[str, Any]] = None,
+        few_shot_section: Optional[str] = None,
     ) -> str:
         """
-        Build structured prompt: extracted context + conversation context + question.
+        Build structured prompt: extracted context + few-shot + conversation context + question.
 
         Only includes context sections when confidence ≥ threshold to avoid
         confusing Gemini with low-confidence guesses.
+
+        Args:
+            few_shot_section: Pre-formatted few-shot examples string (from FewShotRetriever).
+                              Injected between extracted context and conversation memory.
         """
         lines: List[str] = []
 
@@ -1206,6 +1211,10 @@ class NLPPreprocessor:
             lines.append("[CONTEXTO EXTRAÍDO]")
             lines.extend(f"- {c}" for c in ctx)
             lines.append("")
+
+        # ── Few-shot examples (dynamic, from past successful queries) ─────────
+        if few_shot_section:
+            lines.append(few_shot_section)
 
         # ── Conversation memory ───────────────────────────────────────────────
         if memory_context:
