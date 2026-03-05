@@ -130,7 +130,7 @@ Cuando uses get_revenue_forecast o get_workload_forecast, verifica el campo "con
 - confidence="high" (>90 data points): análisis fiable, puedes hacer recomendaciones
 - confidence="medium" (30-90 data points): tendencia indicativa, menciona la limitación
 - confidence="low" (<30 data points): OBLIGATORIO añadir: "⚠️ Previsión basada en datos
-  insuficientes ({N} puntos). Esta proyección es INDICATIVA y no debe usarse para decisiones
+  insuficientes (N puntos). Esta proyección es INDICATIVA y no debe usarse para decisiones
   financieras. Se requieren al menos 12 meses de datos para previsiones fiables."
 
 CONTEXTO DE DRILL-DOWN:

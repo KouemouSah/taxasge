@@ -185,6 +185,7 @@ export function GenericAgentSidebar({
   const locale = useLocale();
   const t = useTranslations('agent');
   const tDashboard = useTranslations('dashboard');
+  const tRoot = useTranslations();
   const { toast } = useToast();
 
   // State
@@ -262,19 +263,31 @@ export function GenericAgentSidebar({
 
   // Get translated title — strips 'agent.' prefix for i18n lookup
   const getTitle = (titleKey: string): string => {
-    try {
-      const key = titleKey.replace('agent.', '');
-      const translated = t(key);
-      // next-intl returns the key itself when not found
-      if (translated === key || !translated) {
-        // Humanize the last segment as fallback (e.g. "pasaporte" → "Pasaporte")
-        const lastPart = titleKey.split('.').pop() || titleKey;
-        return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
-      }
-      return translated;
-    } catch {
-      const lastPart = titleKey.split('.').pop() || titleKey;
+    const humanize = (key: string) => {
+      const lastPart = key.split('.').pop() || key;
       return lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+    };
+    try {
+      // 1. Try root namespace directly (handles 'treasury.analyst.nav', 'supervisor.nav.xxx', etc.)
+      if (!titleKey.startsWith('agent.')) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const rootTranslated = (tRoot as any)(titleKey);
+          if (rootTranslated && rootTranslated !== titleKey && !rootTranslated.includes('.')) {
+            return rootTranslated;
+          }
+        } catch {
+          // fall through
+        }
+      }
+      // 2. Try agent namespace (strip 'agent.' prefix if present)
+      const key = titleKey.replace('agent.', '');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const translated = (t as any)(key);
+      if (translated && translated !== key && !translated.includes('.')) return translated;
+      return humanize(titleKey);
+    } catch {
+      return humanize(titleKey);
     }
   };
 
