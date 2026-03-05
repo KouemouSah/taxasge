@@ -325,7 +325,7 @@ async def verify_receipt(
                     SELECT u.first_name, u.last_name
                     FROM users u
                     JOIN agent_profiles ap ON ap.user_id = u.id
-                    WHERE ap.id = $1
+                    WHERE u.id = $1
                 """
                 agent_data = await db.fetchrow(agent_query, payment["validated_by_agent_id"])
                 if agent_data:

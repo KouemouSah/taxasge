@@ -937,10 +937,34 @@ export interface SupervisorOverviewResponse {
 
 // ─── Phase 4: Treasury AI Analyst ────────────────────────────
 
+export interface TableArtifact {
+  type: 'table';
+  title: string;
+  headers: string[];
+  rows: string[][];
+  alignments?: ('left' | 'right' | 'center')[];
+}
+
+export interface KpiGridArtifact {
+  type: 'kpi_grid';
+  title: string;
+  metrics: { label: string; value: string; changePct?: number | null }[];
+}
+
+export interface SummaryArtifact {
+  type: 'summary';
+  title: string;
+  content: string;
+  severity?: 'info' | 'warning' | 'critical';
+}
+
+export type ArtifactData = TableArtifact | KpiGridArtifact | SummaryArtifact;
+
 export interface TreasuryAnalystResponse {
   answer: string;
   toolsUsed: string[];
   data: Record<string, unknown>;
+  artifacts?: ArtifactData[];
 }
 
 export interface TreasuryBriefingResponse {

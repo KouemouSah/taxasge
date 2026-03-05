@@ -4142,7 +4142,7 @@ async def download_receipt_pdf(
             FROM users u
             JOIN agent_profiles ap ON ap.user_id = u.id
             LEFT JOIN entity_locations ael ON ael.id = ap.entity_location_id
-            WHERE ap.id = $1::uuid
+            WHERE u.id = $1::uuid
             """,
             str(payment["validated_by_agent_id"])
         )
@@ -8138,12 +8138,39 @@ async def explore_analytics(
 
 class TreasuryAnalystRequest(BaseModel):
     question: str = Field(..., min_length=3, max_length=1000, description="Financial question in any language")
+    previous_context: Optional[dict] = Field(
+        None,
+        description="Previous Q&A context for drill-down (question + tools_used)",
+    )
+
+
+async def _get_analyst_entity_context(db, user_id: str) -> dict:
+    """Extract entity context for treasury analyst from agent_profiles + entity_locations.
+
+    Returns context dict with entity_code, entity_location_id, is_main_office.
+    Main office users see all data; satellite site users see only their site.
+    """
+    row = await db.fetchrow("""
+        SELECT ap.entity_location_id, e.code AS entity_code,
+               COALESCE(el.is_main_office, true) AS is_main_office
+        FROM agent_profiles ap
+        JOIN entities e ON e.id = ap.entity_id
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+        WHERE ap.user_id = $1
+    """, user_id)
+    if not row:
+        return {}
+    return {
+        "entity_code": row["entity_code"],
+        "entity_location_id": str(row["entity_location_id"]) if row["entity_location_id"] else None,
+        "is_main_office": row["is_main_office"],
+    }
 
 
 @router.post(
     "/treasury/analyst/ask",
     summary="Ask treasury financial analyst AI",
-    description="Process a financial question using Gemini function calling with 8 predefined safe SQL functions.",
+    description="Process a financial question using Gemini function calling with 17 predefined safe SQL functions.",
 )
 async def treasury_analyst_ask(
     request: TreasuryAnalystRequest,
@@ -8155,6 +8182,7 @@ async def treasury_analyst_ask(
     Ask the treasury AI analyst a financial question.
     Uses Gemini function calling — the LLM never generates SQL.
     Rate limited: 20 requests/hour per user.
+    Entity-scoped: satellite sites see only their data.
     """
     from app.core.cache import check_rate_limit, get_cache
     from ..services.treasury_analyst_service import treasury_analyst_service
@@ -8170,18 +8198,38 @@ async def treasury_analyst_ask(
             "answer": "Has alcanzado el límite de consultas (20/hora). Espera antes de intentar de nuevo.",
             "tools_used": [],
             "data": {},
+            "artifacts": [],
         }
 
-    # Check cache (5 min, keyed by question hash)
+    # Build entity context (site-scoped)
+    entity_ctx = await _get_analyst_entity_context(db, user_id)
+    context = {
+        "user_id": str(user_id),
+        **entity_ctx,
+    }
+
+    # Add previous context for drill-down if provided
+    if request.previous_context:
+        prev = request.previous_context
+        if prev.get("question"):
+            context["previous_context"] = {
+                "question": str(prev["question"])[:500],
+                "tools_used": prev.get("tools_used", []),
+            }
+
+    # Check cache (5 min, keyed by question hash + entity scope)
     import hashlib
     cache = get_cache()
+    scope_key = entity_ctx.get("entity_location_id", "global")
     question_hash = hashlib.md5(request.question.strip().lower().encode()).hexdigest()
-    cache_key = f"treasury:analyst:ask:{question_hash}"
+    cache_key = f"treasury:analyst:ask:{scope_key}:{question_hash}"
     cached = await cache.get(cache_key)
     if cached:
         return cached
 
-    result = await treasury_analyst_service.process_question(db, request.question.strip())
+    result = await treasury_analyst_service.process_question(
+        db, request.question.strip(), context=context
+    )
 
     # Cache successful results
     if result.get("tools_used"):
@@ -8203,20 +8251,248 @@ async def treasury_analyst_briefing(
     """
     Get automated treasury financial briefing.
     Pre-computed data → LLM summary with priority classification.
-    Cached for 5 minutes.
+    Cached for 5 minutes per entity scope.
     """
     from app.core.cache import get_cache
     from ..services.treasury_analyst_service import treasury_analyst_service
 
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    entity_ctx = await _get_analyst_entity_context(db, user_id)
+
     cache = get_cache()
-    cache_key = "treasury:analyst:briefing"
+    scope_key = entity_ctx.get("entity_location_id", "global")
+    cache_key = f"treasury:analyst:briefing:{scope_key}"
     cached = await cache.get(cache_key)
     if cached:
         return cached
 
-    result = await treasury_analyst_service.generate_briefing(db)
+    context = {"user_id": str(user_id), **entity_ctx}
+    result = await treasury_analyst_service.generate_briefing(db, context=context)
     await cache.set(cache_key, result, ttl=300)
     return result
+
+
+class AnalystExportRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2000)
+    answer: str = Field(..., min_length=1)
+    artifacts: Optional[List[dict]] = None
+    format: str = Field("pdf", pattern="^(pdf|markdown)$")
+
+
+@router.post(
+    "/treasury/analyst/export",
+    summary="Export analyst response as PDF or Markdown",
+    description="Generate a downloadable PDF or Markdown file from an analyst Q&A response.",
+)
+async def export_analyst_response(
+    request: AnalystExportRequest,
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury_stat.view")),
+):
+    """Export analyst response as PDF or Markdown."""
+    from datetime import datetime
+    from io import BytesIO
+    from fastapi.responses import StreamingResponse
+
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d_%H%M")
+
+    if request.format == "markdown":
+        md = _build_analyst_markdown(request.question, request.answer, request.artifacts or [])
+        content = md.encode("utf-8")
+        return StreamingResponse(
+            BytesIO(content),
+            media_type="text/markdown; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="analyst-{timestamp}.md"',
+                "Content-Length": str(len(content)),
+            },
+        )
+
+    # PDF
+    html = _build_analyst_pdf_html(request.question, request.answer, request.artifacts or [], timestamp)
+    try:
+        from xhtml2pdf import pisa
+    except ImportError:
+        return {"error": "PDF generation not available (xhtml2pdf not installed)"}
+
+    pdf_buffer = BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+    if pisa_status.err:
+        return {"error": "PDF generation failed"}
+
+    pdf_bytes = pdf_buffer.getvalue()
+    return StreamingResponse(
+        BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="analyst-{timestamp}.pdf"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
+    )
+
+
+def _build_analyst_markdown(question: str, answer: str, artifacts: list) -> str:
+    """Build Markdown export of analyst response."""
+    from datetime import datetime
+    lines = [
+        f"# Análisis Financiero — Tesoro Público GE",
+        f"",
+        f"**Pregunta**: {question}",
+        f"",
+        f"**Fecha**: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+        f"",
+        f"---",
+        f"",
+    ]
+
+    # Render artifacts as markdown tables
+    for art in artifacts:
+        art_type = art.get("type")
+        title = art.get("title", "")
+
+        if art_type == "kpi_grid":
+            lines.append(f"## {title}")
+            lines.append("")
+            metrics = art.get("metrics", [])
+            for m in metrics:
+                val = m.get("value", "")
+                change = m.get("change_pct") or m.get("changePct")
+                suffix = f" ({'+' if change >= 0 else ''}{change}%)" if change is not None else ""
+                lines.append(f"- **{m.get('label', '')}**: {val}{suffix}")
+            lines.append("")
+
+        elif art_type == "table":
+            lines.append(f"## {title}")
+            lines.append("")
+            headers = art.get("headers", [])
+            rows = art.get("rows", [])
+            alignments = art.get("alignments", ["left"] * len(headers))
+            if headers:
+                lines.append("| " + " | ".join(headers) + " |")
+                sep_parts = []
+                for a in alignments:
+                    if a == "right":
+                        sep_parts.append("---:")
+                    elif a == "center":
+                        sep_parts.append(":---:")
+                    else:
+                        sep_parts.append("---")
+                lines.append("| " + " | ".join(sep_parts) + " |")
+                for row in rows:
+                    lines.append("| " + " | ".join(str(c) for c in row) + " |")
+            lines.append("")
+
+        elif art_type == "summary":
+            lines.append(f"## {title}")
+            lines.append("")
+            lines.append(art.get("content", ""))
+            lines.append("")
+
+    # LLM analysis
+    lines.append("## Análisis")
+    lines.append("")
+    lines.append(answer)
+    lines.append("")
+    lines.append("---")
+    lines.append("_Generado por Facil Analista IA_")
+
+    return "\n".join(lines)
+
+
+def _build_analyst_pdf_html(question: str, answer: str, artifacts: list, timestamp: str) -> str:
+    """Build HTML for PDF export of analyst response."""
+    import html as html_mod
+
+    def esc(text: str) -> str:
+        return html_mod.escape(str(text)) if text else ""
+
+    # Build artifact HTML
+    artifact_html = []
+    for art in artifacts:
+        art_type = art.get("type")
+        title = esc(art.get("title", ""))
+
+        if art_type == "kpi_grid":
+            metrics = art.get("metrics", [])
+            cells = "".join(
+                f'<td style="padding:8px;text-align:center;border:1px solid #ddd;">'
+                f'<div style="font-size:10px;color:#666;">{esc(m.get("label",""))}</div>'
+                f'<div style="font-size:18px;font-weight:bold;">{esc(m.get("value",""))}</div>'
+                f'</td>'
+                for m in metrics
+            )
+            artifact_html.append(
+                f'<h3 style="margin:12px 0 6px;font-size:13px;color:#333;">{title}</h3>'
+                f'<table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><tr>{cells}</tr></table>'
+            )
+
+        elif art_type == "table":
+            headers = art.get("headers", [])
+            rows = art.get("rows", [])
+            alignments = art.get("alignments", ["left"] * len(headers))
+
+            th_cells = "".join(
+                f'<th style="padding:6px 8px;text-align:{alignments[i] if i < len(alignments) else "left"};'
+                f'border:1px solid #ddd;background:#f5f5f5;font-size:10px;">{esc(h)}</th>'
+                for i, h in enumerate(headers)
+            )
+            body_rows = ""
+            for ri, row in enumerate(rows):
+                bg = "#fafafa" if ri % 2 == 1 else "#fff"
+                tds = "".join(
+                    f'<td style="padding:4px 8px;text-align:{alignments[ci] if ci < len(alignments) else "left"};'
+                    f'border:1px solid #ddd;font-size:10px;">{esc(c)}</td>'
+                    for ci, c in enumerate(row)
+                )
+                body_rows += f'<tr style="background:{bg};">{tds}</tr>'
+
+            artifact_html.append(
+                f'<h3 style="margin:12px 0 6px;font-size:13px;color:#333;">{title}</h3>'
+                f'<table style="width:100%;border-collapse:collapse;margin-bottom:12px;">'
+                f'<thead><tr>{th_cells}</tr></thead><tbody>{body_rows}</tbody></table>'
+            )
+
+        elif art_type == "summary":
+            artifact_html.append(
+                f'<h3 style="margin:12px 0 6px;font-size:13px;color:#333;">{title}</h3>'
+                f'<p style="font-size:11px;padding:8px;background:#f9f9f9;border-left:3px solid #3a7104;">'
+                f'{esc(art.get("content",""))}</p>'
+            )
+
+    artifacts_block = "\n".join(artifact_html)
+
+    # Convert markdown answer to simple HTML
+    answer_html = esc(answer)
+    answer_html = answer_html.replace("\n\n", "</p><p style='font-size:11px;line-height:1.5;'>")
+    answer_html = answer_html.replace("\n", "<br/>")
+    # Bold
+    import re
+    answer_html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', answer_html)
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<style>
+@page {{ size: A4; margin: 1.5cm; }}
+body {{ font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #333; }}
+.header {{ background: #3a7104; color: white; padding: 12px 16px; margin: -1.5cm -1.5cm 16px; }}
+.header h1 {{ margin: 0; font-size: 16px; }}
+.header p {{ margin: 4px 0 0; font-size: 10px; opacity: 0.9; }}
+.question {{ background: #f0f7e6; border-left: 4px solid #3a7104; padding: 8px 12px; margin-bottom: 16px; }}
+.question strong {{ font-size: 12px; }}
+.footer {{ margin-top: 20px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 9px; color: #999; text-align: center; }}
+</style></head><body>
+<div class="header">
+  <h1>Análisis Financiero — Tesoro Público GE</h1>
+  <p>Generado: {esc(timestamp)} | Plataforma Facil</p>
+</div>
+<div class="question">
+  <strong>Pregunta:</strong> {esc(question)}
+</div>
+{artifacts_block}
+<h3 style="margin:16px 0 8px;font-size:13px;color:#333;">Análisis</h3>
+<p style="font-size:11px;line-height:1.5;">{answer_html}</p>
+<div class="footer">Generado por Facil Analista IA — Tesoro Público de Guinea Ecuatorial</div>
+</body></html>"""
 
 
 # ═══════════════════════════════════════════════════════════════

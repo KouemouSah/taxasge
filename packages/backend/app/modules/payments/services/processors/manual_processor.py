@@ -223,6 +223,19 @@ class ManualValidationProcessor(PaymentProcessorBase):
         from app.modules.payments.services.receipt_service import receipt_service
 
         try:
+            # 0. Resolve user_id from agent_profile_id (validated_by_agent_id stores user_id, NOT profile id)
+            agent_user_id = await db.fetchval(
+                "SELECT user_id FROM agent_profiles WHERE id = $1::uuid",
+                agent_profile_id
+            )
+            if not agent_user_id:
+                return PaymentStatusResult(
+                    payment_id=payment_id,
+                    status=PaymentStatus.FAILED,
+                    error="Agent profile not found"
+                )
+            agent_user_id = str(agent_user_id)
+
             # 1. Get payment with user and service request data
             payment = await self._get_payment(db, payment_id)
             if not payment:
@@ -284,7 +297,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                         "phone": agent_data.get("treasury_phone"),
                     }
 
-            # 6. Update payment status first (using agent_profile_id UUID)
+            # 6. Update payment status (validated_by_agent_id = user_id, NOT profile id)
             paid_at = datetime.utcnow()
             update_query = """
                 UPDATE service_payments
@@ -302,7 +315,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 update_query,
                 payment_id,
                 paid_at,
-                agent_profile_id,
+                agent_user_id,
                 validation_comment
             )
 
@@ -361,7 +374,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                     payment_data=payment_data,
                     user_data=dict(user_data) if user_data else {},
                     service_data=dict(service_data) if service_data else None,
-                    validated_by=agent_profile_id,
+                    validated_by=agent_user_id,
                     validated_by_name=agent_name,
                     validated_at=paid_at,
                     language="es",  # TODO: Get user's preferred language
@@ -386,8 +399,8 @@ class ManualValidationProcessor(PaymentProcessorBase):
             # (PAYMENT_CASH_VALIDATED) — do NOT publish here to avoid duplicate emails.
 
             logger.info(
-                f"Manual payment {payment_id} validated by agent_profile {agent_profile_id}. "
-                f"Receipt: {receipt_number}"
+                f"Manual payment {payment_id} validated by user {agent_user_id} "
+                f"(profile {agent_profile_id}). Receipt: {receipt_number}"
             )
 
             return PaymentStatusResult(
@@ -400,7 +413,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 receipt_number=receipt_number,
                 receipt_url=receipt_url,
                 receipt_pdf_bytes=receipt_pdf_bytes,
-                validated_by=agent_profile_id,
+                validated_by=agent_user_id,
             )
 
         except Exception as e:
@@ -431,6 +444,13 @@ class ManualValidationProcessor(PaymentProcessorBase):
             PaymentStatusResult with updated status
         """
         try:
+            # Resolve user_id from agent_profile_id (validated_by_agent_id stores user_id)
+            agent_user_id = await db.fetchval(
+                "SELECT user_id FROM agent_profiles WHERE id = $1::uuid",
+                agent_profile_id
+            )
+            agent_user_id = str(agent_user_id) if agent_user_id else agent_profile_id
+
             # Get payment with user data for notification
             payment = await self._get_payment(db, payment_id)
             user_data = None
@@ -454,7 +474,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
             updated = await db.fetchrow(
                 query,
                 payment_id,
-                agent_profile_id,
+                agent_user_id,
                 rejection_reason
             )
 
@@ -469,8 +489,8 @@ class ManualValidationProcessor(PaymentProcessorBase):
             # (PAYMENT_CASH_REJECTED) — do NOT publish here to avoid duplicate emails.
 
             logger.info(
-                f"Manual payment {payment_id} rejected by agent_profile {agent_profile_id}. "
-                f"Reason: {rejection_reason}"
+                f"Manual payment {payment_id} rejected by user {agent_user_id} "
+                f"(profile {agent_profile_id}). Reason: {rejection_reason}"
             )
 
             return PaymentStatusResult(
@@ -478,7 +498,7 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 status=PaymentStatus.FAILED,
                 paid=False,
                 error=rejection_reason,
-                validated_by=agent_profile_id,
+                validated_by=agent_user_id,
             )
 
         except Exception as e:

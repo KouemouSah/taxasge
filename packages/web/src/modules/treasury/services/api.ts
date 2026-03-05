@@ -63,6 +63,7 @@ import type {
   // Phase 4 - AI Analyst
   TreasuryAnalystResponse,
   TreasuryBriefingResponse,
+  ArtifactData,
   // Phase 5 - Reconciliation
   ReconciliationSuggestionsResponse,
   AutoMatchResponse,
@@ -1201,10 +1202,20 @@ export const treasuryApi = {
 
   // ─── AI Analyst (Phase 4) ─────
 
-  askAnalyst: async (question: string) => {
+  askAnalyst: async (
+    question: string,
+    previousContext?: { question: string; toolsUsed: string[] }
+  ) => {
+    const body: Record<string, unknown> = { question };
+    if (previousContext) {
+      body.previous_context = {
+        question: previousContext.question,
+        tools_used: previousContext.toolsUsed,
+      };
+    }
     const response = await fetchClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/analyst/ask`,
-      { question }
+      body
     );
     return toCamelCase<TreasuryAnalystResponse>(response);
   },
@@ -1214,6 +1225,26 @@ export const treasuryApi = {
       `${TREASURY_BASE}/analyst/briefing`
     );
     return toCamelCase<TreasuryBriefingResponse>(response);
+  },
+
+  exportAnalystResponse: async (
+    question: string,
+    answer: string,
+    artifacts: ArtifactData[],
+    format: 'pdf' | 'markdown'
+  ) => {
+    const blob = await fetchClient.post<Blob>(
+      `${TREASURY_BASE}/analyst/export`,
+      { question, answer, artifacts, format },
+      { responseType: 'blob' }
+    );
+    const ext = format === 'pdf' ? 'pdf' : 'md';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analyst-${new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-')}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 };
 

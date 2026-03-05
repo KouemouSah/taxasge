@@ -15,6 +15,7 @@ export { ServiceDistributionChart } from './ServiceDistributionChart';
 export { RecentActivityTimeline } from './RecentActivityTimeline';
 // Phase 4 - AI Analyst
 export { TreasuryAnalystTab } from './TreasuryAnalystTab';
+export { ArtifactRenderer, KpiGrid, ArtifactTable, ArtifactSummary } from './ArtifactRenderers';
 // Workload Dashboard Charts
 export { VelocityChart } from './VelocityChart';
 export { SLAComplianceDonut } from './SLAComplianceDonut';

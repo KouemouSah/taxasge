@@ -1016,8 +1016,18 @@ class BatchPersistService:
         import time as _time
         _t_fanout = _time.monotonic()
 
-        # Update all service_payments in the batch
+        # Resolve user_id from agent_profile_id (validated_by_agent_id stores user_id)
+        agent_user_id = agent_profile_id
         if agent_profile_id:
+            resolved = await db.fetchval(
+                "SELECT user_id FROM agent_profiles WHERE id = $1::uuid",
+                agent_profile_id
+            )
+            if resolved:
+                agent_user_id = str(resolved)
+
+        # Update all service_payments in the batch
+        if agent_user_id:
             payments_result = await db.execute(
                 """
                 UPDATE service_payments
@@ -1031,7 +1041,7 @@ class BatchPersistService:
                 """,
                 batch_id,
                 paid_at,
-                agent_profile_id,
+                agent_user_id,
             )
         else:
             payments_result = await db.execute(

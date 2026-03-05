@@ -6839,12 +6839,17 @@
         "attention": "Atencion",
         "urgent": "Urgente"
       },
+      "quickActionsMenu": "Consultas rapidas",
+      "copyTable": "Copiar",
+      "historyLabel": "Historial",
       "quickActions": {
         "revenueSummary": "Ingresos del mes",
         "pendingSla": "Pagos pendientes y SLA",
         "agentPerformance": "Rendimiento agentes",
         "anomalies": "Anomalias detectadas",
-        "forecast": "Tendencias 7 dias"
+        "forecast": "Tendencias 7 dias",
+        "entityComparison": "Comparacion entidades",
+        "rejectionAnalysis": "Analisis rechazos"
       },
       "nav": "Analista IA"
     },

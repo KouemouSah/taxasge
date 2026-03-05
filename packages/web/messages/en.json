@@ -6737,12 +6737,17 @@
         "attention": "Attention",
         "urgent": "Urgent"
       },
+      "quickActionsMenu": "Quick queries",
+      "copyTable": "Copy",
+      "historyLabel": "History",
       "quickActions": {
         "revenueSummary": "Monthly revenue",
         "pendingSla": "Pending payments & SLA",
         "agentPerformance": "Agent performance",
         "anomalies": "Detected anomalies",
-        "forecast": "7-day trends"
+        "forecast": "7-day trends",
+        "entityComparison": "Entity comparison",
+        "rejectionAnalysis": "Rejection analysis"
       },
       "nav": "AI Analyst"
     },

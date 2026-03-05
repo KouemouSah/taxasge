@@ -5,49 +5,28 @@ The LLM NEVER generates SQL. It ROUTES to predefined safe functions and
 FORMATS the response. It also ANALYZES data for anomalies and patterns.
 
 Language: Spanish by default (Equatorial Guinea admin context).
-
-Design: Same pattern as LLMRoutingService (lazy init, graceful fallback).
-Production-ready: retry on init failure, structured function responses,
-multi-function support for broad questions.
+Inherits shared 2-call Gemini flow from BaseAnalystService.
 """
 
-import asyncio
-import json
-import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
-from app.config import get_settings
+from app.modules.shared.services.base_analyst_service import (
+    BaseAnalystService,
+    VERTEX_AI_AVAILABLE,
+)
 
-try:
-    from vertexai.generative_models import (
-        GenerativeModel,
-        GenerationConfig,
-        Tool,
-        FunctionDeclaration,
-    )
-    from google.protobuf.struct_pb2 import Struct
-    import vertexai
-
-    VERTEX_AI_AVAILABLE = True
-except ImportError:
-    VERTEX_AI_AVAILABLE = False
-    logger.warning("Vertex AI SDK not available - Admin assistant disabled")
-
-# Max retries for Gemini API calls (per-call, not total)
-_GEMINI_TIMEOUT_FIRST_CALL = 25.0   # Function routing call
-_GEMINI_TIMEOUT_SECOND_CALL = 30.0  # Final analysis call (needs more time for large data)
-_MAX_INIT_RETRIES = 3
-_INIT_RETRY_DELAY = 2.0  # seconds
+if VERTEX_AI_AVAILABLE:
+    from vertexai.generative_models import FunctionDeclaration
 
 
 # ============================================================================
 # SYSTEM PROMPT
 # ============================================================================
 
-SYSTEM_PROMPT = """Eres el asistente IA del administrador del sistema TaxasGE
-(plataforma gubernamental de servicios fiscales de Guinea Ecuatorial).
+SYSTEM_PROMPT = """Eres el asistente IA del administrador del sistema Facil
+(plataforma digital de procesos de Guinea Ecuatorial).
 
 Tu rol: analizar datos REALES de los agentes gubernamentales para ayudar al
 administrador a tomar decisiones informadas y detectar problemas.
@@ -101,115 +80,117 @@ FUNCIONES DISPONIBLES:
 # FUNCTION DECLARATIONS (predefined safe SQL functions)
 # ============================================================================
 
-TOOL_FUNCTIONS = [
-    FunctionDeclaration(
-        name="get_alerts_summary",
-        description="Obtener resumen de alertas activas: agentes inactivos, sobrecargados, bloqueos obsoletos y SLA en riesgo.",
-        parameters={
-            "type": "object",
-            "properties": {},
-        },
-    ),
-    FunctionDeclaration(
-        name="get_agent_summary",
-        description="Obtener estadísticas completas de un agente específico: rendimiento mensual, carga de trabajo, calidad.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "agent_name": {
-                    "type": "string",
-                    "description": "Nombre completo o parcial del agente a consultar",
+TOOL_FUNCTIONS: list = []
+if VERTEX_AI_AVAILABLE:
+    TOOL_FUNCTIONS = [
+        FunctionDeclaration(
+            name="get_alerts_summary",
+            description="Obtener resumen de alertas activas: agentes inactivos, sobrecargados, bloqueos obsoletos y SLA en riesgo.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_agent_summary",
+            description="Obtener estadísticas completas de un agente específico: rendimiento mensual, carga de trabajo, calidad.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "agent_name": {
+                        "type": "string",
+                        "description": "Nombre completo o parcial del agente a consultar",
+                    },
+                },
+                "required": ["agent_name"],
+            },
+        ),
+        FunctionDeclaration(
+            name="compare_entity_agents",
+            description="Comparar todos los agentes de una entidad: carga, rendimiento, actividad.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "entity_code": {
+                        "type": "string",
+                        "description": "Código de la entidad (ej: TESORO, CNEDOGE, DGT, ITVE)",
+                    },
+                },
+                "required": ["entity_code"],
+            },
+        ),
+        FunctionDeclaration(
+            name="get_workload_distribution",
+            description="Ver distribución de carga de trabajo entre todas las entidades.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_inactive_agents",
+            description="Listar agentes sin actividad durante un período determinado.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Número de días de inactividad (por defecto 2)",
+                    },
                 },
             },
-            "required": ["agent_name"],
-        },
-    ),
-    FunctionDeclaration(
-        name="compare_entity_agents",
-        description="Comparar todos los agentes de una entidad: carga, rendimiento, actividad.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "entity_code": {
-                    "type": "string",
-                    "description": "Código de la entidad (ej: TESORO, CNEDOGE, DGT, ITVE)",
+        ),
+        FunctionDeclaration(
+            name="get_sla_report",
+            description="Obtener reporte de cumplimiento SLA: pagos pendientes, tiempos promedio, violaciones.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="analyze_performance_ranking",
+            description="Análisis de rendimiento: ranking de todos los agentes por tasa de éxito, calidad, cumplimiento SLA. Detecta los mejores y peores performers con estadísticas detalladas.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "metric": {
+                        "type": "string",
+                        "description": "Métrica de ranking: 'success_rate' (tasa de éxito), 'quality' (calidad), 'sla_compliance' (cumplimiento SLA), 'productivity' (expedientes procesados). Por defecto: success_rate",
+                    },
                 },
             },
-            "required": ["entity_code"],
-        },
-    ),
-    FunctionDeclaration(
-        name="get_workload_distribution",
-        description="Ver distribución de carga de trabajo entre todas las entidades.",
-        parameters={
-            "type": "object",
-            "properties": {},
-        },
-    ),
-    FunctionDeclaration(
-        name="get_inactive_agents",
-        description="Listar agentes sin actividad durante un período determinado.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "days": {
-                    "type": "integer",
-                    "description": "Número de días de inactividad (por defecto 2)",
+        ),
+        FunctionDeclaration(
+            name="detect_anomalies",
+            description="Detección de anomalías estadísticas: identifica agentes con métricas que se desvían significativamente de la media del grupo (>1.5 desviaciones estándar). Detecta patrones de rendimiento inusuales.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="analyze_entity_balance",
+            description="Análisis de equilibrio de carga entre entidades: detecta desequilibrios en la distribución de trabajo, identifica entidades sobrecargadas vs infrautilizadas, calcula ratio agente/expediente.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_processing_trends",
+            description="Tendencias de procesamiento: volumen de expedientes procesados, aprobados, rechazados y escalados por período. Detecta cambios de tendencia.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "period_days": {
+                        "type": "integer",
+                        "description": "Período de análisis en días (7, 14, 30). Por defecto: 30",
+                    },
                 },
             },
-        },
-    ),
-    FunctionDeclaration(
-        name="get_sla_report",
-        description="Obtener reporte de cumplimiento SLA: pagos pendientes, tiempos promedio, violaciones.",
-        parameters={
-            "type": "object",
-            "properties": {},
-        },
-    ),
-    FunctionDeclaration(
-        name="analyze_performance_ranking",
-        description="Análisis de rendimiento: ranking de todos los agentes por tasa de éxito, calidad, cumplimiento SLA. Detecta los mejores y peores performers con estadísticas detalladas.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "metric": {
-                    "type": "string",
-                    "description": "Métrica de ranking: 'success_rate' (tasa de éxito), 'quality' (calidad), 'sla_compliance' (cumplimiento SLA), 'productivity' (expedientes procesados). Por defecto: success_rate",
-                },
-            },
-        },
-    ),
-    FunctionDeclaration(
-        name="detect_anomalies",
-        description="Detección de anomalías estadísticas: identifica agentes con métricas que se desvían significativamente de la media del grupo (>1.5 desviaciones estándar). Detecta patrones de rendimiento inusuales.",
-        parameters={
-            "type": "object",
-            "properties": {},
-        },
-    ),
-    FunctionDeclaration(
-        name="analyze_entity_balance",
-        description="Análisis de equilibrio de carga entre entidades: detecta desequilibrios en la distribución de trabajo, identifica entidades sobrecargadas vs infrautilizadas, calcula ratio agente/expediente.",
-        parameters={
-            "type": "object",
-            "properties": {},
-        },
-    ),
-    FunctionDeclaration(
-        name="get_processing_trends",
-        description="Tendencias de procesamiento: volumen de expedientes procesados, aprobados, rechazados y escalados por período. Detecta cambios de tendencia.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "period_days": {
-                    "type": "integer",
-                    "description": "Período de análisis en días (7, 14, 30). Por defecto: 30",
-                },
-            },
-        },
-    ),
-]
+        ),
+    ]
 
 
 # ============================================================================
@@ -397,12 +378,10 @@ async def _exec_get_sla_report(db) -> Dict[str, Any]:
 
 async def _exec_analyze_performance_ranking(db, metric: str = "success_rate") -> Dict[str, Any]:
     """Rank all agents by a performance metric with statistical analysis."""
-    # Validate metric to prevent injection (only allow known values)
     valid_metrics = {"success_rate", "quality", "sla_compliance", "productivity"}
     if metric not in valid_metrics:
         metric = "success_rate"
 
-    # Use Python-side sorting instead of CASE $1 (avoids type mixing in SQL CASE branches)
     rows = await db.fetch("""
         SELECT u.full_name, e.code as entity_code,
                aw.capacity_percentage,
@@ -427,7 +406,6 @@ async def _exec_analyze_performance_ranking(db, metric: str = "success_rate") ->
     if not rows:
         return {"error": "No hay agentes activos con datos de rendimiento"}
 
-    # Map metric to column name for sorting
     metric_col = {
         "success_rate": "success_rate",
         "quality": "quality_score_avg",
@@ -435,7 +413,6 @@ async def _exec_analyze_performance_ranking(db, metric: str = "success_rate") ->
         "productivity": "total_processed",
     }.get(metric, "success_rate")
 
-    # Sort in Python (avoids CASE type-mixing in SQL)
     sorted_rows = sorted(rows, key=lambda r: float(r[metric_col] or 0), reverse=True)
 
     agents = []
@@ -458,7 +435,6 @@ async def _exec_analyze_performance_ranking(db, metric: str = "success_rate") ->
             "capacity_pct": float(r["capacity_percentage"] or 0),
         })
 
-    # Statistical summary
     n = len(metric_values)
     avg_val = sum(metric_values) / n if n > 0 else 0
     variance = sum((v - avg_val) ** 2 for v in metric_values) / n if n > 0 else 0
@@ -506,7 +482,6 @@ async def _exec_detect_anomalies(db) -> Dict[str, Any]:
     if not rows:
         return {"anomalies": [], "message": "No hay datos suficientes para análisis"}
 
-    # Collect metrics per agent
     agents_data = []
     for r in rows:
         agents_data.append({
@@ -527,7 +502,6 @@ async def _exec_detect_anomalies(db) -> Dict[str, Any]:
     if n < 3:
         return {"anomalies": [], "agents": agents_data, "message": "Pocos agentes para detectar anomalías estadísticas (mínimo 3)"}
 
-    # Compute mean and std for key metrics, flag outliers (>1.5 std)
     metrics_to_check = ["capacity", "success_rate", "quality", "sla_compliance", "avg_hours"]
     anomalies = []
 
@@ -537,7 +511,7 @@ async def _exec_detect_anomalies(db) -> Dict[str, Any]:
         variance = sum((v - avg_val) ** 2 for v in values) / n
         std_dev = variance ** 0.5
 
-        if std_dev < 0.01:  # No variance = no anomalies
+        if std_dev < 0.01:
             continue
 
         threshold = 1.5
@@ -560,7 +534,6 @@ async def _exec_detect_anomalies(db) -> Dict[str, Any]:
                     "description": f"{agent['name']} tiene {metric_name}={round(val,1)} ({direction}), media={round(avg_val,1)}, desviación={round(z_score,2)}σ",
                 })
 
-    # Check for rejection rate anomalies
     for agent in agents_data:
         if agent["processed"] > 0:
             rejection_rate = agent["rejected"] / agent["processed"] * 100
@@ -634,11 +607,10 @@ async def _exec_analyze_entity_balance(db) -> Dict[str, Any]:
             "avg_quality": round(float(r["avg_quality"]), 1),
         })
 
-    # Balance analysis
     n = len(capacities)
     avg_capacity = sum(capacities) / n if n > 0 else 0
     variance = sum((c - avg_capacity) ** 2 for c in capacities) / n if n > 0 else 0
-    balance_score = max(0, 100 - variance ** 0.5)  # 100 = perfectly balanced
+    balance_score = max(0, 100 - variance ** 0.5)
 
     most_loaded = max(entities, key=lambda e: e["avg_capacity"]) if entities else None
     least_loaded = min(entities, key=lambda e: e["avg_capacity"]) if entities else None
@@ -667,7 +639,7 @@ async def _exec_analyze_entity_balance(db) -> Dict[str, Any]:
 
 async def _exec_get_processing_trends(db, period_days: int = 30) -> Dict[str, Any]:
     """Analyze processing volume trends over time."""
-    period_days = min(max(period_days, 7), 90)  # Clamp 7-90 days
+    period_days = min(max(period_days, 7), 90)
 
     rows = await db.fetch("""
         SELECT date_trunc('day', pva.created_at)::date as day,
@@ -703,7 +675,6 @@ async def _exec_get_processing_trends(db, period_days: int = 30) -> Dict[str, An
         totals["rejected"] += r["rejected"]
         totals["escalated"] += r["escalated"]
 
-    # Trend detection: compare first half vs second half
     mid = len(daily) // 2
     first_half = daily[:mid] if mid > 0 else daily
     second_half = daily[mid:] if mid > 0 else daily
@@ -744,7 +715,7 @@ async def _exec_get_processing_trends(db, period_days: int = 30) -> Dict[str, An
 
 
 # Function dispatcher
-FUNCTION_MAP = {
+FUNCTION_MAP: Dict[str, Callable] = {
     "get_alerts_summary": lambda db, **_: _exec_get_alerts_summary(db),
     "get_agent_summary": lambda db, **kw: _exec_get_agent_summary(db, kw.get("agent_name", "")),
     "compare_entity_agents": lambda db, **kw: _exec_compare_entity_agents(db, kw.get("entity_code", "")),
@@ -762,267 +733,20 @@ FUNCTION_MAP = {
 # SERVICE CLASS
 # ============================================================================
 
-def _make_json_safe(obj: Any) -> Any:
-    """Convert object to JSON-safe types while keeping dict structure.
+class AdminAssistantService(BaseAnalystService):
+    """Gemini function-calling admin assistant."""
 
-    Vertex AI Part.from_function_response expects a dict with JSON-safe values.
-    This round-trips through JSON to convert datetime, UUID, Decimal etc. to
-    strings/numbers, but returns a dict (NOT a JSON string).
-    """
-    return json.loads(json.dumps(obj, default=str, ensure_ascii=False))
+    def _get_system_prompt(self) -> str:
+        return SYSTEM_PROMPT
 
+    def _get_function_declarations(self) -> list:
+        return TOOL_FUNCTIONS
 
-class AdminAssistantService:
-    """Gemini function-calling admin assistant.
+    def _get_function_map(self) -> Dict[str, Callable]:
+        return FUNCTION_MAP
 
-    Production-ready: retries init on failure, structured function responses,
-    proper timeouts, multi-function support.
-    """
-
-    def __init__(self):
-        self._model: Optional[GenerativeModel] = None
-        self._initialized = False
-        self._init_failures = 0
-
-    def _ensure_initialized(self):
-        """Lazy initialization with retry on failure.
-
-        Unlike the old code, does NOT mark as initialized on failure.
-        Retries up to _MAX_INIT_RETRIES times before giving up permanently.
-        """
-        if self._initialized and self._model is not None:
-            return
-
-        if not VERTEX_AI_AVAILABLE:
-            self._initialized = True
-            return
-
-        if self._init_failures >= _MAX_INIT_RETRIES:
-            # Exceeded retry limit — don't keep hammering Vertex AI
-            logger.debug("Admin Assistant init skipped (exceeded retry limit)")
-            return
-
-        try:
-            settings = get_settings()
-            vertexai.init(
-                project=settings.GOOGLE_CLOUD_PROJECT,
-                location=settings.GOOGLE_CLOUD_LOCATION,
-            )
-            tools = [Tool(function_declarations=TOOL_FUNCTIONS)]
-            model_name = getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash")
-            self._model = GenerativeModel(
-                model_name,
-                system_instruction=SYSTEM_PROMPT,
-                tools=tools,
-            )
-            self._initialized = True
-            self._init_failures = 0
-            logger.info("Admin Assistant Service initialized successfully")
-        except Exception as e:
-            self._init_failures += 1
-            logger.error(
-                f"Failed to initialize Admin Assistant (attempt {self._init_failures}/{_MAX_INIT_RETRIES}): {e}"
-            )
-
-    async def process_question(
-        self, db, question: str
-    ) -> Dict[str, Any]:
-        """
-        Process an admin question using Gemini function calling.
-
-        Flow: question → Gemini → picks tool(s) → safe SQL → data → Gemini → answer
-
-        Key improvements over v1:
-        - Structured function responses (dict, not json.dumps string)
-        - Multi-function support for broad questions
-        - Separate timeouts for routing vs analysis calls
-        - Better error messages with context
-
-        Args:
-            db: Database connection
-            question: Admin's question in natural language
-
-        Returns:
-            {"answer": str, "tools_used": list, "data": dict}
-        """
-        self._ensure_initialized()
-        start_time = time.monotonic()
-
-        if not self._model:
-            return {
-                "answer": "Servicio IA no disponible temporalmente. Los datos están accesibles desde los paneles de control.",
-                "tools_used": [],
-                "data": {},
-            }
-
-        tools_used: List[str] = []
-        tool_results: Dict[str, Any] = {}
-
-        try:
-            loop = asyncio.get_running_loop()
-
-            # Step 1: Send question to Gemini, get function call(s)
-            response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        question,
-                        generation_config=GenerationConfig(
-                            temperature=0.2,
-                            max_output_tokens=512,  # Routing call: only needs function names
-                        ),
-                    ),
-                ),
-                timeout=_GEMINI_TIMEOUT_FIRST_CALL,
-            )
-
-            # Safely handle empty response
-            if not response.candidates:
-                logger.warning("Admin assistant: empty candidates from Gemini")
-                return {
-                    "answer": "No se obtuvo respuesta del modelo. Intenta reformular tu pregunta.",
-                    "tools_used": [],
-                    "data": {},
-                }
-
-            # Step 2: Extract function calls from response
-            function_calls = []
-            for candidate in response.candidates:
-                if not hasattr(candidate, 'content') or not candidate.content:
-                    continue
-                for part in candidate.content.parts:
-                    if hasattr(part, "function_call") and part.function_call and part.function_call.name:
-                        function_calls.append(part.function_call)
-
-            if not function_calls:
-                # No function call — direct text response (rare with good prompt)
-                try:
-                    text = (response.text or "").strip()
-                except (ValueError, AttributeError):
-                    text = ""
-                latency = int((time.monotonic() - start_time) * 1000)
-                logger.info(f"Admin assistant (direct text, no function calls): latency={latency}ms q={question[:50]}")
-                return {
-                    "answer": text or "No puedo responder a esta pregunta con los datos disponibles. Intenta ser más específico.",
-                    "tools_used": [],
-                    "data": {},
-                }
-
-            # Step 3: Execute function calls in parallel
-            async def _exec_fn(fn_name: str, fn_args: dict):
-                if fn_name not in FUNCTION_MAP:
-                    logger.warning(f"Admin assistant: unknown function '{fn_name}'")
-                    return fn_name, {"error": f"Función desconocida: {fn_name}"}
-                try:
-                    result = await FUNCTION_MAP[fn_name](db, **fn_args)
-                    return fn_name, result
-                except Exception as e:
-                    logger.error(f"Admin assistant function {fn_name} failed: {e}")
-                    return fn_name, {"error": str(e)}
-
-            tasks = []
-            for fc in function_calls:
-                fn_name = fc.name
-                # Safely convert protobuf MapComposite to plain dict
-                try:
-                    fn_args = {k: v for k, v in fc.args.items()} if fc.args else {}
-                    # Convert protobuf numeric types to Python types
-                    fn_args = {k: (int(v) if isinstance(v, float) and v == int(v) else v) for k, v in fn_args.items()}
-                except (TypeError, AttributeError):
-                    fn_args = {}
-                tools_used.append(fn_name)
-                tasks.append(_exec_fn(fn_name, fn_args))
-
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for r in results:
-                if isinstance(r, Exception):
-                    logger.error(f"Admin assistant function execution error: {r}")
-                    continue
-                fn_name, fn_result = r
-                tool_results[fn_name] = fn_result
-
-            if not tool_results:
-                return {
-                    "answer": "Error ejecutando las funciones de datos. Intenta de nuevo.",
-                    "tools_used": tools_used,
-                    "data": {},
-                }
-
-            # Step 4: Send function results back to Gemini for natural language answer
-            from vertexai.generative_models import Part, Content
-
-            # Build function response parts as JSON strings wrapped in {"result": ...}
-            # Part.from_function_response expects a dict with string values for protobuf Struct
-            function_response_parts = []
-            for fn_name, fn_result in tool_results.items():
-                function_response_parts.append(
-                    Part.from_function_response(
-                        name=fn_name,
-                        response={"result": json.dumps(fn_result, default=str, ensure_ascii=False)},
-                    )
-                )
-
-            # Multi-turn conversation: user question → model function calls → function responses
-            chat_history = [
-                Content(role="user", parts=[Part.from_text(question)]),
-                response.candidates[0].content,
-                Content(role="user", parts=function_response_parts),
-            ]
-
-            final_response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        chat_history,
-                        generation_config=GenerationConfig(
-                            temperature=0.2,
-                            max_output_tokens=2048,  # Analysis: needs space for tables + recommendations
-                        ),
-                    ),
-                ),
-                timeout=_GEMINI_TIMEOUT_SECOND_CALL,
-            )
-
-            try:
-                answer = (final_response.text or "").strip()
-            except (ValueError, AttributeError):
-                answer = ""
-            if not answer:
-                answer = "No se pudo generar un análisis. Los datos fueron obtenidos correctamente — consulta los paneles para más detalles."
-            latency = int((time.monotonic() - start_time) * 1000)
-
-            logger.info(
-                f"Admin assistant: tools={tools_used} latency={latency}ms q={question[:50]}"
-            )
-
-            return {
-                "answer": answer,
-                "tools_used": tools_used,
-                "data": {k: v for k, v in tool_results.items() if not isinstance(v, dict) or "error" not in v},
-            }
-
-        except asyncio.TimeoutError:
-            latency = int((time.monotonic() - start_time) * 1000)
-            logger.warning(f"Admin assistant timed out after {latency}ms, tools={tools_used}")
-            # If we have partial results, return them with a note
-            if tool_results:
-                return {
-                    "answer": "El análisis tardó demasiado, pero se obtuvieron datos parciales. Consulta los paneles para el detalle completo.",
-                    "tools_used": tools_used,
-                    "data": {k: v for k, v in tool_results.items() if not isinstance(v, dict) or "error" not in v},
-                }
-            return {
-                "answer": "La consulta tardó demasiado. Intenta con una pregunta más específica.",
-                "tools_used": tools_used,
-                "data": {},
-            }
-        except Exception as e:
-            logger.error(f"Admin assistant error: {type(e).__name__}: {e}")
-            return {
-                "answer": "Error procesando la consulta. Intenta de nuevo.",
-                "tools_used": tools_used,
-                "data": {},
-            }
+    def _get_service_name(self) -> str:
+        return "Admin Assistant"
 
 
 # Singleton

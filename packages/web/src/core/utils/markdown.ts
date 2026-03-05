@@ -135,8 +135,8 @@ export function renderMarkdown(text: string): string {
   );
 
   // Headings ### h3, ## h2 (before bold, since ## can conflict)
-  html = html.replace(/^### (.+)$/gm, '<h4 class="font-semibold text-sm mt-3 mb-1">$1</h4>');
-  html = html.replace(/^## (.+)$/gm, '<h3 class="font-semibold text-base mt-3 mb-1">$1</h3>');
+  html = html.replace(/^### (.+)$/gm, '<h4 class="font-semibold text-sm mt-4 mb-2">$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3 class="font-semibold text-base mt-5 mb-2">$1</h3>');
 
   // Bold **text**
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold">$1</strong>');
@@ -162,8 +162,8 @@ export function renderMarkdown(text: string): string {
     '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>'
   );
 
-  // Line breaks: double newline = paragraph break
-  html = html.replace(/\n\n/g, '<br/><br/>');
+  // Line breaks: double newline = paragraph break (proper spacing)
+  html = html.replace(/\n\n/g, '<div class="mb-3"></div>');
 
   return html;
 }

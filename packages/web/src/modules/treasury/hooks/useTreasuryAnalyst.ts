@@ -5,13 +5,19 @@ import treasuryApi from '../services/api';
 
 export const TREASURY_BRIEFING_QUERY_KEY = 'treasury-analyst-briefing';
 
+export interface AnalystMutationParams {
+  question: string;
+  previousContext?: { question: string; toolsUsed: string[] };
+}
+
 /**
  * Mutation hook for treasury analyst Q&A.
- * Sends a question, gets back LLM analysis with data.
+ * Sends a question (+ optional previous context for drill-down).
  */
 export function useTreasuryAnalyst() {
   return useMutation({
-    mutationFn: (question: string) => treasuryApi.askAnalyst(question),
+    mutationFn: (params: AnalystMutationParams) =>
+      treasuryApi.askAnalyst(params.question, params.previousContext),
   });
 }
 

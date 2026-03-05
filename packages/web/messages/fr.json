@@ -6977,12 +6977,17 @@
         "attention": "Attention",
         "urgent": "Urgent"
       },
+      "quickActionsMenu": "Requetes rapides",
+      "copyTable": "Copier",
+      "historyLabel": "Historique",
       "quickActions": {
         "revenueSummary": "Revenus du mois",
         "pendingSla": "Paiements en attente et SLA",
         "agentPerformance": "Performance agents",
         "anomalies": "Anomalies detectees",
-        "forecast": "Tendances 7 jours"
+        "forecast": "Tendances 7 jours",
+        "entityComparison": "Comparaison entites",
+        "rejectionAnalysis": "Analyse rejets"
       },
       "nav": "Analyste IA"
     },

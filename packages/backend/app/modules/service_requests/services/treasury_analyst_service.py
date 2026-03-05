@@ -5,88 +5,144 @@ The LLM NEVER generates SQL. It ROUTES to predefined safe functions and
 FORMATS the response with financial analysis.
 
 Language: Spanish by default (Equatorial Guinea treasury context).
-Pattern: Same as admin_assistant_service.py (lazy init, graceful fallback).
+Inherits shared 2-call Gemini flow from BaseAnalystService.
 """
 
 import asyncio
 import json
 import time
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List
 
 from loguru import logger
 
-from app.config import get_settings
+from app.modules.shared.services.base_analyst_service import (
+    BaseAnalystService,
+    VERTEX_AI_AVAILABLE,
+    GEMINI_TIMEOUT_SECOND_CALL,
+)
 
-try:
+if VERTEX_AI_AVAILABLE:
     from vertexai.generative_models import (
-        GenerativeModel,
-        GenerationConfig,
-        Tool,
         FunctionDeclaration,
-        Part,
-        Content,
+        GenerationConfig,
     )
-    import vertexai
 
-    VERTEX_AI_AVAILABLE = True
-except ImportError:
-    VERTEX_AI_AVAILABLE = False
-    logger.warning("Vertex AI SDK not available - Treasury analyst disabled")
-
-_GEMINI_TIMEOUT_FIRST_CALL = 25.0
-_GEMINI_TIMEOUT_SECOND_CALL = 30.0
-_MAX_INIT_RETRIES = 3
-_INIT_RETRY_DELAY = 2.0
 
 # ============================================================================
 # SYSTEM PROMPT
 # ============================================================================
 
-SYSTEM_PROMPT = """Eres el Analista Financiero IA del Tesoro Público de Guinea Ecuatorial
-en la plataforma TaxasGE.
+SYSTEM_PROMPT_TEMPLATE = """Eres el Analista Financiero Senior del Tesoro Público de Guinea Ecuatorial
+en la plataforma Facil, experto en fiscalidad CEMAC/BEAC y gestión de pagos gubernamentales.
 
-Tu rol: analizar datos REALES de pagos, ingresos, agentes de tesorería y SLA
+CONTEXTO TEMPORAL: Hoy es {current_date} ({day_of_week}). Cuando digas "ayer", "esta semana",
+"este mes" o "últimos 7 días", refiérete a fechas reales calculadas desde hoy.
+
+Tu rol: analizar datos REALES de pagos, ingresos, agentes de tesorería, SLA y anomalías
 para ayudar al supervisor del tesoro a tomar decisiones financieras informadas.
 
 REGLAS ESTRICTAS:
 - Responde SIEMPRE en español
 - Cita cifras EXACTAS retornadas por las funciones (NUNCA inventes datos)
 - Si los datos son insuficientes, dilo claramente
-- Analiza los datos para detectar tendencias de ingresos, anomalías de pagos,
-  problemas SLA, y rendimiento de agentes
-- Propón acciones concretas cuando sea pertinente
-- Sé factual y conciso (máximo 500 palabras)
+- Analiza tendencias de ingresos, anomalías de pagos, problemas SLA, rendimiento agentes
+- Propón acciones concretas, priorizadas y con plazo cuando sea pertinente
+- Sé factual y conciso (máximo 800 palabras)
 - Los montos están en XAF (Franco CFA de África Central)
 - NO hagas suposiciones sobre datos que no tienes
 
-ESTRATEGIA DE FUNCIONES:
-- Para preguntas AMPLIAS ("resumen de ingresos", "estado financiero"),
-  llama MÚLTIPLES funciones simultáneamente
+ESTRATEGIA DE FUNCIONES — MUY IMPORTANTE:
+- Para preguntas AMPLIAS ("resumen de ingresos", "estado financiero", "reporte completo"):
+  DEBES llamar MÚLTIPLES funciones simultáneamente.
+  Ejemplo: "resumen financiero" → get_revenue_summary + get_sla_status + get_anomaly_summary + get_payment_trends
+  Ejemplo: "comparar entidades" → get_entity_comparison + get_revenue_by_service
+  Ejemplo: "estado pagos pendientes" → get_sla_status + get_payment_aging + get_workflow_pipeline
+  Ejemplo: "rendimiento agentes" → get_agent_performance + get_rejection_analysis
 - Para preguntas ESPECÍFICAS, llama solo la función relevante
 - SIEMPRE llama al menos una función. NUNCA respondas sin datos.
 
-FORMATO DE RESPUESTA (Markdown):
-- Usa encabezados ## y ### para estructurar
-- Usa **negrita** para destacar datos importantes
-- Usa tablas markdown para datos comparativos
-- Al final, incluye "### Recomendaciones" con acciones concretas
+FORMATO DE RESPUESTA — REGLA OBLIGATORIA:
+Para CUALQUIER dato numérico comparativo (agentes, entidades, servicios, períodos, anomalías),
+USA SIEMPRE tablas markdown con alineación a la derecha para los números:
 
-FUNCIONES DISPONIBLES:
-- get_revenue_summary: ingresos por estado/método/período
+| Entidad | Transacciones | Monto (XAF) | % Total |
+|---------|-------------:|------------:|--------:|
+| TESORO  |            5 |     250,000 |   55.6% |
+| CNEDOGE |            3 |     200,000 |   44.4% |
+
+- Usa encabezados ## y ### para estructurar
+- Usa **negrita** para KPIs principales
+- Usa `código` para códigos de entidad, workflow o referencias técnicas
+- Formatea montos con separador de miles: 1,250,000 XAF
+- Al final, incluye "### Recomendaciones" con acciones concretas, priorizadas
+
+DETECCIÓN DE ALERTAS — REGLA CONDICIONAL:
+Al analizar los datos recibidos, verifica si existen estas situaciones ANTES de redactar tu respuesta:
+1. Caída >10% en ingresos vs período anterior (datos de get_period_comparison) → ⚠️ ALERTA INGRESOS
+2. SLA de algún agente por debajo del 85% (datos de get_agent_performance) → ⚠️ ALERTA SLA
+3. Flujo de caja negativo: egresos > ingresos en los últimos 7 días (datos de get_cash_flow_daily) → ⚠️ ALERTA FLUJO
+4. Anomalías abiertas con severidad 'critical' o 'high' (datos de get_anomaly_summary/details) → ⚠️ ALERTA ANOMALÍA
+Si detectas CUALQUIERA de estas alertas, colócalas al INICIO de tu respuesta en un bloque:
+> ⚠️ **ALERTAS DETECTADAS**
+> - [descripción de cada alerta con cifras exactas]
+Nota: solo alerta sobre datos que REALMENTE recibiste. No inventes alertas.
+
+MARCO DE ANÁLISIS:
+- Variance analysis: compara actual vs período anterior (usa get_period_comparison)
+- Trend detection: identifica tendencias al alza/baja en get_payment_trends o get_cash_flow_daily
+- Benchmarking: compara entidades entre sí con get_entity_comparison
+- Risk assessment: evalúa false positive rates con get_anomaly_details
+
+FUNCIONES DISPONIBLES (15):
+- get_revenue_summary: ingresos totales, pendientes, rechazados, por método y entidad
 - get_revenue_by_service: ingresos por tipo de servicio (workflow_code)
-- get_agent_performance: validaciones/rechazos/tiempo por agente
-- get_sla_status: pagos pendientes con estado SLA
-- get_anomaly_summary: anomalías por tipo/severidad/estado
-- get_payment_trends: tendencia diaria de montantes y volúmenes
-- get_reconciliation_status: métricas de rapprochement bancaire
-- get_top_payers: principales contribuyentes (empresas/usuarios)"""
+- get_agent_performance: validaciones/rechazos/tiempo/SLA por agente
+- get_sla_status: pagos pendientes con clasificación breached/critical/warning/ok
+- get_anomaly_summary: anomalías por tipo/severidad/estado (vista general)
+- get_payment_trends: tendencia diaria de volúmenes y montantes
+- get_reconciliation_status: rapprochement bancaire (reconciliadas vs no)
+- get_top_payers: principales contribuyentes por montante
+- get_entity_comparison: comparación de revenue/volumen entre entidades (NUEVO)
+- get_payment_aging: distribución de antigüedad de pagos pendientes (NUEVO)
+- get_workflow_pipeline: funnel de estados de pagos (NUEVO)
+- get_period_comparison: comparación período actual vs anterior con delta % (NUEVO)
+- get_cash_flow_daily: flujo diario ingresos/egresos con acumulado (NUEVO)
+- get_rejection_analysis: patrones de rechazo por agente y motivo (NUEVO)
+- get_anomaly_details: drill-down anomalías con tasa false positive (NUEVO)
+- get_revenue_forecast: proyección de ingresos basada en tendencia histórica (NUEVO)
+- get_workload_forecast: proyección de carga de trabajo futura (NUEVO)
+
+RAZONAMIENTO EN CADENA (Chain-of-Tools):
+Si al analizar los resultados de la primera ronda detectas que necesitas más contexto,
+PUEDES solicitar funciones adicionales. Ejemplos:
+- get_anomaly_summary muestra pico → solicita get_anomaly_details para identificar responsable
+- get_revenue_summary muestra caída → solicita get_entity_comparison para saber cuál entidad baja
+- get_agent_performance muestra SLA bajo → solicita get_rejection_analysis para entender por qué
+Solo solicita funciones adicionales si realmente aportan valor. No encadenes por encadenar.
+
+REGLA DE PRECISIÓN NUMÉRICA:
+NUNCA redondees ni modifiques montos en el texto. Cita SIEMPRE el valor EXACTO retornado
+por la función. Si la función retorna 445,230 XAF, escribe 445,230 XAF (NO "unos 450,000 XAF").
+
+REGLA DE PREVISIONES:
+Cuando uses get_revenue_forecast o get_workload_forecast, verifica el campo "confidence":
+- confidence="high" (>90 data points): análisis fiable, puedes hacer recomendaciones
+- confidence="medium" (30-90 data points): tendencia indicativa, menciona la limitación
+- confidence="low" (<30 data points): OBLIGATORIO añadir: "⚠️ Previsión basada en datos
+  insuficientes ({N} puntos). Esta proyección es INDICATIVA y no debe usarse para decisiones
+  financieras. Se requieren al menos 12 meses de datos para previsiones fiables."
+
+CONTEXTO DE DRILL-DOWN:
+Si recibes contexto de una pregunta anterior, úsalo para resolver referencias como
+"la segunda entidad", "ese agente", "el mes anterior del tabla". Nunca ignores el contexto."""
 
 
 # ============================================================================
 # FUNCTION DECLARATIONS
 # ============================================================================
 
-_FUNC_DECLS = []
+_FUNC_DECLS: list = []
 if VERTEX_AI_AVAILABLE:
     _FUNC_DECLS = [
         FunctionDeclaration(
@@ -164,68 +220,244 @@ if VERTEX_AI_AVAILABLE:
                 },
             },
         ),
+        # ---- 7 NEW TOOLS ----
+        FunctionDeclaration(
+            name="get_entity_comparison",
+            description="Comparación de ingresos y volúmenes entre entidades. Revenue, transacciones, promedio, min, max por entidad.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days": {"type": "integer", "description": "Período en días (default 30)"},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_payment_aging",
+            description="Distribución de antigüedad de pagos pendientes: <4h, 4-12h, 12-24h, 24-48h, >48h. Promedio horas.",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_workflow_pipeline",
+            description="Funnel de estados de pagos: cantidad y monto por workflow_status (últimos 90 días).",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        FunctionDeclaration(
+            name="get_period_comparison",
+            description="Comparación período actual vs anterior: transacciones, montos, deltas porcentuales.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "current_days": {"type": "integer", "description": "Tamaño del período en días (default 30). Compara con el período anterior equivalente."},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_cash_flow_daily",
+            description="Flujo de caja diario: ingresos (completed) vs egresos (cancelled/expired), con acumulado.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days": {"type": "integer", "description": "Período en días (default 30)"},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_rejection_analysis",
+            description="Análisis de rechazos: patrones por agente, motivos de rechazo, reenvíos. Detecta agentes con tasa de rechazo alta.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days": {"type": "integer", "description": "Período en días (default 30)"},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_anomaly_details",
+            description="Drill-down detallado de anomalías: por tipo y severidad, con tasa de false positive, anomalías abiertas, acciones recientes.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "anomaly_type": {"type": "string", "description": "Filtrar por tipo (ej: amount_mismatch, duplicate_suspected). Omitir para todos."},
+                    "severity": {"type": "string", "description": "Filtrar por severidad (low, medium, high, critical). Omitir para todas."},
+                },
+            },
+        ),
+        # ---- 2 FORECAST TOOLS ----
+        FunctionDeclaration(
+            name="get_revenue_forecast",
+            description="Proyección de ingresos futuros basada en tendencia histórica. Incluye media móvil 7d, tendencia lineal, y nivel de confianza según cantidad de datos.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days_history": {"type": "integer", "description": "Días de historial para el cálculo (default 90). Más datos = mayor confianza."},
+                },
+            },
+        ),
+        FunctionDeclaration(
+            name="get_workload_forecast",
+            description="Proyección de carga de trabajo futura: volumen de pagos pendientes estimado. Incluye tendencia y nivel de confianza.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "days_history": {"type": "integer", "description": "Días de historial para el cálculo (default 90)."},
+                },
+            },
+        ),
     ]
+
+
+# ============================================================================
+# ENTITY SCOPING HELPER
+# ============================================================================
+
+def _needs_site_filter(kwargs: dict) -> bool:
+    """Check if site filtering is needed (satellite site only)."""
+    return not kwargs.get("_is_main_office", True) and bool(kwargs.get("_entity_location_id"))
+
+
+def _site_scope_validated(kwargs: dict, sp_alias: str, param_offset: int):
+    """Site-scope COMPLETED payments via validated_by_agent_id column.
+
+    TESORO-specific: service_payments.assigned_agent_id = ENTITY agent (CNEDOGE),
+    NOT the TESORO agent who validated. The TESORO agent is in validated_by_agent_id.
+    For satellite sites, filter by payments validated BY agents at that site.
+
+    Uses direct column (fast) instead of PVA subselect, thanks to migration 172
+    which fixed validated_by_agent_id to store users.id (not agent_profiles.id).
+
+    Args:
+        kwargs: Entity context (**kwargs from function call)
+        sp_alias: SQL alias for service_payments (e.g., "sp" or "service_payments")
+        param_offset: Number of params already used ($1..$N)
+
+    Returns:
+        (sql_clause: str, params: list) — empty if no scoping needed
+    """
+    if not _needs_site_filter(kwargs):
+        return "", []
+
+    location_id = kwargs["_entity_location_id"]
+    param_num = param_offset + 1
+    clause = (
+        f"AND {sp_alias}.validated_by_agent_id IN ("
+        f"SELECT ap_s.user_id FROM agent_profiles ap_s "
+        f"WHERE ap_s.entity_location_id = ${param_num})"
+    )
+    return clause, [location_id]
+
+
+def _site_scope_direct(kwargs: dict, alias: str, param_offset: int, id_col: str = "agent_user_id"):
+    """Site-scope via direct agent column (for PVA-based queries).
+
+    Used when the table already has the TESORO agent's user_id directly
+    (e.g., payment_validation_audit.agent_user_id).
+
+    Args:
+        kwargs: Entity context (**kwargs from function call)
+        alias: SQL table alias (e.g., "pva")
+        param_offset: Number of params already used ($1..$N)
+        id_col: Column with agent UUID (default: agent_user_id)
+
+    Returns:
+        (sql_clause: str, params: list) — empty if no scoping needed
+    """
+    if not _needs_site_filter(kwargs):
+        return "", []
+
+    location_id = kwargs["_entity_location_id"]
+    param_num = param_offset + 1
+    clause = (
+        f"AND {alias}.{id_col} IN ("
+        f"SELECT ap_s.user_id FROM agent_profiles ap_s "
+        f"WHERE ap_s.entity_location_id = ${param_num})"
+    )
+    return clause, [location_id]
 
 
 # ============================================================================
 # SAFE SQL FUNCTIONS (predefined queries — LLM never generates SQL)
 # ============================================================================
 
-async def _get_revenue_summary(db, days: int = 30) -> Dict[str, Any]:
-    row = await db.fetchrow("""
+async def _get_revenue_summary(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    # Completed revenue → PVA-based scope (TESORO agent who validated)
+    sc_v, sp_v = _site_scope_validated(kwargs, "service_payments", 1)
+    row = await db.fetchrow(f"""
         SELECT
             COALESCE(SUM(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS completed_amount,
             COUNT(*) FILTER (WHERE workflow_status = 'completed') AS completed_count,
-            COALESCE(AVG(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS avg_amount,
-            COALESCE(SUM(total_amount) FILTER (WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')), 0) AS pending_amount,
-            COUNT(*) FILTER (WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')) AS pending_count,
-            COUNT(*) FILTER (WHERE workflow_status = 'rejected_by_agent') AS rejected_count
+            COALESCE(AVG(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS avg_amount
         FROM service_payments
-        WHERE created_at >= NOW() - make_interval(days => $1)
+        WHERE created_at >= NOW() - make_interval(days => $1) {sc_v}
+    """, days, *sp_v)
+    # Pending payments → no site scope (centralized TESORO queue)
+    pending_row = await db.fetchrow("""
+        SELECT
+            COALESCE(SUM(total_amount), 0) AS pending_amount,
+            COUNT(*) AS pending_count
+        FROM service_payments
+        WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
+          AND requires_agent_validation = true
+          AND created_at >= NOW() - make_interval(days => $1)
     """, days)
-    methods = await db.fetch("""
+    # Rejected count → no scope (central queue info)
+    rejected_count = await db.fetchval("""
+        SELECT COUNT(*) FROM service_payments
+        WHERE workflow_status = 'rejected_by_agent'
+          AND created_at >= NOW() - make_interval(days => $1)
+    """, days)
+    sc2, sp2 = _site_scope_validated(kwargs, "service_payments", 1)
+    methods = await db.fetch(f"""
         SELECT payment_method::text AS method, COUNT(*) AS count,
                COALESCE(SUM(total_amount), 0) AS amount
         FROM service_payments
-        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1)
+        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1) {sc2}
         GROUP BY payment_method ORDER BY amount DESC
-    """, days)
-    by_entity = await db.fetch("""
+    """, days, *sp2)
+    sc3, sp3 = _site_scope_validated(kwargs, "sp", 1)
+    by_entity = await db.fetch(f"""
         SELECT sp.entity_code, e.name AS entity_name,
                COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
         FROM service_payments sp
         LEFT JOIN entities e ON e.code = sp.entity_code
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc3}
         GROUP BY sp.entity_code, e.name ORDER BY amount DESC
-    """, days)
+    """, days, *sp3)
     return {
         "period_days": days,
         "completed": {"amount": float(row["completed_amount"]), "count": row["completed_count"], "avg": float(row["avg_amount"])},
-        "pending": {"amount": float(row["pending_amount"]), "count": row["pending_count"]},
-        "rejected_count": row["rejected_count"],
+        "pending": {"amount": float(pending_row["pending_amount"]), "count": pending_row["pending_count"]},
+        "rejected_count": rejected_count or 0,
         "by_method": [{"method": m["method"], "count": m["count"], "amount": float(m["amount"])} for m in methods],
         "by_entity": [{"entity_code": r["entity_code"], "entity_name": r["entity_name"], "count": r["count"], "amount": float(r["amount"])} for r in by_entity],
     }
 
 
-async def _get_revenue_by_service(db, days: int = 30) -> Dict[str, Any]:
-    rows = await db.fetch("""
+async def _get_revenue_by_service(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    sc, sp_params = _site_scope_validated(kwargs, "sp", 1)
+    rows = await db.fetch(f"""
         SELECT sr.workflow_code, COALESCE(fs.name_es, sr.workflow_code) AS service_name,
                COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
         FROM service_payments sp
         JOIN service_requests sr ON sr.id = sp.service_request_id
         LEFT JOIN fiscal_services fs ON fs.id = sr.fiscal_service_id
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc}
         GROUP BY sr.workflow_code, fs.name_es ORDER BY amount DESC LIMIT 10
-    """, days)
-    by_entity = await db.fetch("""
+    """, days, *sp_params)
+    sc2, sp2 = _site_scope_validated(kwargs, "sp", 1)
+    by_entity = await db.fetch(f"""
         SELECT sp.entity_code, e.name AS entity_name,
                COUNT(*) AS count, COALESCE(SUM(sp.total_amount), 0) AS amount
         FROM service_payments sp
         LEFT JOIN entities e ON e.code = sp.entity_code
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc2}
         GROUP BY sp.entity_code, e.name ORDER BY amount DESC LIMIT 10
-    """, days)
+    """, days, *sp2)
     return {
         "period_days": days,
         "services": [{"code": r["workflow_code"], "name": r["service_name"], "count": r["count"], "amount": float(r["amount"])} for r in rows],
@@ -233,8 +465,9 @@ async def _get_revenue_by_service(db, days: int = 30) -> Dict[str, Any]:
     }
 
 
-async def _get_agent_performance(db, days: int = 30) -> Dict[str, Any]:
-    rows = await db.fetch("""
+async def _get_agent_performance(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    sc, sp_params = _site_scope_direct(kwargs, "pva", 1, id_col="agent_user_id")
+    rows = await db.fetch(f"""
         SELECT u.full_name AS agent_name,
                COUNT(*) FILTER (WHERE pva.action = 'approve') AS validations,
                COUNT(*) FILTER (WHERE pva.action = 'reject') AS rejections,
@@ -244,9 +477,9 @@ async def _get_agent_performance(db, days: int = 30) -> Dict[str, Any]:
         FROM payment_validation_audit pva
         JOIN users u ON u.id = pva.agent_user_id
         JOIN service_payments sp ON sp.id = pva.payment_id
-        WHERE pva.created_at >= NOW() - make_interval(days => $1) AND pva.agent_user_id IS NOT NULL
+        WHERE pva.created_at >= NOW() - make_interval(days => $1) AND pva.agent_user_id IS NOT NULL {sc}
         GROUP BY u.full_name ORDER BY (COUNT(*) FILTER (WHERE pva.action = 'approve') + COUNT(*) FILTER (WHERE pva.action = 'reject')) DESC
-    """, days)
+    """, days, *sp_params)
     return {
         "period_days": days,
         "agents": [{"name": r["agent_name"], "validations": r["validations"], "rejections": r["rejections"],
@@ -254,7 +487,8 @@ async def _get_agent_performance(db, days: int = 30) -> Dict[str, Any]:
     }
 
 
-async def _get_sla_status(db) -> Dict[str, Any]:
+async def _get_sla_status(db, **kwargs) -> Dict[str, Any]:
+    # Pending payments = centralized TESORO queue — no site scoping
     row = await db.fetchrow("""
         SELECT
             COUNT(*) AS total_pending,
@@ -277,7 +511,8 @@ async def _get_sla_status(db) -> Dict[str, Any]:
     }
 
 
-async def _get_anomaly_summary(db) -> Dict[str, Any]:
+async def _get_anomaly_summary(db, **kwargs) -> Dict[str, Any]:
+    # Anomalies are system-level detection — no site scoping needed
     rows = await db.fetch("""
         SELECT anomaly_type, severity, status, COUNT(*) AS count
         FROM payment_anomalies
@@ -293,21 +528,23 @@ async def _get_anomaly_summary(db) -> Dict[str, Any]:
     }
 
 
-async def _get_payment_trends(db, days: int = 30) -> Dict[str, Any]:
-    rows = await db.fetch("""
+async def _get_payment_trends(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
+    rows = await db.fetch(f"""
         SELECT DATE(validated_at) AS date, COUNT(*) AS count,
                COALESCE(SUM(total_amount), 0) AS amount
         FROM service_payments
-        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1)
+        WHERE workflow_status = 'completed' AND validated_at >= NOW() - make_interval(days => $1) {sc}
         GROUP BY DATE(validated_at) ORDER BY date
-    """, days)
+    """, days, *sp_params)
     return {
         "period_days": days,
         "daily": [{"date": str(r["date"]), "count": r["count"], "amount": float(r["amount"])} for r in rows],
     }
 
 
-async def _get_reconciliation_status(db) -> Dict[str, Any]:
+async def _get_reconciliation_status(db, **kwargs) -> Dict[str, Any]:
+    # Bank reconciliation is system-level — no site scoping
     row = await db.fetchrow("""
         SELECT
             (SELECT COUNT(*) FROM bank_transactions WHERE service_payment_id IS NULL) AS unreconciled,
@@ -323,17 +560,18 @@ async def _get_reconciliation_status(db) -> Dict[str, Any]:
     }
 
 
-async def _get_top_payers(db, days: int = 30, limit: int = 10) -> Dict[str, Any]:
-    rows = await db.fetch("""
+async def _get_top_payers(db, days: int = 30, limit: int = 10, **kwargs) -> Dict[str, Any]:
+    sc, sp_params = _site_scope_validated(kwargs, "sp", 2)
+    rows = await db.fetch(f"""
         SELECT u.full_name AS payer_name, u.email,
                COUNT(*) AS payment_count,
                COALESCE(SUM(sp.total_amount), 0) AS total_paid
         FROM service_payments sp
         JOIN users u ON u.id = sp.user_id
-        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1)
+        WHERE sp.workflow_status = 'completed' AND sp.validated_at >= NOW() - make_interval(days => $1) {sc}
         GROUP BY u.id, u.full_name, u.email
         ORDER BY total_paid DESC LIMIT $2
-    """, days, limit)
+    """, days, limit, *sp_params)
     return {
         "period_days": days,
         "payers": [{"name": r["payer_name"], "email": r["email"], "payments": r["payment_count"],
@@ -341,8 +579,479 @@ async def _get_top_payers(db, days: int = 30, limit: int = 10) -> Dict[str, Any]
     }
 
 
-# Function map (str → async callable)
-FUNCTION_MAP = {
+# ============================================================================
+# NEW SQL FUNCTIONS (7 tools — Phase 2)
+# ============================================================================
+
+async def _get_entity_comparison(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    """Revenue and volume comparison across entities."""
+    sc, sp_params = _site_scope_validated(kwargs, "sp", 1)
+    rows = await db.fetch(f"""
+        SELECT sp.entity_code, e.name AS entity_name,
+               COUNT(*) AS tx_count,
+               COALESCE(SUM(sp.total_amount), 0) AS total_amount,
+               COALESCE(AVG(sp.total_amount), 0) AS avg_amount,
+               COALESCE(MIN(sp.total_amount), 0) AS min_amount,
+               COALESCE(MAX(sp.total_amount), 0) AS max_amount
+        FROM service_payments sp
+        LEFT JOIN entities e ON e.code = sp.entity_code
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at >= NOW() - make_interval(days => $1) {sc}
+        GROUP BY sp.entity_code, e.name
+        ORDER BY total_amount DESC
+    """, days, *sp_params)
+    grand_total = sum(float(r["total_amount"]) for r in rows) or 1
+    return {
+        "period_days": days,
+        "entities": [{
+            "entity_code": r["entity_code"],
+            "entity_name": r["entity_name"],
+            "tx_count": r["tx_count"],
+            "total_amount": float(r["total_amount"]),
+            "avg_amount": round(float(r["avg_amount"]), 0),
+            "min_amount": float(r["min_amount"]),
+            "max_amount": float(r["max_amount"]),
+            "pct_total": round(float(r["total_amount"]) / grand_total * 100, 1),
+        } for r in rows],
+    }
+
+
+async def _get_payment_aging(db, **kwargs) -> Dict[str, Any]:
+    """Time-in-status distribution for pending payments."""
+    # Pending payments = centralized TESORO queue — no site scoping
+    row = await db.fetchrow("""
+        SELECT
+            COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 < 4) AS lt_4h,
+            COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 BETWEEN 4 AND 12) AS h4_12,
+            COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 BETWEEN 12 AND 24) AS h12_24,
+            COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 BETWEEN 24 AND 48) AS h24_48,
+            COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 > 48) AS gt_48h,
+            COUNT(*) AS total,
+            COALESCE(AVG(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600), 0) AS avg_hours
+        FROM service_payments
+        WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
+          AND requires_agent_validation = true
+    """)
+    return {
+        "total_pending": row["total"] or 0,
+        "lt_4h": row["lt_4h"] or 0,
+        "h4_12": row["h4_12"] or 0,
+        "h12_24": row["h12_24"] or 0,
+        "h24_48": row["h24_48"] or 0,
+        "gt_48h": row["gt_48h"] or 0,
+        "avg_hours": round(float(row["avg_hours"]), 1),
+    }
+
+
+async def _get_workflow_pipeline(db, **kwargs) -> Dict[str, Any]:
+    """Status funnel counts for the last 90 days. Pipeline = centralized view, no site scope."""
+    rows = await db.fetch("""
+        SELECT workflow_status::text AS status,
+               COUNT(*) AS count,
+               COALESCE(SUM(total_amount), 0) AS amount
+        FROM service_payments
+        WHERE created_at >= NOW() - INTERVAL '90 days'
+        GROUP BY workflow_status
+        ORDER BY count DESC
+    """)
+    return {
+        "period": "90 days",
+        "statuses": [{
+            "status": r["status"],
+            "count": r["count"],
+            "amount": float(r["amount"]),
+        } for r in rows],
+    }
+
+
+async def _get_period_comparison(db, current_days: int = 30, **kwargs) -> Dict[str, Any]:
+    """Compare current period vs previous equivalent period."""
+    sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
+    # sc is used in both CTEs — same param placeholder
+    row = await db.fetchrow(f"""
+        WITH current_period AS (
+            SELECT COUNT(*) AS tx_count, COALESCE(SUM(total_amount), 0) AS total_amount
+            FROM service_payments
+            WHERE workflow_status = 'completed'
+              AND validated_at >= NOW() - make_interval(days => $1) {sc}
+        ),
+        previous_period AS (
+            SELECT COUNT(*) AS tx_count, COALESCE(SUM(total_amount), 0) AS total_amount
+            FROM service_payments
+            WHERE workflow_status = 'completed'
+              AND validated_at >= NOW() - make_interval(days => $1 * 2)
+              AND validated_at < NOW() - make_interval(days => $1) {sc}
+        )
+        SELECT
+            c.tx_count AS current_count, c.total_amount AS current_amount,
+            p.tx_count AS previous_count, p.total_amount AS previous_amount,
+            CASE WHEN p.total_amount > 0
+                THEN ROUND(((c.total_amount - p.total_amount) / p.total_amount * 100)::numeric, 1)
+                ELSE 0 END AS amount_delta_pct,
+            CASE WHEN p.tx_count > 0
+                THEN ROUND(((c.tx_count - p.tx_count)::numeric / p.tx_count * 100)::numeric, 1)
+                ELSE 0 END AS count_delta_pct
+        FROM current_period c, previous_period p
+    """, current_days, *sp_params)
+    return {
+        "period_days": current_days,
+        "current": {"count": row["current_count"], "amount": float(row["current_amount"])},
+        "previous": {"count": row["previous_count"], "amount": float(row["previous_amount"])},
+        "delta": {
+            "amount_pct": float(row["amount_delta_pct"]),
+            "count_pct": float(row["count_delta_pct"]),
+        },
+    }
+
+
+async def _get_cash_flow_daily(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    """Daily cash flow: inflow (completed) vs outflow (cancelled/expired)."""
+    sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
+    rows = await db.fetch(f"""
+        SELECT DATE(validated_at) AS date,
+               COALESCE(SUM(total_amount) FILTER (WHERE workflow_status = 'completed'), 0) AS inflow,
+               COALESCE(SUM(total_amount) FILTER (
+                   WHERE workflow_status IN ('cancelled_by_user', 'cancelled_by_agent', 'expired')
+               ), 0) AS outflow
+        FROM service_payments
+        WHERE validated_at >= NOW() - make_interval(days => $1)
+          AND validated_at IS NOT NULL {sc}
+        GROUP BY DATE(validated_at)
+        ORDER BY date
+    """, days, *sp_params)
+    cumulative = 0.0
+    daily = []
+    for r in rows:
+        inflow = float(r["inflow"])
+        outflow = float(r["outflow"])
+        cumulative += inflow - outflow
+        daily.append({
+            "date": str(r["date"]),
+            "inflow": inflow,
+            "outflow": outflow,
+            "net": inflow - outflow,
+            "cumulative": round(cumulative, 0),
+        })
+    return {"period_days": days, "daily": daily}
+
+
+async def _get_rejection_analysis(db, days: int = 30, **kwargs) -> Dict[str, Any]:
+    """Rejection patterns by agent and by reason."""
+    sc, sp_params = _site_scope_direct(kwargs, "pva", 1, id_col="agent_user_id")
+    agent_rows = await db.fetch(f"""
+        SELECT u.full_name AS agent_name,
+               COUNT(*) FILTER (WHERE pva.action = 'reject') AS rejections,
+               COUNT(*) AS total_actions,
+               ROUND(
+                   COUNT(*) FILTER (WHERE pva.action = 'reject')::numeric
+                   / NULLIF(COUNT(*), 0) * 100, 1
+               ) AS rejection_rate
+        FROM payment_validation_audit pva
+        JOIN users u ON u.id = pva.agent_user_id
+        WHERE pva.created_at >= NOW() - make_interval(days => $1)
+          AND pva.agent_user_id IS NOT NULL {sc}
+        GROUP BY u.full_name
+        HAVING COUNT(*) FILTER (WHERE pva.action = 'reject') > 0
+        ORDER BY rejections DESC
+    """, days, *sp_params)
+    sc2, sp2 = _site_scope_direct(kwargs, "payment_validation_audit", 1, id_col="agent_user_id")
+    reason_rows = await db.fetch(f"""
+        SELECT unnest(rejection_reasons) AS reason, COUNT(*) AS count
+        FROM payment_validation_audit
+        WHERE action = 'reject'
+          AND created_at >= NOW() - make_interval(days => $1)
+          AND rejection_reasons IS NOT NULL
+          AND array_length(rejection_reasons, 1) > 0 {sc2}
+        GROUP BY reason
+        ORDER BY count DESC LIMIT 15
+    """, days, *sp2)
+    sc3, sp3 = _site_scope_validated(kwargs, "service_payments", 1)
+    resubmit_row = await db.fetchrow(f"""
+        SELECT COUNT(*) FILTER (WHERE rejection_count > 0) AS resubmitted,
+               COUNT(*) FILTER (WHERE rejection_count > 1) AS multi_rejected,
+               AVG(rejection_count) FILTER (WHERE rejection_count > 0) AS avg_rejections
+        FROM service_payments
+        WHERE created_at >= NOW() - make_interval(days => $1) {sc3}
+    """, days, *sp3)
+    return {
+        "period_days": days,
+        "by_agent": [{
+            "agent": r["agent_name"],
+            "rejections": r["rejections"],
+            "total_actions": r["total_actions"],
+            "rejection_rate": float(r["rejection_rate"]),
+        } for r in agent_rows],
+        "by_reason": [{"reason": r["reason"], "count": r["count"]} for r in reason_rows],
+        "resubmissions": {
+            "resubmitted_count": resubmit_row["resubmitted"] or 0,
+            "multi_rejected_count": resubmit_row["multi_rejected"] or 0,
+            "avg_rejections": round(float(resubmit_row["avg_rejections"] or 0), 1),
+        },
+    }
+
+
+async def _get_anomaly_details(
+    db, anomaly_type: str = None, severity: str = None, **kwargs
+) -> Dict[str, Any]:
+    """Detailed anomaly drill-down with false positive rates."""
+    conditions: List[str] = []
+    params: list = []
+    idx = 1
+    if anomaly_type:
+        conditions.append(f"pa.anomaly_type::text = ${idx}")
+        params.append(anomaly_type)
+        idx += 1
+    if severity:
+        conditions.append(f"pa.severity::text = ${idx}")
+        params.append(severity)
+        idx += 1
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    rows = await db.fetch(f"""
+        SELECT pa.anomaly_type::text AS anomaly_type,
+               COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE pa.status = 'false_positive') AS false_positives,
+               COUNT(*) FILTER (WHERE pa.status = 'open') AS open_count,
+               COUNT(*) FILTER (WHERE pa.status = 'investigating') AS investigating,
+               COUNT(*) FILTER (WHERE pa.status = 'resolved') AS resolved,
+               COUNT(*) FILTER (WHERE pa.status = 'escalated') AS escalated_count,
+               ROUND(
+                   COUNT(*) FILTER (WHERE pa.status = 'false_positive')::numeric
+                   / NULLIF(COUNT(*), 0) * 100, 1
+               ) AS fp_rate
+        FROM payment_anomalies pa
+        {where_clause}
+        GROUP BY pa.anomaly_type
+        ORDER BY open_count DESC
+    """, *params)
+
+    recent = await db.fetch("""
+        SELECT aa.action, aa.from_status::text, aa.to_status::text,
+               aa.comment, aa.performed_at,
+               pa.anomaly_type::text
+        FROM anomaly_actions aa
+        JOIN payment_anomalies pa ON pa.id = aa.anomaly_id
+        ORDER BY aa.performed_at DESC LIMIT 10
+    """)
+
+    return {
+        "filters": {"anomaly_type": anomaly_type, "severity": severity},
+        "by_type": [{
+            "type": r["anomaly_type"],
+            "total": r["total"],
+            "open": r["open_count"],
+            "investigating": r["investigating"],
+            "resolved": r["resolved"],
+            "escalated": r["escalated_count"],
+            "false_positives": r["false_positives"],
+            "fp_rate": float(r["fp_rate"]) if r["fp_rate"] else 0,
+        } for r in rows],
+        "recent_actions": [{
+            "action": r["action"],
+            "from_status": r["from_status"],
+            "to_status": r["to_status"],
+            "anomaly_type": r["anomaly_type"],
+            "comment": r["comment"],
+            "performed_at": str(r["performed_at"]),
+        } for r in recent],
+    }
+
+
+# ============================================================================
+# FORECAST FUNCTIONS (2 tools — with data sufficiency assessment)
+# ============================================================================
+
+async def _get_revenue_forecast(db, days_history: int = 90, **kwargs) -> Dict[str, Any]:
+    """Revenue projection based on historical trend.
+
+    Uses simple linear regression + 7-day moving average.
+    Returns confidence level based on data point count.
+    """
+    sc, sp_params = _site_scope_validated(kwargs, "service_payments", 1)
+    rows = await db.fetch(f"""
+        SELECT DATE(validated_at) AS date,
+               COUNT(*) AS tx_count,
+               COALESCE(SUM(total_amount), 0) AS amount
+        FROM service_payments
+        WHERE workflow_status = 'completed'
+          AND validated_at >= NOW() - make_interval(days => $1) {sc}
+        GROUP BY DATE(validated_at)
+        ORDER BY date
+    """, days_history, *sp_params)
+
+    data_points = len(rows)
+
+    # Confidence assessment
+    if data_points >= 90:
+        confidence = "high"
+        confidence_msg = "Datos suficientes para proyección fiable"
+    elif data_points >= 30:
+        confidence = "medium"
+        confidence_msg = f"Tendencia indicativa ({data_points} días de datos). Se recomienda 90+ días."
+    else:
+        confidence = "low"
+        confidence_msg = (
+            f"Solo {data_points} puntos de datos disponibles. "
+            f"Se requieren al menos 90 días (idealmente 12 meses) para previsiones fiables."
+        )
+
+    if data_points < 2:
+        return {
+            "days_history": days_history,
+            "data_points": data_points,
+            "confidence": confidence,
+            "confidence_msg": confidence_msg,
+            "forecast": None,
+            "message": "Datos insuficientes para calcular proyección (mínimo 2 días).",
+        }
+
+    # Calculate daily amounts
+    daily_amounts = [float(r["amount"]) for r in rows]
+    daily_counts = [r["tx_count"] for r in rows]
+
+    # 7-day moving average (or available window)
+    window = min(7, data_points)
+    ma_amounts = daily_amounts[-window:]
+    ma_avg = sum(ma_amounts) / len(ma_amounts) if ma_amounts else 0
+
+    # Simple linear trend: slope of daily amounts
+    n = len(daily_amounts)
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(daily_amounts) / n
+    numerator = sum((i - x_mean) * (y - y_mean) for i, y in enumerate(daily_amounts))
+    denominator = sum((i - x_mean) ** 2 for i in range(n))
+    slope = numerator / denominator if denominator else 0
+
+    # Forecast: project 7, 14, 30 days forward
+    last_val = daily_amounts[-1] if daily_amounts else 0
+    forecasts = {}
+    for proj_days in [7, 14, 30]:
+        projected_daily = last_val + slope * proj_days
+        projected_daily = max(projected_daily, 0)  # No negative revenue
+        forecasts[f"next_{proj_days}d"] = {
+            "projected_daily_avg": round(projected_daily, 0),
+            "projected_total": round(projected_daily * proj_days, 0),
+        }
+
+    # Overall stats
+    total_amount = sum(daily_amounts)
+    avg_daily = total_amount / data_points if data_points else 0
+
+    return {
+        "days_history": days_history,
+        "data_points": data_points,
+        "confidence": confidence,
+        "confidence_msg": confidence_msg,
+        "historical": {
+            "total_amount": round(total_amount, 0),
+            "avg_daily_amount": round(avg_daily, 0),
+            "avg_daily_txns": round(sum(daily_counts) / data_points, 1) if data_points else 0,
+            "moving_avg_7d": round(ma_avg, 0),
+        },
+        "trend": {
+            "direction": "up" if slope > 0 else ("down" if slope < 0 else "flat"),
+            "daily_change": round(slope, 0),
+            "pct_change_per_week": round(slope * 7 / max(avg_daily, 1) * 100, 1),
+        },
+        "forecast": forecasts,
+    }
+
+
+async def _get_workload_forecast(db, days_history: int = 90, **kwargs) -> Dict[str, Any]:
+    """Workload projection: volume of incoming payment requests.
+
+    Tracks daily new payments (all statuses) to project future workload.
+    """
+    # Workload = centralized queue — no site scoping
+    rows = await db.fetch("""
+        SELECT DATE(created_at) AS date,
+               COUNT(*) AS new_payments,
+               COUNT(*) FILTER (WHERE requires_agent_validation = true) AS requiring_validation
+        FROM service_payments
+        WHERE created_at >= NOW() - make_interval(days => $1)
+        GROUP BY DATE(created_at)
+        ORDER BY date
+    """, days_history)
+
+    data_points = len(rows)
+
+    if data_points >= 90:
+        confidence = "high"
+        confidence_msg = "Datos suficientes para proyección fiable"
+    elif data_points >= 30:
+        confidence = "medium"
+        confidence_msg = f"Tendencia indicativa ({data_points} días de datos)"
+    else:
+        confidence = "low"
+        confidence_msg = f"Solo {data_points} puntos de datos. Previsión no fiable."
+
+    if data_points < 2:
+        return {
+            "days_history": days_history,
+            "data_points": data_points,
+            "confidence": confidence,
+            "confidence_msg": confidence_msg,
+            "forecast": None,
+            "message": "Datos insuficientes para proyección de carga de trabajo.",
+        }
+
+    daily_volumes = [r["new_payments"] for r in rows]
+    daily_validations = [r["requiring_validation"] for r in rows]
+
+    # Moving averages
+    window = min(7, data_points)
+    ma_volume = sum(daily_volumes[-window:]) / window
+    ma_validations = sum(daily_validations[-window:]) / window
+
+    # Trend
+    n = len(daily_volumes)
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(daily_volumes) / n
+    numerator = sum((i - x_mean) * (y - y_mean) for i, y in enumerate(daily_volumes))
+    denominator = sum((i - x_mean) ** 2 for i in range(n))
+    slope = numerator / denominator if denominator else 0
+
+    # Current pending backlog
+    # Pending = centralized queue — no site scoping
+    pending = await db.fetchval("""
+        SELECT COUNT(*) FROM service_payments
+        WHERE workflow_status IN ('pending_agent_review', 'agent_reviewing')
+          AND requires_agent_validation = true
+    """)
+
+    # Forecast
+    forecasts = {}
+    for proj_days in [7, 14, 30]:
+        projected_daily = max(ma_volume + slope * proj_days / 2, 0)
+        forecasts[f"next_{proj_days}d"] = {
+            "projected_daily_avg": round(projected_daily, 1),
+            "projected_total_new": round(projected_daily * proj_days, 0),
+            "projected_requiring_validation": round(ma_validations * proj_days, 0),
+        }
+
+    return {
+        "days_history": days_history,
+        "data_points": data_points,
+        "confidence": confidence,
+        "confidence_msg": confidence_msg,
+        "current_backlog": pending or 0,
+        "historical": {
+            "avg_daily_new": round(sum(daily_volumes) / data_points, 1),
+            "avg_daily_validations": round(sum(daily_validations) / data_points, 1),
+            "moving_avg_7d_volume": round(ma_volume, 1),
+            "moving_avg_7d_validations": round(ma_validations, 1),
+        },
+        "trend": {
+            "direction": "up" if slope > 0 else ("down" if slope < 0 else "flat"),
+            "daily_change": round(slope, 2),
+        },
+        "forecast": forecasts,
+    }
+
+
+# Function map (str → async callable) — 17 tools
+FUNCTION_MAP: Dict[str, Callable] = {
+    # Original 8
     "get_revenue_summary": _get_revenue_summary,
     "get_revenue_by_service": _get_revenue_by_service,
     "get_agent_performance": _get_agent_performance,
@@ -351,6 +1060,17 @@ FUNCTION_MAP = {
     "get_payment_trends": _get_payment_trends,
     "get_reconciliation_status": _get_reconciliation_status,
     "get_top_payers": _get_top_payers,
+    # New 7
+    "get_entity_comparison": _get_entity_comparison,
+    "get_payment_aging": _get_payment_aging,
+    "get_workflow_pipeline": _get_workflow_pipeline,
+    "get_period_comparison": _get_period_comparison,
+    "get_cash_flow_daily": _get_cash_flow_daily,
+    "get_rejection_analysis": _get_rejection_analysis,
+    "get_anomaly_details": _get_anomaly_details,
+    # Forecast 2
+    "get_revenue_forecast": _get_revenue_forecast,
+    "get_workload_forecast": _get_workload_forecast,
 }
 
 
@@ -358,205 +1078,455 @@ FUNCTION_MAP = {
 # SERVICE CLASS
 # ============================================================================
 
-class TreasuryAnalystService:
+class TreasuryAnalystService(BaseAnalystService):
     """Gemini function-calling service for treasury financial Q&A."""
 
-    def __init__(self):
-        self._model = None
-        self._initialized = False
-        self._init_attempts = 0
+    def _get_system_prompt(self) -> str:
+        now = datetime.now(timezone.utc)
+        days_es = [
+            "lunes", "martes", "miércoles", "jueves",
+            "viernes", "sábado", "domingo",
+        ]
+        return SYSTEM_PROMPT_TEMPLATE.format(
+            current_date=now.strftime("%Y-%m-%d"),
+            day_of_week=days_es[now.weekday()],
+        )
 
-    def _ensure_initialized(self):
-        if self._initialized:
-            return
-        if not VERTEX_AI_AVAILABLE:
-            self._initialized = True
-            return
-        if self._init_attempts >= _MAX_INIT_RETRIES:
-            return
+    def _get_function_declarations(self) -> list:
+        return _FUNC_DECLS
 
-        self._init_attempts += 1
-        try:
-            settings = get_settings()
-            project_id = getattr(settings, "VERTEX_AI_PROJECT_ID", None) or getattr(settings, "GCP_PROJECT_ID", None)
-            location = getattr(settings, "VERTEX_AI_LOCATION", "us-central1")
+    def _get_function_map(self) -> Dict[str, Callable]:
+        return FUNCTION_MAP
 
-            if project_id:
-                vertexai.init(project=project_id, location=location)
+    def _get_service_name(self) -> str:
+        return "Treasury Analyst"
 
-            tools = [Tool(function_declarations=_FUNC_DECLS)] if _FUNC_DECLS else None
+    def _get_second_call_max_tokens(self) -> int:
+        return 4096
 
-            self._model = GenerativeModel(
-                "gemini-2.0-flash",
-                system_instruction=SYSTEM_PROMPT,
-                tools=tools,
-            )
-            self._initialized = True
-            logger.info("Treasury analyst service initialized")
-        except Exception as e:
-            logger.error(f"Treasury analyst init failed (attempt {self._init_attempts}): {e}")
-            if self._init_attempts < _MAX_INIT_RETRIES:
-                time.sleep(_INIT_RETRY_DELAY)
-                self._ensure_initialized()
+    def _get_max_tool_rounds(self) -> int:
+        """Allow up to 3 rounds: initial tools → conditional drill-down → analysis."""
+        return 3
 
-    async def process_question(self, db, question: str) -> Dict[str, Any]:
-        """
-        Process a treasury question using Gemini function calling.
-        Flow: question → Gemini → picks tool(s) → safe SQL → data → Gemini → answer
+    def _build_artifacts(self, tool_results: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Build typed artifacts from SQL tool results (deterministic, no LLM)."""
+        artifacts: List[Dict[str, Any]] = []
+
+        def _fmt(v, is_amount=False) -> str:
+            """Format numeric value for display."""
+            if v is None:
+                return "—"
+            if is_amount:
+                return f"{float(v):,.0f}"
+            if isinstance(v, float):
+                return f"{v:.1f}" if v != int(v) else str(int(v))
+            return str(v)
+
+        for tool_name, data in tool_results.items():
+            if isinstance(data, dict) and "error" in data:
+                continue
+
+            if tool_name == "get_revenue_summary":
+                c = data.get("completed", {})
+                p = data.get("pending", {})
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": f"Resumen de Ingresos ({data.get('period_days', 30)} días)",
+                    "metrics": [
+                        {"label": "Ingresos Completados", "value": f"{_fmt(c.get('amount'), True)} XAF"},
+                        {"label": "Transacciones", "value": _fmt(c.get("count"))},
+                        {"label": "Promedio", "value": f"{_fmt(c.get('avg'), True)} XAF"},
+                        {"label": "Pendientes", "value": _fmt(p.get("count"))},
+                    ],
+                })
+                if data.get("by_entity"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": "Ingresos por Entidad",
+                        "headers": ["Entidad", "Código", "Transacciones", "Monto (XAF)"],
+                        "rows": [
+                            [e.get("entity_name") or "—", e.get("entity_code") or "—",
+                             _fmt(e.get("count")), _fmt(e.get("amount"), True)]
+                            for e in data["by_entity"]
+                        ],
+                        "alignments": ["left", "left", "right", "right"],
+                    })
+
+            elif tool_name == "get_revenue_by_service":
+                if data.get("services"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Ingresos por Servicio ({data.get('period_days', 30)} días)",
+                        "headers": ["Servicio", "Código", "Transacciones", "Monto (XAF)"],
+                        "rows": [
+                            [s.get("name") or "—", s.get("code") or "—",
+                             _fmt(s.get("count")), _fmt(s.get("amount"), True)]
+                            for s in data["services"]
+                        ],
+                        "alignments": ["left", "left", "right", "right"],
+                    })
+
+            elif tool_name == "get_agent_performance":
+                if data.get("agents"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Rendimiento de Agentes ({data.get('period_days', 30)} días)",
+                        "headers": ["Agente", "Validaciones", "Rechazos", "Tiempo Prom. (min)", "SLA %"],
+                        "rows": [
+                            [a.get("name") or "—", _fmt(a.get("validations")),
+                             _fmt(a.get("rejections")), _fmt(a.get("avg_minutes")),
+                             f"{_fmt(a.get('sla_rate'))}%"]
+                            for a in data["agents"]
+                        ],
+                        "alignments": ["left", "right", "right", "right", "right"],
+                    })
+
+            elif tool_name == "get_sla_status":
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": "Estado SLA",
+                    "metrics": [
+                        {"label": "Tasa SLA", "value": f"{_fmt(data.get('sla_respect_rate'))}%"},
+                        {"label": "Vencidos", "value": _fmt(data.get("breached"))},
+                        {"label": "Críticos", "value": _fmt(data.get("critical"))},
+                        {"label": "Pendientes Total", "value": _fmt(data.get("total_pending"))},
+                    ],
+                })
+
+            elif tool_name == "get_anomaly_summary":
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": "Anomalías",
+                    "metrics": [
+                        {"label": "Total", "value": _fmt(data.get("total"))},
+                        {"label": "Abiertas", "value": _fmt(data.get("open"))},
+                    ],
+                })
+                if data.get("by_type"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": "Anomalías por Tipo",
+                        "headers": ["Tipo", "Severidad", "Estado", "Cantidad"],
+                        "rows": [
+                            [t.get("type") or "—", t.get("severity") or "—",
+                             t.get("status") or "—", _fmt(t.get("count"))]
+                            for t in data["by_type"]
+                        ],
+                        "alignments": ["left", "left", "left", "right"],
+                    })
+
+            elif tool_name == "get_payment_trends":
+                if data.get("daily"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Tendencia de Pagos ({data.get('period_days', 30)} días)",
+                        "headers": ["Fecha", "Transacciones", "Monto (XAF)"],
+                        "rows": [
+                            [d.get("date") or "—", _fmt(d.get("count")), _fmt(d.get("amount"), True)]
+                            for d in data["daily"]
+                        ],
+                        "alignments": ["left", "right", "right"],
+                    })
+
+            elif tool_name == "get_reconciliation_status":
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": "Estado Reconciliación Bancaria",
+                    "metrics": [
+                        {"label": "Reconciliadas", "value": _fmt(data.get("reconciled_count"))},
+                        {"label": "No Reconciliadas", "value": _fmt(data.get("unreconciled_count"))},
+                        {"label": "Monto Reconciliado", "value": f"{_fmt(data.get('reconciled_amount'), True)} XAF"},
+                        {"label": "Monto Sin Reconciliar", "value": f"{_fmt(data.get('unreconciled_amount'), True)} XAF"},
+                    ],
+                })
+
+            elif tool_name == "get_top_payers":
+                if data.get("payers"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Top Contribuyentes ({data.get('period_days', 30)} días)",
+                        "headers": ["Contribuyente", "Email", "Pagos", "Total (XAF)"],
+                        "rows": [
+                            [p.get("name") or "—", p.get("email") or "—",
+                             _fmt(p.get("payments")), _fmt(p.get("total"), True)]
+                            for p in data["payers"]
+                        ],
+                        "alignments": ["left", "left", "right", "right"],
+                    })
+
+            elif tool_name == "get_entity_comparison":
+                if data.get("entities"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Comparación Entidades ({data.get('period_days', 30)} días)",
+                        "headers": ["Entidad", "Código", "Transacciones", "Total (XAF)", "Promedio (XAF)", "% Total"],
+                        "rows": [
+                            [e.get("entity_name") or "—", e.get("entity_code") or "—",
+                             _fmt(e.get("tx_count")), _fmt(e.get("total_amount"), True),
+                             _fmt(e.get("avg_amount"), True), f"{_fmt(e.get('pct_total'))}%"]
+                            for e in data["entities"]
+                        ],
+                        "alignments": ["left", "left", "right", "right", "right", "right"],
+                    })
+
+            elif tool_name == "get_payment_aging":
+                artifacts.append({
+                    "type": "table",
+                    "title": "Antigüedad Pagos Pendientes",
+                    "headers": ["Rango", "Cantidad"],
+                    "rows": [
+                        ["< 4 horas", _fmt(data.get("lt_4h"))],
+                        ["4–12 horas", _fmt(data.get("h4_12"))],
+                        ["12–24 horas", _fmt(data.get("h12_24"))],
+                        ["24–48 horas", _fmt(data.get("h24_48"))],
+                        ["> 48 horas", _fmt(data.get("gt_48h"))],
+                    ],
+                    "alignments": ["left", "right"],
+                })
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": "Resumen Aging",
+                    "metrics": [
+                        {"label": "Total Pendientes", "value": _fmt(data.get("total_pending"))},
+                        {"label": "Promedio (horas)", "value": _fmt(data.get("avg_hours"))},
+                    ],
+                })
+
+            elif tool_name == "get_workflow_pipeline":
+                if data.get("statuses"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Pipeline de Workflow ({data.get('period', '90 days')})",
+                        "headers": ["Estado", "Cantidad", "Monto (XAF)"],
+                        "rows": [
+                            [s.get("status") or "—", _fmt(s.get("count")), _fmt(s.get("amount"), True)]
+                            for s in data["statuses"]
+                        ],
+                        "alignments": ["left", "right", "right"],
+                    })
+
+            elif tool_name == "get_period_comparison":
+                cur = data.get("current", {})
+                prev = data.get("previous", {})
+                delta = data.get("delta", {})
+                artifacts.append({
+                    "type": "table",
+                    "title": f"Comparación Períodos ({data.get('period_days', 30)} días)",
+                    "headers": ["Métrica", "Período Actual", "Período Anterior", "Delta %"],
+                    "rows": [
+                        ["Transacciones", _fmt(cur.get("count")), _fmt(prev.get("count")),
+                         f"{_fmt(delta.get('count_pct'))}%"],
+                        ["Monto (XAF)", _fmt(cur.get("amount"), True), _fmt(prev.get("amount"), True),
+                         f"{_fmt(delta.get('amount_pct'))}%"],
+                    ],
+                    "alignments": ["left", "right", "right", "right"],
+                })
+                change_pct = delta.get("amount_pct", 0)
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": "Variación Ingresos",
+                    "metrics": [
+                        {"label": "Ingresos Actuales", "value": f"{_fmt(cur.get('amount'), True)} XAF",
+                         "change_pct": float(change_pct) if change_pct else None},
+                    ],
+                })
+
+            elif tool_name == "get_cash_flow_daily":
+                if data.get("daily"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Flujo de Caja Diario ({data.get('period_days', 30)} días)",
+                        "headers": ["Fecha", "Ingresos (XAF)", "Egresos (XAF)", "Neto (XAF)", "Acumulado (XAF)"],
+                        "rows": [
+                            [d.get("date") or "—", _fmt(d.get("inflow"), True),
+                             _fmt(d.get("outflow"), True), _fmt(d.get("net"), True),
+                             _fmt(d.get("cumulative"), True)]
+                            for d in data["daily"]
+                        ],
+                        "alignments": ["left", "right", "right", "right", "right"],
+                    })
+
+            elif tool_name == "get_rejection_analysis":
+                if data.get("by_agent"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": f"Rechazos por Agente ({data.get('period_days', 30)} días)",
+                        "headers": ["Agente", "Rechazos", "Acciones Total", "Tasa Rechazo %"],
+                        "rows": [
+                            [a.get("agent") or "—", _fmt(a.get("rejections")),
+                             _fmt(a.get("total_actions")), f"{_fmt(a.get('rejection_rate'))}%"]
+                            for a in data["by_agent"]
+                        ],
+                        "alignments": ["left", "right", "right", "right"],
+                    })
+                if data.get("by_reason"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": "Motivos de Rechazo",
+                        "headers": ["Motivo", "Cantidad"],
+                        "rows": [
+                            [r.get("reason") or "—", _fmt(r.get("count"))]
+                            for r in data["by_reason"]
+                        ],
+                        "alignments": ["left", "right"],
+                    })
+                resub = data.get("resubmissions", {})
+                if resub.get("resubmitted_count", 0) > 0:
+                    artifacts.append({
+                        "type": "kpi_grid",
+                        "title": "Reenvíos",
+                        "metrics": [
+                            {"label": "Reenviados", "value": _fmt(resub.get("resubmitted_count"))},
+                            {"label": "Multi-Rechazados", "value": _fmt(resub.get("multi_rejected_count"))},
+                            {"label": "Prom. Rechazos", "value": _fmt(resub.get("avg_rejections"))},
+                        ],
+                    })
+
+            elif tool_name == "get_anomaly_details":
+                if data.get("by_type"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": "Detalle de Anomalías",
+                        "headers": ["Tipo", "Total", "Abiertas", "Investigando", "Resueltas", "FP", "Tasa FP %"],
+                        "rows": [
+                            [t.get("type") or "—", _fmt(t.get("total")),
+                             _fmt(t.get("open")), _fmt(t.get("investigating")),
+                             _fmt(t.get("resolved")), _fmt(t.get("false_positives")),
+                             f"{_fmt(t.get('fp_rate'))}%"]
+                            for t in data["by_type"]
+                        ],
+                        "alignments": ["left", "right", "right", "right", "right", "right", "right"],
+                    })
+                if data.get("recent_actions"):
+                    artifacts.append({
+                        "type": "table",
+                        "title": "Acciones Recientes sobre Anomalías",
+                        "headers": ["Acción", "Tipo Anomalía", "De", "A", "Fecha"],
+                        "rows": [
+                            [a.get("action") or "—", a.get("anomaly_type") or "—",
+                             a.get("from_status") or "—", a.get("to_status") or "—",
+                             (a.get("performed_at") or "—")[:16]]
+                            for a in data["recent_actions"]
+                        ],
+                        "alignments": ["left", "left", "left", "left", "left"],
+                    })
+
+            elif tool_name == "get_revenue_forecast":
+                hist = data.get("historical", {})
+                trend = data.get("trend", {})
+                confidence = data.get("confidence", "low")
+                confidence_icon = {"high": "🟢", "medium": "🟡", "low": "🔴"}.get(confidence, "⚪")
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": f"Previsión Ingresos ({confidence_icon} {confidence})",
+                    "metrics": [
+                        {"label": "Media Diaria", "value": f"{_fmt(hist.get('avg_daily_amount'), True)} XAF"},
+                        {"label": "Media Móvil 7d", "value": f"{_fmt(hist.get('moving_avg_7d'), True)} XAF"},
+                        {"label": "Tendencia", "value": trend.get("direction", "—")},
+                        {"label": "Δ Semanal", "value": f"{_fmt(trend.get('pct_change_per_week'))}%",
+                         "change_pct": trend.get("pct_change_per_week")},
+                    ],
+                })
+                fc = data.get("forecast")
+                if fc:
+                    artifacts.append({
+                        "type": "table",
+                        "title": "Proyección de Ingresos",
+                        "headers": ["Período", "Prom. Diario (XAF)", "Total Proyectado (XAF)"],
+                        "rows": [
+                            [label, _fmt(fc[key].get("projected_daily_avg"), True),
+                             _fmt(fc[key].get("projected_total"), True)]
+                            for label, key in [
+                                ("Próximos 7 días", "next_7d"),
+                                ("Próximos 14 días", "next_14d"),
+                                ("Próximos 30 días", "next_30d"),
+                            ]
+                            if key in fc
+                        ],
+                        "alignments": ["left", "right", "right"],
+                    })
+                if confidence == "low":
+                    artifacts.append({
+                        "type": "summary",
+                        "title": "Advertencia de Fiabilidad",
+                        "content": data.get("confidence_msg", "Datos insuficientes"),
+                        "severity": "warning",
+                    })
+
+            elif tool_name == "get_workload_forecast":
+                hist = data.get("historical", {})
+                trend = data.get("trend", {})
+                confidence = data.get("confidence", "low")
+                confidence_icon = {"high": "🟢", "medium": "🟡", "low": "🔴"}.get(confidence, "⚪")
+                artifacts.append({
+                    "type": "kpi_grid",
+                    "title": f"Previsión Carga Trabajo ({confidence_icon} {confidence})",
+                    "metrics": [
+                        {"label": "Backlog Actual", "value": _fmt(data.get("current_backlog"))},
+                        {"label": "Prom. Diario Nuevos", "value": _fmt(hist.get("avg_daily_new"))},
+                        {"label": "MA 7d Validaciones", "value": _fmt(hist.get("moving_avg_7d_validations"))},
+                        {"label": "Tendencia", "value": trend.get("direction", "—")},
+                    ],
+                })
+                fc = data.get("forecast")
+                if fc:
+                    artifacts.append({
+                        "type": "table",
+                        "title": "Proyección Carga de Trabajo",
+                        "headers": ["Período", "Prom. Diario", "Total Nuevos", "Requieren Validación"],
+                        "rows": [
+                            [label, _fmt(fc[key].get("projected_daily_avg")),
+                             _fmt(fc[key].get("projected_total_new")),
+                             _fmt(fc[key].get("projected_requiring_validation"))]
+                            for label, key in [
+                                ("Próximos 7 días", "next_7d"),
+                                ("Próximos 14 días", "next_14d"),
+                                ("Próximos 30 días", "next_30d"),
+                            ]
+                            if key in fc
+                        ],
+                        "alignments": ["left", "right", "right", "right"],
+                    })
+                if confidence == "low":
+                    artifacts.append({
+                        "type": "summary",
+                        "title": "Advertencia de Fiabilidad",
+                        "content": data.get("confidence_msg", "Datos insuficientes"),
+                        "severity": "warning",
+                    })
+
+        return artifacts
+
+    async def generate_briefing(self, db, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Generate automated briefing from pre-computed data.
+
+        Args:
+            db: Database connection
+            context: Entity context (entity_code, entity_location_id, is_main_office)
         """
         self._ensure_initialized()
-        start_time = time.monotonic()
 
-        if not self._model:
-            return {
-                "answer": "Servicio IA no disponible temporalmente. Consulta los paneles de control.",
-                "tools_used": [],
-                "data": {},
-            }
-
-        tools_used: List[str] = []
-        tool_results: Dict[str, Any] = {}
-
-        try:
-            loop = asyncio.get_running_loop()
-
-            # Step 1: Send question → Gemini → function call(s)
-            response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        question,
-                        generation_config=GenerationConfig(temperature=0.2, max_output_tokens=512),
-                    ),
-                ),
-                timeout=_GEMINI_TIMEOUT_FIRST_CALL,
-            )
-
-            if not response.candidates:
-                return {"answer": "No se obtuvo respuesta. Reformula tu pregunta.", "tools_used": [], "data": {}}
-
-            # Step 2: Extract function calls
-            function_calls = []
-            for candidate in response.candidates:
-                if not hasattr(candidate, 'content') or not candidate.content:
-                    continue
-                for part in candidate.content.parts:
-                    if hasattr(part, "function_call") and part.function_call and part.function_call.name:
-                        function_calls.append(part.function_call)
-
-            if not function_calls:
-                try:
-                    text = (response.text or "").strip()
-                except (ValueError, AttributeError):
-                    text = ""
-                return {"answer": text or "No puedo responder sin datos. Sé más específico.", "tools_used": [], "data": {}}
-
-            # Step 3: Execute function calls in parallel — each with its own
-            # pooled connection (asyncpg forbids concurrent ops on 1 connection).
-            from app.database.connection import db_manager as _db_mgr
-
-            async def _exec_fn(fn_name: str, fn_args: dict):
-                if fn_name not in FUNCTION_MAP:
-                    return fn_name, {"error": f"Función desconocida: {fn_name}"}
-                try:
-                    async with _db_mgr.get_connection() as conn:
-                        result = await FUNCTION_MAP[fn_name](conn, **fn_args)
-                    return fn_name, result
-                except Exception as e:
-                    logger.error(f"Treasury analyst function {fn_name} failed: {e}")
-                    return fn_name, {"error": str(e)}
-
-            tasks = []
-            for fc in function_calls:
-                fn_name = fc.name
-                try:
-                    fn_args = {k: v for k, v in fc.args.items()} if fc.args else {}
-                    fn_args = {k: (int(v) if isinstance(v, float) and v == int(v) else v) for k, v in fn_args.items()}
-                except (TypeError, AttributeError):
-                    fn_args = {}
-                tools_used.append(fn_name)
-                tasks.append(_exec_fn(fn_name, fn_args))
-
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for r in results:
-                if isinstance(r, Exception):
-                    continue
-                fn_name, fn_result = r
-                tool_results[fn_name] = fn_result
-
-            if not tool_results:
-                return {"answer": "Error ejecutando las funciones de datos.", "tools_used": tools_used, "data": {}}
-
-            # Step 4: Send function results back to Gemini
-            function_response_parts = []
-            for fn_name, fn_result in tool_results.items():
-                function_response_parts.append(
-                    Part.from_function_response(
-                        name=fn_name,
-                        response={"result": json.dumps(fn_result, default=str, ensure_ascii=False)},
-                    )
-                )
-
-            chat_history = [
-                Content(role="user", parts=[Part.from_text(question)]),
-                response.candidates[0].content,
-                Content(role="user", parts=function_response_parts),
-            ]
-
-            final_response = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: self._model.generate_content(
-                        chat_history,
-                        generation_config=GenerationConfig(temperature=0.2, max_output_tokens=2048),
-                    ),
-                ),
-                timeout=_GEMINI_TIMEOUT_SECOND_CALL,
-            )
-
-            try:
-                answer = (final_response.text or "").strip()
-            except (ValueError, AttributeError):
-                answer = ""
-            if not answer:
-                answer = "No se pudo generar el análisis. Consulta los paneles."
-
-            latency = int((time.monotonic() - start_time) * 1000)
-            logger.info(f"Treasury analyst: tools={tools_used} latency={latency}ms q={question[:50]}")
-
-            return {"answer": answer, "tools_used": tools_used, "data": tool_results}
-
-        except asyncio.TimeoutError:
-            if tool_results:
-                return {"answer": "El análisis tardó demasiado. Datos parciales obtenidos.", "tools_used": tools_used, "data": tool_results}
-            return {"answer": "Consulta demasiado lenta. Intenta con una pregunta más específica.", "tools_used": tools_used, "data": {}}
-        except Exception as e:
-            logger.error(f"Treasury analyst error: {type(e).__name__}: {e}")
-            return {"answer": "Error procesando la consulta.", "tools_used": tools_used, "data": {}}
-
-    async def generate_briefing(self, db) -> Dict[str, Any]:
-        """Generate automated briefing from pre-computed data."""
-        self._ensure_initialized()
+        # Build entity kwargs for site scoping
+        entity_kwargs = self._build_entity_kwargs(context or {})
 
         # Gather key metrics in parallel — each with its own pooled connection.
-        # asyncpg does NOT support concurrent operations on a single connection.
         from app.database.connection import db_manager
 
         async def _safe_revenue():
             async with db_manager.get_connection() as conn:
-                return await _get_revenue_summary(conn, days=7)
+                return await _get_revenue_summary(conn, days=7, **entity_kwargs)
 
         async def _safe_sla():
             async with db_manager.get_connection() as conn:
-                return await _get_sla_status(conn)
+                return await _get_sla_status(conn, **entity_kwargs)
 
         async def _safe_anomalies():
             async with db_manager.get_connection() as conn:
-                return await _get_anomaly_summary(conn)
+                return await _get_anomaly_summary(conn, **entity_kwargs)
 
         async def _safe_trends():
             async with db_manager.get_connection() as conn:
-                return await _get_payment_trends(conn, days=7)
+                return await _get_payment_trends(conn, days=7, **entity_kwargs)
 
         revenue, sla, anomalies, trends = await asyncio.gather(
             _safe_revenue(),
@@ -606,7 +1576,7 @@ class TreasuryAnalystService:
                         generation_config=GenerationConfig(temperature=0.3, max_output_tokens=512),
                     ),
                 ),
-                timeout=_GEMINI_TIMEOUT_SECOND_CALL,
+                timeout=GEMINI_TIMEOUT_SECOND_CALL,
             )
             try:
                 briefing_text = (response.text or "").strip()
