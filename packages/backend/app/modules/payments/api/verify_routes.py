@@ -19,14 +19,34 @@ from app.config import settings
 from app.modules.payments.services.receipt_service import receipt_service
 
 
+def _get_verification_secret() -> str:
+    """
+    Return the permanent HMAC secret for QR/verification tokens.
+
+    Priority:
+      1. RECEIPT_VERIFICATION_SECRET (dedicated, recommended)
+      2. JWT_SECRET_KEY (permanent in .env — never ephemeral)
+
+    NEVER fall back to SECRET_KEY: it regenerates on every Cloud Run startup
+    and would invalidate all existing QR codes after each deployment.
+    """
+    secret = settings.RECEIPT_VERIFICATION_SECRET
+    if secret:
+        return secret
+    # JWT_SECRET_KEY is always set permanently in .env / Cloud Run env
+    jwt_key = getattr(settings, 'JWT_SECRET_KEY', None)
+    if jwt_key:
+        return jwt_key
+    # Hard fallback — should never happen in practice
+    return 'taxasge-verify-fallback-key'
+
+
 def _verify_sr_token(reference: str, provided_token: str) -> bool:
     """
     Verify HMAC-SHA256 token for service request verification.
     Must match the generation logic in SummaryPDFService._generate_sr_verification_token().
     """
-    secret_key = getattr(settings, 'RECEIPT_VERIFICATION_SECRET', None)
-    if not secret_key:
-        secret_key = getattr(settings, 'SECRET_KEY', 'taxasge-sr-verification-key')
+    secret_key = _get_verification_secret()
     message = f"sr-verify|{reference}"
     expected = hmac_lib.new(
         secret_key.encode('utf-8'),
@@ -128,28 +148,21 @@ async def verify_service_request(
                     message="Solicitud no encontrada / Request not found"
                 )
 
-            # Workflow display name
-            workflow_labels = {
-                "PASAPORTE": "Pasaporte",
-                "CONDUCIR": "Permiso de Conducir",
-                "CONTRATO": "Contrato ONRC",
-                "RESIDENCIA": "Tarjeta de Residencia",
-                "MATRICULACION": "Matriculacion de Vehiculo",
-                "INSPECCION_TECNICA": "Inspeccion Tecnica (ITVE)",
-                "DUPLICADO_VEHICULO": "Duplicado Vehiculo",
-                "PROMOCION_ADMINISTRATIVA": "Promocion Administrativa",
-                "CARNET_FUNCIONARIO": "Carnet de Funcionario",
-                "VERIFICACION_FUNCIONARIO": "Verificacion de Funcionario",
-                "PRORROGA_VISADO": "Prorroga de Visado",
-                "VISADO_ALTERNATIVO": "Visado Alternativo",
-                "PERMISO_PERMANENCIA": "Permiso de Permanencia",
-                "SALIDA_VISADO_VENCIDO": "Salida con Visado Vencido",
-                "PERMISO_EXTRAORDINARIO": "Permiso Extraordinario",
-                "CERTIFICADO_ADMINISTRATIVO": "Certificado Administrativo",
-            }
-            workflow_name = workflow_labels.get(
-                request["workflow_code"], request["workflow_code"]
-            )
+            # Workflow display name — built dynamically from the registered workflow engine
+            # so any new workflow added to the codebase is automatically picked up.
+            try:
+                from app.modules.service_requests.services.workflow_engine import workflow_engine
+                wf_labels: dict = {}
+                for code, wf in workflow_engine.get_all_workflows().items():
+                    try:
+                        wf_labels[code.value] = wf.service_name_es
+                    except Exception:
+                        wf_labels[code.value] = code.value.replace("_", " ").title()
+            except Exception as e:
+                logger.warning(f"Could not load workflow labels from engine: {e}")
+                wf_labels = {}
+            raw_code = request["workflow_code"] or ""
+            workflow_name = wf_labels.get(raw_code, raw_code.replace("_", " ").title())
 
             # Status display label
             status_labels = {

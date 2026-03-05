@@ -122,7 +122,7 @@ function BriefingStrip({
   briefing,
   isLoading,
 }: {
-  briefing: { briefing: string; priority: string } | undefined;
+  briefing: { briefing: string; priority: string; recommendations?: string[] } | undefined;
   isLoading: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -141,6 +141,7 @@ function BriefingStrip({
 
   const priorityClass = PRIORITY_COLORS[briefing.priority] || '';
   const oneLine = briefing.briefing.split('\n')[0].replace(/\*\*/g, '').slice(0, 120);
+  const recommendations = briefing.recommendations ?? [];
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -151,6 +152,11 @@ function BriefingStrip({
               {t(`briefingPriority.${briefing.priority}` as 'briefingPriority.normal')}
             </Badge>
             <span className="text-xs truncate flex-1">{oneLine}{!open && '...'}</span>
+            {recommendations.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] shrink-0">
+                {recommendations.length} {t('recommendations')}
+              </Badge>
+            )}
             {open ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
           </button>
         </CollapsibleTrigger>
@@ -159,6 +165,23 @@ function BriefingStrip({
             className="text-sm prose prose-sm max-w-none mt-2 pt-2 border-t"
             dangerouslySetInnerHTML={{ __html: renderMarkdown(briefing.briefing) }}
           />
+          {recommendations.length > 0 && (
+            <div className="mt-3 pt-3 border-t">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                {t('recommendationsLabel')}
+              </p>
+              <ul className="space-y-1">
+                {recommendations.map((rec, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs">
+                    <span className="mt-0.5 h-4 w-4 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                      {i + 1}
+                    </span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CollapsibleContent>
       </div>
     </Collapsible>

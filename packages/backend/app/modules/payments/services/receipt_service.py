@@ -334,10 +334,12 @@ class ReceiptService:
         Returns:
             Hex-encoded HMAC-SHA256 token (first 16 chars for shorter URLs)
         """
-        # Get secret key from settings (fallback to a default for dev)
-        secret_key = getattr(settings, 'RECEIPT_VERIFICATION_SECRET', None)
+        # Use dedicated permanent secret — never fall back to SECRET_KEY (ephemeral,
+        # regenerated on every Cloud Run startup → all old QR tokens become invalid).
+        # Fallback order: RECEIPT_VERIFICATION_SECRET → JWT_SECRET_KEY (both permanent).
+        secret_key = settings.RECEIPT_VERIFICATION_SECRET
         if not secret_key:
-            secret_key = getattr(settings, 'SECRET_KEY', 'taxasge-receipt-verification-key')
+            secret_key = getattr(settings, 'JWT_SECRET_KEY', 'taxasge-receipt-hmac-fallback')
 
         # Normalize paid_at to UTC-naive to ensure consistency
         # between token generation (RETURNING *) and verification (SELECT)

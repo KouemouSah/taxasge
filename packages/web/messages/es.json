@@ -6834,6 +6834,8 @@
       "download": "Descargar",
       "downloadTooltip": "Descargar respuesta como Markdown",
       "briefingTitle": "Resumen Ejecutivo",
+      "recommendations": "Recomendaciones",
+      "recommendationsLabel": "Acciones recomendadas",
       "briefingPriority": {
         "normal": "Normal",
         "attention": "Atencion",

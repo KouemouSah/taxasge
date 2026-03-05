@@ -6732,6 +6732,8 @@
       "download": "Download",
       "downloadTooltip": "Download response as Markdown",
       "briefingTitle": "Executive Briefing",
+      "recommendations": "Recommendations",
+      "recommendationsLabel": "Recommended actions",
       "briefingPriority": {
         "normal": "Normal",
         "attention": "Attention",

@@ -583,8 +583,7 @@ class TreasuryExportService:
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Fetch audit log data."""
-        # Note: pva.agent_id is integer, users.id is UUID — type mismatch.
-        # agent_id is currently always NULL so we skip the join.
+        # Use agent_user_id (UUID → users.id) — agent_id (integer) is legacy/always NULL
         query = """
             SELECT
                 pva.payment_id::text,
@@ -594,9 +593,11 @@ class TreasuryExportService:
                 pva.to_status::text,
                 pva.comment,
                 pva.created_at,
-                pva.agent_id::text as agent_id
+                pva.agent_user_id::text as agent_id,
+                u.full_name as agent_name
             FROM payment_validation_audit pva
             JOIN service_payments sp ON sp.id = pva.payment_id
+            LEFT JOIN users u ON u.id = pva.agent_user_id
             WHERE pva.created_at >= $1::date
               AND pva.created_at < $2::date + INTERVAL '1 day'
             ORDER BY pva.created_at DESC

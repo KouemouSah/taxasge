@@ -6972,6 +6972,8 @@
       "download": "Telecharger",
       "downloadTooltip": "Telecharger la reponse en Markdown",
       "briefingTitle": "Resume Executif",
+      "recommendations": "Recommandations",
+      "recommendationsLabel": "Actions recommandees",
       "briefingPriority": {
         "normal": "Normal",
         "attention": "Attention",

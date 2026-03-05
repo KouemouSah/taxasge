@@ -75,6 +75,15 @@ class Settings(BaseSettings):
         except Exception as e:
             logger.error(f"❌ Failed to load Firebase Admin Keys from Secret Manager: {e}")
 
+        # Warn if RECEIPT_VERIFICATION_SECRET not explicitly configured
+        if not self.RECEIPT_VERIFICATION_SECRET:
+            logger.warning(
+                "⚠️ RECEIPT_VERIFICATION_SECRET not set — QR code tokens will use JWT_SECRET_KEY "
+                "as fallback. Set RECEIPT_VERIFICATION_SECRET in Cloud Run env for production."
+            )
+        else:
+            logger.info("✅ RECEIPT_VERIFICATION_SECRET configured")
+
     # ========================================================================
     # APPLICATION SETTINGS
     # ========================================================================
@@ -116,6 +125,10 @@ class Settings(BaseSettings):
     BCRYPT_ROUNDS: int = 12
 
     # Receipt verification (HMAC key for QR code security)
+    # IMPORTANT: Set this as a PERMANENT env var in Cloud Run / Secret Manager.
+    # This key signs the QR code tokens on all PDF receipts and service requests.
+    # If not set, falls back to JWT_SECRET_KEY (permanent) — but dedicated key is preferred.
+    # NEVER rotate this key after receipts have been issued: existing QR codes will break.
     RECEIPT_VERIFICATION_SECRET: str = Field(
         default="",
         env="RECEIPT_VERIFICATION_SECRET"

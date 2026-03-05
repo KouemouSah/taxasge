@@ -18,7 +18,7 @@ const Footer = () => {
           {/* About */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <Image src="/logo.png" alt="TaxasGE Logo" width={48} height={48} className="h-12 w-12" />
+              <Image src="/logo.png" alt="Facil Logo" width={48} height={48} className="h-12 w-12" />
               <span className="text-lg font-bold">{tCommon('appName')}</span>
             </div>
             <p className="text-sm text-muted-foreground">{t('description')}</p>

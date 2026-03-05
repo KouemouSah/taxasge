@@ -333,9 +333,10 @@ class SummaryPDFService:
         Message: reference string, signed with RECEIPT_VERIFICATION_SECRET or SECRET_KEY.
         Returns first 16 hex chars (64 bits).
         """
-        secret_key = getattr(settings, 'RECEIPT_VERIFICATION_SECRET', None)
+        # Never fall back to SECRET_KEY (ephemeral — regenerated on each Cloud Run startup).
+        secret_key = settings.RECEIPT_VERIFICATION_SECRET
         if not secret_key:
-            secret_key = getattr(settings, 'SECRET_KEY', 'taxasge-sr-verification-key')
+            secret_key = getattr(settings, 'JWT_SECRET_KEY', 'taxasge-sr-hmac-fallback')
         message = f"sr-verify|{reference}"
         signature = hmac_lib.new(
             secret_key.encode('utf-8'),

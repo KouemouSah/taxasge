@@ -1543,28 +1543,51 @@ class TreasuryAnalystService(BaseAnalystService):
             priority = "attention"
 
         if not self._model:
-            # Fallback without LLM
+            # Fallback without LLM — derive basic recommendations from data
+            fallback_recs = []
+            if sla["breached"] > 0:
+                fallback_recs.append(f"Revisar {sla['breached']} pago(s) con SLA vencido urgentemente")
+            if anomalies["open"] > 0:
+                fallback_recs.append(f"Investigar {anomalies['open']} anomalía(s) abierta(s)")
+            if revenue["pending"]["count"] > 10:
+                fallback_recs.append(f"Gestionar {revenue['pending']['count']} pagos pendientes de validación")
+            if not fallback_recs:
+                fallback_recs.append("Situación normal — continuar monitoreo estándar")
+
             return {
-                "briefing": f"**Ingresos 7 días**: {revenue['completed']['amount']:,.0f} XAF ({revenue['completed']['count']} transacciones). "
-                            f"**Pendientes**: {revenue['pending']['count']}. "
-                            f"**SLA**: {sla['sla_respect_rate']}% respeto ({sla['breached']} vencidos). "
-                            f"**Anomalías**: {anomalies['open']} abiertas.",
+                "briefing": (
+                    f"**Ingresos 7 días**: {revenue['completed']['amount']:,.0f} XAF "
+                    f"({revenue['completed']['count']} transacciones). "
+                    f"**Pendientes**: {revenue['pending']['count']}. "
+                    f"**SLA**: {sla['sla_respect_rate']}% respeto ({sla['breached']} vencidos). "
+                    f"**Anomalías**: {anomalies['open']} abiertas."
+                ),
                 "priority": priority,
-                "recommendations": [],
+                "recommendations": fallback_recs,
             }
 
-        # Use LLM for natural language briefing
+        # Use LLM for natural language briefing — structured JSON response
         data_summary = json.dumps(
             {"revenue_7d": revenue, "sla": sla, "anomalies": anomalies, "trends_7d": trends},
             default=str, ensure_ascii=False,
         )
 
         briefing_prompt = (
-            f"Genera un resumen ejecutivo BREVE (máximo 150 palabras) de la situación financiera actual del Tesoro. "
-            f"Incluye: ingresos recientes, estado SLA, anomalías si hay. "
-            f"Termina con 2-3 recomendaciones concretas.\n\n"
+            f"Analiza los datos financieros del Tesoro y responde ÚNICAMENTE con un objeto JSON válido "
+            f"(sin bloques de código markdown, sin texto adicional).\n\n"
+            f"Formato exacto requerido:\n"
+            f'{{"briefing": "<resumen ejecutivo 100-150 palabras: ingresos, SLA, anomalías, tendencias>", '
+            f'"recommendations": ["<acción concreta 1>", "<acción concreta 2>", "<acción concreta 3>"]}}\n\n'
+            f"Reglas:\n"
+            f"- briefing: narrativa fluida en español, markdown básico (**negrita**), cifras exactas en XAF\n"
+            f"- recommendations: array de 2-4 acciones concretas y priorizadas, basadas SOLO en los datos\n"
+            f"- Si no hay anomalías ni alertas, recommendations puede tener 1-2 acciones preventivas\n"
+            f"- NUNCA inventes datos que no aparezcan en los datos proporcionados\n\n"
             f"DATOS:\n{data_summary}"
         )
+
+        briefing_text = ""
+        recommendations: list = []
 
         try:
             loop = asyncio.get_running_loop()
@@ -1573,18 +1596,33 @@ class TreasuryAnalystService(BaseAnalystService):
                     None,
                     lambda: self._model.generate_content(
                         briefing_prompt,
-                        generation_config=GenerationConfig(temperature=0.3, max_output_tokens=512),
+                        generation_config=GenerationConfig(temperature=0.2, max_output_tokens=600),
                     ),
                 ),
                 timeout=GEMINI_TIMEOUT_SECOND_CALL,
             )
             try:
-                briefing_text = (response.text or "").strip()
-            except (ValueError, AttributeError):
-                briefing_text = ""
+                raw = (response.text or "").strip()
+                # Strip markdown code fences if present
+                if raw.startswith("```"):
+                    raw = raw.split("```")[1]
+                    if raw.startswith("json"):
+                        raw = raw[4:]
+                    raw = raw.strip()
+                parsed = json.loads(raw)
+                briefing_text = parsed.get("briefing", "").strip()
+                recommendations = [
+                    str(r) for r in parsed.get("recommendations", []) if r
+                ]
+            except (ValueError, AttributeError, json.JSONDecodeError) as e:
+                logger.warning(f"Treasury briefing JSON parse failed: {e}, using raw text")
+                # Fallback: use raw text as briefing if JSON parsing fails
+                try:
+                    briefing_text = (response.text or "").strip()
+                except (ValueError, AttributeError):
+                    briefing_text = ""
         except Exception as e:
             logger.error(f"Treasury briefing LLM failed: {e}")
-            briefing_text = ""
 
         if not briefing_text:
             briefing_text = (
@@ -1597,7 +1635,7 @@ class TreasuryAnalystService(BaseAnalystService):
         return {
             "briefing": briefing_text,
             "priority": priority,
-            "recommendations": [],
+            "recommendations": recommendations,
             "data": {"revenue": revenue, "sla": sla, "anomalies_open": anomalies["open"]},
         }
 
