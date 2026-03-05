@@ -1,277 +1,71 @@
 'use client';
 
 /**
- * Admin Assistant Tab - LLM-powered Q&A for agent management.
- * All UI text from useTranslations('admin.agents').
- * LLM responses rendered as markdown.
- * Features: quick actions, free-text Q&A, markdown export, retry on failure.
+ * Admin Assistant Tab — Thin wrapper around the unified AgentChatUI.
  *
- * @module agents-admin/components
+ * Provides admin-specific config: quick actions, mutation.
+ * The old 278-line card-based layout is replaced by the ChatGPT-like shared UI.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useMutation } from '@tanstack/react-query';
 import {
-  Sparkles, Send, AlertTriangle, Users, BarChart3, Clock, UserX,
-  Loader2, Wrench, Download, RefreshCw,
+  BarChart3, Clock, Users, UserX, AlertTriangle, Sparkles,
 } from 'lucide-react';
-import { renderMarkdown } from '@/core/utils/markdown';
-import { useAdminAssistant } from '../hooks';
-import type { AdminAssistantResponse } from '../types';
-
-interface QAEntry {
-  id: string;
-  question: string;
-  response: AdminAssistantResponse;
-  timestamp: Date;
-  isError?: boolean;
-}
-
-let _qaCounter = 0;
-
-/**
- * Download markdown content as a .md file
- */
-function downloadMarkdown(content: string, question: string) {
-  const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  const filename = `assistant-${timestamp}.md`;
-
-  // Build full markdown with question as header
-  const markdown = `# ${question}\n\n_Generado: ${new Date().toLocaleString()}_\n\n---\n\n${content}\n`;
-
-  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+import { AgentChatUI } from '@/components/agent-chat';
+import type { AgentChatConfig, AgentResponse } from '@/components/agent-chat';
+import { adminAssistantApi } from '../services/api';
 
 export function AdminAssistantTab() {
-  const [inputValue, setInputValue] = useState('');
-  const [history, setHistory] = useState<QAEntry[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-  // Stable session ID for conversation memory (persists for the lifetime of this component)
-  const sessionIdRef = useRef<string>(crypto.randomUUID());
-  const assistantMutation = useAdminAssistant();
   const t = useTranslations('admin.agents');
 
-  // Quick actions use translation keys for labels but send Spanish questions
-  // (because the LLM system prompt expects Spanish input)
-  const QUICK_ACTIONS = [
-    {
-      labelKey: 'assistantQuickActions.daySummary',
-      question: '¿Cuál es el resumen operativo del día? Analiza las alertas activas, la distribución de carga y detecta cualquier anomalía.',
-      icon: BarChart3,
+  // Admin API already returns tools_used (snake_case) — matches AgentResponse directly
+  const mutation = useMutation<
+    AgentResponse,
+    Error,
+    { question: string; previousContext?: { question: string; tools_used: string[] }; sessionId: string }
+  >({
+    mutationFn: async ({ question, previousContext, sessionId }) => {
+      const raw = await adminAssistantApi.askQuestion(question, previousContext, sessionId);
+      return {
+        answer: raw.answer,
+        tools_used: raw.tools_used,
+        data: raw.data,
+        artifacts: [],
+      };
     },
-    {
-      labelKey: 'assistantQuickActions.inactiveAgents',
-      question: '¿Hay agentes inactivos? Lista los que no tienen actividad reciente y analiza si hay un patrón.',
-      icon: UserX,
+  });
+
+  const config: AgentChatConfig = useMemo(() => ({
+    title: t('assistantTitle'),
+    description: t('assistantDesc'),
+    placeholder: t('assistantPlaceholder'),
+    analyzingText: t('assistantAnalyzing'),
+    analyzingDesc: t('assistantAnalyzingDesc'),
+    errorMessage: t('assistantError'),
+    emptyStateText: t('assistantEmptyState'),
+    emptyExamplesText: t('assistantEmptyExamples'),
+    labels: {
+      toolsUsed: t('assistantToolsUsed'),
+      retry: t('assistantRetry'),
+      history: 'Historial',
+      quickActionsMenu: 'Consultas rapidas',
+      download: t('assistantDownload'),
     },
-    {
-      labelKey: 'assistantQuickActions.workloadDist',
-      question: 'Muéstrame la distribución de carga de trabajo entre todas las entidades. ¿Hay desequilibrios?',
-      icon: Users,
-    },
-    {
-      labelKey: 'assistantQuickActions.slaReport',
-      question: 'Dame un reporte de cumplimiento SLA. ¿Hay pagos en riesgo o vencidos? ¿Hay patrones de incumplimiento?',
-      icon: Clock,
-    },
-    {
-      labelKey: 'assistantQuickActions.anomalies',
-      question: 'Analiza todos los datos disponibles y detecta anomalías o patrones inusuales en el comportamiento de los agentes.',
-      icon: AlertTriangle,
-    },
-  ];
+    quickActions: [
+      { label: t('assistantQuickActions.daySummary'), question: '¿Cual es el resumen operativo del dia? Analiza las alertas activas, la distribucion de carga y detecta cualquier anomalia.', icon: BarChart3 },
+      { label: t('assistantQuickActions.inactiveAgents'), question: '¿Hay agentes inactivos? Lista los que no tienen actividad reciente y analiza si hay un patron.', icon: UserX },
+      { label: t('assistantQuickActions.workloadDist'), question: 'Muestrame la distribucion de carga de trabajo entre todas las entidades. ¿Hay desequilibrios?', icon: Users },
+      { label: t('assistantQuickActions.slaReport'), question: 'Dame un reporte de cumplimiento SLA. ¿Hay pagos en riesgo o vencidos? ¿Hay patrones de incumplimiento?', icon: Clock },
+      { label: t('assistantQuickActions.anomalies'), question: 'Analiza todos los datos disponibles y detecta anomalias o patrones inusuales en el comportamiento de los agentes.', icon: AlertTriangle },
+    ],
+    mutation,
+    accentColor: 'bg-purple-100',
+    icon: Sparkles,
+  }), [t, mutation]);
 
-  const handleAsk = useCallback(async (question: string) => {
-    if (!question.trim()) return;
-    setInputValue('');
-
-    // Pass last successful Q&A as context for conversational continuity
-    const lastSuccessful = history.find(e => !e.isError && e.response.tools_used.length > 0);
-    const previousContext = lastSuccessful
-      ? { question: lastSuccessful.question, tools_used: lastSuccessful.response.tools_used }
-      : undefined;
-
-    try {
-      const response = await assistantMutation.mutateAsync({ question, previousContext, sessionId: sessionIdRef.current });
-      setHistory(prev => [
-        { id: `qa-${++_qaCounter}`, question, response, timestamp: new Date() },
-        ...prev.slice(0, 9), // Keep last 10
-      ]);
-    } catch {
-      setHistory(prev => [
-        {
-          id: `qa-${++_qaCounter}`,
-          question,
-          response: { answer: t('assistantError'), tools_used: [], data: {} },
-          timestamp: new Date(),
-          isError: true,
-        },
-        ...prev.slice(0, 9),
-      ]);
-    }
-  }, [assistantMutation, t, history]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleAsk(inputValue);
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-500" />
-            {t('assistantTitle')}
-          </CardTitle>
-          <CardDescription>{t('assistantDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Quick actions */}
-          <div className="flex flex-wrap gap-2">
-            {QUICK_ACTIONS.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={action.labelKey}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAsk(action.question)}
-                  disabled={assistantMutation.isPending}
-                >
-                  <Icon className="h-3.5 w-3.5 mr-1.5" />
-                  {t(action.labelKey)}
-                </Button>
-              );
-            })}
-          </div>
-
-          {/* Input */}
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={t('assistantPlaceholder')}
-              disabled={assistantMutation.isPending}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={!inputValue.trim() || assistantMutation.isPending} size="sm">
-              {assistantMutation.isPending
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Send className="h-4 w-4" />}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Loading state */}
-      {assistantMutation.isPending && (
-        <Card className="border-blue-200 bg-blue-50/30">
-          <CardContent className="py-6">
-            <div className="flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-              <div>
-                <p className="text-sm font-medium text-blue-800">{t('assistantAnalyzing')}</p>
-                <p className="text-xs text-blue-600">{t('assistantAnalyzingDesc')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* History */}
-      {history.map((entry) => (
-        <Card key={entry.id} className={`border-muted ${entry.isError ? 'border-red-200' : ''}`}>
-          <CardContent className="py-4 space-y-3">
-            {/* Question */}
-            <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0 mt-0.5 text-[10px]">Q</Badge>
-              <p className="text-sm text-muted-foreground flex-1">{entry.question}</p>
-            </div>
-
-            {/* Answer — rendered as markdown */}
-            <div className="flex items-start gap-2">
-              <Badge className="shrink-0 mt-0.5 text-[10px] bg-blue-100 text-blue-800 border-0">IA</Badge>
-              <div
-                className="text-sm prose prose-sm max-w-none flex-1"
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.response.answer) }}
-              />
-            </div>
-
-            {/* Footer: tools used + actions */}
-            <div className="flex items-center gap-1.5 pt-2 border-t flex-wrap">
-              {/* Tools used */}
-              {entry.response.tools_used.length > 0 && (
-                <>
-                  <Wrench className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">
-                    {t('assistantToolsUsed')}: {entry.response.tools_used.join(', ')}
-                  </span>
-                </>
-              )}
-
-              <span className="text-[10px] text-muted-foreground ml-auto flex items-center gap-2">
-                {/* Retry button on error */}
-                {entry.isError && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-[10px]"
-                    onClick={() => handleAsk(entry.question)}
-                    disabled={assistantMutation.isPending}
-                  >
-                    <RefreshCw className="h-3 w-3 mr-1" />
-                    {t('assistantRetry')}
-                  </Button>
-                )}
-
-                {/* Download button (only on successful responses) */}
-                {!entry.isError && entry.response.answer && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-[10px]"
-                    onClick={() => downloadMarkdown(entry.response.answer, entry.question)}
-                    title={t('assistantDownloadTooltip')}
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    {t('assistantDownload')}
-                  </Button>
-                )}
-
-                {entry.timestamp.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-
-      {/* Empty state */}
-      {history.length === 0 && !assistantMutation.isPending && (
-        <Card className="border-dashed">
-          <CardContent className="py-12">
-            <div className="flex flex-col items-center justify-center text-center text-muted-foreground">
-              <Sparkles className="h-8 w-8 mb-3 opacity-50" />
-              <p className="text-sm">{t('assistantEmptyState')}</p>
-              <p className="text-xs mt-1">{t('assistantEmptyExamples')}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+  return <AgentChatUI config={config} />;
 }
 
 export default AdminAssistantTab;
