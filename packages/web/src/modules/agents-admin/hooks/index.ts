@@ -8,6 +8,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { agentCreationApi, agentProfilesApi, agentWorkloadApi, agentAlertsApi, adminAssistantApi, adminUsersApi, workflowsApi } from '../services/api';
+import type { AdminAssistantPreviousContext } from '../services/api';
 import type {
   AgentCompleteCreateRequest,
   AdminCreateRequest,
@@ -165,11 +166,18 @@ export function useAlertsDashboard(enabled = true) {
 // =============================================================================
 
 /**
- * Hook for admin assistant Q&A mutation
+ * Hook for admin assistant Q&A mutation.
+ * Accepts optional previous context for conversational continuity.
  */
 export function useAdminAssistant() {
   return useMutation({
-    mutationFn: (question: string) => adminAssistantApi.askQuestion(question),
+    mutationFn: ({
+      question,
+      previousContext,
+    }: {
+      question: string;
+      previousContext?: AdminAssistantPreviousContext;
+    }) => adminAssistantApi.askQuestion(question, previousContext),
   });
 }
 

@@ -324,13 +324,24 @@ export const agentAlertsApi = {
 // ADMIN ASSISTANT API
 // =============================================================================
 
+export interface AdminAssistantPreviousContext {
+  question: string;
+  tools_used: string[];
+}
+
 export const adminAssistantApi = {
   /**
    * Send question to LLM admin assistant
    * BACKEND: POST /api/v1/agents/admin/assistant
    */
-  askQuestion: async (question: string): Promise<AdminAssistantResponse> => {
-    return fetchClient.post<AdminAssistantResponse>(`${AGENTS_BASE}/admin/assistant`, { question });
+  askQuestion: async (
+    question: string,
+    previousContext?: AdminAssistantPreviousContext,
+  ): Promise<AdminAssistantResponse> => {
+    return fetchClient.post<AdminAssistantResponse>(`${AGENTS_BASE}/admin/assistant`, {
+      question,
+      ...(previousContext ? { previous_context: previousContext } : {}),
+    });
   },
 };
 

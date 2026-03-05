@@ -93,8 +93,14 @@ export function AdminAssistantTab() {
     if (!question.trim()) return;
     setInputValue('');
 
+    // Pass last successful Q&A as context for conversational continuity
+    const lastSuccessful = history.find(e => !e.isError && e.response.tools_used.length > 0);
+    const previousContext = lastSuccessful
+      ? { question: lastSuccessful.question, tools_used: lastSuccessful.response.tools_used }
+      : undefined;
+
     try {
-      const response = await assistantMutation.mutateAsync(question);
+      const response = await assistantMutation.mutateAsync({ question, previousContext });
       setHistory(prev => [
         { id: `qa-${++_qaCounter}`, question, response, timestamp: new Date() },
         ...prev.slice(0, 9), // Keep last 10
@@ -111,7 +117,7 @@ export function AdminAssistantTab() {
         ...prev.slice(0, 9),
       ]);
     }
-  }, [assistantMutation, t]);
+  }, [assistantMutation, t, history]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

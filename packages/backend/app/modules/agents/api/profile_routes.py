@@ -986,6 +986,10 @@ class AdminAssistantRequest(PydanticBaseModel):
         max_length=500,
         description="Question en langage naturel (3-500 caractères)"
     )
+    previous_context: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Contexte de la question précédente: {question: str, tools_used: list[str]}"
+    )
 
 
 class AdminAssistantResponse(PydanticBaseModel):
@@ -1054,5 +1058,9 @@ async def admin_assistant_query(
             data={},
         )
 
-    result = await admin_assistant_service.process_question(db, sanitized)
+    context: Dict[str, Any] = {}
+    if request.previous_context:
+        context["previous_context"] = request.previous_context
+
+    result = await admin_assistant_service.process_question(db, sanitized, context=context)
     return AdminAssistantResponse(**result)

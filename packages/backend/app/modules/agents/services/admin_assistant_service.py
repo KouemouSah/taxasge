@@ -43,14 +43,22 @@ REGLAS ESTRICTAS:
 - NO hagas suposiciones sobre datos que no tienes
 
 ESTRATEGIA DE FUNCIONES — MUY IMPORTANTE:
-- Para preguntas AMPLIAS ("resumen del día", "estado general", "reporte completo"),
-  DEBES llamar MÚLTIPLES funciones simultáneamente para recopilar datos de todas las áreas.
-  Ejemplo: "resumen del día" → llama get_alerts_summary + get_workload_distribution + get_inactive_agents + get_sla_report
-  Ejemplo: "reporte SLA completo" → llama get_sla_report + get_processing_trends + analyze_performance_ranking
-  Ejemplo: "estado de los agentes" → llama get_workload_distribution + get_inactive_agents + detect_anomalies
-- Para preguntas ESPECÍFICAS, llama solo la función relevante.
-- SIEMPRE llama al menos una función. NUNCA respondas sin datos.
-- Si dudas sobre qué función usar, llama get_alerts_summary como base.
+DEBES llamar al menos una función. Las respuestas sin datos son inútiles.
+Usa este mapeo para elegir la(s) función(es) correcta(s):
+
+| Pregunta del usuario                                          | Función(es) a llamar                                                         |
+|---------------------------------------------------------------|------------------------------------------------------------------------------|
+| "resumen del día", "estado general", "reporte completo"       | get_alerts_summary + get_workload_distribution + get_inactive_agents + get_sla_report |
+| "cuántos agentes", "conectados", "disponibles", "activos", "en línea", "trabajando ahora" | get_agent_availability_snapshot + get_workload_distribution |
+| "carga de trabajo", "distribución", "desequilibrio"           | get_workload_distribution + analyze_entity_balance                           |
+| "agentes inactivos", "sin actividad", "ausentes"              | get_inactive_agents                                                          |
+| "SLA", "vencidos", "en riesgo", "tiempo de procesamiento"     | get_sla_report + get_processing_trends                                       |
+| "rendimiento", "ranking", "mejor", "peor", "desempeño"        | analyze_performance_ranking + detect_anomalies                               |
+| "anomalías", "inusual", "desviación", "problema estadístico"  | detect_anomalies                                                             |
+| "entidad [CÓDIGO]", comparar agentes de una entidad           | compare_entity_agents(entity_code=CÓDIGO)                                    |
+| "agente [NOMBRE]", estadísticas de un agente específico       | get_agent_summary(agent_name=NOMBRE)                                         |
+| "tendencias", "evolución", "últimos días"                     | get_processing_trends                                                        |
+| Duda o pregunta amplia → usa SIEMPRE                          | get_alerts_summary como base mínima                                          |
 
 FORMATO DE RESPUESTA (Markdown):
 - Usa encabezados ## y ### para estructurar
@@ -64,6 +72,7 @@ FORMATO DE RESPUESTA (Markdown):
 - Al final, incluye una sección "### Acciones recomendadas" con pasos concretos
 
 FUNCIONES DISPONIBLES:
+- get_agent_availability_snapshot: cuántos agentes están disponibles/activos/conectados AHORA
 - get_alerts_summary: alertas activas (inactividad, sobrecarga, bloqueos, SLA)
 - get_agent_summary: estadísticas completas de UN agente por nombre
 - compare_entity_agents: comparar agentes dentro de una entidad
@@ -83,6 +92,19 @@ FUNCIONES DISPONIBLES:
 TOOL_FUNCTIONS: list = []
 if VERTEX_AI_AVAILABLE:
     TOOL_FUNCTIONS = [
+        FunctionDeclaration(
+            name="get_agent_availability_snapshot",
+            description=(
+                "Instantánea de disponibilidad y presencia de agentes: cuántos están disponibles, "
+                "trabajando activamente, inactivos o con sesión reciente (últimos 30 min). "
+                "Usar para preguntas sobre agentes 'conectados', 'activos', 'disponibles ahora', "
+                "'cuántos trabajan', 'quién está en línea'."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        ),
         FunctionDeclaration(
             name="get_alerts_summary",
             description="Obtener resumen de alertas activas: agentes inactivos, sobrecargados, bloqueos obsoletos y SLA en riesgo.",
@@ -196,6 +218,89 @@ if VERTEX_AI_AVAILABLE:
 # ============================================================================
 # DATA FUNCTIONS (safe, parameterized SQL)
 # ============================================================================
+
+async def _exec_get_agent_availability_snapshot(db) -> Dict[str, Any]:
+    """Real-time availability snapshot: declared status + recent session activity."""
+    # Global counts by availability/workload status
+    totals_row = await db.fetchrow("""
+        SELECT
+            COUNT(DISTINCT ap.id)                                                           AS total_agents,
+            COUNT(DISTINCT ap.id) FILTER (WHERE aw.availability = 'available')              AS available,
+            COUNT(DISTINCT ap.id) FILTER (WHERE aw.availability = 'on_leave')               AS on_leave,
+            COUNT(DISTINCT ap.id) FILTER (WHERE aw.availability = 'sick_leave')             AS sick_leave,
+            COUNT(DISTINCT ap.id) FILTER (WHERE aw.availability = 'training')               AS training,
+            COUNT(DISTINCT ap.id) FILTER (WHERE aw.availability = 'mission')                AS mission,
+            COUNT(DISTINCT ap.id) FILTER (
+                WHERE aw.availability = 'temporarily_unavailable')                          AS temp_unavailable,
+            COUNT(DISTINCT ap.id) FILTER (
+                WHERE aw.workload_status IN ('normal', 'busy', 'overloaded'))               AS actively_working,
+            COUNT(DISTINCT ap.id) FILTER (
+                WHERE s.last_activity > NOW() - INTERVAL '30 minutes'
+                AND s.expires_at > NOW() AND s.revoked_at IS NULL)                          AS session_active_30min,
+            COUNT(DISTINCT ap.id) FILTER (
+                WHERE s.last_activity > NOW() - INTERVAL '60 minutes'
+                AND s.expires_at > NOW() AND s.revoked_at IS NULL)                          AS session_active_60min
+        FROM agent_profiles ap
+        JOIN users u ON u.id = ap.user_id
+        LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+        LEFT JOIN sessions s ON s.user_id = u.id
+        WHERE ap.is_active = true
+    """)
+
+    # Breakdown by entity
+    entity_rows = await db.fetch("""
+        SELECT
+            e.code,
+            e.name,
+            COUNT(DISTINCT ap.id)                                                           AS agents,
+            COUNT(DISTINCT ap.id) FILTER (WHERE aw.availability = 'available')             AS available,
+            COUNT(DISTINCT ap.id) FILTER (
+                WHERE aw.workload_status IN ('normal', 'busy', 'overloaded'))               AS working,
+            COUNT(DISTINCT ap.id) FILTER (
+                WHERE s.last_activity > NOW() - INTERVAL '30 minutes'
+                AND s.expires_at > NOW() AND s.revoked_at IS NULL)                          AS session_30min
+        FROM agent_profiles ap
+        JOIN users u ON u.id = ap.user_id
+        LEFT JOIN entities e ON e.id = ap.entity_id
+        LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+        LEFT JOIN sessions s ON s.user_id = u.id
+        WHERE ap.is_active = true
+        GROUP BY e.code, e.name
+        ORDER BY available DESC
+    """)
+
+    entities = [
+        {
+            "code": r["code"] or "N/A",
+            "name": r["name"] or "N/A",
+            "total": r["agents"],
+            "available": r["available"],
+            "working": r["working"],
+            "session_30min": r["session_30min"],
+        }
+        for r in entity_rows
+    ]
+
+    return {
+        "note": (
+            "Disponibilidad declarada (campo 'availability' en perfil del agente). "
+            "'session_active_30min' = agentes con actividad de sesión en los últimos 30 minutos."
+        ),
+        "total_agents": totals_row["total_agents"] or 0,
+        "by_availability": {
+            "available": totals_row["available"] or 0,
+            "on_leave": totals_row["on_leave"] or 0,
+            "sick_leave": totals_row["sick_leave"] or 0,
+            "training": totals_row["training"] or 0,
+            "mission": totals_row["mission"] or 0,
+            "temporarily_unavailable": totals_row["temp_unavailable"] or 0,
+        },
+        "actively_working": totals_row["actively_working"] or 0,
+        "session_active_30min": totals_row["session_active_30min"] or 0,
+        "session_active_60min": totals_row["session_active_60min"] or 0,
+        "by_entity": entities,
+    }
+
 
 async def _exec_get_alerts_summary(db) -> Dict[str, Any]:
     """Reuse alerts dashboard query."""
@@ -716,6 +821,7 @@ async def _exec_get_processing_trends(db, period_days: int = 30) -> Dict[str, An
 
 # Function dispatcher
 FUNCTION_MAP: Dict[str, Callable] = {
+    "get_agent_availability_snapshot": lambda db, **_: _exec_get_agent_availability_snapshot(db),
     "get_alerts_summary": lambda db, **_: _exec_get_alerts_summary(db),
     "get_agent_summary": lambda db, **kw: _exec_get_agent_summary(db, kw.get("agent_name", "")),
     "compare_entity_agents": lambda db, **kw: _exec_compare_entity_agents(db, kw.get("entity_code", "")),

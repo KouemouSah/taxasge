@@ -49,13 +49,27 @@ except ImportError:
     VERTEX_AI_AVAILABLE = False
     logger.warning("Vertex AI SDK not available - analyst services disabled")
 
+# ToolConfig mode=ANY forces Gemini to always call at least one function on the first round.
+# Degrades gracefully if the SDK version doesn't support it.
+_TOOL_CONFIG_ANY = None
+try:
+    from vertexai.generative_models import ToolConfig as _ToolConfig  # type: ignore[attr-defined]
+    _TOOL_CONFIG_ANY = _ToolConfig(
+        function_calling_config=_ToolConfig.FunctionCallingConfig(
+            mode=_ToolConfig.FunctionCallingConfig.Mode.ANY,
+        )
+    )
+    logger.info("ToolConfig mode=ANY loaded — Gemini will always call a tool on first round")
+except Exception:
+    logger.warning("ToolConfig not available — Gemini may bypass function calling (mode=AUTO)")
+
 # Shared constants
 GEMINI_TIMEOUT_FIRST_CALL = 25.0
 GEMINI_TIMEOUT_SECOND_CALL = 30.0
 GEMINI_TIMEOUT_EXTRA_ROUND = 20.0
 MAX_INIT_RETRIES = 3
 INIT_RETRY_DELAY = 2.0
-FIRST_CALL_MAX_TOKENS = 512
+FIRST_CALL_MAX_TOKENS = 1024  # Increased from 512: multi-tool selection needs more token budget
 SECOND_CALL_MAX_TOKENS = 2048
 MAX_TOOL_ROUNDS = 2  # Default; subclass can override up to 3
 
@@ -264,16 +278,20 @@ class BaseAnalystService(abc.ABC):
                     return fn_name, {"error": str(e)}
 
             # ── Round 1: Initial question → Gemini → function calls ──
+            # ToolConfig mode=ANY: forces Gemini to call at least one tool (no text-only escape).
+            _r1_kwargs: dict = {
+                "generation_config": GenerationConfig(
+                    temperature=0.2,
+                    max_output_tokens=FIRST_CALL_MAX_TOKENS,
+                ),
+            }
+            if _TOOL_CONFIG_ANY is not None:
+                _r1_kwargs["tool_config"] = _TOOL_CONFIG_ANY
+
             response = await asyncio.wait_for(
                 loop.run_in_executor(
                     None,
-                    lambda: self._model.generate_content(
-                        prompt_text,
-                        generation_config=GenerationConfig(
-                            temperature=0.2,
-                            max_output_tokens=FIRST_CALL_MAX_TOKENS,
-                        ),
-                    ),
+                    lambda: self._model.generate_content(prompt_text, **_r1_kwargs),
                 ),
                 timeout=GEMINI_TIMEOUT_FIRST_CALL,
             )
