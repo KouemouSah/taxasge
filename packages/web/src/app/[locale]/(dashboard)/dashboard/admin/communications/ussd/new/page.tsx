@@ -108,9 +108,9 @@ export default function NewUssdConfigPage() {
       menuStructure: [
         {
           id: 'main',
-          titleEs: 'Bienvenido a TaxasGE',
-          titleFr: 'Bienvenue à TaxasGE',
-          titleEn: 'Welcome to TaxasGE',
+          titleEs: 'Bienvenido a Facil',
+          titleFr: 'Bienvenue à Facil',
+          titleEn: 'Welcome to Facil',
           isRoot: true,
           options: [
             { key: '1', labelEs: 'Consultar Saldo', action: 'balance' },

@@ -187,7 +187,7 @@ function ActivateAdminContent() {
             <CardHeader>
               <CardTitle>Activation du compte</CardTitle>
               <CardDescription>
-                Completez les informations ci-dessous pour activer votre compte administrateur TaxasGE.
+                Completez les informations ci-dessous pour activer votre compte administrateur Facil.
               </CardDescription>
             </CardHeader>
             <CardContent>

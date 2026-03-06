@@ -437,7 +437,7 @@ export default function AgentStatisticsPage() {
     <tbody>${tableRows}</tbody>
   </table>
   <div class="footer">
-    <span>TaxasGE — ${t('agentStats.printTitle')}</span>
+    <span>Facil — ${t('agentStats.printTitle')}</span>
     <span>${dateStr} | ${periodLabel} | ${exportRows.length} agents</span>
   </div>
 </body></html>`);

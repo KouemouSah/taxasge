@@ -89,7 +89,7 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
       {
         name: 'receipt_url',
         description: 'URL para descargar el recibo',
-        example: 'https://taxasge.gq/recibos/12345',
+        example: 'https://taxasge.emacsah.com/recibos/12345',
         required: false,
       },
     ],
@@ -125,7 +125,7 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
       {
         name: 'declaration_url',
         description: 'URL para ver la declaración',
-        example: 'https://taxasge.gq/declaraciones/12345',
+        example: 'https://taxasge.emacsah.com/declaraciones/12345',
         required: false,
       },
     ],
@@ -136,14 +136,14 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
     variables: [
       {
         name: 'platform_url',
-        description: 'URL de la plataforma TaxasGE',
-        example: 'https://taxasge.gq',
+        description: 'URL de la plataforma Facil',
+        example: 'https://taxasge.emacsah.com',
         required: false,
       },
       {
         name: 'support_email',
         description: 'Email de soporte',
-        example: 'soporte@taxasge.gq',
+        example: 'soporte@emacsah.com',
         required: false,
       },
       {
@@ -161,7 +161,7 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
       {
         name: 'verification_url',
         description: 'URL de verificación',
-        example: 'https://taxasge.gq/verify/abc123',
+        example: 'https://taxasge.emacsah.com/verify/abc123',
         required: false,
       },
     ],
@@ -185,7 +185,7 @@ export const VARIABLE_GROUPS: VariableGroup[] = [
       {
         name: 'action_url',
         description: 'URL de la acción principal',
-        example: 'https://taxasge.gq/accion',
+        example: 'https://taxasge.emacsah.com/accion',
         required: false,
       },
       {

@@ -1,7 +1,7 @@
 {
   "name": "@taxasge/web",
   "version": "1.0.0",
-  "description": "TaxasGE Web - Interface utilisateur publique Next.js PWA",
+  "description": "Facil Web - Interface utilisateur publique Next.js PWA",
   "private": true,
   "author": {
     "name": "KOUEMOU SAH Jean Emac",
@@ -180,8 +180,8 @@
   },
   "config": {
     "site": {
-      "name": "TaxasGE",
-      "description": "Plataforma digital de gestión fiscal de Guinea Ecuatorial",
+      "name": "Facil",
+      "description": "Plataforma Digital AI de Tramites de Guinea Ecuatorial",
       "url": "https://taxasge-dev.web.app",
       "ogImage": "https://taxasge-dev.web.app/og-image.jpg"
     },

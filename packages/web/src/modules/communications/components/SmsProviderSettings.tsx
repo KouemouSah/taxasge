@@ -348,7 +348,7 @@ export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
       ...formData,
       config: {
         ...formData.config,
-        senderId: formData.senderId || 'TaxasGE',
+        senderId: formData.senderId || 'Facil',
       },
     }
     await createMutation.mutateAsync(createData)
@@ -366,7 +366,7 @@ export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
       apiSecret: formData.apiSecret || undefined,
       config: {
         ...formData.config,
-        senderId: formData.senderId || 'TaxasGE',
+        senderId: formData.senderId || 'Facil',
       },
       isActive: formData.isActive,
       isDefault: formData.isDefault,
@@ -442,7 +442,7 @@ export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
       apiKey: '',
       apiSecret: '',
       config: {
-        senderId: 'TaxasGE',
+        senderId: 'Facil',
         smsEndpoint: '/sms/2/text/advanced',
         deliveryReportEndpoint: '/sms/1/reports',
         balanceEndpoint: '/account/1/balance',
@@ -709,7 +709,7 @@ export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
                   id="senderId"
                   value={formData.senderId || ''}
                   onChange={(e) => setFormData({ ...formData, senderId: e.target.value })}
-                  placeholder="TaxasGE"
+                  placeholder="Facil"
                 />
                 <p className="text-xs text-muted-foreground">{t.form.senderIdHint}</p>
               </div>
@@ -828,7 +828,7 @@ export function SmsProviderSettings({ locale }: SmsProviderSettingsProps) {
                   id="edit-senderId"
                   value={formData.senderId || ''}
                   onChange={(e) => setFormData({ ...formData, senderId: e.target.value })}
-                  placeholder="TaxasGE"
+                  placeholder="Facil"
                 />
               </div>
             </div>

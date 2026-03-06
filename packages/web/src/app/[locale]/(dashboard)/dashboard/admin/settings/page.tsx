@@ -333,7 +333,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground">Platform</p>
-              <p className="text-sm font-medium">TaxasGE</p>
+              <p className="text-sm font-medium">Facil</p>
             </div>
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground">Backend</p>

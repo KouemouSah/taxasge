@@ -18,7 +18,7 @@ interface PushPreviewProps {
 
 export function PushPreview({
   preview,
-  appName = 'TaxasGE',
+  appName = 'Facil',
   appIcon,
   className = '',
 }: PushPreviewProps) {

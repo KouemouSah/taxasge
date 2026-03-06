@@ -154,15 +154,15 @@ export const FloatingChatbot = () => {
             <div className="flex items-center space-x-2">
               <div className="flex-shrink-0 h-10 w-10 rounded-full bg-white flex items-center justify-center p-1">
                 <Image
-                  src="/logo.png"
-                  alt="TaxasGE Logo"
+                  src="/icon_facil.png"
+                  alt="Facil"
                   width={32}
                   height={32}
                   className="object-contain"
                 />
               </div>
               <div>
-                <h3 id="chatbot-title" className="font-semibold text-white text-sm">{t('title') || 'Assistant TaxasGE'}</h3>
+                <h3 id="chatbot-title" className="font-semibold text-white text-sm">{t('title') || 'Asistente Facil'}</h3>
                 <p className="text-xs text-white/80">{t('online') || 'En ligne'}</p>
               </div>
             </div>
@@ -196,8 +196,8 @@ export const FloatingChatbot = () => {
                 <div className="text-center text-muted-foreground text-sm py-8">
                   <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
                     <Image
-                      src="/logo.png"
-                      alt="TaxasGE Logo"
+                      src="/icon_facil.png"
+                      alt="Facil"
                       width={40}
                       height={40}
                       className="object-contain opacity-50"
@@ -217,8 +217,8 @@ export const FloatingChatbot = () => {
                   {message.role === "assistant" && (
                     <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
                       <Image
-                        src="/logo.png"
-                        alt="TaxasGE"
+                        src="/icon_facil.png"
+                        alt="Facil"
                         width={24}
                         height={24}
                         className="object-contain"
@@ -247,8 +247,8 @@ export const FloatingChatbot = () => {
                 <div className="flex gap-2 justify-start">
                   <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center border border-primary/20">
                     <Image
-                      src="/logo.png"
-                      alt="TaxasGE"
+                      src="/icon_facil.png"
+                      alt="Facil"
                       width={24}
                       height={24}
                       className="object-contain"

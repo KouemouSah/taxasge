@@ -26,9 +26,9 @@ export async function generateMetadata({
     },
     description: t('description'),
     keywords: t('keywords').split(','),
-    authors: [{ name: 'TaxasGE' }],
-    creator: 'TaxasGE',
-    metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://taxasge.gq'),
+    authors: [{ name: 'Facil' }],
+    creator: 'Facil',
+    metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://taxasge.emacsah.com'),
     openGraph: {
       type: 'website',
       locale: locale === 'es' ? 'es_GQ' : locale === 'fr' ? 'fr_GQ' : 'en_US',

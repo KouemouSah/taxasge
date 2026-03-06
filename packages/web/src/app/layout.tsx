@@ -13,18 +13,18 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | TaxasGE',
-    default: 'TaxasGE - Plataforma Fiscal de Guinea Ecuatorial',
+    template: '%s | Facil',
+    default: 'Facil - Plataforma Digital AI de Tramites de Guinea Ecuatorial',
   },
-  description: 'Plataforma digital de gestión fiscal de Guinea Ecuatorial',
-  keywords: ['fiscal', 'impuestos', 'Guinea Ecuatorial', 'DGI', 'declaraciones'],
-  authors: [{ name: 'TaxasGE' }],
-  creator: 'TaxasGE',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://taxasge.gq'),
+  description: 'Plataforma Digital AI de Tramites de Guinea Ecuatorial',
+  keywords: ['tramites', 'Guinea Ecuatorial', 'servicios', 'gobierno', 'digital'],
+  authors: [{ name: 'Facil' }],
+  creator: 'Facil',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://taxasge.emacsah.com'),
   openGraph: {
     type: 'website',
     locale: 'es_GQ',
-    siteName: 'TaxasGE',
+    siteName: 'Facil',
   },
   robots: {
     index: true,

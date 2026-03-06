@@ -38,7 +38,7 @@ export function AgentAccountFields({ form }: AgentAccountFieldsProps) {
             <FormItem className="md:col-span-2">
               <FormLabel>{t('form.email')} <span className="text-destructive">*</span></FormLabel>
               <FormControl>
-                <Input type="email" placeholder="agent@taxasge.gq" {...field} />
+                <Input type="email" placeholder="agent@facil.gq" {...field} />
               </FormControl>
               <FormDescription>
                 {t('form.emailDesc')}

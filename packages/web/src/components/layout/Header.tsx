@@ -20,11 +20,8 @@ const Header = () => {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href={`/${locale}`} className="flex items-center space-x-3">
-            <Image src="/logo.png" alt="Facil Logo" width={78} height={48} className="h-12 w-12" />
-            <div className="hidden sm:block">
-              <span className="text-xl font-bold text-foreground">{tCommon('appName')}</span>
-              <p className="text-xs text-muted-foreground">{tCommon('appDescription')}</p>
-            </div>
+            <Image src="/logo.png" alt="Facil Logo" width={114} height={48} className="h-12 w-auto" />
+            <span className="hidden sm:block text-xl font-bold text-foreground">{tCommon('appName')}</span>
           </Link>
 
           {/* Desktop Navigation */}

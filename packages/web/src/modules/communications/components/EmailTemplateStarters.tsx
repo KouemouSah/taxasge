@@ -12,13 +12,13 @@ export interface StarterTemplate {
   htmlContent: string
 }
 
-// Base email wrapper with TaxasGE branding
+// Base email wrapper with Facil branding
 const baseEmailWrapper = (content: string) => `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TaxasGE</title>
+  <title>Facil</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
     .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
@@ -33,13 +33,13 @@ const baseEmailWrapper = (content: string) => `<!DOCTYPE html>
 <body>
   <div class="container">
     <div class="header">
-      <h1>TaxasGE</h1>
+      <h1>Facil</h1>
     </div>
     <div class="content">
       ${content}
     </div>
     <div class="footer">
-      <p>© 2024 TaxasGE - Servicios Fiscales de Guinea Ecuatorial</p>
+      <p>© 2026 Facil - Plataforma Digital AI de Tramites de Guinea Ecuatorial</p>
       <p>Este es un correo automático, por favor no responda a este mensaje.</p>
     </div>
   </div>
@@ -65,9 +65,9 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     category: 'auth',
     preview: 'Email de bienvenida con mensaje personalizado',
     htmlContent: baseEmailWrapper(`
-      <h2>¡Bienvenido/a a TaxasGE, {{user_name}}!</h2>
+      <h2>¡Bienvenido/a a Facil, {{user_name}}!</h2>
       <p>Nos alegra que te hayas unido a nuestra plataforma de servicios fiscales.</p>
-      <p>Con TaxasGE podrás:</p>
+      <p>Con Facil podrás:</p>
       <ul>
         <li>Consultar servicios fiscales disponibles</li>
         <li>Realizar declaraciones de impuestos</li>
@@ -78,7 +78,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <a href="{{platform_url}}" class="button">Acceder a la Plataforma</a>
       </p>
       <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -94,7 +94,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
       <p style="text-align: center; margin-top: 30px;">
         <a href="{{action_url}}" class="button">{{action_text}}</a>
       </p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -128,8 +128,8 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
       <p style="text-align: center; margin-top: 30px;">
         <a href="{{receipt_url}}" class="button">Ver Recibo</a>
       </p>
-      <p>Gracias por utilizar TaxasGE.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Gracias por utilizar Facil.</p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -151,7 +151,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <a href="{{declaration_url}}" class="button">Completar Declaración</a>
       </p>
       <p>Si ya ha completado esta declaración, puede ignorar este mensaje.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -171,7 +171,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <a href="{{action_url}}" class="button" style="background-color: #dc2626;">{{action_text}}</a>
       </p>
       <p>Si tiene alguna pregunta, contacte con soporte.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -205,7 +205,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <a href="{{declaration_url}}" class="button">Ver Detalles</a>
       </p>
       <p>Gracias por cumplir con sus obligaciones fiscales.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -217,13 +217,13 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     htmlContent: baseEmailWrapper(`
       <h2>Verifica tu correo electrónico</h2>
       <p>Hola {{user_name}},</p>
-      <p>Para completar tu registro en TaxasGE, utiliza el siguiente código de verificación:</p>
+      <p>Para completar tu registro en Facil, utiliza el siguiente código de verificación:</p>
       <div style="background-color: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 8px; padding: 30px; text-align: center; margin: 30px 0;">
         <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e40af;">{{verification_code}}</span>
       </div>
       <p>Este código expira en <strong>15 minutos</strong>.</p>
       <p>Si no solicitaste este código, puedes ignorar este mensaje.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -243,7 +243,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
       <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
         <strong>⚠️ Importante:</strong> Si no solicitaste restablecer tu contraseña, ignora este mensaje. Tu contraseña actual seguirá siendo válida.
       </div>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -278,7 +278,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <a href="{{declaration_url}}" class="button">Corregir Declaración</a>
       </p>
       <p>Si tiene preguntas, contacte con nuestro equipo de soporte.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -293,7 +293,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <h2 style="color: #16a34a; margin: 10px 0;">2FA Activado Correctamente</h2>
       </div>
       <p>Hola {{user_name}},</p>
-      <p>La autenticación de dos factores (2FA) ha sido activada en tu cuenta de TaxasGE.</p>
+      <p>La autenticación de dos factores (2FA) ha sido activada en tu cuenta de Facil.</p>
       <p>A partir de ahora, necesitarás tu aplicación de autenticación para iniciar sesión.</p>
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 20px 0;">
         <strong>Consejos de seguridad:</strong>
@@ -304,7 +304,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         </ul>
       </div>
       <p>Si no realizaste este cambio, contacta inmediatamente con soporte.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -344,7 +344,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <a href="{{action_url}}" class="button">Reintentar Pago</a>
       </p>
       <p>Si necesita ayuda, contacte con soporte.</p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
   {
@@ -359,7 +359,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
         <h2 style="color: #b45309; margin: 10px 0;">Cuenta Suspendida</h2>
       </div>
       <p>Estimado/a {{user_name}},</p>
-      <p>Le informamos que su cuenta de TaxasGE ha sido suspendida temporalmente.</p>
+      <p>Le informamos que su cuenta de Facil ha sido suspendida temporalmente.</p>
       <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
         <strong>Motivo:</strong><br>
         {{alert_details}}
@@ -368,7 +368,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
       <p style="text-align: center; margin-top: 30px;">
         <a href="mailto:{{support_email}}" class="button">Contactar Soporte</a>
       </p>
-      <p>Saludos cordiales,<br><strong>Equipo TaxasGE</strong></p>
+      <p>Saludos cordiales,<br><strong>Equipo Facil</strong></p>
     `),
   },
 ]

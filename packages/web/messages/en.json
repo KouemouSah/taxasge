@@ -4064,14 +4064,14 @@
     "soundOff": "Sound off",
     "soundOn": "Sound on",
     "suggestions": "Suggestions",
-    "title": "TaxasGE Assistant",
+    "title": "Facil Assistant",
     "typing": "Typing...",
-    "welcomeMessage": "Hello! I'm your TaxasGE virtual assistant. How can I help you today with your tax procedures?"
+    "welcomeMessage": "Hello! I'm your Facil virtual assistant. How can I help you today with your procedures?"
   },
   "common": {
     "active": "Active",
-    "appDescription": "Digital tax management platform for Equatorial Guinea",
-    "appName": "TaxasGE",
+    "appDescription": "AI Digital Procedures Platform of Equatorial Guinea",
+    "appName": "Facil",
     "back": "Back",
     "cancel": "Cancel",
     "citizen": "Citizen",
@@ -4149,7 +4149,7 @@
     "chatAssistant": "Chat Assistant",
     "comingSoon": "Coming soon",
     "completedRequests": "Completed",
-    "copyright": "© 2025 TaxasGE - Ministry of Finance Equatorial Guinea. All rights reserved.",
+    "copyright": "© {year} Facil - AI Digital Procedures Platform. All rights reserved.",
     "date": "Date",
     "declarations": "Declarations",
     "declarationsDisabled": "Declarations are not currently available",
@@ -4280,15 +4280,15 @@
     "upToDateDesc": "Database regularly updated with the latest rates and procedures. More than 19,000 validated and verified records."
   },
   "footer": {
-    "address": "Ministry of Finance, Malabo, Equatorial Guinea",
+    "address": "Malabo II - Equatorial Guinea",
     "allServices": "All services",
     "contactTitle": "Contact",
     "cookies": "Cookie policy",
-    "copyright": "© 2025 TaxasGE - Ministry of Finance Equatorial Guinea. All rights reserved.",
-    "description": "Official tax services platform for Equatorial Guinea",
-    "email": "contact@taxasge.gq",
+    "copyright": "© {year} Facil - AI Digital Procedures Platform. All rights reserved.",
+    "description": "AI Digital Procedures Platform of Equatorial Guinea",
+    "email": "facilege26@gmail.com",
     "legal": "Legal",
-    "phone": "+240 333 09 26 17",
+    "phone": "222 574 494",
     "practicalGuide": "Practical guide",
     "privacy": "Privacy",
     "services": "Services",
@@ -4552,10 +4552,10 @@
     "title": "Simplify your tax procedures"
   },
   "metadata": {
-    "defaultTitle": "TaxasGE - Tax Platform of Equatorial Guinea",
-    "description": "Digital tax management platform for Equatorial Guinea",
-    "keywords": "tax,taxes,Equatorial Guinea,DGI,declarations,fiscal services",
-    "siteName": "TaxasGE"
+    "defaultTitle": "Facil - AI Digital Services Platform of Equatorial Guinea",
+    "description": "AI Digital Services Platform of Equatorial Guinea",
+    "keywords": "procedures,Equatorial Guinea,services,government,digital",
+    "siteName": "Facil"
   },
   "ministriesPage": {
     "description": "Explore the ministries of Equatorial Guinea and their tax services",
@@ -4912,8 +4912,8 @@
     "onlineDeclarationDesc": "Submit your tax declarations from anywhere, anytime",
     "trackDeclaration": "Track Your Declaration",
     "trackDeclarationDesc": "Follow the status of your declarations in real-time",
-    "whyTaxasge": "Why TaxasGE?",
-    "whyTaxasgeDesc": "Simplify your tax procedures with our modern platform"
+    "whyFacil": "Why Facil?",
+    "whyFacilDesc": "Simplify your procedures with our modern platform"
   },
   "support": {
     "actions": "Actions",

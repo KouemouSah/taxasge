@@ -1,12 +1,12 @@
 /**
  * Application Configuration
- * Central configuration for TaxasGE Frontend (Cloud Run deployment)
+ * Central configuration for Facil Frontend (Cloud Run deployment)
  */
 
 export const appConfig = {
   // Application metadata
   app: {
-    name: process.env.NEXT_PUBLIC_APP_NAME || 'TaxasGE',
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'Facil',
     version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     environment: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
   },
@@ -22,9 +22,9 @@ export const appConfig = {
   // Site Configuration
   site: {
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://taxasge-frontend-dev.run.app',
-    name: process.env.NEXT_PUBLIC_SITE_NAME || 'TaxasGE',
-    description: process.env.NEXT_PUBLIC_SITE_DESCRIPTION || 'Plataforma digital de gestión fiscal de Guinea Ecuatorial',
-    keywords: process.env.NEXT_PUBLIC_SITE_KEYWORDS || 'impuestos,guinea ecuatorial,declaraciones,servicios fiscales',
+    name: process.env.NEXT_PUBLIC_SITE_NAME || 'Facil',
+    description: process.env.NEXT_PUBLIC_SITE_DESCRIPTION || 'Plataforma Digital AI de Tramites de Guinea Ecuatorial',
+    keywords: process.env.NEXT_PUBLIC_SITE_KEYWORDS || 'tramites,guinea ecuatorial,servicios,gobierno,digital',
   },
 
   // Feature Flags

@@ -2265,7 +2265,7 @@ function ConfirmationStepContent({
               <div><strong>{t.reference}:</strong> {summary.reference}</div>
               <div className="text-primary">
                 {locale === 'es' ? 'Verificar en' : locale === 'fr' ? 'Verifier sur' : 'Verify at'}:{' '}
-                taxasge.emacash.com/verify/{summary.reference}
+                taxasge.emacsah.com/verify/{summary.reference}
               </div>
             </div>
           </CollapsibleContent>

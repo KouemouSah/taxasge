@@ -319,8 +319,8 @@ export function EmailProviderSettings({ locale }: EmailProviderSettingsProps) {
     apiKey: '',
     apiSecret: '',
     config: {
-      fromEmail: 'noreply@taxasge.gq',
-      fromName: 'TaxasGE',
+      fromEmail: 'noreply@emacsah.com',
+      fromName: 'Facil',
       sendEndpoint: '/mail/send',
       templatesEnabled: true,
       trackingEnabled: true,
@@ -354,8 +354,8 @@ export function EmailProviderSettings({ locale }: EmailProviderSettingsProps) {
       ...formData,
       config: {
         ...formData.config,
-        fromEmail: formData.fromEmail || 'noreply@taxasge.gq',
-        fromName: formData.fromName || 'TaxasGE',
+        fromEmail: formData.fromEmail || 'noreply@emacsah.com',
+        fromName: formData.fromName || 'Facil',
       },
     }
     await createMutation.mutateAsync(createData)
@@ -373,8 +373,8 @@ export function EmailProviderSettings({ locale }: EmailProviderSettingsProps) {
       apiSecret: formData.apiSecret || undefined,
       config: {
         ...formData.config,
-        fromEmail: formData.fromEmail || 'noreply@taxasge.gq',
-        fromName: formData.fromName || 'TaxasGE',
+        fromEmail: formData.fromEmail || 'noreply@emacsah.com',
+        fromName: formData.fromName || 'Facil',
       },
       isActive: formData.isActive,
       isDefault: formData.isDefault,
@@ -425,8 +425,8 @@ export function EmailProviderSettings({ locale }: EmailProviderSettingsProps) {
       apiKey: '',
       apiSecret: '',
       config: {
-        fromEmail: 'noreply@taxasge.gq',
-        fromName: 'TaxasGE',
+        fromEmail: 'noreply@emacsah.com',
+        fromName: 'Facil',
         sendEndpoint: '/mail/send',
         templatesEnabled: true,
         trackingEnabled: true,
@@ -449,14 +449,14 @@ export function EmailProviderSettings({ locale }: EmailProviderSettingsProps) {
       apiKey: '',
       apiSecret: '',
       config: {
-        fromEmail: 'noreply@taxasge.gq',
-        fromName: 'TaxasGE',
+        fromEmail: 'noreply@emacsah.com',
+        fromName: 'Facil',
         sendEndpoint: '/mail/send',
         templatesEnabled: true,
         trackingEnabled: true,
       },
-      fromEmail: 'noreply@taxasge.gq',
-      fromName: 'TaxasGE',
+      fromEmail: 'noreply@emacsah.com',
+      fromName: 'Facil',
       isActive: true,
       isDefault: false,
       rateLimitPerMinute: 500,
@@ -759,7 +759,7 @@ export function EmailProviderSettings({ locale }: EmailProviderSettingsProps) {
                   type="email"
                   value={formData.fromEmail || ''}
                   onChange={(e) => setFormData({ ...formData, fromEmail: e.target.value })}
-                  placeholder="noreply@taxasge.gq"
+                  placeholder="noreply@emacsah.com"
                 />
                 <p className="text-xs text-muted-foreground">{t.form.fromEmailHint}</p>
               </div>
@@ -769,7 +769,7 @@ export function EmailProviderSettings({ locale }: EmailProviderSettingsProps) {
                   id="fromName"
                   value={formData.fromName || ''}
                   onChange={(e) => setFormData({ ...formData, fromName: e.target.value })}
-                  placeholder="TaxasGE"
+                  placeholder="Facil"
                 />
                 <p className="text-xs text-muted-foreground">{t.form.fromNameHint}</p>
               </div>

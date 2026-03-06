@@ -125,10 +125,10 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {isBot && (
         <div className="flex-shrink-0 h-8 w-8 rounded-full bg-white flex items-center justify-center overflow-hidden border border-border">
           <Image
-            src="/logo.png"
-            alt="TaxasGE"
-            width={32}
-            height={32}
+            src="/icon_facil.png"
+            alt="Facil"
+            width={24}
+            height={24}
             className="h-6 w-6 object-contain"
           />
         </div>

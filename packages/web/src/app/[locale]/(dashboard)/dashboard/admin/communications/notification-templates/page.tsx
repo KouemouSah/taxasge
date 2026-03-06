@@ -16,6 +16,6 @@ export default function NotificationTemplatesPage({ params }: PageProps) {
 }
 
 export const metadata = {
-  title: 'Notification Templates | TaxasGE Admin',
+  title: 'Notification Templates | Facil Admin',
   description: 'Manage notification templates for in-app notifications',
 }

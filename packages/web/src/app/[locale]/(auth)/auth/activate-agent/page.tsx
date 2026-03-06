@@ -187,7 +187,7 @@ function ActivateAgentContent() {
             <CardHeader>
               <CardTitle>Activation du compte</CardTitle>
               <CardDescription>
-                Completez les informations ci-dessous pour activer votre compte agent TaxasGE.
+                Completez les informations ci-dessous pour activer votre compte agent Facil.
               </CardDescription>
             </CardHeader>
             <CardContent>

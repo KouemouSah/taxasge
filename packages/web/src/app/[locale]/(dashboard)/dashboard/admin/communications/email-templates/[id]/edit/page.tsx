@@ -242,7 +242,7 @@ export default function EditEmailTemplatePage() {
                   id="subjectEs"
                   value={formData.subjectEs ?? template.subjectEs}
                   onChange={(e) => setFormData({ ...formData, subjectEs: e.target.value })}
-                  placeholder="Bienvenido a TaxasGE"
+                  placeholder="Bienvenido a Facil"
                   maxLength={255}
                   required
                 />
@@ -253,7 +253,7 @@ export default function EditEmailTemplatePage() {
                   id="subjectFr"
                   value={formData.subjectFr ?? template.subjectFr ?? ''}
                   onChange={(e) => setFormData({ ...formData, subjectFr: e.target.value })}
-                  placeholder="Bienvenue à TaxasGE"
+                  placeholder="Bienvenue à Facil"
                   maxLength={255}
                 />
               </div>
@@ -263,7 +263,7 @@ export default function EditEmailTemplatePage() {
                   id="subjectEn"
                   value={formData.subjectEn ?? template.subjectEn ?? ''}
                   onChange={(e) => setFormData({ ...formData, subjectEn: e.target.value })}
-                  placeholder="Welcome to TaxasGE"
+                  placeholder="Welcome to Facil"
                   maxLength={255}
                 />
               </div>

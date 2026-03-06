@@ -175,14 +175,10 @@ export default function AgentAuthPage() {
           <Link href={`/${locale}`} className="flex items-center justify-center space-x-2 group">
             <Image
               src="/logo.png"
-              alt="TaxasGE Logo"
-              width={36}
-              height={36}
-              className="h-9 w-9 transition-transform group-hover:scale-105"
+              alt="Facil"
+              width={133} height={56}
+              className="h-14 w-auto transition-transform group-hover:scale-105"
             />
-            <span className="text-base font-medium text-muted-foreground group-hover:text-primary transition-colors">
-              {tCommon('appName')}
-            </span>
           </Link>
         </div>
       </header>
@@ -217,7 +213,7 @@ export default function AgentAuthPage() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="agent@taxasge.gq"
+                      placeholder="agent@facil.gq"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -360,7 +356,7 @@ export default function AgentAuthPage() {
       <footer className="py-4 border-t bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center text-sm text-muted-foreground">
-            <span>&copy; {new Date().getFullYear()} TaxasGE</span>
+            <span>&copy; {new Date().getFullYear()} Facil - Plataforma Digital AI de Tramites</span>
           </div>
         </div>
       </footer>

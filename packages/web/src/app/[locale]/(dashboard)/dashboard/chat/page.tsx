@@ -3,7 +3,7 @@ import React from 'react'
 
 /**
  * Chat Assistant Page
- * Full-page chat interface with the TaxasGE AI assistant
+ * Full-page chat interface with the Facil AI assistant
  *
  * @module dashboard/chat
  * @author Claude Code

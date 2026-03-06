@@ -4304,14 +4304,14 @@
     "soundOff": "Son désactivé",
     "soundOn": "Son activé",
     "suggestions": "Suggestions",
-    "title": "Assistant TaxasGE",
+    "title": "Assistant Facil",
     "typing": "En train d'écrire...",
-    "welcomeMessage": "Bonjour ! Je suis votre assistant virtuel TaxasGE. Comment puis-je vous aider aujourd'hui avec vos démarches fiscales ?"
+    "welcomeMessage": "Bonjour ! Je suis votre assistant virtuel Facil. Comment puis-je vous aider aujourd'hui avec vos démarches ?"
   },
   "common": {
     "active": "Actif",
-    "appDescription": "Plateforme numérique de gestion fiscale de Guinée Équatoriale",
-    "appName": "TaxasGE",
+    "appDescription": "Plateforme Digitale AI de Demarches de Guinee Equatoriale",
+    "appName": "Facil",
     "back": "Retour",
     "cancel": "Annuler",
     "citizen": "Citoyen",
@@ -4389,7 +4389,7 @@
     "chatAssistant": "Chat Assistant",
     "comingSoon": "Bientôt disponible",
     "completedRequests": "Terminées",
-    "copyright": "© 2025 TaxasGE - Ministère des Finances Guinée Équatoriale. Tous droits réservés.",
+    "copyright": "© {year} Facil - Plateforme Digitale AI de Demarches. Tous droits reserves.",
     "date": "Date",
     "declarations": "Déclarations",
     "declarationsDisabled": "Les déclarations ne sont pas disponibles actuellement",
@@ -4520,15 +4520,15 @@
     "upToDateDesc": "Base de données mise à jour régulièrement avec les derniers tarifs et procédures. Plus de 19 000 enregistrements validés et vérifiés."
   },
   "footer": {
-    "address": "Ministère des Finances, Malabo, Guinée Équatoriale",
+    "address": "Malabo II - Guinee Equatoriale",
     "allServices": "Tous les services",
     "contactTitle": "Contact",
     "cookies": "Politique de cookies",
-    "copyright": "© 2025 TaxasGE - Ministère des Finances Guinée Équatoriale. Tous droits réservés.",
-    "description": "Plateforme officielle des services fiscaux de Guinée Équatoriale",
-    "email": "contact@taxasge.gq",
+    "copyright": "© {year} Facil - Plateforme Digitale AI de Demarches. Tous droits reserves.",
+    "description": "Plateforme Digitale AI de Demarches de Guinee Equatoriale",
+    "email": "facilege26@gmail.com",
     "legal": "Légal",
-    "phone": "+240 333 09 26 17",
+    "phone": "222 574 494",
     "practicalGuide": "Guide pratique",
     "privacy": "Confidentialité",
     "services": "Services",
@@ -4792,10 +4792,10 @@
     "title": "Simplifiez vos démarches fiscales"
   },
   "metadata": {
-    "defaultTitle": "TaxasGE - Plateforme Fiscale de Guinée Équatoriale",
-    "description": "Plateforme numérique de gestion fiscale de Guinée Équatoriale",
-    "keywords": "fiscal,impôts,Guinée Équatoriale,DGI,déclarations,services fiscaux",
-    "siteName": "TaxasGE"
+    "defaultTitle": "Facil - Plateforme Digitale AI de Démarches de Guinée Équatoriale",
+    "description": "Plateforme Digitale AI de Démarches de Guinée Équatoriale",
+    "keywords": "démarches,Guinée Équatoriale,services,gouvernement,numérique",
+    "siteName": "Facil"
   },
   "ministriesPage": {
     "description": "Explorez les ministères de Guinée Équatoriale et leurs services fiscaux",
@@ -5152,8 +5152,8 @@
     "onlineDeclarationDesc": "Soumettez vos déclarations fiscales de n'importe où, à tout moment",
     "trackDeclaration": "Suivi de déclaration",
     "trackDeclarationDesc": "Suivez le statut de vos déclarations en temps réel",
-    "whyTaxasge": "Pourquoi TaxasGE ?",
-    "whyTaxasgeDesc": "Simplifiez vos démarches fiscales avec notre plateforme moderne"
+    "whyFacil": "Pourquoi Facil ?",
+    "whyFacilDesc": "Simplifiez vos démarches avec notre plateforme moderne"
   },
   "support": {
     "actions": "Actions",

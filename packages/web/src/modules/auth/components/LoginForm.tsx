@@ -67,7 +67,7 @@ export const LoginForm = () => {
     <Card className="p-6 max-w-md w-full">
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-bold">Connexion</h2>
-        <p className="text-muted-foreground mt-2">Connectez-vous à votre compte TaxasGE</p>
+        <p className="text-muted-foreground mt-2">Connectez-vous à votre compte Facil</p>
       </div>
 
       {error && (

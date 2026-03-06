@@ -323,7 +323,7 @@ export default function NewEmailTemplatePage() {
                   id="subjectEs"
                   value={formData.subjectEs}
                   onChange={(e) => setFormData({ ...formData, subjectEs: e.target.value })}
-                  placeholder="Bienvenido a TaxasGE"
+                  placeholder="Bienvenido a Facil"
                   maxLength={255}
                   required
                 />
@@ -334,7 +334,7 @@ export default function NewEmailTemplatePage() {
                   id="subjectFr"
                   value={formData.subjectFr}
                   onChange={(e) => setFormData({ ...formData, subjectFr: e.target.value })}
-                  placeholder="Bienvenue à TaxasGE"
+                  placeholder="Bienvenue à Facil"
                   maxLength={255}
                 />
               </div>
@@ -344,7 +344,7 @@ export default function NewEmailTemplatePage() {
                   id="subjectEn"
                   value={formData.subjectEn}
                   onChange={(e) => setFormData({ ...formData, subjectEn: e.target.value })}
-                  placeholder="Welcome to TaxasGE"
+                  placeholder="Welcome to Facil"
                   maxLength={255}
                 />
               </div>

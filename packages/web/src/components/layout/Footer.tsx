@@ -18,7 +18,7 @@ const Footer = () => {
           {/* About */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
-              <Image src="/logo.png" alt="Facil Logo" width={48} height={48} className="h-12 w-12" />
+              <Image src="/logo.png" alt="Facil Logo" width={114} height={48} className="h-12 w-auto" />
               <span className="text-lg font-bold">{tCommon('appName')}</span>
             </div>
             <p className="text-sm text-muted-foreground">{t('description')}</p>
@@ -115,7 +115,7 @@ const Footer = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>{t('copyright')}</p>
+          <p>{t('copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </div>
     </footer>

@@ -108,9 +108,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const getTitle = () => {
-    if (isAdmin) return 'TaxasGE Admin'
-    if (isAgent) return 'TaxasGE Agent'
-    return 'TaxasGE'
+    if (isAdmin) return 'Facil Admin'
+    if (isAgent) return 'Facil Agent'
+    return 'Facil'
   }
 
   return (
@@ -125,7 +125,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Mobile Header - Role-aware sidebar */}
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:hidden">
           {getMobileSidebar()}
-          <Image src="/logo.png" alt="TaxasGE Logo" width={32} height={32} className="h-8 w-8" />
+          <Image src="/logo.png" alt="Facil" width={76} height={32} className="h-8 w-auto" />
           <h1 className="text-lg font-semibold">{getTitle()}</h1>
         </header>
 
@@ -139,7 +139,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Footer */}
         <footer className="border-t bg-card px-4 py-3 text-center">
           <p className="text-xs text-muted-foreground">
-            {t('copyright')}
+            {t('copyright', { year: new Date().getFullYear() })}
           </p>
         </footer>
       </div>
