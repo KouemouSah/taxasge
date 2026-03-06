@@ -168,13 +168,7 @@ export interface VerificationResponse {
 // =============================================================================
 
 /**
- * Extracted data is now dynamic — driven by workflow_display_config.list_columns.
- * Legacy flat dict kept for backward compat.
- */
-export type RequestPreviewExtractedData = Record<string, unknown>;
-
-/**
- * Structured data sections from workflow config (same as citizen résumé).
+ * Structured data sections from display_config + OCR extraction_data.
  * Each section has a title and a list of label/value fields.
  */
 export interface PreviewDataField {
@@ -217,9 +211,7 @@ export interface ServiceRequestPreview {
   slaDeadline?: string | null;
   slaRemainingHours?: number | null;
   slaStatus: SlaStatus;
-  // Extracted data (legacy flat dict)
-  extractedData: RequestPreviewExtractedData;
-  // Structured data sections (same as citizen résumé)
+  // Structured data sections from display_config + OCR extraction_data
   dataSections: PreviewDataSection[];
   // Documents
   documents: RequestPreviewDocument[];
@@ -280,8 +272,6 @@ interface BackendServiceRequestListResponse {
 }
 
 // Backend preview extracted_data is now a dynamic dict (snake_case keys with dot notation)
-type BackendRequestPreviewExtractedData = Record<string, unknown>;
-
 interface BackendRequestPreviewDocument {
   id: string;
   code: string;
@@ -311,7 +301,6 @@ interface BackendServiceRequestPreview {
   sla_deadline?: string | null;
   sla_remaining_hours?: number | null;
   sla_status: string;
-  extracted_data: BackendRequestPreviewExtractedData;
   data_sections?: Array<{ title: string; fields: Array<{ label: string; value: string }> }>;
   documents: BackendRequestPreviewDocument[];
   documents_count: number;
@@ -375,7 +364,6 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     slaDeadline: data.sla_deadline,
     slaRemainingHours: data.sla_remaining_hours,
     slaStatus: normalizeSlaStatus(data.sla_status),
-    extractedData: data.extracted_data ?? {},
     dataSections: (data.data_sections ?? []).map(s => ({
       title: s.title,
       fields: s.fields.map(f => ({ label: f.label, value: f.value })),

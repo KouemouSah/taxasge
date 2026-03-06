@@ -2021,12 +2021,7 @@ class ServiceRequestPreview(BaseModel):
     sla_deadline: Optional[str] = None
     sla_remaining_hours: Optional[float] = None
     sla_status: str = "on_track"  # on_track, warning, breached
-    # Extracted data — structured sections from workflow get_pdf_data_sections()
-    # Same data the citizen sees in their résumé
-    extracted_data: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Legacy flat extracted data (kept for backward compat)"
-    )
+    # Extracted data — structured sections from display_config + OCR extraction_data
     data_sections: List[PreviewDataSection] = Field(
         default_factory=list,
         description="Structured data sections from workflow config (same as citizen résumé)"
@@ -2372,38 +2367,6 @@ def _flatten_form_data(form_data: dict) -> dict:
 # ═══════════════════════════════════════════════════════════════
 # SYSTEM COLUMN RESOLVERS REGISTRY
 # ═══════════════════════════════════════════════════════════════
-# Maps system column IDs to extraction lambdas from the preview query row.
-# Adding a new system column = 1 entry here (+ JOIN if needed).
-
-def _resolve_full_name(row) -> Optional[str]:
-    first = row.get('first_name') or ''
-    last = row.get('last_name') or ''
-    name = f"{first} {last}".strip()
-    return name or None
-
-def _resolve_iso(row, field: str) -> Optional[str]:
-    val = row.get(field)
-    if val is None:
-        return None
-    return val.isoformat() if hasattr(val, 'isoformat') else str(val)
-
-SYSTEM_COLUMN_RESOLVERS: Dict[str, Any] = {
-    'reference':       lambda row: row.get('reference'),
-    'fullName':        _resolve_full_name,
-    'citizenName':     _resolve_full_name,
-    'status':          lambda row: row.get('status'),
-    'priority':        lambda row: row.get('priority'),
-    'createdAt':       lambda row: _resolve_iso(row, 'created_at'),
-    'submittedAt':     lambda row: _resolve_iso(row, 'submitted_at'),
-    'solicitudType':   lambda row: row.get('solicitud_type'),
-    'workflowCode':    lambda row: row.get('workflow_code'),
-    'workflowLabel':   lambda row: row.get('workflow_label'),
-    'paymentStatus':   lambda row: row.get('payment_status'),
-    'totalAmount':     lambda row: row.get('total_amount'),
-    'assignedAgent':   lambda row: row.get('assigned_agent_name'),
-}
-
-
 async def _build_composite_data(
     form_data: dict,
     request_id,
@@ -2451,96 +2414,174 @@ async def _build_composite_data(
     return composite
 
 
-def _build_preview_data_sections(
+# System columns shown elsewhere in the preview (header, payment, etc.)
+_SYSTEM_COLUMNS = {
+    'reference', 'fullName', 'solicitudType', 'createdAt',
+    'paymentStatus', 'totalAmount', 'assignedAgent',
+}
+
+# Human-readable section titles for document code prefixes
+_SECTION_TITLES: Dict[str, str] = {
+    'dip': 'Documento de Identidad (DIP)',
+    'pasaporte': 'Pasaporte',
+    'pasaporte_antiguo': 'Pasaporte Anterior',
+    'certificado_nacimiento': 'Certificado de Nacimiento',
+    'autorizacion_parental': 'Autorización Parental',
+    'documento_representante_1': 'Documento Representante Legal',
+    'documento_representante_2': 'Documento Segundo Representante',
+    'permiso_residencia': 'Permiso de Residencia',
+    'residencia_anterior': 'Residencia Anterior',
+    'certificado_medico': 'Certificado Médico',
+    'certificado_actual': 'Permiso de Conducir Actual',
+    'contrato': 'Datos del Contrato',
+    'certificado_nif': 'Certificado NIF',
+    'identidad_representante': 'Identidad del Representante',
+    'escritura_constitucion': 'Escritura de Constitución',
+    'certificado_registro_vue': 'Certificado Registro VUE',
+    'licencia_comercio': 'Licencia de Comercio',
+    'autorizacion_gubernativa': 'Autorización Gubernativa',
+    'sello_entrada': 'Sello de Entrada',
+    'visado_entrada': 'Visado de Entrada',
+    'permiso_trabajo': 'Permiso de Trabajo',
+    'certificado_conducta': 'Certificado de Conducta',
+    'antecedentes_penales': 'Antecedentes Penales',
+    'atestacion_bancaria': 'Atestación Bancaria',
+    'nif_autorizacion': 'NIF / Autorización',
+    'solvencia_tributaria': 'Solvencia Tributaria',
+    'certificado_reconocimiento': 'Certificado Reconocimiento Vehículo',
+    'ficha_tecnica': 'Ficha Técnica',
+    'seguro_vehiculo': 'Seguro del Vehículo',
+    'titulo_propiedad': 'Título de Propiedad',
+    'certificado_itv': 'Certificado ITV',
+    'foto_vehiculo': 'Fotos del Vehículo',
+    'resolucion_nombramiento': 'Resolución de Nombramiento',
+    'certificado_trabajo': 'Certificado de Trabajo',
+    'acta_posesion': 'Acta de Posesión',
+    'carnet_expirado': 'Carnet Expirado',
+    'carnet_funcionario': 'Carnet de Funcionario',
+    'contrato_compraventa': 'Contrato de Compraventa',
+    'cuve': 'CUVE (Certificado Único Vehículo)',
+    'cuve_antigua': 'CUVE Anterior',
+    'identidad_comprador': 'Identidad del Comprador',
+    'identidad_propietario': 'Identidad del Propietario',
+    'identidad_vendedor': 'Identidad del Vendedor',
+    'itv': 'Inspección Técnica (ITV)',
+    'itv_antigua': 'ITV Anterior',
+    'permiso_circulacion': 'Permiso de Circulación',
+}
+
+
+def _humanize_field_name(field_name: str) -> str:
+    """Convert snake_case field name to a human-readable label.
+    e.g. 'numero_dip' → 'Número DIP', 'fecha_nacimiento' → 'Fecha Nacimiento'
+    """
+    KNOWN = {
+        'numero_dip': 'Número DIP',
+        'numero_nie': 'Número NIE',
+        'numero_pasaporte': 'Número Pasaporte',
+        'numero_visado': 'Número Visado',
+        'numero_permiso': 'Número Permiso',
+        'numero_contrato': 'Número Contrato',
+        'numero_protocolo': 'Número Protocolo',
+        'numero_licencia': 'Número Licencia',
+        'numero_autorizacion': 'Número Autorización',
+        'numero_identificacion': 'Número Identificación',
+        'numero_cuenta': 'Número Cuenta',
+        'numero_ri': 'Número RI',
+        'nif': 'NIF',
+        'apellidos': 'Apellidos',
+        'nombres': 'Nombres',
+        'nombre': 'Nombre',
+        'nombre_completo': 'Nombre Completo',
+        'sexo': 'Sexo',
+        'fecha_nacimiento': 'Fecha Nacimiento',
+        'fecha_emision': 'Fecha Emisión',
+        'fecha_expiracion': 'Fecha Expiración',
+        'fecha_expedicion': 'Fecha Expedición',
+        'fecha_firma': 'Fecha Firma',
+        'fecha_registro': 'Fecha Registro',
+        'fecha_certificado': 'Fecha Certificado',
+        'fecha_autorizacion': 'Fecha Autorización',
+        'fecha_validez': 'Fecha Validez',
+        'fecha_entrada': 'Fecha Entrada',
+        'fecha_ultima_salida': 'Fecha Última Salida',
+        'nacionalidad': 'Nacionalidad',
+        'natural_de': 'Natural De',
+        'lugar_nacimiento': 'Lugar Nacimiento',
+        'lugar_emision': 'Lugar Emisión',
+        'tipo_contrato': 'Tipo Contrato',
+        'tipo_visado': 'Tipo Visado',
+        'tipo_permiso': 'Tipo Permiso',
+        'tipo_sello': 'Tipo Sello',
+        'tipo_escritura': 'Tipo Escritura',
+        'tipo_cuenta': 'Tipo Cuenta',
+        'monto_total': 'Monto Total',
+        'moneda': 'Moneda',
+        'resultado': 'Resultado',
+        'representante_legal': 'Representante Legal',
+        'descripcion': 'Descripción',
+        'denominacion_social': 'Denominación Social',
+        'forma_juridica': 'Forma Jurídica',
+        'capital_social': 'Capital Social',
+        'objeto_social': 'Objeto Social',
+        'razon_social': 'Razón Social',
+        'actividad_economica': 'Actividad Económica',
+        'actividad_principal': 'Actividad Principal',
+        'clase_principal': 'Clase Principal',
+        'valido_hasta': 'Válido Hasta',
+        'reg_numero': 'Registro Número',
+        'nombre_centro': 'Centro Médico',
+        'localidad': 'Localidad',
+        'municipio': 'Municipio',
+        'region': 'Región',
+        'nombre_notario': 'Nombre Notario',
+        'nombre_entidad': 'Nombre Entidad',
+        'nombre_empresa': 'Nombre Empresa',
+        'nif_contratista': 'NIF Contratista',
+        'nombre_banco': 'Nombre Banco',
+        'codigo_pais': 'Código País',
+        'duracion_dias': 'Duración (Días)',
+        'numero_entradas': 'Número Entradas',
+        'puesto_fronterizo': 'Puesto Fronterizo',
+        'total_entradas_visibles': 'Total Entradas Visibles',
+        'comunidad_vecinos': 'Comunidad Vecinos',
+        'pays_emission': 'País Emisión',
+        'nom_pays': 'Nombre País',
+        'validez_dias': 'Validez (Días)',
+        'validez_meses': 'Validez (Meses)',
+        'primer_apellido': 'Primer Apellido',
+        'hijo_de': 'Hijo De',
+        'hija_de': 'Hija De',
+        'y_de': 'Y De',
+        'documento_tipo': 'Tipo Documento',
+        'documento_numero': 'Número Documento',
+        'parentesco': 'Parentesco',
+        'actividad': 'Actividad',
+    }
+    if field_name in KNOWN:
+        return KNOWN[field_name]
+    # Fallback: capitalize each word
+    return field_name.replace('_', ' ').title()
+
+
+async def _build_preview_data_sections(
     workflow_code: str,
     form_data: dict,
-    solicitud_type: Optional[str] = None,
-    is_minor: bool = False,
+    db: asyncpg.Connection,
+    request_id=None,
 ) -> List[PreviewDataSection]:
     """
-    Build structured data sections using the workflow's get_pdf_data_sections().
-    Same data the citizen sees in their résumé — single source of truth.
+    Build structured data sections from workflow_display_config.list_columns
+    + composite data (form_data + extraction_data from DB).
 
-    Returns empty list on any error (graceful degradation).
-    """
-    try:
-        from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
-        from ..models.enums import WorkflowCode, SolicitudType
+    Architecture:
+    - display_config.list_columns defines WHICH columns to show (admin-configurable)
+    - _build_composite_data() merges form_data + OCR extraction_data per document
+    - Columns grouped by document prefix → titled sections
+    - System columns (reference, fullName, etc.) excluded (shown elsewhere)
+    - Null values filtered out → conditional docs (mineur, renovación) naturally handled
 
-        wf = workflow_engine.get_workflow_by_string(workflow_code)
-        if not wf:
-            logger.warning(f"_build_preview_data_sections: no workflow for {workflow_code}")
-            return []
-
-        # Build minimal WorkflowContext from existing data
-        motivo_val = form_data.get('motivo') if form_data else None
-        motivo_enum = None
-        if motivo_val:
-            try:
-                motivo_enum = RenovacionMotivo(motivo_val)
-            except (ValueError, KeyError):
-                pass
-
-        sol_type_enum = SolicitudType.NUEVO  # default
-        if solicitud_type:
-            try:
-                sol_type_enum = SolicitudType(solicitud_type)
-            except (ValueError, KeyError):
-                pass
-
-        try:
-            wf_code_enum = WorkflowCode(workflow_code)
-        except (ValueError, KeyError):
-            wf_code_enum = WorkflowCode.GENERIC_TRAMITE
-
-        from uuid import UUID as _UUID
-        context = WorkflowContext(
-            service_request_id=_UUID('00000000-0000-0000-0000-000000000000'),
-            user_id=_UUID('00000000-0000-0000-0000-000000000000'),
-            workflow_code=wf_code_enum,
-            solicitud_type=sol_type_enum,
-            motivo=motivo_enum,
-            is_minor=bool(is_minor) if is_minor not in ('false', 'False', '0', '', None) else False,
-            sub_type=form_data.get('sub_type') if form_data else None,
-            form_data=form_data or {},
-        )
-
-        raw_sections = wf.get_pdf_data_sections(context)
-
-        # Convert to Pydantic models
-        result = []
-        for section in raw_sections:
-            fields = [
-                PreviewDataField(label=f['label'], value=str(f['value']))
-                for f in section.get('fields', [])
-                if f.get('value')
-            ]
-            if fields:
-                result.append(PreviewDataSection(
-                    title=section.get('title', ''),
-                    fields=fields,
-                ))
-        return result
-
-    except Exception as e:
-        logger.warning(f"_build_preview_data_sections failed for {workflow_code}: {e}")
-        return []
-
-
-async def _extract_preview_data_dynamic(
-    form_data: dict,
-    workflow_code: str,
-    db: asyncpg.Connection,
-    row: Optional[Any] = None,
-    request_id=None,
-) -> Dict[str, Any]:
-    """
-    Extract preview data dynamically based on workflow_display_config.
-
-    Resolves system columns (from row), extracted columns (from form_data),
-    and document extraction data (from service_request_documents).
-    If no display_config exists, returns empty dict.
-    Degrades gracefully on errors (returns empty dict instead of 500).
+    Returns empty list on error (graceful degradation).
     """
     try:
         from app.modules.menu_config.repositories.display_config_repository import (
@@ -2551,11 +2592,11 @@ async def _extract_preview_data_dynamic(
         config = await repo.find_config_for_workflow(workflow_code)
 
         if not config:
-            return {}
+            return []
 
         configured_columns = config.get('list_columns', [])
         if not configured_columns:
-            return {}
+            return []
 
         # Build composite data (form_data + extraction_data per document)
         if request_id:
@@ -2563,27 +2604,60 @@ async def _extract_preview_data_dynamic(
         else:
             composite = form_data or {}
 
-        # Flatten: nested dicts become dot-notation keys
+        # Flatten to dot-notation
         flat_data = _flatten_form_data(composite)
 
-        # Resolve each configured column: system resolver first, then flat data
-        result: Dict[str, Any] = {}
+        # Group columns by prefix (document_code) preserving order
+        from collections import OrderedDict
+        sections_map: OrderedDict[str, List[tuple]] = OrderedDict()
+
         for col_id in configured_columns:
-            resolver = SYSTEM_COLUMN_RESOLVERS.get(col_id)
-            if resolver and row is not None:
-                result[col_id] = resolver(row)
-            elif col_id in flat_data:
-                result[col_id] = flat_data[col_id]
+            # Skip system columns (shown in header/payment/etc.)
+            if col_id in _SYSTEM_COLUMNS:
+                continue
+
+            # Resolve value
+            value = flat_data.get(col_id)
+
+            # Also try form_data flat keys for unprefixed columns
+            if value is None and '.' not in col_id:
+                value = (form_data or {}).get(col_id)
+
+            # Skip null/empty values
+            if value is None or value == '' or value == 'null':
+                continue
+
+            # Determine section (prefix) and field name
+            if '.' in col_id:
+                prefix, field_name = col_id.split('.', 1)
             else:
-                result[col_id] = None
+                prefix = '_general'
+                field_name = col_id
+
+            if prefix not in sections_map:
+                sections_map[prefix] = []
+
+            label = _humanize_field_name(field_name)
+            sections_map[prefix].append((label, str(value)))
+
+        # Convert to Pydantic models
+        result = []
+        for prefix, fields in sections_map.items():
+            if not fields:
+                continue
+            title = _SECTION_TITLES.get(prefix, prefix.replace('_', ' ').title())
+            if prefix == '_general':
+                title = 'Información General'
+            result.append(PreviewDataSection(
+                title=title,
+                fields=[PreviewDataField(label=lbl, value=val) for lbl, val in fields],
+            ))
 
         return result
 
     except Exception as e:
-        logger.warning(
-            f"Failed to extract preview data for workflow={workflow_code}: {e}"
-        )
-        return {}
+        logger.warning(f"_build_preview_data_sections failed for {workflow_code}: {e}")
+        return []
 
 
 @router.get(
@@ -2730,17 +2804,12 @@ async def get_request_preview(
     # Build contact name
     contact_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
 
-    # Extract preview data dynamically from display_config (legacy flat dict)
-    extracted_data = await _extract_preview_data_dynamic(
-        form_data, row['workflow_code'], db, row=row, request_id=request_id
-    )
-
-    # Build structured data sections from workflow config (same as citizen résumé)
-    data_sections = _build_preview_data_sections(
+    # Build structured data sections from display_config + composite data
+    data_sections = await _build_preview_data_sections(
         workflow_code=row['workflow_code'],
         form_data=form_data,
-        solicitud_type=row['solicitud_type'],
-        is_minor=form_data.get('is_minor', False),
+        db=db,
+        request_id=request_id,
     )
 
     return ServiceRequestPreview(
@@ -2756,7 +2825,6 @@ async def get_request_preview(
         sla_deadline=sla_deadline.isoformat() if sla_deadline else None,
         sla_remaining_hours=sla_remaining_hours,
         sla_status=sla_status,
-        extracted_data=extracted_data,
         data_sections=data_sections,
         documents=documents,
         documents_count=docs_count or 0,

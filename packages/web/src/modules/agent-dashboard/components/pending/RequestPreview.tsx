@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -56,15 +56,6 @@ import type { EntityCode } from '../../types';
 
 const DEFAULT_PREVIEW_SECTIONS = ['info', 'extractedData', 'documents', 'contact', 'appointment', 'paymentDetails'];
 
-/**
- * System columns that belong in RequestInfoSection, NOT in ExtractedDataSection.
- * These are filtered out from list_columns before passing to ExtractedDataSection.
- */
-const INFO_GENERAL_COLUMN_IDS = new Set([
-  'reference', 'fullName', 'citizenName', 'solicitudType',
-  'createdAt', 'submittedAt', 'priority', 'status',
-  'workflowCode', 'workflowLabel',
-]);
 
 // =============================================================================
 // PREDEFINED REJECTION REASONS
@@ -158,12 +149,6 @@ export function RequestPreview({
   const previewSections = displayConfig?.preview_sections ?? DEFAULT_PREVIEW_SECTIONS;
   const shouldShowSection = (sectionId: string) => previewSections.includes(sectionId);
 
-  // Filter OUT system columns — they are already shown in RequestInfoSection.
-  // Only pass extracted (form_data) columns to ExtractedDataSection.
-  const extractedColumns = useMemo(() => {
-    const allColumns = displayConfig?.list_columns ?? [];
-    return allColumns.filter((col) => !INFO_GENERAL_COLUMN_IDS.has(col));
-  }, [displayConfig?.list_columns]);
 
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -416,11 +401,7 @@ export function RequestPreview({
 
         {/* Section: Extracted Data - structured sections from workflow config */}
         {shouldShowSection('extractedData') && (
-          <ExtractedDataSection
-            dataSections={data.dataSections}
-            data={data.extractedData}
-            columns={extractedColumns}
-          />
+          <ExtractedDataSection dataSections={data.dataSections} />
         )}
 
         {/* Section: Documents */}

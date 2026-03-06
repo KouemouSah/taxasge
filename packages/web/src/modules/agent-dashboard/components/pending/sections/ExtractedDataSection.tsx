@@ -1,12 +1,12 @@
 /**
- * ExtractedDataSection - Display extracted form data
+ * ExtractedDataSection - Display structured data sections
  *
- * Uses structured data_sections from workflow config (same as citizen résumé).
- * Falls back to legacy flat dict if no sections available.
+ * Driven by display_config.list_columns + OCR extraction_data.
+ * Admin adds/removes columns in display_config → split-view updates automatically.
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
- * @updated 2026-03-06 - Structured sections from get_pdf_data_sections()
+ * @updated 2026-03-07 - Single source: display_config, legacy removed
  */
 
 'use client';
@@ -17,11 +17,7 @@ import { ClipboardList } from 'lucide-react';
 import type { PreviewDataSection } from '../../../services/agent-requests-api';
 
 interface ExtractedDataSectionProps {
-  /** Structured sections from workflow config (preferred) */
   dataSections?: PreviewDataSection[];
-  /** Legacy flat dict (fallback) */
-  data?: Record<string, unknown>;
-  columns?: string[];
 }
 
 function isIsoDate(value: string): boolean {
@@ -43,72 +39,23 @@ function formatValue(value: string): string {
   return value;
 }
 
-export function ExtractedDataSection({ dataSections, data, columns }: ExtractedDataSectionProps) {
-  // Prefer structured sections from workflow config
-  const hasSections = dataSections && dataSections.length > 0;
-
-  // Fallback: legacy flat dict
-  if (!hasSections) {
-    if (!data || !columns || columns.length === 0) {
-      return (
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
-              <ClipboardList className="h-3 w-3" />
-              Datos Extraídos
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Sin datos disponibles para esta solicitud.
-            </p>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    // Legacy flat rendering
-    const populatedColumns = columns.filter((col) => {
-      const v = data[col];
-      return v !== null && v !== undefined && v !== '';
-    });
-
-    if (populatedColumns.length === 0) {
-      return (
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
-              <ClipboardList className="h-3 w-3" />
-              Datos Extraídos
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Documentos pendientes de procesamiento OCR.
-            </p>
-          </CardContent>
-        </Card>
-      );
-    }
-
+export function ExtractedDataSection({ dataSections }: ExtractedDataSectionProps) {
+  if (!dataSections || dataSections.length === 0) {
     return (
       <Card>
         <CardContent className="p-3">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
             <ClipboardList className="h-3 w-3" />
-            Datos Extraídos
-            <span className="ml-1 text-muted-foreground/60">({populatedColumns.length})</span>
+            Datos de la Solicitud
           </p>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-1.5">
-            {populatedColumns.map((col) => (
-              <div key={col}>
-                <p className="text-[10px] text-muted-foreground leading-tight">{col}</p>
-                <p className="text-xs font-medium leading-tight">{formatValue(String(data[col]))}</p>
-              </div>
-            ))}
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Documentos pendientes de procesamiento OCR.
+          </p>
         </CardContent>
       </Card>
     );
   }
 
-  // Structured sections rendering (same as citizen résumé)
   const totalFields = dataSections.reduce((sum, s) => sum + s.fields.length, 0);
 
   return (
