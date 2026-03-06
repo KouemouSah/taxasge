@@ -1,32 +1,25 @@
 /**
- * ContactSection - Contact information display
+ * ContactSection - Compact contact info card
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
+ * @updated 2026-03-06 - Compact layout for side-by-side display
  */
 
 'use client';
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, Copy } from 'lucide-react';
+import { Mail, Phone, Copy, User } from 'lucide-react';
 import { toast } from 'sonner';
-
-// =============================================================================
-// PROPS
-// =============================================================================
 
 interface ContactSectionProps {
   name: string;
   email?: string | null;
   phone?: string | null;
 }
-
-// =============================================================================
-// COMPONENT
-// =============================================================================
 
 export function ContactSection({ name: _name, email, phone }: ContactSectionProps) {
   const t = useTranslations('agent.pending.preview');
@@ -38,58 +31,48 @@ export function ContactSection({ name: _name, email, phone }: ContactSectionProp
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Phone className="h-5 w-5 text-primary" />
+      <CardContent className="p-3">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <User className="h-3 w-3" />
           {t('contact')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {/* Email */}
-        {email && (
-          <div className="flex items-center gap-2 group">
-            <Mail className="h-4 w-4 text-muted-foreground" />
-            <a
-              href={`mailto:${email}`}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              {email}
-            </a>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => copyToClipboard(email, 'Email')}
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-
-        {/* Phone */}
-        {phone && (
-          <div className="flex items-center gap-2 group">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <a
-              href={`tel:${phone}`}
-              className="text-sm text-blue-600 hover:underline"
-            >
-              {phone}
-            </a>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => copyToClipboard(phone, 'Teléfono')}
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-
-        {!email && !phone && (
-          <p className="text-sm text-muted-foreground">{t('noContactInfo')}</p>
-        )}
+        </p>
+        <div className="space-y-1">
+          {email && (
+            <div className="flex items-center gap-1.5 group">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <a href={`mailto:${email}`} className="text-sm text-blue-600 hover:underline truncate">
+                {email}
+              </a>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0"
+                onClick={() => copyToClipboard(email, 'Email')}
+              >
+                <Copy className="h-2.5 w-2.5" />
+              </Button>
+            </div>
+          )}
+          {phone && (
+            <div className="flex items-center gap-1.5 group">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <a href={`tel:${phone}`} className="text-sm text-blue-600 hover:underline">
+                {phone}
+              </a>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0"
+                onClick={() => copyToClipboard(phone, 'Tel')}
+              >
+                <Copy className="h-2.5 w-2.5" />
+              </Button>
+            </div>
+          )}
+          {!email && !phone && (
+            <p className="text-xs text-muted-foreground">{t('noContactInfo')}</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

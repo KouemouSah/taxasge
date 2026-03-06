@@ -1,8 +1,5 @@
 /**
- * PaymentDetailsSection - Payment card for split view
- *
- * Compact Card with: amount + status + method + date + reference
- * Visually clean, not cramped.
+ * PaymentDetailsSection - Compact payment card for split view
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-03-06
@@ -12,7 +9,7 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard } from 'lucide-react';
 
@@ -53,25 +50,13 @@ function formatAmount(amount: number, currency: string): string {
   }).format(amount);
 }
 
-function formatShortDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
-
 export function PaymentDetailsSection({
   status,
   amount,
   currency = 'XAF',
   method,
-  paidAt,
-  reference,
+  paidAt: _paidAt,
+  reference: _reference,
 }: PaymentDetailsSectionProps) {
   const t = useTranslations('agent.pending.preview');
 
@@ -81,55 +66,27 @@ export function PaymentDetailsSection({
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-primary" />
+      <CardContent className="p-3">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <CreditCard className="h-3 w-3" />
           {t('paymentDetails')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-          {/* Amount */}
+        </p>
+        <div className="space-y-1">
           {amount != null && (
-            <div>
-              <p className="text-xs text-muted-foreground">{t('paymentAmount')}</p>
-              <p className="text-sm font-bold">{formatAmount(amount, currency || 'XAF')}</p>
-            </div>
+            <p className="text-lg font-bold leading-tight">{formatAmount(amount, currency || 'XAF')}</p>
           )}
-
-          {/* Status */}
-          {status && (
-            <div>
-              <p className="text-xs text-muted-foreground">{t('paymentStatus')}</p>
-              <Badge variant={statusVariant} className="mt-0.5">
+          <div className="flex items-center gap-2">
+            {status && (
+              <Badge variant={statusVariant} className="text-[10px]">
                 {status.replace(/_/g, ' ')}
               </Badge>
-            </div>
-          )}
-
-          {/* Method */}
-          {method && (
-            <div>
-              <p className="text-xs text-muted-foreground">{t('paymentMethod')}</p>
-              <p className="text-sm font-medium">{METHOD_LABELS[method] || method}</p>
-            </div>
-          )}
-
-          {/* Date */}
-          {paidAt && (
-            <div>
-              <p className="text-xs text-muted-foreground">{t('paymentDate')}</p>
-              <p className="text-sm font-medium">{formatShortDate(paidAt)}</p>
-            </div>
-          )}
-
-          {/* Reference - full width */}
-          {reference && (
-            <div className="col-span-2">
-              <p className="text-xs text-muted-foreground">{t('paymentRef')}</p>
-              <p className="text-sm font-mono truncate" title={reference}>{reference}</p>
-            </div>
-          )}
+            )}
+            {method && (
+              <span className="text-xs text-muted-foreground">
+                {METHOD_LABELS[method] || method}
+              </span>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

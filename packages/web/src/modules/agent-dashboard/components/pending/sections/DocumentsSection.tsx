@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -103,16 +103,12 @@ export function DocumentsSection({
   return (
     <>
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              {t('documents')}
-              <Badge variant="secondary" className="ml-1">{documentsCount}</Badge>
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            {t('documents')}
+            <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">{documentsCount}</Badge>
+          </p>
           {error && (
             <div className="mb-3 p-2 bg-destructive/10 text-destructive text-xs rounded flex items-center gap-2">
               <AlertCircle className="h-3 w-3 shrink-0" />

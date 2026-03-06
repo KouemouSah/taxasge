@@ -10,7 +10,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -149,36 +149,27 @@ export function AppointmentSection({
     setWeekOffset(0);
   };
 
-  // If appointment exists, show info
+  // If appointment exists, show compact info
   if (appointment) {
     return (
       <Card className="border-green-200 bg-green-50/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2 text-green-700">
-            <Calendar className="h-5 w-5" />
+        <CardContent className="p-3">
+          <p className="text-[10px] text-green-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
             {t('preview.appointment')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium capitalize">
-              {formatDate(appointment.date)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium">{appointment.time}</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium">{appointment.locationName}</p>
-              {appointment.locationAddress && (
-                <p className="text-xs text-muted-foreground">
-                  {appointment.locationAddress}
-                </p>
-              )}
+          </p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-green-600 shrink-0" />
+              <span className="text-sm font-medium capitalize">
+                {formatDate(appointment.date)}
+              </span>
+              <Clock className="h-3.5 w-3.5 text-green-600 ml-2 shrink-0" />
+              <span className="text-sm font-medium">{appointment.time}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-green-600 shrink-0" />
+              <span className="text-sm font-medium">{appointment.locationName}</span>
             </div>
           </div>
         </CardContent>
@@ -189,13 +180,11 @@ export function AppointmentSection({
   // No appointment - show scheduling form or prompt
   return (
     <Card className="border-orange-200 bg-orange-50/50">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2 text-orange-700">
-          <AlertCircle className="h-5 w-5" />
+      <CardContent className="p-3">
+        <p className="text-[10px] text-orange-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" />
           {t('appointment.noAppointment')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </p>
         {!isScheduling ? (
           // Prompt to schedule
           <div className="text-center py-2">

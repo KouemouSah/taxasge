@@ -1,8 +1,10 @@
 /**
- * RequestInfoSection - Request metadata display
+ * RequestInfoSection - Compact request metadata bar
+ * All critical info visible without scrolling: ref, type, status, SLA, priority
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
+ * @updated 2026-03-06 - Compact layout, unified tramite label
  */
 
 'use client';
@@ -11,8 +13,8 @@ import React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Clock, AlertTriangle, AlertCircle, Baby, FileStack } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Clock, AlertTriangle, AlertCircle, Baby, FileStack } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Priority, SlaStatus } from '../../../services/agent-requests-api';
 
@@ -49,17 +51,17 @@ const SLA_STYLES: Record<string, { bg: string; text: string; icon: React.ReactNo
   on_track: {
     bg: 'bg-green-100',
     text: 'text-green-700',
-    icon: <Clock className="h-4 w-4" />,
+    icon: <Clock className="h-3 w-3" />,
   },
   at_risk: {
     bg: 'bg-orange-100',
     text: 'text-orange-700',
-    icon: <AlertTriangle className="h-4 w-4" />,
+    icon: <AlertTriangle className="h-3 w-3" />,
   },
   violated: {
     bg: 'bg-red-100',
     text: 'text-red-700',
-    icon: <AlertCircle className="h-4 w-4" />,
+    icon: <AlertCircle className="h-3 w-3" />,
   },
 };
 
@@ -69,6 +71,15 @@ function formatSlaRemaining(hours: number | null | undefined): string {
   if (hours < 1) return `${Math.round(hours * 60)}min`;
   if (hours < 24) return `${Math.round(hours)}h`;
   return `${Math.floor(hours / 24)}d ${Math.round(hours % 24)}h`;
+}
+
+/** Build a unified tramite label from solicitudType + motivo, fallback to workflowLabel */
+function buildTramiteLabel(solicitudType: string, motivo: string | null | undefined, workflowLabel: string): string {
+  if (solicitudType) {
+    const base = solicitudType.charAt(0).toUpperCase() + solicitudType.slice(1);
+    return motivo ? `${base} - ${motivo}` : base;
+  }
+  return workflowLabel;
 }
 
 // =============================================================================
@@ -92,81 +103,60 @@ export function RequestInfoSection({
   const t = useTranslations('agent.pending.preview');
   const priorityStyle = PRIORITY_STYLES[priority] || PRIORITY_STYLES.NORMAL;
   const slaStyle = SLA_STYLES[slaStatus] || SLA_STYLES.on_track;
+  const tramiteLabel = buildTramiteLabel(solicitudType, motivo, workflowLabel);
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          {t('requestInfo')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Reference & Priority */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">{t('reference')}</p>
-            <p className="font-mono font-semibold">{reference}</p>
-          </div>
+      <CardContent className="p-3">
+        {/* Row 1: Reference + Badges */}
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
+            <span className="font-mono font-semibold text-sm">{reference}</span>
+            <Badge className={cn('text-[10px]', priorityStyle.bg, priorityStyle.text)}>
+              {priority}
+            </Badge>
+            {isMinor && (
+              <Badge className="bg-purple-100 text-purple-700 text-[10px]">
+                <Baby className="h-3 w-3 mr-0.5" />
+                {t('minor', { defaultValue: 'Menor' })}
+              </Badge>
+            )}
             {batchReference && batchId ? (
               <Link href={`/${locale}/dashboard/batch-requests/${batchId}`}>
-                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 cursor-pointer">
-                  <FileStack className="h-3 w-3 mr-1" />
+                <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 cursor-pointer text-[10px]">
+                  <FileStack className="h-3 w-3 mr-0.5" />
                   {batchReference}
                 </Badge>
               </Link>
             ) : batchReference ? (
-              <Badge className="bg-indigo-100 text-indigo-700">
-                <FileStack className="h-3 w-3 mr-1" />
+              <Badge className="bg-indigo-100 text-indigo-700 text-[10px]">
+                <FileStack className="h-3 w-3 mr-0.5" />
                 {batchReference}
               </Badge>
             ) : null}
-            {isMinor && (
-              <Badge className="bg-purple-100 text-purple-700">
-                <Baby className="h-3 w-3 mr-1" />
-                {t('minor', { defaultValue: 'Menor' })}
-              </Badge>
-            )}
-            <Badge className={cn(priorityStyle.bg, priorityStyle.text)}>
-              {priority}
-            </Badge>
           </div>
         </div>
 
-        {/* Workflow & Type */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Row 2: 4-column grid — Tramite | Status | SLA */}
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <p className="text-xs text-muted-foreground">{t('workflow')}</p>
-            <p className="text-sm font-medium">{workflowLabel}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('workflow')}</p>
+            <p className="text-sm font-medium leading-tight">{tramiteLabel}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">{t('type')}</p>
-            <p className="text-sm font-medium capitalize">
-              {solicitudType}
-              {motivo && ` - ${motivo}`}
-            </p>
-          </div>
-        </div>
-
-        {/* Status & SLA */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">{t('status')}</p>
-            <Badge variant="outline" className="mt-1">
-              {status}
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('status')}</p>
+            <Badge variant="outline" className="mt-0.5 text-xs">
+              {status.replace(/_/g, ' ')}
             </Badge>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">SLA</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">SLA</p>
             <div className={cn(
-              'flex items-center gap-1 mt-1 px-2 py-1 rounded-md w-fit',
+              'flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded w-fit text-xs',
               slaStyle.bg, slaStyle.text
             )}>
               {slaStyle.icon}
-              <span className="text-sm font-medium">
-                {formatSlaRemaining(slaRemainingHours)}
-              </span>
+              <span className="font-medium">{formatSlaRemaining(slaRemainingHours)}</span>
             </div>
           </div>
         </div>

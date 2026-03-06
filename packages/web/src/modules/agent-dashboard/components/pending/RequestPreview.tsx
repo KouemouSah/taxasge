@@ -54,7 +54,7 @@ import type { EntityCode } from '../../types';
 // DEFAULT PREVIEW SECTIONS
 // =============================================================================
 
-const DEFAULT_PREVIEW_SECTIONS = ['info', 'extractedData', 'documents', 'contact', 'appointment'];
+const DEFAULT_PREVIEW_SECTIONS = ['info', 'extractedData', 'documents', 'contact', 'appointment', 'paymentDetails'];
 
 /**
  * System columns that belong in RequestInfoSection, NOT in ExtractedDataSection.
@@ -396,7 +396,7 @@ export function RequestPreview({
       )}
 
       {/* Content - Sections rendered based on display config */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {/* Section: Request Info (always shown - critical info) */}
         {shouldShowSection('info') && (
           <RequestInfoSection
@@ -431,92 +431,96 @@ export function RequestPreview({
           />
         )}
 
-        {/* Section: Contact */}
-        {shouldShowSection('contact') && (
-          <ContactSection
-            name={data.contactName}
-            email={data.contactEmail}
-            phone={data.contactPhone}
-          />
-        )}
+        {/* Compact row: Contact + Appointment + Payment side by side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Section: Contact */}
+          {shouldShowSection('contact') && (
+            <ContactSection
+              name={data.contactName}
+              email={data.contactEmail}
+              phone={data.contactPhone}
+            />
+          )}
 
-        {/* Section: Appointment */}
-        {shouldShowSection('appointment') && (
-          <AppointmentSection
-            appointment={data.appointment}
-            requestId={data.id}
-            entityCode={entityCode}
-            onAppointmentCreated={onAppointmentCreated}
-          />
-        )}
+          {/* Section: Appointment */}
+          {shouldShowSection('appointment') && (
+            <AppointmentSection
+              appointment={data.appointment}
+              requestId={data.id}
+              entityCode={entityCode}
+              onAppointmentCreated={onAppointmentCreated}
+            />
+          )}
 
-        {/* Section: Payment Details — compact 2-row */}
-        {shouldShowSection('paymentDetails') && (
-          <PaymentDetailsSection
-            status={data.paymentStatus}
-            amount={data.paymentAmount}
-            currency={data.paymentCurrency}
-            method={data.paymentMethod}
-            paidAt={data.paymentPaidAt}
-            reference={data.paymentReference}
-          />
-        )}
+          {/* Section: Payment Details */}
+          {shouldShowSection('paymentDetails') && (
+            <PaymentDetailsSection
+              status={data.paymentStatus}
+              amount={data.paymentAmount}
+              currency={data.paymentCurrency}
+              method={data.paymentMethod}
+              paidAt={data.paymentPaidAt}
+              reference={data.paymentReference}
+            />
+          )}
+        </div>
       </div>
 
       {/* Actions Footer - Hidden for read-only (history) mode */}
       {!isReadOnly && (
-        <div className="p-4 border-t bg-muted/30">
-          <div className="flex items-center gap-3">
+        <div className="px-3 py-2 border-t bg-muted/30">
+          <div className="flex items-center gap-2">
             <Button
+              size="sm"
               onClick={handleApprove}
               disabled={isApproving || isRejecting || isRequestingDocs}
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              className="flex-1 h-8 bg-green-600 hover:bg-green-700"
             >
               {isApproving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
               ) : (
-                <Check className="h-4 w-4 mr-2" />
+                <Check className="h-3.5 w-3.5 mr-1.5" />
               )}
               {isApproving ? t('approving') : t('approve')}
-              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-green-700/50 rounded">A</kbd>
+              <kbd className="ml-1.5 px-1 py-0.5 text-[10px] font-mono bg-green-700/50 rounded">A</kbd>
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setShowRequestDocsDialog(true)}
               disabled={isApproving || isRejecting || isRequestingDocs}
-              className="flex-1 border-amber-500 text-amber-600 hover:bg-amber-50"
+              className="flex-1 h-8 border-amber-500 text-amber-600 hover:bg-amber-50"
             >
-              <FileQuestion className="h-4 w-4 mr-2" />
+              <FileQuestion className="h-3.5 w-3.5 mr-1.5" />
               {t('requestDocs')}
-              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-amber-100 rounded">D</kbd>
+              <kbd className="ml-1.5 px-1 py-0.5 text-[10px] font-mono bg-amber-100 rounded">D</kbd>
             </Button>
             <Button
               variant="destructive"
+              size="sm"
               onClick={() => setShowRejectDialog(true)}
               disabled={isApproving || isRejecting || isRequestingDocs || isEscalating}
-              className="flex-1"
+              className="flex-1 h-8"
             >
-              <X className="h-4 w-4 mr-2" />
+              <X className="h-3.5 w-3.5 mr-1.5" />
               {t('reject')}
-              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-red-700/50 rounded">R</kbd>
+              <kbd className="ml-1.5 px-1 py-0.5 text-[10px] font-mono bg-red-700/50 rounded">R</kbd>
             </Button>
-          </div>
-          {onEscalate && (
-            <div className="mt-2">
+            {onEscalate && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowEscalateDialog(true)}
                 disabled={isApproving || isRejecting || isRequestingDocs || isEscalating}
-                className="w-full border-orange-400 text-orange-600 hover:bg-orange-50"
+                className="h-8 border-orange-400 text-orange-600 hover:bg-orange-50"
               >
-                <ShieldAlert className="h-4 w-4 mr-2" />
+                <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
                 {t('escalate')}
-                <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono bg-orange-100 rounded">E</kbd>
+                <kbd className="ml-1.5 px-1 py-0.5 text-[10px] font-mono bg-orange-100 rounded">E</kbd>
               </Button>
-            </div>
-          )}
-          <p className="text-[10px] text-muted-foreground text-center mt-2">
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center mt-1">
             {t('keyboardHint')}
           </p>
         </div>
