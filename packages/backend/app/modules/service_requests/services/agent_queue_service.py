@@ -211,7 +211,7 @@ class AgentQueueService:
                 COALESCE(sp.total_amount, 0) AS amount
             FROM workflows w
             LEFT JOIN service_payments sp ON sp.service_request_id = $1
-                AND sp.workflow_status NOT IN ('cancelled', 'failed')
+                AND sp.status NOT IN ('cancelled', 'failed')
             WHERE w.code = $2
             LIMIT 1
         """, service_request_id, workflow_code)

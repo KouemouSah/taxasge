@@ -1,8 +1,7 @@
 /**
- * DocumentsSection - Document thumbnails display with image preview
+ * DocumentsSection - Document thumbnails display with signed URL preview
  *
  * @module agent-dashboard/components/pending/sections
- * @date 2026-01-30
  */
 
 'use client';
@@ -18,9 +17,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileText, Check, AlertCircle, Clock, ExternalLink } from 'lucide-react';
+import { FileText, Check, AlertCircle, Clock, ExternalLink, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { RequestPreviewDocument } from '../../../services/agent-requests-api';
+import { getDocumentDownloadUrl } from '../../../services/agent-requests-api';
 
 // =============================================================================
 // PROPS
@@ -55,12 +55,10 @@ const DOC_LABELS: Record<string, string> = {
   documento_representante_2: 'Doc Rep. 2',
 };
 
-/**
- * Check if mime type is an image
- */
-function isImageMimeType(mimeType?: string | null): boolean {
-  if (!mimeType) return false;
-  return mimeType.startsWith('image/');
+function guessIsImage(fileName?: string | null): boolean {
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext || '');
 }
 
 // =============================================================================
@@ -70,24 +68,37 @@ function isImageMimeType(mimeType?: string | null): boolean {
 export function DocumentsSection({
   documents,
   documentsCount,
-  requestId: _requestId,
+  requestId,
 }: DocumentsSectionProps) {
   const t = useTranslations('agent.pending.preview');
   const [previewDoc, setPreviewDoc] = useState<RequestPreviewDocument | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
 
-  const handleDocumentClick = (doc: RequestPreviewDocument) => {
-    if (isImageMimeType(doc.mimeType)) {
-      // Open preview dialog for images
-      setPreviewDoc(doc);
-    } else if (doc.fileUrl) {
-      // Open in new tab for non-images (PDF, etc.)
-      window.open(doc.fileUrl, '_blank');
+  const handleDocumentClick = async (doc: RequestPreviewDocument) => {
+    setLoadingDocId(doc.id);
+    try {
+      const signedUrl = await getDocumentDownloadUrl(requestId, doc.code);
+      const isImage = guessIsImage(doc.name);
+      if (isImage) {
+        setPreviewDoc(doc);
+        setPreviewUrl(signedUrl);
+      } else {
+        window.open(signedUrl, '_blank');
+      }
+    } catch {
+      // Fallback: try opening fileUrl directly if available
+      if (doc.fileUrl) {
+        window.open(doc.fileUrl, '_blank');
+      }
+    } finally {
+      setLoadingDocId(null);
     }
   };
 
   const handleOpenInNewTab = () => {
-    if (previewDoc?.fileUrl) {
-      window.open(previewDoc.fileUrl, '_blank');
+    if (previewUrl) {
+      window.open(previewUrl, '_blank');
     }
   };
 
@@ -119,44 +130,29 @@ export function DocumentsSection({
               {documents.map((doc) => {
                 const status = STATUS_STYLES[doc.validationStatus] || STATUS_STYLES.pending;
                 const label = DOC_LABELS[doc.code] || doc.name.slice(0, 10);
-                const isImage = isImageMimeType(doc.mimeType);
+                const isLoading = loadingDocId === doc.id;
 
                 return (
                   <button
                     key={doc.id}
                     onClick={() => handleDocumentClick(doc)}
+                    disabled={isLoading}
                     className={cn(
                       'flex flex-col items-center p-2 rounded-lg border bg-muted/30',
                       'hover:bg-muted transition-colors cursor-pointer',
-                      'min-w-[70px]'
+                      'min-w-[70px]',
+                      isLoading && 'opacity-60'
                     )}
                   >
                     {/* Thumbnail or Icon */}
                     <div className="relative">
-                      {isImage && doc.fileUrl ? (
-                        // Show actual image thumbnail for images
-                        <div className="h-12 w-12 rounded overflow-hidden bg-muted">
-                          <img
-                            src={doc.fileUrl}
-                            alt={doc.name}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              // Fallback to icon if image fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = '<div class="h-12 w-12 flex items-center justify-center"><svg class="h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg></div>';
-                              }
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        // Show icon for non-images or missing URL
-                        <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
+                      <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
+                        {isLoading ? (
+                          <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                        ) : (
                           <FileText className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
+                        )}
+                      </div>
                       {/* Status indicator */}
                       <div className={cn(
                         'absolute -bottom-1 -right-1 p-0.5 rounded-full bg-white',
@@ -178,7 +174,7 @@ export function DocumentsSection({
       </Card>
 
       {/* Image Preview Dialog */}
-      <Dialog open={previewDoc !== null} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+      <Dialog open={previewDoc !== null} onOpenChange={(open) => { if (!open) { setPreviewDoc(null); setPreviewUrl(null); } }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
@@ -194,12 +190,20 @@ export function DocumentsSection({
               </Button>
             </DialogTitle>
           </DialogHeader>
-          {previewDoc && previewDoc.fileUrl && (
+          {previewUrl && (
             <div className="flex items-center justify-center bg-muted rounded-lg p-4 min-h-[300px]">
               <img
-                src={previewDoc.fileUrl}
-                alt={previewDoc.name}
+                src={previewUrl}
+                alt={previewDoc?.name || 'Document'}
                 className="max-w-full max-h-[60vh] object-contain rounded"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<p class="text-muted-foreground text-sm">No se pudo cargar la imagen</p>';
+                  }
+                }}
               />
             </div>
           )}

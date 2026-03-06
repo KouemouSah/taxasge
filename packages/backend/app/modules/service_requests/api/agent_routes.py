@@ -939,9 +939,10 @@ async def make_decision(
 
                 # Fetch uploaded documents
                 docs_rows = await db.fetch("""
-                    SELECT dt.name_es, dt.name_fr, srd.is_valid
+                    SELECT COALESCE(dt.document_name_es, srd.document_name, srd.document_code) as doc_name,
+                           srd.is_valid
                     FROM service_request_documents srd
-                    LEFT JOIN document_templates dt ON dt.code = srd.document_code
+                    LEFT JOIN document_templates dt ON dt.template_code = srd.document_code
                     WHERE srd.service_request_id = $1
                 """, request_id)
 
@@ -949,7 +950,7 @@ async def make_decision(
                 for doc in docs_rows:
                     is_verified = doc.get('is_valid', False) is True
                     documents.append({
-                        "name": doc['name_es'] or doc['name_fr'] or 'Document',
+                        "name": doc['doc_name'] or 'Document',
                         "status": "verified" if is_verified else "pending",
                         "status_class": "status-verified" if is_verified else "status-pending"
                     })
