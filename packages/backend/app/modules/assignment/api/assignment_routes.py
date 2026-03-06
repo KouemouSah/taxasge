@@ -80,8 +80,11 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
             ap.is_supervisor,
             ap.agent_type,
             ap.ministry_id,
-            ap.entity_id
+            ap.entity_id,
+            ap.entity_location_id,
+            el.is_main_office
         FROM agent_profiles ap
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
         WHERE ap.user_id = $1 AND ap.is_active = true
     """
     result = await db.fetchrow(query, user_id)
@@ -93,6 +96,8 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
             "ministry_id": None,
             "entity_id": None,
             "entity_type": None,
+            "entity_location_id": None,
+            "is_main_office": False,
         }
 
     agent_type = result.get("agent_type")
@@ -104,6 +109,8 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
         "ministry_id": result.get("ministry_id"),
         "entity_id": result.get("entity_id"),
         "entity_type": entity_type,
+        "entity_location_id": result.get("entity_location_id"),
+        "is_main_office": result.get("is_main_office", False),
     }
 
 
@@ -275,7 +282,8 @@ async def get_auto_assignment_service_dep(
 @require_permission("assignment.create")
 async def get_assignable_items(
     tab: str = Query("unassigned", description="Tab: unassigned | escalated | active"),
-    entity_code: Optional[str] = Query(None, description="Filter by entity_code"),
+    entity_code: Optional[str] = Query(None, description="Filter by entity_code (admin only)"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by site (entity_location_id)"),
     search: Optional[str] = Query(None, description="Search by reference"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -330,7 +338,22 @@ async def get_assignable_items(
                         params.append(supervisor_entity_code)
                         param_idx += 1
 
-        if entity_code:
+                # ── Site scoping: non-main-office supervisors auto-scoped to their site ──
+                sup_location_id = agent_ctx.get("entity_location_id")
+                sup_is_main = agent_ctx.get("is_main_office", False)
+                if sup_location_id and not sup_is_main:
+                    # Site supervisor — force filter to their location
+                    base_conditions.append(f"sr.entity_location_id = ${param_idx}::uuid")
+                    params.append(str(sup_location_id))
+                    param_idx += 1
+
+        # ── Optional site filter (main-office supervisors or admin) ──
+        if entity_location_id:
+            base_conditions.append(f"sr.entity_location_id = ${param_idx}::uuid")
+            params.append(entity_location_id)
+            param_idx += 1
+        elif entity_code and is_admin:
+            # Admin-only entity_code filter (supervisors are already scoped)
             base_conditions.append(f"sr.entity_code = ${param_idx}")
             params.append(entity_code)
             param_idx += 1

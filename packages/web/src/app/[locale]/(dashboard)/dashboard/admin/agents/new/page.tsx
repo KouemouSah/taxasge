@@ -277,7 +277,7 @@ export default function CreateAgentPage() {
         description: error?.message || "Impossible d'envoyer l'invitation",
       });
     }
-  }, [inviteAgentMutation, entities, toast, router]);
+  }, [inviteAgentMutation, toast, router]);
 
   // Pre-submit: validate first, then either submit or show warnings dialog
   const handleAgentSubmit = async (data: AgentFormData) => {

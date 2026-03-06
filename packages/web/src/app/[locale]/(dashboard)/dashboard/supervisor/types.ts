@@ -169,6 +169,11 @@ export interface RuleConditions {
   min_amount?: number;
   max_amount?: number;
   min_priority?: number;
+  // Treasury-specific conditions (entity_type === 'treasury')
+  payment_methods?: string[];
+  payment_types?: string[];
+  has_penalties?: boolean;
+  entity_location_id?: string;
 }
 
 export interface RuleActions {

@@ -33,6 +33,7 @@ interface AgentProfileResponse {
   agent_type: 'ministry_agent' | 'entity_agent';
   is_supervisor: boolean;
   entity_id: string | null;
+  entity_location_id: string | null;
   ministry_id: number | null;
   specializations: string[];
   is_active: boolean;
@@ -41,6 +42,9 @@ interface AgentProfileResponse {
   entity_name?: string;
   ministry_code?: string;
   ministry_name?: string;
+  location_name?: string;
+  location_city?: string;
+  is_main_office?: boolean;
   // Entity hierarchy (derived from DB)
   child_entity_codes?: string[];
   ministry_entities?: string[];

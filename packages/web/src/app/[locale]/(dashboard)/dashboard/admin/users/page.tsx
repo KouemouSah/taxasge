@@ -346,7 +346,7 @@ export default function UsersPage() {
         </DropdownMenu>
       ),
     },
-  ], [t, locale, getRoleBadge, getRoleLabel, handleViewDetails, openActivateDialog, openDeactivateDialog]);
+  ], [t, locale, getRoleBadge, handleViewDetails, openActivateDialog, openDeactivateDialog]);
 
   // Bulk actions
   const bulkActions: BulkAction<User>[] = useMemo(() => [

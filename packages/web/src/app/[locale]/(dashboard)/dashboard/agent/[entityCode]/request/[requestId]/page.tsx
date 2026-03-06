@@ -185,7 +185,7 @@ export default function AgentRequestDetailPage() {
   const navigateTo = useCallback((targetId: string) => {
     const basePath = `/${locale}/dashboard/agent/${entitySlug}/request/${targetId}`;
     router.push(basePath);
-  }, [router]);
+  }, [router, locale, entitySlug]);
 
   const goToPrev = useCallback(() => {
     if (hasPrev) {

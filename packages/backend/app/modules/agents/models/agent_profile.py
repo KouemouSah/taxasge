@@ -130,6 +130,7 @@ class AgentProfileWithDetails(AgentProfileResponse):
     location_name: Optional[str] = None
     location_city: Optional[str] = None
     location_region: Optional[str] = None
+    is_main_office: bool = False
 
     # Ministry details
     ministry_code: Optional[str] = None

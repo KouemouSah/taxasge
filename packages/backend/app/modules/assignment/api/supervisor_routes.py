@@ -83,9 +83,12 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
             ap.agent_type,
             ap.ministry_id,
             ap.entity_id,
-            m.ministry_code
+            ap.entity_location_id,
+            m.ministry_code,
+            COALESCE(el.is_main_office, false) AS is_main_office
         FROM agent_profiles ap
         LEFT JOIN ministries m ON ap.ministry_id = m.id
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
         WHERE ap.user_id = $1 AND ap.is_active = true
     """
     result = await db.fetchrow(query, user_id)
@@ -98,6 +101,8 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
             "entity_id": None,
             "entity_type": None,
             "ministry_code": None,
+            "entity_location_id": None,
+            "is_main_office": False,
         }
 
     # entity_type is derived directly from agent_type
@@ -111,7 +116,29 @@ async def get_agent_context(user_id: str, db) -> Dict[str, Any]:
         "entity_id": result.get("entity_id"),
         "entity_type": entity_type,
         "ministry_code": result.get("ministry_code"),
+        "entity_location_id": result.get("entity_location_id"),
+        "is_main_office": result.get("is_main_office", False),
     }
+
+
+def _get_effective_location_id(agent_ctx: Dict[str, Any], explicit_location_id: Optional[str] = None) -> Optional[str]:
+    """
+    Resolve effective entity_location_id for site-scoping.
+
+    Rules:
+    - Non-main-office supervisor: ALWAYS auto-scoped to their own site (ignore explicit param)
+    - Main-office supervisor: use explicit param if provided, otherwise None (= all sites)
+    - Admin: use explicit param if provided, otherwise None (= all sites)
+    """
+    sup_location_id = agent_ctx.get("entity_location_id")
+    sup_is_main = agent_ctx.get("is_main_office", False)
+
+    if sup_location_id and not sup_is_main:
+        # Site supervisor: forced to their own location
+        return str(sup_location_id)
+
+    # Main-office or admin: optional explicit filter
+    return explicit_location_id or None
 
 
 async def _get_supervisor_workflow_scope(agent_ctx: Dict[str, Any], db) -> Optional[list]:
@@ -266,10 +293,14 @@ async def get_dashboard(
     wf_scope = await _get_supervisor_workflow_scope(agent_ctx, db)
     # wf_scope = None → admin (no filter) | [] → empty entity | [...] → scoped
 
-    # --- Cache lookup (30s TTL per entity) ---
+    # Site-scoping for non-main-office supervisors
+    effective_location = _get_effective_location_id(agent_ctx)
+
+    # --- Cache lookup (30s TTL per entity+location) ---
     cache = get_cache()
     entity_key = str(agent_ctx.get("entity_id") or "global")
-    cache_key = f"supervisor:dashboard:{entity_key}"
+    loc_key = effective_location or "all"
+    cache_key = f"supervisor:dashboard:{entity_key}:{loc_key}"
     cached = await cache.get(cache_key)
     if cached:
         return DashboardResponse(**cached)
@@ -279,17 +310,28 @@ async def get_dashboard(
     period_interval = f"{settings.REPORT_PERIOD_DAYS} days"
 
     try:
-        # --- Team stats (scoped to entity) ---
+        # --- Team stats (scoped to entity + site) ---
         if wf_scope is not None and agent_ctx.get("entity_id"):
-            team_row = await db.fetchrow("""
-                SELECT
-                    COUNT(*) FILTER (WHERE ap.is_active = true) as total_agents,
-                    COUNT(*) FILTER (WHERE ap.is_active = true AND COALESCE(aw.workload_status, 'available') = 'available') as active_agents,
-                    COALESCE(AVG(COALESCE(aw.capacity_percentage, 0)) FILTER (WHERE ap.is_active = true), 0) as avg_capacity
-                FROM agent_profiles ap
-                LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
-                WHERE ap.entity_id = $1
-            """, agent_ctx["entity_id"])
+            if effective_location:
+                team_row = await db.fetchrow("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE ap.is_active = true) as total_agents,
+                        COUNT(*) FILTER (WHERE ap.is_active = true AND COALESCE(aw.workload_status, 'available') = 'available') as active_agents,
+                        COALESCE(AVG(COALESCE(aw.capacity_percentage, 0)) FILTER (WHERE ap.is_active = true), 0) as avg_capacity
+                    FROM agent_profiles ap
+                    LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                    WHERE ap.entity_id = $1 AND ap.entity_location_id = $2::uuid
+                """, agent_ctx["entity_id"], effective_location)
+            else:
+                team_row = await db.fetchrow("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE ap.is_active = true) as total_agents,
+                        COUNT(*) FILTER (WHERE ap.is_active = true AND COALESCE(aw.workload_status, 'available') = 'available') as active_agents,
+                        COALESCE(AVG(COALESCE(aw.capacity_percentage, 0)) FILTER (WHERE ap.is_active = true), 0) as avg_capacity
+                    FROM agent_profiles ap
+                    LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+                    WHERE ap.entity_id = $1
+                """, agent_ctx["entity_id"])
         else:
             team_row = await db.fetchrow("""
                 SELECT
@@ -300,8 +342,17 @@ async def get_dashboard(
                 LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
             """)
 
-        # --- Escalation stats (scoped to entity's workflow_codes) ---
+        # --- Escalation stats (scoped to entity's workflow_codes + site) ---
+        # Site-scoping: non-main-office supervisors only see escalations from their site's agents
+        esc_site_filter = ""
+        esc_params: list = []
         if wf_scope is not None:
+            esc_params = [wf_scope]
+            esc_base = "escalated = true AND workflow_code = ANY($1)"
+            if effective_location:
+                # Escalations by agents at this site (escalated_by = user_id of agent at site)
+                esc_site_filter = f"AND escalated_by IN (SELECT user_id FROM agent_profiles WHERE entity_location_id = ${len(esc_params) + 1}::uuid AND is_active = true)"
+                esc_params.append(effective_location)
             esc_row = await db.fetchrow(f"""
                 SELECT
                     COUNT(*) as pending,
@@ -309,16 +360,19 @@ async def get_dashboard(
                      JOIN service_requests sr2 ON sr2.id = h.service_request_id
                      WHERE h.action = 'escalation_resolved'
                      AND h.performed_at > NOW() - INTERVAL '{today_interval}'
-                     AND sr2.workflow_code = ANY($1)) as resolved_today,
+                     AND sr2.workflow_code = ANY($1)
+                     {esc_site_filter}) as resolved_today,
                     (SELECT AVG(EXTRACT(EPOCH FROM (h2.performed_at - sr3.escalated_at)) / 3600.0)
                      FROM service_request_history h2
                      JOIN service_requests sr3 ON sr3.id = h2.service_request_id
                      WHERE h2.action = 'escalation_resolved'
                      AND h2.performed_at > NOW() - INTERVAL '{period_interval}'
-                     AND sr3.workflow_code = ANY($1)) as avg_resolution_hours
+                     AND sr3.workflow_code = ANY($1)
+                     {esc_site_filter}) as avg_resolution_hours
                 FROM service_requests
-                WHERE escalated = true AND workflow_code = ANY($1)
-            """, wf_scope)
+                WHERE {esc_base}
+                {esc_site_filter}
+            """, *esc_params)
         else:
             esc_row = await db.fetchrow(f"""
                 SELECT
@@ -335,8 +389,14 @@ async def get_dashboard(
                 WHERE escalated = true
             """)
 
-        # --- Assignment stats (scoped via service_requests join) ---
+        # --- Assignment stats (scoped via service_requests join + site) ---
         if wf_scope is not None:
+            asgn_site_filter = ""
+            asgn_params: list = [wf_scope]
+            if effective_location:
+                # Only assignments to agents at this site
+                asgn_site_filter = f"AND a.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${len(asgn_params) + 1}::uuid AND is_active = true)"
+                asgn_params.append(effective_location)
             asgn_row = await db.fetchrow(f"""
                 SELECT
                     COUNT(*) FILTER (WHERE a.status = 'assigned') as pending,
@@ -345,7 +405,8 @@ async def get_dashboard(
                 FROM assignments a
                 JOIN service_requests sr ON sr.id = a.item_id
                 WHERE sr.workflow_code = ANY($1)
-            """, wf_scope)
+                {asgn_site_filter}
+            """, *asgn_params)
         else:
             asgn_row = await db.fetchrow(f"""
                 SELECT
@@ -355,8 +416,13 @@ async def get_dashboard(
                 FROM assignments
             """)
 
-        # --- Performance (scoped, last 30 days) ---
+        # --- Performance (scoped, last 30 days + site) ---
         if wf_scope is not None:
+            perf_site_filter = ""
+            perf_params: list = [wf_scope]
+            if effective_location:
+                perf_site_filter = f"AND a.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${len(perf_params) + 1}::uuid AND is_active = true)"
+                perf_params.append(effective_location)
             perf_row = await db.fetchrow(f"""
                 SELECT
                     COALESCE(AVG(EXTRACT(EPOCH FROM (a.completed_at - a.assigned_at)) / 3600), 0) as avg_response_hours,
@@ -369,7 +435,8 @@ async def get_dashboard(
                 JOIN service_requests sr ON sr.id = a.item_id
                 WHERE a.completed_at > NOW() - INTERVAL '{period_interval}'
                 AND sr.workflow_code = ANY($1)
-            """, wf_scope)
+                {perf_site_filter}
+            """, *perf_params)
         else:
             perf_row = await db.fetchrow(f"""
                 SELECT
@@ -527,13 +594,15 @@ async def list_agents(
     workload_repo = get_workload_repository(db)
 
     try:
-        # Get agents - scoped by entity_id for entity supervisors
+        # Get agents - scoped by entity_id + site for entity supervisors
         max_capacity = 100.0 if include_unavailable else 80.0
         entity_id = agent_ctx.get("entity_id")
+        effective_location = _get_effective_location_id(agent_ctx)
         agents_workloads = await workload_repo.get_available_agents(
             db=db,
             max_workload_pct=max_capacity,
             entity_id=entity_id,
+            entity_location_id=UUID(effective_location) if effective_location else None,
         )
 
         # Build response - agents_workloads is List[AgentWorkload]
@@ -706,6 +775,7 @@ async def get_workload_balance(
         agent_ctx = await get_agent_context(current_user.id, db)
 
     entity_id = agent_ctx.get("entity_id")
+    effective_location = _get_effective_location_id(agent_ctx)
     workload_repo = get_workload_repository(db)
 
     try:
@@ -715,11 +785,12 @@ async def get_workload_balance(
             entity_id=entity_id,
         )
 
-        # Get agent list - scoped by entity_id for entity supervisors
+        # Get agent list - scoped by entity_id + site for entity supervisors
         agents_workloads = await workload_repo.get_available_agents(
             db=db,
             max_workload_pct=100.0,
             entity_id=entity_id,
+            entity_location_id=UUID(effective_location) if effective_location else None,
         )
 
         # Build response - agents_workloads is List[AgentWorkload]

@@ -1163,10 +1163,17 @@ class ServiceRequestService:
                 )
 
                 # 2. Trigger auto-assignment to select best agent
-                # CRITICAL: Pass workflow_code for entity-based routing
+                # CRITICAL: Pass entity_code for deterministic routing + entity_location_id for site-based routing
                 # This ensures PASAPORTE_* goes to CNEDOGE_PASAPORTE agents,
-                # and RESIDENCIA_* goes to CNEDOGE_RESIDENCIA agents
+                # and RESIDENCIA_* goes to CNEDOGE_RESIDENCIA agents, at the correct site
                 auto_assignment_service = AutoAssignmentService()
+                # Resolve entity_location_id from the service request for site-based routing
+                sr_location_id = request.get("entity_location_id")
+                if sr_location_id and not isinstance(sr_location_id, UUID):
+                    try:
+                        sr_location_id = UUID(str(sr_location_id))
+                    except (ValueError, TypeError):
+                        sr_location_id = None
                 assignment = await auto_assignment_service.auto_assign_item(
                     db=db,
                     item_id=request_id,
@@ -1178,9 +1185,11 @@ class ServiceRequestService:
                         "priority": request.get("priority", "NORMAL"),
                     },
                     entity_type="entity",
-                    entity_id=None,  # Let workflow_code determine the entity
+                    entity_id=None,  # Let entity_code determine the entity
                     priority_level=5,
-                    workflow_code=workflow_code  # NEW: Route by workflow to correct entity
+                    entity_code=entity_code,  # Deterministic routing by entity
+                    workflow_code=workflow_code,  # Fallback if no entity_code
+                    entity_location_id=sr_location_id,  # Site-based routing
                 )
 
                 if assignment:

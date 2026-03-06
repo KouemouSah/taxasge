@@ -3057,6 +3057,29 @@ async def is_treasury_supervisor(db: asyncpg.Connection, user_id: str) -> bool:
     """, user_id) or False
 
 
+async def _resolve_treasury_location_scope(
+    db: asyncpg.Connection, user_id: str, explicit_location_id: Optional[str] = None
+) -> Optional[str]:
+    """
+    Resolve effective entity_location_id for treasury site-scoping.
+
+    Rules:
+    - Non-main-office supervisor: ALWAYS auto-scoped to own site (ignore explicit param)
+    - Main-office supervisor: use explicit param if provided, otherwise None (all sites)
+    """
+    row = await db.fetchrow("""
+        SELECT ap.entity_location_id, COALESCE(el.is_main_office, false) AS is_main_office
+        FROM agent_profiles ap
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+        WHERE ap.user_id = $1::uuid AND ap.is_active = true
+    """, user_id)
+    if not row:
+        return explicit_location_id
+    if not row["is_main_office"] and row["entity_location_id"]:
+        return str(row["entity_location_id"])
+    return explicit_location_id or None
+
+
 class PaymentValidationRequest(BaseModel):
     """Request model for agent validation."""
     comment: Optional[str] = Field(None, max_length=500, description="Validation comment")
@@ -4553,13 +4576,32 @@ async def escalate_payment(
         valid_levels = ("low", "medium", "high", "critical")
         level = body.level if body.level in valid_levels else "medium"
 
-        # 3. Find TESORO supervisor
-        supervisor_id = await db.fetchval("""
-            SELECT ap.id FROM agent_profiles ap
-            JOIN entities e ON e.id = ap.entity_id
-            WHERE e.code = 'TESORO' AND ap.is_supervisor = true AND ap.is_active = true
-            LIMIT 1
-        """)
+        # 3. Find TESORO supervisor — prefer supervisor at the SAME SITE as the escalating agent
+        # This ensures site-local escalation (agent at TGE BATA → supervisor at TGE BATA)
+        agent_location_id = await db.fetchval(
+            "SELECT entity_location_id FROM agent_profiles WHERE id = $1",
+            agent_profile_id
+        )
+        supervisor_id = None
+        if agent_location_id:
+            # Try same-site supervisor first
+            supervisor_id = await db.fetchval("""
+                SELECT ap.id FROM agent_profiles ap
+                JOIN entities e ON e.id = ap.entity_id
+                WHERE e.code = 'TESORO' AND ap.is_supervisor = true AND ap.is_active = true
+                  AND ap.entity_location_id = $1
+                LIMIT 1
+            """, agent_location_id)
+        if not supervisor_id:
+            # Fallback: any TESORO supervisor, prefer main office
+            supervisor_id = await db.fetchval("""
+                SELECT ap.id FROM agent_profiles ap
+                JOIN entities e ON e.id = ap.entity_id
+                LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+                WHERE e.code = 'TESORO' AND ap.is_supervisor = true AND ap.is_active = true
+                ORDER BY COALESCE(el.is_main_office, false) DESC
+                LIMIT 1
+            """)
 
         if not supervisor_id:
             logger.warning("[Treasury] No active TESORO supervisor found for escalation")
@@ -5130,6 +5172,7 @@ async def get_treasury_audit(
     action: Optional[str] = Query(None, description="Filter by action type"),
     date_from: Optional[date] = Query(None, description="Start date"),
     date_to: Optional[date] = Query(None, description="End date"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by agent site location"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
@@ -5137,10 +5180,19 @@ async def get_treasury_audit(
     _=Depends(permission_required("treasury_audit.view"))
 ):
     """Get Treasury audit trail"""
+    # Resolve site scope for non-main-office supervisors
+    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+
     # Build dynamic WHERE clause
     where_clauses = ["1=1"]
     params = []
     param_idx = 1
+
+    # Site-scope: filter audit entries by agent location
+    if effective_location_id:
+        where_clauses.append(f"pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${param_idx}::uuid AND is_active = true)")
+        params.append(effective_location_id)
+        param_idx += 1
 
     if payment_id:
         where_clauses.append(f"pva.payment_id = ${param_idx}::uuid")
@@ -5412,9 +5464,20 @@ async def get_treasury_dashboard_stats(
                 today_validated_amount=0.0,
                 currency="XAF",
             )
-    elif entity_location_id:
-        # Supervisor: optional explicit filter
-        location_filter_id = entity_location_id
+    else:
+        # Supervisor: resolve is_main_office for auto-scoping
+        sup_row = await db.fetchrow("""
+            SELECT ap.entity_location_id, COALESCE(el.is_main_office, false) AS is_main_office
+            FROM agent_profiles ap
+            LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+            WHERE ap.user_id = $1::uuid AND ap.is_active = true
+        """, user_id)
+        if sup_row and not sup_row["is_main_office"] and sup_row["entity_location_id"]:
+            # Site supervisor: forced to their own location
+            location_filter_id = str(sup_row["entity_location_id"])
+        elif entity_location_id:
+            # Main-office supervisor: optional explicit filter
+            location_filter_id = entity_location_id
 
     # Build scoped queries
     if current_agent_profile_id:
@@ -5565,30 +5628,37 @@ class SLAStatsResponse(BaseModel):
     """
 )
 async def get_sla_stats(
+    entity_location_id: Optional[str] = Query(None, description="Filter by entity_location (site)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get SLA statistics for Treasury dashboard"""
+    # Site-scoping
+    effective_loc = await _resolve_treasury_location_scope(db, current_user.id, entity_location_id)
+    loc_filter = "AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $1::uuid AND is_active = true)" if effective_loc else ""
+    loc_params = [effective_loc] if effective_loc else []
+
     # Get SLA breakdown for pending payments
-    sla_stats = await db.fetchrow("""
+    sla_stats = await db.fetchrow(f"""
         WITH pending_payments AS (
             SELECT
-                id,
-                payment_method,
-                sla_target_date,
-                created_at,
+                sp.id,
+                sp.payment_method,
+                sp.sla_target_date,
+                sp.created_at,
                 CASE
-                    WHEN sla_target_date IS NULL THEN 'on_time'
-                    WHEN sla_target_date < NOW() THEN 'breached'
-                    WHEN sla_target_date - NOW() < INTERVAL '2 hours' THEN 'critical'
-                    WHEN sla_target_date - NOW() < INTERVAL '6 hours' THEN 'warning'
+                    WHEN sp.sla_target_date IS NULL THEN 'on_time'
+                    WHEN sp.sla_target_date < NOW() THEN 'breached'
+                    WHEN sp.sla_target_date - NOW() < INTERVAL '2 hours' THEN 'critical'
+                    WHEN sp.sla_target_date - NOW() < INTERVAL '6 hours' THEN 'warning'
                     ELSE 'on_time'
                 END AS sla_status
-            FROM service_payments
-            WHERE workflow_status NOT IN (
+            FROM service_payments sp
+            WHERE sp.workflow_status NOT IN (
                 'completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired'
             )
+            {loc_filter}
         )
         SELECT
             COUNT(*) AS total_pending,
@@ -5597,45 +5667,48 @@ async def get_sla_stats(
             COUNT(*) FILTER (WHERE sla_status = 'critical') AS critical,
             COUNT(*) FILTER (WHERE sla_status = 'breached') AS breached
         FROM pending_payments
-    """)
+    """, *loc_params)
 
     # Get processing time stats for completed payments
-    time_stats = await db.fetchrow("""
+    time_stats = await db.fetchrow(f"""
         SELECT
-            AVG(EXTRACT(EPOCH FROM (validated_at - created_at)) / 60) AS avg_minutes,
-            MAX(EXTRACT(EPOCH FROM (validated_at - created_at)) / 60) AS max_minutes
-        FROM service_payments
-        WHERE workflow_status = 'completed'
-          AND validated_at IS NOT NULL
-          AND validated_at >= NOW() - INTERVAL '30 days'
-    """)
+            AVG(EXTRACT(EPOCH FROM (sp.validated_at - sp.created_at)) / 60) AS avg_minutes,
+            MAX(EXTRACT(EPOCH FROM (sp.validated_at - sp.created_at)) / 60) AS max_minutes
+        FROM service_payments sp
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at IS NOT NULL
+          AND sp.validated_at >= NOW() - INTERVAL '30 days'
+          {loc_filter}
+    """, *loc_params)
 
     # Calculate SLA respect rate from completed payments
-    sla_rate = await db.fetchrow("""
+    sla_rate = await db.fetchrow(f"""
         SELECT
             COUNT(*) AS total_completed,
-            COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL) AS respected
-        FROM service_payments
-        WHERE workflow_status = 'completed'
-          AND validated_at >= NOW() - INTERVAL '30 days'
-    """)
+            COUNT(*) FILTER (WHERE sp.sla_escalated = false OR sp.sla_escalated IS NULL) AS respected
+        FROM service_payments sp
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at >= NOW() - INTERVAL '30 days'
+          {loc_filter}
+    """, *loc_params)
 
     # Get breakdown by payment method
-    method_breakdown = await db.fetch("""
+    method_breakdown = await db.fetch(f"""
         WITH pending_payments AS (
             SELECT
-                payment_method::text AS method,
+                sp.payment_method::text AS method,
                 CASE
-                    WHEN sla_target_date IS NULL THEN 'on_time'
-                    WHEN sla_target_date < NOW() THEN 'breached'
-                    WHEN sla_target_date - NOW() < INTERVAL '2 hours' THEN 'critical'
-                    WHEN sla_target_date - NOW() < INTERVAL '6 hours' THEN 'warning'
+                    WHEN sp.sla_target_date IS NULL THEN 'on_time'
+                    WHEN sp.sla_target_date < NOW() THEN 'breached'
+                    WHEN sp.sla_target_date - NOW() < INTERVAL '2 hours' THEN 'critical'
+                    WHEN sp.sla_target_date - NOW() < INTERVAL '6 hours' THEN 'warning'
                     ELSE 'on_time'
                 END AS sla_status
-            FROM service_payments
-            WHERE workflow_status NOT IN (
+            FROM service_payments sp
+            WHERE sp.workflow_status NOT IN (
                 'completed', 'cancelled_by_user', 'cancelled_by_agent', 'expired'
             )
+            {loc_filter}
         )
         SELECT
             method,
@@ -5646,7 +5719,7 @@ async def get_sla_stats(
             COUNT(*) FILTER (WHERE sla_status = 'breached') AS breached
         FROM pending_payments
         GROUP BY method
-    """)
+    """, *loc_params)
 
     by_method = {}
     for row in method_breakdown:
@@ -5773,12 +5846,16 @@ async def get_treasury_kpis(
     period: str = Query("month", regex="^(day|week|month|year|custom)$"),
     date_from: Optional[str] = Query(None, description="Start date (YYYY-MM-DD) for custom period"),
     date_to: Optional[str] = Query(None, description="End date (YYYY-MM-DD) for custom period"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by entity_location (site)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury_stat.view"))
 ):
     """Get Treasury KPIs for executive dashboard"""
     from datetime import datetime, timedelta
+
+    # Site-scoping: filter by agents at a specific TESORO location
+    effective_loc = await _resolve_treasury_location_scope(db, current_user.id, entity_location_id)
 
     # Calculate date range based on period
     now = datetime.now()
@@ -5801,45 +5878,55 @@ async def get_treasury_kpis(
         start_date = datetime.strptime(date_from, "%Y-%m-%d")
         end_date = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
+    # Build location filter for KPI queries
+    kpi_loc_filter = ""
+    kpi_base_params = [start_date, end_date]
+    if effective_loc:
+        kpi_loc_filter = "AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $3::uuid AND is_active = true)"
+        kpi_base_params.append(effective_loc)
+
     # Get main KPIs
-    main_stats = await db.fetchrow("""
+    main_stats = await db.fetchrow(f"""
         SELECT
-            COALESCE(SUM(total_amount), 0) AS total_collected,
+            COALESCE(SUM(sp.total_amount), 0) AS total_collected,
             COUNT(*) AS total_transactions,
-            COALESCE(AVG(total_amount), 0) AS avg_amount
-        FROM service_payments
-        WHERE workflow_status = 'completed'
-          AND validated_at BETWEEN $1 AND $2
-    """, start_date, end_date)
+            COALESCE(AVG(sp.total_amount), 0) AS avg_amount
+        FROM service_payments sp
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at BETWEEN $1 AND $2
+          {kpi_loc_filter}
+    """, *kpi_base_params)
 
     # Get SLA respect rate
-    sla_stats = await db.fetchrow("""
+    sla_stats = await db.fetchrow(f"""
         SELECT
             COUNT(*) AS total,
-            COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL) AS respected
-        FROM service_payments
-        WHERE workflow_status = 'completed'
-          AND validated_at BETWEEN $1 AND $2
-    """, start_date, end_date)
+            COUNT(*) FILTER (WHERE sp.sla_escalated = false OR sp.sla_escalated IS NULL) AS respected
+        FROM service_payments sp
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at BETWEEN $1 AND $2
+          {kpi_loc_filter}
+    """, *kpi_base_params)
 
     total_for_sla = sla_stats["total"] or 0
     sla_rate = (sla_stats["respected"] / total_for_sla * 100) if total_for_sla > 0 else 100.0
 
     # Get breakdown by payment method
-    method_stats = await db.fetch("""
+    method_stats = await db.fetch(f"""
         SELECT
-            payment_method::text AS method,
+            sp.payment_method::text AS method,
             COUNT(*) AS count,
-            COALESCE(SUM(total_amount), 0) AS amount,
-            AVG(EXTRACT(EPOCH FROM (validated_at - created_at)) / 60) AS avg_minutes,
-            COUNT(*) FILTER (WHERE sla_escalated = false OR sla_escalated IS NULL)::float /
+            COALESCE(SUM(sp.total_amount), 0) AS amount,
+            AVG(EXTRACT(EPOCH FROM (sp.validated_at - sp.created_at)) / 60) AS avg_minutes,
+            COUNT(*) FILTER (WHERE sp.sla_escalated = false OR sp.sla_escalated IS NULL)::float /
                 NULLIF(COUNT(*), 0) * 100 AS success_rate
-        FROM service_payments
-        WHERE workflow_status = 'completed'
-          AND validated_at BETWEEN $1 AND $2
-        GROUP BY payment_method
+        FROM service_payments sp
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at BETWEEN $1 AND $2
+          {kpi_loc_filter}
+        GROUP BY sp.payment_method
         ORDER BY amount DESC
-    """, start_date, end_date)
+    """, *kpi_base_params)
 
     total_amount = float(main_stats["total_collected"]) or 1
     by_payment_method = [
@@ -5855,7 +5942,7 @@ async def get_treasury_kpis(
     ]
 
     # Get top 10 entities
-    entity_stats = await db.fetch("""
+    entity_stats = await db.fetch(f"""
         SELECT
             sp.entity_code,
             COALESCE(e.name, sp.entity_code) AS entity_name,
@@ -5865,10 +5952,11 @@ async def get_treasury_kpis(
         LEFT JOIN entities e ON e.code = sp.entity_code
         WHERE sp.workflow_status = 'completed'
           AND sp.validated_at BETWEEN $1 AND $2
+          {kpi_loc_filter}
         GROUP BY sp.entity_code, e.name
         ORDER BY amount DESC
         LIMIT 10
-    """, start_date, end_date)
+    """, *kpi_base_params)
 
     by_entity = [
         EntityKPI(
@@ -5882,17 +5970,18 @@ async def get_treasury_kpis(
     ]
 
     # Get daily trend
-    daily_stats = await db.fetch("""
+    daily_stats = await db.fetch(f"""
         SELECT
-            DATE(validated_at) AS date,
+            DATE(sp.validated_at) AS date,
             COUNT(*) AS count,
-            COALESCE(SUM(total_amount), 0) AS amount
-        FROM service_payments
-        WHERE workflow_status = 'completed'
-          AND validated_at BETWEEN $1 AND $2
-        GROUP BY DATE(validated_at)
+            COALESCE(SUM(sp.total_amount), 0) AS amount
+        FROM service_payments sp
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at BETWEEN $1 AND $2
+          {kpi_loc_filter}
+        GROUP BY DATE(sp.validated_at)
         ORDER BY date
-    """, start_date, end_date)
+    """, *kpi_base_params)
 
     daily_trend = [
         DailyTrend(
@@ -5908,14 +5997,20 @@ async def get_treasury_kpis(
     prev_start = start_date - period_duration - timedelta(days=1)
     prev_end = start_date - timedelta(days=1)
 
-    prev_stats = await db.fetchrow("""
+    prev_loc_filter = ""
+    prev_params = [prev_start, prev_end]
+    if effective_loc:
+        prev_loc_filter = "AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $3::uuid AND is_active = true)"
+        prev_params.append(effective_loc)
+    prev_stats = await db.fetchrow(f"""
         SELECT
-            COALESCE(SUM(total_amount), 0) AS total_collected,
+            COALESCE(SUM(sp.total_amount), 0) AS total_collected,
             COUNT(*) AS total_transactions
-        FROM service_payments
-        WHERE workflow_status = 'completed'
-          AND validated_at BETWEEN $1 AND $2
-    """, prev_start, prev_end)
+        FROM service_payments sp
+        WHERE sp.workflow_status = 'completed'
+          AND sp.validated_at BETWEEN $1 AND $2
+          {prev_loc_filter}
+    """, *prev_params)
 
     prev_collected = float(prev_stats["total_collected"]) if prev_stats["total_collected"] else 0
     prev_transactions = prev_stats["total_transactions"] or 0
@@ -5973,6 +6068,7 @@ async def get_agent_performance(
     period: str = Query("month", regex="^(day|week|month|year|custom)$"),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
+    entity_location_id: Optional[str] = Query(None, description="Filter by agent site location"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury_stat.view"))
@@ -6001,9 +6097,19 @@ async def get_agent_performance(
         start_date = datetime.strptime(date_from, "%Y-%m-%d")
         end_date = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
+    # Resolve site scope for non-main-office supervisors
+    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+
+    # Build location filter for agent site scoping
+    agent_loc_filter = ""
+    query_params = [start_date, end_date]
+    if effective_location_id:
+        agent_loc_filter = "AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $3::uuid AND is_active = true)"
+        query_params.append(effective_location_id)
+
     # Get agent performance from audit log
     # Note: agent_profile_id (UUID) is the current standard, agent_id (int) is deprecated
-    agent_stats = await db.fetch("""
+    agent_stats = await db.fetch(f"""
         WITH agent_actions AS (
             SELECT
                 pva.agent_profile_id,
@@ -6018,6 +6124,7 @@ async def get_agent_performance(
             JOIN service_payments sp ON sp.id = pva.payment_id
             WHERE pva.created_at BETWEEN $1 AND $2
               AND pva.agent_user_id IS NOT NULL
+              {agent_loc_filter}
         ),
         agent_summary AS (
             SELECT
@@ -6046,7 +6153,7 @@ async def get_agent_performance(
         FROM agent_summary as2
         LEFT JOIN agent_workloads aw ON aw.agent_profile_id = as2.agent_profile_id
         ORDER BY (as2.validations + as2.rejections) DESC
-    """, start_date, end_date)
+    """, *query_params)
 
     agents = [
         AgentStats(
@@ -6407,6 +6514,7 @@ async def get_supervisor_overview(
 )
 async def get_workload_dashboard(
     days: int = Query(30, ge=7, le=90, description="Lookback period in days"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by agent site location"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury_stat.view"))
@@ -6416,8 +6524,12 @@ async def get_workload_dashboard(
     from app.core.cache import get_cache
     from app.database.connection import db_manager
 
+    # Resolve site scope for non-main-office supervisors
+    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+
     cache = get_cache()
-    cache_key = f"treasury:workload_dashboard:{days}"
+    loc_key = effective_location_id or "all"
+    cache_key = f"treasury:workload_dashboard:{days}:{loc_key}"
     cached = await cache.get(cache_key)
     if cached:
         return cached
@@ -6431,7 +6543,12 @@ async def get_workload_dashboard(
 
     async def q_daily_velocity():
         async with db_manager.get_connection() as conn:
-            rows = await conn.fetch("""
+            loc_filter = ""
+            params = [lookback_start]
+            if effective_location_id:
+                loc_filter = "AND agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
+                params.append(effective_location_id)
+            rows = await conn.fetch(f"""
                 SELECT
                     report_date::text as date,
                     agent_name,
@@ -6439,14 +6556,20 @@ async def get_workload_dashboard(
                     rejected
                 FROM mv_agent_daily_workload
                 WHERE report_date >= $1::date
+                  {loc_filter}
                 ORDER BY report_date
-            """, lookback_start)
+            """, *params)
             return [{"date": r["date"], "agent_name": r["agent_name"],
                      "approved": r["approved"], "rejected": r["rejected"]} for r in rows]
 
     async def q_agent_load():
         async with db_manager.get_connection() as conn:
-            rows = await conn.fetch("""
+            loc_filter = ""
+            params = [lookback_start]
+            if effective_location_id:
+                loc_filter = "AND ap.entity_location_id = $2::uuid"
+                params.append(effective_location_id)
+            rows = await conn.fetch(f"""
                 WITH agent_period_stats AS (
                     SELECT
                         agent_profile_id,
@@ -6486,8 +6609,9 @@ async def get_workload_dashboard(
                 LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
                 LEFT JOIN agent_period_stats aps ON aps.agent_profile_id = ap.id
                 WHERE e.code = 'TESORO' AND ap.is_active = true
+                  {loc_filter}
                 ORDER BY completed_period DESC
-            """, lookback_start)
+            """, *params)
             return [{"agent_name": r["agent_name"], "pending": r["pending"],
                      "in_progress": r["in_progress"], "capacity_max": r["capacity_max"],
                      "capacity_pct": float(r["capacity_pct"]),
@@ -6497,7 +6621,12 @@ async def get_workload_dashboard(
 
     async def q_sla_breakdown():
         async with db_manager.get_connection() as conn:
-            row = await conn.fetchrow("""
+            loc_filter = ""
+            params = [lookback_start]
+            if effective_location_id:
+                loc_filter = "AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
+                params.append(effective_location_id)
+            row = await conn.fetchrow(f"""
                 SELECT
                     COUNT(*) FILTER (WHERE
                         sp.sla_target_date IS NOT NULL
@@ -6522,7 +6651,8 @@ async def get_workload_dashboard(
                 JOIN service_payments sp ON sp.id = pva.payment_id
                 WHERE pva.action IN ('approve', 'reject')
                   AND pva.created_at >= $1
-            """, lookback_start)
+                  {loc_filter}
+            """, *params)
             return {
                 "on_time": row["on_time"],
                 "breached": row["breached"],
@@ -6533,7 +6663,14 @@ async def get_workload_dashboard(
 
     async def q_volume_trend():
         async with db_manager.get_connection() as conn:
-            rows = await conn.fetch("""
+            loc_filter_sp = ""
+            loc_filter_pva = ""
+            params = [lookback_start]
+            if effective_location_id:
+                loc_filter_sp = "AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
+                loc_filter_pva = "AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
+                params.append(effective_location_id)
+            rows = await conn.fetch(f"""
                 SELECT d.date::date,
                     COALESCE(incoming.cnt, 0) as incoming,
                     COALESCE(outgoing.cnt, 0) as outgoing
@@ -6543,26 +6680,33 @@ async def get_workload_dashboard(
                     '1 day'::interval
                 ) d(date)
                 LEFT JOIN (
-                    SELECT created_at::date as date, COUNT(*) as cnt
-                    FROM service_payments
-                    WHERE created_at >= $1
-                    GROUP BY created_at::date
+                    SELECT sp.created_at::date as date, COUNT(*) as cnt
+                    FROM service_payments sp
+                    WHERE sp.created_at >= $1
+                      {loc_filter_sp}
+                    GROUP BY sp.created_at::date
                 ) incoming ON incoming.date = d.date::date
                 LEFT JOIN (
                     SELECT pva.created_at::date as date, COUNT(*) as cnt
                     FROM payment_validation_audit pva
                     WHERE pva.action IN ('approve','reject')
                       AND pva.created_at >= $1
+                      {loc_filter_pva}
                     GROUP BY pva.created_at::date
                 ) outgoing ON outgoing.date = d.date::date
                 ORDER BY d.date
-            """, lookback_start)
+            """, *params)
             return [{"date": str(r["date"]), "incoming": r["incoming"],
                      "outgoing": r["outgoing"]} for r in rows]
 
     async def q_processing_times():
         async with db_manager.get_connection() as conn:
-            rows = await conn.fetch("""
+            loc_filter = ""
+            params = [lookback_start]
+            if effective_location_id:
+                loc_filter = "AND agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
+                params.append(effective_location_id)
+            rows = await conn.fetch(f"""
                 SELECT
                     agent_name,
                     ROUND((MIN(min_duration_seconds) / 3600.0)::numeric, 2) as min_hours,
@@ -6575,16 +6719,27 @@ async def get_workload_dashboard(
                 FROM mv_agent_daily_workload
                 WHERE report_date >= $1::date
                   AND avg_duration_seconds IS NOT NULL
+                  {loc_filter}
                 GROUP BY agent_profile_id, agent_name
                 ORDER BY avg_hours
-            """, lookback_start)
+            """, *params)
             return [{"agent_name": r["agent_name"], "min_hours": float(r["min_hours"] or 0),
                      "avg_hours": float(r["avg_hours"] or 0), "max_hours": float(r["max_hours"] or 0),
                      "p50_hours": float(r["p50_hours"] or 0), "count": r["count"]} for r in rows]
 
     async def q_kpis():
         async with db_manager.get_connection() as conn:
-            row = await conn.fetchrow("""
+            loc_filter_pva = ""
+            loc_filter_ap = ""
+            loc_filter_sp = ""
+            params = [lookback_start, days]
+            if effective_location_id:
+                param_idx = len(params) + 1
+                loc_filter_pva = f"AND pva.agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${param_idx}::uuid AND is_active = true)"
+                loc_filter_ap = f"AND ap.entity_location_id = ${param_idx}::uuid"
+                loc_filter_sp = f"AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${param_idx}::uuid AND is_active = true)"
+                params.append(effective_location_id)
+            row = await conn.fetchrow(f"""
                 WITH period_stats AS (
                     SELECT
                         COUNT(DISTINCT pva.agent_profile_id) as active_agents,
@@ -6592,6 +6747,7 @@ async def get_workload_dashboard(
                     FROM payment_validation_audit pva
                     WHERE pva.action IN ('approve','reject')
                       AND pva.created_at >= $1
+                      {loc_filter_pva}
                 ),
                 queue AS (
                     SELECT
@@ -6602,11 +6758,13 @@ async def get_workload_dashboard(
                     WHERE sp.workflow_status IN (
                         'pending_agent_review', 'submitted', 'auto_processing'
                     )
+                    {loc_filter_sp}
                 )
                 SELECT
                     (SELECT COUNT(*) FROM agent_profiles ap
                      JOIN entities e ON e.id = ap.entity_id
-                     WHERE e.code = 'TESORO' AND ap.is_active = true) as total_agents,
+                     WHERE e.code = 'TESORO' AND ap.is_active = true
+                     {loc_filter_ap}) as total_agents,
                     ps.active_agents,
                     q.queue_size,
                     ROUND(q.avg_wait_hours::numeric, 1) as avg_queue_wait_hours,
@@ -6616,7 +6774,7 @@ async def get_workload_dashboard(
                     END as velocity_per_day,
                     ps.total_validated as total_validated_period
                 FROM period_stats ps, queue q
-            """, lookback_start, days)
+            """, *params)
             return {
                 "total_agents": row["total_agents"],
                 "active_agents": row["active_agents"],
@@ -6628,7 +6786,12 @@ async def get_workload_dashboard(
 
     async def q_rankings():
         async with db_manager.get_connection() as conn:
-            rows = await conn.fetch("""
+            loc_filter = ""
+            params = [lookback_start]
+            if effective_location_id:
+                loc_filter = "AND agent_profile_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $2::uuid AND is_active = true)"
+                params.append(effective_location_id)
+            rows = await conn.fetch(f"""
                 WITH agent_totals AS (
                     SELECT
                         agent_profile_id,
@@ -6643,6 +6806,7 @@ async def get_workload_dashboard(
                         ) as avg_seconds
                     FROM mv_agent_daily_workload
                     WHERE report_date >= $1::date
+                      {loc_filter}
                     GROUP BY agent_profile_id, agent_name
                 ),
                 max_validated AS (
@@ -6665,7 +6829,7 @@ async def get_workload_dashboard(
                 CROSS JOIN max_validated mv
                 ORDER BY score DESC
                 LIMIT 10
-            """, lookback_start)
+            """, *params)
             return [{"agent_name": r["agent_name"], "validated": r["validated"],
                      "rejected": r["rejected"],
                      "avg_minutes": round(float(r["avg_seconds"]) / 60, 1),
@@ -6821,6 +6985,7 @@ async def list_anomalies(
     anomaly_type: Optional[str] = Query(None, description="Filter by type"),
     date_from: Optional[date] = Query(None, description="Start date"),
     date_to: Optional[date] = Query(None, description="End date"),
+    entity_location_id: Optional[str] = Query(None, description="Filter by agent site location"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
@@ -6828,10 +6993,22 @@ async def list_anomalies(
     _=Depends(permission_required("treasury_anomaly.view"))
 ):
     """Get list of payment anomalies."""
+    # Resolve site scope for non-main-office supervisors
+    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+
     # Build dynamic WHERE clause
     where_clauses = ["1=1"]
     params = []
     param_idx = 1
+
+    # Site-scope: filter anomalies linked to payments handled by agents at this site
+    if effective_location_id:
+        where_clauses.append(f"""(pa.entity_type != 'service_payment' OR pa.entity_id IN (
+            SELECT sp.id FROM service_payments sp
+            WHERE sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = ${param_idx}::uuid AND is_active = true)
+        ))""")
+        params.append(effective_location_id)
+        param_idx += 1
 
     if status:
         where_clauses.append(f"pa.status::text = ${param_idx}")

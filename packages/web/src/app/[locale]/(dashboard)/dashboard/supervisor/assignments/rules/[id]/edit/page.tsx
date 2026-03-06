@@ -30,6 +30,8 @@ import type { AssignmentRule, RuleStatus } from '../../../../types';
 import {
   useEntities, useSupervisorEntities, buildConditions, buildActions,
   ConditionsBuilder, ActionsBuilder, PreviewBanner,
+  EMPTY_TREASURY_STATE, extractTreasuryState,
+  type TreasuryConditionsState,
 } from '../../_shared';
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -64,6 +66,9 @@ export default function EditRulePage() {
   const [actionSpecializations, setActionSpecializations] = useState<string[]>([]);
   const [maxWorkloadPct, setMaxWorkloadPct] = useState(80);
 
+  // Treasury-specific conditions
+  const [treasuryState, setTreasuryState] = useState<TreasuryConditionsState>(EMPTY_TREASURY_STATE);
+
   // JSON editor — separate errors per field (#11 fix)
   const [useJsonEditor, setUseJsonEditor] = useState(false);
   const [conditionsJson, setConditionsJson] = useState('{}');
@@ -95,6 +100,7 @@ export default function EditRulePage() {
     setMinAmount(c.min_amount !== undefined ? String(c.min_amount) : '');
     setMaxAmount(c.max_amount !== undefined ? String(c.max_amount) : '');
     setMinPriority(c.min_priority !== undefined ? String(c.min_priority) : '');
+    setTreasuryState(extractTreasuryState(c));
 
     const a = rule.actions || {};
     setStrategy(a.selection_strategy || 'load_balance');
@@ -107,9 +113,10 @@ export default function EditRulePage() {
 
   // Derived
   const selectedEntity = filteredEntities.find((e) => e.code === entityCode);
+  const entityType = selectedEntity?.entity_type || rule?.entity_type || '';
   const availableWorkflows = selectedEntity?.workflow_codes || [];
 
-  // Reset workflows when entity changes (#13 fix — same as create page)
+  // Reset workflows + treasury when entity changes (#13 fix — same as create page)
   const [entityInitialized, setEntityInitialized] = useState(false);
   useEffect(() => {
     if (!entityInitialized && rule) {
@@ -119,11 +126,12 @@ export default function EditRulePage() {
     if (entityInitialized) {
       setSelectedWorkflows([]);
       setActionSpecializations([]);
+      setTreasuryState(EMPTY_TREASURY_STATE);
     }
   }, [entityCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build current values
-  const currentConditions = buildConditions(useJsonEditor, conditionsJson, selectedWorkflows, minAmount, maxAmount, minPriority);
+  const currentConditions = buildConditions(useJsonEditor, conditionsJson, selectedWorkflows, minAmount, maxAmount, minPriority, treasuryState);
   const currentActions = buildActions(useJsonEditor, actionsJson, strategy, actionSpecializations, maxWorkloadPct);
 
   const handleJsonChange = useCallback((field: 'conditions' | 'actions', value: string) => {
@@ -291,6 +299,7 @@ export default function EditRulePage() {
           selectedWorkflows={selectedWorkflows}
           toggleWorkflow={toggleWorkflow}
           entityCode={entityCode}
+          entityType={entityType}
           minAmount={minAmount}
           setMinAmount={setMinAmount}
           maxAmount={maxAmount}
@@ -299,6 +308,8 @@ export default function EditRulePage() {
           setMinPriority={setMinPriority}
           currentConditions={currentConditions}
           currentActions={currentActions}
+          treasuryState={treasuryState}
+          onTreasuryChange={setTreasuryState}
         />
 
         {/* Actions — Shared Component */}

@@ -148,9 +148,17 @@ export default function AssignmentRulesPage() {
     if (conditions.item_types?.length) {
       parts.push(`${t('workflowTypes')}: ${conditions.item_types.length}`);
     }
+    if (conditions.payment_methods?.length) {
+      parts.push(`${t('paymentMethod')}: ${conditions.payment_methods.length}`);
+    }
+    if (conditions.payment_types?.length) {
+      parts.push(`${t('paymentType')}: ${conditions.payment_types.length}`);
+    }
+    if (conditions.has_penalties) parts.push(t('hasPenalties'));
     if (conditions.min_amount !== undefined) parts.push(`Min: ${conditions.min_amount.toLocaleString()} XAF`);
     if (conditions.max_amount !== undefined) parts.push(`Max: ${conditions.max_amount.toLocaleString()} XAF`);
     if (conditions.min_priority !== undefined) parts.push(`${t('priority')} >= ${conditions.min_priority}`);
+    if (conditions.entity_location_id) parts.push(t('entityLocation'));
     return parts.join(' | ') || t('noConditions');
   };
 

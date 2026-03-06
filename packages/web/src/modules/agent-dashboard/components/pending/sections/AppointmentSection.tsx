@@ -8,7 +8,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,14 +73,8 @@ export function AppointmentSection({
     }
   };
 
-  // Load slots when scheduling mode is activated or location changes
-  useEffect(() => {
-    if (isScheduling) {
-      loadSlots();
-    }
-  }, [isScheduling, selectedLocationId, weekOffset]);
-
-  const loadSlots = async () => {
+  // Load slots — wrapped in useCallback so useEffect can depend on it
+  const loadSlots = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await agentAppointmentsApi.getSlotsDetailed(
@@ -100,7 +94,14 @@ export function AppointmentSection({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [entityCode, weekOffset, selectedLocationId, t]);
+
+  // Load slots when scheduling mode is activated or location changes
+  useEffect(() => {
+    if (isScheduling) {
+      loadSlots();
+    }
+  }, [isScheduling, loadSlots]);
 
   // Get available times for selected date
   const getAvailableTimes = (): SlotTimeDetail[] => {

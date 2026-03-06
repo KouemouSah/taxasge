@@ -88,7 +88,7 @@ export function AgentBatchList({ entityCode, basePath }: AgentBatchListProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [entityCode, statusFilter, debouncedSearch, page])
+  }, [entityCode, statusFilter, debouncedSearch, page, tBatch])
 
   useEffect(() => { fetchBatches() }, [fetchBatches])
 

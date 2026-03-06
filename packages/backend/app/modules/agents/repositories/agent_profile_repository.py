@@ -207,7 +207,11 @@ class AgentProfileRepository:
                     SELECT me.code FROM entities me
                     WHERE me.ministry_id = COALESCE(e.ministry_id, ap.ministry_id)
                     AND me.is_active = true
-                ) as ministry_entities
+                ) as ministry_entities,
+                el.location_name,
+                el.city as location_city,
+                el.region as location_region,
+                COALESCE(el.is_main_office, false) as is_main_office
             FROM agent_profiles ap
             JOIN users u ON ap.user_id = u.id
             LEFT JOIN entities e ON ap.entity_id = e.id
@@ -215,6 +219,7 @@ class AgentProfileRepository:
             -- Ministry: prefer entity's ministry over direct assignment (entity is source of truth)
             LEFT JOIN ministries m ON COALESCE(e.ministry_id, ap.ministry_id) = m.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id
+            LEFT JOIN entity_locations el ON ap.entity_location_id = el.id
         """
 
         if profile_id:
@@ -406,6 +411,7 @@ class AgentProfileRepository:
                 el.location_name as location_name,
                 el.city as location_city,
                 el.region as location_region,
+                COALESCE(el.is_main_office, false) as is_main_office,
                 m.ministry_code,
                 m.name_es as ministry_name,
                 -- Agent category: use entity code dynamically (lowercase)

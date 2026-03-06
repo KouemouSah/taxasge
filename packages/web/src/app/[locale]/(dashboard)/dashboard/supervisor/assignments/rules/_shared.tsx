@@ -10,6 +10,7 @@
  * - Consistent use of apiClient (not fetchClient)
  * - Entity scoping via useAgentProfile
  * - Proper i18n via useTranslations
+ * - Treasury-specific conditions (payment_methods, payment_types, has_penalties, entity_location)
  */
 
 import React, { useMemo } from 'react';
@@ -23,10 +24,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Code, Info, X, Eye } from 'lucide-react';
+import { Code, Info, X, Eye, Banknote } from 'lucide-react';
 import apiClient from '@/core/api/client';
 import type { RuleConditions, RuleActions } from '../../types';
 import { useAgentProfile } from '@/modules/agent-dashboard/hooks/useAgentDashboard';
@@ -39,6 +41,30 @@ export interface Entity {
   entity_type: string; // from backend EntityResponse — NOT guessed
   workflow_codes: string[];
 }
+
+export interface EntityLocation {
+  id: string;
+  location_name: string;
+  city: string;
+  is_active: boolean;
+}
+
+// Treasury constants
+const PAYMENT_METHODS = [
+  { value: 'cash', labelKey: 'paymentMethodCash' },
+  { value: 'bank_transfer', labelKey: 'paymentMethodTransfer' },
+  { value: 'mobile_money', labelKey: 'paymentMethodMobile' },
+  { value: 'card', labelKey: 'paymentMethodCard' },
+  { value: 'bange_wallet', labelKey: 'paymentMethodBange' },
+  { value: 'check', labelKey: 'paymentMethodCheck' },
+] as const;
+
+const PAYMENT_TYPES = [
+  { value: 'full', labelKey: 'paymentTypeFull' },
+  { value: 'partial', labelKey: 'paymentTypePartial' },
+  { value: 'installment', labelKey: 'paymentTypeInstallment' },
+  { value: 'complementary', labelKey: 'paymentTypeComplementary' },
+] as const;
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
@@ -78,6 +104,23 @@ export function useSupervisorEntities(entities: Entity[]) {
   return { filteredEntities, supervisorEntityCode };
 }
 
+/** Fetch entity locations for a given entity code. */
+export function useEntityLocations(entityCode: string) {
+  return useQuery<EntityLocation[]>({
+    queryKey: ['entity-locations', entityCode],
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get(`/entity-locations/by-entity/${entityCode}`);
+        const data = res.data;
+        const items = Array.isArray(data) ? data : (data?.items || data?.locations || []);
+        return items.filter((loc: EntityLocation) => loc.is_active);
+      } catch { return []; }
+    },
+    enabled: !!entityCode,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 /**
  * Preview count: uses the backend's server-side count from assignable-items.
  * Only filters by entity_code + workflow_code (the fields actually returned).
@@ -114,6 +157,8 @@ export function buildConditions(
   minAmount: string,
   maxAmount: string,
   minPriority: string,
+  // Treasury-specific
+  treasuryState?: TreasuryConditionsState,
 ): RuleConditions {
   if (useJsonEditor) {
     try { return JSON.parse(conditionsJson); } catch { return {}; }
@@ -123,6 +168,13 @@ export function buildConditions(
   if (minAmount) c.min_amount = parseFloat(minAmount);
   if (maxAmount) c.max_amount = parseFloat(maxAmount);
   if (minPriority) c.min_priority = parseInt(minPriority, 10);
+  // Treasury-specific conditions
+  if (treasuryState) {
+    if (treasuryState.paymentMethods.length > 0) c.payment_methods = treasuryState.paymentMethods;
+    if (treasuryState.paymentTypes.length > 0) c.payment_types = treasuryState.paymentTypes;
+    if (treasuryState.hasPenalties) c.has_penalties = true;
+    if (treasuryState.entityLocationId) c.entity_location_id = treasuryState.entityLocationId;
+  }
   return c;
 }
 
@@ -142,6 +194,32 @@ export function buildActions(
   return a;
 }
 
+// ─── Treasury conditions state ──────────────────────────────────────────────
+
+export interface TreasuryConditionsState {
+  paymentMethods: string[];
+  paymentTypes: string[];
+  hasPenalties: boolean;
+  entityLocationId: string;
+}
+
+export const EMPTY_TREASURY_STATE: TreasuryConditionsState = {
+  paymentMethods: [],
+  paymentTypes: [],
+  hasPenalties: false,
+  entityLocationId: '',
+};
+
+/** Extract treasury state from RuleConditions (for edit page initialization). */
+export function extractTreasuryState(conditions: RuleConditions): TreasuryConditionsState {
+  return {
+    paymentMethods: conditions.payment_methods || [],
+    paymentTypes: conditions.payment_types || [],
+    hasPenalties: conditions.has_penalties || false,
+    entityLocationId: conditions.entity_location_id || '',
+  };
+}
+
 // ─── Shared Form Components ─────────────────────────────────────────────────
 
 interface ConditionsBuilderProps {
@@ -156,6 +234,7 @@ interface ConditionsBuilderProps {
   selectedWorkflows: string[];
   toggleWorkflow: (wf: string) => void;
   entityCode: string;
+  entityType: string;
   minAmount: string;
   setMinAmount: (v: string) => void;
   maxAmount: string;
@@ -165,15 +244,22 @@ interface ConditionsBuilderProps {
   // For syncing JSON when toggling
   currentConditions: RuleConditions;
   currentActions: RuleActions;
+  // Treasury-specific
+  treasuryState: TreasuryConditionsState;
+  onTreasuryChange: (state: TreasuryConditionsState) => void;
 }
 
 export function ConditionsBuilder({
   t, useJsonEditor, setUseJsonEditor,
   conditionsJson, onJsonChange, conditionsJsonError,
-  availableWorkflows, selectedWorkflows, toggleWorkflow, entityCode,
+  availableWorkflows, selectedWorkflows, toggleWorkflow, entityCode, entityType,
   minAmount, setMinAmount, maxAmount, setMaxAmount, minPriority, setMinPriority,
   currentConditions, currentActions,
+  treasuryState, onTreasuryChange,
 }: ConditionsBuilderProps) {
+  const isTreasury = entityType === 'treasury';
+  const { data: locations = [] } = useEntityLocations(isTreasury ? entityCode : '');
+
   return (
     <Card className="mt-4">
       <CardHeader>
@@ -212,35 +298,51 @@ export function ConditionsBuilder({
           </div>
         ) : (
           <div className="space-y-4">
-            {availableWorkflows.length > 0 ? (
-              <div className="space-y-2">
-                <Label>{t('workflowTypes')}</Label>
-                <div className="flex flex-wrap gap-2">
-                  {availableWorkflows.map((wf) => (
-                    <Badge
-                      key={wf}
-                      variant={selectedWorkflows.includes(wf) ? 'default' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => toggleWorkflow(wf)}
-                    >
-                      {wf.replace(/_/g, ' ')}
-                      {selectedWorkflows.includes(wf) && <X className="h-3 w-3 ml-1" />}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {selectedWorkflows.length === 0
-                    ? t('noWorkflowSelected')
-                    : `${selectedWorkflows.length} ${t('selected')}`}
-                </p>
-              </div>
-            ) : entityCode ? (
-              <div className="flex items-start gap-2 p-3 bg-muted rounded-md">
-                <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">{t('entityNoWorkflows')}</p>
-              </div>
-            ) : null}
+            {/* Workflow types — only for non-treasury entities */}
+            {!isTreasury && (
+              <>
+                {availableWorkflows.length > 0 ? (
+                  <div className="space-y-2">
+                    <Label>{t('workflowTypes')}</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {availableWorkflows.map((wf) => (
+                        <Badge
+                          key={wf}
+                          variant={selectedWorkflows.includes(wf) ? 'default' : 'outline'}
+                          className="cursor-pointer"
+                          onClick={() => toggleWorkflow(wf)}
+                        >
+                          {wf.replace(/_/g, ' ')}
+                          {selectedWorkflows.includes(wf) && <X className="h-3 w-3 ml-1" />}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedWorkflows.length === 0
+                        ? t('noWorkflowSelected')
+                        : `${selectedWorkflows.length} ${t('selected')}`}
+                    </p>
+                  </div>
+                ) : entityCode ? (
+                  <div className="flex items-start gap-2 p-3 bg-muted rounded-md">
+                    <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">{t('entityNoWorkflows')}</p>
+                  </div>
+                ) : null}
+              </>
+            )}
 
+            {/* Treasury-specific conditions */}
+            {isTreasury && entityCode && (
+              <TreasuryConditionsSection
+                t={t}
+                state={treasuryState}
+                onChange={onTreasuryChange}
+                locations={locations}
+              />
+            )}
+
+            {/* Common conditions: amount + priority */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>{t('minAmount')}</Label>
@@ -277,6 +379,126 @@ export function ConditionsBuilder({
     </Card>
   );
 }
+
+// ─── Treasury Conditions Section ────────────────────────────────────────────
+
+interface TreasuryConditionsSectionProps {
+  t: (key: string) => string;
+  state: TreasuryConditionsState;
+  onChange: (state: TreasuryConditionsState) => void;
+  locations: EntityLocation[];
+}
+
+function TreasuryConditionsSection({ t, state, onChange, locations }: TreasuryConditionsSectionProps) {
+  const togglePaymentMethod = (method: string) => {
+    const next = state.paymentMethods.includes(method)
+      ? state.paymentMethods.filter((m) => m !== method)
+      : [...state.paymentMethods, method];
+    onChange({ ...state, paymentMethods: next });
+  };
+
+  const togglePaymentType = (type: string) => {
+    const next = state.paymentTypes.includes(type)
+      ? state.paymentTypes.filter((t) => t !== type)
+      : [...state.paymentTypes, type];
+    onChange({ ...state, paymentTypes: next });
+  };
+
+  return (
+    <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20 p-4">
+      <div className="flex items-center gap-2">
+        <Banknote className="h-4 w-4 text-amber-600" />
+        <Label className="font-semibold text-amber-800 dark:text-amber-400">{t('treasuryConditions')}</Label>
+      </div>
+      <p className="text-xs text-muted-foreground">{t('treasuryConditionsHelp')}</p>
+
+      {/* Payment Methods */}
+      <div className="space-y-2">
+        <Label className="text-sm">{t('paymentMethod')}</Label>
+        <div className="flex flex-wrap gap-2">
+          {PAYMENT_METHODS.map(({ value, labelKey }) => (
+            <Badge
+              key={value}
+              variant={state.paymentMethods.includes(value) ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => togglePaymentMethod(value)}
+            >
+              {t(labelKey)}
+              {state.paymentMethods.includes(value) && <X className="h-3 w-3 ml-1" />}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {state.paymentMethods.length === 0
+            ? t('noPaymentMethodSelected')
+            : `${state.paymentMethods.length} ${t('selected')}`}
+        </p>
+      </div>
+
+      {/* Payment Types */}
+      <div className="space-y-2">
+        <Label className="text-sm">{t('paymentType')}</Label>
+        <div className="flex flex-wrap gap-2">
+          {PAYMENT_TYPES.map(({ value, labelKey }) => (
+            <Badge
+              key={value}
+              variant={state.paymentTypes.includes(value) ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => togglePaymentType(value)}
+            >
+              {t(labelKey)}
+              {state.paymentTypes.includes(value) && <X className="h-3 w-3 ml-1" />}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {state.paymentTypes.length === 0
+            ? t('noPaymentTypeSelected')
+            : `${state.paymentTypes.length} ${t('selected')}`}
+        </p>
+      </div>
+
+      {/* Has Penalties */}
+      <div className="flex items-center gap-3">
+        <Checkbox
+          id="has-penalties"
+          checked={state.hasPenalties}
+          onCheckedChange={(checked) => onChange({ ...state, hasPenalties: !!checked })}
+        />
+        <div>
+          <Label htmlFor="has-penalties" className="text-sm cursor-pointer">{t('hasPenalties')}</Label>
+          <p className="text-xs text-muted-foreground">{t('hasPenaltiesHelp')}</p>
+        </div>
+      </div>
+
+      {/* Entity Location */}
+      {locations.length > 0 && (
+        <div className="space-y-2">
+          <Label className="text-sm">{t('entityLocation')}</Label>
+          <Select
+            value={state.entityLocationId}
+            onValueChange={(v) => onChange({ ...state, entityLocationId: v === '_all' ? '' : v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t('allLocations')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">{t('allLocations')}</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.location_name} — {loc.city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">{t('entityLocationHelp')}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Actions Builder ────────────────────────────────────────────────────────
 
 interface ActionsBuilderProps {
   t: (key: string) => string;

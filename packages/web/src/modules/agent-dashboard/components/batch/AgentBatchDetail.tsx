@@ -108,7 +108,7 @@ export function AgentBatchDetail({ entityCode, batchId, basePath }: AgentBatchDe
     } finally {
       setIsLoading(false)
     }
-  }, [entityCode, batchId])
+  }, [entityCode, batchId, t])
 
   useEffect(() => { fetchDetail() }, [fetchDetail])
 

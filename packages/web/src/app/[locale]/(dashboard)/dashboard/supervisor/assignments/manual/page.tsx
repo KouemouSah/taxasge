@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback } from 'react'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -58,7 +58,8 @@ import {
   User,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { fetchClient } from '@/core/api'
+import apiClient from '@/core/api/client'
+import { useAgentProfile } from '@/modules/agent-dashboard/hooks/useAgentDashboard'
 import { formatDistanceToNow } from 'date-fns'
 import { es, fr, enUS } from 'date-fns/locale'
 
@@ -116,21 +117,22 @@ const dateLocales: Record<string, typeof es> = { es, fr, en: enUS }
 
 async function fetchAssignableItems(
   tab: TabValue,
-  entityCode: string,
+  locationId: string,
   search: string,
   page: number
 ): Promise<AssignableItemsResponse> {
   const params: Record<string, string | number> = { tab, page, page_size: 20 }
-  if (entityCode) params.entity_code = entityCode
+  if (locationId) params.entity_location_id = locationId
   if (search) params.search = search
-  return fetchClient.get<AssignableItemsResponse>('/assignments/assignable-items', params)
+  const res = await apiClient.get<AssignableItemsResponse>('/assignments/assignable-items', { params })
+  return res.data
 }
 
 async function fetchAgentsForEntity(entityCode: string): Promise<AvailableAgent[]> {
-  const res = await fetchClient.get<{ agents: AvailableAgent[] }>(
+  const res = await apiClient.get<{ agents: AvailableAgent[] }>(
     `/assignments/available-agents-for-item/${entityCode}`
   )
-  return res.agents
+  return res.data.agents
 }
 
 async function createManualAssignment(data: {
@@ -140,34 +142,48 @@ async function createManualAssignment(data: {
   priority_level: number
   notes?: string
 }) {
-  return fetchClient.post('/assignments/manual', data)
+  const res = await apiClient.post('/assignments/manual', data)
+  return res.data
 }
 
 async function reassignAssignment(
   assignmentId: string,
   data: { new_agent_profile_id: string; reason: string; notes?: string }
 ) {
-  return fetchClient.put(`/assignments/${assignmentId}/reassign`, data)
+  const res = await apiClient.put(`/assignments/${assignmentId}/reassign`, data)
+  return res.data
 }
 
 async function assignEscalation(requestId: string, agentProfileId: string) {
-  return fetchClient.post(`/supervisor/escalations/${requestId}/assign?agent_id=${agentProfileId}`)
+  const res = await apiClient.post(`/supervisor/escalations/${requestId}/assign?agent_id=${agentProfileId}`)
+  return res.data
 }
 
-// ─── Entities hook ───────────────────────────────────────────────────────────
+// ─── Hooks ───────────────────────────────────────────────────────────────────
 
-function useEntities() {
+interface EntityLocation {
+  id: string
+  entity_code: string
+  location_name: string
+  city: string
+  is_main_office: boolean
+}
+
+function useSupervisorLocations(entityCode: string | undefined) {
   return useQuery({
-    queryKey: ['entities-list'],
+    queryKey: ['entity-locations', entityCode],
     queryFn: async () => {
+      if (!entityCode) return []
       try {
-        const res = await fetchClient.get<{ items?: Array<{ code: string; name: string }> } | Array<{ code: string; name: string }>>('/entities/')
-        if (Array.isArray(res)) return res
-        return res.items || []
+        const res = await apiClient.get<EntityLocation[]>(
+          `/entity-locations/by-entity/${entityCode}`
+        )
+        return res.data
       } catch {
         return []
       }
     },
+    enabled: !!entityCode,
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -176,12 +192,14 @@ function useEntities() {
 
 export default function SmartAssignmentPage() {
   const locale = useLocale()
+  const t = useTranslations('supervisor.manual')
+  const tCommon = useTranslations('common')
   const dateLocale = dateLocales[locale] || enUS
   const queryClient = useQueryClient()
 
   // Tab & filter state
   const [activeTab, setActiveTab] = useState<TabValue>('unassigned')
-  const [entityFilter, setEntityFilter] = useState('')
+  const [locationFilter, setLocationFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
 
@@ -192,8 +210,15 @@ export default function SmartAssignmentPage() {
   const [priority, setPriority] = useState<PriorityPreset>('normal')
   const [notes, setNotes] = useState('')
 
-  // Entities for filter dropdown
-  const { data: entities = [] } = useEntities()
+  // Supervisor profile — to know entity_code and is_main_office
+  const { data: agentProfile } = useAgentProfile()
+  const supervisorEntityCode = agentProfile?.entity_code
+  const isMainOffice = agentProfile?.is_main_office ?? false
+
+  // Sites (entity_locations) for filter dropdown — only for main-office supervisors
+  const { data: locations = [] } = useSupervisorLocations(
+    isMainOffice ? supervisorEntityCode : undefined
+  )
 
   // Fetch items for current tab
   const {
@@ -202,8 +227,8 @@ export default function SmartAssignmentPage() {
     error: itemsError,
     refetch: refetchItems,
   } = useQuery({
-    queryKey: ['assignable-items', activeTab, entityFilter, searchQuery, page],
-    queryFn: () => fetchAssignableItems(activeTab, entityFilter, searchQuery, page),
+    queryKey: ['assignable-items', activeTab, locationFilter, searchQuery, page],
+    queryFn: () => fetchAssignableItems(activeTab, locationFilter, searchQuery, page),
   })
 
   // Fetch agents when dialog opens (by entity_code of selected item)
@@ -220,7 +245,7 @@ export default function SmartAssignmentPage() {
   // Mutations
   const assignMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedItem || !selectedAgentId) throw new Error('Datos incompletos')
+      if (!selectedItem || !selectedAgentId) throw new Error(t('incompleteData'))
 
       if (activeTab === 'escalated') {
         return assignEscalation(selectedItem.id, selectedAgentId)
@@ -242,13 +267,13 @@ export default function SmartAssignmentPage() {
     },
     onSuccess: () => {
       const actionLabel =
-        activeTab === 'active' ? 'Reasignado' : activeTab === 'escalated' ? 'Escalacion asignada' : 'Asignado'
+        activeTab === 'active' ? t('reassigned') : activeTab === 'escalated' ? t('escalationAssigned') : t('assigned')
       toast.success(`${actionLabel}: ${selectedItem?.reference}`)
       closeDialog()
       queryClient.invalidateQueries({ queryKey: ['assignable-items'] })
     },
     onError: (err: Error) => {
-      toast.error(err.message || 'Error al asignar')
+      toast.error(err.message || t('assignError'))
     },
   })
 
@@ -277,8 +302,8 @@ export default function SmartAssignmentPage() {
     setPage(1)
   }, [])
 
-  const handleEntityFilter = useCallback((value: string) => {
-    setEntityFilter(value === '_all' ? '' : value)
+  const handleLocationFilter = useCallback((value: string) => {
+    setLocationFilter(value === '_all' ? '' : value)
     setPage(1)
   }, [])
 
@@ -317,14 +342,12 @@ export default function SmartAssignmentPage() {
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">Centro de Asignaciones</h1>
-          <p className="text-sm text-muted-foreground">
-            Asignar, reasignar y gestionar escalaciones en 3 pasos
-          </p>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetchItems()}>
           <RefreshCw className="mr-2 h-4 w-4" />
-          Actualizar
+          {t('refresh')}
         </Button>
       </div>
 
@@ -333,7 +356,7 @@ export default function SmartAssignmentPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="unassigned" className="gap-2">
             <Inbox className="h-4 w-4" />
-            Sin Asignar
+            {t('tabUnassigned')}
             {tabCounts.unassigned !== null && (
               <Badge variant="secondary" className="ml-1 text-xs">
                 {tabCounts.unassigned}
@@ -342,7 +365,7 @@ export default function SmartAssignmentPage() {
           </TabsTrigger>
           <TabsTrigger value="escalated" className="gap-2">
             <AlertTriangle className="h-4 w-4" />
-            Escalaciones
+            {t('tabEscalations')}
             {tabCounts.escalated !== null && (
               <Badge variant="destructive" className="ml-1 text-xs">
                 {tabCounts.escalated}
@@ -351,7 +374,7 @@ export default function SmartAssignmentPage() {
           </TabsTrigger>
           <TabsTrigger value="active" className="gap-2">
             <ArrowRightLeft className="h-4 w-4" />
-            Reasignar
+            {t('tabReassign')}
             {tabCounts.active !== null && (
               <Badge variant="secondary" className="ml-1 text-xs">
                 {tabCounts.active}
@@ -365,25 +388,27 @@ export default function SmartAssignmentPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por referencia o nombre..."
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="pl-9"
             />
           </div>
-          <Select value={entityFilter || '_all'} onValueChange={handleEntityFilter}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Todas las entidades" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">Todas las entidades</SelectItem>
-              {entities.map((e) => (
-                <SelectItem key={e.code} value={e.code}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {isMainOffice && locations.length > 1 && (
+            <Select value={locationFilter || '_all'} onValueChange={handleLocationFilter}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder={t('allSites') || 'Todos los sitios'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">{t('allSites') || 'Todos los sitios'}</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.location_name} — {loc.city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Content for all tabs (same table structure) */}
@@ -392,9 +417,9 @@ export default function SmartAssignmentPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">
-                  {tab === 'unassigned' && 'Solicitudes sin agente asignado'}
-                  {tab === 'escalated' && 'Solicitudes escaladas por agentes'}
-                  {tab === 'active' && 'Solicitudes con agente asignado (reasignar)'}
+                  {tab === 'unassigned' && t('cardTitleUnassigned')}
+                  {tab === 'escalated' && t('cardTitleEscalated')}
+                  {tab === 'active' && t('cardTitleActive')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -408,7 +433,7 @@ export default function SmartAssignmentPage() {
                     <p>
                       {itemsError instanceof Error
                         ? itemsError.message
-                        : 'Error al cargar los datos'}
+                        : t('loadError')}
                     </p>
                     <Button
                       variant="outline"
@@ -416,16 +441,16 @@ export default function SmartAssignmentPage() {
                       className="mt-3"
                       onClick={() => refetchItems()}
                     >
-                      Reintentar
+                      {t('retry')}
                     </Button>
                   </div>
                 ) : items.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
                     <p className="font-medium">
-                      {tab === 'unassigned' && 'Todas las solicitudes estan asignadas'}
-                      {tab === 'escalated' && 'No hay escalaciones pendientes'}
-                      {tab === 'active' && 'No hay asignaciones activas'}
+                      {tab === 'unassigned' && t('emptyUnassigned')}
+                      {tab === 'escalated' && t('emptyEscalated')}
+                      {tab === 'active' && t('emptyActive')}
                     </p>
                   </div>
                 ) : (
@@ -434,14 +459,14 @@ export default function SmartAssignmentPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Referencia</TableHead>
-                            <TableHead>Tramite</TableHead>
-                            <TableHead>Entidad</TableHead>
-                            <TableHead>Solicitante</TableHead>
-                            {tab === 'active' && <TableHead>Agente actual</TableHead>}
-                            {tab === 'escalated' && <TableHead>Estado</TableHead>}
-                            <TableHead>Fecha</TableHead>
-                            <TableHead className="text-right">Accion</TableHead>
+                            <TableHead>{t('colReference')}</TableHead>
+                            <TableHead>{t('colWorkflow')}</TableHead>
+                            <TableHead>{t('colEntity')}</TableHead>
+                            <TableHead>{t('colApplicant')}</TableHead>
+                            {tab === 'active' && <TableHead>{t('colCurrentAgent')}</TableHead>}
+                            {tab === 'escalated' && <TableHead>{tCommon('status')}</TableHead>}
+                            <TableHead>{t('colDate')}</TableHead>
+                            <TableHead className="text-right">{t('colAction')}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -478,8 +503,8 @@ export default function SmartAssignmentPage() {
                                     className="text-xs"
                                   >
                                     {item.assignment_state === 'pending'
-                                      ? 'Pendiente'
-                                      : 'En revision'}
+                                      ? t('statusPending')
+                                      : t('statusInReview')}
                                   </Badge>
                                 </TableCell>
                               )}
@@ -494,12 +519,12 @@ export default function SmartAssignmentPage() {
                                   {tab === 'active' ? (
                                     <>
                                       <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
-                                      Reasignar
+                                      {t('reassign')}
                                     </>
                                   ) : (
                                     <>
                                       <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                                      Asignar
+                                      {t('assign')}
                                     </>
                                   )}
                                 </Button>
@@ -514,8 +539,7 @@ export default function SmartAssignmentPage() {
                     {totalPages > 1 && (
                       <div className="flex items-center justify-between mt-4">
                         <p className="text-sm text-muted-foreground">
-                          {total} resultado{total !== 1 ? 's' : ''} \u2014 Pagina {page} de{' '}
-                          {totalPages}
+                          {t('paginationResults', { total, page, totalPages })}
                         </p>
                         <div className="flex gap-2">
                           <Button
@@ -524,7 +548,7 @@ export default function SmartAssignmentPage() {
                             disabled={page <= 1}
                             onClick={() => setPage((p) => p - 1)}
                           >
-                            Anterior
+                            {t('previous')}
                           </Button>
                           <Button
                             variant="outline"
@@ -532,7 +556,7 @@ export default function SmartAssignmentPage() {
                             disabled={page >= totalPages}
                             onClick={() => setPage((p) => p + 1)}
                           >
-                            Siguiente
+                            {t('next')}
                           </Button>
                         </div>
                       </div>
@@ -550,7 +574,7 @@ export default function SmartAssignmentPage() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {activeTab === 'active' ? 'Reasignar solicitud' : 'Asignar solicitud'}
+              {activeTab === 'active' ? t('dialogTitleReassign') : t('dialogTitleAssign')}
             </DialogTitle>
             <DialogDescription>
               <span className="font-mono font-semibold">{selectedItem?.reference}</span>
@@ -564,19 +588,19 @@ export default function SmartAssignmentPage() {
           {/* Agent selection */}
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Seleccionar agente</label>
+              <label className="text-sm font-medium mb-2 block">{t('selectAgent')}</label>
               {loadingAgents ? (
                 <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="ml-2 text-sm text-muted-foreground">Cargando agentes...</span>
+                  <span className="ml-2 text-sm text-muted-foreground">{t('loadingAgents')}</span>
                 </div>
               ) : agentsError ? (
                 <div className="text-center py-4 text-sm text-destructive">
-                  Error al cargar agentes. Verifique que la entidad tiene agentes configurados.
+                  {t('agentsError')}
                 </div>
               ) : agents.length === 0 ? (
                 <div className="text-center py-6 text-sm text-muted-foreground">
-                  No hay agentes disponibles para{' '}
+                  {t('noAgentsAvailable')}{' '}
                   <span className="font-medium">{selectedItem?.entity_name}</span>
                 </div>
               ) : (
@@ -600,20 +624,20 @@ export default function SmartAssignmentPage() {
                           {agent.is_recommended && (
                             <Badge className="bg-green-100 text-green-700 text-[10px] px-1.5">
                               <Star className="h-3 w-3 mr-0.5" />
-                              Recomendado
+                              {t('recommended')}
                             </Badge>
                           )}
                           {agent.is_supervisor && (
                             <Badge variant="outline" className="text-[10px] px-1.5">
-                              Supervisor
+                              {t('supervisorBadge')}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {agent.current_assignments}/{agent.max_concurrent_assignments} asignaciones
+                          {agent.current_assignments}/{agent.max_concurrent_assignments} {t('assignments')}
                           {agent.success_rate !== null && (
                             <span className="ml-2">
-                              \u00b7 {agent.success_rate.toFixed(0)}% exito
+                              · {agent.success_rate.toFixed(0)}% {t('successRate')}
                             </span>
                           )}
                         </div>
@@ -636,7 +660,7 @@ export default function SmartAssignmentPage() {
             {/* Priority — only for new assignments (not escalations) */}
             {activeTab !== 'escalated' && (
               <div>
-                <label className="text-sm font-medium mb-2 block">Prioridad</label>
+                <label className="text-sm font-medium mb-2 block">{t('priority')}</label>
                 <div className="flex gap-2">
                   {(['normal', 'high', 'urgent'] as PriorityPreset[]).map((p) => (
                     <Button
@@ -647,9 +671,7 @@ export default function SmartAssignmentPage() {
                       className={priority === p ? PRIORITY_MAP[p].color : ''}
                       onClick={() => setPriority(p)}
                     >
-                      {p === 'normal' && 'Normal'}
-                      {p === 'high' && 'Alta'}
-                      {p === 'urgent' && 'Urgente'}
+                      {t(`priority_${p}`)}
                     </Button>
                   ))}
                 </div>
@@ -658,9 +680,9 @@ export default function SmartAssignmentPage() {
 
             {/* Notes */}
             <div>
-              <label className="text-sm font-medium mb-2 block">Notas (opcional)</label>
+              <label className="text-sm font-medium mb-2 block">{t('notesLabel')}</label>
               <Textarea
-                placeholder="Instrucciones para el agente..."
+                placeholder={t('notesPlaceholder')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
@@ -671,7 +693,7 @@ export default function SmartAssignmentPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>
-              Cancelar
+              {tCommon('cancel')}
             </Button>
             <Button
               onClick={() => assignMutation.mutate()}
@@ -684,7 +706,7 @@ export default function SmartAssignmentPage() {
               ) : (
                 <UserPlus className="mr-2 h-4 w-4" />
               )}
-              {activeTab === 'active' ? 'Confirmar reasignacion' : 'Confirmar asignacion'}
+              {activeTab === 'active' ? t('confirmReassign') : t('confirmAssign')}
             </Button>
           </DialogFooter>
         </DialogContent>

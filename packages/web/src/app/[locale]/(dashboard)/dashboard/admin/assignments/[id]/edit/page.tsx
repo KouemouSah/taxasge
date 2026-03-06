@@ -55,22 +55,28 @@ import {
   useUpdateAssignmentNotes,
 } from '@/modules/assignments-admin'
 
-// Priority descriptions
-const PRIORITY_LEVELS = [
-  { value: 1, label: 'Très basse', color: 'bg-gray-100 text-gray-800' },
-  { value: 2, label: 'Très basse', color: 'bg-gray-100 text-gray-800' },
-  { value: 3, label: 'Basse', color: 'bg-blue-100 text-blue-800' },
-  { value: 4, label: 'Normale', color: 'bg-green-100 text-green-800' },
-  { value: 5, label: 'Normale', color: 'bg-green-100 text-green-800' },
-  { value: 6, label: 'Moyenne', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 7, label: 'Haute', color: 'bg-orange-100 text-orange-800' },
-  { value: 8, label: 'Haute', color: 'bg-orange-100 text-orange-800' },
-  { value: 9, label: 'Urgente', color: 'bg-red-100 text-red-800' },
-  { value: 10, label: 'Critique', color: 'bg-red-200 text-red-900' },
+// Priority level keys map to i18n + color
+const PRIORITY_COLORS = [
+  'bg-gray-100 text-gray-800',   // 1
+  'bg-gray-100 text-gray-800',   // 2
+  'bg-blue-100 text-blue-800',   // 3
+  'bg-green-100 text-green-800', // 4
+  'bg-green-100 text-green-800', // 5
+  'bg-yellow-100 text-yellow-800', // 6
+  'bg-orange-100 text-orange-800', // 7
+  'bg-orange-100 text-orange-800', // 8
+  'bg-red-100 text-red-800',     // 9
+  'bg-red-200 text-red-900',     // 10
 ]
 
-function getPriorityInfo(level: number) {
-  return PRIORITY_LEVELS[Math.min(Math.max(level - 1, 0), 9)]
+const PRIORITY_LABEL_KEYS = [
+  'priorityVeryLow', 'priorityVeryLow', 'priorityLow', 'priorityNormal', 'priorityNormal',
+  'priorityMedium', 'priorityHigh', 'priorityHigh', 'priorityUrgent', 'priorityCritical',
+]
+
+function getPriorityInfo(level: number, t: (key: string) => string) {
+  const idx = Math.min(Math.max(level - 1, 0), 9)
+  return { value: level, label: t(PRIORITY_LABEL_KEYS[idx]), color: PRIORITY_COLORS[idx] }
 }
 
 export default function EditAssignmentPage() {
@@ -233,7 +239,7 @@ export default function EditAssignmentPage() {
     )
   }
 
-  const priorityInfo = getPriorityInfo(priorityLevel)
+  const priorityInfo = getPriorityInfo(priorityLevel, t)
   const currentDeadline = assignment.deadline ? new Date(assignment.deadline) : null
   const newDeadline =
     currentDeadline && additionalDays > 0
