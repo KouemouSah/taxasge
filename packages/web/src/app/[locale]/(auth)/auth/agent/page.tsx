@@ -185,11 +185,9 @@ export default function AgentAuthPage() {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
-          {/* Security Badge */}
+          {/* Logo Badge */}
           <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 border-4 border-primary/20">
-              <Shield className="h-10 w-10 text-primary" />
-            </div>
+            <Image src="/logo.png" alt="Facil" width={120} height={50} className="h-12 w-auto" />
           </div>
 
           {/* Auth Card */}

@@ -45,7 +45,7 @@ class PushTemplateCreate(BaseModel):
     click_action: Optional[str] = Field(None, max_length=500, description="Deep link or URL")
 
     data_payload: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Custom data payload")
-    variables: Optional[List[str]] = Field(default_factory=list, description="Template variables (e.g., ['user_name', 'amount'])")
+    variables: Optional[List[Any]] = Field(default_factory=list, description="Template variables: strings or objects {name, example, description}")
 
     platform: PlatformEnum = Field(default=PlatformEnum.ALL, description="Target platform")
     ttl_seconds: int = Field(default=86400, ge=0, le=2419200, description="Time to live in seconds (max 28 days)")
@@ -116,7 +116,7 @@ class PushTemplateUpdate(BaseModel):
     click_action: Optional[str] = Field(None, max_length=500)
 
     data_payload: Optional[Dict[str, Any]] = None
-    variables: Optional[List[str]] = None
+    variables: Optional[List[Any]] = None
 
     platform: Optional[PlatformEnum] = None
     ttl_seconds: Optional[int] = Field(None, ge=0, le=2419200)
@@ -157,7 +157,7 @@ class PushTemplateResponse(BaseModel):
     click_action: Optional[str]
 
     data_payload: Dict[str, Any]
-    variables: List[str]
+    variables: List[Any]  # Can be List[str] or List[Dict] (mixed format in DB)
 
     platform: PlatformEnum
     ttl_seconds: int

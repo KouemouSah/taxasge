@@ -39,9 +39,9 @@ class SmsTemplateCreate(BaseModel):
     content_fr: Optional[str] = Field(None, description="SMS content (French)")
     content_en: Optional[str] = Field(None, description="SMS content (English)")
 
-    variables: List[str] = Field(
+    variables: List[Any] = Field(
         default_factory=list,
-        description="List of variables used in template (e.g., ['user_name', 'code'])"
+        description="Template variables: strings or objects {name, example, description}"
     )
     category: SmsTemplateCategory = Field(..., description="Template category")
     max_segments: int = Field(
@@ -62,11 +62,17 @@ class SmsTemplateCreate(BaseModel):
 
     @field_validator('variables')
     @classmethod
-    def validate_variables(cls, v: List[str]) -> List[str]:
-        """Validate variable names"""
+    def validate_variables(cls, v: List[Any]) -> List[Any]:
+        """Validate variable entries (str or dict with 'name' key)"""
         for var in v:
-            if not var.isidentifier():
-                raise ValueError(f"Invalid variable name: {var}. Must be a valid identifier.")
+            if isinstance(var, str):
+                if not var.isidentifier():
+                    raise ValueError(f"Invalid variable name: {var}. Must be a valid identifier.")
+            elif isinstance(var, dict):
+                if 'name' not in var:
+                    raise ValueError(f"Variable dict must have a 'name' key: {var}")
+            else:
+                raise ValueError(f"Variable must be a string or dict, got {type(var)}")
         return v
 
     class Config:
@@ -97,7 +103,7 @@ class SmsTemplateUpdate(BaseModel):
     content_fr: Optional[str] = Field(None)
     content_en: Optional[str] = Field(None)
 
-    variables: Optional[List[str]] = Field(None)
+    variables: Optional[List[Any]] = Field(None)
     category: Optional[SmsTemplateCategory] = Field(None)
     max_segments: Optional[int] = Field(None, ge=1, le=10)
     is_active: Optional[bool] = Field(None)
@@ -112,12 +118,14 @@ class SmsTemplateUpdate(BaseModel):
 
     @field_validator('variables')
     @classmethod
-    def validate_variables(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """Validate variable names"""
+    def validate_variables(cls, v: Optional[List[Any]]) -> Optional[List[Any]]:
+        """Validate variable entries"""
         if v is not None:
             for var in v:
-                if not var.isidentifier():
+                if isinstance(var, str) and not var.isidentifier():
                     raise ValueError(f"Invalid variable name: {var}")
+                elif isinstance(var, dict) and 'name' not in var:
+                    raise ValueError(f"Variable dict must have a 'name' key: {var}")
         return v
 
 
@@ -133,7 +141,7 @@ class SmsTemplateResponse(BaseModel):
     content_fr: Optional[str]
     content_en: Optional[str]
 
-    variables: List[str]
+    variables: List[Any]  # Can be List[str] or List[Dict] (mixed format in DB)
     category: str
     max_segments: int
     is_active: bool

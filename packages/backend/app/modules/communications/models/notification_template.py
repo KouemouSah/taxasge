@@ -49,7 +49,7 @@ class NotificationTemplateCreate(BaseModel):
     # Notification settings
     icon: Optional[str] = Field(None, max_length=100, description="Lucide icon name")
     action_url: Optional[str] = Field(None, max_length=500, description="Action URL for notification")
-    variables: List[str] = Field(default_factory=list, description="Template variables (e.g., ['user_name', 'amount'])")
+    variables: List[Any] = Field(default_factory=list, description="Template variables: strings or objects {name, example, description}")
     notification_type: NotificationType = Field(default=NotificationType.INFO, description="Notification type")
     priority: NotificationPriority = Field(default=NotificationPriority.NORMAL, description="Notification priority")
     is_active: bool = Field(default=True, description="Whether template is active")
@@ -64,11 +64,15 @@ class NotificationTemplateCreate(BaseModel):
 
     @field_validator('variables')
     @classmethod
-    def validate_variables(cls, v: List[str]) -> List[str]:
-        """Validate variable names"""
+    def validate_variables(cls, v: List[Any]) -> List[Any]:
+        """Validate variable entries (str or dict with 'name' key)"""
         for var in v:
-            if not var.replace('_', '').isalnum():
-                raise ValueError(f'Variable name "{var}" must contain only alphanumeric characters and underscores')
+            if isinstance(var, str):
+                if not var.replace('_', '').isalnum():
+                    raise ValueError(f'Variable name "{var}" must contain only alphanumeric characters and underscores')
+            elif isinstance(var, dict):
+                if 'name' not in var:
+                    raise ValueError(f"Variable dict must have a 'name' key: {var}")
         return v
 
     class Config:
@@ -110,19 +114,21 @@ class NotificationTemplateUpdate(BaseModel):
 
     icon: Optional[str] = Field(None, max_length=100)
     action_url: Optional[str] = Field(None, max_length=500)
-    variables: Optional[List[str]] = Field(None)
+    variables: Optional[List[Any]] = Field(None)
     notification_type: Optional[NotificationType] = Field(None)
     priority: Optional[NotificationPriority] = Field(None)
     is_active: Optional[bool] = Field(None)
 
     @field_validator('variables')
     @classmethod
-    def validate_variables(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """Validate variable names"""
+    def validate_variables(cls, v: Optional[List[Any]]) -> Optional[List[Any]]:
+        """Validate variable entries"""
         if v is not None:
             for var in v:
-                if not var.replace('_', '').isalnum():
+                if isinstance(var, str) and not var.replace('_', '').isalnum():
                     raise ValueError(f'Variable name "{var}" must contain only alphanumeric characters and underscores')
+                elif isinstance(var, dict) and 'name' not in var:
+                    raise ValueError(f"Variable dict must have a 'name' key: {var}")
         return v
 
     class Config:
@@ -154,7 +160,7 @@ class NotificationTemplateResponse(BaseModel):
 
     icon: Optional[str]
     action_url: Optional[str]
-    variables: List[str]
+    variables: List[Any]
     notification_type: NotificationType
     priority: NotificationPriority
     is_active: bool
