@@ -359,12 +359,11 @@ class AutoAssignmentService:
             FROM service_requests
             LEFT JOIN LATERAL (
                 SELECT COUNT(*) as document_count
-                FROM uploaded_files
-                WHERE related_to_id = service_requests.id
-                  AND related_to_type = 'service_request'
+                FROM service_request_documents
+                WHERE service_request_id = service_requests.id
             ) docs ON true
             LEFT JOIN LATERAL (
-                SELECT COALESCE(SUM(amount), 0) as payment_amount
+                SELECT COALESCE(SUM(total_amount), 0) as payment_amount
                 FROM service_payments
                 WHERE service_request_id = service_requests.id
             ) pay ON true

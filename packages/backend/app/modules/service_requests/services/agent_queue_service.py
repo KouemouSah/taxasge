@@ -206,13 +206,12 @@ class AgentQueueService:
         row = await db.fetchrow("""
             SELECT
                 COALESCE(w.priority_weight, 50) AS wf_weight,
-                (SELECT COUNT(*) FROM uploaded_files uf
-                 WHERE uf.related_to_id = $1
-                   AND uf.related_to_type = 'service_request') AS doc_count,
+                (SELECT COUNT(*) FROM service_request_documents srd
+                 WHERE srd.service_request_id = $1) AS doc_count,
                 COALESCE(sp.total_amount, 0) AS amount
             FROM workflows w
             LEFT JOIN service_payments sp ON sp.service_request_id = $1
-                AND sp.status NOT IN ('cancelled', 'failed')
+                AND sp.workflow_status NOT IN ('cancelled', 'failed')
             WHERE w.code = $2
             LIMIT 1
         """, service_request_id, workflow_code)

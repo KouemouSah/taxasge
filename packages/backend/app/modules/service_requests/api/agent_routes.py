@@ -939,16 +939,15 @@ async def make_decision(
 
                 # Fetch uploaded documents
                 docs_rows = await db.fetch("""
-                    SELECT dt.name_es, dt.name_fr, uf.status
-                    FROM uploaded_files uf
-                    JOIN document_templates dt ON dt.code = uf.document_type
-                    WHERE uf.service_request_id = $1
+                    SELECT dt.name_es, dt.name_fr, srd.is_valid
+                    FROM service_request_documents srd
+                    LEFT JOIN document_templates dt ON dt.code = srd.document_code
+                    WHERE srd.service_request_id = $1
                 """, request_id)
 
                 documents = []
                 for doc in docs_rows:
-                    doc_status = doc.get('status', 'pending')
-                    is_verified = doc_status in ('verified', 'approved', 'validated')
+                    is_verified = doc.get('is_valid', False) is True
                     documents.append({
                         "name": doc['name_es'] or doc['name_fr'] or 'Document',
                         "status": "verified" if is_verified else "pending",
@@ -957,13 +956,12 @@ async def make_decision(
 
                 # Fetch tariff info
                 tariff_row = await db.fetchrow("""
-                    SELECT sp.total_amount, sp.status, fsd.expedicion_rate, fsd.renewal_rate
+                    SELECT sp.total_amount, sp.workflow_status as status
                     FROM service_payments sp
-                    LEFT JOIN fiscal_service_data fsd ON fsd.workflow_code = $2
                     WHERE sp.service_request_id = $1
                     ORDER BY sp.created_at DESC
                     LIMIT 1
-                """, request_id, workflow_code)
+                """, request_id)
 
                 tariff = {
                     "total_amount": str(tariff_row['total_amount']) if tariff_row and tariff_row['total_amount'] else "0",
@@ -990,12 +988,12 @@ async def make_decision(
                 # Agent info
                 agent_name = f"{current_user.first_name} {current_user.last_name}"
                 agent_entity_row = await db.fetchrow("""
-                    SELECT el.name FROM entity_locations el
-                    JOIN user_entity_assignments uea ON uea.entity_location_id = el.id
-                    WHERE uea.user_id = $1
+                    SELECT el.location_name FROM entity_locations el
+                    JOIN agent_profiles ap ON ap.entity_location_id = el.id
+                    WHERE ap.user_id = $1 AND ap.is_active = true
                     LIMIT 1
                 """, current_user.id)
-                agent_entity = agent_entity_row['name'] if agent_entity_row else 'DGI'
+                agent_entity = agent_entity_row['location_name'] if agent_entity_row else 'DGI'
 
                 # Get photo URL if available
                 photo_url = form_data.get('photo_url') or form_data.get('foto_url')
@@ -1003,7 +1001,7 @@ async def make_decision(
                 # Generate the PDF
                 pdf_service = SummaryPDFService()
                 pdf_bytes = await pdf_service.generate_validation_certificate(
-                    request_number=request['reference_number'],
+                    request_number=request['reference'],
                     workflow_name=workflow_name,
                     solicitud_type=solicitud_type,
                     personal_data=personal_data,
@@ -1017,7 +1015,7 @@ async def make_decision(
                 )
 
                 # Prepare attachment tuple: (filename, bytes, mime_type)
-                pdf_filename = f"certificat_validation_{request['reference_number']}.pdf"
+                pdf_filename = f"certificat_validation_{request['reference']}.pdf"
                 pdf_attachment = [(pdf_filename, pdf_bytes, "application/pdf")]
                 logger.info(f"Generated validation certificate PDF: {pdf_filename}")
 
@@ -1675,29 +1673,30 @@ async def validate_document(
     _=Depends(permission_required("service_request.review"))
 ):
     """Validate a document uploaded by a citizen."""
-    # Get document with user info
+    # Get document with user info from service_request_documents
     doc = await db.fetchrow("""
-        SELECT uf.id, uf.user_id, uf.document_type, uf.file_name, uf.validation_status,
+        SELECT srd.id, srd.uploaded_by as user_id, srd.document_code as document_type,
+               srd.file_name, srd.is_valid,
                u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language
-        FROM uploaded_files uf
-        JOIN users u ON u.id = uf.user_id
-        WHERE uf.id = $1
+        FROM service_request_documents srd
+        JOIN users u ON u.id = srd.uploaded_by
+        WHERE srd.id = $1::uuid
     """, document_id)
 
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if doc["validation_status"] == "validated":
+    if doc["is_valid"] is True:
         raise HTTPException(status_code=400, detail="Document already validated")
 
     # Update document status
     await db.execute("""
-        UPDATE uploaded_files
-        SET validation_status = 'validated',
+        UPDATE service_request_documents
+        SET is_valid = true,
             validated_at = NOW(),
-            validated_by = $2,
+            validated_by = $2::uuid,
             updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1::uuid
     """, document_id, str(current_user.id))
 
     # Publish DOCUMENT_VALIDATED event
@@ -1706,7 +1705,7 @@ async def validate_document(
             EventType.DOCUMENT_VALIDATED,
             {
                 "document_id": document_id,
-                "user_id": str(doc["user_id"]),
+                "user_id": str(doc["user_id"]) if doc["user_id"] else None,
                 "user_email": doc["email"],
                 "user_phone": doc["phone"],
                 "user_name": f"{doc['first_name'] or ''} {doc['last_name'] or ''}".strip(),
@@ -1736,30 +1735,31 @@ async def reject_document(
     _=Depends(permission_required("service_request.review"))
 ):
     """Reject a document uploaded by a citizen."""
-    # Get document with user info
+    # Get document with user info from service_request_documents
     doc = await db.fetchrow("""
-        SELECT uf.id, uf.user_id, uf.document_type, uf.file_name, uf.validation_status,
+        SELECT srd.id, srd.uploaded_by as user_id, srd.document_code as document_type,
+               srd.file_name, srd.is_valid,
                u.email, u.phone_number as phone, u.first_name, u.last_name, u.preferred_language
-        FROM uploaded_files uf
-        JOIN users u ON u.id = uf.user_id
-        WHERE uf.id = $1
+        FROM service_request_documents srd
+        JOIN users u ON u.id = srd.uploaded_by
+        WHERE srd.id = $1::uuid
     """, document_id)
 
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if doc["validation_status"] == "rejected":
+    if doc["is_valid"] is False and doc.get("validation_errors") is not None:
         raise HTTPException(status_code=400, detail="Document already rejected")
 
     # Update document status
     await db.execute("""
-        UPDATE uploaded_files
-        SET validation_status = 'rejected',
-            rejection_reason = $2,
+        UPDATE service_request_documents
+        SET is_valid = false,
+            validation_errors = jsonb_build_array(jsonb_build_object('reason', $2::text, 'agent', $3::text)),
             validated_at = NOW(),
-            validated_by = $3,
+            validated_by = $3::uuid,
             updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1::uuid
     """, document_id, body.reason, str(current_user.id))
 
     # Publish DOCUMENT_REJECTED event
@@ -2596,11 +2596,10 @@ async def get_request_preview(
 
     # Get documents (max 4 for preview)
     docs_query = """
-        SELECT id, document_type, file_name, file_url, validation_status
-        FROM uploaded_files
-        WHERE related_to_type = 'service_request'
-          AND related_to_id = $1
-        ORDER BY uploaded_at DESC
+        SELECT id, document_code, file_name, file_path, is_valid
+        FROM service_request_documents
+        WHERE service_request_id = $1
+        ORDER BY created_at DESC
         LIMIT 4
     """
     doc_rows = await db.fetch(docs_query, request_id)
@@ -2608,18 +2607,18 @@ async def get_request_preview(
     documents = [
         RequestPreviewDocument(
             id=str(d['id']),
-            code=d['document_type'] or 'unknown',
+            code=d['document_code'] or 'unknown',
             name=d['file_name'] or 'Document',
-            file_url=d['file_url'],
-            validation_status=d['validation_status'] or 'pending'
+            file_url=d['file_path'],
+            validation_status='validated' if d['is_valid'] is True else ('rejected' if d['is_valid'] is False else 'pending')
         )
         for d in doc_rows
     ]
 
     # Get total document count
     docs_count = await db.fetchval("""
-        SELECT COUNT(*) FROM uploaded_files
-        WHERE related_to_type = 'service_request' AND related_to_id = $1
+        SELECT COUNT(*) FROM service_request_documents
+        WHERE service_request_id = $1
     """, request_id)
 
     # Build appointment info
