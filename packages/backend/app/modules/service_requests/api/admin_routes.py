@@ -6120,7 +6120,7 @@ async def get_supervisor_overview(
         FROM agent_profiles ap
         LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
         WHERE ap.user_id = $1 AND ap.is_active = true
-    """, current_user["id"])
+    """, current_user.id)
     if agent_profile:
         is_main_office = agent_profile["is_main_office"] or False
         if not is_main_office:

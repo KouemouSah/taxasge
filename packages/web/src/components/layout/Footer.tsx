@@ -9,7 +9,6 @@ const Footer = () => {
   const locale = useLocale();
   const t = useTranslations('footer');
   const tNav = useTranslations('nav');
-  const tCommon = useTranslations('common');
 
   return (
     <footer className="border-t bg-muted/30">
@@ -19,7 +18,6 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <Image src="/logo.png" alt="Facil Logo" width={114} height={48} className="h-12 w-auto" />
-              <span className="text-lg font-bold">{tCommon('appName')}</span>
             </div>
             <p className="text-sm text-muted-foreground">{t('description')}</p>
           </div>

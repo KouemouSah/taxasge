@@ -176,7 +176,6 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
         <div className="flex h-16 items-center border-b px-6">
           <Link href={`/${locale}/dashboard`} className="flex items-center gap-2">
             <Image src="/logo.png" alt="Facil" width={76} height={32} className="h-8 w-auto" />
-            <span className="text-xl font-semibold">Facil</span>
           </Link>
         </div>
 

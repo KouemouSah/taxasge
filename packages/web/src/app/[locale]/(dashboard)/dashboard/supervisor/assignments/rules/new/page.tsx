@@ -30,6 +30,8 @@ import { toast } from 'sonner';
 import {
   useEntities, useSupervisorEntities, buildConditions, buildActions,
   ConditionsBuilder, ActionsBuilder, PreviewBanner,
+  EMPTY_TREASURY_STATE,
+  type TreasuryConditionsState,
 } from '../_shared';
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -52,14 +54,21 @@ export default function NewRulePage() {
   // Auto-fill entity from supervisor profile (once)
   const [entityAutoFilled, setEntityAutoFilled] = useState(false);
   useEffect(() => {
-    if (supervisorEntityCode && !entityAutoFilled && filteredEntities.length > 0) {
-      const match = filteredEntities.find((e) => e.code === supervisorEntityCode);
-      if (match) {
-        setEntityCode(match.code);
+    if (!entityAutoFilled && !entityCode && filteredEntities.length > 0) {
+      if (supervisorEntityCode) {
+        const match = filteredEntities.find((e) => e.code === supervisorEntityCode);
+        if (match) {
+          setEntityCode(match.code);
+          setEntityAutoFilled(true);
+        }
+      }
+      // If only one entity available, auto-select it
+      if (!entityAutoFilled && filteredEntities.length === 1) {
+        setEntityCode(filteredEntities[0].code);
         setEntityAutoFilled(true);
       }
     }
-  }, [supervisorEntityCode, entityAutoFilled, filteredEntities]);
+  }, [supervisorEntityCode, entityAutoFilled, entityCode, filteredEntities]);
 
   // Conditions state
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([]);
@@ -72,6 +81,9 @@ export default function NewRulePage() {
   const [actionSpecializations, setActionSpecializations] = useState<string[]>([]);
   const [maxWorkloadPct, setMaxWorkloadPct] = useState(80);
 
+  // Treasury-specific conditions
+  const [treasuryState, setTreasuryState] = useState<TreasuryConditionsState>(EMPTY_TREASURY_STATE);
+
   // JSON editor
   const [useJsonEditor, setUseJsonEditor] = useState(false);
   const [conditionsJson, setConditionsJson] = useState('{}');
@@ -81,16 +93,18 @@ export default function NewRulePage() {
 
   // Derived
   const selectedEntity = filteredEntities.find((e) => e.code === entityCode);
+  const entityType = selectedEntity?.entity_type || '';
   const availableWorkflows = selectedEntity?.workflow_codes || [];
 
-  // Reset workflows when entity changes
+  // Reset workflows + treasury state when entity changes
   useEffect(() => {
     setSelectedWorkflows([]);
     setActionSpecializations([]);
+    setTreasuryState(EMPTY_TREASURY_STATE);
   }, [entityCode]);
 
   // Build current values
-  const currentConditions = buildConditions(useJsonEditor, conditionsJson, selectedWorkflows, minAmount, maxAmount, minPriority);
+  const currentConditions = buildConditions(useJsonEditor, conditionsJson, selectedWorkflows, minAmount, maxAmount, minPriority, treasuryState);
   const currentActions = buildActions(useJsonEditor, actionsJson, strategy, actionSpecializations, maxWorkloadPct);
 
   // JSON change handler — separate error state per field (#11 fix)
@@ -250,6 +264,7 @@ export default function NewRulePage() {
           selectedWorkflows={selectedWorkflows}
           toggleWorkflow={toggleWorkflow}
           entityCode={entityCode}
+          entityType={entityType}
           minAmount={minAmount}
           setMinAmount={setMinAmount}
           maxAmount={maxAmount}
@@ -258,6 +273,8 @@ export default function NewRulePage() {
           setMinPriority={setMinPriority}
           currentConditions={currentConditions}
           currentActions={currentActions}
+          treasuryState={treasuryState}
+          onTreasuryChange={setTreasuryState}
         />
 
         {/* Actions — Shared Component */}

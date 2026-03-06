@@ -310,7 +310,15 @@ async def get_assignable_items(
                 )
                 if ent_row:
                     supervisor_entity_code = ent_row["code"]
-                    workflow_codes = ent_row["workflow_codes"] or []
+                    raw_wc = ent_row["workflow_codes"]
+                    # JSONB may return as string in some asyncpg versions — normalize to list
+                    if isinstance(raw_wc, str):
+                        import json
+                        try:
+                            raw_wc = json.loads(raw_wc)
+                        except (json.JSONDecodeError, TypeError):
+                            raw_wc = []
+                    workflow_codes = raw_wc if isinstance(raw_wc, list) and len(raw_wc) > 0 else []
                     if workflow_codes:
                         # Scope by workflow_codes (entity may handle multiple workflows)
                         base_conditions.append(f"sr.workflow_code = ANY(${param_idx}::text[])")

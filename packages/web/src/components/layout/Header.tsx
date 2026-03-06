@@ -12,7 +12,6 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const locale = useLocale();
   const t = useTranslations('nav');
-  const tCommon = useTranslations('common');
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -21,7 +20,6 @@ const Header = () => {
           {/* Logo */}
           <Link href={`/${locale}`} className="flex items-center space-x-3">
             <Image src="/logo.png" alt="Facil Logo" width={114} height={48} className="h-12 w-auto" />
-            <span className="hidden sm:block text-xl font-bold text-foreground">{tCommon('appName')}</span>
           </Link>
 
           {/* Desktop Navigation */}

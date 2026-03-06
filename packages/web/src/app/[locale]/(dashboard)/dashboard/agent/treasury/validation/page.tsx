@@ -584,19 +584,10 @@ export default function TreasuryValidationPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 px-4 md:px-6 lg:px-8 pb-3 shrink-0">
-        <div className="relative w-full lg:w-56">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t('validationPage.filters.searchPlaceholder')}
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-10 h-9"
-          />
-        </div>
+      {/* Filters — single row with search expanding */}
+      <div className="flex flex-wrap items-center gap-2 px-4 md:px-6 lg:px-8 pb-3 shrink-0">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-9">
+          <SelectTrigger className="h-9 w-[160px]">
             <SelectValue placeholder={t('validationPage.filters.workflowStatus')} />
           </SelectTrigger>
           <SelectContent>
@@ -608,7 +599,7 @@ export default function TreasuryValidationPage() {
           </SelectContent>
         </Select>
         <Select value={methodFilter} onValueChange={setMethodFilter}>
-          <SelectTrigger className="h-9">
+          <SelectTrigger className="h-9 w-[140px]">
             <SelectValue placeholder={t('validationPage.filters.paymentMethod')} />
           </SelectTrigger>
           <SelectContent>
@@ -619,7 +610,7 @@ export default function TreasuryValidationPage() {
           </SelectContent>
         </Select>
         <Select value={slaFilter} onValueChange={setSlaFilter}>
-          <SelectTrigger className="h-9">
+          <SelectTrigger className="h-9 w-[130px]">
             <SelectValue placeholder={t('validationPage.filters.slaStatus')} />
           </SelectTrigger>
           <SelectContent>
@@ -632,7 +623,7 @@ export default function TreasuryValidationPage() {
         </Select>
         {isMainOffice && locations && locations.length > 1 && (
           <Select value={locationFilter} onValueChange={(v) => { setLocationFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 w-[150px]">
               <SelectValue placeholder={t('validationPage.filters.location')} />
             </SelectTrigger>
             <SelectContent>
@@ -647,7 +638,7 @@ export default function TreasuryValidationPage() {
         )}
         {isSupervisor && treasuryAgents.length > 0 && (
           <Select value={agentFilter} onValueChange={(v) => { setAgentFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 w-[160px]">
               <UserCog className="h-3.5 w-3.5 mr-1 shrink-0" />
               <SelectValue placeholder={t('validationPage.filters.agent')} />
             </SelectTrigger>
@@ -661,6 +652,15 @@ export default function TreasuryValidationPage() {
             </SelectContent>
           </Select>
         )}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={t('validationPage.filters.searchPlaceholder')}
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-10 h-9"
+          />
+        </div>
       </div>
 
       {/* Error */}
