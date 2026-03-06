@@ -17,8 +17,12 @@
 -- PASAPORTE (5 workflows)
 -- ═══════════════════════════════════════════════════════════════
 
+-- NOTE: ALL pasaporte sub-types (renovacion, deterioro, perdida, robo) are stored
+-- as workflow_code='PASAPORTE_NUEVO' in service_requests. So this config must include
+-- ALL possible document columns. Fields for non-uploaded docs are filtered (null→skipped).
 UPDATE workflow_display_config SET list_columns = '[
   "dip.numero_dip", "dip.apellidos", "dip.nombres", "dip.natural_de", "dip.fecha_expiracion",
+  "pasaporte_antiguo.numero_pasaporte", "pasaporte_antiguo.apellidos", "pasaporte_antiguo.fecha_expiracion",
   "certificado_nacimiento.nombre", "certificado_nacimiento.primer_apellido",
   "certificado_nacimiento.lugar_nacimiento", "certificado_nacimiento.hijo_de", "certificado_nacimiento.y_de",
   "autorizacion_parental.nombre_completo", "autorizacion_parental.parentesco",

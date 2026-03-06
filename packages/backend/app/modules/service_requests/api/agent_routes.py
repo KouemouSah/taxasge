@@ -2365,54 +2365,8 @@ def _flatten_form_data(form_data: dict) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
-# SYSTEM COLUMN RESOLVERS REGISTRY
+# DISPLAY CONFIG → SPLIT-VIEW DATA SECTIONS
 # ═══════════════════════════════════════════════════════════════
-async def _build_composite_data(
-    form_data: dict,
-    request_id,
-    db: asyncpg.Connection,
-) -> dict:
-    """
-    Build composite data dict merging form_data (flat) with
-    service_request_documents.extraction_data (keyed by document_code).
-
-    Result structure:
-      {
-        "nombres": "...",           # flat form_data fields
-        "dip": {"numero_dip": ...}, # nested extraction_data per document
-        "permiso_residencia": {...},
-      }
-
-    Then _flatten_form_data() converts to:
-      {"nombres": "...", "dip.numero_dip": ..., "permiso_residencia.numero_nie": ...}
-    """
-    composite: Dict[str, Any] = dict(form_data) if form_data else {}
-
-    try:
-        doc_rows = await db.fetch("""
-            SELECT document_code, extraction_data
-            FROM service_request_documents
-            WHERE service_request_id = $1
-              AND extraction_data IS NOT NULL
-              AND extraction_data != '{}'::jsonb
-        """, request_id)
-
-        for doc_row in doc_rows:
-            doc_code = doc_row['document_code']
-            ext_data = doc_row['extraction_data']
-            if isinstance(ext_data, str):
-                ext_data = json.loads(ext_data)
-            # Filter out internal keys (_risk_analysis, etc.)
-            clean = {k: v for k, v in ext_data.items()
-                     if not k.startswith('_') and not isinstance(v, (dict, list))}
-            if clean:
-                composite[doc_code] = clean
-
-    except Exception as e:
-        logger.warning(f"Failed to load extraction_data for request={request_id}: {e}")
-
-    return composite
-
 
 # System columns shown elsewhere in the preview (header, payment, etc.)
 _SYSTEM_COLUMNS = {
@@ -2586,8 +2540,7 @@ async def _build_preview_data_sections(
     + composite data (form_data + extraction_data from DB).
 
     Architecture:
-    - display_config.list_columns defines WHICH columns to show (admin-configurable)
-    - _build_composite_data() merges form_data + OCR extraction_data per document
+    - Single query fetches display_config + extraction_data in 1 round-trip
     - Columns grouped by document prefix → titled sections
     - System columns (reference, fullName, etc.) excluded (shown elsewhere)
     - Null values filtered out → conditional docs (mineur, renovación) naturally handled
@@ -2595,25 +2548,51 @@ async def _build_preview_data_sections(
     Returns empty list on error (graceful degradation).
     """
     try:
-        from app.modules.menu_config.repositories.display_config_repository import (
-            DisplayConfigRepository,
-        )
+        # Single query: display_config + extraction_data in 1 round-trip
+        if request_id:
+            row = await db.fetchrow("""
+                SELECT
+                    wdc.list_columns,
+                    COALESCE(
+                        (SELECT jsonb_object_agg(srd.document_code, srd.extraction_data)
+                         FROM service_request_documents srd
+                         WHERE srd.service_request_id = $2
+                           AND srd.extraction_data IS NOT NULL
+                           AND srd.extraction_data != '{}'::jsonb),
+                        '{}'::jsonb
+                    ) as all_extractions
+                FROM workflow_display_config wdc
+                WHERE wdc.workflow_code = $1
+            """, workflow_code, request_id)
+        else:
+            row = await db.fetchrow("""
+                SELECT wdc.list_columns, '{}'::jsonb as all_extractions
+                FROM workflow_display_config wdc
+                WHERE wdc.workflow_code = $1
+            """, workflow_code)
 
-        repo = DisplayConfigRepository(db)
-        config = await repo.find_config_for_workflow(workflow_code)
-
-        if not config:
+        if not row:
             return []
 
-        configured_columns = config.get('list_columns', [])
-        if not configured_columns:
+        configured_columns = row['list_columns']
+        if not configured_columns or (isinstance(configured_columns, str) and configured_columns == '[]'):
             return []
+        if isinstance(configured_columns, str):
+            configured_columns = json.loads(configured_columns)
 
         # Build composite data (form_data + extraction_data per document)
-        if request_id:
-            composite = await _build_composite_data(form_data, request_id, db)
-        else:
-            composite = form_data or {}
+        all_extractions = row['all_extractions']
+        if isinstance(all_extractions, str):
+            all_extractions = json.loads(all_extractions)
+
+        composite: Dict[str, Any] = dict(form_data) if form_data else {}
+        for doc_code, ext_data in all_extractions.items():
+            if isinstance(ext_data, str):
+                ext_data = json.loads(ext_data)
+            clean = {k: v for k, v in ext_data.items()
+                     if not k.startswith('_') and not isinstance(v, (dict, list))}
+            if clean:
+                composite[doc_code] = clean
 
         # Flatten to dot-notation
         flat_data = _flatten_form_data(composite)
