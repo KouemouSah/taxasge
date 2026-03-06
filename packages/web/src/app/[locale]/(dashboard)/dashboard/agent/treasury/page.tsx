@@ -25,8 +25,16 @@ import {
   TrendingUp,
   AlertTriangle,
   RotateCcw,
+  MapPin,
 } from 'lucide-react';
-import { useTreasuryStats, useSupervisorOverview } from '@/modules/treasury/hooks';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useTreasuryStats, useSupervisorOverview, useTreasuryLocations } from '@/modules/treasury/hooks';
 import {
   CashFlowChart,
   AgentWorkloadPanel,
@@ -47,11 +55,13 @@ export default function TreasuryDashboardPage() {
   const { menuConfig, isLoading: menuLoading } = useMenuConfig();
 
   const [overviewDays, setOverviewDays] = useState(30);
+  const [locationFilter, setLocationFilter] = useState<string | undefined>(undefined);
+  const { data: locations } = useTreasuryLocations();
   const {
     data: overview,
     isLoading: overviewLoading,
     error: overviewError,
-  } = useSupervisorOverview(overviewDays);
+  } = useSupervisorOverview(overviewDays, locationFilter);
 
   const formatCurrency = useCallback((amount: number) => {
     const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ';
@@ -103,6 +113,25 @@ export default function TreasuryDashboardPage() {
             <TrendingUp className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-medium text-primary">{t('overview.supervisor')}</span>
           </div>
+          {overview?.isMainOffice && locations && locations.length > 1 && (
+            <Select
+              value={locationFilter ?? 'all'}
+              onValueChange={(v) => setLocationFilter(v === 'all' ? undefined : v)}
+            >
+              <SelectTrigger className="h-8 w-[180px]">
+                <MapPin className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue placeholder={t('overview.allLocations')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('overview.allLocations')}</SelectItem>
+                {locations.map((loc) => (
+                  <SelectItem key={loc.id} value={loc.id}>
+                    {loc.location_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Compact inline stats */}

@@ -487,6 +487,13 @@
       "currentAgent": "Current Agent",
       "normal": "Normal",
       "critical": "Critical",
+      "priorityVeryLow": "Very low",
+      "priorityLow": "Low",
+      "priorityNormal": "Normal",
+      "priorityMedium": "Medium",
+      "priorityHigh": "High",
+      "priorityUrgent": "Urgent",
+      "priorityCritical": "Critical",
       "manualAssignment": "Manual Assignment",
       "manualAssignmentDescription": "Assign an item to a specific agent",
       "autoAssignment": "Auto Assignment",
@@ -5643,7 +5650,8 @@
       "validateFailed": "Unable to validate the payment.",
       "rejectFailed": "Unable to reject the payment.",
       "unlockFailed": "Unable to unlock the payment.",
-      "escalateFailed": "Could not escalate the payment."
+      "escalateFailed": "Could not escalate the payment.",
+      "reassignFailed": "Could not reassign the payment."
     },
     "actions": {
       "goToValidation": "Go to Validation",
@@ -5656,8 +5664,14 @@
       "viewKPIs": "View KPIs",
       "viewAnalytics": "View Analytics"
     },
+    "statsNav": {
+      "kpis": "KPIs",
+      "agents": "Agents",
+      "sla": "SLA"
+    },
     "overview": {
       "supervisor": "Supervisor",
+      "allLocations": "All locations",
       "slaAlerts": "SLA Alerts",
       "slaAtRisk": "Payments at SLA risk",
       "cashFlow": "Revenue Flow",
@@ -5750,7 +5764,9 @@
         "warning": "Warning",
         "critical": "Critical",
         "breached": "Breached",
-        "allLocations": "All sites"
+        "allLocations": "All sites",
+        "agent": "Agent",
+        "allAgents": "All agents"
       },
       "table": {
         "reference": "Reference",
@@ -5812,7 +5828,18 @@
         "rejectReason": "Rejection reason (required)",
         "rejectReasonPlaceholder": "Enter the rejection reason...",
         "rejectConfirm": "Reject {count} Payment(s)"
-      }
+      },
+      "reassign": {
+        "title": "Reassign Payment",
+        "description": "Select the agent to reassign this payment to.",
+        "targetAgent": "Target agent",
+        "selectAgent": "Select agent...",
+        "reason": "Reason (optional)",
+        "reasonPlaceholder": "Provide a reason for reassignment...",
+        "confirm": "Reassign",
+        "button": "Reassign"
+      },
+      "reassignSuccess": "Payment reassigned to {agent}"
     },
     "detail": {
       "title": "Payment Detail",
@@ -5840,6 +5867,7 @@
       "beneficiary": "Beneficiary",
       "accountEmail": "Account Email",
       "accountHolder": "Account Holder",
+      "assignedAgent": "Assigned agent",
       "email": "Email Address",
       "timeline": "Timeline",
       "created": "Created",
@@ -6566,7 +6594,8 @@
       "readOnly": {
         "title": "Payment Gateway Status",
         "description": "Connectivity status view of payment gateways",
-        "adminContact": "To modify configuration, contact the system administrator."
+        "adminContact": "To modify configuration, contact the system administrator.",
+        "manageGateways": "Manage Gateways"
       }
     },
     "paymentMethodsPage": {
@@ -7840,7 +7869,83 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Describe what this rule does...",
       "deleteConfirmTitle": "Delete rule",
-      "deleteConfirmMessage": "Delete \"{name}\"? This action cannot be undone."
+      "deleteConfirmMessage": "Delete \"{name}\"? This action cannot be undone.",
+      "treasuryConditions": "Treasury Conditions",
+      "treasuryConditionsHelp": "Specific filters for payments managed by the National Treasury",
+      "paymentMethod": "Payment Method",
+      "paymentMethodCash": "Cash",
+      "paymentMethodTransfer": "Bank Transfer",
+      "paymentMethodMobile": "Mobile Money",
+      "paymentMethodCard": "Card",
+      "paymentMethodBange": "BANGE Wallet",
+      "paymentMethodCheck": "Check",
+      "noPaymentMethodSelected": "None = applies to all methods",
+      "paymentType": "Payment Type",
+      "paymentTypeFull": "Full payment",
+      "paymentTypePartial": "Partial payment",
+      "paymentTypeInstallment": "Installments",
+      "paymentTypeComplementary": "Complementary",
+      "noPaymentTypeSelected": "None = applies to all types",
+      "hasPenalties": "Only payments with penalties",
+      "hasPenaltiesHelp": "Assign only payments that include surcharges or fines",
+      "entityLocation": "Office/Site",
+      "entityLocationHelp": "Filter by Treasury office (agents at that site)",
+      "allLocations": "All offices"
+    },
+    "manual": {
+      "title": "Assignment Center",
+      "subtitle": "Assign, reassign and manage escalations in 3 steps",
+      "refresh": "Refresh",
+      "tabUnassigned": "Unassigned",
+      "tabEscalations": "Escalations",
+      "tabReassign": "Reassign",
+      "searchPlaceholder": "Search by reference or name...",
+      "allEntities": "All entities",
+      "cardTitleUnassigned": "Requests without assigned agent",
+      "cardTitleEscalated": "Requests escalated by agents",
+      "cardTitleActive": "Requests with assigned agent (reassign)",
+      "loadError": "Error loading data",
+      "retry": "Retry",
+      "emptyUnassigned": "All requests are assigned",
+      "emptyEscalated": "No pending escalations",
+      "emptyActive": "No active assignments",
+      "colReference": "Reference",
+      "colWorkflow": "Workflow",
+      "colEntity": "Entity",
+      "colApplicant": "Applicant",
+      "colCurrentAgent": "Current agent",
+      "colDate": "Date",
+      "colAction": "Action",
+      "statusPending": "Pending",
+      "statusInReview": "In review",
+      "reassign": "Reassign",
+      "assign": "Assign",
+      "paginationResults": "{total} result(s) — Page {page} of {totalPages}",
+      "previous": "Previous",
+      "next": "Next",
+      "dialogTitleReassign": "Reassign request",
+      "dialogTitleAssign": "Assign request",
+      "selectAgent": "Select agent",
+      "loadingAgents": "Loading agents...",
+      "agentsError": "Error loading agents. Verify that the entity has configured agents.",
+      "noAgentsAvailable": "No agents available for",
+      "recommended": "Recommended",
+      "supervisorBadge": "Supervisor",
+      "assignments": "assignments",
+      "successRate": "success",
+      "priority": "Priority",
+      "priority_normal": "Normal",
+      "priority_high": "High",
+      "priority_urgent": "Urgent",
+      "notesLabel": "Notes (optional)",
+      "notesPlaceholder": "Instructions for the agent...",
+      "confirmReassign": "Confirm reassignment",
+      "confirmAssign": "Confirm assignment",
+      "incompleteData": "Incomplete data",
+      "reassigned": "Reassigned",
+      "escalationAssigned": "Escalation assigned",
+      "assigned": "Assigned",
+      "assignError": "Assignment error"
     },
     "escalations": {
       "title": "Escalation Management",

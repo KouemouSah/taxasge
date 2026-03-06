@@ -745,6 +745,49 @@ async def slow_query_snapshot(
 
 
 # ============================================================================
+# PAYMENT ANOMALY DETECTION (daily)
+# ============================================================================
+
+@router.post(
+    "/payment-anomaly-detection",
+    summary="Run automatic payment anomaly detection",
+    description="""
+    Called by Cloud Scheduler once daily (e.g. 02:00 UTC).
+
+    Detects payment anomalies:
+    - SLA breaches: payments pending beyond SLA threshold
+    - Amount mismatches: declared vs expected amount discrepancies
+    - Duplicate payments: same user+amount+service within window
+    - Suspicious patterns: users with 5+ payments in 24 hours
+
+    Results are stored in payment_anomalies table for supervisor review.
+    """,
+)
+async def payment_anomaly_detection_cron(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Run scheduled payment anomaly detection."""
+    from app.modules.service_requests.services.treasury_anomaly_service import treasury_anomaly_service
+
+    try:
+        results = await treasury_anomaly_service.run_detection(db=db)
+        logger.info(
+            f"ANOMALY_DETECTION: found {results['anomalies_found']} anomalies "
+            f"({results.get('by_type', {})})"
+        )
+        return {
+            "message": "Payment anomaly detection completed",
+            "anomalies_found": results["anomalies_found"],
+            "by_type": results.get("by_type", {}),
+            "detected_at": results["detected_at"],
+        }
+    except Exception as e:
+        logger.error(f"Payment anomaly detection failed: {e}")
+        return {"message": "Payment anomaly detection failed", "error": str(e)}
+
+
+# ============================================================================
 # NLP INTENT CLASSIFIER RETRAIN (weekly, Sunday 02:00 UTC)
 # ============================================================================
 

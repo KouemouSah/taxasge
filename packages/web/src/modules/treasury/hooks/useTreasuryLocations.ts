@@ -5,7 +5,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import fetchClient from '@/core/api/fetchClient';
+import apiClient from '@/core/api/client';
 
 export interface TreasuryLocation {
   id: string;
@@ -17,9 +17,10 @@ export function useTreasuryLocations() {
   return useQuery<TreasuryLocation[]>({
     queryKey: ['treasury', 'locations'],
     queryFn: async () => {
-      return fetchClient.get<TreasuryLocation[]>(
+      const res = await apiClient.get<TreasuryLocation[]>(
         '/admin/service-requests/treasury/locations'
       );
+      return res.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

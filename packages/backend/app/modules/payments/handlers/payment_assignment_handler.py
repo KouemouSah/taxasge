@@ -148,10 +148,11 @@ class PaymentAssignmentHandler:
 
             agent_profile_id = assignment.agent_profile_id
 
-            # 4. Update service_payments with assigned agent
+            # 4. Update service_payments with assigned agent + assigned_at
             await conn.execute("""
                 UPDATE service_payments
                 SET assigned_agent_id = $1,
+                    assigned_at = NOW(),
                     updated_at = NOW()
                 WHERE id = $2::uuid
             """, agent_profile_id, payment_id)

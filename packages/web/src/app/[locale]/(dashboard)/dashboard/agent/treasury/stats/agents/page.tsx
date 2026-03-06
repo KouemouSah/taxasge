@@ -40,6 +40,7 @@ import {
   ProcessingTimeChart,
   VolumeTrendChart,
 } from '@/modules/treasury/components';
+import { StatsTabNav } from '../_components/StatsTabNav';
 
 type PeriodDays = 7 | 30 | 90;
 
@@ -56,6 +57,7 @@ export default function TreasuryWorkloadPage() {
 
   return (
     <div className="space-y-3">
+      <StatsTabNav />
       {/* Row 0: Header + KPIs */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">

@@ -298,14 +298,33 @@ export function usePaymentActions() {
     },
   });
 
+  // Reassign payment (supervisor only)
+  const reassignPayment = useMutation<
+    { success: boolean; targetAgentName: string },
+    Error,
+    { paymentId: string; targetAgentProfileId: string; reason?: string }
+  >({
+    mutationFn: ({ paymentId, targetAgentProfileId, reason }) =>
+      treasuryApi.reassignPayment(paymentId, targetAgentProfileId, reason),
+    onSuccess: (data) => {
+      invalidatePayments();
+      showSuccess(tTreasury('validationPage.reassignSuccess', { agent: data.targetAgentName }));
+    },
+    onError: (error) => {
+      showError(error, 'reassignFailed');
+    },
+  });
+
   return {
     // Single actions
     validatePayment,
     rejectPayment,
     escalatePayment,
+    reassignPayment,
     isValidating: validatePayment.isPending,
     isRejecting: rejectPayment.isPending,
     isEscalating: escalatePayment.isPending,
+    isReassigning: reassignPayment.isPending,
     // Batch actions
     validateBatch,
     rejectBatch,

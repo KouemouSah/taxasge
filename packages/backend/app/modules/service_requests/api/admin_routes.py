@@ -3132,6 +3132,9 @@ class PendingPaymentsListResponse(BaseModel):
     total: int
     page: int = 1
     page_size: int = 20
+    is_supervisor: bool = False
+    is_main_office: bool = False
+    treasury_agents: Optional[List[Dict[str, Any]]] = None
 
 
 class PaymentActionResponse(BaseModel):
@@ -3238,20 +3241,35 @@ async def get_pending_payments(
             params.append(date_to)
             param_idx += 1
 
-        # Agent-based filtering
+        # Agent-based filtering + is_main_office scoping
+        sup_profile = None
         if is_supervisor:
+            # Resolve is_main_office for auto-scoping site supervisors
+            sup_profile = await db.fetchrow("""
+                SELECT ap.entity_location_id, COALESCE(el.is_main_office, false) AS is_main_office
+                FROM agent_profiles ap
+                LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+                WHERE ap.user_id = $1::uuid AND ap.is_active = true
+            """, user_id)
+
+            effective_location_id = entity_location_id  # explicit filter from frontend
+            if sup_profile and not sup_profile["is_main_office"]:
+                # Site supervisor: always auto-scoped to their own TESORO location
+                effective_location_id = str(sup_profile["entity_location_id"]) if sup_profile["entity_location_id"] else None
+                logger.info(f"[Treasury] Site supervisor auto-scoped to location: {effective_location_id}")
+
             # Supervisor can filter by specific agent or see all
             if agent_profile_id:
                 where_clauses.append(f"sp.assigned_agent_id = ${param_idx}::uuid")
                 params.append(agent_profile_id)
                 param_idx += 1
                 logger.info(f"[Treasury] Supervisor filtering by agent_profile_id: {agent_profile_id}")
-            # Supervisor can optionally filter by location
-            if entity_location_id:
-                where_clauses.append(f"sr.entity_location_id = ${param_idx}::uuid")
-                params.append(entity_location_id)
+            # Filter by TESORO agent location (NOT sr.entity_location_id which is the workflow entity)
+            if effective_location_id:
+                where_clauses.append(f"assigned_ap.entity_location_id = ${param_idx}::uuid")
+                params.append(effective_location_id)
                 param_idx += 1
-                logger.info(f"[Treasury] Supervisor filtering by location: {entity_location_id}")
+                logger.info(f"[Treasury] Filtering by TESORO agent location: {effective_location_id}")
         else:
             # Regular agent sees only their assigned payments
             # (site scoping is handled by assignment routing — no need for sr.entity_location_id filter)
@@ -3304,14 +3322,15 @@ async def get_pending_payments(
                 COALESCE(
                     sr.form_data->>'nombre_completo',
                     NULLIF(TRIM(COALESCE(sr.form_data->>'apellidos', '') || ' ' || COALESCE(sr.form_data->>'nombres', '')), ''),
-                    NULLIF(TRIM(COALESCE(sr.form_data->>'propietario_apellidos', '') || ' ' || COALESCE(sr.form_data->>'propietario_nombres', '')), '')
+                    NULLIF(TRIM(COALESCE(sr.form_data->>'propietario_apellidos', '') || ' ' || COALESCE(sr.form_data->>'propietario_nombres', '')), ''),
+                    u.first_name || ' ' || u.last_name
                 ) AS beneficiary_name
             FROM service_payments sp
             LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
             LEFT JOIN users u ON u.id = sp.user_id
             LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
             LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
-            LEFT JOIN entity_locations el_site ON el_site.id = sr.entity_location_id
+            LEFT JOIN entity_locations el_site ON el_site.id = assigned_ap.entity_location_id
             LEFT JOIN batch_requests br ON br.id = sp.batch_id
             WHERE {where_sql}
             ORDER BY sp.created_at ASC
@@ -3323,10 +3342,11 @@ async def get_pending_payments(
         rows = await db.fetch(query, *params)
         logger.info(f"[Treasury] Found {len(rows)} payments")
 
-        # Get total count (must include same JOINs as main query for sr.* references in where_sql)
+        # Get total count (must include same JOINs as main query for where_sql references)
         count_query = f"""
             SELECT COUNT(*) FROM service_payments sp
             LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
+            LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
             WHERE {where_sql}
         """
         total = await db.fetchval(count_query, *params[:param_idx-1])
@@ -3381,11 +3401,44 @@ async def get_pending_payments(
 
         logger.info(f"[Treasury] Successfully built {len(payments)} payment responses")
 
+        # For supervisors, include agent list for reassign dropdown
+        # Site supervisors only see agents at their location
+        agents_list = None
+        if is_supervisor:
+            if sup_profile and not sup_profile["is_main_office"] and sup_profile["entity_location_id"]:
+                agent_rows = await db.fetch("""
+                    SELECT ap.id, u.full_name
+                    FROM agent_profiles ap
+                    JOIN users u ON u.id = ap.user_id
+                    JOIN entities e ON e.id = ap.entity_id
+                    WHERE e.code = 'TESORO' AND ap.is_active = true AND ap.is_supervisor = false
+                      AND ap.entity_location_id = $1::uuid
+                    ORDER BY u.full_name
+                """, str(sup_profile["entity_location_id"]))
+            else:
+                agent_rows = await db.fetch("""
+                    SELECT ap.id, u.full_name
+                    FROM agent_profiles ap
+                    JOIN users u ON u.id = ap.user_id
+                    JOIN entities e ON e.id = ap.entity_id
+                    WHERE e.code = 'TESORO' AND ap.is_active = true AND ap.is_supervisor = false
+                    ORDER BY u.full_name
+                """)
+            agents_list = [{"id": str(r["id"]), "name": r["full_name"]} for r in agent_rows]
+
+        # Resolve is_main_office for response (already computed for supervisors above)
+        resp_is_main_office = False
+        if is_supervisor and sup_profile:
+            resp_is_main_office = sup_profile["is_main_office"] or False
+
         response = PendingPaymentsListResponse(
             payments=payments,
             total=total or 0,
             page=page,
-            page_size=limit
+            page_size=limit,
+            is_supervisor=is_supervisor,
+            is_main_office=resp_is_main_office,
+            treasury_agents=agents_list,
         )
 
         logger.info(f"[Treasury] Returning response with {len(response.payments)} payments")
@@ -3468,7 +3521,7 @@ async def get_my_payment_escalations(
             LEFT JOIN users u ON u.id = sp.user_id
             LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
             LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
-            LEFT JOIN entity_locations el_site ON el_site.id = sr.entity_location_id
+            LEFT JOIN entity_locations el_site ON el_site.id = assigned_ap.entity_location_id
             LEFT JOIN batch_requests br ON br.id = sp.batch_id
             WHERE sp.assigned_agent_id = $1
               AND sp.escalated_to_agent_id IS NOT NULL
@@ -3518,11 +3571,25 @@ async def get_my_payment_escalations(
             )
             payments.append(payment)
 
+        # Resolve is_main_office for escalations response
+        esc_is_main_office = False
+        if is_supervisor:
+            esc_profile = await db.fetchrow("""
+                SELECT COALESCE(el.is_main_office, false) AS is_main_office
+                FROM agent_profiles ap
+                LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+                WHERE ap.id = $1::uuid
+            """, agent_profile_id)
+            if esc_profile:
+                esc_is_main_office = esc_profile["is_main_office"] or False
+
         return PendingPaymentsListResponse(
             payments=payments,
             total=total or 0,
             page=page,
-            page_size=limit
+            page_size=limit,
+            is_supervisor=is_supervisor,
+            is_main_office=esc_is_main_office,
         )
 
     except Exception as e:
@@ -3579,11 +3646,16 @@ async def get_payment_details(
             COALESCE(
                 sr.form_data->>'nombre_completo',
                 NULLIF(TRIM(COALESCE(sr.form_data->>'apellidos', '') || ' ' || COALESCE(sr.form_data->>'nombres', '')), ''),
-                NULLIF(TRIM(COALESCE(sr.form_data->>'propietario_apellidos', '') || ' ' || COALESCE(sr.form_data->>'propietario_nombres', '')), '')
-            ) AS beneficiary_name
+                NULLIF(TRIM(COALESCE(sr.form_data->>'propietario_apellidos', '') || ' ' || COALESCE(sr.form_data->>'propietario_nombres', '')), ''),
+                u.first_name || ' ' || u.last_name
+            ) AS beneficiary_name,
+            sp.assigned_agent_id,
+            COALESCE(assigned_user.full_name, assigned_user.first_name || ' ' || assigned_user.last_name) AS assigned_agent_name
         FROM service_payments sp
         LEFT JOIN service_requests sr ON sr.id = sp.service_request_id
         LEFT JOIN users u ON u.id = sp.user_id
+        LEFT JOIN agent_profiles assigned_ap ON assigned_ap.id = sp.assigned_agent_id
+        LEFT JOIN users assigned_user ON assigned_user.id = assigned_ap.user_id
         LEFT JOIN batch_requests br ON br.id = sp.batch_id
         WHERE sp.id = $1::uuid
     """
@@ -3619,6 +3691,8 @@ async def get_payment_details(
         batch_reference=row["batch_reference"],
         batch_total_items=row["batch_total_items"],
         beneficiary_name=row.get("beneficiary_name"),
+        assigned_agent_id=str(row["assigned_agent_id"]) if row["assigned_agent_id"] else None,
+        assigned_agent_name=row["assigned_agent_name"],
         escalation_level=row["escalation_level"],
         escalation_reason=row["escalation_reason"],
         escalated_at=row["escalated_at"].isoformat() if row["escalated_at"] else None,
@@ -4069,6 +4143,141 @@ async def reject_payment(
         status="rejected",
         message_es="Pago rechazado."
     )
+
+
+# ============================================================================
+# TREASURY PAYMENT REASSIGNMENT (Supervisor only)
+# ============================================================================
+
+
+class PaymentReassignRequest(BaseModel):
+    target_agent_profile_id: str = Field(..., description="Agent profile ID to reassign to")
+    reason: Optional[str] = Field(None, max_length=500, description="Reason for reassignment")
+
+
+@router.post(
+    "/treasury/payments/{payment_id}/reassign",
+    summary="Reassign payment to another treasury agent",
+    description="""
+    Supervisor-only: reassign a pending payment to a different Treasury agent.
+
+    Updates both:
+    - assignments table (agent_profile_id)
+    - service_payments table (assigned_agent_id, assigned_at)
+
+    **Permissions:** treasury.view_all (supervisor only)
+    """
+)
+async def reassign_payment(
+    payment_id: str = Path(..., description="Payment UUID"),
+    body: PaymentReassignRequest = ...,
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("treasury.view_all"))
+):
+    """Reassign a payment to another treasury agent."""
+    # Verify payment exists and is in actionable status
+    payment = await db.fetchrow(
+        "SELECT id, workflow_status, assigned_agent_id FROM service_payments WHERE id = $1::uuid",
+        payment_id
+    )
+    if not payment:
+        payment_not_found(payment_id)
+
+    if payment["workflow_status"] not in ("pending_agent_review", "escalated_supervisor"):
+        raise TreasuryError(
+            error_code=TreasuryErrorCode.INVALID_PAYMENT_STATUS,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail_override=f"Cannot reassign payment in status: {payment['workflow_status']}"
+        )
+
+    # Guard: prevent reassigning to the same agent
+    if payment["assigned_agent_id"] and str(payment["assigned_agent_id"]) == body.target_agent_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Payment is already assigned to this agent"
+        )
+
+    # Verify target agent is active TESORO agent
+    target = await db.fetchrow("""
+        SELECT ap.id, ap.user_id, u.full_name
+        FROM agent_profiles ap
+        JOIN users u ON u.id = ap.user_id
+        JOIN entities e ON e.id = ap.entity_id
+        WHERE ap.id = $1::uuid
+          AND ap.is_active = true
+          AND e.code = 'TESORO'
+    """, body.target_agent_profile_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Target treasury agent not found or inactive")
+
+    async with db.transaction():
+        # Update assignment record
+        await db.execute("""
+            UPDATE assignments SET
+                agent_profile_id = $1::uuid,
+                reassigned_at = NOW(),
+                reassignment_reason = 'supervisor_decision'::reassignment_reason_enum,
+                status = 'assigned',
+                updated_at = NOW()
+            WHERE item_id = $2::uuid
+              AND item_type = 'payment_validation'
+              AND status IN ('assigned', 'in_progress', 'pending_review')
+        """, body.target_agent_profile_id, payment_id)
+
+        # Update service_payments
+        await db.execute("""
+            UPDATE service_payments
+            SET assigned_agent_id = $1::uuid,
+                assigned_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $2::uuid
+        """, body.target_agent_profile_id, payment_id)
+
+        # If escalated, reset to pending_agent_review
+        if payment["workflow_status"] == "escalated_supervisor":
+            await db.execute("""
+                UPDATE service_payments
+                SET workflow_status = 'pending_agent_review'
+                WHERE id = $1::uuid
+            """, payment_id)
+
+        # Audit log
+        supervisor_profile_id = await get_agent_profile_id(db, current_user.id)
+        await db.execute("""
+            INSERT INTO payment_validation_audit
+                (id, payment_id, agent_profile_id, agent_user_id, action,
+                 from_status, to_status, comment, created_at)
+            VALUES (gen_random_uuid(), $1::uuid, $2, $3,
+                    'assign_to_colleague'::agent_action_type,
+                    $4::payment_workflow_status,
+                    'pending_agent_review'::payment_workflow_status,
+                    $5, NOW())
+        """, payment_id, supervisor_profile_id, current_user.id,
+            payment["workflow_status"], body.reason or f"Reassigned to {target['full_name']}")
+
+        # Update workload counters
+        old_agent_id = payment["assigned_agent_id"]
+        if old_agent_id:
+            await db.execute("""
+                UPDATE agent_workloads
+                SET current_assignments = GREATEST(current_assignments - 1, 0), last_updated_at = NOW()
+                WHERE agent_profile_id = $1::uuid
+            """, str(old_agent_id))
+        await db.execute("""
+            UPDATE agent_workloads
+            SET current_assignments = current_assignments + 1, last_updated_at = NOW()
+            WHERE agent_profile_id = $1::uuid
+        """, body.target_agent_profile_id)
+
+    logger.info(f"Payment {payment_id} reassigned to {body.target_agent_profile_id} by supervisor {current_user.id}")
+
+    return {
+        "success": True,
+        "payment_id": payment_id,
+        "target_agent_name": target["full_name"],
+        "message": f"Payment reassigned to {target['full_name']}"
+    }
 
 
 @router.get(
@@ -5891,6 +6100,7 @@ async def get_agent_performance(
 )
 async def get_supervisor_overview(
     days: int = Query(30, ge=7, le=90, description="Lookback period in days"),
+    location_id: Optional[str] = Query(None, description="Filter by entity_location_id"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("treasury.view_all"))
@@ -5900,10 +6110,30 @@ async def get_supervisor_overview(
     from app.core.cache import get_cache
     from app.database.connection import db_manager
 
+    # Resolve effective location filter:
+    # - Main-office supervisor: can filter by any location (or all)
+    # - Site supervisor: auto-scoped to their own location
+    effective_location_id = location_id
+    is_main_office = False
+    agent_profile = await db.fetchrow("""
+        SELECT ap.entity_location_id, el.is_main_office
+        FROM agent_profiles ap
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+        WHERE ap.user_id = $1 AND ap.is_active = true
+    """, current_user["id"])
+    if agent_profile:
+        is_main_office = agent_profile["is_main_office"] or False
+        if not is_main_office:
+            # Site supervisor: always scoped to their own location
+            effective_location_id = str(agent_profile["entity_location_id"]) if agent_profile["entity_location_id"] else None
+
     cache = get_cache()
-    cache_key = f"treasury:supervisor_overview:{days}"
+    loc_suffix = f":{effective_location_id}" if effective_location_id else ""
+    cache_key = f"treasury:supervisor_overview:{days}{loc_suffix}"
     cached = await cache.get(cache_key)
     if cached:
+        # Inject is_main_office flag for frontend to know whether to show filter
+        cached["is_main_office"] = is_main_office
         return cached
 
     now = datetime.utcnow()
@@ -5954,8 +6184,9 @@ async def get_supervisor_overview(
                 WHERE e.code = 'TESORO'
                   AND ap.is_active = true
                   AND ap.is_supervisor = false
+                  AND ($2::uuid IS NULL OR ap.entity_location_id = $2::uuid)
                 ORDER BY u.full_name
-            """, today_start)
+            """, today_start, effective_location_id)
             return [{
                 "agent_profile_id": str(r["agent_profile_id"]),
                 "agent_name": r["agent_name"] or "Unknown",
@@ -6142,6 +6373,7 @@ async def get_supervisor_overview(
         "top_services": top_services,
         "recent_activity": recent,
         "period_days": days,
+        "is_main_office": is_main_office,
         "generated_at": now.isoformat(),
     }
 

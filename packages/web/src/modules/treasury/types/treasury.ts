@@ -134,11 +134,19 @@ export interface PendingPayment {
   slaEscalated?: boolean;
 }
 
+export interface TreasuryAgentOption {
+  id: string;
+  name: string;
+}
+
 export interface PendingPaymentsListResponse {
   payments: PendingPayment[];
   total: number;
   page: number;
   pageSize: number;
+  isSupervisor: boolean;
+  isMainOffice: boolean;
+  treasuryAgents?: TreasuryAgentOption[];
 }
 
 export interface PendingPaymentsParams {
@@ -932,6 +940,7 @@ export interface SupervisorOverviewResponse {
   topServices: TopServiceItem[];
   recentActivity: RecentActivityItem[];
   periodDays: number;
+  isMainOffice: boolean;
   generatedAt: string;
 }
 

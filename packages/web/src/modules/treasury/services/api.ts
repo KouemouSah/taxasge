@@ -9,7 +9,7 @@
  * Webhook Routes: /api/v1/webhooks/*
  */
 
-import { fetchClient } from '@/core/api';
+import apiClient from '@/core/api/client';
 import type {
   PendingPayment,
   PendingPaymentsListResponse,
@@ -186,17 +186,21 @@ export const treasuryApi = {
       queryParams.date_to = params.dateTo;
     }
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/pending`,
-      queryParams
+      { params: queryParams }
     );
 
-    const payments = (response.payments as Record<string, unknown>[]) || [];
+    const data = response.data;
+    const payments = (data.payments as Record<string, unknown>[]) || [];
     return {
       payments: payments.map(transformPayment),
-      total: (response.total as number) || 0,
-      page: (response.page as number) || 1,
-      pageSize: (response.page_size as number) || 20,
+      total: (data.total as number) || 0,
+      page: (data.page as number) || 1,
+      pageSize: (data.page_size as number) || 20,
+      isSupervisor: (data.is_supervisor as boolean) || false,
+      isMainOffice: (data.is_main_office as boolean) || false,
+      treasuryAgents: (data.treasury_agents as Array<{ id: string; name: string }>) || undefined,
     };
   },
 
@@ -204,10 +208,10 @@ export const treasuryApi = {
    * Get single payment details
    */
   getPaymentDetails: async (paymentId: string): Promise<PendingPayment> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/${paymentId}`
     );
-    return transformPayment(response);
+    return transformPayment(response.data);
   },
 
   // -------------------------------------------------------------------------
@@ -222,11 +226,11 @@ export const treasuryApi = {
     paymentId: string,
     request: PaymentValidationRequest = {}
   ): Promise<PaymentActionResponse> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/${paymentId}/validate`,
       { comment: request.comment }
     );
-    return toCamelCase<PaymentActionResponse>(response);
+    return toCamelCase<PaymentActionResponse>(response.data);
   },
 
   /**
@@ -237,11 +241,11 @@ export const treasuryApi = {
     paymentId: string,
     request: PaymentRejectionRequest
   ): Promise<PaymentActionResponse> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/${paymentId}/reject`,
       { reason: request.reason }
     );
-    return toCamelCase<PaymentActionResponse>(response);
+    return toCamelCase<PaymentActionResponse>(response.data);
   },
 
   /**
@@ -252,11 +256,27 @@ export const treasuryApi = {
     paymentId: string,
     request: { reason: string; level?: string }
   ): Promise<PaymentActionResponse> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/${paymentId}/escalate`,
       { reason: request.reason, level: request.level || 'medium' }
     );
-    return toCamelCase<PaymentActionResponse>(response);
+    return toCamelCase<PaymentActionResponse>(response.data);
+  },
+
+  /**
+   * Reassign payment to another treasury agent (supervisor only)
+   * BACKEND: POST /api/v1/admin/service-requests/treasury/payments/{id}/reassign
+   */
+  reassignPayment: async (
+    paymentId: string,
+    targetAgentProfileId: string,
+    reason?: string
+  ): Promise<{ success: boolean; targetAgentName: string }> => {
+    const response = await apiClient.post<Record<string, unknown>>(
+      `${TREASURY_BASE}/payments/${paymentId}/reassign`,
+      { target_agent_profile_id: targetAgentProfileId, reason }
+    );
+    return toCamelCase<{ success: boolean; targetAgentName: string }>(response.data);
   },
 
   /**
@@ -267,11 +287,11 @@ export const treasuryApi = {
     batchId: string,
     comment?: string
   ): Promise<{ success: boolean; paymentsValidated: number; batchReference?: string; error?: string }> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/batch/${batchId}/validate`,
       comment ? { comment } : {}
     );
-    return toCamelCase<{ success: boolean; paymentsValidated: number; batchReference?: string; error?: string }>(response);
+    return toCamelCase<{ success: boolean; paymentsValidated: number; batchReference?: string; error?: string }>(response.data);
   },
 
   /**
@@ -286,17 +306,20 @@ export const treasuryApi = {
       limit: params.pageSize || 20,
     };
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/my-escalations`,
-      queryParams
+      { params: queryParams }
     );
 
-    const payments = (response.payments as Record<string, unknown>[]) || [];
+    const data = response.data;
+    const payments = (data.payments as Record<string, unknown>[]) || [];
     return {
       payments: payments.map(transformPayment),
-      total: (response.total as number) || 0,
-      page: (response.page as number) || 1,
-      pageSize: (response.page_size as number) || 20,
+      total: (data.total as number) || 0,
+      page: (data.page as number) || 1,
+      pageSize: (data.page_size as number) || 20,
+      isSupervisor: (data.is_supervisor as boolean) || false,
+      isMainOffice: (data.is_main_office as boolean) || false,
     };
   },
 
@@ -318,17 +341,18 @@ export const treasuryApi = {
       ...(params.status ? { status: params.status } : {}),
     };
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${WEBHOOKS_BASE}/transactions/unreconciled`,
-      queryParams
+      { params: queryParams }
     );
 
-    const transactions = (response.transactions as Record<string, unknown>[]) || [];
+    const data = response.data;
+    const transactions = (data.transactions as Record<string, unknown>[]) || [];
     return {
       transactions: transactions.map(transformTransaction),
-      total: (response.total as number) || 0,
-      page: (response.page as number) || 1,
-      pageSize: (response.page_size as number) || 20,
+      total: (data.total as number) || 0,
+      page: (data.page as number) || 1,
+      pageSize: (data.page_size as number) || 20,
     };
   },
 
@@ -337,10 +361,10 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/webhooks/transactions/{id}
    */
   getTransaction: async (transactionId: string): Promise<BankTransaction> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${WEBHOOKS_BASE}/transactions/${transactionId}`
     );
-    return transformTransaction(response);
+    return transformTransaction(response.data);
   },
 
   /**
@@ -350,14 +374,14 @@ export const treasuryApi = {
   reconcileTransaction: async (
     request: ReconcileRequest
   ): Promise<BankTransaction> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${WEBHOOKS_BASE}/transactions/reconcile`,
       {
         bank_transaction_id: request.bankTransactionId,
         service_payment_id: request.servicePaymentId,
       }
     );
-    return transformTransaction(response);
+    return transformTransaction(response.data);
   },
 
   /**
@@ -369,31 +393,31 @@ export const treasuryApi = {
   ): Promise<SearchPaymentResult[]> => {
     const params: Record<string, string> = { q };
     if (currency) params.currency = currency;
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${WEBHOOKS_BASE}/transactions/search-payments`,
-      params
+      { params }
     );
-    const payments = (response.payments as Record<string, unknown>[]) || [];
+    const payments = (response.data.payments as Record<string, unknown>[]) || [];
     return payments.map((p) => toCamelCase<SearchPaymentResult>(p));
   },
 
-  // ─── Reconciliation Suggestions (Phase 5) ─────
+  // --- Reconciliation Suggestions (Phase 5) -----
 
   getReconciliationSuggestions: async (limit: number = 50) => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/reconciliation/suggestions`,
-      { limit: limit.toString() }
+      { params: { limit: limit.toString() } }
     );
-    return toCamelCase<ReconciliationSuggestionsResponse>(response);
+    return toCamelCase<ReconciliationSuggestionsResponse>(response.data);
   },
 
   autoMatchReconciliation: async (threshold: number = 80) => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/reconciliation/auto-match`,
       {},
-      { threshold: threshold.toString() }
+      { params: { threshold: threshold.toString() } }
     );
-    return toCamelCase<AutoMatchResponse>(response);
+    return toCamelCase<AutoMatchResponse>(response.data);
   },
 
   // -------------------------------------------------------------------------
@@ -407,11 +431,11 @@ export const treasuryApi = {
   getBankConfigurations: async (
     activeOnly: boolean = true
   ): Promise<BankConfiguration[]> => {
-    const response = await fetchClient.get<Record<string, unknown>[]>(
+    const response = await apiClient.get<Record<string, unknown>[]>(
       `${WEBHOOKS_BASE}/bank-configurations`,
-      { active_only: activeOnly }
+      { params: { active_only: activeOnly } }
     );
-    return response.map(transformBankConfig);
+    return response.data.map(transformBankConfig);
   },
 
   /**
@@ -421,7 +445,7 @@ export const treasuryApi = {
   createBankConfiguration: async (
     config: BankConfigurationCreate
   ): Promise<BankConfiguration> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${WEBHOOKS_BASE}/bank-configurations`,
       {
         bank_code: config.bankCode,
@@ -439,7 +463,7 @@ export const treasuryApi = {
         is_primary: config.isPrimary ?? false,
       }
     );
-    return transformBankConfig(response);
+    return transformBankConfig(response.data);
   },
 
   /**
@@ -464,11 +488,11 @@ export const treasuryApi = {
     if (update.supportedPaymentMethods !== undefined) payload.supported_payment_methods = update.supportedPaymentMethods;
     if (update.isPrimary !== undefined) payload.is_primary = update.isPrimary;
 
-    const response = await fetchClient.put<Record<string, unknown>>(
+    const response = await apiClient.put<Record<string, unknown>>(
       `${WEBHOOKS_BASE}/bank-configurations/${configId}`,
       payload
     );
-    return transformBankConfig(response);
+    return transformBankConfig(response.data);
   },
 
   // -------------------------------------------------------------------------
@@ -480,16 +504,17 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/admin/service-requests/treasury/stats/dashboard
    */
   getDashboardStats: async (): Promise<TreasuryStats> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/stats/dashboard`
     );
 
+    const data = response.data;
     return {
-      pendingValidationCount: (response.pending_validation_count as number) || 0,
-      unreconciledCount: (response.unreconciled_count as number) || 0,
-      todayValidatedCount: (response.today_validated_count as number) || 0,
-      todayValidatedAmount: (response.today_validated_amount as number) || 0,
-      currency: (response.currency as string) || 'XAF',
+      pendingValidationCount: (data.pending_validation_count as number) || 0,
+      unreconciledCount: (data.unreconciled_count as number) || 0,
+      todayValidatedCount: (data.today_validated_count as number) || 0,
+      todayValidatedAmount: (data.today_validated_amount as number) || 0,
+      currency: (data.currency as string) || 'XAF',
     };
   },
 
@@ -502,11 +527,11 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/admin/service-requests/payment-methods
    */
   getPaymentMethods: async (activeOnly: boolean = false): Promise<PaymentMethodConfig[]> => {
-    const response = await fetchClient.get<Record<string, unknown>[]>(
+    const response = await apiClient.get<Record<string, unknown>[]>(
       `${TREASURY_BASE}/payment-methods`,
-      { active_only: activeOnly }
+      { params: { active_only: activeOnly } }
     );
-    return response.map((item) => toCamelCase<PaymentMethodConfig>(item));
+    return response.data.map((item) => toCamelCase<PaymentMethodConfig>(item));
   },
 
   /**
@@ -514,10 +539,10 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/admin/service-requests/payment-methods/{code}
    */
   getPaymentMethod: async (code: string): Promise<PaymentMethodConfig> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payment-methods/${code}`
     );
-    return toCamelCase<PaymentMethodConfig>(response);
+    return toCamelCase<PaymentMethodConfig>(response.data);
   },
 
   /**
@@ -542,11 +567,11 @@ export const treasuryApi = {
     if (config.feesPercentage !== undefined) payload.fees_percentage = config.feesPercentage;
     if (config.feesFixed !== undefined) payload.fees_fixed = config.feesFixed;
 
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/payment-methods`,
       payload
     );
-    return toCamelCase<PaymentMethodConfig>(response);
+    return toCamelCase<PaymentMethodConfig>(response.data);
   },
 
   /**
@@ -572,11 +597,11 @@ export const treasuryApi = {
     if (update.feesPercentage !== undefined) payload.fees_percentage = update.feesPercentage;
     if (update.feesFixed !== undefined) payload.fees_fixed = update.feesFixed;
 
-    const response = await fetchClient.put<Record<string, unknown>>(
+    const response = await apiClient.put<Record<string, unknown>>(
       `${TREASURY_BASE}/payment-methods/${code}`,
       payload
     );
-    return toCamelCase<PaymentMethodConfig>(response);
+    return toCamelCase<PaymentMethodConfig>(response.data);
   },
 
   /**
@@ -584,7 +609,7 @@ export const treasuryApi = {
    * BACKEND: DELETE /api/v1/admin/service-requests/payment-methods/{code}
    */
   deletePaymentMethod: async (code: string): Promise<void> => {
-    await fetchClient.delete(`${TREASURY_BASE}/payment-methods/${code}`);
+    await apiClient.delete(`${TREASURY_BASE}/payment-methods/${code}`);
   },
 
   /**
@@ -592,15 +617,15 @@ export const treasuryApi = {
    * BACKEND: PATCH /api/v1/admin/service-requests/payment-methods/reorder
    */
   reorderPaymentMethods: async (request: PaymentMethodReorderRequest): Promise<PaymentMethodConfig[]> => {
-    const response = await fetchClient.patch<Record<string, unknown>[]>(
+    const response = await apiClient.patch<Record<string, unknown>[]>(
       `${TREASURY_BASE}/payment-methods/reorder`,
       { order: request.order }
     );
-    return response.map((item) => toCamelCase<PaymentMethodConfig>(item));
+    return response.data.map((item) => toCamelCase<PaymentMethodConfig>(item));
   },
 
   // -------------------------------------------------------------------------
-  // Audit & Traçabilité (Phase 1A)
+  // Audit & Tracabilite (Phase 1A)
   // -------------------------------------------------------------------------
 
   /**
@@ -619,17 +644,18 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/audit`,
-      queryParams
+      { params: queryParams }
     );
 
-    const entries = (response.entries as Record<string, unknown>[]) || [];
+    const data = response.data;
+    const entries = (data.entries as Record<string, unknown>[]) || [];
     return {
       entries: entries.map((e) => toCamelCase<AuditEntry>(e)),
-      total: (response.total as number) || 0,
-      page: (response.page as number) || 1,
-      pageSize: (response.page_size as number) || 20,
+      total: (data.total as number) || 0,
+      page: (data.page as number) || 1,
+      pageSize: (data.page_size as number) || 20,
     };
   },
 
@@ -638,21 +664,22 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/admin/service-requests/treasury/payments/{id}/audit
    */
   getPaymentAuditHistory: async (paymentId: string): Promise<PaymentAuditDetail> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/payments/${paymentId}/audit`
     );
 
-    const timeline = (response.timeline as Record<string, unknown>[]) || [];
+    const data = response.data;
+    const timeline = (data.timeline as Record<string, unknown>[]) || [];
     return {
-      paymentId: (response.payment_id as string) || paymentId,
-      paymentReference: (response.payment_reference as string) || '',
-      serviceRequestId: response.service_request_id as string | undefined,
-      serviceRequestReference: response.service_request_reference as string | undefined,
-      workflowCode: response.workflow_code as string | undefined,
-      currentStatus: response.current_status as string || 'submitted',
-      createdAt: (response.created_at as string) || '',
+      paymentId: (data.payment_id as string) || paymentId,
+      paymentReference: (data.payment_reference as string) || '',
+      serviceRequestId: data.service_request_id as string | undefined,
+      serviceRequestReference: data.service_request_reference as string | undefined,
+      workflowCode: data.workflow_code as string | undefined,
+      currentStatus: data.current_status as string || 'submitted',
+      createdAt: (data.created_at as string) || '',
       timeline: timeline.map((e) => toCamelCase<AuditEntry>(e)),
-      totalProcessingMinutes: response.total_processing_minutes as number | undefined,
+      totalProcessingMinutes: data.total_processing_minutes as number | undefined,
     } as PaymentAuditDetail;
   },
 
@@ -668,14 +695,16 @@ export const treasuryApi = {
     const queryParams: Record<string, string | undefined> = {};
     if (paymentMethod) queryParams.payment_method = paymentMethod;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/stats/sla`,
-      queryParams
+      { params: queryParams }
     );
+
+    const data = response.data;
 
     // Transform by_payment_method nested snake_case to camelCase
     let byPaymentMethod: SLAStats['byPaymentMethod'] = undefined;
-    const rawByMethod = response.by_payment_method as Record<string, Record<string, number>> | undefined;
+    const rawByMethod = data.by_payment_method as Record<string, Record<string, number>> | undefined;
     if (rawByMethod) {
       byPaymentMethod = {};
       for (const [method, stats] of Object.entries(rawByMethod)) {
@@ -690,14 +719,14 @@ export const treasuryApi = {
     }
 
     return {
-      totalPending: (response.total_pending as number) || 0,
-      onTime: (response.on_time as number) || 0,
-      warning: (response.warning as number) || 0,
-      critical: (response.critical as number) || 0,
-      breached: (response.breached as number) || 0,
-      avgProcessingMinutes: response.avg_processing_minutes as number | undefined,
-      maxProcessingMinutes: response.max_processing_minutes as number | undefined,
-      slaRespectRate: (response.sla_respect_rate as number) || 100,
+      totalPending: (data.total_pending as number) || 0,
+      onTime: (data.on_time as number) || 0,
+      warning: (data.warning as number) || 0,
+      critical: (data.critical as number) || 0,
+      breached: (data.breached as number) || 0,
+      avgProcessingMinutes: data.avg_processing_minutes as number | undefined,
+      maxProcessingMinutes: data.max_processing_minutes as number | undefined,
+      slaRespectRate: (data.sla_respect_rate as number) || 100,
       byPaymentMethod,
     };
   },
@@ -722,17 +751,18 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/anomalies`,
-      queryParams
+      { params: queryParams }
     );
 
-    const anomalies = (response.anomalies as Record<string, unknown>[]) || [];
-    const summary = response.summary as Record<string, number> | undefined;
+    const data = response.data;
+    const anomalies = (data.anomalies as Record<string, unknown>[]) || [];
+    const summary = data.summary as Record<string, number> | undefined;
 
     return {
       anomalies: anomalies.map((a) => toCamelCase<Anomaly>(a)),
-      total: (response.total as number) || 0,
+      total: (data.total as number) || 0,
       summary: {
         open: summary?.open || 0,
         investigating: summary?.investigating || 0,
@@ -749,10 +779,10 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/admin/service-requests/treasury/anomalies/{id}
    */
   getAnomaly: async (anomalyId: string): Promise<Anomaly> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/anomalies/${anomalyId}`
     );
-    return toCamelCase<Anomaly>(response);
+    return toCamelCase<Anomaly>(response.data);
   },
 
   /**
@@ -771,11 +801,11 @@ export const treasuryApi = {
     if (request.affectedAmount) payload.affected_amount = request.affectedAmount;
     if (request.relatedEntities) payload.related_entities = request.relatedEntities;
 
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/anomalies`,
       payload
     );
-    return toCamelCase<Anomaly>(response);
+    return toCamelCase<Anomaly>(response.data);
   },
 
   /**
@@ -792,11 +822,11 @@ export const treasuryApi = {
     if (request.comment) payload.comment = request.comment;
     if (request.resolution) payload.resolution = request.resolution;
 
-    const response = await fetchClient.patch<Record<string, unknown>>(
+    const response = await apiClient.patch<Record<string, unknown>>(
       `${TREASURY_BASE}/anomalies/${anomalyId}/status`,
       payload
     );
-    return toCamelCase<Anomaly>(response);
+    return toCamelCase<Anomaly>(response.data);
   },
 
   /**
@@ -804,10 +834,10 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/admin/service-requests/treasury/anomalies/{id}/actions
    */
   getAnomalyActions: async (anomalyId: string): Promise<AnomalyAction[]> => {
-    const response = await fetchClient.get<Record<string, unknown>[]>(
+    const response = await apiClient.get<Record<string, unknown>[]>(
       `${TREASURY_BASE}/anomalies/${anomalyId}/actions`
     );
-    return response.map((a) => toCamelCase<AnomalyAction>(a));
+    return response.data.map((a) => toCamelCase<AnomalyAction>(a));
   },
 
   /**
@@ -815,11 +845,11 @@ export const treasuryApi = {
    * BACKEND: POST /api/v1/admin/service-requests/treasury/anomalies/{id}/comment
    */
   addAnomalyComment: async (anomalyId: string, comment: string): Promise<AnomalyAction> => {
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/anomalies/${anomalyId}/comment`,
       { comment }
     );
-    return toCamelCase<AnomalyAction>(response);
+    return toCamelCase<AnomalyAction>(response.data);
   },
 
   /**
@@ -834,15 +864,16 @@ export const treasuryApi = {
       payload.detection_types = detectionTypes;
     }
 
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/anomalies/detect`,
       Object.keys(payload).length > 0 ? payload : undefined
     );
 
+    const data = response.data;
     return {
-      detectedAt: (response.detected_at as string) || new Date().toISOString(),
-      anomaliesFound: (response.anomalies_found as number) || 0,
-      byType: (response.by_type as Record<string, unknown>) || {},
+      detectedAt: (data.detected_at as string) || new Date().toISOString(),
+      anomaliesFound: (data.anomalies_found as number) || 0,
+      byType: (data.by_type as Record<string, unknown>) || {},
     };
   },
 
@@ -865,15 +896,16 @@ export const treasuryApi = {
     if (params.periodStart) queryParams.period_start = params.periodStart;
     if (params.periodEnd) queryParams.period_end = params.periodEnd;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/exports`,
-      queryParams
+      { params: queryParams }
     );
 
-    const exports = (response.exports as Record<string, unknown>[]) || [];
+    const data = response.data;
+    const exports = (data.exports as Record<string, unknown>[]) || [];
     return {
       exports: exports.map((e) => toCamelCase<TreasuryExport>(e)),
-      total: (response.total as number) || 0,
+      total: (data.total as number) || 0,
     };
   },
 
@@ -882,10 +914,10 @@ export const treasuryApi = {
    * BACKEND: GET /api/v1/admin/service-requests/treasury/exports/{id}
    */
   getExport: async (exportId: string): Promise<TreasuryExport> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/exports/${exportId}`
     );
-    return toCamelCase<TreasuryExport>(response);
+    return toCamelCase<TreasuryExport>(response.data);
   },
 
   /**
@@ -896,11 +928,11 @@ export const treasuryApi = {
     const queryParams: Record<string, string | undefined> = {};
     if (exportType) queryParams.export_type = exportType;
 
-    const response = await fetchClient.get<Record<string, unknown>[]>(
+    const response = await apiClient.get<Record<string, unknown>[]>(
       `${TREASURY_BASE}/exports/templates`,
-      queryParams
+      { params: queryParams }
     );
-    return response.map((t) => toCamelCase<ExportTemplate>(t));
+    return response.data.map((t) => toCamelCase<ExportTemplate>(t));
   },
 
   /**
@@ -924,11 +956,11 @@ export const treasuryApi = {
     }
     if (request.templateCode) payload.template_code = request.templateCode;
 
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/exports/generate`,
       payload
     );
-    return toCamelCase<TreasuryExport>(response);
+    return toCamelCase<TreasuryExport>(response.data);
   },
 
   /**
@@ -937,30 +969,17 @@ export const treasuryApi = {
    * Returns StreamingResponse (file content) with Content-Disposition header
    */
   downloadExport: async (exportId: string): Promise<ExportDownloadResponse> => {
-    const baseUrl = fetchClient.getBaseUrl();
-    const token = fetchClient.getAuthToken();
-    const url = `${baseUrl}${TREASURY_BASE}/exports/${exportId}/download`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
-      throw new Error(
-        typeof errorData.detail === 'string' ? errorData.detail : `Download failed: ${response.status}`
-      );
-    }
+    const response = await apiClient.get(
+      `${TREASURY_BASE}/exports/${exportId}/download`,
+      { responseType: 'blob' }
+    );
 
     // Extract filename from Content-Disposition header
-    const disposition = response.headers.get('Content-Disposition') || '';
+    const disposition = response.headers?.['content-disposition'] || '';
     const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/);
     const fileName = filenameMatch?.[1] || `export_${exportId}`;
 
-    const blob = await response.blob();
+    const blob = response.data as Blob;
     return { blob, fileName };
   },
 
@@ -983,25 +1002,26 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/stats/kpis`,
-      queryParams
+      { params: queryParams }
     );
 
+    const data = response.data;
     // Transform response with nested arrays
-    const byPaymentMethod = (response.by_payment_method as Record<string, unknown>[]) || [];
-    const byEntity = (response.by_entity as Record<string, unknown>[]) || [];
-    const dailyTrend = (response.daily_trend as Record<string, unknown>[]) || [];
-    const previousPeriod = response.previous_period as Record<string, unknown> | undefined;
+    const byPaymentMethod = (data.by_payment_method as Record<string, unknown>[]) || [];
+    const byEntity = (data.by_entity as Record<string, unknown>[]) || [];
+    const dailyTrend = (data.daily_trend as Record<string, unknown>[]) || [];
+    const previousPeriod = data.previous_period as Record<string, unknown> | undefined;
 
     return {
-      period: (response.period as string) || 'month',
-      dateFrom: (response.date_from as string) || '',
-      dateTo: (response.date_to as string) || '',
-      totalCollected: (response.total_collected as number) || 0,
-      totalTransactions: (response.total_transactions as number) || 0,
-      avgTransactionAmount: (response.avg_transaction_amount as number) || 0,
-      slaRespectRate: (response.sla_respect_rate as number) || 100,
+      period: (data.period as string) || 'month',
+      dateFrom: (data.date_from as string) || '',
+      dateTo: (data.date_to as string) || '',
+      totalCollected: (data.total_collected as number) || 0,
+      totalTransactions: (data.total_transactions as number) || 0,
+      avgTransactionAmount: (data.avg_transaction_amount as number) || 0,
+      slaRespectRate: (data.sla_respect_rate as number) || 100,
       byPaymentMethod: byPaymentMethod.map((m) => toCamelCase<PaymentMethodKPI>(m)),
       byEntity: byEntity.map((m) => toCamelCase<EntityKPI>(m)),
       dailyTrend: dailyTrend.map((d) => toCamelCase<DailyTrend>(d)),
@@ -1024,20 +1044,21 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/stats/agents`,
-      queryParams
+      { params: queryParams }
     );
 
-    const agents = (response.agents as Record<string, unknown>[]) || [];
+    const data = response.data;
+    const agents = (data.agents as Record<string, unknown>[]) || [];
 
     return {
-      period: (response.period as string) || 'month',
-      dateFrom: (response.date_from as string) || '',
-      dateTo: (response.date_to as string) || '',
+      period: (data.period as string) || 'month',
+      dateFrom: (data.date_from as string) || '',
+      dateTo: (data.date_to as string) || '',
       agents: agents.map((a) => toCamelCase<AgentStats>(a)),
-      totalValidations: (response.total_validations as number) || 0,
-      totalRejections: (response.total_rejections as number) || 0,
+      totalValidations: (data.total_validations as number) || 0,
+      totalRejections: (data.total_rejections as number) || 0,
     };
   },
 
@@ -1056,12 +1077,12 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analytics/statistics`,
-      queryParams
+      { params: queryParams }
     );
 
-    return toCamelCase<StatisticsResponse>(response);
+    return toCamelCase<StatisticsResponse>(response.data);
   },
 
   /**
@@ -1075,12 +1096,12 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analytics/correlations`,
-      queryParams
+      { params: queryParams }
     );
 
-    return toCamelCase<CorrelationMatrix>(response);
+    return toCamelCase<CorrelationMatrix>(response.data);
   },
 
   /**
@@ -1094,12 +1115,12 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analytics/trends`,
-      queryParams
+      { params: queryParams }
     );
 
-    return toCamelCase<TrendsResponse>(response);
+    return toCamelCase<TrendsResponse>(response.data);
   },
 
   /**
@@ -1113,12 +1134,12 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analytics/anomalies`,
-      queryParams
+      { params: queryParams }
     );
 
-    return toCamelCase<AnomaliesResponse>(response);
+    return toCamelCase<AnomaliesResponse>(response.data);
   },
 
   /**
@@ -1133,12 +1154,12 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analytics/predictions`,
-      queryParams
+      { params: queryParams }
     );
 
-    return toCamelCase<PredictionsResponse>(response);
+    return toCamelCase<PredictionsResponse>(response.data);
   },
 
   /**
@@ -1153,12 +1174,12 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analytics/report`,
-      queryParams
+      { params: queryParams }
     );
 
-    return toCamelCase<AnalyticsReport>(response);
+    return toCamelCase<AnalyticsReport>(response.data);
   },
 
   /**
@@ -1174,35 +1195,37 @@ export const treasuryApi = {
     if (params.dateFrom) queryParams.date_from = params.dateFrom;
     if (params.dateTo) queryParams.date_to = params.dateTo;
 
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analytics/explore`,
-      queryParams
+      { params: queryParams }
     );
 
-    return toCamelCase<ExploreResponse>(response);
+    return toCamelCase<ExploreResponse>(response.data);
   },
 
-  // ─── Supervisor Overview (Phase 3) ─────
+  // --- Supervisor Overview (Phase 3) -----
 
-  getSupervisorOverview: async (days: number = 30) => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+  getSupervisorOverview: async (days: number = 30, locationId?: string) => {
+    const params: Record<string, string> = { days: days.toString() };
+    if (locationId) params.location_id = locationId;
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/stats/supervisor-overview`,
-      { days: days.toString() }
+      { params }
     );
-    return toCamelCase<SupervisorOverviewResponse>(response);
+    return toCamelCase<SupervisorOverviewResponse>(response.data);
   },
 
-  // ─── Workload Dashboard (Carga de Trabajo) ─────
+  // --- Workload Dashboard (Carga de Trabajo) -----
 
   getWorkloadDashboard: async (days: number = 30): Promise<WorkloadDashboardResponse> => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/stats/workload-dashboard`,
-      { days: days.toString() }
+      { params: { days: days.toString() } }
     );
-    return toCamelCase<WorkloadDashboardResponse>(response);
+    return toCamelCase<WorkloadDashboardResponse>(response.data);
   },
 
-  // ─── AI Analyst (Phase 4) ─────
+  // --- AI Analyst (Phase 4) -----
 
   askAnalyst: async (
     question: string,
@@ -1219,18 +1242,18 @@ export const treasuryApi = {
     if (sessionId) {
       body.session_id = sessionId;
     }
-    const response = await fetchClient.post<Record<string, unknown>>(
+    const response = await apiClient.post<Record<string, unknown>>(
       `${TREASURY_BASE}/analyst/ask`,
       body
     );
-    return toCamelCase<TreasuryAnalystResponse>(response);
+    return toCamelCase<TreasuryAnalystResponse>(response.data);
   },
 
   getAnalystBriefing: async () => {
-    const response = await fetchClient.get<Record<string, unknown>>(
+    const response = await apiClient.get<Record<string, unknown>>(
       `${TREASURY_BASE}/analyst/briefing`
     );
-    return toCamelCase<TreasuryBriefingResponse>(response);
+    return toCamelCase<TreasuryBriefingResponse>(response.data);
   },
 
   exportAnalystResponse: async (
@@ -1239,11 +1262,12 @@ export const treasuryApi = {
     artifacts: ArtifactData[],
     format: 'pdf' | 'markdown'
   ) => {
-    const blob = await fetchClient.post<Blob>(
+    const response = await apiClient.post(
       `${TREASURY_BASE}/analyst/export`,
       { question, answer, artifacts, format },
       { responseType: 'blob' }
     );
+    const blob = response.data as Blob;
     const ext = format === 'pdf' ? 'pdf' : 'md';
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

@@ -487,6 +487,13 @@
       "currentAgent": "Agente Actual",
       "normal": "Normal",
       "critical": "Crítico",
+      "priorityVeryLow": "Muy baja",
+      "priorityLow": "Baja",
+      "priorityNormal": "Normal",
+      "priorityMedium": "Media",
+      "priorityHigh": "Alta",
+      "priorityUrgent": "Urgente",
+      "priorityCritical": "Critica",
       "manualAssignment": "Asignación Manual",
       "manualAssignmentDescription": "Asignar un ítem a un agente específico",
       "autoAssignment": "Asignación Automática",
@@ -5745,7 +5752,8 @@
       "validateFailed": "No se pudo validar el pago.",
       "rejectFailed": "No se pudo rechazar el pago.",
       "unlockFailed": "No se pudo desbloquear el pago.",
-      "escalateFailed": "No se pudo escalar el pago."
+      "escalateFailed": "No se pudo escalar el pago.",
+      "reassignFailed": "No se pudo reasignar el pago."
     },
     "actions": {
       "goToValidation": "Ir a Validacion",
@@ -5758,8 +5766,14 @@
       "viewKPIs": "Ver KPIs",
       "viewAnalytics": "Ver Analisis"
     },
+    "statsNav": {
+      "kpis": "Indicadores",
+      "agents": "Agentes",
+      "sla": "SLA"
+    },
     "overview": {
       "supervisor": "Supervisor",
+      "allLocations": "Todas las sedes",
       "slaAlerts": "Alertas SLA",
       "slaAtRisk": "Pagos en riesgo SLA",
       "cashFlow": "Flujo de Ingresos",
@@ -5852,7 +5866,9 @@
         "warning": "Alerta",
         "critical": "Critico",
         "breached": "Vencido",
-        "allLocations": "Todas las sedes"
+        "allLocations": "Todas las sedes",
+        "agent": "Agente",
+        "allAgents": "Todos los agentes"
       },
       "table": {
         "reference": "Referencia",
@@ -5914,7 +5930,18 @@
         "rejectReason": "Motivo del rechazo (obligatorio)",
         "rejectReasonPlaceholder": "Indique el motivo del rechazo...",
         "rejectConfirm": "Rechazar {count} Pago(s)"
-      }
+      },
+      "reassign": {
+        "title": "Reasignar Pago",
+        "description": "Seleccione el agente al que desea reasignar este pago.",
+        "targetAgent": "Agente destino",
+        "selectAgent": "Seleccionar agente...",
+        "reason": "Motivo (opcional)",
+        "reasonPlaceholder": "Indique el motivo de la reasignacion...",
+        "confirm": "Reasignar",
+        "button": "Reasignar"
+      },
+      "reassignSuccess": "Pago reasignado a {agent}"
     },
     "detail": {
       "title": "Detalle del Pago",
@@ -5942,6 +5969,7 @@
       "beneficiary": "Beneficiario",
       "accountEmail": "Correo de la Cuenta",
       "accountHolder": "Titular de la Cuenta",
+      "assignedAgent": "Agente asignado",
       "email": "Correo Electronico",
       "timeline": "Cronologia",
       "created": "Creado",
@@ -6668,7 +6696,8 @@
       "readOnly": {
         "title": "Estado de Pasarelas de Pago",
         "description": "Vista del estado de conectividad de las pasarelas de pago",
-        "adminContact": "Para modificar la configuracion, contacte al administrador del sistema."
+        "adminContact": "Para modificar la configuracion, contacte al administrador del sistema.",
+        "manageGateways": "Gestionar Pasarelas"
       }
     },
     "paymentMethodsPage": {
@@ -7963,7 +7992,83 @@
       "descriptionLabel": "Descripcion",
       "descriptionPlaceholder": "Describe que hace esta regla y cuando se aplica...",
       "deleteConfirmTitle": "Eliminar regla",
-      "deleteConfirmMessage": "Eliminar \"{name}\"? Esta accion no se puede deshacer."
+      "deleteConfirmMessage": "Eliminar \"{name}\"? Esta accion no se puede deshacer.",
+      "treasuryConditions": "Condiciones de Tesoreria",
+      "treasuryConditionsHelp": "Filtros especificos para pagos gestionados por el Tesoro Nacional",
+      "paymentMethod": "Metodo de Pago",
+      "paymentMethodCash": "Efectivo",
+      "paymentMethodTransfer": "Transferencia",
+      "paymentMethodMobile": "Mobile Money",
+      "paymentMethodCard": "Tarjeta",
+      "paymentMethodBange": "BANGE Wallet",
+      "paymentMethodCheck": "Cheque",
+      "noPaymentMethodSelected": "Ninguno = aplica a todos los metodos",
+      "paymentType": "Tipo de Pago",
+      "paymentTypeFull": "Pago completo",
+      "paymentTypePartial": "Pago parcial",
+      "paymentTypeInstallment": "Cuotas",
+      "paymentTypeComplementary": "Complementario",
+      "noPaymentTypeSelected": "Ninguno = aplica a todos los tipos",
+      "hasPenalties": "Solo pagos con penalidades",
+      "hasPenaltiesHelp": "Asignar solo pagos que incluyan recargos o multas",
+      "entityLocation": "Sitio/Oficina",
+      "entityLocationHelp": "Filtrar por oficina del Tesoro (agentes de ese sitio)",
+      "allLocations": "Todas las oficinas"
+    },
+    "manual": {
+      "title": "Centro de Asignaciones",
+      "subtitle": "Asignar, reasignar y gestionar escalaciones en 3 pasos",
+      "refresh": "Actualizar",
+      "tabUnassigned": "Sin Asignar",
+      "tabEscalations": "Escalaciones",
+      "tabReassign": "Reasignar",
+      "searchPlaceholder": "Buscar por referencia o nombre...",
+      "allEntities": "Todas las entidades",
+      "cardTitleUnassigned": "Solicitudes sin agente asignado",
+      "cardTitleEscalated": "Solicitudes escaladas por agentes",
+      "cardTitleActive": "Solicitudes con agente asignado (reasignar)",
+      "loadError": "Error al cargar los datos",
+      "retry": "Reintentar",
+      "emptyUnassigned": "Todas las solicitudes estan asignadas",
+      "emptyEscalated": "No hay escalaciones pendientes",
+      "emptyActive": "No hay asignaciones activas",
+      "colReference": "Referencia",
+      "colWorkflow": "Tramite",
+      "colEntity": "Entidad",
+      "colApplicant": "Solicitante",
+      "colCurrentAgent": "Agente actual",
+      "colDate": "Fecha",
+      "colAction": "Accion",
+      "statusPending": "Pendiente",
+      "statusInReview": "En revision",
+      "reassign": "Reasignar",
+      "assign": "Asignar",
+      "paginationResults": "{total} resultado(s) — Pagina {page} de {totalPages}",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "dialogTitleReassign": "Reasignar solicitud",
+      "dialogTitleAssign": "Asignar solicitud",
+      "selectAgent": "Seleccionar agente",
+      "loadingAgents": "Cargando agentes...",
+      "agentsError": "Error al cargar agentes. Verifique que la entidad tiene agentes configurados.",
+      "noAgentsAvailable": "No hay agentes disponibles para",
+      "recommended": "Recomendado",
+      "supervisorBadge": "Supervisor",
+      "assignments": "asignaciones",
+      "successRate": "exito",
+      "priority": "Prioridad",
+      "priority_normal": "Normal",
+      "priority_high": "Alta",
+      "priority_urgent": "Urgente",
+      "notesLabel": "Notas (opcional)",
+      "notesPlaceholder": "Instrucciones para el agente...",
+      "confirmReassign": "Confirmar reasignacion",
+      "confirmAssign": "Confirmar asignacion",
+      "incompleteData": "Datos incompletos",
+      "reassigned": "Reasignado",
+      "escalationAssigned": "Escalacion asignada",
+      "assigned": "Asignado",
+      "assignError": "Error al asignar"
     },
     "escalations": {
       "title": "Gestión de Escalaciones",

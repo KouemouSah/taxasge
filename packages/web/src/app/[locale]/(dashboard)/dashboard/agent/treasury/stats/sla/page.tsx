@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useSLAStats } from '@/modules/treasury/hooks';
 import { SLABadge } from '@/modules/treasury/components';
+import { StatsTabNav } from '../_components/StatsTabNav';
 
 // SLA threshold configuration
 const SLA_THRESHOLDS = {
@@ -83,6 +84,7 @@ export default function TreasurySLAStatsPage() {
 
   return (
     <div className="space-y-6">
+      <StatsTabNav />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

@@ -57,6 +57,7 @@ import {
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import { useKPIs } from '@/modules/treasury/hooks';
 import type { KPIPeriod } from '@/modules/treasury/types';
+import { StatsTabNav } from './_components/StatsTabNav';
 
 // Register Chart.js components
 ChartJS.register(
@@ -233,6 +234,7 @@ export default function TreasuryStatsPage() {
 
   return (
     <div className="space-y-6">
+      <StatsTabNav />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

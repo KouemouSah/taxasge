@@ -39,6 +39,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ExternalLink,
+  UserCog,
 } from 'lucide-react';
 import {
   PaymentMethodBadge,
@@ -66,6 +67,8 @@ interface PaymentDetailPanelProps {
   onValidate?: (paymentId: string, comment?: string) => Promise<void>;
   onReject?: (paymentId: string, reason: string) => Promise<void>;
   onEscalate?: (paymentId: string, reason: string, level: string) => Promise<void>;
+  onReassign?: (paymentId: string) => void;
+  isSupervisor?: boolean;
   isValidating?: boolean;
   isRejecting?: boolean;
   isEscalating?: boolean;
@@ -99,6 +102,8 @@ export function PaymentDetailPanel({
   onValidate,
   onReject,
   onEscalate,
+  onReassign,
+  isSupervisor = false,
   isValidating = false,
   isRejecting = false,
   isEscalating = false,
@@ -299,6 +304,33 @@ export function PaymentDetailPanel({
             )}
           </div>
         </div>
+
+        {/* Assigned agent (supervisor view) */}
+        {isSupervisor && (
+          <>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <UserCog className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">{t('detail.assignedAgent')}:</span>
+                <span className="text-xs font-medium">
+                  {payment.assignedAgentName || t('validationPage.unassigned')}
+                </span>
+              </div>
+              {onReassign && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => onReassign(payment.id)}
+                >
+                  <UserCog className="h-3 w-3 mr-1" />
+                  {t('validationPage.reassign.button')}
+                </Button>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Escalation info — conditional */}
         {payment.escalationLevel && (

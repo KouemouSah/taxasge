@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +50,8 @@ import {
   ArrowLeft,
   Package,
   CreditCard,
+  User,
+  UserCog,
 } from 'lucide-react';
 import { usePendingPayments, usePaymentActions, useTreasuryLocations } from '@/modules/treasury/hooks';
 import {
@@ -59,7 +61,7 @@ import {
   PaymentDetailPanel,
   ReceiptSuccessDialog,
 } from '@/modules/treasury/components';
-import type { PendingPayment } from '@/modules/treasury/types';
+import type { PendingPayment, TreasuryAgentOption } from '@/modules/treasury/types';
 import { calculateSLAStatus } from '@/modules/treasury/types';
 
 const PAGE_SIZE = 20;
@@ -73,6 +75,7 @@ function PaymentListItem({
   isSelected,
   isChecked,
   showCheckbox,
+  isSupervisor,
   onClick,
   onCheck,
   getWorkflowName,
@@ -81,10 +84,12 @@ function PaymentListItem({
   isSelected: boolean;
   isChecked: boolean;
   showCheckbox: boolean;
+  isSupervisor: boolean;
   onClick: () => void;
   onCheck: () => void;
   getWorkflowName: (code: string | undefined) => string;
 }) {
+  const t = useTranslations('treasury');
   const isLongWait = (payment.hoursWaiting ?? 0) > 8;
   const formatAmount = (amount: number) =>
     new Intl.NumberFormat('es-GQ', { style: 'decimal', minimumFractionDigits: 0 }).format(amount);
@@ -154,7 +159,23 @@ function PaymentListItem({
             )}
           </div>
 
-          {/* Row 3: Badges */}
+          {/* Row 3: Agent (supervisor only) */}
+          {isSupervisor && (
+            <div className="flex items-center gap-1 mt-1">
+              <User className="h-2.5 w-2.5 text-muted-foreground" />
+              {payment.assignedAgentName ? (
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {payment.assignedAgentName}
+                </span>
+              ) : (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-orange-300 text-orange-600 bg-orange-50">
+                  {t('validationPage.unassigned')}
+                </Badge>
+              )}
+            </div>
+          )}
+
+          {/* Row 4: Badges */}
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <PaymentMethodBadge method={payment.paymentMethod} />
             <WorkflowStatusBadge status={payment.workflowStatus} />
@@ -207,9 +228,18 @@ export default function TreasuryValidationPage() {
   const [methodFilter, setMethodFilter] = useState<string>(
     searchParams.get('method') || 'all'
   );
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setSearchTerm(value), 250);
+  }, []);
+  useEffect(() => () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }, []);
   const [slaFilter, setSlaFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('all');
+  const [agentFilter, setAgentFilter] = useState<string>('all');
 
   // Treasury locations
   const { data: locations } = useTreasuryLocations();
@@ -236,32 +266,46 @@ export default function TreasuryValidationPage() {
   const [escalateReason, setEscalateReason] = useState('');
   const [escalateLevel, setEscalateLevel] = useState<string>('medium');
 
+  // Reassign dialog
+  const [showReassignDialog, setShowReassignDialog] = useState(false);
+  const [reassignPaymentId, setReassignPaymentId] = useState<string | null>(null);
+  const [reassignTargetAgent, setReassignTargetAgent] = useState<string>('');
+  const [reassignReason, setReassignReason] = useState('');
+
   // Reset selection on filter change
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(1);
     setSelectedPaymentId(null);
-  }, [statusFilter, methodFilter]);
+  }, [statusFilter, methodFilter, agentFilter]);
 
   // Data fetching
   const { data: paymentsData, isLoading, error, refetch } = usePendingPayments({
     status: statusFilter !== 'all' ? statusFilter : undefined,
     method: methodFilter !== 'all' ? methodFilter : undefined,
     entityLocationId: locationFilter !== 'all' ? locationFilter : undefined,
+    agentProfileId: agentFilter !== 'all' ? agentFilter : undefined,
     page,
     pageSize: PAGE_SIZE,
   });
+
+  // Derived supervisor state
+  const isSupervisor = paymentsData?.isSupervisor ?? false;
+  const isMainOffice = paymentsData?.isMainOffice ?? false;
+  const treasuryAgents: TreasuryAgentOption[] = paymentsData?.treasuryAgents ?? [];
 
   // Actions
   const {
     validatePayment,
     rejectPayment,
     escalatePayment,
+    reassignPayment,
     validateBatch,
     rejectBatch,
     isValidating,
     isRejecting,
     isEscalating,
+    isReassigning,
     isBatchProcessing,
   } = usePaymentActions();
 
@@ -387,6 +431,28 @@ export default function TreasuryValidationPage() {
     setShowEscalateDialog(false);
     setEscalatePaymentId(null);
     setEscalateReason('');
+  };
+
+  const handleReassignConfirm = async () => {
+    if (!reassignPaymentId || !reassignTargetAgent) return;
+    const nextId = getAdjacentPaymentId(reassignPaymentId);
+    await reassignPayment.mutateAsync({
+      paymentId: reassignPaymentId,
+      targetAgentProfileId: reassignTargetAgent,
+      reason: reassignReason || undefined,
+    });
+    setShowReassignDialog(false);
+    setReassignPaymentId(null);
+    setReassignTargetAgent('');
+    setReassignReason('');
+    if (nextId) setSelectedPaymentId(nextId);
+  };
+
+  const openReassignDialog = (paymentId: string) => {
+    setReassignPaymentId(paymentId);
+    setReassignTargetAgent('');
+    setReassignReason('');
+    setShowReassignDialog(true);
   };
 
   // Helper: compute next payment ID after an action
@@ -519,13 +585,13 @@ export default function TreasuryValidationPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid gap-2 grid-cols-2 lg:grid-cols-6 px-4 md:px-6 lg:px-8 pb-3 shrink-0">
-        <div className="relative col-span-2 lg:col-span-2">
+      <div className="flex flex-wrap gap-2 px-4 md:px-6 lg:px-8 pb-3 shrink-0">
+        <div className="relative w-full lg:w-56">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={t('validationPage.filters.searchPlaceholder')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 h-9"
           />
         </div>
@@ -564,7 +630,7 @@ export default function TreasuryValidationPage() {
             <SelectItem value="breached">{t('validationPage.filters.breached')}</SelectItem>
           </SelectContent>
         </Select>
-        {locations && locations.length > 1 && (
+        {isMainOffice && locations && locations.length > 1 && (
           <Select value={locationFilter} onValueChange={(v) => { setLocationFilter(v); setPage(1); }}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder={t('validationPage.filters.location')} />
@@ -574,6 +640,22 @@ export default function TreasuryValidationPage() {
               {locations.map((loc) => (
                 <SelectItem key={loc.id} value={loc.id}>
                   {loc.location_name} ({loc.city})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {isSupervisor && treasuryAgents.length > 0 && (
+          <Select value={agentFilter} onValueChange={(v) => { setAgentFilter(v); setPage(1); }}>
+            <SelectTrigger className="h-9">
+              <UserCog className="h-3.5 w-3.5 mr-1 shrink-0" />
+              <SelectValue placeholder={t('validationPage.filters.agent')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('validationPage.filters.allAgents')}</SelectItem>
+              {treasuryAgents.map((agent) => (
+                <SelectItem key={agent.id} value={agent.id}>
+                  {agent.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -646,6 +728,7 @@ export default function TreasuryValidationPage() {
                   isSelected={payment.id === selectedPaymentId}
                   isChecked={selectedIds.has(payment.id)}
                   showCheckbox={statusFilter === 'pending_agent_review'}
+                  isSupervisor={isSupervisor}
                   onClick={() => {
                     setSelectedPaymentId(payment.id);
                     // On mobile, navigate to detail page
@@ -728,6 +811,8 @@ export default function TreasuryValidationPage() {
               isValidating={isValidating}
               isRejecting={isRejecting}
               isEscalating={isEscalating}
+              isSupervisor={isSupervisor}
+              onReassign={isSupervisor ? openReassignDialog : undefined}
             />
           ) : (
             <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground">
@@ -867,6 +952,72 @@ export default function TreasuryValidationPage() {
             >
               {isEscalating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('escalation.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reassign Dialog (supervisor only) */}
+      <AlertDialog open={showReassignDialog} onOpenChange={(open) => {
+        setShowReassignDialog(open);
+        if (!open) {
+          setReassignTargetAgent('');
+          setReassignReason('');
+          setReassignPaymentId(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5 text-blue-500" />
+              {t('validationPage.reassign.title')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>{t('validationPage.reassign.description')}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="reassignTarget">{t('validationPage.reassign.targetAgent')}</Label>
+                  <Select value={reassignTargetAgent} onValueChange={setReassignTargetAgent}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('validationPage.reassign.selectAgent')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {treasuryAgents
+                        .filter((agent) => {
+                          const currentPayment = filteredPayments.find((p) => p.id === reassignPaymentId);
+                          return agent.id !== currentPayment?.assignedAgentId;
+                        })
+                        .map((agent) => (
+                          <SelectItem key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reassignReason">{t('validationPage.reassign.reason')}</Label>
+                  <Textarea
+                    id="reassignReason"
+                    placeholder={t('validationPage.reassign.reasonPlaceholder')}
+                    value={reassignReason}
+                    onChange={(e) => setReassignReason(e.target.value)}
+                    rows={2}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isReassigning}>{t('validationPage.buttons.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReassignConfirm}
+              disabled={isReassigning || !reassignTargetAgent}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isReassigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {t('validationPage.reassign.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

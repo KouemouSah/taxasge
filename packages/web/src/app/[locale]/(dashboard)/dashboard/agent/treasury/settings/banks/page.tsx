@@ -29,7 +29,10 @@ import {
   Info,
   Zap,
   Crown,
+  ExternalLink,
 } from 'lucide-react';
+import { useLocale } from 'next-intl';
+import Link from 'next/link';
 import { useBankConfigurations } from '@/modules/treasury/hooks';
 import type { BankConfiguration } from '@/modules/treasury/types';
 
@@ -41,6 +44,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 
 export default function BankConfigurationsPage() {
   const t = useTranslations('treasury');
+  const locale = useLocale();
 
   const { data: configurations, isLoading, error, refetch } = useBankConfigurations();
 
@@ -82,11 +86,19 @@ export default function BankConfigurationsPage() {
         </Button>
       </div>
 
-      {/* Admin Contact Notice */}
+      {/* Admin Contact Notice with link */}
       <Card className="border-amber-200 bg-amber-50">
-        <CardContent className="flex items-start gap-3 py-3">
-          <Info className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
-          <p className="text-sm text-amber-800">{t('banksPage.readOnly.adminContact')}</p>
+        <CardContent className="flex items-start justify-between gap-3 py-3">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-800">{t('banksPage.readOnly.adminContact')}</p>
+          </div>
+          <Link href={`/${locale}/dashboard/admin/payment-gateways`}>
+            <Button variant="outline" size="sm" className="shrink-0">
+              <ExternalLink className="mr-2 h-3.5 w-3.5" />
+              {t('banksPage.readOnly.manageGateways')}
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 

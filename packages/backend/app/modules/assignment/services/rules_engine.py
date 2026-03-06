@@ -216,6 +216,40 @@ class RulesEngine:
             else:
                 score += 3.0
 
+        # ── Treasury-specific conditions ──────────────────────────────────
+
+        # Payment method filter
+        if matched and "payment_methods" in conditions:
+            payment_method = item_data.get("payment_method", "")
+            if payment_method not in conditions["payment_methods"]:
+                matched = False
+            else:
+                score += 8.0
+
+        # Payment type filter
+        if matched and "payment_types" in conditions:
+            payment_type = item_data.get("payment_type", "")
+            if payment_type not in conditions["payment_types"]:
+                matched = False
+            else:
+                score += 6.0
+
+        # Has penalties filter
+        if matched and conditions.get("has_penalties"):
+            penalties = item_data.get("penalties", 0)
+            if not penalties or float(penalties) <= 0:
+                matched = False
+            else:
+                score += 4.0
+
+        # Entity location filter
+        if matched and "entity_location_id" in conditions:
+            item_location = item_data.get("entity_location_id", "")
+            if item_location != conditions["entity_location_id"]:
+                matched = False
+            else:
+                score += 3.0
+
         # Add base score from rule priority
         if matched:
             score += rule.priority / 10.0
