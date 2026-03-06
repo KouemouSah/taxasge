@@ -270,6 +270,290 @@ async def get_auto_assignment_service_dep(
 # Note: Authorization is handled via @require_permission decorators
 # Legacy check_*_permission functions have been removed (replaced by RBAC system)
 
+
+@router.get("/assignable-items")
+@require_permission("assignment.create")
+async def get_assignable_items(
+    tab: str = Query("unassigned", description="Tab: unassigned | escalated | active"),
+    entity_code: Optional[str] = Query(None, description="Filter by entity_code"),
+    search: Optional[str] = Query(None, description="Search by reference"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+    db=Depends(get_db_connection),
+):
+    """
+    Get items available for assignment/reassignment.
+    Scoped to supervisor's entity (non-admin users only see their entity's items).
+
+    Tabs:
+    - unassigned: SUBMITTED requests with no active assignment
+    - escalated: Requests flagged escalated=true (pending or in_review)
+    - active: Currently assigned requests (for reassignment)
+    """
+    try:
+        offset = (page - 1) * page_size
+        base_conditions = []
+        params: list = []
+        param_idx = 1
+
+        # ── Entity scoping: supervisor sees only their entity's items ──
+        is_admin = current_user.role == "admin"
+        if not is_admin:
+            agent_ctx = await get_agent_context(current_user.id, db)
+            if agent_ctx.get("entity_id"):
+                # Get entity code from entity_id
+                ent_row = await db.fetchrow(
+                    "SELECT code, workflow_codes FROM entities WHERE id = $1",
+                    agent_ctx["entity_id"]
+                )
+                if ent_row:
+                    supervisor_entity_code = ent_row["code"]
+                    workflow_codes = ent_row["workflow_codes"] or []
+                    if workflow_codes:
+                        # Scope by workflow_codes (entity may handle multiple workflows)
+                        base_conditions.append(f"sr.workflow_code = ANY(${param_idx}::text[])")
+                        params.append(workflow_codes)
+                        param_idx += 1
+                    else:
+                        # Entity without workflows (e.g. treasury) — scope by entity_code
+                        base_conditions.append(f"sr.entity_code = ${param_idx}")
+                        params.append(supervisor_entity_code)
+                        param_idx += 1
+
+        if entity_code:
+            base_conditions.append(f"sr.entity_code = ${param_idx}")
+            params.append(entity_code)
+            param_idx += 1
+
+        if search:
+            base_conditions.append(
+                f"(sr.reference ILIKE ${param_idx} OR u.full_name ILIKE ${param_idx})"
+            )
+            params.append(f"%{search}%")
+            param_idx += 1
+
+        where_extra = (" AND " + " AND ".join(base_conditions)) if base_conditions else ""
+
+        if tab == "unassigned":
+            query = f"""
+                SELECT sr.id, sr.reference, sr.workflow_code, sr.entity_code,
+                       sr.status::text, sr.created_at, u.full_name as citizen_name,
+                       e.name as entity_name,
+                       'unassigned' as assignment_state,
+                       NULL::text as assigned_agent_name,
+                       NULL::uuid as current_assignment_id,
+                       NULL::uuid as current_agent_profile_id
+                FROM service_requests sr
+                LEFT JOIN users u ON u.id = sr.user_id
+                LEFT JOIN entities e ON e.code = sr.entity_code
+                WHERE sr.status IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS', 'DOCUMENTS_REQUIRED')
+                  AND sr.escalated = false
+                  AND NOT EXISTS (
+                      SELECT 1 FROM assignments a
+                      WHERE a.item_id = sr.id
+                        AND a.status IN ('assigned', 'in_progress', 'pending_review')
+                  )
+                  {where_extra}
+                ORDER BY sr.created_at ASC
+                LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            """
+            count_query = f"""
+                SELECT COUNT(*) FROM service_requests sr
+                LEFT JOIN users u ON u.id = sr.user_id
+                WHERE sr.status IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS', 'DOCUMENTS_REQUIRED')
+                  AND sr.escalated = false
+                  AND NOT EXISTS (
+                      SELECT 1 FROM assignments a
+                      WHERE a.item_id = sr.id
+                        AND a.status IN ('assigned', 'in_progress', 'pending_review')
+                  )
+                  {where_extra}
+            """
+        elif tab == "escalated":
+            query = f"""
+                SELECT sr.id, sr.reference, sr.workflow_code, sr.entity_code,
+                       sr.status::text, sr.created_at, u.full_name as citizen_name,
+                       e.name as entity_name,
+                       CASE WHEN sr.assigned_to IS NULL THEN 'pending'
+                            ELSE 'in_review' END as assignment_state,
+                       assigned_user.full_name as assigned_agent_name,
+                       NULL::uuid as current_assignment_id,
+                       NULL::uuid as current_agent_profile_id
+                FROM service_requests sr
+                LEFT JOIN users u ON u.id = sr.user_id
+                LEFT JOIN entities e ON e.code = sr.entity_code
+                LEFT JOIN users assigned_user ON assigned_user.id = sr.assigned_to
+                WHERE sr.escalated = true
+                  {where_extra}
+                ORDER BY sr.escalated_at DESC NULLS LAST, sr.created_at DESC
+                LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            """
+            count_query = f"""
+                SELECT COUNT(*) FROM service_requests sr
+                LEFT JOIN users u ON u.id = sr.user_id
+                WHERE sr.escalated = true
+                  {where_extra}
+            """
+        elif tab == "active":
+            query = f"""
+                SELECT sr.id, sr.reference, sr.workflow_code, sr.entity_code,
+                       sr.status::text, sr.created_at, u.full_name as citizen_name,
+                       e.name as entity_name,
+                       a.status::text as assignment_state,
+                       agent_user.full_name as assigned_agent_name,
+                       a.id as current_assignment_id,
+                       a.agent_profile_id as current_agent_profile_id
+                FROM service_requests sr
+                LEFT JOIN users u ON u.id = sr.user_id
+                LEFT JOIN entities e ON e.code = sr.entity_code
+                JOIN assignments a ON a.item_id = sr.id
+                    AND a.status IN ('assigned', 'in_progress')
+                LEFT JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+                LEFT JOIN users agent_user ON agent_user.id = ap.user_id
+                WHERE 1=1
+                  {where_extra}
+                ORDER BY a.assigned_at DESC
+                LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            """
+            count_query = f"""
+                SELECT COUNT(*) FROM service_requests sr
+                LEFT JOIN users u ON u.id = sr.user_id
+                JOIN assignments a ON a.item_id = sr.id
+                    AND a.status IN ('assigned', 'in_progress')
+                WHERE 1=1
+                  {where_extra}
+            """
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid tab: {tab}")
+
+        params.extend([page_size, offset])
+        count_params = params[:-2]  # without limit/offset
+
+        rows = await db.fetch(query, *params)
+        total_row = await db.fetchval(count_query, *count_params)
+        total = total_row or 0
+
+        items = []
+        for row in rows:
+            items.append({
+                "id": str(row["id"]),
+                "reference": row["reference"],
+                "workflow_code": row["workflow_code"],
+                "entity_code": row["entity_code"],
+                "status": row["status"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "citizen_name": row["citizen_name"] or "—",
+                "entity_name": row["entity_name"] or row["entity_code"] or "—",
+                "assignment_state": row["assignment_state"],
+                "assigned_agent_name": row["assigned_agent_name"],
+                "current_assignment_id": str(row["current_assignment_id"]) if row["current_assignment_id"] else None,
+                "current_agent_profile_id": str(row["current_agent_profile_id"]) if row["current_agent_profile_id"] else None,
+            })
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching assignable items: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al obtener elementos asignables"
+        )
+
+
+@router.get("/available-agents-for-item/{entity_code}")
+@require_permission("assignment.create")
+async def get_available_agents_for_item(
+    entity_code: str,
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+    db=Depends(get_db_connection),
+):
+    """
+    Get available agents for a specific entity_code.
+    Returns agents with their workload info, sorted by recommendation score.
+    Scoped: non-admin supervisors can only fetch agents for their own entity.
+    """
+    try:
+        # Security: verify supervisor has access to this entity
+        is_admin = current_user.role == "admin"
+        if not is_admin:
+            agent_ctx = await get_agent_context(current_user.id, db)
+            if agent_ctx.get("entity_id"):
+                sup_ent = await db.fetchval(
+                    "SELECT code FROM entities WHERE id = $1",
+                    agent_ctx["entity_id"]
+                )
+                if sup_ent and sup_ent != entity_code:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="No tiene permiso para ver agentes de otra entidad"
+                    )
+        query = """
+            SELECT
+                ap.id as agent_profile_id,
+                u.full_name,
+                u.email,
+                ap.is_supervisor,
+                aw.current_assignments,
+                aw.max_concurrent_assignments,
+                aw.workload_status::text,
+                aw.availability::text,
+                aw.success_rate,
+                aw.avg_processing_time_hours
+            FROM agent_profiles ap
+            JOIN users u ON u.id = ap.user_id
+            JOIN entities e ON e.id = ap.entity_id
+            LEFT JOIN agent_workloads aw ON aw.agent_profile_id = ap.id
+            WHERE e.code = $1
+              AND ap.is_active = true
+              AND (aw.availability IS NULL OR aw.availability = 'available')
+            ORDER BY
+                COALESCE(aw.current_assignments, 0) ASC,
+                COALESCE(aw.success_rate, 100) DESC,
+                COALESCE(aw.avg_processing_time_hours, 999) ASC
+        """
+        rows = await db.fetch(query, entity_code)
+
+        agents = []
+        for i, row in enumerate(rows):
+            current = row["current_assignments"] or 0
+            max_cap = row["max_concurrent_assignments"] or 10
+            agents.append({
+                "agent_profile_id": str(row["agent_profile_id"]),
+                "full_name": row["full_name"] or row["email"] or "—",
+                "email": row["email"],
+                "is_supervisor": row["is_supervisor"],
+                "current_assignments": current,
+                "max_concurrent_assignments": max_cap,
+                "workload_status": row["workload_status"] or "available",
+                "availability": row["availability"] or "available",
+                "success_rate": float(row["success_rate"]) if row["success_rate"] else None,
+                "avg_processing_hours": float(row["avg_processing_time_hours"]) if row["avg_processing_time_hours"] else None,
+                "capacity_percent": round(current / max_cap * 100) if max_cap > 0 else 0,
+                "is_recommended": i == 0,  # First agent = best score
+            })
+
+        return {"agents": agents, "entity_code": entity_code}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching agents for entity {entity_code}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al obtener agentes disponibles"
+        )
+
+
 @router.post("/manual", response_model=Assignment, status_code=status.HTTP_201_CREATED)
 @require_permission("assignment.create")
 async def create_manual_assignment(

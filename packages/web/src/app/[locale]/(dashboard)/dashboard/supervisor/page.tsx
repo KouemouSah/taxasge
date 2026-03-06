@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users,
+  UserPlus,
   AlertTriangle,
   CheckCircle,
   Clock,
@@ -117,6 +118,7 @@ export default function SupervisorDashboardPage() {
   const quickActions = useMemo(() => [
     { id: 'team', icon: Users, label: t('nav.team'), description: t('team.title'), href: `/${locale}/dashboard/supervisor/team/agents`, color: 'text-blue-500' },
     { id: 'workload', icon: BarChart2, label: t('nav.workload'), description: t('workload.title'), href: `/${locale}/dashboard/supervisor/team/workload`, color: 'text-purple-500' },
+    { id: 'assignments', icon: UserPlus, label: t('nav.assignments') || 'Asignaciones', description: t('assignments.title') || 'Centro de asignaciones', href: `/${locale}/dashboard/supervisor/assignments/manual`, color: 'text-green-500' },
     { id: 'rules', icon: Settings2, label: t('nav.rules'), description: t('rules.title'), href: `/${locale}/dashboard/supervisor/assignments/rules`, color: 'text-gray-500' },
     { id: 'escalations', icon: AlertTriangle, label: t('nav.escalations'), href: `/${locale}/dashboard/supervisor/escalations/pending`, color: 'text-orange-500', badge: stats?.escalations.pending },
     { id: 'reports', icon: FileBarChart, label: t('nav.reports'), href: `/${locale}/dashboard/supervisor/reports`, color: 'text-teal-500' },

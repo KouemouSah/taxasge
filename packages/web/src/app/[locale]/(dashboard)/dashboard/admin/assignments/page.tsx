@@ -327,12 +327,6 @@ export default function AssignmentsPage() {
               <DropdownMenuLabel>{t('createAssignment') || 'Create Assignment'}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href={`/${locale}/dashboard/admin/assignments/new/manual`}>
-                  <User className="mr-2 h-4 w-4" />
-                  {t('manualAssignment') || 'Manual Assignment'}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
                 <Link href={`/${locale}/dashboard/admin/assignments/new/auto`}>
                   <Play className="mr-2 h-4 w-4" />
                   {t('autoAssignment') || 'Auto Assignment'}

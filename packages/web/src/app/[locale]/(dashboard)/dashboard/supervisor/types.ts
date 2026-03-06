@@ -158,19 +158,45 @@ export interface WorkloadBalanceResponse {
 // RULES
 // =============================================================================
 
-export type RuleType = 'round_robin' | 'load_balance' | 'specialization' | 'priority_based';
+/**
+ * Backend: AssignmentRule (assignment_rule.py:49-72)
+ * DB: assignment_rules table — conditions/actions JSONB, status enum
+ */
+export type RuleStatus = 'active' | 'inactive' | 'draft' | 'archived';
+
+export interface RuleConditions {
+  item_types?: string[];
+  min_amount?: number;
+  max_amount?: number;
+  min_priority?: number;
+}
+
+export interface RuleActions {
+  selection_strategy?: 'load_balance' | 'round_robin' | 'specialization';
+  specializations?: string[];
+  max_workload_pct?: number;
+}
 
 export interface AssignmentRule {
   id: string;
   name: string;
   description: string | null;
-  rule_type: RuleType;
-  criteria: Record<string, unknown>;
+  entity_type: string;
+  entity_id: string | null;
+  conditions: RuleConditions;
+  actions: RuleActions;
   priority: number;
-  is_active: boolean;
+  status: RuleStatus;
+  times_applied: number;
+  times_matched: number;
+  successful_assignments: number;
+  failed_assignments: number;
+  success_rate: number;
+  last_applied_at: string | null;
+  created_by: string;
   created_at: string;
   updated_at: string | null;
-  created_by: string | null;
+  updated_by: string | null;
 }
 
 /** Backend: RuleEffectivenessItem (supervisor_routes.py:183-193) */
@@ -253,11 +279,17 @@ export const AVAILABILITY_COLORS: Record<string, string> = {
   temporarily_unavailable: 'bg-gray-100 text-gray-800',
 };
 
-export const RULE_TYPE_COLORS: Record<RuleType, string> = {
-  round_robin: 'bg-blue-100 text-blue-800',
+export const RULE_STATUS_COLORS: Record<RuleStatus, string> = {
+  active: 'bg-green-100 text-green-800',
+  inactive: 'bg-gray-100 text-gray-800',
+  draft: 'bg-yellow-100 text-yellow-800',
+  archived: 'bg-red-100 text-red-800',
+};
+
+export const STRATEGY_COLORS: Record<string, string> = {
   load_balance: 'bg-green-100 text-green-800',
+  round_robin: 'bg-blue-100 text-blue-800',
   specialization: 'bg-purple-100 text-purple-800',
-  priority_based: 'bg-orange-100 text-orange-800',
 };
 
 export function getBalanceColor(score: number): string {
