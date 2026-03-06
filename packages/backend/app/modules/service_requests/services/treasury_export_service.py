@@ -89,9 +89,9 @@ class TreasuryExportService:
 
     # Chart color palette (professional navy/blue scale)
     CHART_COLORS = [
-        "#1a365d", "#2b6cb0", "#3182ce", "#4299e1",
-        "#63b3ed", "#90cdf4", "#bee3f8", "#a0aec0",
-        "#718096", "#4a5568", "#2d3748", "#e2e8f0",
+        "#3d7a35", "#1a365d", "#c53030", "#d69e2e",
+        "#2b6cb0", "#9b2c2c", "#38a169", "#805ad5",
+        "#dd6b20", "#319795", "#e53e3e", "#4299e1",
     ]
 
     # SAGE X3 CSV column mapping
@@ -638,12 +638,12 @@ class TreasuryExportService:
                 sr.reference as request_reference,
                 sr.workflow_code,
                 INITCAP(REPLACE(sr.workflow_code, '_', ' ')) as service_name,
-                u.full_name as user_name,
+                agent.full_name as agent_name,
                 e.name as entity_name,
                 m.name_es as ministry_name
             FROM service_payments sp
             JOIN service_requests sr ON sr.id = sp.service_request_id
-            LEFT JOIN users u ON u.id = sr.user_id
+            LEFT JOIN users agent ON agent.id = sp.validated_by_agent_id
             LEFT JOIN entities e ON e.code = sp.entity_code
             LEFT JOIN ministries m ON m.id = e.ministry_id
             WHERE sp.created_at >= $1::date
@@ -1125,7 +1125,13 @@ class TreasuryExportService:
         generated_by_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Generate generic export."""
-        total_amount = sum(float(r.get("total_amount", 0) or 0) for r in data)
+        # Total = only completed/validated payments (not expired/rejected)
+        completed_statuses = {"completed", "validated", "approved"}
+        total_amount = sum(
+            float(r.get("total_amount", 0) or 0)
+            for r in data
+            if str(r.get("workflow_status", "")).lower() in completed_statuses
+        )
 
         if not data:
             columns = ["payment_reference", "total_amount", "currency", "payment_method", "workflow_status"]
@@ -1178,8 +1184,17 @@ class TreasuryExportService:
             is_amount = any(kw in col.lower() for kw in amount_keywords)
             col_defs.append({"key": col, "label": label, "is_amount": is_amount})
 
-        # Format row data
+        # Format row data with status color-coding
         formatted_rows = []
+        status_class_map = {
+            "expired": "status-expired",
+            "cancelled": "status-expired",
+            "rejected": "status-rejected",
+            "rechazado": "status-rejected",
+            "completed": "status-completed",
+            "validated": "status-completed",
+            "approved": "status-completed",
+        }
         for row in data:
             formatted = {}
             for col in columns:
@@ -1192,6 +1207,9 @@ class TreasuryExportService:
                     formatted[col] = format_xaf(val)
                 else:
                     formatted[col] = str(val)[:60]
+            # Add status CSS class for color-coding
+            ws = str(row.get("workflow_status", "")).lower()
+            formatted["_status_class"] = status_class_map.get(ws, "")
             formatted_rows.append(formatted)
 
         p_start = period_start.strftime("%d/%m/%Y") if period_start else "-"
@@ -1695,9 +1713,12 @@ class TreasuryExportService:
         try:
             total_amount = float(data.get("total_amount", 0) or 0)
 
-            # Chart 1: Revenue by Entity (vertical bar)
+            # Compact chart dimensions for 2x2 grid layout
+            compact_w, compact_h = 380, 200
+
+            # Chart 1: Revenue by Entity (vertical bar) — only if > 1 entity
             by_entity = data.get("by_entity", [])
-            if by_entity:
+            if by_entity and len(by_entity) > 1:
                 entity_labels = [
                     (e.get("entity_name", "N/A") or "N/A")[:20]
                     for e in by_entity
@@ -1709,11 +1730,12 @@ class TreasuryExportService:
                 charts["entity_bar"] = self._generate_bar_chart(
                     entity_labels, entity_values,
                     title="Recaudación por Entidad (miles XAF)",
+                    width=compact_w, height=compact_h,
                 )
 
-            # Chart 2: Payment Method Distribution (pie)
+            # Chart 2: Payment Method Distribution (pie) — only if > 1 method
             by_method = data.get("by_method", [])
-            if by_method:
+            if by_method and len(by_method) > 1:
                 method_labels_map = {
                     "mobile_money": "Mobile Money",
                     "card": "Tarjeta",
@@ -1733,11 +1755,12 @@ class TreasuryExportService:
                 charts["method_pie"] = self._generate_pie_chart(
                     method_labels, method_values,
                     title="Distribución por Método de Pago",
+                    width=compact_w, height=compact_h,
                 )
 
-            # Chart 3: Top 10 Services (horizontal bar)
+            # Chart 3: Top 10 Services (horizontal bar) — only if > 1 service
             by_service = data.get("by_service", [])[:10]
-            if by_service:
+            if by_service and len(by_service) > 1:
                 svc_labels = [
                     (s.get("service_name", "N/A") or "N/A")[:35]
                     for s in by_service
@@ -1749,10 +1772,10 @@ class TreasuryExportService:
                 charts["service_hbar"] = self._generate_horizontal_bar_chart(
                     svc_labels, svc_values,
                     title="Top 10 Servicios por Recaudación (miles XAF)",
-                    height=280,
+                    width=compact_w, height=compact_h,
                 )
 
-            # Chart 4: Daily Revenue Trend (line)
+            # Chart 4: Daily Revenue Trend (line) — only if > 1 day
             daily = data.get("daily_breakdown", [])
             if daily and len(daily) > 1:
                 day_labels = [
@@ -1773,6 +1796,7 @@ class TreasuryExportService:
                     [day_amounts],
                     ["Monto (miles XAF)"],
                     title="Evolución Diaria de Recaudación",
+                    width=compact_w, height=compact_h,
                 )
                 # Also generate transaction count trend
                 charts["daily_count_line"] = self._generate_line_chart(
@@ -1780,6 +1804,7 @@ class TreasuryExportService:
                     [day_counts],
                     ["Nº Transacciones"],
                     title="Evolución Diaria de Transacciones",
+                    width=compact_w, height=compact_h,
                 )
 
             # Chart 5: Entity contribution pie (complementary to bar)
@@ -1795,6 +1820,7 @@ class TreasuryExportService:
                 charts["entity_pie"] = self._generate_pie_chart(
                     ent_pie_labels, ent_pie_values,
                     title="Participación por Entidad (%)",
+                    width=compact_w, height=compact_h,
                 )
 
         except Exception as e:
@@ -1886,6 +1912,15 @@ class TreasuryExportService:
 
         # Generate charts (base64 PNG images)
         charts = self._generate_ministry_charts(data)
+        has_charts = bool(charts)
+
+        # Top services totals
+        top_svc_total_count = sum(
+            int(s.get("payment_count", 0) or 0) for s in data.get("by_service", [])[:20]
+        )
+        top_svc_total_amount = sum(
+            float(s.get("total_amount", 0) or 0) for s in data.get("by_service", [])[:20]
+        )
 
         # Load logo for PDF header
         logo_b64 = None
@@ -1913,8 +1948,11 @@ class TreasuryExportService:
                     by_entity=by_entity,
                     by_method=by_method,
                     top_services=top_services,
+                    top_services_total_count=format_count(top_svc_total_count),
+                    top_services_total_amount=format_xaf(top_svc_total_amount),
                     daily_breakdown=daily_breakdown if daily_breakdown else None,
                     charts=charts,
+                    has_charts=has_charts,
                     logo_base64=logo_b64,
                     generated_by_name=generated_by_name or "Sistema",
                 )

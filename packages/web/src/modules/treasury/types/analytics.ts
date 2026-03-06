@@ -85,6 +85,8 @@ export interface TrendAnalysis {
   confidenceLevel: string;
   projection7d?: number;
   projection30d?: number;
+  dataPoints: number;
+  isReliable: boolean;
 }
 
 export interface TrendsResponse {
@@ -187,6 +189,14 @@ export interface AnalyticsReport {
   // Overall health
   healthScore: number;
   healthStatus: HealthStatus;
+
+  // Data quality
+  dataDays: number;
+  dataSufficient: boolean;
+
+  // NL summaries
+  trendSummary?: string;
+  correlationSummary?: string;
 }
 
 // =============================================================================
@@ -205,6 +215,8 @@ export interface ExploreResponse {
   anomalies: AnomalyPoint[];
   totalRecords: number;
   message?: string;
+  dataDays?: number;
+  summary?: string;
 }
 
 // =============================================================================

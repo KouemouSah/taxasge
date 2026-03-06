@@ -227,10 +227,17 @@ class PaymentSLAService:
         Find cash payments pending > 15 days. Expire them:
         - payment status → 'cancelled', workflow_status → 'expired'
         - service_request status → 'EXPIRED'
+        - P1: Cancel linked appointments (reservations + holds)
+        - P2: Schedule Firebase document cleanup (mark for deletion)
+        - P3: Insert audit trail in service_request_history
+        - P4: Expire even if sla_warning_sent=false (cron may have been down)
         Send individual email to each citizen.
         """
         expiration_threshold = datetime.now(timezone.utc) - timedelta(days=SLA_EXPIRATION_DAYS)
 
+        # P4: Remove sla_warning_sent/sla_escalated preconditions — if payment
+        # has been pending > 15 days it must expire regardless of whether
+        # the warning/escalation cron ran previously.
         expired_payments = await db.fetch("""
             UPDATE service_payments sp
             SET status = 'cancelled',
@@ -247,7 +254,7 @@ class PaymentSLAService:
                 sp.id as payment_id, sp.payment_reference, sp.total_amount,
                 sp.currency, sp.created_at as payment_created,
                 sr.id as request_id, sr.reference as sr_reference,
-                sr.workflow_code,
+                sr.workflow_code, sr.status as previous_status,
                 u.email as citizen_email, u.first_name, u.last_name,
                 u.preferred_language
         """, expiration_threshold)
@@ -258,8 +265,9 @@ class PaymentSLAService:
 
         logger.info(f"SLA expiration: {len(expired_payments)} payments expired")
 
-        # Batch update service_requests status
         request_ids = [r["request_id"] for r in expired_payments]
+
+        # Batch update service_requests status
         if request_ids:
             await db.execute("""
                 UPDATE service_requests
@@ -268,6 +276,15 @@ class PaymentSLAService:
                 WHERE id = ANY($1::uuid[])
                   AND status NOT IN ('COMPLETED', 'CANCELLED', 'EXPIRED')
             """, request_ids)
+
+        # P1: Cancel linked appointments (reservations + holds)
+        await self._cancel_appointments(db, request_ids)
+
+        # P3: Insert audit trail in service_request_history
+        await self._insert_expiration_history(db, expired_payments)
+
+        # P2: Mark documents for cleanup (soft-delete file paths, async Firebase cleanup)
+        await self._schedule_document_cleanup(db, request_ids)
 
         # Send individual email to each citizen
         for payment in expired_payments:
@@ -289,6 +306,142 @@ class PaymentSLAService:
                 )
 
         return len(expired_payments)
+
+    # =========================================================================
+    # P1: Cancel linked appointments
+    # =========================================================================
+
+    async def _cancel_appointments(self, db, request_ids: List[str]) -> None:
+        """Cancel appointment reservations and release holds for expired requests."""
+        if not request_ids:
+            return
+
+        # Cancel reservations (scheduled → cancelled)
+        cancelled_reservations = await db.fetchval("""
+            WITH updated AS (
+                UPDATE appointment_reservations
+                SET status = 'cancelled',
+                    cancelled_at = NOW(),
+                    cancellation_reason = 'Payment expired (SLA 15 days)'
+                WHERE service_request_id = ANY($1::uuid[])
+                  AND status NOT IN ('cancelled', 'completed')
+                RETURNING id
+            )
+            SELECT COUNT(*) FROM updated
+        """, request_ids)
+
+        # Release holds (held/confirmed → expired)
+        released_holds = await db.fetchval("""
+            WITH updated AS (
+                UPDATE appointment_holds
+                SET status = 'expired'::appointment_hold_status,
+                    released_at = NOW()
+                WHERE service_request_id = ANY($1::uuid[])
+                  AND status NOT IN ('expired', 'released')
+                RETURNING id
+            )
+            SELECT COUNT(*) FROM updated
+        """, request_ids)
+
+        if cancelled_reservations or released_holds:
+            logger.info(
+                f"SLA expiration: cancelled {cancelled_reservations} reservations, "
+                f"released {released_holds} holds"
+            )
+
+    # =========================================================================
+    # P3: Insert audit trail in service_request_history
+    # =========================================================================
+
+    async def _insert_expiration_history(self, db, expired_payments: list) -> None:
+        """Insert a history entry for each expired request (citizen-visible)."""
+        if not expired_payments:
+            return
+
+        import json
+
+        rows = []
+        for p in expired_payments:
+            rows.append((
+                p["request_id"],
+                "status_change",                          # action
+                p.get("previous_status") or "PAYMENT_PENDING",  # previous_status
+                "EXPIRED",                                # new_status
+                json.dumps({
+                    "reason": "payment_sla_expired",
+                    "payment_reference": p["payment_reference"],
+                    "payment_amount": str(p["total_amount"]),
+                    "sla_days": SLA_EXPIRATION_DAYS,
+                }),
+                f"Pago {p['payment_reference']} expirado tras {SLA_EXPIRATION_DAYS} dias sin validacion. Solicitud cerrada automaticamente.",
+            ))
+
+        await db.executemany("""
+            INSERT INTO service_request_history
+                (id, service_request_id, action, previous_status, new_status, details, comment, performed_at)
+            VALUES
+                (gen_random_uuid(), $1, $2, $3, $4, $5::jsonb, $6, NOW())
+        """, rows)
+
+        logger.info(f"SLA expiration: {len(rows)} history entries inserted")
+
+    # =========================================================================
+    # P2: Schedule document cleanup (Firebase Storage)
+    # =========================================================================
+
+    async def _schedule_document_cleanup(self, db, request_ids: List[str]) -> None:
+        """
+        Collect Firebase file paths for expired requests and delete them.
+        Documents are in service_request_documents.file_path.
+        Deletion is best-effort (non-blocking) — files may already be gone.
+        """
+        if not request_ids:
+            return
+
+        # Fetch file paths
+        file_rows = await db.fetch("""
+            SELECT id, file_path
+            FROM service_request_documents
+            WHERE service_request_id = ANY($1::uuid[])
+              AND file_path IS NOT NULL
+        """, request_ids)
+
+        if not file_rows:
+            return
+
+        deleted_count = 0
+        failed_count = 0
+
+        try:
+            from app.modules.documents.services.storage_service import StorageService
+            storage = StorageService()
+            await storage.initialize()
+
+            for row in file_rows:
+                try:
+                    await storage.delete_file(row["file_path"])
+                    deleted_count += 1
+                except Exception as e:
+                    logger.warning(f"SLA cleanup: failed to delete {row['file_path']}: {e}")
+                    failed_count += 1
+        except Exception as e:
+            logger.warning(f"SLA cleanup: StorageService unavailable, skipping: {e}")
+            return
+
+        # Mark documents as cleaned in DB (nullify file_path)
+        if deleted_count > 0:
+            doc_ids = [row["id"] for row in file_rows]
+            await db.execute("""
+                UPDATE service_request_documents
+                SET file_path = NULL,
+                    updated_at = NOW()
+                WHERE id = ANY($1::uuid[])
+            """, doc_ids)
+
+        logger.info(
+            f"SLA cleanup: {deleted_count} files deleted, {failed_count} failed "
+            f"for {len(request_ids)} expired requests"
+        )
 
     # =========================================================================
     # HELPER: Get treasury agent & supervisor emails

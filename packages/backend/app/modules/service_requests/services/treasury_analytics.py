@@ -502,8 +502,11 @@ class TreasuryAnalyticsService:
             else:
                 confidence = "low"
 
-            # Projections
+            # Projections — only reliable if N >= 14 and R² >= 0.5
             last_day = daily["day_num"].max()
+            n_days = len(daily)
+            is_reliable = n_days >= 14 and r_squared >= 0.5
+
             proj_7d = float(model.predict([[last_day + 7]])[0])
             proj_30d = float(model.predict([[last_day + 30]])[0])
 
@@ -515,8 +518,10 @@ class TreasuryAnalyticsService:
                 direction=self._interpret_trend(slope_pct),
                 slope_percentage=float(slope_pct),
                 confidence_level=confidence,
-                projection_7d=proj_7d if proj_7d > 0 else None,
-                projection_30d=proj_30d if proj_30d > 0 else None,
+                projection_7d=max(0, proj_7d) if is_reliable else None,
+                projection_30d=max(0, proj_30d) if is_reliable else None,
+                data_points=n_days,
+                is_reliable=is_reliable,
             )
 
         except Exception as e:
@@ -754,6 +759,225 @@ class TreasuryAnalyticsService:
         )
 
     # =========================================================================
+    # NL SUMMARY GENERATORS
+    # =========================================================================
+
+    VARIABLE_LABELS = {
+        "es": {
+            "total_amount": "ingresos",
+            "transaction_count": "volumen de transacciones",
+            "avg_processing_minutes": "tiempo de procesamiento",
+            "success_count": "transacciones exitosas",
+            "failed_count": "transacciones fallidas",
+        },
+        "fr": {
+            "total_amount": "revenus",
+            "transaction_count": "volume de transactions",
+            "avg_processing_minutes": "temps de traitement",
+            "success_count": "transactions reussies",
+            "failed_count": "transactions echouees",
+        },
+        "en": {
+            "total_amount": "revenue",
+            "transaction_count": "transaction volume",
+            "avg_processing_minutes": "processing time",
+            "success_count": "successful transactions",
+            "failed_count": "failed transactions",
+        },
+    }
+
+    def _var_label(self, var: str, lang: str) -> str:
+        return self.VARIABLE_LABELS.get(lang, self.VARIABLE_LABELS["es"]).get(var, var)
+
+    def _generate_trend_summary(
+        self, trends: List[TrendAnalysis], data_days: int, language: str
+    ) -> str:
+        """Generate NL summary for trend analysis section."""
+        lang = language if language in ("es", "fr", "en") else "es"
+
+        if data_days < 3:
+            return {
+                "es": f"Datos insuficientes ({data_days} dias). Se necesitan al menos 14 dias para un analisis de tendencias fiable.",
+                "fr": f"Donnees insuffisantes ({data_days} jours). Au moins 14 jours sont necessaires pour une analyse de tendances fiable.",
+                "en": f"Insufficient data ({data_days} days). At least 14 days are needed for reliable trend analysis.",
+            }[lang]
+
+        if not trends:
+            return {
+                "es": "No se detectaron tendencias significativas en el periodo seleccionado.",
+                "fr": "Aucune tendance significative detectee pour la periode selectionnee.",
+                "en": "No significant trends detected for the selected period.",
+            }[lang]
+
+        parts = []
+        for t in trends:
+            name = self._var_label(t.metric_name, lang)
+            pct = abs(t.slope_percentage)
+
+            if not t.is_reliable:
+                reliability = {
+                    "es": f" (exploratorio: {t.data_points} dias, R²={t.r_squared:.2f})",
+                    "fr": f" (exploratoire : {t.data_points} jours, R²={t.r_squared:.2f})",
+                    "en": f" (exploratory: {t.data_points} days, R²={t.r_squared:.2f})",
+                }[lang]
+            else:
+                reliability = ""
+
+            if t.direction == TrendDirection.GROWING:
+                parts.append({
+                    "es": f"Los {name} muestran una tendencia creciente (+{pct:.1f}% por dia){reliability}.",
+                    "fr": f"Les {name} montrent une tendance croissante (+{pct:.1f}% par jour){reliability}.",
+                    "en": f"{name.capitalize()} shows a growing trend (+{pct:.1f}% per day){reliability}.",
+                }[lang])
+            elif t.direction == TrendDirection.DECLINING:
+                parts.append({
+                    "es": f"Los {name} muestran una tendencia decreciente (-{pct:.1f}% por dia){reliability}. Verifique posibles causas estacionales o operativas.",
+                    "fr": f"Les {name} montrent une tendance decroissante (-{pct:.1f}% par jour){reliability}. Verifiez les causes saisonnieres ou operationnelles.",
+                    "en": f"{name.capitalize()} shows a declining trend (-{pct:.1f}% per day){reliability}. Check for seasonal or operational causes.",
+                }[lang])
+            else:
+                parts.append({
+                    "es": f"Los {name} se mantienen estables{reliability}.",
+                    "fr": f"Les {name} restent stables{reliability}.",
+                    "en": f"{name.capitalize()} remains stable{reliability}.",
+                }[lang])
+
+        if data_days < 14:
+            caveat = {
+                "es": f" Nota: este analisis se basa en solo {data_days} dias de datos — las conclusiones son exploratorias.",
+                "fr": f" Note : cette analyse se base sur seulement {data_days} jours de donnees — les conclusions sont exploratoires.",
+                "en": f" Note: this analysis is based on only {data_days} days of data — conclusions are exploratory.",
+            }[lang]
+            parts.append(caveat)
+
+        return " ".join(parts)
+
+    def _generate_correlation_summary(
+        self, correlations: List[CorrelationResult], data_days: int, language: str
+    ) -> str:
+        """Generate NL summary for correlation analysis section."""
+        lang = language if language in ("es", "fr", "en") else "es"
+
+        if data_days < 14:
+            return {
+                "es": f"Correlaciones exploratorias ({data_days} dias de datos). Se necesitan al menos 14 dias para resultados estadisticamente fiables.",
+                "fr": f"Correlations exploratoires ({data_days} jours de donnees). Au moins 14 jours sont necessaires pour des resultats statistiquement fiables.",
+                "en": f"Exploratory correlations ({data_days} days of data). At least 14 days are needed for statistically reliable results.",
+            }[lang]
+
+        if not correlations:
+            return {
+                "es": "No se detectaron correlaciones entre las variables analizadas.",
+                "fr": "Aucune correlation detectee entre les variables analysees.",
+                "en": "No correlations detected between analyzed variables.",
+            }[lang]
+
+        significant = [c for c in correlations if c.is_significant]
+        strong = [c for c in significant if c.strength == CorrelationStrength.STRONG]
+
+        parts = []
+        if strong:
+            for c in strong:
+                v1 = self._var_label(c.variable_1, lang)
+                v2 = self._var_label(c.variable_2, lang)
+                sign = {
+                    "es": "positiva" if c.coefficient > 0 else "negativa",
+                    "fr": "positive" if c.coefficient > 0 else "negative",
+                    "en": "positive" if c.coefficient > 0 else "negative",
+                }[lang]
+                parts.append({
+                    "es": f"Correlacion fuerte {sign} entre {v1} y {v2} (r={c.coefficient:.2f}, p={c.p_value:.3f}).",
+                    "fr": f"Forte correlation {sign} entre {v1} et {v2} (r={c.coefficient:.2f}, p={c.p_value:.3f}).",
+                    "en": f"Strong {sign} correlation between {v1} and {v2} (r={c.coefficient:.2f}, p={c.p_value:.3f}).",
+                }[lang])
+        elif significant:
+            parts.append({
+                "es": f"{len(significant)} correlacion(es) moderada(s) significativa(s) detectada(s).",
+                "fr": f"{len(significant)} correlation(s) moderee(s) significative(s) detectee(s).",
+                "en": f"{len(significant)} significant moderate correlation(s) detected.",
+            }[lang])
+        else:
+            parts.append({
+                "es": "Las correlaciones detectadas no son estadisticamente significativas (p > 0.05).",
+                "fr": "Les correlations detectees ne sont pas statistiquement significatives (p > 0.05).",
+                "en": "Detected correlations are not statistically significant (p > 0.05).",
+            }[lang])
+
+        return " ".join(parts)
+
+    def _generate_explore_summary(
+        self,
+        primary: str,
+        trend: Optional[TrendAnalysis],
+        correlation: Optional['CorrelationResult'],
+        anomalies: List[AnomalyPoint],
+        data_days: int,
+        language: str,
+    ) -> str:
+        """Generate NL summary for explore tab."""
+        lang = language if language in ("es", "fr", "en") else "es"
+        name = self._var_label(primary, lang)
+        parts = []
+
+        if data_days < 3:
+            return {
+                "es": f"Datos insuficientes para analizar {name} ({data_days} dias).",
+                "fr": f"Donnees insuffisantes pour analyser {name} ({data_days} jours).",
+                "en": f"Insufficient data to analyze {name} ({data_days} days).",
+            }[lang]
+
+        if trend:
+            pct = abs(trend.slope_percentage)
+            if trend.direction == TrendDirection.GROWING:
+                parts.append({
+                    "es": f"{name.capitalize()} muestra una tendencia al alza (+{pct:.1f}%/dia, R²={trend.r_squared:.2f}).",
+                    "fr": f"{name.capitalize()} montre une tendance a la hausse (+{pct:.1f}%/jour, R²={trend.r_squared:.2f}).",
+                    "en": f"{name.capitalize()} shows an upward trend (+{pct:.1f}%/day, R²={trend.r_squared:.2f}).",
+                }[lang])
+            elif trend.direction == TrendDirection.DECLINING:
+                parts.append({
+                    "es": f"{name.capitalize()} muestra una tendencia a la baja (-{pct:.1f}%/dia, R²={trend.r_squared:.2f}). Investigue las posibles causas.",
+                    "fr": f"{name.capitalize()} montre une tendance a la baisse (-{pct:.1f}%/jour, R²={trend.r_squared:.2f}). Investiguez les causes possibles.",
+                    "en": f"{name.capitalize()} shows a downward trend (-{pct:.1f}%/day, R²={trend.r_squared:.2f}). Investigate possible causes.",
+                }[lang])
+            else:
+                parts.append({
+                    "es": f"{name.capitalize()} se mantiene estable (variacion {pct:.1f}%/dia, R²={trend.r_squared:.2f}).",
+                    "fr": f"{name.capitalize()} reste stable (variation {pct:.1f}%/jour, R²={trend.r_squared:.2f}).",
+                    "en": f"{name.capitalize()} remains stable (variation {pct:.1f}%/day, R²={trend.r_squared:.2f}).",
+                }[lang])
+
+        if correlation:
+            v2 = self._var_label(correlation.variable_2, lang)
+            if correlation.is_significant and correlation.strength == CorrelationStrength.STRONG:
+                parts.append({
+                    "es": f"Correlacion fuerte con {v2} (r={correlation.coefficient:.2f}).",
+                    "fr": f"Forte correlation avec {v2} (r={correlation.coefficient:.2f}).",
+                    "en": f"Strong correlation with {v2} (r={correlation.coefficient:.2f}).",
+                }[lang])
+
+        if anomalies:
+            n = len(anomalies)
+            parts.append({
+                "es": f"Se detectaron {n} anomalia(s) en el periodo.",
+                "fr": f"{n} anomalie(s) detectee(s) sur la periode.",
+                "en": f"{n} anomaly(ies) detected in the period.",
+            }[lang])
+
+        if data_days < 14:
+            parts.append({
+                "es": f"Advertencia: solo {data_days} dias de datos — resultados exploratorios.",
+                "fr": f"Attention : seulement {data_days} jours de donnees — resultats exploratoires.",
+                "en": f"Warning: only {data_days} days of data — exploratory results.",
+            }[lang])
+
+        return " ".join(parts) if parts else {
+            "es": f"Analisis de {name} completado. Sin hallazgos destacables.",
+            "fr": f"Analyse de {name} terminee. Aucune observation notable.",
+            "en": f"Analysis of {name} completed. No notable findings.",
+        }[lang]
+
+    # =========================================================================
     # REPORT GENERATION
     # =========================================================================
 
@@ -950,6 +1174,14 @@ class TreasuryAnalyticsService:
         total_amount = float(df["total_amount"].sum())
         total_transactions = int(df["transaction_count"].sum())
 
+        # Data quality
+        data_days = int(df["report_date"].nunique())
+        data_sufficient = data_days >= 14
+
+        # NL summaries
+        trend_summary = self._generate_trend_summary(trends, data_days, language)
+        correlation_summary = self._generate_correlation_summary(correlations, data_days, language)
+
         return AnalyticsReport(
             period=period,
             date_from=date_from or df["report_date"].min().strftime("%Y-%m-%d"),
@@ -972,6 +1204,10 @@ class TreasuryAnalyticsService:
             warnings_count=warnings_count,
             health_score=health_score,
             health_status=health_status,
+            data_days=data_days,
+            data_sufficient=data_sufficient,
+            trend_summary=trend_summary,
+            correlation_summary=correlation_summary,
         )
 
 

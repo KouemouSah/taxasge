@@ -498,6 +498,11 @@ export default function TreasuryAnalyticsPage() {
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5" />
                       {t('analytics.trendsAnalysis')}
+                      {!reportData.dataSufficient && (
+                        <Badge variant="outline" className="ml-2 text-yellow-600 border-yellow-300">
+                          {reportData.dataDays}d — Exploratorio
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription>
                       {t('analytics.trendsDescription')}
@@ -538,66 +543,93 @@ export default function TreasuryAnalyticsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              {trend.projection7d ? formatNumber(trend.projection7d) : '-'}
+                              {trend.isReliable && trend.projection7d != null
+                                ? formatNumber(trend.projection7d)
+                                : <Badge variant="outline" className="text-xs text-muted-foreground">Datos insuf.</Badge>
+                              }
                             </TableCell>
                             <TableCell className="text-right">
-                              {trend.projection30d ? formatNumber(trend.projection30d) : '-'}
+                              {trend.isReliable && trend.projection30d != null
+                                ? formatNumber(trend.projection30d)
+                                : <Badge variant="outline" className="text-xs text-muted-foreground">Datos insuf.</Badge>
+                              }
                             </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
+                    {/* NL Trend Summary */}
+                    {reportData.trendSummary && (
+                      <div className="mt-4 p-3 bg-muted/50 border rounded-lg text-sm text-muted-foreground flex items-start gap-2">
+                        <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>{reportData.trendSummary}</span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
 
-              {/* Correlations */}
+              {/* Correlations — show table only if sufficient data */}
               {reportData.correlations.length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
                       {t('analytics.correlationsAnalysis')}
+                      {!reportData.dataSufficient && (
+                        <Badge variant="outline" className="ml-2 text-yellow-600 border-yellow-300">
+                          Exploratorio
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription>
                       {t('analytics.correlationsDescription')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{t('analytics.variable1')}</TableHead>
-                          <TableHead>{t('analytics.variable2')}</TableHead>
-                          <TableHead className="text-right">{t('analytics.coefficient')}</TableHead>
-                          <TableHead>{t('analytics.strength')}</TableHead>
-                          <TableHead>{t('analytics.significant')}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {reportData.correlations.map((corr, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{getVariableLabel(corr.variable1)}</TableCell>
-                            <TableCell>{getVariableLabel(corr.variable2)}</TableCell>
-                            <TableCell className="text-right font-mono">
-                              {corr.coefficient.toFixed(3)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={getCorrelationBadgeVariant(corr.strength)}>
-                                {t(`analytics.correlationStrength.${corr.strength}`)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {corr.isSignificant ? (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <Minus className="h-4 w-4 text-gray-400" />
-                              )}
-                            </TableCell>
+                    {reportData.dataSufficient ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('analytics.variable1')}</TableHead>
+                            <TableHead>{t('analytics.variable2')}</TableHead>
+                            <TableHead className="text-right">{t('analytics.coefficient')}</TableHead>
+                            <TableHead>{t('analytics.strength')}</TableHead>
+                            <TableHead>{t('analytics.significant')}</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {reportData.correlations.map((corr, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell>{getVariableLabel(corr.variable1)}</TableCell>
+                              <TableCell>{getVariableLabel(corr.variable2)}</TableCell>
+                              <TableCell className="text-right font-mono">
+                                {corr.coefficient.toFixed(3)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={getCorrelationBadgeVariant(corr.strength)}>
+                                  {t(`analytics.correlationStrength.${corr.strength}`)}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {corr.isSignificant ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Minus className="h-4 w-4 text-gray-400" />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : null}
+                    {/* NL Correlation Summary */}
+                    {reportData.correlationSummary && (
+                      <div className={`${reportData.dataSufficient ? 'mt-4' : ''} p-3 bg-muted/50 border rounded-lg text-sm text-muted-foreground flex items-start gap-2`}>
+                        <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                        <span>{reportData.correlationSummary}</span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -804,9 +836,14 @@ export default function TreasuryAnalyticsPage() {
               {/* Explore Summary */}
               <Card>
                 <CardHeader>
-                  <CardTitle>
+                  <CardTitle className="flex items-center gap-2">
                     {t('analytics.analysisFor')}: {getVariableLabel(exploreData.primaryVariable)}
                     {exploreData.secondaryVariable && ` + ${getVariableLabel(exploreData.secondaryVariable)}`}
+                    {exploreData.dataDays != null && exploreData.dataDays < 14 && (
+                      <Badge variant="outline" className="ml-2 text-yellow-600 border-yellow-300">
+                        {exploreData.dataDays}d — Exploratorio
+                      </Badge>
+                    )}
                   </CardTitle>
                   <CardDescription>
                     {t('analytics.period')}: {exploreData.period} | {t('analytics.records')}: {exploreData.totalRecords}
@@ -905,6 +942,14 @@ export default function TreasuryAnalyticsPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* NL Explore Summary */}
+                  {exploreData.summary && (
+                    <div className="mt-4 p-3 bg-muted/50 border rounded-lg text-sm text-muted-foreground flex items-start gap-2">
+                      <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                      <span>{exploreData.summary}</span>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

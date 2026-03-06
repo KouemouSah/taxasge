@@ -8149,6 +8149,17 @@ async def explore_analytics(
         if correlations:
             correlation = correlations[0]
 
+    # Data quality + NL summary
+    data_days = int(df["report_date"].nunique()) if not df.empty else 0
+    summary = treasury_analytics_service._generate_explore_summary(
+        primary=primary_variable,
+        trend=trend,
+        correlation=correlation,
+        anomalies=anomalies,
+        data_days=data_days,
+        language="es",
+    )
+
     return {
         "primary_variable": primary_variable,
         "secondary_variable": secondary_variable,
@@ -8159,7 +8170,9 @@ async def explore_analytics(
         "trend": trend.model_dump() if trend else None,
         "correlation": correlation.model_dump() if correlation else None,
         "anomalies": [a.model_dump() for a in anomalies],
-        "total_records": len(df)
+        "total_records": len(df),
+        "data_days": data_days,
+        "summary": summary,
     }
 
 

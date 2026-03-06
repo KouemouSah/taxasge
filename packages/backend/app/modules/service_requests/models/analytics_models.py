@@ -139,6 +139,8 @@ class TrendAnalysis(BaseModel):
     confidence_level: str = Field(..., description="Confidence level based on R-squared")
     projection_7d: Optional[float] = Field(None, description="Projected value in 7 days")
     projection_30d: Optional[float] = Field(None, description="Projected value in 30 days")
+    data_points: int = Field(0, description="Number of data points used for analysis")
+    is_reliable: bool = Field(True, description="True if N >= 14 and R² >= 0.5")
 
     class Config:
         json_schema_extra = {
@@ -272,6 +274,14 @@ class AnalyticsReport(BaseModel):
     # Overall health score (0-100)
     health_score: int = Field(..., description="Overall health score based on findings")
     health_status: str = Field(..., description="Status: good, warning, critical")
+
+    # Data quality indicators
+    data_days: int = Field(0, description="Number of distinct days with data")
+    data_sufficient: bool = Field(True, description="True if data_days >= 14")
+
+    # NL summaries for sections
+    trend_summary: Optional[str] = Field(None, description="NL summary of trend analysis")
+    correlation_summary: Optional[str] = Field(None, description="NL summary of correlation analysis")
 
     class Config:
         json_schema_extra = {
