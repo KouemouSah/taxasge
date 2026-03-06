@@ -28,7 +28,6 @@ export default function AgentAuthPage() {
   const { toast } = useToast();
   const locale = useLocale();
   const t = useTranslations('auth');
-  const tCommon = useTranslations('common');
 
   // État Login
   const [email, setEmail] = useState('');
