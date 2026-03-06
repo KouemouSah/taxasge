@@ -635,82 +635,68 @@ class HomepageRepository:
 
         where_clause = " AND ".join(conditions)
 
-        # Build ORDER BY
+        # Build ORDER BY (uses aliases from CTE base/page)
         order_mapping = {
-            "name": "name",
-            "price": "expedition_price",
-            "relevance": "fs.id"
+            "name": "name_es",
+            "price": "COALESCE(tasa_expedicion, 0)",
+            "relevance": "id"
         }
-        order_field = order_mapping.get(sort_by, "fs.id")
+        order_field = order_mapping.get(sort_by, "id")
         order_dir = "DESC" if sort_order == "desc" else "ASC"
 
-        # Count total results
-        count_query = f"""
-            SELECT COUNT(*) as total
-            FROM fiscal_services fs
-            LEFT JOIN categories c ON fs.category_id = c.id
-            LEFT JOIN sectors s ON c.sector_id = s.id
-            WHERE {where_clause}
-        """
-
-        # Main search query
+        # Single CTE query: filter+count in base, translate+paginate in outer
+        # Saves 1 DB round-trip (was: separate COUNT + DATA queries)
         offset = (page - 1) * limit
         search_query = f"""
+            WITH base AS (
+                SELECT fs.id, fs.service_code, fs.name_es, fs.description_es,
+                       fs.service_type, fs.tasa_expedicion, fs.tasa_renovacion,
+                       fs.processing_time_days, fs.status, fs.calculation_method,
+                       c.category_code, c.name_es AS cat_name,
+                       s.sector_code, s.name_es AS sec_name,
+                       m.ministry_code, m.name_es AS min_name,
+                       COUNT(*) OVER() AS total_count
+                FROM fiscal_services fs
+                LEFT JOIN categories c ON fs.category_id = c.id
+                LEFT JOIN sectors s ON c.sector_id = s.id
+                LEFT JOIN ministries m ON s.ministry_id = m.id
+                WHERE {where_clause}
+            ),
+            page AS (
+                SELECT * FROM base
+                ORDER BY {order_field} {order_dir}
+                LIMIT ${param_idx + 1} OFFSET ${param_idx + 2}
+            )
             SELECT
-                fs.id,
-                COALESCE(et_name.translation_text, fs.name_es) as name,
-                COALESCE(et_desc.translation_text, fs.description_es) as description,
-                COALESCE(et_cat.translation_text, c.name_es) as category_name,
-                COALESCE(et_min.translation_text, m.name_es) as ministry_name,
-                COALESCE(et_sec.translation_text, s.name_es) as sector_name,
-                fs.service_type::TEXT as service_type,
-                COALESCE(fs.tasa_expedicion, 0)::FLOAT as expedition_price,
-                COALESCE(fs.tasa_renovacion, 0)::FLOAT as renewal_price,
-                COALESCE(fs.processing_time_days, 30) as processing_time_days,
-                fs.status::TEXT as status,
-                COALESCE(fs.calculation_method::TEXT, 'fixed_expedition') as calculation_method
-            FROM fiscal_services fs
-            LEFT JOIN categories c ON fs.category_id = c.id
-            LEFT JOIN sectors s ON c.sector_id = s.id
-            LEFT JOIN ministries m ON s.ministry_id = m.id
-
-            -- Service translations
+                p.id, p.total_count,
+                COALESCE(et_name.translation_text, p.name_es) as name,
+                COALESCE(et_desc.translation_text, p.description_es) as description,
+                COALESCE(et_cat.translation_text, p.cat_name) as category_name,
+                COALESCE(et_min.translation_text, p.min_name) as ministry_name,
+                COALESCE(et_sec.translation_text, p.sec_name) as sector_name,
+                p.service_type::TEXT as service_type,
+                COALESCE(p.tasa_expedicion, 0)::FLOAT as expedition_price,
+                COALESCE(p.tasa_renovacion, 0)::FLOAT as renewal_price,
+                COALESCE(p.processing_time_days, 30) as processing_time_days,
+                p.status::TEXT as status,
+                COALESCE(p.calculation_method::TEXT, 'fixed_expedition') as calculation_method
+            FROM page p
             LEFT JOIN entity_translations et_name ON
-                et_name.entity_type = 'service'
-                AND et_name.entity_code = fs.service_code
-                AND et_name.field_name = 'name'
-                AND et_name.language_code = ${param_idx}
-
+                et_name.entity_type = 'service' AND et_name.entity_code = p.service_code
+                AND et_name.field_name = 'name' AND et_name.language_code = ${param_idx}
             LEFT JOIN entity_translations et_desc ON
-                et_desc.entity_type = 'service'
-                AND et_desc.entity_code = fs.service_code
-                AND et_desc.field_name = 'description'
-                AND et_desc.language_code = ${param_idx}
-
-            -- Category translation
+                et_desc.entity_type = 'service' AND et_desc.entity_code = p.service_code
+                AND et_desc.field_name = 'description' AND et_desc.language_code = ${param_idx}
             LEFT JOIN entity_translations et_cat ON
-                et_cat.entity_type = 'category'
-                AND et_cat.entity_code = c.category_code
-                AND et_cat.field_name = 'name'
-                AND et_cat.language_code = ${param_idx}
-
-            -- Ministry translation
+                et_cat.entity_type = 'category' AND et_cat.entity_code = p.category_code
+                AND et_cat.field_name = 'name' AND et_cat.language_code = ${param_idx}
             LEFT JOIN entity_translations et_min ON
-                et_min.entity_type = 'ministry'
-                AND et_min.entity_code = m.ministry_code
-                AND et_min.field_name = 'name'
-                AND et_min.language_code = ${param_idx}
-
-            -- Sector translation
+                et_min.entity_type = 'ministry' AND et_min.entity_code = p.ministry_code
+                AND et_min.field_name = 'name' AND et_min.language_code = ${param_idx}
             LEFT JOIN entity_translations et_sec ON
-                et_sec.entity_type = 'sector'
-                AND et_sec.entity_code = s.sector_code
-                AND et_sec.field_name = 'name'
-                AND et_sec.language_code = ${param_idx}
-
-            WHERE {where_clause}
+                et_sec.entity_type = 'sector' AND et_sec.entity_code = p.sector_code
+                AND et_sec.field_name = 'name' AND et_sec.language_code = ${param_idx}
             ORDER BY {order_field} {order_dir}
-            LIMIT ${param_idx + 1} OFFSET ${param_idx + 2}
         """
 
         params.append(language)
@@ -718,14 +704,13 @@ class HomepageRepository:
         params.append(offset)
 
         try:
-            # Get total count
-            count_result = await self.db.fetchrow(count_query, *params[:-3])
-            total_results = count_result['total'] if count_result else 0
-            total_pages = max(1, (total_results + limit - 1) // limit)
-
-            # Get results
             rows = await self.db.fetch(search_query, *params)
             results = [dict(row) for row in rows]
+            total_results = rows[0]['total_count'] if rows else 0
+            # Remove total_count from each result
+            for r in results:
+                r.pop('total_count', None)
+            total_pages = max(1, (total_results + limit - 1) // limit)
 
             return {
                 "results": results,

@@ -220,68 +220,60 @@ class ServiceDetailsRepository:
 
         try:
             procedure_rows = await conn.fetch(procedures_query, service_id, language)
-            procedures = []
+            if not procedure_rows:
+                return []
 
-            for proc_row in procedure_rows:
-                procedure = dict(proc_row)
+            procedures = [dict(row) for row in procedure_rows]
+            procedure_ids = [p["id"] for p in procedures]
 
-                # Get steps for this procedure
-                # Note: procedure_step uses composite code (template_code + step_number)
-                # Cast step_number to TEXT explicitly for proper concatenation
-                steps_query = """
-                    SELECT
-                        pts.id,
-                        pts.step_number,
-                        COALESCE(et_desc.translation_text, pts.description_es) as description,
-                        COALESCE(et_inst.translation_text, pts.instructions_es) as instructions,
-                        pts.estimated_duration_minutes,
-                        pts.location_address,
-                        pts.office_hours,
-                        pts.requires_appointment,
-                        pts.is_optional
-                    FROM procedure_template_steps pts
-                    LEFT JOIN procedure_templates pt_ref ON pts.template_id = pt_ref.id
-                    LEFT JOIN entity_translations et_desc ON
-                        et_desc.entity_type = 'procedure_step'
-                        AND et_desc.entity_code = pt_ref.template_code || ':step_' || pts.step_number::TEXT
-                        AND et_desc.field_name = 'description'
-                        AND et_desc.language_code = $2
-                    LEFT JOIN entity_translations et_inst ON
-                        et_inst.entity_type = 'procedure_step'
-                        AND et_inst.entity_code = pt_ref.template_code || ':step_' || pts.step_number::TEXT
-                        AND et_inst.field_name = 'instructions'
-                        AND et_inst.language_code = $2
-                    WHERE pts.template_id = $1
-                    ORDER BY pts.step_number
-                """
-                step_rows = await conn.fetch(steps_query, procedure["id"], language)
-                procedure["steps"] = [dict(step) for step in step_rows]
+            # Batch fetch ALL steps for ALL procedures in 1 query (eliminates N+1)
+            all_steps_query = """
+                SELECT
+                    pts.template_id,
+                    pts.id,
+                    pts.step_number,
+                    COALESCE(et_desc.translation_text, pts.description_es) as description,
+                    COALESCE(et_inst.translation_text, pts.instructions_es) as instructions,
+                    pts.estimated_duration_minutes,
+                    pts.location_address,
+                    pts.office_hours,
+                    pts.requires_appointment,
+                    pts.is_optional
+                FROM procedure_template_steps pts
+                LEFT JOIN procedure_templates pt_ref ON pts.template_id = pt_ref.id
+                LEFT JOIN entity_translations et_desc ON
+                    et_desc.entity_type = 'procedure_step'
+                    AND et_desc.entity_code = pt_ref.template_code || ':step_' || pts.step_number::TEXT
+                    AND et_desc.field_name = 'description'
+                    AND et_desc.language_code = $2
+                LEFT JOIN entity_translations et_inst ON
+                    et_inst.entity_type = 'procedure_step'
+                    AND et_inst.entity_code = pt_ref.template_code || ':step_' || pts.step_number::TEXT
+                    AND et_inst.field_name = 'instructions'
+                    AND et_inst.language_code = $2
+                WHERE pts.template_id = ANY($1)
+                ORDER BY pts.template_id, pts.step_number
+            """
+            step_rows = await conn.fetch(all_steps_query, procedure_ids, language)
 
-                # Debug: Check if translations exist in entity_translations
-                if language != "es":
-                    debug_query = """
-                        SELECT entity_code, field_name, translation_text
-                        FROM entity_translations
-                        WHERE entity_type = 'procedure_step'
-                        AND language_code = $1
-                        AND entity_code LIKE $2
-                        LIMIT 5
-                    """
-                    debug_rows = await conn.fetch(debug_query, language, f"{procedure['template_code']}%")
-                    if debug_rows:
-                        for dr in debug_rows:
-                            logger.info(f"[DEBUG TRANSLATION] Found: {dr['entity_code']} -> {dr['translation_text'][:50]}...")
-                    else:
-                        logger.warning(f"[DEBUG TRANSLATION] No translations found for {procedure['template_code']}* in language={language}")
+            # Group steps by template_id
+            steps_by_template: dict = {}
+            for step in step_rows:
+                tid = step["template_id"]
+                if tid not in steps_by_template:
+                    steps_by_template[tid] = []
+                steps_by_template[tid].append(dict(step))
 
-                # Calculate total estimated time
-                total_minutes = sum(
-                    step.get("estimated_duration_minutes") or 0
-                    for step in procedure["steps"]
+            # Assign steps to procedures + calculate total time
+            for procedure in procedures:
+                proc_steps = steps_by_template.get(procedure["id"], [])
+                # Remove template_id from each step (internal field)
+                for s in proc_steps:
+                    s.pop("template_id", None)
+                procedure["steps"] = proc_steps
+                procedure["total_estimated_minutes"] = sum(
+                    s.get("estimated_duration_minutes") or 0 for s in proc_steps
                 )
-                procedure["total_estimated_minutes"] = total_minutes
-
-                procedures.append(procedure)
 
             return procedures
 
