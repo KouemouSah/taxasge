@@ -76,6 +76,7 @@ import { PendingPage } from '@/modules/agent-dashboard/components/pending/Pendin
 // Validation and History pages
 import { ValidationPage } from '@/modules/agent-dashboard/components/validation';
 import { HistoryPage } from '@/modules/agent-dashboard/components/history';
+import { EscalationsPage } from '@/modules/agent-dashboard/components/escalations';
 import { GenericFilteredList } from '@/modules/agent-dashboard/components/GenericFilteredList';
 import { slugToEntityCode } from '@/modules/agent-dashboard/utils';
 
@@ -279,6 +280,16 @@ export default function UnifiedWorkflowActionPage() {
         entityCode={ENTITY_CODE}
         basePath={`/dashboard/agent/${entityCode}`}
         workflowGroup={workflowGroup as string}
+      />
+    );
+  }
+
+  // Use EscalationsPage for escalations action
+  if (currentAction === 'escalations') {
+    return (
+      <EscalationsPage
+        entityCode={ENTITY_CODE}
+        basePath={`/dashboard/agent/${entityCode}`}
       />
     );
   }

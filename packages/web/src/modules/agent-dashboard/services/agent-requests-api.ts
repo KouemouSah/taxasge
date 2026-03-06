@@ -84,6 +84,35 @@ export interface ServiceRequestFilters {
   pageSize?: number;
 }
 
+// Escalation item types
+export interface EscalationListItem {
+  id: string;
+  queueId: string;
+  reason: string;
+  priorityScore: number;
+  status: string;
+  escalationStatus: 'pending' | 'in_review' | 'resolved';
+  caseReference: string;
+  caseType: string;
+  notes: string | null;
+  createdAt: string;
+  escalatedAt: string;
+}
+
+interface BackendEscalationItem {
+  id: string;
+  queue_id: string;
+  reason: string;
+  priority_score: number;
+  status: string;
+  escalation_status: string;
+  case_reference: string;
+  case_type: string;
+  notes?: string | null;
+  created_at: string;
+  escalated_at: string;
+}
+
 // Workflow schema types for agent detail view
 export interface WorkflowSchemaField {
   key: string;
@@ -523,6 +552,39 @@ class AgentRequestsApiClient {
     return this.request(`/${requestId}/resolve-escalation`, {
       method: 'POST',
     });
+  }
+
+  /**
+   * Get my escalated service requests
+   */
+  async getMyEscalations(options?: {
+    includeResolved?: boolean;
+    page?: number;
+    pageSize?: number;
+  }): Promise<EscalationListItem[]> {
+    const params = new URLSearchParams();
+    if (options?.includeResolved) params.set('include_resolved', 'true');
+    if (options?.page) params.set('page', String(options.page));
+    if (options?.pageSize) params.set('page_size', String(options.pageSize));
+    const qs = params.toString();
+
+    const rows = await this.request<BackendEscalationItem[]>(
+      `/my-escalations${qs ? `?${qs}` : ''}`
+    );
+
+    return rows.map((r) => ({
+      id: r.id,
+      queueId: r.queue_id,
+      reason: r.reason,
+      priorityScore: r.priority_score,
+      status: r.status,
+      escalationStatus: r.escalation_status,
+      caseReference: r.case_reference,
+      caseType: r.case_type,
+      notes: r.notes || null,
+      createdAt: r.created_at,
+      escalatedAt: r.escalated_at,
+    }));
   }
 
   /**

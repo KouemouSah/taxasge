@@ -6903,6 +6903,20 @@
       "contactAdmin": "Please contact the system administrator.",
       "loadingFailed": "Failed to load dashboard. Please refresh the page."
     },
+    "escalations": {
+      "title": "My Escalations",
+      "subtitle": "Requests you have escalated to supervisor",
+      "searchPlaceholder": "Search by reference or reason...",
+      "showResolved": "Include resolved",
+      "empty": "No active escalations",
+      "noResults": "No results found for the applied filters",
+      "loadError": "Failed to load escalations",
+      "status": {
+        "pending": "Pending",
+        "in_review": "In Review",
+        "resolved": "Resolved"
+      }
+    },
     "filters": {
       "type": "Type",
       "allTypes": "All types",

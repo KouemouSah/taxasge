@@ -7143,6 +7143,20 @@
       "contactAdmin": "Veuillez contacter l'administrateur du système.",
       "loadingFailed": "Erreur lors du chargement du tableau de bord. Veuillez rafraîchir la page."
     },
+    "escalations": {
+      "title": "Mes Escalades",
+      "subtitle": "Demandes que vous avez escaladees au superviseur",
+      "searchPlaceholder": "Rechercher par reference ou motif...",
+      "showResolved": "Inclure resolues",
+      "empty": "Aucune escalade active",
+      "noResults": "Aucun resultat pour les filtres appliques",
+      "loadError": "Erreur lors du chargement des escalades",
+      "status": {
+        "pending": "En attente",
+        "in_review": "En cours de revision",
+        "resolved": "Resolue"
+      }
+    },
     "filters": {
       "type": "Type",
       "allTypes": "Tous les types",

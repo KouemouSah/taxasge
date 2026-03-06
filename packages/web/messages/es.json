@@ -7005,6 +7005,20 @@
       "contactAdmin": "Por favor contacte al administrador del sistema.",
       "loadingFailed": "Error al cargar el panel. Por favor refresque la página."
     },
+    "escalations": {
+      "title": "Mis Escalaciones",
+      "subtitle": "Solicitudes que ha escalado al supervisor",
+      "searchPlaceholder": "Buscar por referencia o motivo...",
+      "showResolved": "Incluir resueltas",
+      "empty": "No tiene escalaciones activas",
+      "noResults": "No se encontraron resultados para los filtros aplicados",
+      "loadError": "Error al cargar las escalaciones",
+      "status": {
+        "pending": "Pendiente",
+        "in_review": "En revision",
+        "resolved": "Resuelta"
+      }
+    },
     "filters": {
       "type": "Tipo",
       "allTypes": "Todos los tipos",
