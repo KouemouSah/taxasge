@@ -4787,16 +4787,16 @@
     "helpDescription": "Si vous avez des questions sur vos services de fonctionnaire, contactez le Ministère de la Fonction Publique."
   },
   "hero": {
-    "badge": "Services Fiscaux de Guinée Équatoriale",
+    "badge": "Démarches Digitales AI de Guinée Équatoriale",
     "calculator": "Calculateur",
     "calculatorDesc": "Calculez vos impôts",
     "completeGuide": "Guide Complet",
     "completeGuideDesc": "Procédures détaillées",
     "searchButton": "Rechercher",
-    "searchPlaceholder": "Rechercher un service fiscal, un ministère, une catégorie...",
-    "servicesDesc": "Services fiscaux",
-    "subtitle": "Accédez à tous les services fiscaux guinéens en un seul endroit. Calculez vos impôts, consultez les procédures et téléchargez vos documents.",
-    "title": "Simplifiez vos démarches fiscales"
+    "searchPlaceholder": "Rechercher un service, un ministère, une catégorie...",
+    "servicesDesc": "Services administratifs",
+    "subtitle": "Accédez à tous les services en un seul endroit. Calculez vos impôts, consultez les procédures et téléchargez vos documents avec assistance IA.",
+    "title": "Simplifiez vos démarches"
   },
   "metadata": {
     "defaultTitle": "Facil - Plateforme Digitale AI de Démarches de Guinée Équatoriale",
@@ -5003,7 +5003,9 @@
     "validFor": "Valide pendant {months} mois",
     "validity": "Validité",
     "validityPeriod": "Valide pendant {months} mois",
-    "views": "Vues"
+    "views": "Vues",
+    "startRequest": "Demander ce service",
+    "loginRequired": "Connexion requise"
   },
   "services": {
     "advancedFilters": "Filtres avancés",

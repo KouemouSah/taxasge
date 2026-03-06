@@ -126,18 +126,21 @@ class ServiceDetailsRepository:
                 return None
 
             service = dict(row)
-
-            # Increment view count
-            await conn.execute(
-                "UPDATE fiscal_services SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1",
-                service_id
-            )
-
             return service
 
         except asyncpg.PostgresError as e:
             logger.error(f"Error fetching service details: {e}")
             raise
+
+    async def increment_view_count(self, conn: asyncpg.Connection, service_id: int):
+        """Increment view count (non-critical)"""
+        try:
+            await conn.execute(
+                "UPDATE fiscal_services SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1",
+                service_id
+            )
+        except Exception:
+            pass
 
     async def get_service_documents(
         self,

@@ -28,7 +28,28 @@ from app.modules.homepage.services import HomepageService
 from app.modules.homepage.repositories import HomepageRepository
 from app.modules.fiscal_services.models.service_details import ServiceDetailsResponse
 from app.modules.fiscal_services.repositories.service_details_repository import ServiceDetailsRepository
-from app.core.cache import get_services_cache, CacheKeys
+from app.core.cache import get_services_cache, CacheKeys, check_rate_limit
+
+
+# ============================================================================
+# RATE LIMITING CONSTANTS (public endpoints)
+# ============================================================================
+RATE_LIMIT_SEARCH = (60, 60)       # 60 requests per minute per IP
+RATE_LIMIT_DETAIL = (120, 60)      # 120 requests per minute per IP
+RATE_LIMIT_LISTING = (120, 60)     # 120 requests per minute per IP
+
+
+async def enforce_rate_limit(request: Request, max_req: int, window: int):
+    """Raise 429 if rate limit exceeded for the client IP."""
+    client_ip = request.client.host if request.client else "unknown"
+    endpoint = request.url.path
+    is_allowed, remaining = await check_rate_limit(client_ip, endpoint, max_req, window)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please try again later.",
+            headers={"Retry-After": str(window), "X-RateLimit-Remaining": "0"},
+        )
 
 
 # ============================================================================
@@ -137,13 +158,13 @@ async def get_homepage_stats(
         logger.error(f"Database error in get_homepage_stats: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_homepage_stats: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )
 
 
@@ -192,13 +213,13 @@ async def get_category_directory(
         logger.error(f"Database error in get_category_directory: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_category_directory: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )
 
 
@@ -308,13 +329,13 @@ async def get_services_by_type(
         logger.error(f"Database error in get_services_by_type: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_services_by_type: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )
 
 
@@ -362,9 +383,10 @@ async def get_service_details(
             logger.debug(f"Cache HIT for service details:{service_id}:{language}")
             return ServiceDetailsResponse(**cached)
 
+        import asyncio
         details_repo = ServiceDetailsRepository()
 
-        # Get main service details
+        # Get main service details first (needed for category_id, parent_service_id)
         service = await details_repo.get_service_details(db, service_id, language)
         if not service:
             raise HTTPException(
@@ -372,22 +394,22 @@ async def get_service_details(
                 detail=f"Service with ID {service_id} not found"
             )
 
-        # Get documents
-        documents = await details_repo.get_service_documents(db, service_id, language)
-
-        # Get procedures with steps
-        procedures = await details_repo.get_service_procedures(db, service_id, language)
-
-        # Get related services
-        related = await details_repo.get_related_services(db, service_id, language)
-
-        # Get child services if this is a parent
-        children = await details_repo.get_child_services(db, service_id, language)
-
-        # Get parent service if this is a child
-        parent = None
+        # Parallel fetch: documents + procedures + related + children + parent
+        tasks = [
+            details_repo.get_service_documents(db, service_id, language),
+            details_repo.get_service_procedures(db, service_id, language),
+            details_repo.get_related_services(db, service_id, service.get('category_id', 0), language),
+            details_repo.get_child_services(db, service_id, language),
+        ]
         if service.get('parent_service_id'):
-            parent = await details_repo.get_parent_service(db, service['parent_service_id'], language)
+            tasks.append(details_repo.get_parent_service(db, service['parent_service_id'], language))
+
+        results = await asyncio.gather(*tasks)
+        documents = results[0]
+        procedures = results[1]
+        related = results[2]
+        children = results[3]
+        parent = results[4] if len(results) > 4 else None
 
         # Build response
         expedition_price = service.get('expedition_price', 0) or 0
@@ -455,6 +477,9 @@ async def get_service_details(
         # Cache the response (1 hour TTL)
         await cache.set(cache_key, response.model_dump(), ttl=3600)
 
+        # Increment view count (non-critical, after response is built)
+        await details_repo.increment_view_count(db, service_id)
+
         return response
 
     except HTTPException:
@@ -463,13 +488,13 @@ async def get_service_details(
         logger.error(f"Database error in get_service_details: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_service_details: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )
 
 
@@ -553,13 +578,13 @@ async def get_ministry_directory(
         logger.error(f"Database error in get_ministry_directory: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_ministry_directory: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )
 
 
@@ -652,13 +677,13 @@ async def get_ministry_details(
         logger.error(f"Database error in get_ministry_details: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_ministry_details: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )
 
 
@@ -669,6 +694,7 @@ async def get_ministry_details(
 @router.post("/search", response_model=SearchResponse, summary="Search Services")
 async def search_services(
     request: SearchRequest,
+    raw_request: Request,
     db: asyncpg.Connection = Depends(get_db)
 ):
     """
@@ -706,6 +732,7 @@ async def search_services(
     - First request: ~50-100ms
     - Cached requests: ~2-5ms
     """
+    await enforce_rate_limit(raw_request, *RATE_LIMIT_SEARCH)
     start_time = time.time()
 
     try:
@@ -752,14 +779,22 @@ async def search_services(
             language=request.language
         )
 
-        # Get facets if requested (with cascade filtering)
+        # Get facets if requested (with separate cache for quasi-static data)
         facets = None
         if request.include_facets:
-            facets_data = await repo.get_search_facets(
-                language=request.language,
-                ministry_id=request.ministry_id,
-                category_code=request.category_code
+            # Facets have separate cache (1h TTL) since they rarely change
+            facet_cache_key = CacheKeys.custom(
+                "facets", request.language,
+                str(request.ministry_id or ""), request.category_code or ""
             )
+            facets_data = await cache.get(facet_cache_key)
+            if facets_data is None:
+                facets_data = await repo.get_search_facets(
+                    language=request.language,
+                    ministry_id=request.ministry_id,
+                    category_code=request.category_code
+                )
+                await cache.set(facet_cache_key, facets_data, ttl=3600)
             facets = SearchFacets(
                 categories=[
                     FacetItem(id=f.get('id'), code=f.get('code'), name=f.get('name'), count=f.get('count', 0))
@@ -817,13 +852,13 @@ async def search_services(
         logger.error(f"Database error in search_services: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in search_services: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )
 
 
@@ -975,11 +1010,11 @@ async def get_calculator_config(
         logger.error(f"Database error in get_calculator_config: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail="Service temporarily unavailable. Please try again."
         )
     except Exception as e:
         logger.error(f"Unexpected error in get_calculator_config: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail="An unexpected error occurred. Please try again."
         )

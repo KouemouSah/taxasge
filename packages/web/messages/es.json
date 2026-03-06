@@ -4768,16 +4768,16 @@
     "helpDescription": "Si tiene alguna pregunta sobre sus servicios de funcionario, contacte al Ministerio de la Función Pública."
   },
   "hero": {
-    "badge": "Servicios Fiscales de Guinea Ecuatorial",
+    "badge": "Trámites Digitales AI de Guinea Ecuatorial",
     "calculator": "Calculadora",
     "calculatorDesc": "Calcula tus impuestos",
     "completeGuide": "Guía Completa",
     "completeGuideDesc": "Procedimientos detallados",
     "searchButton": "Buscar",
-    "searchPlaceholder": "Buscar un servicio fiscal, un ministerio, una categoría...",
-    "servicesDesc": "Servicios fiscales",
-    "subtitle": "Accede a todos los servicios fiscales guineanos en un solo lugar. Calcula tus impuestos, consulta los procedimientos y descarga tus documentos.",
-    "title": "Simplifica tus trámites fiscales"
+    "searchPlaceholder": "Buscar un servicio, un ministerio, una categoría...",
+    "servicesDesc": "Servicios administrativos",
+    "subtitle": "Accede a todos los servicios en un solo lugar. Calcula tus impuestos, consulta los procedimientos y descarga documentos con asistencia IA.",
+    "title": "Simplifica tus trámites"
   },
   "metadata": {
     "defaultTitle": "Facil - Plataforma Digital AI de Tramites de Guinea Ecuatorial",
@@ -4984,7 +4984,9 @@
     "validFor": "Válido por {months} meses",
     "validity": "Validez",
     "validityPeriod": "Válido por {months} meses",
-    "views": "Visualizaciones"
+    "views": "Visualizaciones",
+    "startRequest": "Solicitar este servicio",
+    "loginRequired": "Requiere iniciar sesión"
   },
   "services": {
     "advancedFilters": "Filtros avanzados",

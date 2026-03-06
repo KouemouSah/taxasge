@@ -196,7 +196,7 @@ function parseNumberInput(value: string): number {
   return isNaN(parsed) ? 0 : parsed;
 }
 
-// Safe formula evaluation
+// Safe formula evaluation using recursive descent parser (no eval)
 function evaluateFormula(formula: string, variables: Record<string, number>): number | null {
   try {
     let evalFormula = formula;
@@ -205,18 +205,73 @@ function evaluateFormula(formula: string, variables: Record<string, number>): nu
       evalFormula = evalFormula.replace(regex, String(value));
     }
 
-    // Only allow safe characters
+    // Only allow safe characters: digits, whitespace, operators, parentheses, decimal point
     const safePattern = /^[\d\s+\-*/().]+$/;
     if (!safePattern.test(evalFormula)) {
       return null;
     }
 
-    // eslint-disable-next-line no-eval
-    const result = eval(evalFormula);
+    const result = safeEval(evalFormula);
     return typeof result === 'number' && isFinite(result) ? result : null;
   } catch {
     return null;
   }
+}
+
+// Recursive descent parser for arithmetic expressions (replaces eval)
+// Supports: +, -, *, /, parentheses, decimal numbers
+function safeEval(expr: string): number {
+  const matched = expr.match(/(\d+\.?\d*|[+\-*/()])/g);
+  if (!matched) throw new Error('Invalid expression');
+  const tokens: string[] = matched;
+  let pos = 0;
+
+  function peek(): string | undefined { return tokens[pos]; }
+  function consume(): string { return tokens[pos++]; }
+
+  function parseExpr(): number {
+    let left = parseTerm();
+    while (peek() === '+' || peek() === '-') {
+      const op = consume();
+      const right = parseTerm();
+      left = op === '+' ? left + right : left - right;
+    }
+    return left;
+  }
+
+  function parseTerm(): number {
+    let left = parseFactor();
+    while (peek() === '*' || peek() === '/') {
+      const op = consume();
+      const right = parseFactor();
+      if (op === '/' && right === 0) throw new Error('Division by zero');
+      left = op === '*' ? left * right : left / right;
+    }
+    return left;
+  }
+
+  function parseFactor(): number {
+    if (peek() === '(') {
+      consume(); // (
+      const val = parseExpr();
+      if (peek() !== ')') throw new Error('Missing closing parenthesis');
+      consume(); // )
+      return val;
+    }
+    // Handle unary minus
+    if (peek() === '-') {
+      consume();
+      return -parseFactor();
+    }
+    const token = consume();
+    const num = parseFloat(token);
+    if (isNaN(num)) throw new Error('Invalid number');
+    return num;
+  }
+
+  const result = parseExpr();
+  if (pos < tokens.length) throw new Error('Unexpected token');
+  return result;
 }
 
 // ============================================================================

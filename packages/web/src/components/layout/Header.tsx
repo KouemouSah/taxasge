@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { Search, Menu, X } from 'lucide-react';
@@ -11,6 +12,7 @@ import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations('nav');
 
   return (
@@ -52,7 +54,13 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="icon" className="hidden lg:inline-flex">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:inline-flex"
+              aria-label="Search services"
+              onClick={() => router.push(`/${locale}/services`)}
+            >
               <Search className="h-5 w-5" />
             </Button>
             <LanguageSwitcher />
@@ -65,6 +73,8 @@ const Header = () => {
               variant="ghost"
               size="icon"
               className="md:hidden"
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

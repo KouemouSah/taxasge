@@ -293,60 +293,37 @@ class HomepageRepository:
         Returns:
             List of ministries with counts, sorted by service_count DESC
         """
+        # Single GROUP BY replaces 3 correlated subqueries per ministry (was: 15 ministries × 3 = 45 subqueries)
         query = """
+            WITH ministry_stats AS (
+                SELECT
+                    s.ministry_id,
+                    COUNT(DISTINCT s.id) FILTER (WHERE s.is_active = true) AS sector_count,
+                    COUNT(DISTINCT c.id) FILTER (WHERE c.is_active = true) AS category_count,
+                    COUNT(DISTINCT fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) AS service_count
+                FROM sectors s
+                LEFT JOIN categories c ON c.sector_id = s.id
+                LEFT JOIN fiscal_services fs ON fs.category_id = c.id
+                GROUP BY s.ministry_id
+            )
             SELECT
-                m.id,
-                m.ministry_code,
-
-                -- Name with translation fallback
-                COALESCE(
-                    et_name.translation_text,
-                    m.name_es
-                ) as name,
-
-                -- Description with translation fallback
-                COALESCE(
-                    et_desc.translation_text,
-                    m.description_es
-                ) as description,
-
-                m.icon,
-                m.color,
-                m.is_active,
-
-                -- Count sectors under this ministry
-                (SELECT COUNT(*) FROM sectors s WHERE s.ministry_id = m.id AND s.is_active = true)::INTEGER as sector_count,
-
-                -- Count categories under this ministry (via sectors)
-                (SELECT COUNT(*) FROM categories c
-                 JOIN sectors s ON c.sector_id = s.id
-                 WHERE s.ministry_id = m.id AND c.is_active = true)::INTEGER as category_count,
-
-                -- Count active services under this ministry (via category -> sector)
-                (SELECT COUNT(*) FROM fiscal_services fs
-                 JOIN categories c ON fs.category_id = c.id
-                 JOIN sectors s ON c.sector_id = s.id
-                 WHERE s.ministry_id = m.id AND fs.status = 'active'::service_status_enum)::INTEGER as service_count
-
+                m.id, m.ministry_code,
+                COALESCE(et_name.translation_text, m.name_es) as name,
+                COALESCE(et_desc.translation_text, m.description_es) as description,
+                m.icon, m.color, m.is_active,
+                COALESCE(ms.sector_count, 0)::INTEGER as sector_count,
+                COALESCE(ms.category_count, 0)::INTEGER as category_count,
+                COALESCE(ms.service_count, 0)::INTEGER as service_count
             FROM ministries m
-
-            -- Join entity_translations for ministry name
+            LEFT JOIN ministry_stats ms ON ms.ministry_id = m.id
             LEFT JOIN entity_translations et_name ON
-                et_name.entity_type = 'ministry'
-                AND et_name.entity_code = m.ministry_code
-                AND et_name.field_name = 'name'
-                AND et_name.language_code = $1
-
-            -- Join entity_translations for ministry description
+                et_name.entity_type = 'ministry' AND et_name.entity_code = m.ministry_code
+                AND et_name.field_name = 'name' AND et_name.language_code = $1
             LEFT JOIN entity_translations et_desc ON
-                et_desc.entity_type = 'ministry'
-                AND et_desc.entity_code = m.ministry_code
-                AND et_desc.field_name = 'description'
-                AND et_desc.language_code = $1
-
+                et_desc.entity_type = 'ministry' AND et_desc.entity_code = m.ministry_code
+                AND et_desc.field_name = 'description' AND et_desc.language_code = $1
             WHERE m.is_active = true
-
-            ORDER BY service_count DESC, name ASC;
+            ORDER BY service_count DESC, name ASC
         """
 
         try:
@@ -376,57 +353,37 @@ class HomepageRepository:
         Returns:
             Ministry details with services or None if not found
         """
-        # First get ministry info
+        # Single CTE for counts instead of 3 correlated subqueries
         ministry_query = """
+            WITH ministry_stats AS (
+                SELECT
+                    s.ministry_id,
+                    COUNT(DISTINCT s.id) FILTER (WHERE s.is_active = true) AS sector_count,
+                    COUNT(DISTINCT c.id) FILTER (WHERE c.is_active = true) AS category_count,
+                    COUNT(DISTINCT fs.id) FILTER (WHERE fs.status = 'active'::service_status_enum) AS service_count
+                FROM sectors s
+                LEFT JOIN categories c ON c.sector_id = s.id
+                LEFT JOIN fiscal_services fs ON fs.category_id = c.id
+                WHERE s.ministry_id = $1
+                GROUP BY s.ministry_id
+            )
             SELECT
-                m.id,
-                m.ministry_code,
-
-                -- Name with translation fallback
-                COALESCE(
-                    et_name.translation_text,
-                    m.name_es
-                ) as name,
-
-                -- Description with translation fallback
-                COALESCE(
-                    et_desc.translation_text,
-                    m.description_es
-                ) as description,
-
-                m.icon,
-                m.color,
-                m.is_active,
-
-                -- Count sectors
-                (SELECT COUNT(*) FROM sectors s WHERE s.ministry_id = m.id AND s.is_active = true)::INTEGER as sector_count,
-
-                -- Count categories (via sectors)
-                (SELECT COUNT(*) FROM categories c
-                 JOIN sectors s ON c.sector_id = s.id
-                 WHERE s.ministry_id = m.id AND c.is_active = true)::INTEGER as category_count,
-
-                -- Count services (via category -> sector)
-                (SELECT COUNT(*) FROM fiscal_services fs
-                 JOIN categories c ON fs.category_id = c.id
-                 JOIN sectors s ON c.sector_id = s.id
-                 WHERE s.ministry_id = m.id AND fs.status = 'active'::service_status_enum)::INTEGER as service_count
-
+                m.id, m.ministry_code,
+                COALESCE(et_name.translation_text, m.name_es) as name,
+                COALESCE(et_desc.translation_text, m.description_es) as description,
+                m.icon, m.color, m.is_active,
+                COALESCE(ms.sector_count, 0)::INTEGER as sector_count,
+                COALESCE(ms.category_count, 0)::INTEGER as category_count,
+                COALESCE(ms.service_count, 0)::INTEGER as service_count
             FROM ministries m
-
+            LEFT JOIN ministry_stats ms ON ms.ministry_id = m.id
             LEFT JOIN entity_translations et_name ON
-                et_name.entity_type = 'ministry'
-                AND et_name.entity_code = m.ministry_code
-                AND et_name.field_name = 'name'
-                AND et_name.language_code = $2
-
+                et_name.entity_type = 'ministry' AND et_name.entity_code = m.ministry_code
+                AND et_name.field_name = 'name' AND et_name.language_code = $2
             LEFT JOIN entity_translations et_desc ON
-                et_desc.entity_type = 'ministry'
-                AND et_desc.entity_code = m.ministry_code
-                AND et_desc.field_name = 'description'
-                AND et_desc.language_code = $2
-
-            WHERE m.id = $1;
+                et_desc.entity_type = 'ministry' AND et_desc.entity_code = m.ministry_code
+                AND et_desc.field_name = 'description' AND et_desc.language_code = $2
+            WHERE m.id = $1
         """
 
         try:
@@ -565,27 +522,23 @@ class HomepageRepository:
         Returns:
             Dict with results, total_results, total_pages, facets
         """
-        # Build WHERE conditions
-        conditions = ["fs.status = 'active'::service_status_enum"]
+        # Build WHERE conditions (uses mv_services_translated — no JOINs needed)
+        conditions = ["true"]  # mv already filtered to status='active'
         params = []
         param_idx = 1
 
-        # Search query - search in multiple fields including translations and keywords
+        # Search query - search in multiple fields including translated names + keywords
         if q and q.strip():
             search_term = f"%{q.strip()}%"
             conditions.append(f"""(
-                fs.name_es ILIKE ${param_idx}
-                OR fs.description_es ILIKE ${param_idx}
-                OR c.name_es ILIKE ${param_idx}
-                OR EXISTS (
-                    SELECT 1 FROM entity_translations et_search
-                    WHERE et_search.entity_type = 'service'
-                    AND et_search.entity_code = fs.service_code
-                    AND et_search.translation_text ILIKE ${param_idx}
-                )
+                mv.name_es ILIKE ${param_idx}
+                OR mv.description_es ILIKE ${param_idx}
+                OR mv.category_name_es ILIKE ${param_idx}
+                OR mv.name_fr ILIKE ${param_idx}
+                OR mv.name_en ILIKE ${param_idx}
                 OR EXISTS (
                     SELECT 1 FROM service_keywords sk
-                    WHERE sk.fiscal_service_id = fs.id
+                    WHERE sk.fiscal_service_id = mv.id
                     AND sk.keyword ILIKE ${param_idx}
                 )
             )""")
@@ -594,48 +547,48 @@ class HomepageRepository:
 
         # Category filter
         if category_id:
-            conditions.append(f"fs.category_id = ${param_idx}")
+            conditions.append(f"mv.category_id = ${param_idx}")
             params.append(category_id)
             param_idx += 1
         elif category_code:
-            conditions.append(f"c.category_code = ${param_idx}")
+            conditions.append(f"mv.category_code = ${param_idx}")
             params.append(category_code)
             param_idx += 1
 
         # Ministry filter
         if ministry_id:
-            conditions.append(f"s.ministry_id = ${param_idx}")
+            conditions.append(f"mv.ministry_id = ${param_idx}")
             params.append(ministry_id)
             param_idx += 1
 
         # Service type filter
         if service_type:
-            conditions.append(f"fs.service_type = ${param_idx}::service_type_enum")
+            conditions.append(f"mv.service_type = ${param_idx}::service_type_enum")
             params.append(service_type)
             param_idx += 1
 
         # Price filters
         if min_price is not None:
-            conditions.append(f"COALESCE(fs.tasa_expedicion, 0) >= ${param_idx}")
+            conditions.append(f"COALESCE(mv.tasa_expedicion, 0) >= ${param_idx}")
             params.append(min_price)
             param_idx += 1
 
         if max_price is not None:
-            conditions.append(f"COALESCE(fs.tasa_expedicion, 0) <= ${param_idx}")
+            conditions.append(f"COALESCE(mv.tasa_expedicion, 0) <= ${param_idx}")
             params.append(max_price)
             param_idx += 1
 
-        # Calculation method filter (for formula-based/percentage-based services)
+        # Calculation method filter
         if calculation_methods and len(calculation_methods) > 0:
             placeholders = ", ".join([f"${param_idx + i}::calculation_method_enum" for i in range(len(calculation_methods))])
-            conditions.append(f"fs.calculation_method IN ({placeholders})")
+            conditions.append(f"mv.calculation_method IN ({placeholders})")
             for method in calculation_methods:
                 params.append(method)
                 param_idx += 1
 
         where_clause = " AND ".join(conditions)
 
-        # Build ORDER BY (uses aliases from CTE base/page)
+        # Build ORDER BY
         order_mapping = {
             "name": "name_es",
             "price": "COALESCE(tasa_expedicion, 0)",
@@ -644,62 +597,38 @@ class HomepageRepository:
         order_field = order_mapping.get(sort_by, "id")
         order_dir = "DESC" if sort_order == "desc" else "ASC"
 
-        # Single CTE query: filter+count in base, translate+paginate in outer
-        # Saves 1 DB round-trip (was: separate COUNT + DATA queries)
+        # Single query on materialized view — 0 JOINs, all translations pre-computed
         offset = (page - 1) * limit
+
+        # Language column mapping for materialized view
+        lang_suffix = {"fr": "fr", "en": "en"}.get(language, "")
+        name_col = f"COALESCE(mv.name_{lang_suffix}, mv.name_es)" if lang_suffix else "mv.name_es"
+        desc_col = f"COALESCE(mv.description_{lang_suffix}, mv.description_es)" if lang_suffix else "mv.description_es"
+        cat_col = f"COALESCE(mv.category_name_{lang_suffix}, mv.category_name_es)" if lang_suffix else "mv.category_name_es"
+        min_col = f"COALESCE(mv.ministry_name_{lang_suffix}, mv.ministry_name_es)" if lang_suffix else "mv.ministry_name_es"
+        sec_col = f"COALESCE(mv.sector_name_{lang_suffix}, mv.sector_name_es)" if lang_suffix else "mv.sector_name_es"
+
         search_query = f"""
-            WITH base AS (
-                SELECT fs.id, fs.service_code, fs.name_es, fs.description_es,
-                       fs.service_type, fs.tasa_expedicion, fs.tasa_renovacion,
-                       fs.processing_time_days, fs.status, fs.calculation_method,
-                       c.category_code, c.name_es AS cat_name,
-                       s.sector_code, s.name_es AS sec_name,
-                       m.ministry_code, m.name_es AS min_name,
-                       COUNT(*) OVER() AS total_count
-                FROM fiscal_services fs
-                LEFT JOIN categories c ON fs.category_id = c.id
-                LEFT JOIN sectors s ON c.sector_id = s.id
-                LEFT JOIN ministries m ON s.ministry_id = m.id
-                WHERE {where_clause}
-            ),
-            page AS (
-                SELECT * FROM base
-                ORDER BY {order_field} {order_dir}
-                LIMIT ${param_idx + 1} OFFSET ${param_idx + 2}
-            )
             SELECT
-                p.id, p.total_count,
-                COALESCE(et_name.translation_text, p.name_es) as name,
-                COALESCE(et_desc.translation_text, p.description_es) as description,
-                COALESCE(et_cat.translation_text, p.cat_name) as category_name,
-                COALESCE(et_min.translation_text, p.min_name) as ministry_name,
-                COALESCE(et_sec.translation_text, p.sec_name) as sector_name,
-                p.service_type::TEXT as service_type,
-                COALESCE(p.tasa_expedicion, 0)::FLOAT as expedition_price,
-                COALESCE(p.tasa_renovacion, 0)::FLOAT as renewal_price,
-                COALESCE(p.processing_time_days, 30) as processing_time_days,
-                p.status::TEXT as status,
-                COALESCE(p.calculation_method::TEXT, 'fixed_expedition') as calculation_method
-            FROM page p
-            LEFT JOIN entity_translations et_name ON
-                et_name.entity_type = 'service' AND et_name.entity_code = p.service_code
-                AND et_name.field_name = 'name' AND et_name.language_code = ${param_idx}
-            LEFT JOIN entity_translations et_desc ON
-                et_desc.entity_type = 'service' AND et_desc.entity_code = p.service_code
-                AND et_desc.field_name = 'description' AND et_desc.language_code = ${param_idx}
-            LEFT JOIN entity_translations et_cat ON
-                et_cat.entity_type = 'category' AND et_cat.entity_code = p.category_code
-                AND et_cat.field_name = 'name' AND et_cat.language_code = ${param_idx}
-            LEFT JOIN entity_translations et_min ON
-                et_min.entity_type = 'ministry' AND et_min.entity_code = p.ministry_code
-                AND et_min.field_name = 'name' AND et_min.language_code = ${param_idx}
-            LEFT JOIN entity_translations et_sec ON
-                et_sec.entity_type = 'sector' AND et_sec.entity_code = p.sector_code
-                AND et_sec.field_name = 'name' AND et_sec.language_code = ${param_idx}
+                mv.id,
+                COUNT(*) OVER() AS total_count,
+                {name_col} as name,
+                {desc_col} as description,
+                {cat_col} as category_name,
+                {min_col} as ministry_name,
+                {sec_col} as sector_name,
+                mv.service_type::TEXT as service_type,
+                COALESCE(mv.tasa_expedicion, 0)::FLOAT as expedition_price,
+                COALESCE(mv.tasa_renovacion, 0)::FLOAT as renewal_price,
+                COALESCE(mv.processing_time_days, 30) as processing_time_days,
+                mv.status::TEXT as status,
+                COALESCE(mv.calculation_method::TEXT, 'fixed_expedition') as calculation_method
+            FROM mv_services_translated mv
+            WHERE {where_clause}
             ORDER BY {order_field} {order_dir}
+            LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
 
-        params.append(language)
         params.append(limit)
         params.append(offset)
 
@@ -835,26 +764,23 @@ class HomepageRepository:
             """
 
         try:
-            # Fetch ministries (always all)
-            ministries_rows = await self.db.fetch(ministries_query, language)
+            import asyncio
 
-            # Fetch categories (filtered by ministry if provided)
-            if ministry_id:
-                categories_rows = await self.db.fetch(categories_query, language, ministry_id)
-            else:
-                categories_rows = await self.db.fetch(categories_query, language)
+            # Parallel fetch: all 3 facet queries concurrently
+            cat_params = (categories_query, language, ministry_id) if ministry_id else (categories_query, language)
+            svc_params = (service_types_query, category_code) if category_code else (service_types_query,)
 
-            # Fetch service types (filtered by category if provided)
-            if category_code:
-                service_types_rows = await self.db.fetch(service_types_query, category_code)
-            else:
-                service_types_rows = await self.db.fetch(service_types_query)
+            ministries_rows, categories_rows, service_types_rows = await asyncio.gather(
+                self.db.fetch(ministries_query, language),
+                self.db.fetch(*cat_params),
+                self.db.fetch(*svc_params),
+            )
 
             return {
                 "categories": [dict(row) for row in categories_rows],
                 "ministries": [dict(row) for row in ministries_rows],
                 "service_types": [dict(row) for row in service_types_rows],
-                "price_ranges": []  # Can be added later if needed
+                "price_ranges": []
             }
 
         except asyncpg.PostgresError as e:

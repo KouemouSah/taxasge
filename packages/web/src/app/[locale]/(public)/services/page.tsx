@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Search, X, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  LayoutGrid, List, Calculator
+  LayoutGrid, List, Calculator, SlidersHorizontal
 } from "lucide-react"
 import {
   Select,
@@ -87,6 +87,7 @@ function ServicesContent() {
   const [sortOption, setSortOption] = useState<SortOption>('relevance')
   const [priceFilter, setPriceFilter] = useState<PriceFilter>('all')
   const [currentPage, setCurrentPage] = useState(1)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Debounce timer ref (prevents re-renders)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -395,12 +396,14 @@ function ServicesContent() {
           </div>
 
           {!loading && searchResults && searchResults.results.length > 0 && (
-            <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+            <div className="flex items-center gap-2 bg-muted p-1 rounded-lg" role="group" aria-label="View mode">
               <Button
                 variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('grid')}
                 className="gap-2"
+                aria-pressed={viewMode === 'grid'}
+                aria-label="Grid view"
               >
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('viewGrid')}</span>
@@ -410,6 +413,8 @@ function ServicesContent() {
                 size="sm"
                 onClick={() => setViewMode('list')}
                 className="gap-2"
+                aria-pressed={viewMode === 'list'}
+                aria-label="List view"
               >
                 <List className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('viewList')}</span>
@@ -418,10 +423,10 @@ function ServicesContent() {
           )}
         </div>
 
-        {/* Search Bar + Filters + Sort on same line */}
-        <div className="mb-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Search Input - Full Width */}
+        {/* Search Bar + Filters */}
+        <div className="mb-6 space-y-2">
+          <div className="flex items-center gap-2">
+            {/* Search Input */}
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
@@ -430,6 +435,7 @@ function ServicesContent() {
                 value={searchInputValue}
                 onChange={(e) => handleSearchInputChange(e.target.value)}
                 className="pl-9 pr-8 h-9 text-sm"
+                aria-label={t('searchPlaceholder')}
               />
               {searchInputValue && (
                 <Button
@@ -442,6 +448,27 @@ function ServicesContent() {
                 </Button>
               )}
             </div>
+
+            {/* Mobile filter toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="md:hidden h-9 gap-1.5"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              aria-expanded={filtersOpen}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span>{t('filters') || 'Filtros'}</span>
+              {(selectedMinistry || selectedCategory || selectedServiceType || priceFilter !== 'all') && (
+                <Badge variant="secondary" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {[selectedMinistry, selectedCategory, selectedServiceType, priceFilter !== 'all' ? 1 : null].filter(Boolean).length}
+                </Badge>
+              )}
+            </Button>
+          </div>
+
+          {/* Filters row: always visible on md+, collapsible on mobile */}
+          <div className={`flex flex-wrap items-center gap-2 ${filtersOpen ? '' : 'hidden md:flex'}`}>
 
             {/* Ministry Filter */}
             <Select
@@ -621,9 +648,21 @@ function ServicesContent() {
           )}
 
           {loading && (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-3 text-muted-foreground">{t('searching')}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="p-4 space-y-3 animate-pulse">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded w-full" />
+                    <div className="h-3 bg-muted rounded w-5/6" />
+                  </div>
+                  <div className="flex justify-between pt-2">
+                    <div className="h-6 bg-muted rounded w-20" />
+                    <div className="h-6 bg-muted rounded w-16" />
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
 

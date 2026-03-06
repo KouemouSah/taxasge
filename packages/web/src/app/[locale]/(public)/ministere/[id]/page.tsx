@@ -13,6 +13,20 @@ import Breadcrumb from '@/components/ui/breadcrumb';
 import { getMinistryDetails, type MinistryDetails } from '@/core/api/homepage';
 import { getMinistryImageUrl } from '@/lib/firebase-storage';
 
+// Sanitize HTML: strip script/iframe/object/embed tags and event handlers
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[\s\S]*?\/?>/gi, '')
+    .replace(/<link[\s\S]*?\/?>/gi, '')
+    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\bon\w+\s*=\s*[^\s>]*/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/data\s*:/gi, 'data-blocked:');
+}
+
 export default function MinistryDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -150,7 +164,7 @@ export default function MinistryDetailPage() {
                     prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
                     prose-p:my-2 prose-ul:my-2 prose-ol:my-2
                     prose-strong:text-foreground"
-                  dangerouslySetInnerHTML={{ __html: ministry.description }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(ministry.description) }}
                 />
               ) : (
                 <p className="text-muted-foreground">{t('noDescription')}</p>

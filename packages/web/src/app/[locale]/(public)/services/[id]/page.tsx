@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import {
-  AlertCircle, Loader2, ArrowLeft, Calculator,
+  AlertCircle, Loader2, ArrowLeft, Calculator, ExternalLink,
   FileText, ListChecks, Building2, Clock, DollarSign, Info, MapPin
 } from "lucide-react"
 import Breadcrumb from "@/components/ui/breadcrumb"
@@ -39,6 +39,7 @@ export default function ServiceDetailsPage() {
   const [service, setService] = useState<ServiceDetailsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   // Fetch service details
   useEffect(() => {
@@ -63,7 +64,7 @@ export default function ServiceDetailsPage() {
     }
 
     fetchDetails()
-  }, [serviceId, locale])
+  }, [serviceId, locale, retryCount])
 
   // Loading state
   if (loading) {
@@ -87,10 +88,13 @@ export default function ServiceDetailsPage() {
             {error || t('errorLoading')}
           </AlertDescription>
         </Alert>
-        <div className="text-center mt-6">
+        <div className="flex justify-center gap-3 mt-6">
           <Button onClick={() => router.back()} variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t('backToServices')}
+          </Button>
+          <Button onClick={() => setRetryCount(c => c + 1)} variant="default">
+            {t('retry') || 'Reintentar'}
           </Button>
         </div>
       </div>
@@ -376,6 +380,19 @@ export default function ServiceDetailsPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* CTA: Start Request */}
+        <div className="mt-8 text-center">
+          <Button
+            size="lg"
+            className="gap-2 px-8"
+            onClick={() => router.push(`/${locale}/auth`)}
+          >
+            <ExternalLink className="h-4 w-4" />
+            {t('startRequest')}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">{t('loginRequired')}</p>
         </div>
       </div>
     </div>

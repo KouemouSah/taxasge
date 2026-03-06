@@ -4547,16 +4547,16 @@
     "helpDescription": "If you have questions about your civil servant services, contact the Ministry of Public Function."
   },
   "hero": {
-    "badge": "Tax Services of Equatorial Guinea",
+    "badge": "AI Digital Services of Equatorial Guinea",
     "calculator": "Calculator",
     "calculatorDesc": "Calculate your taxes",
     "completeGuide": "Complete Guide",
     "completeGuideDesc": "Detailed procedures",
     "searchButton": "Search",
-    "searchPlaceholder": "Search for a tax service, a ministry, a category...",
-    "servicesDesc": "Tax services",
-    "subtitle": "Access all Guinean tax services in one place. Calculate your taxes, consult procedures and download your documents.",
-    "title": "Simplify your tax procedures"
+    "searchPlaceholder": "Search for a service, a ministry, a category...",
+    "servicesDesc": "Administrative services",
+    "subtitle": "Access all services in one place. Calculate your taxes, consult procedures and download your documents with AI assistance.",
+    "title": "Simplify your procedures"
   },
   "metadata": {
     "defaultTitle": "Facil - AI Digital Services Platform of Equatorial Guinea",
@@ -4763,7 +4763,9 @@
     "validFor": "Valid for {months} months",
     "validity": "Validity",
     "validityPeriod": "Valid for {months} months",
-    "views": "Views"
+    "views": "Views",
+    "startRequest": "Request this service",
+    "loginRequired": "Login required"
   },
   "services": {
     "advancedFilters": "Advanced filters",

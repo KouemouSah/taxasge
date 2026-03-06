@@ -25,3 +25,11 @@ ON service_requests (workflow_code, status, created_at DESC);
 -- After: native ordered scan → LIMIT 1 is O(1)
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_srh_request_performed
 ON service_request_history (service_request_id, performed_at DESC);
+
+-- 5. Covering index on entity_translations for translation JOIN pattern
+-- Before: PK (entity_type, entity_code, language_code, field_name) → Bitmap Heap Scan (20ms for 830 rows)
+-- After: (entity_type, language_code, field_name, entity_code) INCLUDE (translation_text) → Index Only Scan (0.5ms)
+-- The column reorder allows direct scan when entity_code is the JOIN variable (not in WHERE)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_et_type_lang_field_code
+ON entity_translations (entity_type, language_code, field_name, entity_code)
+INCLUDE (translation_text);

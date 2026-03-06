@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Card } from '@/components/ui/card';
@@ -38,6 +38,8 @@ export default function MinisterePage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('count-desc');
 
   useEffect(() => {
@@ -136,8 +138,12 @@ export default function MinisterePage() {
             <Input
               type="text"
               placeholder={t('searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                if (debounceRef.current) clearTimeout(debounceRef.current);
+                debounceRef.current = setTimeout(() => setSearchQuery(e.target.value), 300);
+              }}
               className="pl-10 pr-4 py-5"
             />
           </div>
