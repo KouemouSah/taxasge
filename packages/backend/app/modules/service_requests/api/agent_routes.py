@@ -1981,6 +1981,7 @@ class RequestPreviewDocument(BaseModel):
     code: str
     name: str
     file_url: Optional[str] = None
+    mime_type: Optional[str] = None
     validation_status: str = "pending"
 
 
@@ -2597,7 +2598,7 @@ async def get_request_preview(
 
     # Get documents (max 4 for preview)
     docs_query = """
-        SELECT id, document_code, file_name, file_path, is_valid
+        SELECT id, document_code, file_name, file_path, mime_type, is_valid
         FROM service_request_documents
         WHERE service_request_id = $1
         ORDER BY created_at DESC
@@ -2611,6 +2612,7 @@ async def get_request_preview(
             code=d['document_code'] or 'unknown',
             name=d['file_name'] or 'Document',
             file_url=d['file_path'],
+            mime_type=d['mime_type'],
             validation_status='validated' if d['is_valid'] is True else ('rejected' if d['is_valid'] is False else 'pending')
         )
         for d in doc_rows
