@@ -2557,7 +2557,8 @@ async def get_request_preview(
         LEFT JOIN service_payments sp ON sp.service_request_id = sr.id
         LEFT JOIN assignments a ON a.item_id = sr.id
             AND a.status IN ('assigned', 'in_progress')
-        LEFT JOIN users agent_u ON agent_u.id = a.agent_id
+        LEFT JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+        LEFT JOIN users agent_u ON agent_u.id = ap.user_id
         WHERE sr.id = $1
     """
 

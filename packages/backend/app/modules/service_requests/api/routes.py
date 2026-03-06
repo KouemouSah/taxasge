@@ -462,7 +462,7 @@ async def get_document_url(
     from ..repositories.service_request_repository import service_request_repository
     from ..repositories.document_repository import document_repository
     from app.modules.documents.services.storage_service import firebase_storage_service
-    from app.modules.permissions.services.permission_service import permission_service
+    from app.modules.permissions.services.permission_service import create_permission_service
 
     # Get the request
     request = await service_request_repository.find_by_id(db, request_id)
@@ -474,7 +474,8 @@ async def get_document_url(
 
     # Check access: owner OR agent with permission
     is_owner = str(request["user_id"]) == str(current_user.id)
-    has_view_permission = await permission_service.has_permission(
+    perm_service = create_permission_service(db)
+    has_view_permission = await perm_service.has_permission(
         str(current_user.id), "service_request.view"
     )
 
