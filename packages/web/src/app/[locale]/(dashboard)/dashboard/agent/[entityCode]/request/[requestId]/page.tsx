@@ -53,6 +53,9 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
+  User,
+  Tag,
 } from 'lucide-react';
 
 // API
@@ -142,7 +145,7 @@ function getStatusBadgeVariant(
 export default function AgentRequestDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const t = useTranslations('agentDashboard');
+  const t = useTranslations('agent.requestDetail');
   const queryClient = useQueryClient();
 
   const requestId = params.requestId as string;
@@ -287,7 +290,7 @@ export default function AgentRequestDetailPage() {
         .every((item) => checklist[item.id]);
 
       if (!allRequiredChecked) {
-        alert(t('detail.checklistIncomplete') || 'Por favor complete todos los items requeridos de la verificación.');
+        alert(t('checklistIncomplete') || 'Por favor complete todos los items requeridos de la verificación.');
         return;
       }
     }
@@ -332,7 +335,7 @@ export default function AgentRequestDetailPage() {
           <AlertCircle className="h-6 w-6 text-red-500" />
           <div>
             <p className="font-medium text-red-700">
-              {t('detail.loadError') || 'Error al cargar la solicitud'}
+              {t('loadError') || 'Error al cargar la solicitud'}
             </p>
             <p className="text-sm text-red-600">
               {requestError instanceof Error ? requestError.message : 'Error desconocido'}
@@ -378,7 +381,7 @@ export default function AgentRequestDetailPage() {
               size="icon"
               onClick={goToPrev}
               disabled={!hasPrev}
-              title={t('detail.previousRequest') || 'Solicitud anterior'}
+              title={t('previousRequest') || 'Solicitud anterior'}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -390,7 +393,7 @@ export default function AgentRequestDetailPage() {
               size="icon"
               onClick={goToNext}
               disabled={!hasNext}
-              title={t('detail.nextRequest') || 'Solicitud siguiente'}
+              title={t('nextRequest') || 'Solicitud siguiente'}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -403,15 +406,15 @@ export default function AgentRequestDetailPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="resumen" className="gap-2">
             <FileText className="h-4 w-4" />
-            {t('detail.tabs.resumen') || 'Resumen'}
+            {t('tabs.resumen') || 'Resumen'}
           </TabsTrigger>
           <TabsTrigger value="documentos" className="gap-2">
             <FileImage className="h-4 w-4" />
-            {t('detail.tabs.documentos') || 'Documentos'}
+            {t('tabs.documentos') || 'Documentos'}
           </TabsTrigger>
           <TabsTrigger value="traitement" className="gap-2">
             <ClipboardCheck className="h-4 w-4" />
-            {t('detail.tabs.traitement') || 'Traitement'}
+            {t('tabs.traitement') || 'Traitement'}
           </TabsTrigger>
         </TabsList>
 
@@ -483,7 +486,7 @@ export default function AgentRequestDetailPage() {
               ) : (
                 <div className="text-center text-muted-foreground">
                   <FileText className="h-16 w-16 mx-auto mb-4" />
-                  <p>{t('detail.previewNotAvailable') || 'Vista previa no disponible'}</p>
+                  <p>{t('previewNotAvailable') || 'Vista previa no disponible'}</p>
                 </div>
               )}
             </div>
@@ -499,8 +502,70 @@ export default function AgentRequestDetailPage() {
 // SUB-COMPONENTS
 // ============================================================================
 
+// ============================================================================
+// DYNAMIC FORM DATA HELPERS
+// ============================================================================
+
+/** Duplicate fields to avoid showing the same value multiple times */
+const DEDUP_FIELDS = new Set([
+  'solicitud_type', 'tipo_solicitud', 'solicitud_sub_type',
+]);
+
+/** Fields that identify the applicant — shown in the identity card */
+const IDENTITY_FIELDS = new Set([
+  'nombres', 'apellidos', 'numero_dip', 'numero_identificacion',
+  'tipo_identificacion', 'sexo', 'fecha_nacimiento', 'nacionalidad',
+  'numero_nie',
+]);
+
+/** Request metadata fields — shown in a compact header card */
+const REQUEST_META_FIELDS = new Set([
+  'sub_type', 'motivo', 'is_minor', 'applicant_type', 'persona_type',
+  'select_classes', 'clases_solicitadas', 'tipo_contrato',
+]);
+
+/** Convert snake_case to Title Case (fallback when no i18n key exists) */
+function snakeToTitle(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** ISO date pattern: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss */
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?/;
+
+/** Format a field value for display */
+function formatDisplayValue(_key: string, value: unknown, locale = 'es'): string {
+  if (value === null || value === undefined || value === '') return '-';
+
+  // Arrays → comma-separated
+  if (Array.isArray(value)) {
+    return value.join(', ') || '-';
+  }
+
+  // Objects → skip (shouldn't happen with flat data)
+  if (typeof value === 'object') return '-';
+
+  const str = String(value);
+
+  // Date detection by VALUE format (not by key name — avoids false positives like lugar_nacimiento)
+  if (ISO_DATE_REGEX.test(str)) {
+    try {
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) {
+        const localeMap: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-GB' };
+        return d.toLocaleDateString(localeMap[locale] || 'es-ES', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+        });
+      }
+    } catch { /* fall through */ }
+  }
+
+  return str;
+}
+
 /**
- * Tab RESUMEN - Display form data according to schema
+ * Tab RESUMEN - Display form data according to schema or dynamically
  */
 function ResumenTab({
   request,
@@ -511,22 +576,9 @@ function ResumenTab({
   formDisplaySchema: FormDisplaySchema | null | undefined;
   photoUrl: string | null;
 }) {
-  const t = useTranslations('agentDashboard');
-
   if (!formDisplaySchema) {
-    // Fallback: display raw form_data
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('detail.formData') || 'Datos del Formulario'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <pre className="text-sm bg-gray-50 p-4 rounded overflow-auto max-h-[500px]">
-            {JSON.stringify(request.formData, null, 2)}
-          </pre>
-        </CardContent>
-      </Card>
-    );
+    // Dynamic display from form_data
+    return <DynamicFormDisplay request={request} />;
   }
 
   // Group sections by column
@@ -534,87 +586,437 @@ function ResumenTab({
   const rightSections = formDisplaySchema.sections.filter((s) => s.column === 'right');
 
   return (
-    <div className="space-y-6">
-      {/* Title */}
+    <div className="space-y-4">
       <h2 className="text-xl font-semibold">{formDisplaySchema.title}</h2>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column */}
-        <div className="space-y-6">
-          {/* Photo if available */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-4">
           {photoUrl && (
             <Card>
               <CardContent className="pt-6">
                 <div className="flex justify-center">
                   <div className="w-32 h-40 relative border rounded overflow-hidden">
-                    <Image
-                      src={photoUrl}
-                      alt="Photo"
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
+                    <Image src={photoUrl} alt="Photo" fill className="object-cover" unoptimized />
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
-
           {leftSections.map((section) => (
-            <SectionCard
-              key={section.id}
-              section={section}
-              request={request}
-            />
+            <SectionCard key={section.id} section={section} request={request} />
           ))}
         </div>
-
-        {/* Right Column */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {rightSections.map((section) => (
-            <SectionCard
-              key={section.id}
-              section={section}
-              request={request}
-            />
+            <SectionCard key={section.id} section={section} request={request} />
           ))}
         </div>
       </div>
 
-      {/* Appointment Info if available */}
-      {(request.citaDate || request.citaLocation) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              {t('detail.appointment') || 'Cita'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {request.citaDate && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>{request.citaDate}</span>
-                </div>
-              )}
-              {request.citaTime && (
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{request.citaTime}</span>
-                </div>
-              )}
-              {request.citaLocation && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{request.citaLocation}</span>
-                </div>
-              )}
+      <AppointmentCard request={request} />
+    </div>
+  );
+}
+
+/**
+ * Dynamic form data display - used when formDisplaySchema is not configured
+ */
+function DynamicFormDisplay({ request }: { request: ServiceRequestDetail }) {
+  const t = useTranslations('agent.requestDetail');
+  const tFields = useTranslations('agent.requestDetail.fieldLabels');
+  const tDocs = useTranslations('agent.requestDetail.documentNames');
+  const tPay = useTranslations('agent.requestDetail.payment');
+  const tTariff = useTranslations('agent.requestDetail.tariff');
+  const locale = useLocale();
+  const formData = request.formData || {};
+
+  // Resolve label: i18n key if exists, else snake_case → Title Case fallback
+  const getLabel = (key: string): string => {
+    try {
+      // next-intl throws on missing key in strict mode
+      return tFields(key as never);
+    } catch {
+      return snakeToTitle(key);
+    }
+  };
+
+  // Show all filled fields, hide empty ones — handles workflow differences naturally
+  // Only deduplicate fields that are stored redundantly (sub_type/solicitud_type/tipo_solicitud)
+  const allEntries = Object.entries(formData).filter(
+    ([key, value]) => !DEDUP_FIELDS.has(key) && value !== null && value !== undefined && value !== ''
+  );
+
+  const identityEntries = allEntries.filter(([key]) => IDENTITY_FIELDS.has(key));
+  const metaEntries = allEntries.filter(([key]) => REQUEST_META_FIELDS.has(key));
+  const otherEntries = allEntries.filter(([key]) => !IDENTITY_FIELDS.has(key) && !REQUEST_META_FIELDS.has(key));
+
+  // Check for photo URL in form_data
+  const photoKey = Object.keys(formData).find((k) =>
+    k === 'photo_url' || k === 'foto_url' || k === 'photo'
+  );
+  const photoUrl = photoKey ? String(formData[photoKey]) : null;
+
+  if (allEntries.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          {t('noData')}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Request metadata — compact inline badges */}
+      {metaEntries.length > 0 && (
+        <Card className="bg-muted/30">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Tag className="h-4 w-4 text-muted-foreground" />
+              {metaEntries.map(([key, value]) => (
+                <Badge key={key} variant="outline" className="text-xs font-normal">
+                  {getLabel(key)}: <span className="font-medium ml-1">{formatDisplayValue(key, value, locale)}</span>
+                </Badge>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Identity Card — applicant core info (highlighted bg) */}
+      {identityEntries.length > 0 && (
+        <Card className="border-primary/20 bg-primary/[0.02]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="h-4 w-4 text-primary" />
+              {t('applicantData')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-6">
+              {photoUrl && (
+                <div className="w-28 h-36 relative border rounded overflow-hidden flex-shrink-0">
+                  <Image src={photoUrl} alt="Photo" fill className="object-cover" unoptimized />
+                </div>
+              )}
+              <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1.5">
+                {identityEntries.map(([key, value]) => (
+                  <div key={key}>
+                    <p className="text-xs text-muted-foreground">{getLabel(key)}</p>
+                    <p className="text-sm font-medium" title={String(value)}>
+                      {formatDisplayValue(key, value, locale)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Complementary fields — personal details, address, etc */}
+      {otherEntries.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 text-primary" />
+              {t('complementaryInfo')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-1.5">
+              {otherEntries.map(([key, value]) => (
+                <div key={key}>
+                  <p className="text-xs text-muted-foreground">{getLabel(key)}</p>
+                  <p className="text-sm font-medium" title={String(value)}>
+                    {formatDisplayValue(key, value, locale)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Document extraction sections — OCR data per document */}
+      {request.providedDocuments && request.providedDocuments.length > 0 && (
+        <DocumentExtractionSections
+          documents={request.providedDocuments}
+          locale={locale}
+          getLabel={getLabel}
+          getDocLabel={(code, fallback) => getDocName(tDocs, code, fallback)}
+        />
+      )}
+
+      {/* Payment + Tariff row */}
+      {(request.paymentAmount || request.tariff) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {request.paymentAmount && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-green-600" />
+                  {tPay('title')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{tPay('amount')}</p>
+                    <p className="text-sm font-bold text-green-700">
+                      {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'es-ES').format(request.paymentAmount)} {request.paymentCurrency || 'XAF'}
+                    </p>
+                  </div>
+                  {request.paymentMethod && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">{tPay('method')}</p>
+                      <p className="text-sm font-medium">{request.paymentMethod}</p>
+                    </div>
+                  )}
+                  {request.paymentWorkflowStatus && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">{tPay('workflowStatus')}</p>
+                      <Badge variant={request.paymentWorkflowStatus === 'completed' ? 'default' : 'secondary'} className="text-xs">
+                        {request.paymentWorkflowStatus}
+                      </Badge>
+                    </div>
+                  )}
+                  {request.paymentReference && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">{tPay('reference')}</p>
+                      <p className="text-sm font-medium font-mono">{request.paymentReference}</p>
+                    </div>
+                  )}
+                  {request.paymentPaidAt && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">{tPay('paidAt')}</p>
+                      <p className="text-sm font-medium">{formatDisplayValue('', request.paymentPaidAt, locale)}</p>
+                    </div>
+                  )}
+                  {request.paymentReceiptNumber && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">{tPay('receipt')}</p>
+                      <p className="text-sm font-medium font-mono">{request.paymentReceiptNumber}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {request.tariff && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4 text-primary" />
+                  {tTariff('title')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{tTariff('base')}</span>
+                    <span>{new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'es-ES').format(request.tariff.baseAmount)} XAF</span>
+                  </div>
+                  {request.tariff.supplementsTotal > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{tTariff('supplements')}</span>
+                      <span>{new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'es-ES').format(request.tariff.supplementsTotal)} XAF</span>
+                    </div>
+                  )}
+                  {request.tariff.penaltiesAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground text-red-600">{tTariff('penalties')}</span>
+                      <span className="text-red-600">{new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'es-ES').format(request.tariff.penaltiesAmount)} XAF</span>
+                    </div>
+                  )}
+                  <Separator className="my-1" />
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>{tTariff('total')}</span>
+                    <span>{new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'es-ES').format(request.tariff.totalAmount)} XAF</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Appointment + Contact row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <AppointmentCard request={request} />
+        <ContactCard request={request} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Appointment info card (compact)
+ */
+function AppointmentCard({ request }: { request: ServiceRequestDetail }) {
+  const t = useTranslations('agent.requestDetail');
+  if (!request.citaDate && !request.citaLocation) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          {t('appointment')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-6 flex-wrap">
+          {request.citaDate && (
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{request.citaDate}</span>
+            </div>
+          )}
+          {request.citaTime && (
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{request.citaTime}</span>
+            </div>
+          )}
+          {request.citaLocation && (
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{request.citaLocation}</span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Contact info card (compact)
+ */
+function ContactCard({ request }: { request: ServiceRequestDetail }) {
+  const t = useTranslations('agent.requestDetail');
+  if (!request.userName && !request.userEmail && !request.userPhone) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          {t('citizenContact')}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-1.5">
+          {request.userName && (
+            <div>
+              <p className="text-xs text-muted-foreground">{t('name')}</p>
+              <p className="text-sm font-medium">{request.userName}</p>
+            </div>
+          )}
+          {request.userEmail && (
+            <div>
+              <p className="text-xs text-muted-foreground">{t('email')}</p>
+              <p className="text-sm font-medium">{request.userEmail}</p>
+            </div>
+          )}
+          {request.userPhone && (
+            <div>
+              <p className="text-xs text-muted-foreground">{t('phone')}</p>
+              <p className="text-sm font-medium">{request.userPhone}</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Get document display name via i18n with fallback */
+function getDocName(tDocs: (key: string) => string, code: string, fallbackName?: string): string {
+  try {
+    return tDocs(code as never);
+  } catch {
+    return fallbackName || snakeToTitle(code);
+  }
+}
+
+/** Fields to skip from extraction display (internal/technical) */
+const EXTRACTION_SKIP = new Set([
+  'linea_1', 'linea_2', 'linea_3', // MRZ lines (raw, not useful for agents)
+  'tiene_foto', 'tiene_firma', 'tiene_qr_code', 'texto_sello',
+  'tipo_documento', 'id_lateral', 'nombre_completo_verso',
+  'codigo_pais', 'numero_registro',
+]);
+
+/**
+ * Document extraction data sections — shows OCR-extracted data grouped by document
+ */
+function DocumentExtractionSections({
+  documents,
+  locale,
+  getLabel,
+  getDocLabel,
+}: {
+  documents: NonNullable<ServiceRequestDetail['providedDocuments']>;
+  locale: string;
+  getLabel: (key: string) => string;
+  getDocLabel: (code: string, fallback?: string) => string;
+}) {
+  // Only documents with actual extraction data
+  const docsWithExtraction = documents.filter(
+    (doc) => doc.extractionData && Object.keys(doc.extractionData).length > 0
+      && doc.documentCode !== 'photo_carnet'
+  );
+
+  if (docsWithExtraction.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {docsWithExtraction.map((doc) => {
+        const entries = Object.entries(doc.extractionData!)
+          .filter(([key, value]) =>
+            !key.startsWith('_') &&
+            !EXTRACTION_SKIP.has(key) &&
+            value !== null && value !== undefined && value !== ''
+          );
+
+        if (entries.length === 0) return null;
+
+        const docLabel = getDocLabel(doc.documentCode, doc.documentName);
+
+        return (
+          <Card key={doc.id}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileImage className="h-4 w-4 text-blue-500" />
+                  {docLabel}
+                </CardTitle>
+                {doc.extractionConfidence != null && (
+                  <Badge variant={doc.extractionConfidence >= 0.8 ? 'default' : 'secondary'}
+                    className="text-xs">
+                    {Math.round(doc.extractionConfidence * 100)}%
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {entries.map(([key, value]) => (
+                  <div key={key}>
+                    <p className="text-xs text-muted-foreground">{getLabel(key)}</p>
+                    <p className="text-xs font-medium" title={String(value)}>
+                      {formatDisplayValue(key, value, locale)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
@@ -703,7 +1105,7 @@ function DocumentosTab({
   }>;
   onPreview: (doc: { url: string; name: string; mimeType: string } | null) => void;
 }) {
-  const t = useTranslations('agentDashboard');
+  const t = useTranslations('agent.requestDetail');
   const [loadingDoc, setLoadingDoc] = useState<string | null>(null);
 
   const handlePreview = useCallback(async (doc: typeof documents[0]) => {
@@ -717,7 +1119,7 @@ function DocumentosTab({
       });
     } catch (error) {
       console.error('Failed to get document URL:', error);
-      alert(t('detail.documentUrlError') || 'Error al cargar el documento');
+      alert(t('documentUrlError') || 'Error al cargar el documento');
     } finally {
       setLoadingDoc(null);
     }
@@ -728,9 +1130,9 @@ function DocumentosTab({
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <FileImage className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="font-semibold">{t('detail.noDocuments') || 'Sin documentos'}</h3>
+          <h3 className="font-semibold">{t('noDocuments') || 'Sin documentos'}</h3>
           <p className="text-muted-foreground text-sm">
-            {t('detail.noDocumentsDescription') || 'No hay documentos cargados para esta solicitud'}
+            {t('noDocumentsDescription') || 'No hay documentos cargados para esta solicitud'}
           </p>
         </CardContent>
       </Card>
@@ -742,7 +1144,7 @@ function DocumentosTab({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <FileImage className="h-5 w-5" />
-          {t('detail.documents') || 'Documentos'} ({documents.length})
+          {t('documents') || 'Documentos'} ({documents.length})
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -840,7 +1242,7 @@ function TraitementTab({
   onCancelReject: () => void;
   canMakeDecision: boolean;
 }) {
-  const t = useTranslations('agentDashboard');
+  const t = useTranslations('agent.requestDetail');
 
   const completedCount = Object.values(checklist).filter(Boolean).length;
   const totalCount = checklistItems.length;
@@ -855,7 +1257,7 @@ function TraitementTab({
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5" />
-              {t('detail.verificationChecklist') || 'Verificación Rápida'}
+              {t('verificationChecklist') || 'Verificación Rápida'}
             </span>
             <Badge variant={allRequiredChecked ? 'default' : 'secondary'}>
               {completedCount}/{totalCount}
@@ -865,7 +1267,7 @@ function TraitementTab({
         <CardContent>
           {checklistItems.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">
-              {t('detail.noChecklistItems') || 'No hay items de verificación configurados'}
+              {t('noChecklistItems') || 'No hay items de verificación configurados'}
             </p>
           ) : (
             <div className="space-y-4">
@@ -904,13 +1306,13 @@ function TraitementTab({
           {/* Notes */}
           <div>
             <Label htmlFor="checklist-notes">
-              {t('detail.notes') || 'Notas del agente'}
+              {t('notes') || 'Notas del agente'}
             </Label>
             <Textarea
               id="checklist-notes"
               value={notes}
               onChange={(e) => onNotesChange(e.target.value)}
-              placeholder={t('detail.notesPlaceholder') || 'Añadir notas...'}
+              placeholder={t('notesPlaceholder') || 'Añadir notas...'}
               className="mt-2"
               rows={3}
             />
@@ -929,7 +1331,7 @@ function TraitementTab({
               ) : (
                 <Save className="mr-2 h-4 w-4" />
               )}
-              {t('detail.saveChecklist') || 'Guardar Verificación'}
+              {t('saveChecklist') || 'Guardar Verificación'}
             </Button>
           </div>
         </CardContent>
@@ -939,7 +1341,7 @@ function TraitementTab({
       {canMakeDecision && (
         <Card>
           <CardHeader>
-            <CardTitle>{t('detail.actions') || 'Acciones'}</CardTitle>
+            <CardTitle>{t('actions') || 'Acciones'}</CardTitle>
           </CardHeader>
           <CardContent>
             {/* Reject Input - shown when reject is clicked */}
@@ -947,13 +1349,13 @@ function TraitementTab({
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="reject-reason">
-                    {t('detail.rejectReason') || 'Motivo del rechazo'}
+                    {t('rejectReason') || 'Motivo del rechazo'}
                   </Label>
                   <Textarea
                     id="reject-reason"
                     value={rejectReason}
                     onChange={(e) => onRejectReasonChange(e.target.value)}
-                    placeholder={t('detail.rejectReasonPlaceholder') || 'Indique el motivo...'}
+                    placeholder={t('rejectReasonPlaceholder') || 'Indique el motivo...'}
                     className="mt-2"
                     rows={3}
                   />
@@ -965,7 +1367,7 @@ function TraitementTab({
                     className="flex-1"
                     disabled={isDeciding}
                   >
-                    {t('common.cancel') || 'Cancelar'}
+                    {t('cancel')}
                   </Button>
                   <Button
                     variant="destructive"
@@ -974,7 +1376,7 @@ function TraitementTab({
                     disabled={!rejectReason.trim() || isDeciding}
                   >
                     {isDeciding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {t('detail.confirmReject') || 'Confirmar Rechazo'}
+                    {t('confirmReject') || 'Confirmar Rechazo'}
                   </Button>
                 </div>
               </div>
@@ -988,7 +1390,7 @@ function TraitementTab({
                   >
                     {isDeciding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <ThumbsUp className="mr-2 h-4 w-4" />
-                    {t('detail.approve') || 'Aprobar'}
+                    {t('approve') || 'Aprobar'}
                   </Button>
                   <Button
                     onClick={onReject}
@@ -997,13 +1399,13 @@ function TraitementTab({
                     disabled={isDeciding}
                   >
                     <ThumbsDown className="mr-2 h-4 w-4" />
-                    {t('detail.reject') || 'Rechazar'}
+                    {t('reject') || 'Rechazar'}
                   </Button>
                 </div>
                 {!allRequiredChecked && (
                   <p className="text-sm text-yellow-600 mt-2 flex items-center gap-1">
                     <AlertTriangle className="h-4 w-4" />
-                    {t('detail.completeRequiredItems') ||
+                    {t('completeRequiredItems') ||
                       'Complete todos los items requeridos antes de aprobar'}
                   </p>
                 )}

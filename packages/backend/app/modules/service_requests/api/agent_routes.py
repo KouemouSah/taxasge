@@ -246,7 +246,7 @@ async def get_queue(
     "/queue/stats",
     response_model=QueueStatsResponse,
     summary="Get queue statistics",
-    description="Get statistics about the current queue status."
+    description="Get statistics about the current queue status. Uses service_requests as source of truth."
 )
 async def get_queue_stats(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
@@ -254,11 +254,94 @@ async def get_queue_stats(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.view_queue_stats"))
 ):
-    stats = await agent_queue_service.get_queue_stats(
-        db=db,
-        entity_code=entity_code
+    # Resolve agent's site for scoping
+    agent_row = await db.fetchrow("""
+        SELECT ap.entity_location_id, ap.is_supervisor,
+               COALESCE(el.is_main_office, false) AS is_main_office
+        FROM agent_profiles ap
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+        WHERE ap.user_id = $1 AND ap.is_active = true
+        LIMIT 1
+    """, current_user.id)
+
+    # Build conditions: entity workflows + site scope
+    conditions = ["sr.status::text NOT IN ('DRAFT', 'CANCELLED')"]
+    params: list = []
+    param_idx = 1
+
+    if entity_code:
+        # Filter by entity's workflow codes
+        entity_workflows = await db.fetchval(
+            "SELECT workflow_codes FROM entities WHERE code = $1 AND is_active = true",
+            entity_code
+        )
+        if entity_workflows:
+            if isinstance(entity_workflows, str):
+                import json as _json
+                entity_workflows = _json.loads(entity_workflows)
+            conditions.append(f"sr.workflow_code = ANY(${param_idx})")
+            params.append(entity_workflows)
+            param_idx += 1
+
+    # Site scope: non-main-office agents only see their site
+    if agent_row and agent_row['entity_location_id'] and not agent_row['is_main_office']:
+        conditions.append(
+            f"(sr.entity_location_id = ${param_idx} OR sr.entity_location_id IS NULL)"
+        )
+        params.append(agent_row['entity_location_id'])
+        param_idx += 1
+
+    # Add current_user.id as parameter for assigned count
+    agent_user_id_param = param_idx
+    params.append(current_user.id)
+    param_idx += 1
+
+    where = " AND ".join(conditions)
+
+    stats = await db.fetchrow(f"""
+        SELECT
+            COUNT(*) FILTER (
+                WHERE sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS')
+                  AND sr.assigned_to IS NOT NULL
+                  AND sr.payment_status = 'completed'
+            ) AS pending,
+            COUNT(*) FILTER (
+                WHERE sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS')
+                  AND sr.assigned_to = ${agent_user_id_param}
+            ) AS assigned,
+            COUNT(*) FILTER (
+                WHERE sr.status::text IN ('COMPLETED', 'DOSSIER_VALIDE')
+                  AND sr.updated_at > NOW() - INTERVAL '24 hours'
+            ) AS completed_today,
+            COUNT(*) FILTER (
+                WHERE sr.escalated = true
+                  AND sr.status::text NOT IN ('COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED')
+            ) AS escalated,
+            COUNT(*) FILTER (
+                WHERE sr.submitted_at IS NOT NULL
+                  AND sr.status::text IN ('SUBMITTED', 'UNDER_REVIEW', 'IN_PROGRESS')
+                  AND sr.submitted_at + (COALESCE(w.sla_hours, 72) * INTERVAL '1 hour') < NOW()
+            ) AS sla_violations,
+            COALESCE(AVG(
+                EXTRACT(EPOCH FROM (sr.updated_at - sr.submitted_at)) / 3600
+            ) FILTER (
+                WHERE sr.status::text IN ('COMPLETED', 'DOSSIER_VALIDE')
+                  AND sr.submitted_at IS NOT NULL
+                  AND sr.updated_at > NOW() - INTERVAL '30 days'
+            ), 0) AS avg_processing_hours
+        FROM service_requests sr
+        LEFT JOIN workflows w ON w.code = sr.workflow_code
+        WHERE {where}
+    """, *params)
+
+    return QueueStatsResponse(
+        pending=stats['pending'] or 0,
+        assigned=stats['assigned'] or 0,
+        completed_today=stats['completed_today'] or 0,
+        escalated=stats['escalated'] or 0,
+        sla_violations=stats['sla_violations'] or 0,
+        avg_processing_hours=round(float(stats['avg_processing_hours'] or 0), 2)
     )
-    return QueueStatsResponse(**stats)
 
 
 @router.get(
@@ -662,12 +745,12 @@ async def get_history_statistics(
 
 @router.get(
     "/{request_id}",
-    response_model=ServiceRequestResponse,
     summary="Get service request details (agent view)",
     description="""
     Get complete details of a service request for agent review.
 
-    Includes all documents, extraction data, form data, and validation status.
+    Includes all documents, extraction data, form data, payment info,
+    user contact details, and verification status.
     """
 )
 async def get_request_for_review(
@@ -676,24 +759,61 @@ async def get_request_for_review(
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.view"))
 ):
-    # Agents can view any request assigned to their ministry
-    request = await db.fetchrow("""
-        SELECT * FROM service_requests WHERE id = $1
+    # Single query: service_request + user contact + latest payment (3 JOINs, 1 round-trip)
+    row = await db.fetchrow("""
+        SELECT sr.*,
+               u.full_name AS user_name, u.email AS user_email, u.phone_number AS user_phone,
+               sp.total_amount AS pay_amount, sp.currency AS pay_currency,
+               sp.payment_method AS pay_method, sp.workflow_status AS pay_workflow_status,
+               sp.payment_reference AS pay_reference, sp.receipt_number AS pay_receipt,
+               sp.paid_at AS pay_paid_at
+        FROM service_requests sr
+        JOIN users u ON u.id = sr.user_id
+        LEFT JOIN LATERAL (
+            SELECT total_amount, currency, payment_method, workflow_status,
+                   payment_reference, receipt_number, paid_at
+            FROM service_payments
+            WHERE service_request_id = sr.id
+            ORDER BY created_at DESC LIMIT 1
+        ) sp ON true
+        WHERE sr.id = $1
     """, request_id)
 
-    if not request:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Service request not found"
         )
 
-    # Use service to get full response
-    return await service_request_service.get_request(
+    # Get base response from service (loads documents + tariff)
+    base_response = await service_request_service.get_request(
         db=db,
         request_id=request_id,
-        user_id=request['user_id'],  # Use request owner's context
-        is_agent=True  # Flag to skip ownership check
+        user_id=row['user_id'],
+        is_agent=True
     )
+
+    # Augment response with agent-specific fields
+    response = base_response.model_dump(mode='json')
+    response['user_name'] = row['user_name']
+    response['user_email'] = row['user_email']
+    response['user_phone'] = row['user_phone']
+    response['verification_status'] = row.get('verification_status')
+    raw_vd = row.get('verification_details')
+    if raw_vd and isinstance(raw_vd, str):
+        raw_vd = json.loads(raw_vd)
+    response['verification_details'] = raw_vd
+
+    if row['pay_amount'] is not None:
+        response['payment_amount'] = float(row['pay_amount'])
+        response['payment_currency'] = row['pay_currency']
+        response['payment_method'] = row['pay_method']
+        response['payment_workflow_status'] = row['pay_workflow_status']
+        response['payment_reference'] = row['pay_reference']
+        response['payment_receipt_number'] = row['pay_receipt']
+        response['payment_paid_at'] = row['pay_paid_at'].isoformat() if row['pay_paid_at'] else None
+
+    return response
 
 
 @router.post(
@@ -837,7 +957,7 @@ async def make_decision(
 
                 # Fetch tariff info
                 tariff_row = await db.fetchrow("""
-                    SELECT sp.amount, sp.status, fsd.expedicion_rate, fsd.renewal_rate
+                    SELECT sp.total_amount, sp.status, fsd.expedicion_rate, fsd.renewal_rate
                     FROM service_payments sp
                     LEFT JOIN fiscal_service_data fsd ON fsd.workflow_code = $2
                     WHERE sp.service_request_id = $1
@@ -846,7 +966,7 @@ async def make_decision(
                 """, request_id, workflow_code)
 
                 tariff = {
-                    "total_amount": str(tariff_row['amount']) if tariff_row and tariff_row['amount'] else "0",
+                    "total_amount": str(tariff_row['total_amount']) if tariff_row and tariff_row['total_amount'] else "0",
                     "payment_status": "paid" if tariff_row and tariff_row['status'] == 'completed' else "pending"
                 }
 
@@ -1901,6 +2021,13 @@ class ServiceRequestPreview(BaseModel):
     contact_phone: Optional[str] = None
     # Appointment
     appointment: Optional[RequestPreviewAppointment] = None
+    # Payment details
+    payment_status: Optional[str] = None
+    payment_method: Optional[str] = None
+    payment_amount: Optional[float] = None
+    payment_currency: Optional[str] = None
+    payment_paid_at: Optional[str] = None
+    payment_reference: Optional[str] = None
     # Metadata
     created_at: str
     submitted_at: Optional[str] = None
@@ -2258,16 +2385,65 @@ SYSTEM_COLUMN_RESOLVERS: Dict[str, Any] = {
 }
 
 
+async def _build_composite_data(
+    form_data: dict,
+    request_id,
+    db: asyncpg.Connection,
+) -> dict:
+    """
+    Build composite data dict merging form_data (flat) with
+    service_request_documents.extraction_data (keyed by document_code).
+
+    Result structure:
+      {
+        "nombres": "...",           # flat form_data fields
+        "dip": {"numero_dip": ...}, # nested extraction_data per document
+        "permiso_residencia": {...},
+      }
+
+    Then _flatten_form_data() converts to:
+      {"nombres": "...", "dip.numero_dip": ..., "permiso_residencia.numero_nie": ...}
+    """
+    composite: Dict[str, Any] = dict(form_data) if form_data else {}
+
+    try:
+        doc_rows = await db.fetch("""
+            SELECT document_code, extraction_data
+            FROM service_request_documents
+            WHERE service_request_id = $1
+              AND extraction_data IS NOT NULL
+              AND extraction_data != '{}'::jsonb
+        """, request_id)
+
+        for doc_row in doc_rows:
+            doc_code = doc_row['document_code']
+            ext_data = doc_row['extraction_data']
+            if isinstance(ext_data, str):
+                ext_data = json.loads(ext_data)
+            # Filter out internal keys (_risk_analysis, etc.)
+            clean = {k: v for k, v in ext_data.items()
+                     if not k.startswith('_') and not isinstance(v, (dict, list))}
+            if clean:
+                composite[doc_code] = clean
+
+    except Exception as e:
+        logger.warning(f"Failed to load extraction_data for request={request_id}: {e}")
+
+    return composite
+
+
 async def _extract_preview_data_dynamic(
     form_data: dict,
     workflow_code: str,
     db: asyncpg.Connection,
     row: Optional[Any] = None,
+    request_id=None,
 ) -> Dict[str, Any]:
     """
     Extract preview data dynamically based on workflow_display_config.
 
-    Resolves both system columns (from row) and extracted columns (from form_data).
+    Resolves system columns (from row), extracted columns (from form_data),
+    and document extraction data (from service_request_documents).
     If no display_config exists, returns empty dict.
     Degrades gracefully on errors (returns empty dict instead of 500).
     """
@@ -2286,10 +2462,16 @@ async def _extract_preview_data_dynamic(
         if not configured_columns:
             return {}
 
-        # Flatten form_data for extracted columns
-        flat_data = _flatten_form_data(form_data) if form_data else {}
+        # Build composite data (form_data + extraction_data per document)
+        if request_id:
+            composite = await _build_composite_data(form_data, request_id, db)
+        else:
+            composite = form_data or {}
 
-        # Resolve each configured column: system resolver first, then form_data
+        # Flatten: nested dicts become dot-notation keys
+        flat_data = _flatten_form_data(composite)
+
+        # Resolve each configured column: system resolver first, then flat data
         result: Dict[str, Any] = {}
         for col_id in configured_columns:
             resolver = SYSTEM_COLUMN_RESOLVERS.get(col_id)
@@ -2358,7 +2540,11 @@ async def get_request_preview(
             el.location_name,
             el.location_address,
             sp.workflow_status AS payment_status,
-            sp.amount AS total_amount,
+            sp.total_amount,
+            sp.payment_method,
+            sp.currency AS payment_currency,
+            sp.paid_at AS payment_paid_at,
+            sp.payment_reference,
             agent_u.first_name || ' ' || agent_u.last_name AS assigned_agent_name,
             sr.batch_id,
             (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference
@@ -2368,7 +2554,7 @@ async def get_request_preview(
         LEFT JOIN appointment_reservations ar ON ar.service_request_id = sr.id
             AND ar.status NOT IN ('cancelled', 'expired')
         LEFT JOIN entity_locations el ON el.id = ar.entity_location_id
-        LEFT JOIN service_payments sp ON sp.request_id = sr.id
+        LEFT JOIN service_payments sp ON sp.service_request_id = sr.id
         LEFT JOIN assignments a ON a.item_id = sr.id
             AND a.status IN ('assigned', 'in_progress')
         LEFT JOIN users agent_u ON agent_u.id = a.agent_id
@@ -2449,8 +2635,9 @@ async def get_request_preview(
     contact_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
 
     # Extract preview data dynamically from display_config
+    # Merges form_data + extraction_data from service_request_documents
     extracted_data = await _extract_preview_data_dynamic(
-        form_data, row['workflow_code'], db, row=row
+        form_data, row['workflow_code'], db, row=row, request_id=request_id
     )
 
     return ServiceRequestPreview(
@@ -2473,6 +2660,12 @@ async def get_request_preview(
         contact_email=row['email'],
         contact_phone=row['phone_number'],
         appointment=appointment,
+        payment_status=row['payment_status'],
+        payment_method=row['payment_method'],
+        payment_amount=float(row['total_amount']) if row['total_amount'] else None,
+        payment_currency=row['payment_currency'] or 'XAF',
+        payment_paid_at=row['payment_paid_at'].isoformat() if row.get('payment_paid_at') else None,
+        payment_reference=row['payment_reference'],
         created_at=row['created_at'].isoformat(),
         submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
         batch_id=str(row['batch_id']) if row.get('batch_id') else None,
@@ -2529,11 +2722,30 @@ async def get_workflow_schema(
     if isinstance(config, str):
         config = json.loads(config)
 
+    agent_checklist = config.get('agentChecklist')
+
+    # If no checklist in DB config, extract from Python workflow class (confirmation step)
+    if not agent_checklist:
+        wf = workflow_engine.get_workflow_by_string(workflow_code)
+        if wf and hasattr(wf, '_steps'):
+            for step in wf._steps:
+                if step.step_type.value == "confirmation" and step.config.get('agent_checklist'):
+                    raw_items = step.config['agent_checklist']
+                    agent_checklist = [
+                        {
+                            "id": item["id"],
+                            "label": item.get("label_es", item.get("label", "")),
+                            "required": item.get("required", False),
+                        }
+                        for item in raw_items
+                    ]
+                    break
+
     return WorkflowSchemaResponse(
         code=row['code'],
         name=row['name_es'],
         formDisplaySchema=config.get('formDisplaySchema'),
-        agentChecklist=config.get('agentChecklist')
+        agentChecklist=agent_checklist
     )
 
 

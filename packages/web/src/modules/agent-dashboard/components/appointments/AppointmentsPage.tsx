@@ -17,12 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Calendar, CalendarPlus, CalendarDays, MapPin } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { TodayTab } from './TodayTab';
 import { ScheduleTab } from './ScheduleTab';
 import { CalendarTab } from './CalendarTab';
 import { useSlotsDetailed } from '../../hooks/useAppointments';
+import { useAgentDashboard } from '../../hooks/useAgentDashboard';
 import type { EntityCode } from '../../types';
 
 // =============================================================================
@@ -39,8 +41,13 @@ interface AppointmentsPageProps {
 
 export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
   const t = useTranslations('agent.pages.appointments');
+  const { context } = useAgentDashboard();
   const [activeTab, setActiveTab] = useState<string>('today');
   const [selectedLocationId, setSelectedLocationId] = useState<string | undefined>(undefined);
+
+  // Agent's own location from profile
+  const agentLocationId = context?.entityLocationId;
+  const agentIsMainOffice = context?.isMainOffice ?? true;
 
   // Fetch slots data to get available locations
   const { data: slotsData } = useSlotsDetailed(entityCode, {
@@ -51,12 +58,16 @@ export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
   const locations = slotsData?.locationsAvailable || [];
   const currentLocation = slotsData?.location;
 
-  // Set initial location if not set
+  // Pre-select agent's own site, fallback to first available
   React.useEffect(() => {
-    if (!selectedLocationId && currentLocation) {
-      setSelectedLocationId(currentLocation.id);
+    if (!selectedLocationId) {
+      if (agentLocationId) {
+        setSelectedLocationId(agentLocationId);
+      } else if (currentLocation) {
+        setSelectedLocationId(currentLocation.id);
+      }
     }
-  }, [selectedLocationId, currentLocation]);
+  }, [selectedLocationId, agentLocationId, currentLocation]);
 
   return (
     <div className="space-y-6">
@@ -71,8 +82,13 @@ export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
           </p>
         </div>
 
-        {/* Location Selector */}
-        {locations.length > 1 && (
+        {/* Location Selector — main-office agents can switch sites, others see fixed badge */}
+        {!agentIsMainOffice && currentLocation ? (
+          <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5 text-sm">
+            <MapPin className="h-3.5 w-3.5" />
+            {currentLocation.name}
+          </Badge>
+        ) : locations.length > 1 ? (
           <Select
             value={selectedLocationId || currentLocation?.id || ''}
             onValueChange={(val) => setSelectedLocationId(val || undefined)}
@@ -89,7 +105,7 @@ export function AppointmentsPage({ entityCode }: AppointmentsPageProps) {
               ))}
             </SelectContent>
           </Select>
-        )}
+        ) : null}
       </div>
 
       {/* Tabs */}

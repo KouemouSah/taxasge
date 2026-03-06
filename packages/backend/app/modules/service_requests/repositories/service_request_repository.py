@@ -780,58 +780,60 @@ class ServiceRequestRepository:
 
         where_clause = " AND ".join(conditions)
 
-        # Count total
-        count_query = f"""
-            SELECT COUNT(*) as total
-            FROM service_requests sr
-            WHERE {where_clause}
-        """
-        count_row = await db.fetchrow(count_query, *params)
-        total = count_row["total"] if count_row else 0
-
-        # Get items with last action info
+        # Optimized: CTE for count + paginated items in one round-trip
+        # Uses created_at DESC for sort (indexable via idx_sr_workflow_created)
+        # LATERAL JOIN for last_history avoids correlated subquery N+1
+        # COUNT(*) OVER() on base CTE (before LIMIT) gives true total
         params.extend([limit, offset])
         query = f"""
+            WITH base AS (
+                SELECT sr.id, sr.reference, sr.workflow_code, sr.status,
+                       sr.created_at, sr.user_id,
+                       COUNT(*) OVER() AS total_count
+                FROM service_requests sr
+                WHERE {where_clause}
+            ),
+            page AS (
+                SELECT * FROM base
+                ORDER BY created_at DESC
+                LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            )
             SELECT
-                sr.id,
-                sr.reference,
-                sr.workflow_code,
-                sr.status,
-                sr.created_at,
+                p.id, p.reference, p.workflow_code, p.status, p.created_at,
+                p.total_count,
                 COALESCE(u.full_name, u.first_name || ' ' || u.last_name, u.email) as citizen_name,
-                -- Last action info
-                last_history.action as last_action,
-                last_history.performed_at as last_action_at,
-                COALESCE(last_performer.full_name, last_performer.first_name || ' ' || last_performer.last_name, 'Sistema') as last_performer,
-                -- Total actions
-                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id) as total_actions
-            FROM service_requests sr
-            JOIN users u ON u.id = sr.user_id
+                lh.action as last_action,
+                lh.performed_at as last_action_at,
+                lh.action_count as total_actions,
+                COALESCE(lp.full_name, lp.first_name || ' ' || lp.last_name, 'Sistema') as last_performer
+            FROM page p
+            JOIN users u ON u.id = p.user_id
             LEFT JOIN LATERAL (
-                SELECT action, performed_at, performed_by
+                SELECT action, performed_at, performed_by,
+                       COUNT(*) OVER() as action_count
                 FROM service_request_history
-                WHERE service_request_id = sr.id
+                WHERE service_request_id = p.id
                 ORDER BY performed_at DESC
                 LIMIT 1
-            ) last_history ON true
-            LEFT JOIN users last_performer ON last_performer.id = last_history.performed_by
-            WHERE {where_clause}
-            ORDER BY COALESCE(last_history.performed_at, sr.created_at) DESC
-            LIMIT ${param_idx} OFFSET ${param_idx + 1}
+            ) lh ON true
+            LEFT JOIN users lp ON lp.id = lh.performed_by
+            ORDER BY p.created_at DESC
         """
         rows = await db.fetch(query, *params)
+        total = rows[0]["total_count"] if rows else 0
+
+        from datetime import date, datetime, timezone
+        now = datetime.now(timezone.utc)
+        today = date.today()
 
         items = []
         for row in rows:
-            days_since = (row["created_at"].date() - row["created_at"].date()).days if row["created_at"] else 0
+            days_since = (today - row["created_at"].date()).days if row["created_at"] else 0
             last_action_at = row["last_action_at"]
             is_stale = False
             if last_action_at:
-                from datetime import datetime, timezone
-                now = datetime.now(timezone.utc)
                 if last_action_at.tzinfo is None:
-                    from datetime import timezone as tz
-                    last_action_at = last_action_at.replace(tzinfo=tz.utc)
+                    last_action_at = last_action_at.replace(tzinfo=timezone.utc)
                 is_stale = (now - last_action_at).days >= 7
 
             items.append({

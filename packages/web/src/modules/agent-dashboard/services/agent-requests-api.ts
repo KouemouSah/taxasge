@@ -186,6 +186,13 @@ export interface ServiceRequestPreview {
   contactPhone?: string | null;
   // Appointment
   appointment?: RequestPreviewAppointment | null;
+  // Payment details
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  paymentAmount?: number | null;
+  paymentCurrency?: string | null;
+  paymentPaidAt?: string | null;
+  paymentReference?: string | null;
   // Metadata
   createdAt: string;
   submittedAt?: string | null;
@@ -267,6 +274,12 @@ interface BackendServiceRequestPreview {
   contact_email?: string | null;
   contact_phone?: string | null;
   appointment?: BackendRequestPreviewAppointment | null;
+  payment_status?: string | null;
+  payment_method?: string | null;
+  payment_amount?: number | null;
+  payment_currency?: string | null;
+  payment_paid_at?: string | null;
+  payment_reference?: string | null;
   created_at: string;
   submitted_at?: string | null;
   batch_id?: string | null;
@@ -341,6 +354,12 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     submittedAt: data.submitted_at,
     batchId: data.batch_id,
     batchReference: data.batch_reference,
+    paymentStatus: data.payment_status,
+    paymentMethod: data.payment_method,
+    paymentAmount: data.payment_amount,
+    paymentCurrency: data.payment_currency,
+    paymentPaidAt: data.payment_paid_at,
+    paymentReference: data.payment_reference,
     listIndex: data.list_index,
     listTotal: data.list_total,
   };
@@ -591,6 +610,23 @@ class AgentRequestsApiClient {
       cita_date?: string;
       cita_time?: string;
       cita_location?: string;
+      // Payment (augmented by agent endpoint)
+      payment_id?: string;
+      payment_status?: string;
+      payment_amount?: number;
+      payment_currency?: string;
+      payment_method?: string;
+      payment_workflow_status?: string;
+      payment_reference?: string;
+      payment_receipt_number?: string;
+      payment_paid_at?: string;
+      // Tariff
+      tariff?: {
+        base_amount: number;
+        supplements_total: number;
+        penalties_amount: number;
+        total_amount: number;
+      };
       provided_documents?: Array<{
         id: string;
         document_code: string;
@@ -599,6 +635,9 @@ class AgentRequestsApiClient {
         file_name: string;
         mime_type: string;
         validation_status?: string;
+        extraction_data?: Record<string, unknown>;
+        extraction_confidence?: number;
+        extraction_status?: string;
       }>;
     }
 
@@ -629,6 +668,23 @@ class AgentRequestsApiClient {
       citaDate: response.cita_date,
       citaTime: response.cita_time,
       citaLocation: response.cita_location,
+      // Payment
+      paymentId: response.payment_id,
+      paymentStatus: response.payment_status,
+      paymentAmount: response.payment_amount,
+      paymentCurrency: response.payment_currency,
+      paymentMethod: response.payment_method,
+      paymentWorkflowStatus: response.payment_workflow_status,
+      paymentReference: response.payment_reference,
+      paymentReceiptNumber: response.payment_receipt_number,
+      paymentPaidAt: response.payment_paid_at,
+      // Tariff
+      tariff: response.tariff ? {
+        baseAmount: response.tariff.base_amount,
+        supplementsTotal: response.tariff.supplements_total,
+        penaltiesAmount: response.tariff.penalties_amount,
+        totalAmount: response.tariff.total_amount,
+      } : undefined,
       providedDocuments: response.provided_documents?.map(doc => ({
         id: doc.id,
         documentCode: doc.document_code,
@@ -637,6 +693,9 @@ class AgentRequestsApiClient {
         fileName: doc.file_name,
         mimeType: doc.mime_type,
         validationStatus: doc.validation_status,
+        extractionData: doc.extraction_data,
+        extractionConfidence: doc.extraction_confidence,
+        extractionStatus: doc.extraction_status,
       })),
     };
   }
@@ -709,6 +768,23 @@ export interface ServiceRequestDetail {
   citaDate?: string;
   citaTime?: string;
   citaLocation?: string;
+  // Payment details (from service_payments)
+  paymentId?: string;
+  paymentStatus?: string;
+  paymentAmount?: number;
+  paymentCurrency?: string;
+  paymentMethod?: string;
+  paymentWorkflowStatus?: string;
+  paymentReference?: string;
+  paymentReceiptNumber?: string;
+  paymentPaidAt?: string;
+  // Tariff
+  tariff?: {
+    baseAmount: number;
+    supplementsTotal: number;
+    penaltiesAmount: number;
+    totalAmount: number;
+  };
   providedDocuments?: Array<{
     id: string;
     documentCode: string;
@@ -717,6 +793,9 @@ export interface ServiceRequestDetail {
     fileName: string;
     mimeType: string;
     validationStatus?: string;
+    extractionData?: Record<string, unknown>;
+    extractionConfidence?: number;
+    extractionStatus?: string;
   }>;
 }
 

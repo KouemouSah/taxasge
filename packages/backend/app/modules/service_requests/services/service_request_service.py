@@ -849,7 +849,8 @@ class ServiceRequestService:
         self,
         db: asyncpg.Connection,
         request_id: UUID,
-        user_id: UUID
+        user_id: UUID,
+        is_agent: bool = False
     ) -> ServiceRequestResponse:
         """Get a service request by ID"""
         request = await service_request_repository.find_by_id(db, request_id)
@@ -859,7 +860,8 @@ class ServiceRequestService:
                 detail="Service request not found"
             )
 
-        if str(request["user_id"]) != str(user_id):
+        # Agents bypass ownership check (they access via assignment, not ownership)
+        if not is_agent and str(request["user_id"]) != str(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"

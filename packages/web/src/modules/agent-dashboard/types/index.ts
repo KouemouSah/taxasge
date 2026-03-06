@@ -192,6 +192,9 @@ export interface AgentDashboardContext {
   entityCode: EntityCode | null;
   entityId: string | null;
   entityName: string | null;
+  entityLocationId: string | null;
+  isMainOffice: boolean;
+  locationName: string | null;
   ministryId: number | null;
   ministryName: string | null;
   isSupervisor: boolean;

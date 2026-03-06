@@ -45,6 +45,7 @@ import { ExtractedDataSection } from './sections/ExtractedDataSection';
 import { DocumentsSection } from './sections/DocumentsSection';
 import { ContactSection } from './sections/ContactSection';
 import { AppointmentSection } from './sections/AppointmentSection';
+import { PaymentDetailsSection } from './sections/PaymentDetailsSection';
 import { useDisplayConfigForWorkflow } from '@/modules/admin/hooks/useDisplayConfigs';
 import type { ServiceRequestPreview, ActionType } from '../../services/agent-requests-api';
 import type { EntityCode } from '../../types';
@@ -446,6 +447,18 @@ export function RequestPreview({
             requestId={data.id}
             entityCode={entityCode}
             onAppointmentCreated={onAppointmentCreated}
+          />
+        )}
+
+        {/* Section: Payment Details — compact 2-row */}
+        {shouldShowSection('paymentDetails') && (
+          <PaymentDetailsSection
+            status={data.paymentStatus}
+            amount={data.paymentAmount}
+            currency={data.paymentCurrency}
+            method={data.paymentMethod}
+            paidAt={data.paymentPaidAt}
+            reference={data.paymentReference}
           />
         )}
       </div>

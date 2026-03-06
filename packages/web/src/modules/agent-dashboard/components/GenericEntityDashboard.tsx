@@ -16,9 +16,9 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
   Clock,
-  ArrowRight,
   Loader2,
   AlertCircle,
   CheckCircle,
@@ -36,6 +36,7 @@ import {
   Briefcase,
   FileText,
   LayoutDashboard,
+  MapPin,
 } from 'lucide-react';
 import { useAgentDashboard, useEntityAccess, useMenuConfig } from '../hooks';
 import { useEntityStats } from '../hooks/useEntityStats';
@@ -70,8 +71,6 @@ export function GenericEntityDashboard({
   className,
 }: GenericEntityDashboardProps) {
   const t = useTranslations('agent');
-  const tCommon = useTranslations('common');
-  // locale removed - hrefs already locale-prefixed by hooks
 
   // Entity access verification (security check)
   const {
@@ -289,45 +288,44 @@ export function GenericEntityDashboard({
   return (
     <div className={`space-y-6 ${className || ''}`}>
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <EntityIcon className="h-8 w-8 text-primary" />
-          {displayName}
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          {t('dashboard.welcome', { name: context.entityName || context.ministryName || entityCode })}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <EntityIcon className="h-8 w-8 text-primary" />
+            {displayName}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {t('dashboard.welcome', { name: context.entityName || context.ministryName || entityCode })}
+          </p>
+        </div>
+        {context.locationName && (
+          <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1.5 text-sm self-start">
+            <MapPin className="h-3.5 w-3.5" />
+            {context.locationName}
+          </Badge>
+        )}
       </div>
 
-      {/* Quick Actions - Positioned BEFORE Vista General for immediate access */}
+      {/* Quick Actions - Compact button row */}
       {displayActions.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold mb-4">{t('quickActions.title')}</h2>
-          <div className="grid gap-4 grid-cols-3">
-            {displayActions.map((action) => {
-              const ActionIcon = action.icon;
-              return (
-                <Card key={action.id} className="hover:shadow-md transition-shadow h-full">
-                  <CardContent className="pt-4 pb-4 flex flex-col items-center justify-center text-center h-full">
-                    <ActionIcon className="h-8 w-8 text-primary mb-2" />
-                    <span className="text-sm font-medium">{getTitle(action.titleKey)}</span>
-                    <Link href={action.href} className="mt-2">
-                      <Button variant="outline" size="sm" className="w-full">
-                        {tCommon('view')}
-                        <ArrowRight className="ml-1 h-3 w-3" />
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+        <div className="flex flex-wrap gap-2">
+          {displayActions.map((action) => {
+            const ActionIcon = action.icon;
+            return (
+              <Link key={action.id} href={action.href}>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <ActionIcon className="h-4 w-4" />
+                  {getTitle(action.titleKey)}
+                </Button>
+              </Link>
+            );
+          })}
         </div>
       )}
 
       {/* Stats Cards - Custom or Default */}
       {statsComponent || (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {/* Pending */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

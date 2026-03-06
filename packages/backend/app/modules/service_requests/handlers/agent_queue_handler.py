@@ -292,7 +292,7 @@ async def repair_orphaned_paid_requests() -> int:
                    sp.id AS payment_id, sp.total_amount, sp.payment_method,
                    sr.user_id
             FROM service_requests sr
-            JOIN service_payments sp ON sp.request_id = sr.id
+            JOIN service_payments sp ON sp.service_request_id = sr.id
                 AND sp.status = 'completed'
             WHERE sr.status = 'PAID'
               AND sr.payment_status = 'completed'
