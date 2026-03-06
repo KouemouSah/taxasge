@@ -2557,6 +2557,17 @@ def _humanize_field_name(field_name: str) -> str:
         'documento_numero': 'Número Documento',
         'parentesco': 'Parentesco',
         'actividad': 'Actividad',
+        'nombre_medico': 'Nombre Médico',
+        'sociedad_nombre': 'Nombre Sociedad',
+        'numero_bastidor': 'Número Bastidor',
+        'matricula': 'Matrícula',
+        'marca': 'Marca',
+        'monto': 'Monto',
+        'fecha': 'Fecha',
+        'cargo': 'Cargo',
+        'ministerio': 'Ministerio',
+        'tipo_combustible': 'Tipo Combustible',
+        'valedero_hasta': 'Valedero Hasta',
     }
     if field_name in KNOWN:
         return KNOWN[field_name]
