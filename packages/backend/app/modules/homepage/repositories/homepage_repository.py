@@ -764,17 +764,13 @@ class HomepageRepository:
             """
 
         try:
-            import asyncio
-
-            # Parallel fetch: all 3 facet queries concurrently
+            # Sequential fetch: asyncpg connections cannot run concurrent queries
             cat_params = (categories_query, language, ministry_id) if ministry_id else (categories_query, language)
             svc_params = (service_types_query, category_code) if category_code else (service_types_query,)
 
-            ministries_rows, categories_rows, service_types_rows = await asyncio.gather(
-                self.db.fetch(ministries_query, language),
-                self.db.fetch(*cat_params),
-                self.db.fetch(*svc_params),
-            )
+            ministries_rows = await self.db.fetch(ministries_query, language)
+            categories_rows = await self.db.fetch(*cat_params)
+            service_types_rows = await self.db.fetch(*svc_params)
 
             return {
                 "categories": [dict(row) for row in categories_rows],

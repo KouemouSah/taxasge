@@ -383,7 +383,6 @@ async def get_service_details(
             logger.debug(f"Cache HIT for service details:{service_id}:{language}")
             return ServiceDetailsResponse(**cached)
 
-        import asyncio
         details_repo = ServiceDetailsRepository()
 
         # Get main service details first (needed for category_id, parent_service_id)
@@ -394,22 +393,14 @@ async def get_service_details(
                 detail=f"Service with ID {service_id} not found"
             )
 
-        # Parallel fetch: documents + procedures + related + children + parent
-        tasks = [
-            details_repo.get_service_documents(db, service_id, language),
-            details_repo.get_service_procedures(db, service_id, language),
-            details_repo.get_related_services(db, service_id, service.get('category_id', 0), language),
-            details_repo.get_child_services(db, service_id, language),
-        ]
+        # Sequential fetch: single asyncpg connection cannot run concurrent queries
+        documents = await details_repo.get_service_documents(db, service_id, language)
+        procedures = await details_repo.get_service_procedures(db, service_id, language)
+        related = await details_repo.get_related_services(db, service_id, service.get('category_id', 0), language)
+        children = await details_repo.get_child_services(db, service_id, language)
+        parent = None
         if service.get('parent_service_id'):
-            tasks.append(details_repo.get_parent_service(db, service['parent_service_id'], language))
-
-        results = await asyncio.gather(*tasks)
-        documents = results[0]
-        procedures = results[1]
-        related = results[2]
-        children = results[3]
-        parent = results[4] if len(results) > 4 else None
+            parent = await details_repo.get_parent_service(db, service['parent_service_id'], language)
 
         # Build response
         expedition_price = service.get('expedition_price', 0) or 0

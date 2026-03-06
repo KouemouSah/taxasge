@@ -168,26 +168,19 @@ export default function AgentAuthPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      {/* Header Minimaliste - Logo centré mais discret */}
-      <header className="w-full py-4">
-        <div className="container mx-auto px-4">
-          <Link href={`/${locale}`} className="flex items-center justify-center space-x-2 group">
-            <Image
-              src="/logo.png"
-              alt="Facil"
-              width={133} height={56}
-              className="h-14 w-auto transition-transform group-hover:scale-105"
-            />
-          </Link>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
-          {/* Logo Badge */}
+          {/* Logo */}
           <div className="flex justify-center mb-6">
-            <Image src="/logo.png" alt="Facil" width={120} height={50} className="h-12 w-auto" />
+            <Link href={`/${locale}`} className="group">
+              <Image
+                src="/logo.png"
+                alt="Facil"
+                width={133} height={56}
+                className="h-14 w-auto transition-transform group-hover:scale-105"
+              />
+            </Link>
           </div>
 
           {/* Auth Card */}
