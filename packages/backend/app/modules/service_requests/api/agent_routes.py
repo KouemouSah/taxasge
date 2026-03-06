@@ -1993,6 +1993,18 @@ class RequestPreviewAppointment(BaseModel):
     location_address: Optional[str] = None
 
 
+class PreviewDataField(BaseModel):
+    """A single field in a data section"""
+    label: str
+    value: str
+
+
+class PreviewDataSection(BaseModel):
+    """A titled section of fields (mirrors get_pdf_data_sections output)"""
+    title: str
+    fields: List[PreviewDataField] = []
+
+
 class ServiceRequestPreview(BaseModel):
     """Complete preview for split view"""
     # Request data
@@ -2009,10 +2021,15 @@ class ServiceRequestPreview(BaseModel):
     sla_deadline: Optional[str] = None
     sla_remaining_hours: Optional[float] = None
     sla_status: str = "on_track"  # on_track, warning, breached
-    # Extracted data (dynamic dict based on workflow_display_config)
+    # Extracted data — structured sections from workflow get_pdf_data_sections()
+    # Same data the citizen sees in their résumé
     extracted_data: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Dynamic extracted data based on display_config.list_columns"
+        description="Legacy flat extracted data (kept for backward compat)"
+    )
+    data_sections: List[PreviewDataSection] = Field(
+        default_factory=list,
+        description="Structured data sections from workflow config (same as citizen résumé)"
     )
     # Documents (max 4 for preview)
     documents: List[RequestPreviewDocument] = []
@@ -2434,6 +2451,82 @@ async def _build_composite_data(
     return composite
 
 
+def _build_preview_data_sections(
+    workflow_code: str,
+    form_data: dict,
+    solicitud_type: Optional[str] = None,
+    is_minor: bool = False,
+) -> List[PreviewDataSection]:
+    """
+    Build structured data sections using the workflow's get_pdf_data_sections().
+    Same data the citizen sees in their résumé — single source of truth.
+
+    Returns empty list on any error (graceful degradation).
+    """
+    try:
+        from ..workflows.workflow_interface import WorkflowContext, RenovacionMotivo
+        from ..models.enums import WorkflowCode, SolicitudType
+
+        wf = workflow_engine.get_workflow_by_string(workflow_code)
+        if not wf:
+            logger.warning(f"_build_preview_data_sections: no workflow for {workflow_code}")
+            return []
+
+        # Build minimal WorkflowContext from existing data
+        motivo_val = form_data.get('motivo') if form_data else None
+        motivo_enum = None
+        if motivo_val:
+            try:
+                motivo_enum = RenovacionMotivo(motivo_val)
+            except (ValueError, KeyError):
+                pass
+
+        sol_type_enum = SolicitudType.NUEVO  # default
+        if solicitud_type:
+            try:
+                sol_type_enum = SolicitudType(solicitud_type)
+            except (ValueError, KeyError):
+                pass
+
+        try:
+            wf_code_enum = WorkflowCode(workflow_code)
+        except (ValueError, KeyError):
+            wf_code_enum = WorkflowCode.GENERIC_TRAMITE
+
+        from uuid import UUID as _UUID
+        context = WorkflowContext(
+            service_request_id=_UUID('00000000-0000-0000-0000-000000000000'),
+            user_id=_UUID('00000000-0000-0000-0000-000000000000'),
+            workflow_code=wf_code_enum,
+            solicitud_type=sol_type_enum,
+            motivo=motivo_enum,
+            is_minor=bool(is_minor) if is_minor not in ('false', 'False', '0', '', None) else False,
+            sub_type=form_data.get('sub_type') if form_data else None,
+            form_data=form_data or {},
+        )
+
+        raw_sections = wf.get_pdf_data_sections(context)
+
+        # Convert to Pydantic models
+        result = []
+        for section in raw_sections:
+            fields = [
+                PreviewDataField(label=f['label'], value=str(f['value']))
+                for f in section.get('fields', [])
+                if f.get('value')
+            ]
+            if fields:
+                result.append(PreviewDataSection(
+                    title=section.get('title', ''),
+                    fields=fields,
+                ))
+        return result
+
+    except Exception as e:
+        logger.warning(f"_build_preview_data_sections failed for {workflow_code}: {e}")
+        return []
+
+
 async def _extract_preview_data_dynamic(
     form_data: dict,
     workflow_code: str,
@@ -2637,10 +2730,17 @@ async def get_request_preview(
     # Build contact name
     contact_name = f"{row['first_name'] or ''} {row['last_name'] or ''}".strip() or "N/A"
 
-    # Extract preview data dynamically from display_config
-    # Merges form_data + extraction_data from service_request_documents
+    # Extract preview data dynamically from display_config (legacy flat dict)
     extracted_data = await _extract_preview_data_dynamic(
         form_data, row['workflow_code'], db, row=row, request_id=request_id
+    )
+
+    # Build structured data sections from workflow config (same as citizen résumé)
+    data_sections = _build_preview_data_sections(
+        workflow_code=row['workflow_code'],
+        form_data=form_data,
+        solicitud_type=row['solicitud_type'],
+        is_minor=form_data.get('is_minor', False),
     )
 
     return ServiceRequestPreview(
@@ -2657,6 +2757,7 @@ async def get_request_preview(
         sla_remaining_hours=sla_remaining_hours,
         sla_status=sla_status,
         extracted_data=extracted_data,
+        data_sections=data_sections,
         documents=documents,
         documents_count=docs_count or 0,
         contact_name=contact_name,

@@ -414,9 +414,10 @@ export function RequestPreview({
           />
         )}
 
-        {/* Section: Extracted Data - displays columns from display_config */}
+        {/* Section: Extracted Data - structured sections from workflow config */}
         {shouldShowSection('extractedData') && (
           <ExtractedDataSection
+            dataSections={data.dataSections}
             data={data.extractedData}
             columns={extractedColumns}
           />

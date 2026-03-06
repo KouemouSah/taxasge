@@ -169,10 +169,23 @@ export interface VerificationResponse {
 
 /**
  * Extracted data is now dynamic — driven by workflow_display_config.list_columns.
- * The backend returns only the columns configured for the workflow,
- * with dot-notation keys for nested objects (e.g., "dip.natural_de").
+ * Legacy flat dict kept for backward compat.
  */
 export type RequestPreviewExtractedData = Record<string, unknown>;
+
+/**
+ * Structured data sections from workflow config (same as citizen résumé).
+ * Each section has a title and a list of label/value fields.
+ */
+export interface PreviewDataField {
+  label: string;
+  value: string;
+}
+
+export interface PreviewDataSection {
+  title: string;
+  fields: PreviewDataField[];
+}
 
 export interface RequestPreviewDocument {
   id: string;
@@ -204,8 +217,10 @@ export interface ServiceRequestPreview {
   slaDeadline?: string | null;
   slaRemainingHours?: number | null;
   slaStatus: SlaStatus;
-  // Extracted data
+  // Extracted data (legacy flat dict)
   extractedData: RequestPreviewExtractedData;
+  // Structured data sections (same as citizen résumé)
+  dataSections: PreviewDataSection[];
   // Documents
   documents: RequestPreviewDocument[];
   documentsCount: number;
@@ -297,6 +312,7 @@ interface BackendServiceRequestPreview {
   sla_remaining_hours?: number | null;
   sla_status: string;
   extracted_data: BackendRequestPreviewExtractedData;
+  data_sections?: Array<{ title: string; fields: Array<{ label: string; value: string }> }>;
   documents: BackendRequestPreviewDocument[];
   documents_count: number;
   contact_name: string;
@@ -359,8 +375,11 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     slaDeadline: data.sla_deadline,
     slaRemainingHours: data.sla_remaining_hours,
     slaStatus: normalizeSlaStatus(data.sla_status),
-    // Dynamic pass-through: backend already returns only configured columns
     extractedData: data.extracted_data ?? {},
+    dataSections: (data.data_sections ?? []).map(s => ({
+      title: s.title,
+      fields: s.fields.map(f => ({ label: f.label, value: f.value })),
+    })),
     documents: data.documents.map(doc => ({
       id: doc.id,
       code: doc.code,
@@ -578,7 +597,7 @@ class AgentRequestsApiClient {
       reason: r.reason,
       priorityScore: r.priority_score,
       status: r.status,
-      escalationStatus: r.escalation_status,
+      escalationStatus: r.escalation_status as EscalationListItem['escalationStatus'],
       caseReference: r.case_reference,
       caseType: r.case_type,
       notes: r.notes || null,

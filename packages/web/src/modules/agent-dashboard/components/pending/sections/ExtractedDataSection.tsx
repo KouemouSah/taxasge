@@ -1,26 +1,27 @@
 /**
  * ExtractedDataSection - Display extracted form data
  *
- * Dynamically renders fields based on display_config columns.
- * - Labels from translations (columns.*)
- * - Date formatting auto-detected
- * - No hardcoded workflow-specific logic
+ * Uses structured data_sections from workflow config (same as citizen résumé).
+ * Falls back to legacy flat dict if no sections available.
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-01-26
- * @updated 2026-03-06 - Compact layout, 3-col grid, reduced padding
+ * @updated 2026-03-06 - Structured sections from get_pdf_data_sections()
  */
 
 'use client';
 
 import React from 'react';
-import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
-import { User } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
+import type { PreviewDataSection } from '../../../services/agent-requests-api';
 
 interface ExtractedDataSectionProps {
-  data: Record<string, unknown>;
-  columns: string[];
+  /** Structured sections from workflow config (preferred) */
+  dataSections?: PreviewDataSection[];
+  /** Legacy flat dict (fallback) */
+  data?: Record<string, unknown>;
+  columns?: string[];
 }
 
 function isIsoDate(value: string): boolean {
@@ -37,72 +38,101 @@ function formatDate(dateStr: string): string {
   }
 }
 
-function humanizeColumnId(columnId: string): string {
-  const parts = columnId.split('.');
-  if (parts.length > 1) {
-    const source = parts[0].toUpperCase();
-    const field = parts[1]
-      .replace(/_/g, ' ')
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/\b\w/g, (l) => l.toUpperCase());
-    return `${field} (${source})`;
-  }
-  return columnId
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+function formatValue(value: string): string {
+  if (isIsoDate(value)) return formatDate(value);
+  return value;
 }
 
-export function ExtractedDataSection({ data, columns }: ExtractedDataSectionProps) {
-  const t = useTranslations('admin.menuConfig.displayConfig');
+export function ExtractedDataSection({ dataSections, data, columns }: ExtractedDataSectionProps) {
+  // Prefer structured sections from workflow config
+  const hasSections = dataSections && dataSections.length > 0;
 
-  const getLabel = (columnId: string): string => {
-    const translated = t(`columns.${columnId}` as Parameters<typeof t>[0], { defaultValue: '' });
-    return translated || humanizeColumnId(columnId);
-  };
+  // Fallback: legacy flat dict
+  if (!hasSections) {
+    if (!data || !columns || columns.length === 0) {
+      return (
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <ClipboardList className="h-3 w-3" />
+              Datos Extraídos
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Sin datos disponibles para esta solicitud.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
 
-  const getValue = (columnId: string): string => {
-    const value = data[columnId];
-    if (value === null || value === undefined || value === '') return '-';
-    const strValue = String(value);
-    if (isIsoDate(strValue)) return formatDate(strValue);
-    return strValue;
-  };
+    // Legacy flat rendering
+    const populatedColumns = columns.filter((col) => {
+      const v = data[col];
+      return v !== null && v !== undefined && v !== '';
+    });
 
-  const populatedColumns = columns.filter((columnId) => {
-    const value = data[columnId];
-    return value !== null && value !== undefined && value !== '';
-  });
+    if (populatedColumns.length === 0) {
+      return (
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <ClipboardList className="h-3 w-3" />
+              Datos Extraídos
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Documentos pendientes de procesamiento OCR.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
 
-  if (populatedColumns.length === 0) {
     return (
       <Card>
         <CardContent className="p-3">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            <User className="h-3 w-3" />
-            {t('sections.extractedData')}
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+            <ClipboardList className="h-3 w-3" />
+            Datos Extraídos
+            <span className="ml-1 text-muted-foreground/60">({populatedColumns.length})</span>
           </p>
-          <p className="text-xs text-muted-foreground">
-            No hay campos configurados para este workflow.
-          </p>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-1.5">
+            {populatedColumns.map((col) => (
+              <div key={col}>
+                <p className="text-[10px] text-muted-foreground leading-tight">{col}</p>
+                <p className="text-xs font-medium leading-tight">{formatValue(String(data[col]))}</p>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     );
   }
 
+  // Structured sections rendering (same as citizen résumé)
+  const totalFields = dataSections.reduce((sum, s) => sum + s.fields.length, 0);
+
   return (
     <Card>
       <CardContent className="p-3">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
-          <User className="h-3 w-3" />
-          {t('sections.extractedData')}
-          <span className="ml-1 text-muted-foreground/60">({populatedColumns.length})</span>
+          <ClipboardList className="h-3 w-3" />
+          Datos de la Solicitud
+          <span className="ml-1 text-muted-foreground/60">({totalFields})</span>
         </p>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-1.5">
-          {populatedColumns.map((columnId) => (
-            <div key={columnId}>
-              <p className="text-[10px] text-muted-foreground leading-tight">{getLabel(columnId)}</p>
-              <p className="text-xs font-medium leading-tight">{getValue(columnId)}</p>
+        <div className="space-y-2.5">
+          {dataSections.map((section, idx) => (
+            <div key={idx}>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                {section.title}
+              </p>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-1">
+                {section.fields.map((field, fIdx) => (
+                  <div key={fIdx}>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{field.label}</p>
+                    <p className="text-xs font-medium leading-tight">{formatValue(field.value)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
