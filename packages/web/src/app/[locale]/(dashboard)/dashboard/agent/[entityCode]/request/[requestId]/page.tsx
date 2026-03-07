@@ -2259,7 +2259,7 @@ function HistorialTab({ requestId }: { requestId: string }) {
                           {Math.round(Number(details.extraction_confidence) * 100)}%
                         </span>
                       )}
-                      {details.has_error && details.error_message && (
+                      {!!details.has_error && !!details.error_message && (
                         <span className="ml-2 text-destructive">{String(details.error_message)}</span>
                       )}
                     </p>
@@ -2268,8 +2268,8 @@ function HistorialTab({ requestId }: { requestId: string }) {
                   {/* Assignment details (compact) */}
                   {(entry.action === HistoryActionType.ASSIGNED || entry.action === HistoryActionType.REASSIGNED) && (
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {details.agent_name && <span>{String(details.agent_name)}</span>}
-                      {details.reassigned_to_name && (
+                      {!!details.agent_name && <span>{String(details.agent_name)}</span>}
+                      {!!details.reassigned_to_name && (
                         <span> → {String(details.reassigned_to_name)}</span>
                       )}
                     </p>
