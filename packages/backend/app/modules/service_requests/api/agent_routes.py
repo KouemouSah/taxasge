@@ -740,6 +740,97 @@ async def get_history_statistics(
 
 
 # ═══════════════════════════════════════════════════════════════
+# MY ESCALATIONS (MUST BE BEFORE /{request_id} FOR ROUTE MATCHING)
+# ═══════════════════════════════════════════════════════════════
+
+class EscalationItemResponse(BaseModel):
+    """Escalation item response for agent view"""
+    id: str
+    queue_id: str  # Kept for backward compat (set to request id)
+    reason: str
+    priority_score: float
+    status: str  # service_request status
+    escalation_status: str  # pending, in_review, resolved
+    case_reference: str
+    case_type: str
+    notes: Optional[str] = None
+    created_at: str
+    escalated_at: str
+
+
+@router.get(
+    "/my-escalations",
+    response_model=List[EscalationItemResponse],
+    summary="Get my escalated items",
+    description="""
+    Get all items that I have escalated.
+
+    Returns service requests where:
+    - escalated = true
+    - escalated_by = current user
+    """
+)
+async def get_my_escalations(
+    include_resolved: bool = Query(False, description="Include resolved escalations"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    db: asyncpg.Connection = Depends(get_database),
+    current_user=Depends(get_current_user),
+    _=Depends(permission_required("service_request.escalate"))
+):
+    offset = (page - 1) * page_size
+
+    # Resolved = COMPLETED, REJECTED, CANCELLED, EXPIRED
+    resolved_statuses = ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"]
+    status_filter = "AND sr.status::text != ALL($4::text[])" if not include_resolved else ""
+
+    params = [current_user.id, page_size, offset]
+    if not include_resolved:
+        params.append(resolved_statuses)
+
+    rows = await db.fetch(f"""
+        SELECT
+            sr.id,
+            sr.reference,
+            sr.workflow_code,
+            sr.status::text as status,
+            sr.escalation_reason,
+            sr.escalated_at,
+            sr.created_at,
+            sr.notes,
+            sr.priority::text as priority,
+            CASE
+                WHEN sr.status::text IN ('COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED') THEN 'resolved'
+                WHEN sr.assigned_to IS NOT NULL THEN 'in_review'
+                ELSE 'pending'
+            END as escalation_status
+        FROM service_requests sr
+        WHERE sr.escalated = true
+        AND sr.escalated_by = $1
+        {status_filter}
+        ORDER BY sr.escalated_at DESC
+        LIMIT $2 OFFSET $3
+    """, *params)
+
+    return [
+        EscalationItemResponse(
+            id=str(row['id']),
+            queue_id=str(row['id']),
+            reason=row['escalation_reason'] or '',
+            priority_score=0.0,
+            status=row['status'],
+            escalation_status=row['escalation_status'],
+            case_reference=row['reference'] or '',
+            case_type=row['workflow_code'] or '',
+            notes=row['notes'],
+            created_at=row['created_at'].isoformat(),
+            escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else row['created_at'].isoformat()
+        )
+        for row in rows
+    ]
+
+
+# ═══════════════════════════════════════════════════════════════
 # SERVICE REQUEST PROCESSING
 # ═══════════════════════════════════════════════════════════════
 
@@ -1502,97 +1593,6 @@ async def cancel_appointment(
             pass  # Non-blocking
 
     return {"message": "Appointment cancelled"}
-
-
-# ═══════════════════════════════════════════════════════════════
-# MY ESCALATIONS
-# ═══════════════════════════════════════════════════════════════
-
-class EscalationItemResponse(BaseModel):
-    """Escalation item response for agent view"""
-    id: str
-    queue_id: str  # Kept for backward compat (set to request id)
-    reason: str
-    priority_score: float
-    status: str  # service_request status
-    escalation_status: str  # pending, in_review, resolved
-    case_reference: str
-    case_type: str
-    notes: Optional[str] = None
-    created_at: str
-    escalated_at: str
-
-
-@router.get(
-    "/my-escalations",
-    response_model=List[EscalationItemResponse],
-    summary="Get my escalated items",
-    description="""
-    Get all items that I have escalated.
-
-    Returns service requests where:
-    - escalated = true
-    - escalated_by = current user
-    """
-)
-async def get_my_escalations(
-    include_resolved: bool = Query(False, description="Include resolved escalations"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
-    db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
-    _=Depends(permission_required("service_request.escalate"))
-):
-    offset = (page - 1) * page_size
-
-    # Resolved = COMPLETED, REJECTED, CANCELLED, EXPIRED
-    resolved_statuses = ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"]
-    status_filter = "AND sr.status::text != ALL($4::text[])" if not include_resolved else ""
-
-    params = [current_user.id, page_size, offset]
-    if not include_resolved:
-        params.append(resolved_statuses)
-
-    rows = await db.fetch(f"""
-        SELECT
-            sr.id,
-            sr.reference,
-            sr.workflow_code,
-            sr.status::text as status,
-            sr.escalation_reason,
-            sr.escalated_at,
-            sr.created_at,
-            sr.notes,
-            sr.priority::text as priority,
-            CASE
-                WHEN sr.status::text IN ('COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED') THEN 'resolved'
-                WHEN sr.assigned_to IS NOT NULL THEN 'in_review'
-                ELSE 'pending'
-            END as escalation_status
-        FROM service_requests sr
-        WHERE sr.escalated = true
-        AND sr.escalated_by = $1
-        {status_filter}
-        ORDER BY sr.escalated_at DESC
-        LIMIT $2 OFFSET $3
-    """, *params)
-
-    return [
-        EscalationItemResponse(
-            id=str(row['id']),
-            queue_id=str(row['id']),
-            reason=row['escalation_reason'] or '',
-            priority_score=0.0,
-            status=row['status'],
-            escalation_status=row['escalation_status'],
-            case_reference=row['reference'] or '',
-            case_type=row['workflow_code'] or '',
-            notes=row['notes'],
-            created_at=row['created_at'].isoformat(),
-            escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else row['created_at'].isoformat()
-        )
-        for row in rows
-    ]
 
 
 # ═══════════════════════════════════════════════════════════════

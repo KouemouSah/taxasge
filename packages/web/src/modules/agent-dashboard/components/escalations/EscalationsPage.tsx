@@ -166,7 +166,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
             <SelectContent>
               <SelectItem value="all">{tCommon('all')}</SelectItem>
               <SelectItem value="pending">{t('escalations.status.pending')}</SelectItem>
-              <SelectItem value="in_review">{t('escalations.status.inReview')}</SelectItem>
+              <SelectItem value="in_review">{t('escalations.status.in_review')}</SelectItem>
               <SelectItem value="resolved">{t('escalations.status.resolved')}</SelectItem>
             </SelectContent>
           </Select>
