@@ -3021,15 +3021,97 @@ async def cleanup_abandoned_requests(
 
 
 # ═══════════════════════════════════════════════════════════════
-# TREASURY AGENT - Payment Validation
+# TREASURY AGENT - Context & Payment Validation
 # ═══════════════════════════════════════════════════════════════
 
 
+from dataclasses import dataclass as _dataclass
+
+
+@_dataclass(frozen=True)
+class TreasuryAgentContext:
+    """Treasury agent profile resolved once per HTTP request.
+
+    Combines agent_profiles lookup + treasury.view_all permission check in 1 query.
+    Scoping rules (same as AgentContext in agent_routes.py):
+    - has_global_scope (supervisor + main_office) → sees ALL sites
+    - supervisor + NOT main_office → site-level supervisor: forced to own site
+    - regular agent → own assignments only, own site
+    """
+    profile_id: Optional[str]
+    entity_location_id: Optional[str]
+    is_supervisor: bool
+    is_main_office: bool
+    has_treasury_view_all: bool
+    user_id: str
+
+    @property
+    def has_profile(self) -> bool:
+        return self.profile_id is not None
+
+    @property
+    def has_global_scope(self) -> bool:
+        """Supervisor at main office OR has treasury.view_all permission."""
+        return (self.is_supervisor and self.is_main_office) or self.has_treasury_view_all
+
+    def get_effective_location(self, explicit_location_id: Optional[str] = None) -> Optional[str]:
+        """Resolve effective entity_location_id for site-scoping.
+
+        - Non-global supervisor: ALWAYS auto-scoped to own site (ignore explicit param)
+        - Global supervisor/admin: use explicit param if provided, otherwise None (all sites)
+        """
+        if not self.has_global_scope and self.entity_location_id:
+            return self.entity_location_id
+        return explicit_location_id or None
+
+
+async def _get_treasury_context(db: asyncpg.Connection, user_id) -> TreasuryAgentContext:
+    """Resolve treasury agent context in 1 SQL query (profile + permission check)."""
+    row = await db.fetchrow("""
+        SELECT
+            ap.id::text AS profile_id,
+            ap.entity_location_id::text,
+            COALESCE(ap.is_supervisor, false) AS is_supervisor,
+            COALESCE(el.is_main_office, false) AS is_main_office,
+            EXISTS(
+                SELECT 1 FROM user_permissions up
+                JOIN permissions p ON p.id = up.permission_id
+                WHERE up.user_id = ap.user_id AND p.name = 'treasury.view_all'
+                UNION
+                SELECT 1 FROM roles r
+                JOIN role_permissions rp ON rp.role_id = r.id
+                JOIN permissions p ON p.id = rp.permission_id
+                JOIN users u2 ON u2.role_id = r.id
+                WHERE u2.id = ap.user_id AND p.name = 'treasury.view_all'
+            ) AS has_treasury_view_all
+        FROM agent_profiles ap
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+        WHERE ap.user_id = $1::uuid AND ap.is_active = true
+        LIMIT 1
+    """, user_id)
+
+    if row:
+        return TreasuryAgentContext(
+            profile_id=row['profile_id'],
+            entity_location_id=row['entity_location_id'],
+            is_supervisor=row['is_supervisor'],
+            is_main_office=row['is_main_office'],
+            has_treasury_view_all=row['has_treasury_view_all'],
+            user_id=str(user_id),
+        )
+    return TreasuryAgentContext(
+        profile_id=None,
+        entity_location_id=None,
+        is_supervisor=False,
+        is_main_office=False,
+        has_treasury_view_all=False,
+        user_id=str(user_id),
+    )
+
+
+# Backward-compat wrappers (used by endpoints not yet migrated)
 async def get_agent_profile_id(db: asyncpg.Connection, user_id: str) -> Optional[str]:
-    """
-    Get agent_profile_id from user_id.
-    Treasury agents must have an active agent_profile linked to their user account.
-    """
+    """Get agent_profile_id from user_id. Prefer _get_treasury_context for new code."""
     result = await db.fetchval(
         "SELECT id FROM agent_profiles WHERE user_id = $1::uuid AND is_active = true",
         user_id
@@ -3038,10 +3120,7 @@ async def get_agent_profile_id(db: asyncpg.Connection, user_id: str) -> Optional
 
 
 async def is_treasury_supervisor(db: asyncpg.Connection, user_id: str) -> bool:
-    """
-    Check if user has treasury supervisor privileges.
-    Returns True if user has 'treasury.view_all' permission via direct assignment or role.
-    """
+    """Check if user has treasury supervisor privileges. Prefer _get_treasury_context for new code."""
     return await db.fetchval("""
         SELECT EXISTS(
             SELECT 1 FROM user_permissions up
@@ -3060,24 +3139,9 @@ async def is_treasury_supervisor(db: asyncpg.Connection, user_id: str) -> bool:
 async def _resolve_treasury_location_scope(
     db: asyncpg.Connection, user_id: str, explicit_location_id: Optional[str] = None
 ) -> Optional[str]:
-    """
-    Resolve effective entity_location_id for treasury site-scoping.
-
-    Rules:
-    - Non-main-office supervisor: ALWAYS auto-scoped to own site (ignore explicit param)
-    - Main-office supervisor: use explicit param if provided, otherwise None (all sites)
-    """
-    row = await db.fetchrow("""
-        SELECT ap.entity_location_id, COALESCE(el.is_main_office, false) AS is_main_office
-        FROM agent_profiles ap
-        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
-        WHERE ap.user_id = $1::uuid AND ap.is_active = true
-    """, user_id)
-    if not row:
-        return explicit_location_id
-    if not row["is_main_office"] and row["entity_location_id"]:
-        return str(row["entity_location_id"])
-    return explicit_location_id or None
+    """Resolve effective location. Prefer TreasuryAgentContext.get_effective_location() for new code."""
+    ctx = await _get_treasury_context(db, user_id)
+    return ctx.get_effective_location(explicit_location_id)
 
 
 class PaymentValidationRequest(BaseModel):
@@ -3215,13 +3279,10 @@ async def get_pending_payments(
         user_id = current_user.id
         logger.info(f"[Treasury] get_pending_payments called by user {user_id}: method={payment_method}, status={workflow_status}, page={page}")
 
-        # Check if user is a supervisor (has treasury.view_all permission)
-        is_supervisor = await is_treasury_supervisor(db, user_id)
-
-        # Get current user's agent_profile_id (if they're an agent)
-        current_agent_profile_id = await db.fetchval("""
-            SELECT id FROM agent_profiles WHERE user_id = $1::uuid AND is_active = true
-        """, user_id)
+        # Single query: profile + permissions + site scope
+        tctx = await _get_treasury_context(db, user_id)
+        is_supervisor = tctx.has_global_scope or tctx.is_supervisor
+        current_agent_profile_id = tctx.profile_id
 
         logger.info(f"[Treasury] User {user_id}: is_supervisor={is_supervisor}, agent_profile_id={current_agent_profile_id}")
 
@@ -3264,22 +3325,9 @@ async def get_pending_payments(
             params.append(date_to)
             param_idx += 1
 
-        # Agent-based filtering + is_main_office scoping
-        sup_profile = None
+        # Agent-based filtering + site scoping (uses pre-resolved tctx)
         if is_supervisor:
-            # Resolve is_main_office for auto-scoping site supervisors
-            sup_profile = await db.fetchrow("""
-                SELECT ap.entity_location_id, COALESCE(el.is_main_office, false) AS is_main_office
-                FROM agent_profiles ap
-                LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
-                WHERE ap.user_id = $1::uuid AND ap.is_active = true
-            """, user_id)
-
-            effective_location_id = entity_location_id  # explicit filter from frontend
-            if sup_profile and not sup_profile["is_main_office"]:
-                # Site supervisor: always auto-scoped to their own TESORO location
-                effective_location_id = str(sup_profile["entity_location_id"]) if sup_profile["entity_location_id"] else None
-                logger.info(f"[Treasury] Site supervisor auto-scoped to location: {effective_location_id}")
+            effective_location_id = tctx.get_effective_location(entity_location_id)
 
             # Supervisor can filter by specific agent or see all
             if agent_profile_id:
@@ -3295,7 +3343,6 @@ async def get_pending_payments(
                 logger.info(f"[Treasury] Filtering by TESORO agent location: {effective_location_id}")
         else:
             # Regular agent sees only their assigned payments
-            # (site scoping is handled by assignment routing — no need for sr.entity_location_id filter)
             if current_agent_profile_id:
                 where_clauses.append(f"sp.assigned_agent_id = ${param_idx}::uuid")
                 params.append(str(current_agent_profile_id))
@@ -5441,46 +5488,24 @@ async def get_treasury_dashboard_stats(
 
     user_id = current_user.id
 
-    # Check if user is a supervisor
-    is_supervisor = await is_treasury_supervisor(db, user_id)
+    # Single query: profile + permissions + site scope
+    tctx = await _get_treasury_context(db, user_id)
+    is_supervisor = tctx.has_global_scope or tctx.is_supervisor
 
-    # Resolve agent profile for non-supervisors
-    current_agent_profile_id = None
-    location_filter_id = None
-    if not is_supervisor:
-        row = await db.fetchrow("""
-            SELECT id, entity_location_id FROM agent_profiles
-            WHERE user_id = $1::uuid AND is_active = true
-        """, user_id)
-        if row:
-            current_agent_profile_id = str(row["id"])
-            location_filter_id = str(row["entity_location_id"]) if row["entity_location_id"] else None
-        else:
-            # No agent profile — return zeros
-            return TreasuryDashboardStatsResponse(
-                pending_validation_count=0,
-                unreconciled_count=0,
-                today_validated_count=0,
-                today_validated_amount=0.0,
-                currency="XAF",
-            )
-    else:
-        # Supervisor: resolve is_main_office for auto-scoping
-        sup_row = await db.fetchrow("""
-            SELECT ap.entity_location_id, COALESCE(el.is_main_office, false) AS is_main_office
-            FROM agent_profiles ap
-            LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
-            WHERE ap.user_id = $1::uuid AND ap.is_active = true
-        """, user_id)
-        if sup_row and not sup_row["is_main_office"] and sup_row["entity_location_id"]:
-            # Site supervisor: forced to their own location
-            location_filter_id = str(sup_row["entity_location_id"])
-        elif entity_location_id:
-            # Main-office supervisor: optional explicit filter
-            location_filter_id = entity_location_id
+    if not tctx.has_profile:
+        return TreasuryDashboardStatsResponse(
+            pending_validation_count=0,
+            unreconciled_count=0,
+            today_validated_count=0,
+            today_validated_amount=0.0,
+            currency="XAF",
+        )
+
+    current_agent_profile_id = tctx.profile_id
+    location_filter_id = tctx.get_effective_location(entity_location_id)
 
     # Build scoped queries
-    if current_agent_profile_id:
+    if not is_supervisor and current_agent_profile_id:
         # Non-supervisor agent: scope by assigned_agent_id (their own payments only)
         agent_id = current_agent_profile_id
         logger.info(f"[Treasury Stats] Scoping by agent: {agent_id}")

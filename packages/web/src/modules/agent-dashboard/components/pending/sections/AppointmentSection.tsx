@@ -186,18 +186,18 @@ export function AppointmentSection({
           {t('appointment.noAppointment')}
         </p>
         {!isScheduling ? (
-          // Prompt to schedule
-          <div className="text-center py-2">
-            <p className="text-sm text-muted-foreground mb-3">
+          // Compact prompt to schedule
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
               {t('appointment.noAppointmentDesc')}
             </p>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsScheduling(true)}
-              className="border-orange-300 text-orange-700 hover:bg-orange-100"
+              className="border-orange-300 text-orange-700 hover:bg-orange-100 shrink-0 ml-2 h-7 text-xs"
             >
-              <CalendarPlus className="h-4 w-4 mr-2" />
+              <CalendarPlus className="h-3.5 w-3.5 mr-1" />
               {t('appointment.schedule')}
             </Button>
           </div>

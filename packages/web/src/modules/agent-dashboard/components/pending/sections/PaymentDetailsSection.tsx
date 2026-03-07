@@ -1,8 +1,9 @@
 /**
- * PaymentDetailsSection - Compact payment card for split view
+ * PaymentDetailsSection - Compact payment card with full details
  *
  * @module agent-dashboard/components/pending/sections
  * @date 2026-03-06
+ * @updated 2026-03-07 - Added paid date and payment reference display
  */
 
 'use client';
@@ -33,12 +34,12 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
   expired: 'outline',
 };
 
-const METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo',
-  mobile_money: 'Mobile Money',
-  bank_transfer: 'Transferencia',
-  card: 'Tarjeta',
-  bange_wallet: 'BANGE',
+const METHOD_KEYS: Record<string, string> = {
+  cash: 'paymentMethodCash',
+  mobile_money: 'paymentMethodMobileMoney',
+  bank_transfer: 'paymentMethodBankTransfer',
+  card: 'paymentMethodCard',
+  bange_wallet: 'paymentMethodBange',
 };
 
 function formatAmount(amount: number, currency: string): string {
@@ -50,13 +51,27 @@ function formatAmount(amount: number, currency: string): string {
   }).format(amount);
 }
 
+function formatDate(dateString: string): string {
+  try {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateString;
+  }
+}
+
 export function PaymentDetailsSection({
   status,
   amount,
   currency = 'XAF',
   method,
-  paidAt: _paidAt,
-  reference: _reference,
+  paidAt,
+  reference,
 }: PaymentDetailsSectionProps) {
   const t = useTranslations('agent.pending.preview');
 
@@ -75,7 +90,7 @@ export function PaymentDetailsSection({
           {amount != null && (
             <p className="text-lg font-bold leading-tight">{formatAmount(amount, currency || 'XAF')}</p>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {status && (
               <Badge variant={statusVariant} className="text-[10px]">
                 {status.replace(/_/g, ' ')}
@@ -83,10 +98,22 @@ export function PaymentDetailsSection({
             )}
             {method && (
               <span className="text-xs text-muted-foreground">
-                {METHOD_LABELS[method] || method}
+                {METHOD_KEYS[method] ? t(METHOD_KEYS[method]) : method}
               </span>
             )}
           </div>
+          {/* Payment reference */}
+          {reference && (
+            <p className="text-[10px] text-muted-foreground">
+              {t('refLabel')}: <span className="font-mono">{reference}</span>
+            </p>
+          )}
+          {/* Paid date */}
+          {paidAt && (
+            <p className="text-[10px] text-muted-foreground">
+              {t('paidAtLabel')}: {formatDate(paidAt)}
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

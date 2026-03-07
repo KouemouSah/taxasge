@@ -43,7 +43,6 @@ import { toast } from 'sonner';
 import { RequestInfoSection } from './sections/RequestInfoSection';
 import { ExtractedDataSection } from './sections/ExtractedDataSection';
 import { DocumentsSection } from './sections/DocumentsSection';
-import { ContactSection } from './sections/ContactSection';
 import { AppointmentSection } from './sections/AppointmentSection';
 import { PaymentDetailsSection } from './sections/PaymentDetailsSection';
 import { useDisplayConfigForWorkflow } from '@/modules/admin/hooks/useDisplayConfigs';
@@ -383,7 +382,7 @@ export function RequestPreview({
 
       {/* Content - Sections rendered based on display config */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {/* Section: Request Info (always shown - critical info) */}
+        {/* Section: Request Info + Contact (merged compact header) */}
         {shouldShowSection('info') && (
           <RequestInfoSection
             reference={data.reference}
@@ -391,18 +390,23 @@ export function RequestPreview({
             solicitudType={data.solicitudType}
             motivo={data.motivo}
             priority={data.priority}
-            status={data.status}
             slaStatus={data.slaStatus}
             slaRemainingHours={data.slaRemainingHours}
             isMinor={data.isMinor}
             batchReference={data.batchReference}
             batchId={data.batchId}
+            contactEmail={data.contactEmail}
+            contactPhone={data.contactPhone}
           />
         )}
 
         {/* Section: Extracted Data - structured sections from workflow config */}
         {shouldShowSection('extractedData') && (
-          <ExtractedDataSection dataSections={data.dataSections} />
+          <ExtractedDataSection
+            dataSections={data.dataSections}
+            documents={data.documents}
+            requestId={data.id}
+          />
         )}
 
         {/* Section: Documents */}
@@ -414,17 +418,8 @@ export function RequestPreview({
           />
         )}
 
-        {/* Compact row: Contact + Appointment + Payment side by side */}
+        {/* Compact row: Appointment + Payment side by side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Section: Contact */}
-          {shouldShowSection('contact') && (
-            <ContactSection
-              name={data.contactName}
-              email={data.contactEmail}
-              phone={data.contactPhone}
-            />
-          )}
-
           {/* Section: Appointment */}
           {shouldShowSection('appointment') && (
             <AppointmentSection

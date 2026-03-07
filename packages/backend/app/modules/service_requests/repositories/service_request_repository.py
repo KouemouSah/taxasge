@@ -201,13 +201,21 @@ class ServiceRequestRepository:
         if not current:
             raise ValueError(f"Service request {request_id} not found")
 
-        # Update status
-        await db.execute(
-            """UPDATE service_requests
-               SET status = $2, updated_at = NOW()
-               WHERE id = $1""",
-            request_id, new_status
-        )
+        # Update status (+ submitted_at when transitioning to SUBMITTED)
+        if new_status == 'SUBMITTED':
+            await db.execute(
+                """UPDATE service_requests
+                   SET status = $2, submitted_at = COALESCE(submitted_at, NOW()), updated_at = NOW()
+                   WHERE id = $1""",
+                request_id, new_status
+            )
+        else:
+            await db.execute(
+                """UPDATE service_requests
+                   SET status = $2, updated_at = NOW()
+                   WHERE id = $1""",
+                request_id, new_status
+            )
 
         # Create history entry
         await db.execute(
@@ -485,56 +493,45 @@ class ServiceRequestRepository:
         offset: int = 0
     ) -> tuple[List[Dict], int]:
         """
-        Get full consolidated history timeline for a service request.
+        Optimized consolidated history timeline for a service request.
 
-        Combines data from:
-        - service_request_history (status changes, document uploads, etc.)
-        - gemini_processing_logs (OCR processing results)
-        - assignments (agent assignments and reassignments)
-
-        Args:
-            db: Database connection
-            request_id: Service request UUID
-            action_types: Filter by action types (e.g., ['status_change', 'document_added'])
-            from_date: Filter from date (ISO format)
-            to_date: Filter to date (ISO format)
-            include_system: Include system-initiated actions (performed_by IS NULL)
-            include_ocr: Include OCR processing logs
-            include_assignments: Include assignment history
-            limit: Max entries to return
-            offset: Pagination offset
-
-        Returns:
-            Tuple of (list of history entries, total count)
+        Single query with deferred user JOIN (post-UNION) and window COUNT
+        to avoid running the UNION twice. Scales to millions of requests.
         """
-        # Build date conditions for all queries
         date_conditions = []
         date_params: List[Any] = []
         date_param_idx = 2  # $1 is request_id
 
         if from_date:
-            date_conditions.append(f"performed_at >= ${date_param_idx}")
+            date_conditions.append(f"ts >= ${date_param_idx}")
             date_params.append(from_date)
             date_param_idx += 1
-
         if to_date:
-            date_conditions.append(f"performed_at <= ${date_param_idx}")
+            date_conditions.append(f"ts <= ${date_param_idx}")
             date_params.append(to_date)
             date_param_idx += 1
 
-        date_filter = " AND " + " AND ".join(date_conditions) if date_conditions else ""
+        date_filter_history = ""
+        date_filter_ocr = ""
+        date_filter_assign = ""
+        if date_conditions:
+            # Map generic ts conditions to table-specific columns
+            history_conds = [c.replace("ts", "srh.performed_at") for c in date_conditions]
+            date_filter_history = " AND " + " AND ".join(history_conds)
+            ocr_conds = [c.replace("ts", "gpl.created_at") for c in date_conditions]
+            date_filter_ocr = " AND " + " AND ".join(ocr_conds)
+            assign_conds = [c.replace("ts", "COALESCE(a.reassigned_at, a.assigned_at)") for c in date_conditions]
+            date_filter_assign = " AND " + " AND ".join(assign_conds)
 
-        # Build action type filter
         action_filter = ""
         if action_types:
             action_filter = f" AND action = ANY(${date_param_idx})"
             date_params.append(action_types)
             date_param_idx += 1
 
-        # System filter
-        system_filter = "" if include_system else " AND performed_by IS NOT NULL"
+        system_filter = "" if include_system else " AND srh.performed_by IS NOT NULL"
 
-        # Build UNION query for consolidated history
+        # Build lightweight UNION (no user JOINs inside — deferred to outer query)
         union_parts = []
 
         # Part 1: service_request_history
@@ -542,33 +539,23 @@ class ServiceRequestRepository:
             SELECT
                 srh.id::text as id,
                 srh.action,
-                srh.previous_status,
-                srh.new_status,
+                srh.previous_status::text as previous_status,
+                srh.new_status::text as new_status,
                 srh.details,
                 srh.comment,
                 srh.performed_at,
-                srh.performed_by,
-                'history' as source,
-                u.id as performer_id,
-                COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as performer_name,
-                u.email as performer_email,
-                u.role as performer_role
+                srh.performed_by as performer_user_id,
+                'history' as source
             FROM service_request_history srh
-            LEFT JOIN users u ON u.id = srh.performed_by
-            WHERE srh.service_request_id = $1{date_filter}{action_filter}{system_filter}
+            WHERE srh.service_request_id = $1{date_filter_history}{action_filter}{system_filter}
         """)
 
-        # Part 2: gemini_processing_logs (OCR)
+        # Part 2: gemini_processing_logs (OCR) — no action_filter (different action space)
         if include_ocr:
-            # OCR logs don't have action types in the filter
-            ocr_date_filter = date_filter.replace("performed_at", "created_at")
             union_parts.append(f"""
                 SELECT
                     gpl.id::text as id,
-                    CASE
-                        WHEN gpl.has_error THEN 'ocr_failed'
-                        ELSE 'ocr_completed'
-                    END as action,
+                    CASE WHEN gpl.has_error THEN 'ocr_failed' ELSE 'ocr_completed' END as action,
                     NULL as previous_status,
                     NULL as new_status,
                     jsonb_build_object(
@@ -584,32 +571,20 @@ class ServiceRequestRepository:
                         'has_error', gpl.has_error,
                         'error_message', gpl.error_message
                     ) as details,
-                    CASE
-                        WHEN gpl.has_error THEN gpl.error_message
-                        ELSE NULL
-                    END as comment,
+                    CASE WHEN gpl.has_error THEN gpl.error_message ELSE NULL END as comment,
                     gpl.created_at as performed_at,
-                    gpl.user_id as performed_by,
-                    'ocr' as source,
-                    u.id as performer_id,
-                    COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as performer_name,
-                    u.email as performer_email,
-                    u.role as performer_role
+                    gpl.user_id as performer_user_id,
+                    'ocr' as source
                 FROM gemini_processing_logs gpl
-                LEFT JOIN users u ON u.id = gpl.user_id
-                WHERE gpl.service_request_id = $1{ocr_date_filter}
+                WHERE gpl.service_request_id = $1{date_filter_ocr}
             """)
 
-        # Part 3: assignments
+        # Part 3: assignments — embed agent names in details JSONB, performer via profile→user
         if include_assignments:
-            assign_date_filter = date_filter.replace("performed_at", "assigned_at")
             union_parts.append(f"""
                 SELECT
                     a.id::text as id,
-                    CASE
-                        WHEN a.reassigned_at IS NOT NULL THEN 'reassigned'
-                        ELSE 'assigned'
-                    END as action,
+                    CASE WHEN a.reassigned_at IS NOT NULL THEN 'reassigned' ELSE 'assigned' END as action,
                     NULL as previous_status,
                     a.status::text as new_status,
                     jsonb_build_object(
@@ -618,45 +593,47 @@ class ServiceRequestRepository:
                         'deadline', a.deadline,
                         'reassignment_reason', a.reassignment_reason::text,
                         'reassignment_notes', a.reassignment_notes,
-                        'agent_name', COALESCE(agent_user.full_name, agent_user.first_name || ' ' || agent_user.last_name),
-                        'reassigned_to_name', COALESCE(reassign_user.full_name, reassign_user.first_name || ' ' || reassign_user.last_name)
+                        'agent_name', COALESCE(au.full_name, au.first_name || ' ' || au.last_name),
+                        'reassigned_to_name', COALESCE(ru.full_name, ru.first_name || ' ' || ru.last_name)
                     ) as details,
                     a.notes as comment,
                     COALESCE(a.reassigned_at, a.assigned_at) as performed_at,
-                    COALESCE(a.assigned_by_profile_id, a.agent_profile_id) as performed_by,
-                    'assignment' as source,
-                    assigner.id as performer_id,
-                    COALESCE(assigner.full_name, assigner.first_name || ' ' || assigner.last_name) as performer_name,
-                    assigner.email as performer_email,
-                    assigner.role as performer_role
+                    assigner_u.id as performer_user_id,
+                    'assignment' as source
                 FROM assignments a
                 LEFT JOIN agent_profiles ap ON ap.id = a.agent_profile_id
-                LEFT JOIN users agent_user ON agent_user.id = ap.user_id
-                LEFT JOIN agent_profiles ap_reassign ON ap_reassign.id = a.reassigned_to_profile_id
-                LEFT JOIN users reassign_user ON reassign_user.id = ap_reassign.user_id
-                LEFT JOIN agent_profiles ap_assigner ON ap_assigner.id = COALESCE(a.assigned_by_profile_id, a.agent_profile_id)
-                LEFT JOIN users assigner ON assigner.id = ap_assigner.user_id
-                WHERE a.item_id = $1 AND a.item_type = 'service_request'{assign_date_filter}
+                LEFT JOIN users au ON au.id = ap.user_id
+                LEFT JOIN agent_profiles ap2 ON ap2.id = a.reassigned_to_profile_id
+                LEFT JOIN users ru ON ru.id = ap2.user_id
+                LEFT JOIN agent_profiles ap3 ON ap3.id = COALESCE(a.assigned_by_profile_id, a.agent_profile_id)
+                LEFT JOIN users assigner_u ON assigner_u.id = ap3.user_id
+                WHERE a.item_id = $1 AND a.item_type = 'service_request'{date_filter_assign}
             """)
 
         union_query = " UNION ALL ".join(union_parts)
 
-        # Count total
-        count_query = f"""
-            SELECT COUNT(*) as total FROM ({union_query}) consolidated
-        """
+        # Single query: window COUNT + single user JOIN + ORDER + LIMIT
+        # Window COUNT avoids running the UNION twice
         all_params = [request_id] + date_params
-        count_row = await db.fetchrow(count_query, *all_params)
-        total = count_row["total"] if count_row else 0
-
-        # Get paginated entries
         final_query = f"""
-            SELECT * FROM ({union_query}) consolidated
-            ORDER BY performed_at DESC
+            SELECT
+                c.id, c.action, c.previous_status, c.new_status,
+                c.details, c.comment, c.performed_at, c.source,
+                c.performer_user_id,
+                u.id as u_id,
+                COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as performer_name,
+                u.email as performer_email,
+                u.role as performer_role,
+                COUNT(*) OVER() as total_count
+            FROM ({union_query}) c
+            LEFT JOIN users u ON u.id = c.performer_user_id
+            ORDER BY c.performed_at DESC
             LIMIT ${len(all_params) + 1} OFFSET ${len(all_params) + 2}
         """
         all_params.extend([limit, offset])
         rows = await db.fetch(final_query, *all_params)
+
+        total = rows[0]["total_count"] if rows else 0
 
         entries = []
         for row in rows:
@@ -672,16 +649,15 @@ class ServiceRequestRepository:
                 "performed_by": None
             }
 
-            # Add performer info if available
-            if row["performer_id"]:
+            if row["u_id"]:
                 entry["performed_by"] = {
-                    "user_id": str(row["performer_id"]),
+                    "user_id": str(row["u_id"]),
                     "full_name": row["performer_name"],
                     "email": row["performer_email"],
                     "role": row["performer_role"],
                     "is_system": False
                 }
-            elif row["performed_by"] is None:
+            elif row["performer_user_id"] is None:
                 entry["performed_by"] = {
                     "user_id": None,
                     "full_name": "Sistema",
@@ -710,17 +686,27 @@ class ServiceRequestRepository:
         - last_action_at
         """
         query = """
+            WITH stats AS (
+                SELECT
+                    COUNT(*) FILTER (WHERE action = 'status_change') as total_status_changes,
+                    COUNT(*) FILTER (WHERE action = 'document_added') as total_documents,
+                    COUNT(*) FILTER (WHERE action IN ('assigned', 'reassigned')) as total_assignments,
+                    MIN(performed_at) as first_action_at,
+                    MAX(performed_at) as last_action_at
+                FROM service_request_history
+                WHERE service_request_id = $1
+            )
             SELECT
                 sr.*,
                 COALESCE(u.full_name, u.first_name || ' ' || u.last_name, u.email) as citizen_name,
-                -- History stats
-                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id AND action = 'status_change') as total_status_changes,
-                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id AND action = 'document_added') as total_documents,
-                (SELECT COUNT(*) FROM service_request_history WHERE service_request_id = sr.id AND action IN ('assigned', 'reassigned')) as total_assignments,
-                (SELECT MIN(performed_at) FROM service_request_history WHERE service_request_id = sr.id) as first_action_at,
-                (SELECT MAX(performed_at) FROM service_request_history WHERE service_request_id = sr.id) as last_action_at
+                s.total_status_changes,
+                s.total_documents,
+                s.total_assignments,
+                s.first_action_at,
+                s.last_action_at
             FROM service_requests sr
             JOIN users u ON u.id = sr.user_id
+            CROSS JOIN stats s
             WHERE sr.id = $1
         """
         row = await db.fetchrow(query, request_id)

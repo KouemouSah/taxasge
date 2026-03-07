@@ -371,7 +371,7 @@ class AssignmentOutboxService:
             updated = await db.fetchval(
                 """
                 UPDATE service_requests
-                SET status = 'SUBMITTED', updated_at = NOW()
+                SET status = 'SUBMITTED', submitted_at = COALESCE(submitted_at, NOW()), updated_at = NOW()
                 WHERE id = $1 AND status = 'PAID'
                 RETURNING id
                 """,

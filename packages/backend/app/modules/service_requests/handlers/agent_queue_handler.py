@@ -230,6 +230,7 @@ class AgentQueueEventHandler:
             await conn.execute("""
                 UPDATE service_requests
                 SET status = 'SUBMITTED',
+                    submitted_at = NOW(),
                     updated_at = NOW()
                 WHERE id = $1 AND status = 'PAID'
             """, UUID(service_request_id))

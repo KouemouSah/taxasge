@@ -1,8 +1,8 @@
 # Plan: Amélioration Admin UI - Gestion Dynamique des Menus
 
-**Version**: 1.1
-**Date**: 2026-01-31
-**Statut**: PHASE 1 TERMINÉE - PHASE 2 EN ATTENTE
+**Version**: 1.3
+**Date**: 2026-02-01
+**Statut**: PHASE 1 & 2 TERMINÉES - PHASE 3 EN COURS (Backend + Admin UI complétés)
 
 ---
 
@@ -188,7 +188,7 @@ packages/web/src/modules/admin/components/menu-builder/
 
 ---
 
-## PHASE 2: Améliorer `/admin/entities` - Lien avec Mappings
+## PHASE 2: Améliorer `/admin/entities` - Lien avec Mappings ✅ TERMINÉE
 
 ### Objectif
 Afficher les mappings existants pour les workflows d'une entité et guider vers la création si manquant.
@@ -196,15 +196,15 @@ Afficher les mappings existants pour les workflows d'une entité et guider vers 
 ### Pré-requis à Vérifier (CHECKLIST PRÉ-IMPLÉMENTATION)
 
 #### Backend
-- [ ] `GET /menu-config/workflow-mappings` peut filtrer par `workflow_pattern`
-- [ ] Ou créer endpoint: `GET /menu-config/workflow-mappings/check?patterns=PASAPORTE_%,CONDUCIR_%`
+- [x] `GET /menu-config/workflow-mappings` retourne tous les mappings (page_size=100)
+- [x] Pattern matching SQL LIKE simulé en JavaScript avec regex
 
 #### Frontend
-- [ ] Existe: `packages/web/src/app/[locale]/(dashboard)/dashboard/admin/entities/components/EntitiesTabContent.tsx`
-- [ ] Hook `useWorkflows` retourne les workflows avec `code`
+- [x] Existe: `packages/web/src/app/[locale]/(dashboard)/dashboard/admin/entities/components/EntitiesTabContent.tsx`
+- [x] Hook `useWorkflowMappings` retourne les mappings avec `workflow_pattern`
 
 #### Données
-- [ ] Requête pour lister tous les `workflow_pattern` de `workflow_menu_mapping`
+- [x] Fonction `sqlLikeToRegex()` convertit patterns SQL LIKE en RegExp JavaScript
 
 ### Implémentation
 
@@ -227,21 +227,21 @@ Badge dans la liste des entités:
 - 🟡 "3/5 mappings" = certains manquent
 - 🔴 "0/5 mappings" = aucun mapping
 
-### Checklist Validation Phase 2
+### Checklist Validation Phase 2 ✅
 
 #### Fonctionnel
-- [ ] Pour chaque workflow_code, on voit si un mapping existe
-- [ ] Le matching utilise le pattern SQL LIKE (PASAPORTE_% match PASAPORTE_NUEVO)
-- [ ] Lien "Créer mapping" ouvre `/admin/workflow-mappings/new` avec pattern pré-rempli
-- [ ] Badge de couverture affiché dans la liste
+- [x] Pour chaque workflow_code, on voit si un mapping existe (✓/⚠ icons)
+- [x] Le matching utilise le pattern SQL LIKE (PASAPORTE_% match PASAPORTE_NUEVO)
+- [x] Lien "Créer mapping" ouvre `/admin/workflow-mappings/new` avec pattern pré-rempli
+- [x] Badge de couverture affiché dans la liste (vert/jaune/rouge selon %)
 
 #### Non-régression
-- [ ] Le CRUD entités fonctionne toujours
-- [ ] Pas de requêtes excessives (mise en cache des mappings)
+- [x] Le CRUD entités fonctionne toujours (pas de modifications aux handlers)
+- [x] Requêtes cachées (staleTime 5min via React Query)
 
 ---
 
-## PHASE 3: Table `workflow_display_config` pour PendingPage
+## PHASE 3: Table `workflow_display_config` pour PendingPage - EN COURS
 
 ### Objectif
 Permettre de personnaliser les colonnes et sections du PendingPage par workflow sans code.
@@ -366,20 +366,31 @@ const { displayConfig } = useWorkflowDisplayConfig(workflowCode);
 
 ### Checklist Validation Phase 3
 
-#### Backend
-- [ ] Migration exécutée sans erreur
-- [ ] Table workflow_display_config créée
-- [ ] Endpoints CRUD fonctionnels
-- [ ] Endpoint GET retourne config par défaut si pattern non trouvé
+#### Backend ✅ COMPLÉTÉ
+- [x] Migration créée: `087_create_workflow_display_config.sql`
+- [x] Repository créé: `display_config_repository.py`
+- [x] Modèles Pydantic ajoutés: `WorkflowDisplayConfig*`
+- [x] Endpoints CRUD ajoutés à `menu_config_routes.py`:
+  - GET `/display-configs` - liste paginée
+  - GET `/display-configs/{id}` - par ID
+  - GET `/display-configs/by-workflow/{code}` - par code workflow
+  - POST `/display-configs` - création
+  - PUT `/display-configs/{id}` - modification
+  - DELETE `/display-configs/{id}` - suppression
+- [ ] Migration exécutée en base (en attente)
 
-#### Frontend Admin
-- [ ] Page `/admin/menu-config/display` accessible
-- [ ] Liste des configurations affichée
-- [ ] Création de config fonctionne
-- [ ] Édition avec drag-and-drop fonctionne
-- [ ] Suppression avec confirmation
+#### Frontend Admin ✅ COMPLÉTÉ
+- [x] Page `/admin/menu-config/display` créée
+- [x] Service API étendu avec méthodes display config
+- [x] Hook `useDisplayConfigs` créé avec React Query
+- [x] Traductions ajoutées (es, fr, en)
+- [x] Liste des configurations avec pagination
+- [x] Dialog création avec sélection colonnes/sections
+- [x] Dialog édition
+- [x] Dialog suppression avec confirmation
+- [x] Lien ajouté depuis page menu-config principale
 
-#### Frontend PendingPage
+#### Frontend PendingPage - À FAIRE
 - [ ] Colonnes de liste dynamiques selon config
 - [ ] Sections de preview dynamiques selon config
 - [ ] Fallback si config non trouvée (colonnes/sections par défaut)

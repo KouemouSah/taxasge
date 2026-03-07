@@ -1,7 +1,7 @@
 {
-  "name": "taxasge",
+  "name": "Facil",
   "version": "1.0.0",
-  "description": "Application Mobile et Web de Gestion Fiscale - Guinée Équatoriale",
+  "description": "Application Mobile et Web de Digital process AI - Guinée Équatoriale",
   "private": true,
   "repository": {
     "type": "git",
@@ -56,8 +56,8 @@
     "i18n:entities": "node scripts/sync-entities-to-i18n.mjs",
     "i18n:procedures": "node scripts/sync-procedures-documents-to-i18n.mjs",
     "i18n:common": "node scripts/translate-common-i18n.mjs",
-    "status": "echo '📊 TaxasGE Project Status:' && git status",
-    "info": "echo '📋 TaxasGE Project Info:' && yarn workspaces info"
+    "status": "echo '📊 Facil Project Status:' && git status",
+    "info": "echo '📋 Facil Project Info:' && yarn workspaces info"
   },
   "dependencies": {
     "react": "18.3.1",
@@ -96,15 +96,15 @@
     }
   },
   "keywords": [
-    "taxasge",
+    "Facil",
     "guinee-equatoriale",
-    "gestion-fiscale",
+    "Digital-process",
     "react-native",
     "fastapi",
     "supabase",
     "firebase",
     "mobile-app",
-    "tax-management",
+    "process-management",
     "equatorial-guinea"
   ],
   "config": {

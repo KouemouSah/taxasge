@@ -37,7 +37,7 @@ import type {
   // Detail view types
   DetailViewResponse,
 } from '../types'
-import { HistoryActionType } from '../types'
+import { HistoryActionType, HistoryEntrySource } from '../types'
 import { ExtractionStatus } from '../types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -1923,6 +1923,7 @@ class ServiceRequestsApiClient {
           is_system: boolean
         }
         performed_at: string
+        source?: string
       }>
       total: number
       page: number
@@ -1962,6 +1963,7 @@ class ServiceRequestsApiClient {
             }
           : undefined,
         performedAt: e.performed_at,
+        source: e.source as HistoryEntrySource | undefined,
       })),
       total: response.total,
       page: response.page,

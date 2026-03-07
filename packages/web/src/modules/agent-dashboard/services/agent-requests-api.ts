@@ -61,6 +61,8 @@ export interface ServiceRequestListItem {
   // Escalation context (only populated for action=escalations)
   escalationReason?: string | null;
   escalatedAt?: string | null;
+  // True when request was returned from escalation by supervisor
+  supervisorAssigned?: boolean;
 }
 
 export interface ServiceRequestListResponse {
@@ -85,6 +87,13 @@ export interface ServiceRequestFilters {
 }
 
 // Escalation item types
+export interface EscalationHistoryEntry {
+  action: string;
+  performedAt: string;
+  performedByName: string | null;
+  comment: string | null;
+}
+
 export interface EscalationListItem {
   id: string;
   queueId: string;
@@ -100,6 +109,7 @@ export interface EscalationListItem {
   direction: 'sent' | 'received';
   escalatedByName: string | null;
   citizenName: string | null;
+  history: EscalationHistoryEntry[];
 }
 
 interface BackendEscalationItem {
@@ -117,6 +127,12 @@ interface BackendEscalationItem {
   direction: string;
   escalated_by_name?: string | null;
   citizen_name?: string | null;
+  history?: Array<{
+    action: string;
+    performed_at: string;
+    performed_by_name?: string | null;
+    comment?: string | null;
+  }>;
 }
 
 // Workflow schema types for agent detail view
@@ -267,6 +283,7 @@ interface BackendServiceRequestListItem {
   batch_reference?: string | null;
   escalation_reason?: string | null;
   escalated_at?: string | null;
+  supervisor_assigned?: boolean;
 }
 
 interface BackendServiceRequestListResponse {
@@ -353,6 +370,7 @@ function transformServiceRequestItem(item: BackendServiceRequestListItem): Servi
     batchReference: item.batch_reference,
     escalationReason: item.escalation_reason,
     escalatedAt: item.escalated_at,
+    supervisorAssigned: item.supervisor_assigned || false,
   };
 }
 
@@ -602,6 +620,12 @@ class AgentRequestsApiClient {
       direction: r.direction as EscalationListItem['direction'],
       escalatedByName: r.escalated_by_name || null,
       citizenName: r.citizen_name || null,
+      history: (r.history || []).map((h) => ({
+        action: h.action,
+        performedAt: h.performed_at,
+        performedByName: h.performed_by_name || null,
+        comment: h.comment || null,
+      })),
     }));
   }
 
@@ -969,4 +993,80 @@ export async function getDocumentDownloadUrl(
 
   const data = await response.json();
   return data.download_url;
+}
+
+// ============================================================================
+// DOCUMENT VALIDATION (AGENT)
+// ============================================================================
+
+const AGENT_DOCS_BASE = `${API_BASE_URL}${API_VERSION}/agent/service-requests/documents`;
+
+function agentHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined' ? getAuthData()?.access_token : null;
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+/**
+ * Agent validates (approves) a document
+ */
+export async function validateDocument(
+  documentId: string,
+  comment?: string
+): Promise<{ message: string; document_id: string }> {
+  const response = await fetch(`${AGENT_DOCS_BASE}/${documentId}/validate`, {
+    method: 'POST',
+    headers: agentHeaders(),
+    body: JSON.stringify(comment ? { comment } : {}),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Validation failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Agent rejects a document with reason
+ */
+export async function rejectDocument(
+  documentId: string,
+  reason: string
+): Promise<{ message: string; document_id: string; reason: string }> {
+  const response = await fetch(`${AGENT_DOCS_BASE}/${documentId}/reject`, {
+    method: 'POST',
+    headers: agentHeaders(),
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Rejection failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+// ============================================================================
+// SIGNED URL CACHE
+// ============================================================================
+
+const signedUrlCache = new Map<string, { url: string; expires: number }>();
+const SIGNED_URL_TTL_MS = 10 * 60 * 1000; // 10 min (signed URLs last ~15 min)
+
+/**
+ * Get signed download URL with in-memory cache
+ */
+export async function getDocumentDownloadUrlCached(
+  requestId: string,
+  documentCode: string
+): Promise<string> {
+  const cacheKey = `${requestId}:${documentCode}`;
+  const cached = signedUrlCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    return cached.url;
+  }
+  const url = await getDocumentDownloadUrl(requestId, documentCode);
+  signedUrlCache.set(cacheKey, { url, expires: Date.now() + SIGNED_URL_TTL_MS });
+  return url;
 }

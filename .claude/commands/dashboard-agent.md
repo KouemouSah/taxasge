@@ -4,11 +4,11 @@ Create a new feature for the Agent (Fiscal Officer) Dashboard following TaxasGE 
 
 ## Context
 
-**Agent Dashboard** is for fiscal officers to:
-- Review pending declarations (validation queue)
-- Validate or reject declarations
+**Agent Dashboard** is for service request officers to:
+- Review pending service_request (validation queue)
+- Validate or reject service request/declarations
 - Request additional documents from citizens
-- Assign/escalate declarations to supervisors
+- Assign/escalate service request/declarations to supervisors
 - Track their workload and performance metrics
 - Communicate with citizens
 
@@ -43,7 +43,7 @@ Create a new feature for the Agent (Fiscal Officer) Dashboard following TaxasGE 
    - Sort by date, amount, urgency
    - Bulk actions support
 
-2. Declaration Review
+2. Service requests Review
    - View all documents
    - See calculation details
    - Access citizen history
@@ -57,7 +57,7 @@ Create a new feature for the Agent (Fiscal Officer) Dashboard following TaxasGE 
    - Contact citizen
 
 4. Performance Metrics
-   - Declarations processed today/week/month
+   - service request/Declarations processed today/week/month
    - Average processing time
    - Validation rate
    - Pending queue size
@@ -65,19 +65,19 @@ Create a new feature for the Agent (Fiscal Officer) Dashboard following TaxasGE 
 
 ## UI/UX Guidelines
 
-- Use **status badges** for declaration states (pending, under_review, etc.)
+- Use **status badges** for service request/declaration states (pending, under_review, etc.)
 - Show **priority indicators** (urgent, normal, low)
 - Display **countdown timers** for SLA deadlines
 - Add **quick filters** in sidebar
 - Implement **keyboard shortcuts** for common actions
-- Use **drawer/modal** for declaration details
+- Use **drawer/modal** for service request/declaration details
 - Show **citizen risk score** (if available)
 
 ## Workflow Example
 
 ```typescript
 // Declaration validation workflow
-1. Agent selects pending declaration from queue
+1. Agent selects pending service request/declaration from queue
 2. System marks it as "under_review" and assigns to agent
 3. Agent reviews:
    - Documents uploaded
@@ -96,7 +96,7 @@ Create a new feature for the Agent (Fiscal Officer) Dashboard following TaxasGE 
 - [ ] Agent permission check added
 - [ ] Assignment logic implemented
 - [ ] Frontend queue view created
-- [ ] Declaration detail view implemented
+- [ ] Service request/Declaration detail view implemented
 - [ ] Quick actions (validate/reject/request) added
 - [ ] Audit trail logging added
 - [ ] Real-time updates implemented (optional)

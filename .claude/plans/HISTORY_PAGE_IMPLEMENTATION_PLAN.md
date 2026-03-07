@@ -47,64 +47,81 @@ Page de suivi chronologique des actions sur les demandes de service pour les age
 
 ---
 
-## Phase 2 - Frontend Page 🔄 IN PROGRESS
+## Phase 2 - Frontend Page ✅ COMPLETED
 
-### Task 1: Page Historial
-- [ ] Créer `packages/web/src/app/[locale]/(dashboard)/dashboard/agent/cnedoge-pasaporte/historial/page.tsx`
-- [ ] Layout avec liste à gauche, détail à droite (ou modal)
-- [ ] Pagination et tri par date
+**Commit**: `8dba1790`, `59a38634` (2026-01-27)
 
-### Task 2: Composants Timeline
-- [ ] `HistoryTimeline.tsx` - Affichage chronologique vertical
-- [ ] `HistoryEntry.tsx` - Entrée individuelle avec icône par type
-- [ ] `HistoryFilters.tsx` - Filtres par type d'action, date
-- [ ] `PerformerBadge.tsx` - Badge utilisateur/système
+### Task 1: Page Historial ✅
+- [x] Créer `packages/web/src/app/[locale]/(dashboard)/dashboard/agent/cnedoge-pasaporte/pasaportes/history/page.tsx`
+- [x] Layout avec liste table, détail en Sheet (slide-over)
+- [x] Pagination et tri par date
 
-### Task 3: Service API
-- [ ] `historyService.ts` - Appels API avec React Query
-- [ ] Types TypeScript alignés avec backend
-- [ ] Gestion du cache et invalidation
+### Task 2: Composants Timeline ✅
+- [x] `TimelineEntry` component - Affichage chronologique vertical
+- [x] `ActionIcon` component - Icône par type d'action
+- [x] Filtres par statut intégrés
+- [x] Source badges (history, ocr, assignment)
 
-### Task 4: Traductions
-- [ ] Ajouter clés i18n pour actions (es, fr, en)
-- [ ] Labels des filtres
-- [ ] Messages vides et erreurs
+### Task 3: Service API ✅
+- [x] API methods dans `serviceRequestsApi` avec React Query
+- [x] Types TypeScript alignés avec backend (`HistoryEntry`, `HistoryEntrySource`, etc.)
+- [x] Gestion du cache avec React Query
 
-### Task 5: Menu Configuration
-- [ ] Vérifier que le menu "Historial" existe dans `menu_configurations`
-- [ ] Lien vers `/dashboard/agent/cnedoge-pasaporte/historial`
+### Task 4: Traductions ✅
+- [x] Clés i18n pour actions (es, fr, en) dans `getHistoryActionLabel()`
+- [x] Labels des filtres
+- [x] Messages vides et erreurs
 
----
-
-## Phase 3 - Consolidation (Future)
-
-### Task 1: Intégrer Documents OCR
-- [ ] Afficher résultats OCR dans historique
-- [ ] Lien vers `gemini_processing_logs`
-
-### Task 2: Intégrer Assignments
-- [ ] Afficher changements d'assignation
-- [ ] Lien vers table `assignments`
-
-### Task 3: Notifications
-- [ ] Alertes pour actions importantes
-- [ ] Badge compteur non-lus
+### Task 5: Menu Configuration ✅
+- [x] Menu "Historial" existe dans `entity-menus.ts` ligne 217
+- [x] Lien vers `/dashboard/agent/cnedoge-pasaporte/pasaportes/history`
 
 ---
 
-## Phase 4 - UX Améliorations (Future)
+## Phase 3 - Consolidation ✅ COMPLETED
 
-### Task 1: Export
-- [ ] Export PDF du timeline
-- [ ] Export CSV pour analyse
+**Commit**: `59a38634` (2026-01-27)
 
-### Task 2: Recherche Avancée
-- [ ] Recherche par référence, citoyen, agent
-- [ ] Filtres combinés
+### Task 1: Intégrer Documents OCR ✅
+- [x] Afficher résultats OCR dans historique (ocr_completed, ocr_failed actions)
+- [x] UNION ALL avec `gemini_processing_logs` table
+- [x] Détails OCR: document_code, extraction_confidence, risk_level, processor
 
-### Task 3: Statistiques
-- [ ] Graphique temps moyen par étape
-- [ ] Tendances par période
+### Task 2: Intégrer Assignments ✅
+- [x] Afficher changements d'assignation (assigned, reassigned actions)
+- [x] UNION ALL avec table `assignments`
+- [x] Détails: agent_name, reassigned_to_name, assignment_method, reassignment_reason
+
+### Task 3: Source Tracking ✅
+- [x] Added `HistoryEntrySource` enum (history, ocr, assignment)
+- [x] Source badges in timeline UI
+- [x] Filter params: `include_ocr`, `include_assignments`
+
+---
+
+## Phase 4 - UX Améliorations ✅ COMPLETED
+
+**Commit**: `f3ad9a66` (2026-01-27)
+
+### Task 1: Export ✅
+- [x] Export CSV du timeline (UTF-8 BOM pour Excel)
+- [x] Export PDF avec timeline formaté (xhtml2pdf)
+- [x] Endpoint: `GET /{request_id}/history/export?format=csv|pdf`
+- [x] Boutons export dans le Sheet frontend
+
+### Task 2: Recherche Avancée ✅
+- [x] Recherche par référence et nom citoyen
+- [x] Filtres combinés avec panneau collapsible
+- [x] Filtre par type d'action (status_change, document_added, ocr_completed, etc.)
+- [x] Filtres de plage de dates (from/to)
+- [x] Badges de filtres actifs avec bouton clear
+
+### Task 3: Statistiques ✅
+- [x] Endpoint: `GET /history/statistics?entity_code=X&days=30`
+- [x] Distribution des actions (bar chart horizontal)
+- [x] Temps moyen par statut
+- [x] Activité journalière (bar chart 14 jours)
+- [x] Métriques clés: total actions, solicitudes actives, jour le plus actif
 
 ---
 
@@ -112,11 +129,12 @@ Page de suivi chronologique des actions sur les demandes de service pour les age
 
 | Fichier | Description |
 |---------|-------------|
-| `models/history.py` | Modèles Pydantic |
-| `repositories/service_request_repository.py` | Méthodes DB |
-| `api/agent_routes.py` | Endpoints REST |
+| `models/history.py` | Modèles Pydantic (HistoryEntry, HistoryEntrySource, etc.) |
+| `repositories/service_request_repository.py` | Méthodes DB avec UNION ALL |
+| `api/agent_routes.py` | Endpoints REST avec filtres OCR/assignments |
 | `tests/unit/service_requests/test_history.py` | Tests unitaires |
-| `dashboard/agent/cnedoge-pasaporte/historial/page.tsx` | Page frontend |
+| `dashboard/agent/cnedoge-pasaporte/pasaportes/history/page.tsx` | Page frontend |
+| `modules/service-requests/types/index.ts` | Types TypeScript |
 
 ---
 
@@ -124,11 +142,11 @@ Page de suivi chronologique des actions sur les demandes de service pour les age
 
 ```
 GET /api/v1/service-requests/{request_id}/history
-  Query params: action_types[], from_date, to_date, include_system, page, page_size
+  Query params: action_type, from_date, to_date, include_system, include_ocr, include_assignments, page, page_size
   Response: HistoryListResponse
 
 GET /api/v1/service-requests/history
-  Query params: entity_code, workflow_codes[], status, page, page_size
+  Query params: entity_code, status_filter, page, page_size
   Response: HistoryListSummaryResponse
 ```
 
@@ -139,4 +157,6 @@ GET /api/v1/service-requests/history
 1. **performed_by nullable**: Intentionnel pour actions système (migrations, webhooks)
 2. **Enum case**: `service_request_history.action` utilise lowercase (status_change, etc.)
 3. **Colonnes previous_status/new_status**: Dénormalisation volontaire pour audit trail efficace
-4. **LATERAL JOIN**: Utilisé pour récupérer last_action efficacement dans la liste
+4. **UNION ALL**: Utilisé pour consolider history, gemini_processing_logs, et assignments
+5. **Source field**: Tracks data origin (history, ocr, assignment) pour UI badges
+6. **Confidence colors**: Green (>90%), Yellow (>70%), Red (<70%) pour OCR

@@ -1,26 +1,25 @@
 /**
- * DocumentsSection - Document icons with Dialog preview (iframe for PDF, img for images)
+ * DocumentsSection - Compact numbered list with status indicators
  *
- * Flow: icons in split-view → click → fetch signed URL → Dialog opens → close
+ * Uses shared DocumentPreviewDialog for preview + agent validate/reject actions.
+ * Signed URLs are cached to avoid redundant fetches on rapid navigation.
+ *
+ * @module agent-dashboard/components/pending/sections
+ * @date 2026-03-07
  */
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { FileText, Image as ImageIcon, Check, AlertCircle, Clock, ExternalLink, Loader2, X } from 'lucide-react';
+import { FileText, Image as ImageIcon, AlertCircle, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { RequestPreviewDocument } from '../../../services/agent-requests-api';
-import { getDocumentDownloadUrl } from '../../../services/agent-requests-api';
+import { getDocumentDownloadUrlCached } from '../../../services/agent-requests-api';
+import { DocumentPreviewDialog } from '../../shared/DocumentPreviewDialog';
+import type { PreviewDocumentInfo } from '../../shared/DocumentPreviewDialog';
 
 interface DocumentsSectionProps {
   documents: RequestPreviewDocument[];
@@ -28,34 +27,21 @@ interface DocumentsSectionProps {
   requestId: string;
 }
 
-const STATUS_STYLES: Record<string, { icon: React.ReactNode; color: string; bg: string }> = {
-  valid: { icon: <Check className="h-3 w-3" />, color: 'text-green-600', bg: 'bg-green-50' },
-  validated: { icon: <Check className="h-3 w-3" />, color: 'text-green-600', bg: 'bg-green-50' },
-  pending: { icon: <Clock className="h-3 w-3" />, color: 'text-orange-600', bg: 'bg-orange-50' },
-  invalid: { icon: <AlertCircle className="h-3 w-3" />, color: 'text-red-600', bg: 'bg-red-50' },
-  rejected: { icon: <AlertCircle className="h-3 w-3" />, color: 'text-red-600', bg: 'bg-red-50' },
+const STATUS_DOT_COLORS: Record<string, string> = {
+  valid: 'bg-green-500',
+  validated: 'bg-green-500',
+  pending: 'bg-orange-400',
+  invalid: 'bg-red-500',
+  rejected: 'bg-red-500',
 };
 
-const DOC_LABELS: Record<string, string> = {
-  dip: 'DIP',
-  photo_carnet: 'Foto Carnet',
-  certificado_nacimiento: 'Acta Nacimiento',
-  pasaporte_antiguo: 'Pasaporte Ant.',
-  denuncia_policial: 'Denuncia',
-  autorizacion_parental: 'Autoriz. Parental',
-  documento_representante_1: 'Doc Rep. 1',
-  documento_representante_2: 'Doc Rep. 2',
-  permiso_residencia: 'Permiso Residencia',
-  contrato_trabajo: 'Contrato Trabajo',
-  certificado_solvencia: 'Cert. Solvencia',
-  certificado_penales: 'Cert. Penales',
+const STATUS_DOT_KEYS: Record<string, string> = {
+  valid: 'docStatusValid',
+  validated: 'docStatusValid',
+  pending: 'docStatusPending',
+  invalid: 'docStatusRejected',
+  rejected: 'docStatusRejected',
 };
-
-function isPdf(mimeType?: string | null, fileName?: string | null): boolean {
-  if (mimeType === 'application/pdf') return true;
-  if (fileName?.toLowerCase().endsWith('.pdf')) return true;
-  return false;
-}
 
 function isImage(mimeType?: string | null, fileName?: string | null): boolean {
   if (mimeType?.startsWith('image/')) return true;
@@ -69,60 +55,67 @@ export function DocumentsSection({
   requestId,
 }: DocumentsSectionProps) {
   const t = useTranslations('agent.pending.preview');
-  const [previewDoc, setPreviewDoc] = useState<RequestPreviewDocument | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<PreviewDocumentInfo | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Track local status overrides from validate/reject actions
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
 
-  const handleDocumentClick = async (doc: RequestPreviewDocument) => {
+  const handleDocumentClick = useCallback(async (doc: RequestPreviewDocument) => {
     setLoadingDocId(doc.id);
     setError(null);
     try {
-      const signedUrl = await getDocumentDownloadUrl(requestId, doc.code);
-      setPreviewDoc(doc);
+      const signedUrl = await getDocumentDownloadUrlCached(requestId, doc.code);
+      setPreviewDoc({
+        id: doc.id,
+        code: doc.code,
+        name: doc.name,
+        mimeType: doc.mimeType,
+        validationStatus: statusOverrides[doc.id] || doc.validationStatus,
+      });
       setPreviewUrl(signedUrl);
     } catch (err) {
-      setError(`Error al cargar ${doc.name}: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+      setError(t('docLoadError', { name: doc.name, error: err instanceof Error ? err.message : 'unknown' }));
     } finally {
       setLoadingDocId(null);
     }
-  };
+  }, [requestId, statusOverrides, t]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setPreviewDoc(null);
     setPreviewUrl(null);
-  };
+  }, []);
 
-  const handleOpenInNewTab = () => {
-    if (previewUrl) window.open(previewUrl, '_blank');
-  };
-
-  const docIsPdf = previewDoc ? isPdf(previewDoc.mimeType, previewDoc.name) : false;
-  const docIsImage = previewDoc ? isImage(previewDoc.mimeType, previewDoc.name) : false;
+  const handleDocumentStatusChanged = useCallback((documentId: string, newStatus: 'validated' | 'rejected') => {
+    setStatusOverrides(prev => ({ ...prev, [documentId]: newStatus }));
+  }, []);
 
   return (
     <>
       <Card>
         <CardContent className="p-3">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
             <FileText className="h-3 w-3" />
             {t('documents')}
             <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">{documentsCount}</Badge>
           </p>
           {error && (
-            <div className="mb-3 p-2 bg-destructive/10 text-destructive text-xs rounded flex items-center gap-2">
+            <div className="mb-2 p-1.5 bg-destructive/10 text-destructive text-xs rounded flex items-center gap-2">
               <AlertCircle className="h-3 w-3 shrink-0" />
-              <span>{error}</span>
+              <span className="truncate">{error}</span>
               <button onClick={() => setError(null)} className="ml-auto"><X className="h-3 w-3" /></button>
             </div>
           )}
           {documents.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('noDocuments')}</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {documents.map((doc) => {
-                const status = STATUS_STYLES[doc.validationStatus] || STATUS_STYLES.pending;
-                const label = DOC_LABELS[doc.code] || doc.code.replace(/_/g, ' ');
+            <div className="space-y-0.5">
+              {documents.map((doc, idx) => {
+                const effectiveStatus = statusOverrides[doc.id] || doc.validationStatus;
+                const dotColor = STATUS_DOT_COLORS[effectiveStatus] || STATUS_DOT_COLORS.pending;
+                const dotKey = STATUS_DOT_KEYS[effectiveStatus] || 'docStatusPending';
+                const label = doc.code.replace(/_/g, ' ');
                 const isLoading = loadingDocId === doc.id;
                 const docIsImg = isImage(doc.mimeType, doc.name);
 
@@ -132,24 +125,22 @@ export function DocumentsSection({
                     onClick={() => handleDocumentClick(doc)}
                     disabled={isLoading}
                     className={cn(
-                      'flex items-center gap-2 p-2 rounded-lg border text-left',
+                      'flex items-center gap-2 w-full px-1.5 py-1 rounded text-left',
                       'hover:bg-muted/50 transition-colors cursor-pointer',
                       isLoading && 'opacity-60'
                     )}
                   >
-                    <div className={cn('shrink-0 h-9 w-9 rounded flex items-center justify-center', status.bg)}>
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      ) : docIsImg ? (
-                        <ImageIcon className={cn('h-4 w-4', status.color)} />
-                      ) : (
-                        <FileText className={cn('h-4 w-4', status.color)} />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium truncate">{label}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{doc.name}</p>
-                    </div>
+                    <span className="text-[10px] text-muted-foreground w-3 text-right shrink-0">{idx + 1}.</span>
+                    <span className={cn('h-2 w-2 rounded-full shrink-0', dotColor)} title={t(dotKey)} />
+                    {isLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
+                    ) : docIsImg ? (
+                      <ImageIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                    ) : (
+                      <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="text-xs font-medium truncate">{label}</span>
+                    <span className="text-[10px] text-muted-foreground truncate ml-auto">{doc.name}</span>
                   </button>
                 );
               })}
@@ -158,53 +149,15 @@ export function DocumentsSection({
         </CardContent>
       </Card>
 
-      {/* Document Preview Dialog */}
-      <Dialog open={previewDoc !== null} onOpenChange={(open) => { if (!open) handleClose(); }}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col p-0">
-          <DialogHeader className="px-4 pt-4 pb-2 border-b shrink-0">
-            <DialogTitle className="flex items-center justify-between text-sm">
-              <span className="truncate mr-4">
-                {DOC_LABELS[previewDoc?.code || ''] || previewDoc?.name || 'Document'}
-              </span>
-              <Button variant="outline" size="sm" onClick={handleOpenInNewTab} className="shrink-0">
-                <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                Nueva pestaña
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {previewUrl && docIsPdf && (
-              <iframe
-                src={previewUrl}
-                className="w-full h-full min-h-[70vh]"
-                title={previewDoc?.name || 'Document'}
-              />
-            )}
-            {previewUrl && docIsImage && (
-              <div className="flex items-center justify-center p-4 h-full bg-muted/30">
-                <img
-                  src={previewUrl}
-                  alt={previewDoc?.name || 'Document'}
-                  className="max-w-full max-h-[70vh] object-contain rounded shadow-sm"
-                />
-              </div>
-            )}
-            {previewUrl && !docIsPdf && !docIsImage && (
-              <div className="flex flex-col items-center justify-center p-8 gap-4">
-                <FileText className="h-12 w-12 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Vista previa no disponible para este tipo de archivo
-                </p>
-                <Button onClick={handleOpenInNewTab}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Abrir documento
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Shared preview dialog with agent actions */}
+      <DocumentPreviewDialog
+        open={previewDoc !== null}
+        onOpenChange={(open) => { if (!open) handleClose(); }}
+        document={previewDoc}
+        previewUrl={previewUrl}
+        agentActions
+        onDocumentStatusChanged={handleDocumentStatusChanged}
+      />
     </>
   );
 }

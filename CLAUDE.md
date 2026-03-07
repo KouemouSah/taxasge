@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**TaxasGE** is a government fiscal services platform for Equatorial Guinea. It's a monorepo with:
+**Facil** is a government digital process services platform for Equatorial Guinea. It's a monorepo with:
 - **Backend**: Python 3.11+ / FastAPI / PostgreSQL (Supabase) / asyncpg
 - **Frontend**: Next.js 14 / React 18 / TypeScript / Tailwind CSS / Shadcn/UI
 - **Deployment**: Google Cloud Run (backend) + Firebase Hosting (frontend)

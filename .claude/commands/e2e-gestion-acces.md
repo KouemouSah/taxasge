@@ -26,12 +26,12 @@ E2E_ADMIN_PASSWORD=Taxasge@25
 E2E_USER_EMAIL=libressay@gmail.com
 E2E_USER_PASSWORD=Taxasge@26
 
-# Agent de test
+# Agent de test a créer
 E2E_AGENT_EMAIL=cnedoge26@gmail.com
 E2E_AGENT_PASSWORD=Taxasge@25
 ```
 
-### Utilisateurs de Test (Agents par Ministère/Entité)
+### Utilisateurs de Test (Agents par Ministère/Entité) a créer
 
 | Email | Ministère/Entité | Entité Liée | Département | agent_role | Dashboard |
 |-------|------------------|-------------|-------------|------------|-----------|

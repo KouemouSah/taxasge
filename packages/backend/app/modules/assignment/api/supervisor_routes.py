@@ -1390,10 +1390,13 @@ async def assign_escalation(
         UPDATE service_requests
         SET assigned_to = $2,
             assigned_at = NOW(),
+            escalated = false,
+            escalation_sla_warning_sent = false,
+            escalation_sla_escalated = false,
             updated_at = NOW()
         WHERE id = $1
         AND escalated = true
-        RETURNING id, reference
+        RETURNING id, reference, status, workflow_code, entity_code
     """, queue_id, target_user_id)
 
     if not result:
@@ -1402,14 +1405,34 @@ async def assign_escalation(
             detail="Escalated request not found"
         )
 
-    # Record in history
+    # Create/update agent_work_queue entry so agent sees it in Pendientes
+    existing_queue = await db.fetchrow("""
+        SELECT id FROM agent_work_queue
+        WHERE item_id = $1 AND item_type = 'service_request'
+    """, queue_id)
+
+    if existing_queue:
+        await db.execute("""
+            UPDATE agent_work_queue
+            SET assigned_to = $2, status = 'assigned', escalated = false,
+                updated_at = NOW()
+            WHERE id = $1
+        """, existing_queue['id'], str(target_user_id))
+    else:
+        await db.execute("""
+            INSERT INTO agent_work_queue
+            (item_id, item_type, assigned_to, status, entity_code, escalated, priority_score)
+            VALUES ($1, 'service_request', $2, 'assigned', $3, false, 50)
+        """, queue_id, str(target_user_id), result.get('entity_code'))
+
+    # Record in history (escalation_assigned = supervisor assigned to agent)
     await db.execute("""
         INSERT INTO service_request_history
-        (service_request_id, action, previous_status, new_status, performed_by, comment)
-        VALUES ($1, 'escalation_assigned', (SELECT status FROM service_requests WHERE id = $1),
-                (SELECT status FROM service_requests WHERE id = $1), $2,
-                'escalation_assigned')
-    """, queue_id, UUID(current_user.id))
+        (service_request_id, action, previous_status, new_status, performed_by, comment, details)
+        VALUES ($1, 'escalation_assigned', $2, $2, $3, 'escalation_assigned',
+                $4::jsonb)
+    """, queue_id, result['status'], UUID(current_user.id),
+        json.dumps({"assigned_to": str(target_user_id), "supervisor_id": str(current_user.id)}))
 
     logger.info(f"Escalation {queue_id} assigned to {target_user_id} by {current_user.email}")
 
@@ -1437,7 +1460,7 @@ async def resolve_escalation(
     """
     # Find the escalated service request
     request = await db.fetchrow("""
-        SELECT id, reference, status, escalated
+        SELECT id, reference, status, escalated, escalated_by
         FROM service_requests WHERE id = $1
     """, queue_id)
 
@@ -1452,18 +1475,40 @@ async def resolve_escalation(
             detail="Service request is not escalated"
         )
 
-    # De-escalate
+    # De-escalate. Keep escalation_reason + escalated_by for audit trail but clear active flags.
+    # Reassign to the agent who originally escalated (they get it back to process).
+    escalated_by_id = request.get('escalated_by')
+
     await db.execute("""
         UPDATE service_requests
         SET escalated = false,
-            escalated_at = NULL,
-            escalated_by = NULL,
-            escalation_reason = NULL,
             escalation_sla_warning_sent = false,
             escalation_sla_escalated = false,
+            assigned_to = $2,
+            assigned_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
-    """, queue_id)
+    """, queue_id, escalated_by_id)
+
+    # Ensure agent_work_queue entry exists for the agent
+    if escalated_by_id:
+        existing_queue = await db.fetchrow("""
+            SELECT id FROM agent_work_queue
+            WHERE item_id = $1 AND item_type = 'service_request'
+        """, queue_id)
+        if existing_queue:
+            await db.execute("""
+                UPDATE agent_work_queue
+                SET assigned_to = $2, status = 'assigned', escalated = false, updated_at = NOW()
+                WHERE id = $1
+            """, existing_queue['id'], str(escalated_by_id))
+        else:
+            await db.execute("""
+                INSERT INTO agent_work_queue
+                (item_id, item_type, assigned_to, status, entity_code, escalated, priority_score)
+                VALUES ($1, 'service_request', $2, 'assigned',
+                        (SELECT entity_code FROM service_requests WHERE id = $1), false, 50)
+            """, queue_id, str(escalated_by_id))
 
     # Record resolution in history with notes
     await db.execute("""

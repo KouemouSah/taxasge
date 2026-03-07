@@ -16,16 +16,20 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   AlertTriangle,
+  ChevronDown,
   Clock,
   RefreshCw,
   Search,
   ShieldAlert,
+  ShieldCheck,
   CheckCircle2,
   Hourglass,
   Eye,
   User,
   Calendar,
   FileText,
+  XCircle,
+  UserCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -40,9 +44,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { agentRequestsApi } from '../../services/agent-requests-api';
-import type { EscalationListItem } from '../../services/agent-requests-api';
+import type { EscalationListItem, EscalationHistoryEntry } from '../../services/agent-requests-api';
 import type { EntityCode } from '../../types';
 
 // =============================================================================
@@ -292,95 +301,172 @@ function EscalationCard({
   entityCode: string;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
   const style = getEscalationStatusStyle(item.escalationStatus);
   const StatusIcon = style.icon;
   const isSent = item.direction === 'sent';
+  const hasHistory = item.history.length > 0;
 
   return (
-    <div
-      className={cn(
-        'flex items-start gap-3 p-3 rounded-lg border transition-colors hover:shadow-sm',
-        style.bg
-      )}
-    >
-      {/* Direction + Status icon */}
-      <div className={cn('shrink-0 flex items-center justify-center h-9 w-9 rounded-full mt-0.5', style.bg)}>
-        <StatusIcon className={cn('h-4 w-4', style.text)} />
-      </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div
+        className={cn(
+          'rounded-lg border transition-colors hover:shadow-sm',
+          style.bg
+        )}
+      >
+        {/* Main card content */}
+        <div className="flex items-start gap-3 p-3">
+          {/* Status icon */}
+          <div className={cn('shrink-0 flex items-center justify-center h-9 w-9 rounded-full mt-0.5', style.bg)}>
+            <StatusIcon className={cn('h-4 w-4', style.text)} />
+          </div>
 
-      {/* Main content */}
-      <div className="flex-1 min-w-0 space-y-1">
-        {/* Top row: reference + type + status */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-sm font-semibold">{item.caseReference}</span>
-          <Badge variant="outline" className="text-[10px]">
-            {formatWorkflowType(item.caseType)}
-          </Badge>
-          <Badge className={cn('text-[10px] gap-0.5', style.text, style.bg)}>
-            {t(`escalations.status.${item.escalationStatus}`)}
-          </Badge>
-          {isSent ? (
-            <Badge className="text-[10px] bg-orange-100 text-orange-700 gap-0.5">
-              <ArrowUpRight className="h-2.5 w-2.5" />
-              {t('escalations.directionSent')}
-            </Badge>
-          ) : (
-            <Badge className="text-[10px] bg-blue-100 text-blue-700 gap-0.5">
-              <ArrowDownLeft className="h-2.5 w-2.5" />
-              {t('escalations.directionReceived')}
-            </Badge>
-          )}
+          {/* Main content */}
+          <div className="flex-1 min-w-0 space-y-1">
+            {/* Top row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-sm font-semibold">{item.caseReference}</span>
+              <Badge variant="outline" className="text-[10px]">
+                {formatWorkflowType(item.caseType)}
+              </Badge>
+              <Badge className={cn('text-[10px] gap-0.5', style.text, style.bg)}>
+                {t(`escalations.status.${item.escalationStatus}`)}
+              </Badge>
+              {isSent ? (
+                <Badge className="text-[10px] bg-orange-100 text-orange-700 gap-0.5">
+                  <ArrowUpRight className="h-2.5 w-2.5" />
+                  {t('escalations.directionSent')}
+                </Badge>
+              ) : (
+                <Badge className="text-[10px] bg-blue-100 text-blue-700 gap-0.5">
+                  <ArrowDownLeft className="h-2.5 w-2.5" />
+                  {t('escalations.directionReceived')}
+                </Badge>
+              )}
+            </div>
+
+            {/* Reason */}
+            <p className="text-xs text-muted-foreground line-clamp-2" title={item.reason}>
+              <ShieldAlert className="h-3 w-3 inline mr-1 text-orange-500" />
+              {item.reason}
+            </p>
+
+            {/* Meta row */}
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {formatDate(item.escalatedAt, locale)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {getTimeSince(item.escalatedAt)}
+              </span>
+              {item.citizenName && (
+                <span className="flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  {item.citizenName}
+                </span>
+              )}
+              {!isSent && item.escalatedByName && (
+                <span className="flex items-center gap-1 text-blue-600">
+                  <User className="h-3 w-3" />
+                  {t('escalations.escalatedBy', { name: item.escalatedByName })}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Right actions */}
+          <div className="shrink-0 flex items-center gap-1 mt-1">
+            {!isSent && (
+              <Link href={`/${locale}/dashboard/agent/${entityCode}?view=${item.id}`}>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                  <FileText className="h-3 w-3" />
+                  {t('escalations.viewRequest')}
+                </Button>
+              </Link>
+            )}
+            {hasHistory && (
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                  <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
+                </Button>
+              </CollapsibleTrigger>
+            )}
+          </div>
         </div>
 
-        {/* Reason */}
-        <p className="text-xs text-muted-foreground line-clamp-2" title={item.reason}>
-          <ShieldAlert className="h-3 w-3 inline mr-1 text-orange-500" />
-          {item.reason}
-        </p>
-
-        {/* Meta row */}
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          {/* Date */}
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            {formatDate(item.escalatedAt, locale)}
-          </span>
-          {/* Elapsed */}
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {getTimeSince(item.escalatedAt)}
-          </span>
-          {/* Citizen name */}
-          {item.citizenName && (
-            <span className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {item.citizenName}
-            </span>
+        {/* Collapsible history timeline */}
+        <CollapsibleContent>
+          {hasHistory && (
+            <div className="px-3 pb-3 pt-0">
+              <div className="ml-[52px] border-t pt-2">
+                <p className="text-[11px] font-medium text-muted-foreground mb-1.5">
+                  {t('escalations.historyTitle')}
+                </p>
+                <div className="space-y-1.5">
+                  {item.history.map((entry, idx) => (
+                    <HistoryEntry key={idx} entry={entry} locale={locale} t={t} />
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
-          {/* Escalated by (for received) */}
-          {!isSent && item.escalatedByName && (
-            <span className="flex items-center gap-1 text-blue-600">
-              <User className="h-3 w-3" />
-              {t('escalations.escalatedBy', { name: item.escalatedByName })}
-            </span>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
+// =============================================================================
+// HISTORY ENTRY
+// =============================================================================
+
+const ACTION_CONFIG: Record<string, { icon: React.ElementType; color: string; labelKey: string }> = {
+  escalated: { icon: ArrowUpRight, color: 'text-orange-600', labelKey: 'escalations.history.escalated' },
+  escalation_assigned: { icon: UserCheck, color: 'text-blue-600', labelKey: 'escalations.history.assigned' },
+  escalation_resolved: { icon: ShieldCheck, color: 'text-green-600', labelKey: 'escalations.history.resolved' },
+  supervisor_approve: { icon: CheckCircle2, color: 'text-green-600', labelKey: 'escalations.history.approved' },
+  supervisor_reject: { icon: XCircle, color: 'text-red-600', labelKey: 'escalations.history.rejected' },
+};
+
+function HistoryEntry({
+  entry,
+  locale,
+  t,
+}: {
+  entry: EscalationHistoryEntry;
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const config = ACTION_CONFIG[entry.action] || ACTION_CONFIG.escalated;
+  const Icon = config.icon;
+
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className={cn('h-3.5 w-3.5 mt-0.5 shrink-0', config.color)} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className={cn('text-xs font-medium', config.color)}>
+            {t(config.labelKey)}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {formatDate(entry.performedAt, locale)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          {entry.performedByName && (
+            <span>{entry.performedByName}</span>
+          )}
+          {entry.comment && (
+            <span className="italic">— {entry.comment}</span>
           )}
         </div>
       </div>
-
-      {/* Action: link to pending page for received, read-only for sent */}
-      {!isSent && (
-        <Link
-          href={`/${locale}/dashboard/agent/${entityCode}?view=${item.id}`}
-          className="shrink-0 mt-1"
-        >
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-            <FileText className="h-3 w-3" />
-            {t('escalations.viewRequest')}
-          </Button>
-        </Link>
-      )}
     </div>
   );
 }
 
 export default EscalationsPage;
+

@@ -485,7 +485,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
       {/* Split View */}
       <div className="flex gap-4 flex-1 min-h-0 px-4 md:px-6 lg:px-8 pb-4">
         {/* Left Column - List (35%) */}
-        <div className="w-[35%] flex flex-col min-h-0">
+        <div className="w-[28%] flex flex-col min-h-0">
           <RequestList
             items={requests}
             selectedId={selectedId}
@@ -501,7 +501,7 @@ export function PendingPage({ entityCode, action = 'pending' }: PendingPageProps
         </div>
 
         {/* Right Column - Preview (65%) */}
-        <div className="w-[65%] overflow-y-auto border rounded-lg bg-card">
+        <div className="w-[72%] overflow-y-auto border rounded-lg bg-card">
           {/* Supervisor takeover bar */}
           {isSupervisor && selectedId && selectedRequest && selectedRequest.assignedTo !== context?.userId && (
             <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b">

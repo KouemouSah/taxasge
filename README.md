@@ -18,7 +18,7 @@
 ---
 
 ## Description
-Application Mobile et Web de Gestion Fiscale pour la Guinée Équatoriale. Solution complète avec chatbot IA hors ligne, paiements sécurisés et base de données de 547 taxes structurées.
+Application Mobile et Web de Gestion Digital des Procédure AI. Solution complète avec chatbot IA, paiements sécurisés et base de données de 847 taxes structurées.
 
 ## 📊 Project Health Dashboard
 
@@ -64,9 +64,9 @@ taxasge/
 
 ### **Application Mobile (React Native)**
 - **🤖 Chatbot IA hors ligne** : Assistant fiscal intelligent (TensorFlow Lite)
-- **💾 Base de données locale** : 547 taxes de Guinée Équatoriale
+- **💾 Base de données locale** : 847 taxes de Guinée Équatoriale
 - **🌍 Multilingue** : Support ES/FR/EN
-- **💳 Paiements sécurisés** : Intégration Bange
+- **💳 Paiements sécurisés** : Intégration Bange - Ecobank
 - **🔄 Synchronisation** : Mode hors ligne avec sync automatique
 
 ### **Backend API (FastAPI + Firebase)**
@@ -162,7 +162,7 @@ yarn info             # Informations workspaces
 
 ### **Frontend Mobile**
 - **React Native** 0.73.0 - Framework mobile cross-platform
-- **TensorFlow Lite** - IA/ML pour chatbot hors ligne
+- **TensorFlow Lite** - IA/ML pour chatbot AI
 - **Firebase SDK** - Auth, Analytics, Crashlytics
 - **React Navigation** - Navigation native
 - **React Native Vector Icons** - Icônes
@@ -198,10 +198,10 @@ yarn info             # Informations workspaces
 ### **Structure des Données**
 ```json
 {
-  "ministerios": "8 ministères gouvernementaux",
+  "ministerios": "14 ministères gouvernementaux",
   "sectores": "Secteurs économiques par ministère", 
   "categorias": "Catégories de taxes par secteur",
-  "taxes": "547 taxes avec détails complets",
+  "taxes": "847 taxes avec détails complets",
   "documentos_requeridos": "Documents nécessaires",
   "procedimientos": "Étapes procédurales",
   "palabras_clave": "Mots-clés ES/FR/EN"
@@ -325,4 +325,4 @@ Créer une [Feature Request](https://github.com/KouemouSah/taxasge/issues/new?te
 
 **🇬🇶 Développé pour la Guinée Équatoriale**
 
-*Simplifiant la gestion fiscale pour tous les citoyens et entreprises*
+*Simplifiant la gestion digital des procédures pour tous les citoyens et entreprises*

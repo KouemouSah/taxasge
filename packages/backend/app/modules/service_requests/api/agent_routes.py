@@ -39,12 +39,78 @@ from ..models.history import (
 from ..repositories.service_request_repository import service_request_repository
 from app.core.events import EventBus, EventType
 from app.modules.batch_requests.repositories.batch_repository import batch_repository
+from dataclasses import dataclass
 
 
 router = APIRouter(
     prefix="/agent/service-requests",
     tags=["Agent - Service Requests"]
 )
+
+
+# ═══════════════════════════════════════════════════════════════
+# AGENT CONTEXT — single query per HTTP request
+# ═══════════════════════════════════════════════════════════════
+
+@dataclass(frozen=True)
+class AgentContext:
+    """Agent profile data resolved once per HTTP request via Depends().
+
+    Scoping rules:
+    - has_global_scope (supervisor + main_office) → sees ALL sites/requests
+    - is_supervisor + NOT main_office → site-level supervisor: sees own site only,
+      but can manage team (see all requests at their site, not just assigned)
+    - regular agent → sees own site, only their assigned requests
+    """
+    profile_id: Optional[UUID]
+    entity_location_id: Optional[UUID]
+    is_supervisor: bool
+    is_main_office: bool
+    user_id: UUID
+
+    @property
+    def has_profile(self) -> bool:
+        return self.profile_id is not None
+
+    @property
+    def has_global_scope(self) -> bool:
+        """Only supervisors at main office see all sites."""
+        return self.is_supervisor and self.is_main_office
+
+
+async def get_agent_context(
+    current_user: User = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_database),
+) -> AgentContext:
+    """
+    FastAPI dependency — resolves agent profile in 1 SQL query.
+    FastAPI caches Depends() results per request, so this runs at most once
+    even if multiple sub-dependencies or the endpoint itself inject it.
+    """
+    row = await db.fetchrow("""
+        SELECT ap.id, ap.entity_location_id, ap.is_supervisor,
+               COALESCE(el.is_main_office, false) AS is_main_office
+        FROM agent_profiles ap
+        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
+        WHERE ap.user_id = $1 AND ap.is_active = true
+        LIMIT 1
+    """, current_user.id)
+
+    if row:
+        return AgentContext(
+            profile_id=row['id'],
+            entity_location_id=row['entity_location_id'],
+            is_supervisor=row['is_supervisor'] or False,
+            is_main_office=row['is_main_office'],
+            user_id=current_user.id,
+        )
+    return AgentContext(
+        profile_id=None,
+        entity_location_id=None,
+        is_supervisor=False,
+        is_main_office=False,
+        user_id=current_user.id,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -192,22 +258,19 @@ async def get_queue(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(1000, ge=1, description="Items per page (default: all)"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     _=Depends(permission_required("service_request.view_queue"))
 ):
     # Calculate offset for pagination
     offset = (page - 1) * page_size
 
-    # Get agent's entity_location_id for site-based filtering
-    agent_entity_location_id = await db.fetchval(
-        "SELECT entity_location_id FROM agent_profiles WHERE user_id = $1 AND is_active = TRUE LIMIT 1",
-        current_user.id
-    )
+    # Global scope (main-office supervisor) sees all sites; others see only their site
+    site_filter = None if agent_ctx.has_global_scope else agent_ctx.entity_location_id
 
     items = await agent_queue_service.get_pending_items(
         db=db,
         entity_code=entity_code,
-        entity_location_id=agent_entity_location_id,
+        entity_location_id=site_filter,
         limit=page_size,
         offset=offset
     )
@@ -251,19 +314,9 @@ async def get_queue(
 async def get_queue_stats(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     _=Depends(permission_required("service_request.view_queue_stats"))
 ):
-    # Resolve agent's site for scoping
-    agent_row = await db.fetchrow("""
-        SELECT ap.entity_location_id, ap.is_supervisor,
-               COALESCE(el.is_main_office, false) AS is_main_office
-        FROM agent_profiles ap
-        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
-        WHERE ap.user_id = $1 AND ap.is_active = true
-        LIMIT 1
-    """, current_user.id)
-
     # Build conditions: entity workflows + site scope
     conditions = ["sr.status::text NOT IN ('DRAFT', 'CANCELLED')"]
     params: list = []
@@ -283,17 +336,17 @@ async def get_queue_stats(
             params.append(entity_workflows)
             param_idx += 1
 
-    # Site scope: non-main-office agents only see their site
-    if agent_row and agent_row['entity_location_id'] and not agent_row['is_main_office']:
+    # Site scope: only global-scope supervisors see all sites
+    if not agent_ctx.has_global_scope and agent_ctx.entity_location_id:
         conditions.append(
             f"(sr.entity_location_id = ${param_idx} OR sr.entity_location_id IS NULL)"
         )
-        params.append(agent_row['entity_location_id'])
+        params.append(agent_ctx.entity_location_id)
         param_idx += 1
 
-    # Add current_user.id as parameter for assigned count
+    # Add agent user_id as parameter for assigned count
     agent_user_id_param = param_idx
-    params.append(current_user.id)
+    params.append(agent_ctx.user_id)
     param_idx += 1
 
     where = " AND ".join(conditions)
@@ -454,6 +507,7 @@ async def release_item(
         SET assigned_to = NULL,
             assigned_at = NULL,
             status = 'SUBMITTED',
+            submitted_at = COALESCE(submitted_at, NOW()),
             updated_at = NOW()
         WHERE id = $1
     """, queue_item['item_id'])
@@ -743,6 +797,14 @@ async def get_history_statistics(
 # MY ESCALATIONS (MUST BE BEFORE /{request_id} FOR ROUTE MATCHING)
 # ═══════════════════════════════════════════════════════════════
 
+class EscalationHistoryEntry(BaseModel):
+    """Single history entry for escalation timeline"""
+    action: str
+    performed_at: str
+    performed_by_name: Optional[str] = None
+    comment: Optional[str] = None
+
+
 class EscalationItemResponse(BaseModel):
     """Escalation item response for agent view"""
     id: str
@@ -759,6 +821,7 @@ class EscalationItemResponse(BaseModel):
     direction: str = "sent"  # "sent" = agent escalated, "received" = supervisor assigned
     escalated_by_name: Optional[str] = None
     citizen_name: Optional[str] = None
+    history: List[EscalationHistoryEntry] = []
 
 
 @router.get(
@@ -834,6 +897,36 @@ async def get_my_escalations(
         LIMIT $2 OFFSET $3
     """, *params)
 
+    # Batch-fetch escalation history for all returned requests (single query)
+    request_ids = [row['id'] for row in rows]
+    history_map: Dict[str, List[EscalationHistoryEntry]] = {str(rid): [] for rid in request_ids}
+
+    if request_ids:
+        history_rows = await db.fetch("""
+            SELECT
+                h.service_request_id,
+                h.action,
+                h.performed_at,
+                h.comment,
+                COALESCE(u.full_name, u.first_name || ' ' || u.last_name) as performed_by_name
+            FROM service_request_history h
+            LEFT JOIN users u ON u.id = h.performed_by
+            WHERE h.service_request_id = ANY($1)
+            AND h.action IN ('escalated', 'escalation_assigned', 'escalation_resolved',
+                             'supervisor_approve', 'supervisor_reject')
+            ORDER BY h.performed_at ASC
+        """, request_ids)
+
+        for hr in history_rows:
+            rid = str(hr['service_request_id'])
+            if rid in history_map:
+                history_map[rid].append(EscalationHistoryEntry(
+                    action=hr['action'],
+                    performed_at=hr['performed_at'].isoformat(),
+                    performed_by_name=hr['performed_by_name'],
+                    comment=hr['comment'] if hr['comment'] not in ('escalation_assigned', 'escalation_resolved', 'supervisor_approve', 'supervisor_reject') else None,
+                ))
+
     return [
         EscalationItemResponse(
             id=str(row['id']),
@@ -850,6 +943,7 @@ async def get_my_escalations(
             direction=row['direction'],
             escalated_by_name=row['escalated_by_name'],
             citizen_name=row['citizen_name'],
+            history=history_map.get(str(row['id']), []),
         )
         for row in rows
     ]
@@ -1304,10 +1398,10 @@ async def make_decision(
         """, request_id, previous_status, current_user.id, history_comment,
             json.dumps(history_details))
 
-        # Release queue item (will be re-queued when documents are uploaded)
+        # Cancel queue item — a new one will be created when citizen re-submits
         await db.execute("""
             UPDATE agent_work_queue
-            SET status = 'pending',
+            SET status = 'cancelled',
                 assigned_to = NULL,
                 updated_at = NOW()
             WHERE id = $1
@@ -1998,9 +2092,11 @@ class ServiceRequestListItem(BaseModel):
     batch_reference: Optional[str] = None
     # Assigned agent name (for supervisor team view)
     assigned_agent_name: Optional[str] = None
-    # Escalation context (only populated for action=escalations)
+    # Escalation context
     escalation_reason: Optional[str] = None
     escalated_at: Optional[str] = None
+    # True when request was returned from escalation by supervisor
+    supervisor_assigned: bool = False
 
 
 class ServiceRequestListResponse(BaseModel):
@@ -2157,7 +2253,7 @@ async def get_entity_service_requests(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
-    current_user=Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     _=Depends(permission_required("service_request.view"))
 ):
     """Get service requests for an entity with filters for dashboard views."""
@@ -2188,7 +2284,7 @@ async def get_entity_service_requests(
 
     # Direct status filter (for custom sub-items like "Completados")
     if status_filter:
-        conditions.append(f"sr.status::text = ${param_idx}")
+        conditions.append(f"sr.status = ${param_idx}::service_request_status_enum")
         params.append(status_filter)
         param_idx += 1
     # Escalations use escalated=true filter instead of status-based
@@ -2196,7 +2292,7 @@ async def get_entity_service_requests(
         conditions.append("sr.escalated = true")
     else:
         statuses = ActionStatusMapping.get_statuses(action)
-        conditions.append(f"sr.status::text = ANY(${param_idx}::text[])")
+        conditions.append(f"sr.status = ANY(${param_idx}::service_request_status_enum[])")
         params.append(statuses)
         param_idx += 1
         # Exclude escalated requests from non-escalation views (pending, validation, etc.)
@@ -2236,47 +2332,43 @@ async def get_entity_service_requests(
         params.append(f"%{search}%")
         param_idx += 1
 
-    # Priority filter
-    # Cast priority enum to text for comparison
+    # Priority filter (native enum comparison — index-friendly)
     if priority:
-        conditions.append(f"sr.priority::text = ${param_idx}")
+        conditions.append(f"sr.priority = ${param_idx}::service_request_priority_enum")
         params.append(priority.upper())
         param_idx += 1
 
-    # Scope: non-supervisors only see their own assigned requests
-    is_supervisor_row = await db.fetchval(
-        "SELECT is_supervisor FROM agent_profiles WHERE user_id = $1 AND is_active = true",
-        current_user.id
-    )
-    is_supervisor = is_supervisor_row is True
-
-    if not is_supervisor:
-        # Force filter to only show requests assigned to current agent
+    # Scope: 3-tier visibility
+    # - Regular agent: only their own assigned requests
+    # - Site supervisor (is_main_office=false): all requests at their site
+    # - Global supervisor (is_main_office=true): all requests
+    if not agent_ctx.is_supervisor:
+        # Regular agent: only their assigned requests
         conditions.append(f"sr.assigned_to = ${param_idx}")
-        params.append(current_user.id)
+        params.append(agent_ctx.user_id)
         param_idx += 1
+    elif not agent_ctx.has_global_scope and agent_ctx.entity_location_id:
+        # Site supervisor: all requests at their site
+        conditions.append(
+            f"(sr.entity_location_id = ${param_idx} OR sr.entity_location_id IS NULL)"
+        )
+        params.append(agent_ctx.entity_location_id)
+        param_idx += 1
+        if agent_id:
+            # Optional sub-filter by specific agent within site
+            conditions.append(f"sr.assigned_to = ${param_idx}::uuid")
+            params.append(agent_id)
+            param_idx += 1
     elif agent_id:
-        # Supervisor team view — optional filter by specific assigned agent
-        conditions.append(f"sr.assigned_to::text = ${param_idx}")
+        # Global supervisor: optional filter by specific assigned agent
+        conditions.append(f"sr.assigned_to = ${param_idx}::uuid")
         params.append(agent_id)
         param_idx += 1
 
     where_clause = " AND ".join(conditions)
 
-    # Count total
-    count_query = f"""
-        SELECT COUNT(*)
-        FROM service_requests sr
-        JOIN users u ON u.id = sr.user_id
-        WHERE {where_clause}
-    """
-    total = await db.fetchval(count_query, *params)
-
     # Calculate pagination
     offset = (page - 1) * page_size
-    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
-
-    # Get paginated results
     params.append(page_size)
     params.append(offset)
 
@@ -2286,6 +2378,8 @@ async def get_entity_service_requests(
     if ActionStatusMapping.is_escalation(action):
         escalation_order = "sr.escalated_at DESC NULLS LAST,"
 
+    # Optimized single query: COUNT(*) OVER() avoids double scan,
+    # LEFT JOINs replace correlated subqueries, native enum casts for index usage
     query = f"""
         SELECT
             sr.id,
@@ -2298,7 +2392,6 @@ async def get_entity_service_requests(
             sr.created_at,
             sr.submitted_at,
             sr.assigned_to,
-            -- Calculate SLA deadline from workflows.sla_hours + submitted_at
             CASE
                 WHEN sr.submitted_at IS NOT NULL AND w.sla_hours IS NOT NULL
                 THEN sr.submitted_at + (w.sla_hours * interval '1 hour')
@@ -2308,13 +2401,23 @@ async def get_entity_service_requests(
             u.last_name,
             u.email,
             sr.batch_id,
-            (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference,
-            COALESCE(assigned_u.full_name, assigned_u.first_name || ' ' || assigned_u.last_name) as assigned_agent_name
+            br.reference AS batch_reference,
+            COALESCE(assigned_u.full_name, assigned_u.first_name || ' ' || assigned_u.last_name) as assigned_agent_name,
+            (esc_hist.request_id IS NOT NULL AND sr.escalated = false) as supervisor_assigned,
+            COUNT(*) OVER() as _total_count
             {escalation_select}
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
-        LEFT JOIN users assigned_u ON assigned_u.id = sr.assigned_to::uuid
+        LEFT JOIN users assigned_u ON assigned_u.id = sr.assigned_to
+        LEFT JOIN batch_requests br ON br.id = sr.batch_id
+        LEFT JOIN LATERAL (
+            SELECT srh.service_request_id as request_id
+            FROM service_request_history srh
+            WHERE srh.service_request_id = sr.id
+              AND srh.action IN ('escalation_assigned', 'escalation_resolved')
+            LIMIT 1
+        ) esc_hist ON true
         WHERE {where_clause}
         ORDER BY
             {escalation_order}
@@ -2331,6 +2434,10 @@ async def get_entity_service_requests(
     """
 
     rows = await db.fetch(query, *params)
+
+    # Extract total from window function (avoids separate COUNT query)
+    total = rows[0]['_total_count'] if rows else 0
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 1
 
     # Transform to response
     items = []
@@ -2371,6 +2478,8 @@ async def get_entity_service_requests(
         if 'escalation_reason' in row.keys():
             item.escalation_reason = row['escalation_reason']
             item.escalated_at = row['escalated_at_ts'].isoformat() if row.get('escalated_at_ts') else None
+        if row.get('supervisor_assigned'):
+            item.supervisor_assigned = True
         items.append(item)
 
     return ServiceRequestListResponse(
@@ -2797,17 +2906,17 @@ async def get_request_preview(
         sla_remaining_hours = round(remaining, 1)
 
         if remaining < 0:
-            sla_status = "breached"
+            sla_status = "violated"
         elif remaining < 6:
-            sla_status = "warning"
+            sla_status = "at_risk"
 
-    # Get documents (max 4 for preview)
+    # Get documents for split-view preview (compact list, max 8 covers all workflows)
     docs_query = """
         SELECT id, document_code, file_name, file_path, mime_type, is_valid
         FROM service_request_documents
         WHERE service_request_id = $1
-        ORDER BY created_at DESC
-        LIMIT 4
+        ORDER BY created_at ASC
+        LIMIT 8
     """
     doc_rows = await db.fetch(docs_query, request_id)
 
@@ -3174,7 +3283,8 @@ async def get_urgent_requests_widget(
         JOIN users u ON u.id = sr.user_id
         LEFT JOIN workflows w ON w.code = sr.workflow_code
         WHERE sr.workflow_code = ANY($1)
-          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+          AND sr.payment_status = 'completed'
           AND ({priority_condition} OR {assigned_condition})
         ORDER BY
             CASE sr.priority
@@ -3226,7 +3336,8 @@ async def get_urgent_requests_widget(
             COUNT(*) FILTER (WHERE sr.assigned_to IS NOT NULL) as total_assigned
         FROM service_requests sr
         WHERE sr.workflow_code = ANY($1)
-          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+          AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+          AND sr.payment_status = 'completed'
     """, workflow_codes)
 
     return UrgentRequestsWidgetResponse(
@@ -3580,7 +3691,8 @@ async def get_alerts_widget(
             FROM service_requests sr
             LEFT JOIN workflows w ON w.code = sr.workflow_code
             WHERE sr.workflow_code = ANY($1)
-              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+              AND sr.payment_status = 'completed'
               AND sr.submitted_at IS NOT NULL
               AND w.sla_hours IS NOT NULL
               AND sr.submitted_at + (w.sla_hours * interval '1 hour') < NOW()
@@ -3611,7 +3723,8 @@ async def get_alerts_widget(
             FROM service_requests sr
             LEFT JOIN workflows w ON w.code = sr.workflow_code
             WHERE sr.workflow_code = ANY($1)
-              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED')
+              AND sr.status::text NOT IN ('DRAFT', 'COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED', 'PAYMENT_PENDING')
+              AND sr.payment_status = 'completed'
               AND sr.submitted_at IS NOT NULL
               AND w.sla_hours IS NOT NULL
               AND sr.submitted_at + (w.sla_hours * interval '1 hour') > NOW()
@@ -4440,6 +4553,40 @@ class CalendarSlotsWidgetResponse(BaseModel):
     total_capacity: int = 0
 
 
+async def _get_scoped_locations(
+    conn, entity_code: str, agent_ctx: AgentContext
+) -> list:
+    """
+    Get entity locations scoped by agent site.
+    Non-supervisors only see their own site; supervisors see all.
+    Uses pre-resolved AgentContext (no extra SQL query).
+    Returns list of LocationInfo objects.
+    """
+    # Security: no agent profile = no locations (never fall through to "all")
+    if not agent_ctx.has_profile:
+        return []
+
+    if not agent_ctx.has_global_scope and agent_ctx.entity_location_id:
+        rows = await conn.fetch("""
+            SELECT id::text, location_name, city
+            FROM entity_locations
+            WHERE entity_code = $1 AND is_active = true AND id = $2
+            ORDER BY is_main_office DESC, location_name
+        """, entity_code, agent_ctx.entity_location_id)
+    else:
+        rows = await conn.fetch("""
+            SELECT id::text, location_name, city
+            FROM entity_locations
+            WHERE entity_code = $1 AND is_active = true
+            ORDER BY is_main_office DESC, location_name
+        """, entity_code)
+
+    return [
+        LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
+        for row in rows
+    ]
+
+
 @router.get(
     "/dashboard/widgets/calendar-slots",
     response_model=CalendarSlotsWidgetResponse,
@@ -4449,7 +4596,7 @@ async def get_calendar_slots_widget(
     entity_code: str = Query(..., description="Entity code (e.g., CNEDOGE_PASAPORTE)"),
     week_offset: int = Query(0, description="Week offset (0=current, 1=next, -1=prev)"),
     location_id: Optional[UUID] = Query(None, description="Filter by location"),
-    current_user: User = Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -4467,18 +4614,8 @@ async def get_calendar_slots_widget(
     day_names_es = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 
     conn = db
-    # Get entity locations
-    locations_rows = await conn.fetch("""
-        SELECT id::text, location_name, city
-        FROM entity_locations
-        WHERE entity_code = $1 AND is_active = true
-        ORDER BY is_main_office DESC, location_name
-    """, entity_code)
-
-    locations_available = [
-        LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
-        for row in locations_rows
-    ]
+    # Get entity locations (scoped by agent site)
+    locations_available = await _get_scoped_locations(conn, entity_code, agent_ctx)
 
     # Determine which location to use
     selected_location = None
@@ -4760,7 +4897,7 @@ class RescheduleResponse(BaseModel):
 async def get_today_appointments_list(
     entity_code: str = Query(..., description="Entity code"),
     location_id: Optional[UUID] = Query(None, description="Filter by location"),
-    current_user: User = Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -4771,18 +4908,8 @@ async def get_today_appointments_list(
     today = date.today()
 
     conn = db
-    # Get entity locations
-    locations_rows = await conn.fetch("""
-        SELECT id::text, location_name, city
-        FROM entity_locations
-        WHERE entity_code = $1 AND is_active = true
-        ORDER BY is_main_office DESC, location_name
-    """, entity_code)
-
-    locations_available = [
-        LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
-        for row in locations_rows
-    ]
+    # Get entity locations (scoped by agent site)
+    locations_available = await _get_scoped_locations(conn, entity_code, agent_ctx)
 
     # Determine selected location
     selected_location = None
@@ -4884,7 +5011,7 @@ async def get_slots_detailed(
     entity_code: str = Query(..., description="Entity code"),
     week_offset: int = Query(0, description="Week offset (0=current, 1=next, -1=prev)"),
     location_id: Optional[UUID] = Query(None, description="Filter by location"),
-    current_user: User = Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.view"))
 ):
@@ -4899,18 +5026,9 @@ async def get_slots_detailed(
     day_names_es = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
 
     conn = db
-    # Get entity locations
-    locations_rows = await conn.fetch("""
-        SELECT id::text, location_name, city
-        FROM entity_locations
-        WHERE entity_code = $1 AND is_active = true
-        ORDER BY is_main_office DESC, location_name
-    """, entity_code)
 
-    locations_available = [
-        LocationInfo(id=row['id'], name=row['location_name'], city=row['city'])
-        for row in locations_rows
-    ]
+    # Get entity locations (scoped by agent site)
+    locations_available = await _get_scoped_locations(conn, entity_code, agent_ctx)
 
     # Determine selected location
     selected_location = None
@@ -5207,7 +5325,7 @@ async def get_my_assigned_for_appointment(
 )
 async def book_for_citizen(
     booking: AgentBookingRequest,
-    current_user: User = Depends(get_current_user),
+    agent_ctx: AgentContext = Depends(get_agent_context),
     db=Depends(get_database),
     _=Depends(permission_required("service_request.schedule_appointment"))
 ):
@@ -5217,6 +5335,14 @@ async def book_for_citizen(
     Triggers APPOINTMENT_BOOKED event for notifications.
     """
     conn = db
+
+    # Security: must have an agent profile
+    if not agent_ctx.has_profile:
+        return AgentBookingResponse(
+            success=False,
+            error="Perfil de agente no encontrado"
+        )
+
     # Verify service request exists and get details
     request = await conn.fetchrow("""
         SELECT
@@ -5253,6 +5379,14 @@ async def book_for_citizen(
             success=False,
             error="Location not found or inactive"
         )
+
+    # Site scope: only global supervisors can book on any site
+    if not agent_ctx.has_global_scope and agent_ctx.entity_location_id:
+        if booking.entity_location_id != agent_ctx.entity_location_id:
+            return AgentBookingResponse(
+                success=False,
+                error="No autorizado: solo puede reservar citas en su sitio asignado"
+            )
 
     # Check slot availability
     booked_count = await conn.fetchval("""
@@ -5337,7 +5471,7 @@ async def book_for_citizen(
                 "appointment_time": booking.appointment_time.strftime('%H:%M'),
                 "location": location['location_name'],
                 "booked_by_agent": True,
-                "agent_id": str(current_user.id),
+                "agent_id": str(agent_ctx.user_id),
                 "timestamp": datetime.now().isoformat(),
             }
         )
@@ -5757,6 +5891,7 @@ async def get_request_history(
     Events are ordered by date descending (most recent first).
     """
     conn = db
+    user_id = UUID(str(current_user.id))
 
     # Get service request with history summary
     request_data = await service_request_repository.get_request_with_history_summary(
@@ -5768,6 +5903,28 @@ async def get_request_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Service request not found"
         )
+
+    # Access control: non-supervisor agents can only see history of requests assigned to them
+    has_view_all = await conn.fetchval("""
+        SELECT EXISTS (
+            SELECT 1 FROM users u
+            JOIN role_permissions rp ON rp.role_id = u.role_id
+            JOIN permissions p ON p.id = rp.permission_id
+            WHERE u.id = $1 AND p.name = 'service_request.view_all' AND rp.granted = true
+            UNION
+            SELECT 1 FROM user_permissions up
+            JOIN permissions p ON p.id = up.permission_id
+            WHERE up.user_id = $1 AND p.name = 'service_request.view_all' AND up.granted = true
+        )
+    """, user_id) or False
+
+    if not has_view_all:
+        assigned_to = request_data.get("assigned_to")
+        if assigned_to is None or UUID(str(assigned_to)) != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view history of requests assigned to you"
+            )
 
     # Build filters
     action_types = [action_type.value] if action_type else None
@@ -5875,6 +6032,7 @@ async def export_request_history(
     - PDF format (formatted timeline document)
     """
     conn = db
+    user_id = UUID(str(current_user.id))
 
     # Get service request info
     request_data = await service_request_repository.get_request_with_history_summary(
@@ -5886,6 +6044,28 @@ async def export_request_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Service request not found"
         )
+
+    # Access control: non-supervisor agents can only export history of requests assigned to them
+    has_view_all = await conn.fetchval("""
+        SELECT EXISTS (
+            SELECT 1 FROM users u
+            JOIN role_permissions rp ON rp.role_id = u.role_id
+            JOIN permissions p ON p.id = rp.permission_id
+            WHERE u.id = $1 AND p.name = 'service_request.view_all' AND rp.granted = true
+            UNION
+            SELECT 1 FROM user_permissions up
+            JOIN permissions p ON p.id = up.permission_id
+            WHERE up.user_id = $1 AND p.name = 'service_request.view_all' AND up.granted = true
+        )
+    """, user_id) or False
+
+    if not has_view_all:
+        assigned_to = request_data.get("assigned_to")
+        if assigned_to is None or UUID(str(assigned_to)) != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only export history of requests assigned to you"
+            )
 
     # Get all history entries (no pagination for export)
     entries, total = await service_request_repository.get_request_history(

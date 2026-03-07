@@ -12,7 +12,7 @@
 import React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { Clock, AlertTriangle, AlertCircle, FileStack, ShieldAlert, User } from 'lucide-react';
+import { Clock, AlertTriangle, AlertCircle, FileStack, ShieldAlert, ShieldCheck, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ServiceRequestListItem, SlaStatus, Priority } from '../../services/agent-requests-api';
@@ -49,11 +49,11 @@ interface RequestListItemProps {
 // HELPERS
 // =============================================================================
 
-const PRIORITY_STYLES: Record<Priority, { bg: string; text: string; label: string }> = {
-  URGENT: { bg: 'bg-red-100', text: 'text-red-700', label: 'Urgente' },
-  HIGH: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Alta' },
-  NORMAL: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Normal' },
-  LOW: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Baja' },
+const PRIORITY_STYLES: Record<Priority, { bg: string; text: string; key: string }> = {
+  URGENT: { bg: 'bg-red-100', text: 'text-red-700', key: 'priorityUrgent' },
+  HIGH: { bg: 'bg-orange-100', text: 'text-orange-700', key: 'priorityHigh' },
+  NORMAL: { bg: 'bg-blue-100', text: 'text-blue-700', key: 'priorityNormal' },
+  LOW: { bg: 'bg-gray-100', text: 'text-gray-600', key: 'priorityLow' },
 };
 
 const SLA_STYLES: Record<SlaStatus, { icon: React.ReactNode; text: string }> = {
@@ -62,16 +62,16 @@ const SLA_STYLES: Record<SlaStatus, { icon: React.ReactNode; text: string }> = {
   violated: { icon: <AlertCircle className="h-3 w-3" />, text: 'text-red-600' },
 };
 
-function formatSlaTime(deadline: string | null): string {
+function formatSlaTime(deadline: string | null, t: (key: string, values?: Record<string, string | number>) => string): string {
   if (!deadline) return '';
   const now = new Date();
   const sla = new Date(deadline);
   const diffMs = sla.getTime() - now.getTime();
   const diffHours = Math.round(diffMs / (1000 * 60 * 60));
 
-  if (diffHours < 0) return `${Math.abs(diffHours)}h atrasado`;
-  if (diffHours < 24) return `${diffHours}h`;
-  return `${Math.floor(diffHours / 24)}d`;
+  if (diffHours < 0) return t('slaHoursDelayed', { hours: Math.abs(diffHours) });
+  if (diffHours < 24) return t('slaHours', { hours: diffHours });
+  return t('slaDays', { days: Math.floor(diffHours / 24) });
 }
 
 function formatWorkflowLabel(workflowCode: string, _solicitudType: string, _motivo: string | null): string {
@@ -100,17 +100,19 @@ function formatDate(dateString: string): string {
   });
 }
 
-function formatStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    submitted: 'Enviado',
-    pending_review: 'En revisión',
-    approved: 'Aprobado',
-    rejected: 'Rechazado',
-    pending_documents: 'Docs pendientes',
-    pending_payment: 'Pago pendiente',
-    completed: 'Completado',
-  };
-  return statusMap[status] || status;
+const STATUS_KEYS: Record<string, string> = {
+  submitted: 'statusSubmitted',
+  pending_review: 'statusPendingReview',
+  approved: 'statusApproved',
+  rejected: 'statusRejected',
+  pending_documents: 'statusPendingDocuments',
+  pending_payment: 'statusPendingPayment',
+  completed: 'statusCompleted',
+};
+
+function formatStatus(status: string, t: (key: string) => string): string {
+  const key = STATUS_KEYS[status];
+  return key ? t(key) : status;
 }
 
 function formatTimeAgo(dateString: string, locale: string = 'es'): string {
@@ -156,13 +158,13 @@ export function RequestListItem({
       onClick={onClick}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
       className={cn(
-        'p-3 border-b cursor-pointer transition-colors',
-        'hover:bg-accent/50',
-        isSelected && 'bg-accent border-l-4 border-l-primary'
+        'p-2.5 border-b cursor-pointer transition-colors',
+        'hover:bg-blue-50/60',
+        isSelected && 'bg-blue-50 border-l-2 border-l-blue-500'
       )}
     >
       {/* Header row */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-0.5">
         {/* Reference - left side */}
         {showColumn('reference') && (
           <div className="flex items-center gap-1.5">
@@ -179,6 +181,12 @@ export function RequestListItem({
                 </Badge>
               </Link>
             )}
+            {item.supervisorAssigned && (
+              <Badge className="text-[10px] px-1 py-0 bg-purple-100 text-purple-700">
+                <ShieldCheck className="h-2.5 w-2.5 mr-0.5" />
+                {t('supervisorBadge')}
+              </Badge>
+            )}
           </div>
         )}
         {!showColumn('reference') && <span />}
@@ -189,41 +197,38 @@ export function RequestListItem({
           {showColumn('slaDeadline') && item.slaDeadline && (
             <span className={cn('flex items-center gap-1 text-xs', slaStyle.text)}>
               {slaStyle.icon}
-              {formatSlaTime(item.slaDeadline)}
+              {formatSlaTime(item.slaDeadline, t)}
             </span>
           )}
           {/* Priority badge */}
           {showColumn('priority') && (
             <Badge className={cn('text-[10px] px-1.5 py-0', priorityStyle.bg, priorityStyle.text)}>
-              {priorityStyle.label}
+              {t(priorityStyle.key)}
             </Badge>
           )}
           {/* Status badge (new) */}
           {showColumn('status') && (
             <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              {formatStatus(item.status)}
+              {formatStatus(item.status, t)}
             </Badge>
           )}
         </div>
       </div>
 
-      {/* Workflow type / solicitud type */}
-      {showColumn('solicitudType') && (
-        <p className="text-xs text-muted-foreground mb-1">
-          {formatWorkflowLabel(item.workflowCode, item.solicitudType, item.motivo)}
+      {/* Compact line: workflow type + citizen name */}
+      {(showColumn('solicitudType') || showColumn('fullName')) && (
+        <p className="text-xs text-muted-foreground truncate">
+          {showColumn('solicitudType') && formatWorkflowLabel(item.workflowCode, item.solicitudType, item.motivo)}
+          {showColumn('solicitudType') && showColumn('fullName') && ' · '}
+          {showColumn('fullName') && item.citizenName}
         </p>
       )}
 
-      {/* Created date (new) */}
+      {/* Created date (shown only when solicitudType is hidden) */}
       {showColumn('createdAt') && !showColumn('solicitudType') && (
-        <p className="text-xs text-muted-foreground mb-1">
+        <p className="text-xs text-muted-foreground">
           {formatDate(item.createdAt)}
         </p>
-      )}
-
-      {/* Citizen name / fullName */}
-      {showColumn('fullName') && (
-        <p className="text-sm truncate">{item.citizenName}</p>
       )}
 
       {/* Assigned agent (supervisor team view) */}
