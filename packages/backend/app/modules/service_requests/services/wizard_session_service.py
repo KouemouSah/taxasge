@@ -35,7 +35,7 @@ from app.core.events import EventBus, EventType
 from .preview_cache import preview_cache
 from .gemini_document_processor import gemini_document_processor
 from .tariff_calculator import tariff_calculator
-from .workflow_engine import workflow_engine
+from .workflow_engine import workflow_engine, resolve_workflow_code
 from ..repositories.service_request_repository import service_request_repository
 from ..repositories.document_repository import document_repository
 from ..models.wizard_session import (
@@ -1182,7 +1182,7 @@ class WizardSessionService:
         """
         from app.modules.documents.services.storage_service import firebase_storage_service
 
-        workflow_code = session["workflow_code"]
+        workflow_code = resolve_workflow_code(session)
         user_id_uuid = UUID(session["user_id"])
         uploaded_files: List[str] = []
 

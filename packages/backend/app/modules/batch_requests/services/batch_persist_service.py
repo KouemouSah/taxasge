@@ -34,7 +34,7 @@ from app.modules.service_requests.models.enums import (
     ServiceRequestStatus,
     SolicitudType,
 )
-from app.modules.service_requests.services.workflow_engine import workflow_engine
+from app.modules.service_requests.services.workflow_engine import workflow_engine, resolve_workflow_code
 from app.modules.service_requests.workflows.workflow_interface import WorkflowContext
 
 from ..repositories.batch_repository import batch_repository
@@ -101,7 +101,7 @@ class BatchPersistService:
 
         session = await batch_session_service.get_session(session_id, user_id)
 
-        workflow_code = session["workflow_code"]
+        workflow_code = resolve_workflow_code(session)
         solicitud_type = session.get("solicitud_type", "expedicion")
         beneficiaries = session.get("beneficiaries", [])
         item_documents = session.get("item_documents", {})
@@ -346,7 +346,7 @@ class BatchPersistService:
             session_id, user_id, {"status": "SUBMITTING"}
         )
 
-        workflow_code = session["workflow_code"]
+        workflow_code = resolve_workflow_code(session)
         solicitud_type = session.get("solicitud_type", "expedicion")
         company_id_str = session.get("company_id")
         company_id = UUID(company_id_str) if company_id_str else None

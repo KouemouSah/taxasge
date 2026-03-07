@@ -606,7 +606,7 @@ class DisplayConfigRepository:
             return None, None
 
         for _wf_code, wf in workflow_engine._workflows.items():
-            if hasattr(wf, 'get_workflow_code_for_subtype') and hasattr(wf, 'allowed_sub_types'):
+            if wf.allowed_sub_types:
                 for sub in wf.allowed_sub_types:
                     try:
                         if wf.get_workflow_code_for_subtype(sub) == target_code:

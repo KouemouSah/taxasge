@@ -7,7 +7,7 @@ until payment is initiated. No DB/Firebase writes until user confirms payment.
 @since v2.0 - Cache-first wizard migration
 @see .claude/plans/CACHE_FIRST_WIZARD_MIGRATION_PLAN.md
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime, date, time
 from uuid import UUID
@@ -152,10 +152,23 @@ class WizardSessionCreate(BaseModel):
     motivo: Optional[str] = Field(None, description="Reason for renovacion")
     is_minor: bool = Field(default=False, description="Is the applicant a minor?")
 
+    @field_validator("workflow_code")
+    @classmethod
+    def validate_workflow_code(cls, v: str) -> str:
+        """Validate workflow_code exists in registered workflows."""
+        from ..services.workflow_engine import workflow_engine
+        code = v.strip().upper()
+        if not code:
+            raise ValueError("workflow_code cannot be empty")
+        wf = workflow_engine.get_workflow_by_string(code)
+        if not wf:
+            raise ValueError(f"Unknown workflow_code: {code}")
+        return code
+
     class Config:
         json_schema_extra = {
             "example": {
-                "workflow_code": "PASAPORTE",
+                "workflow_code": "PASAPORTE_NUEVO",
                 "solicitud_type": "renovacion",
                 "motivo": "VENCIMIENTO",
                 "is_minor": False

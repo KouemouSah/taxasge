@@ -688,6 +688,59 @@ class PredefinedWorkflow(ABC):
         """i18n key for menu title. Uses _MENU_GROUP_I18N mapping, falls back to menu_group."""
         return self._MENU_GROUP_I18N.get(self.menu_group, f"agent.nav.{self.menu_group.lower()}")
 
+    # === Workflow Code Resolution (Auto-Discovery) ===
+
+    def get_all_workflow_codes(self) -> List[WorkflowCode]:
+        """All workflow codes managed by this class.
+
+        Single-code workflows: [self.workflow_code] (default).
+        Multi-code workflows: override to return all variants.
+        """
+        return [self.workflow_code]
+
+    def get_workflow_code_for_subtype(self, key: str) -> WorkflowCode:
+        """Resolve a sub-type/motivo/solicitud_type key to a specific WorkflowCode.
+
+        Default implementation (auto-resolution):
+        1. Check _subtype_code_aliases for semantic aliases
+           (e.g. VENCIMIENTO → PASAPORTE_RENOVACION)
+        2. Auto-match: find a code whose name contains the key
+           (e.g. DETERIORO → PASAPORTE_DETERIORO)
+        3. Fallback: return self.workflow_code
+
+        Override ONLY if your workflow has non-standard naming that
+        auto-matching can't handle. Most workflows need nothing.
+        """
+        # 1. Explicit aliases (override _subtype_code_aliases for edge cases)
+        aliases = self._subtype_code_aliases
+        if key in aliases:
+            return aliases[key]
+
+        # 2. Auto-match: key matches as suffix (_KEY) or prefix (KEY_) in code name
+        #    Suffix match has priority (most common: CANJE → CONDUCIR_CANJE)
+        #    Prefix match handles cases like PRORROGA → PRORROGA_VISADO
+        all_codes = self.get_all_workflow_codes()
+        for code in all_codes:
+            if code.value.endswith(f"_{key}") or code.value == key:
+                return code
+        for code in all_codes:
+            if code.value.startswith(f"{key}_"):
+                return code
+
+        # 3. Fallback: base code
+        return self.workflow_code
+
+    @property
+    def _subtype_code_aliases(self) -> Dict[str, WorkflowCode]:
+        """Semantic aliases for sub-type keys that don't match any code name.
+
+        Override in subclass when a key doesn't appear in any workflow code.
+        Example: VENCIMIENTO → PASAPORTE_RENOVACION (expired = renewal).
+
+        Most workflows don't need this — auto-matching handles standard naming.
+        """
+        return {}
+
     # === Auto-Discovery Methods (Plug & Play Pipeline) ===
 
     def get_subtype_display_names(self) -> Dict[str, str]:
@@ -697,9 +750,7 @@ class PredefinedWorkflow(ABC):
         multi-code classes use "{service_name_es} - {Suffix}".
         Override in subclass for curated names.
         """
-        codes = (self.get_all_workflow_codes()
-                 if hasattr(self, 'get_all_workflow_codes')
-                 else [self.workflow_code])
+        codes = self.get_all_workflow_codes()
         base_code = self.workflow_code.value
         names: Dict[str, str] = {}
         for code in codes:
@@ -719,9 +770,7 @@ class PredefinedWorkflow(ABC):
         Default: base workflow_code = root (None), all others = children of base.
         Override for cross-class grouping (e.g. FP sub-workflows under FP_VERIFICACION).
         """
-        codes = (self.get_all_workflow_codes()
-                 if hasattr(self, 'get_all_workflow_codes')
-                 else [self.workflow_code])
+        codes = self.get_all_workflow_codes()
         base = self.workflow_code.value
         mapping: Dict[str, Optional[str]] = {}
         for code in codes:
@@ -1019,9 +1068,7 @@ class PredefinedWorkflow(ABC):
     def get_info(self) -> Dict[str, Any]:
         """Get workflow info for API."""
         # For multi-code workflows, include all registered codes
-        all_codes = []
-        if hasattr(self, 'get_all_workflow_codes'):
-            all_codes = [c.value for c in self.get_all_workflow_codes()]
+        all_codes = [c.value for c in self.get_all_workflow_codes()]
 
         return {
             "code": self.workflow_code.value,

@@ -993,19 +993,6 @@ class ConducirWorkflow(PredefinedWorkflow):
 
         return self.TARIFFS.get(sub_type, 30000)
 
-    # === Workflow Code Resolution ===
-
-    def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """Get the specific WorkflowCode for a sub_type."""
-        mapping = {
-            "NUEVO": WorkflowCode.CONDUCIR_NUEVO,
-            "CANJE": WorkflowCode.CONDUCIR_CANJE,
-            "RENOVACION": WorkflowCode.CONDUCIR_RENOVACION,
-            "DUPLICADO": WorkflowCode.CONDUCIR_DUPLICADO,
-            "EXTENSION": WorkflowCode.CONDUCIR_EXTENSION
-        }
-        return mapping.get(sub_type, WorkflowCode.CONDUCIR_NUEVO)
-
     # === Utility Methods ===
 
     def requires_exam(self, sub_type: str) -> bool:

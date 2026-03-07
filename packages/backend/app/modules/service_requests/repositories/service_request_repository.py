@@ -132,10 +132,7 @@ class ServiceRequestRepository:
             workflows = workflow_engine.get_workflows_by_category(cat)
             codes: List[str] = []
             for w in workflows:
-                if hasattr(w, 'get_all_workflow_codes'):
-                    codes.extend([c.value for c in w.get_all_workflow_codes()])
-                else:
-                    codes.append(w.workflow_code.value)
+                codes.extend([c.value for c in w.get_all_workflow_codes()])
             return codes
         except (ValueError, Exception):
             return []

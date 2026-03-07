@@ -261,30 +261,28 @@ def _resolve_workflow_codes(workflow, base_code) -> List[Tuple[str, str]]:
     get_workflow_code_for_subtype mapping (e.g. OBRA→CONTRATO_OBRA).
     get_all_workflow_codes() is always authoritative.
     """
-    # Pattern B: get_all_workflow_codes() (definitive, preferred)
-    if hasattr(workflow, 'get_all_workflow_codes'):
-        codes = workflow.get_all_workflow_codes()
-
+    # Pattern B: get_all_workflow_codes() — multi-code workflows (preferred)
+    codes = workflow.get_all_workflow_codes()
+    if len(codes) > 1:
         # Build reverse map for accurate sub_type derivation:
         # sub_type is used for tariff/document extraction, so correctness matters.
         # Collision detection: if N sub_types map to the same code, it means
         # allowed_sub_types is a different dimension (e.g. solicitud types vs
         # contract types in ContratoWorkflow). Skip collided entries.
         reverse_map = {}
-        if hasattr(workflow, 'get_workflow_code_for_subtype'):
-            seen_codes: Dict[Any, List[str]] = {}
-            for sub in getattr(workflow, 'allowed_sub_types', []):
-                try:
-                    mapped_code = workflow.get_workflow_code_for_subtype(sub)
-                    if mapped_code not in seen_codes:
-                        seen_codes[mapped_code] = []
-                    seen_codes[mapped_code].append(sub)
-                except Exception:
-                    pass
-            # Only keep 1:1 mappings (no collisions)
-            for code_key, subs in seen_codes.items():
-                if len(subs) == 1:
-                    reverse_map[code_key] = subs[0]
+        seen_codes: Dict[Any, List[str]] = {}
+        for sub in workflow.allowed_sub_types:
+            try:
+                mapped_code = workflow.get_workflow_code_for_subtype(sub)
+                if mapped_code not in seen_codes:
+                    seen_codes[mapped_code] = []
+                seen_codes[mapped_code].append(sub)
+            except Exception:
+                pass
+        # Only keep 1:1 mappings (no collisions)
+        for code_key, subs in seen_codes.items():
+            if len(subs) == 1:
+                reverse_map[code_key] = subs[0]
 
         pairs = []
         for wf_code in codes:
@@ -297,9 +295,9 @@ def _resolve_workflow_codes(workflow, base_code) -> List[Tuple[str, str]]:
             pairs.append((wf_code.value, sub))
         return pairs
 
-    # Pattern A: allowed_sub_types + get_workflow_code_for_subtype
-    allowed_sub_types = getattr(workflow, 'allowed_sub_types', [])
-    if allowed_sub_types and hasattr(workflow, 'get_workflow_code_for_subtype'):
+    # Pattern A: allowed_sub_types (single-code workflows with sub-types)
+    allowed_sub_types = workflow.allowed_sub_types
+    if allowed_sub_types:
         pairs = []
         for sub_type in allowed_sub_types:
             wf_code = workflow.get_workflow_code_for_subtype(sub_type)

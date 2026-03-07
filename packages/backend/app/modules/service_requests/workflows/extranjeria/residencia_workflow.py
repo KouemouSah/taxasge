@@ -225,6 +225,13 @@ class ResidenciaWorkflow(PredefinedWorkflow):
             WorkflowCode.RESIDENCIA_RENOVACION,
         ]
 
+    @property
+    def _subtype_code_aliases(self) -> Dict[str, WorkflowCode]:
+        """EXPEDICION is a semantic alias — first-time = primera vez."""
+        return {
+            "EXPEDICION": WorkflowCode.RESIDENCIA_PRIMERA_VEZ,
+        }
+
     # === Setup ===
 
     def _setup_workflow(self) -> None:

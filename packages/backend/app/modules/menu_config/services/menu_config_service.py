@@ -70,10 +70,7 @@ def _build_workflow_indexes() -> tuple:
 
     for base_code, workflow in all_workflows.items():
         # Get all codes this workflow handles (multi-code via get_all_workflow_codes)
-        if hasattr(workflow, 'get_all_workflow_codes'):
-            codes = [c.value for c in workflow.get_all_workflow_codes()]
-        else:
-            codes = [base_code.value]
+        codes = [c.value for c in workflow.get_all_workflow_codes()]
 
         # Read properties from workflow class (dynamic, no hardcoding)
         menu_group = workflow.menu_group

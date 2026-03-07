@@ -1017,20 +1017,12 @@ class PasaporteWorkflow(PredefinedWorkflow):
 
     # === Workflow Code Resolution ===
 
-    def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """
-        Get the specific WorkflowCode for a sub_type.
-
-        Aligned with v1 pasaporte_workflow.get_workflow_code_for_subtype().
-        """
-        mapping = {
-            "NUEVO": WorkflowCode.PASAPORTE_NUEVO,
-            "RENOVACION": WorkflowCode.PASAPORTE_RENOVACION,
-            "PERDIDA": WorkflowCode.PASAPORTE_PERDIDA,
-            "ROBO": WorkflowCode.PASAPORTE_ROBO,
-            "DETERIORO": WorkflowCode.PASAPORTE_DETERIORO
+    @property
+    def _subtype_code_aliases(self) -> Dict[str, WorkflowCode]:
+        """VENCIMIENTO is a semantic alias — expired passport = renewal."""
+        return {
+            "VENCIMIENTO": WorkflowCode.PASAPORTE_RENOVACION,
         }
-        return mapping.get(sub_type, WorkflowCode.PASAPORTE_NUEVO)
 
 
 # =============================================================================

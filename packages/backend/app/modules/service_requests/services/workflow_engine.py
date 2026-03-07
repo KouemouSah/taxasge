@@ -82,11 +82,7 @@ class WorkflowEngine:
         workflow = workflow_class()
 
         # Multi-code registration: one workflow instance → N workflow codes
-        codes: List[WorkflowCode] = []
-        if hasattr(workflow, 'get_all_workflow_codes'):
-            codes = workflow.get_all_workflow_codes()
-        else:
-            codes = [workflow.workflow_code]
+        codes = workflow.get_all_workflow_codes()
 
         for code in codes:
             if code in self._workflows:
@@ -1256,6 +1252,64 @@ async def load_generic_workflows(db) -> int:
 
     logger.info(f"Loaded {loaded} generic workflows from database")
     return loaded
+
+
+def resolve_workflow_code(session: Dict[str, Any]) -> str:
+    """Resolve base workflow_code to specific sub-type code.
+
+    Multi-subtype workflows (Pasaporte, Conducir, Contrato, Visado) store a
+    base code at session creation.  This function resolves it to the specific
+    variant using motivo / sub_type / solicitud_type from the session.
+
+    Resolution is handled by PredefinedWorkflow.get_workflow_code_for_subtype()
+    which auto-matches the key against workflow code names. Workflows with
+    non-standard naming define _subtype_code_aliases for edge cases.
+
+    Safe: returns the original code if resolution is not possible.
+    """
+    base_code = session.get("workflow_code")
+    if not base_code:
+        logger.error("resolve_workflow_code called with missing workflow_code in session")
+        return ""
+
+    wf = workflow_engine.get_workflow_by_string(base_code)
+    if not wf:
+        return base_code
+
+    # Single-code workflows: no resolution needed
+    all_codes = wf.get_all_workflow_codes()
+    if len(all_codes) <= 1:
+        return base_code
+
+    # Build resolution key (priority: sub_type > motivo > solicitud_type)
+    resolution_key = session.get("sub_type") or session.get("motivo")
+    if not resolution_key:
+        solicitud_type = session.get("solicitud_type")
+        if solicitud_type:
+            resolution_key = solicitud_type
+        else:
+            return base_code
+
+    # Normalize: always UPPER for matching against WorkflowCode enum values
+    resolution_key = str(resolution_key).strip().upper()
+    if not resolution_key:
+        return base_code
+
+    try:
+        resolved = wf.get_workflow_code_for_subtype(resolution_key)
+        resolved_str = resolved.value
+        if resolved_str != base_code:
+            logger.debug(
+                f"Resolved workflow_code: {base_code} → {resolved_str} "
+                f"(key={resolution_key})"
+            )
+        return resolved_str
+    except (ValueError, KeyError, AttributeError) as e:
+        logger.warning(
+            f"Failed to resolve workflow_code {base_code} "
+            f"with key={resolution_key}: {e}"
+        )
+        return base_code
 
 
 async def resolve_workflow_sites(db, workflow_code: str) -> List[Dict]:

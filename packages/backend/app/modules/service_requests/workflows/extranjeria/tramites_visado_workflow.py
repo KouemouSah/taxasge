@@ -165,15 +165,12 @@ class TramitesVisadoWorkflow(PredefinedWorkflow):
     def menu_title_key(self) -> str:
         return "agent.nav.visas"
 
-    def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """Get the specific WorkflowCode for a visa sub_type."""
-        mapping = {
-            "PRORROGA": WorkflowCode.PRORROGA_VISADO,
-            "ALTERNATIVO": WorkflowCode.VISADO_ALTERNATIVO,
-            "PERMANENCIA": WorkflowCode.PERMANENCIA_EXTRANJERIA,
+    @property
+    def _subtype_code_aliases(self) -> Dict[str, WorkflowCode]:
+        """SALIDA_VENCIDO key doesn't appear as substring in SALIDA_VISADO_VENCIDO."""
+        return {
             "SALIDA_VENCIDO": WorkflowCode.SALIDA_VISADO_VENCIDO,
         }
-        return mapping.get(sub_type, WorkflowCode.PRORROGA_VISADO)
 
     @property
     def requires_agent_review(self) -> bool:

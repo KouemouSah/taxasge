@@ -3,7 +3,7 @@ Pydantic models for batch_requests.
 Aligned with database schema from migration 100.
 """
 from decimal import Decimal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
@@ -48,6 +48,19 @@ class BatchRequestCreate(BaseModel):
     """Create a new batch request."""
     workflow_code: str = Field(..., min_length=1, max_length=100)
     solicitud_type: str = Field(default="expedicion", max_length=50)
+
+    @field_validator("workflow_code")
+    @classmethod
+    def validate_workflow_code(cls, v: str) -> str:
+        """Validate workflow_code exists in registered workflows."""
+        from app.modules.service_requests.services.workflow_engine import workflow_engine
+        code = v.strip().upper()
+        if not code:
+            raise ValueError("workflow_code cannot be empty")
+        wf = workflow_engine.get_workflow_by_string(code)
+        if not wf:
+            raise ValueError(f"Unknown workflow_code: {code}")
+        return code
     company_id: Optional[UUID] = Field(None, description="Optional company ID")
     entity_code: Optional[str] = Field(None, max_length=50)
     notes: Optional[str] = None

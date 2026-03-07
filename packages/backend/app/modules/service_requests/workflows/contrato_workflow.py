@@ -1159,19 +1159,6 @@ class ContratoWorkflow(PredefinedWorkflow):
             WorkflowCode.CONTRATO_OTRO,
         ]
 
-    def get_workflow_code_for_subtype(self, sub_type: str) -> WorkflowCode:
-        """Get the specific WorkflowCode for a contract type (not sub_type)."""
-        mapping = {
-            "OBRA": WorkflowCode.CONTRATO_OBRA,
-            "SERVICIO": WorkflowCode.CONTRATO_SERVICIO,
-            "SUMINISTRO": WorkflowCode.CONTRATO_SUMINISTRO,
-            "CONCESION": WorkflowCode.CONTRATO_CONCESION,
-            "JOINT_VENTURE": WorkflowCode.CONTRATO_JOINT_VENTURE,
-            "ARRENDAMIENTO": WorkflowCode.CONTRATO_ARRENDAMIENTO,
-            "OTRO": WorkflowCode.CONTRATO_OTRO,
-        }
-        return mapping.get(sub_type, WorkflowCode.CONTRATO_OTRO)
-
     # === Tariff Calculation ===
 
     def calculate_tariff(self, context: WorkflowContext, value: float = None) -> int:

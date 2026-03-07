@@ -74,20 +74,17 @@ function formatSlaTime(deadline: string | null): string {
   return `${Math.floor(diffHours / 24)}d`;
 }
 
-function formatWorkflowLabel(workflowCode: string, solicitudType: string, motivo: string | null): string {
-  // Simplify workflow display
-  const typeMap: Record<string, string> = {
-    expedicion: 'Exp.',
-    renovacion: 'Ren.',
-  };
-
-  const base = workflowCode.replace('PASAPORTE_', 'Pasaporte ').replace('_', ' ');
-  const type = typeMap[solicitudType?.toLowerCase()] || '';
-
-  if (motivo) {
-    return `Pasaporte ${type} (${motivo})`;
+function formatWorkflowLabel(workflowCode: string, _solicitudType: string, _motivo: string | null): string {
+  // Universal: workflow_code is now resolved (e.g. PASAPORTE_DETERIORO, not PASAPORTE_NUEVO)
+  // Strip family prefix and title-case the suffix for compact display
+  const parts = workflowCode.split('_');
+  if (parts.length > 1) {
+    return parts
+      .slice(1)
+      .map((p) => p.charAt(0) + p.slice(1).toLowerCase())
+      .join(' ');
   }
-  return type ? `Pasaporte ${type}` : base;
+  return workflowCode;
 }
 
 // =============================================================================
