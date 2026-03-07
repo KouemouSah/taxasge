@@ -470,7 +470,7 @@ class AgentQueueService:
             limit: Maximum items to return (default: 1000 for agents to see all)
             offset: Offset for pagination
         """
-        status_filter = "AND q.status IN ('assigned', 'pending')"
+        status_filter = "AND q.status IN ('assigned', 'pending') AND COALESCE(q.escalated, false) = false"
         if include_completed:
             status_filter = ""
 

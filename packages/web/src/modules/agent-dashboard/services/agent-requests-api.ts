@@ -97,6 +97,9 @@ export interface EscalationListItem {
   notes: string | null;
   createdAt: string;
   escalatedAt: string;
+  direction: 'sent' | 'received';
+  escalatedByName: string | null;
+  citizenName: string | null;
 }
 
 interface BackendEscalationItem {
@@ -111,6 +114,9 @@ interface BackendEscalationItem {
   notes?: string | null;
   created_at: string;
   escalated_at: string;
+  direction: string;
+  escalated_by_name?: string | null;
+  citizen_name?: string | null;
 }
 
 // Workflow schema types for agent detail view
@@ -566,11 +572,13 @@ class AgentRequestsApiClient {
    */
   async getMyEscalations(options?: {
     includeResolved?: boolean;
+    direction?: 'sent' | 'received';
     page?: number;
     pageSize?: number;
   }): Promise<EscalationListItem[]> {
     const params = new URLSearchParams();
     if (options?.includeResolved) params.set('include_resolved', 'true');
+    if (options?.direction) params.set('direction', options.direction);
     if (options?.page) params.set('page', String(options.page));
     if (options?.pageSize) params.set('page_size', String(options.pageSize));
     const qs = params.toString();
@@ -591,6 +599,9 @@ class AgentRequestsApiClient {
       notes: r.notes || null,
       createdAt: r.created_at,
       escalatedAt: r.escalated_at,
+      direction: r.direction as EscalationListItem['direction'],
+      escalatedByName: r.escalated_by_name || null,
+      citizenName: r.citizen_name || null,
     }));
   }
 

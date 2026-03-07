@@ -756,22 +756,26 @@ class EscalationItemResponse(BaseModel):
     notes: Optional[str] = None
     created_at: str
     escalated_at: str
+    direction: str = "sent"  # "sent" = agent escalated, "received" = supervisor assigned
+    escalated_by_name: Optional[str] = None
+    citizen_name: Optional[str] = None
 
 
 @router.get(
     "/my-escalations",
     response_model=List[EscalationItemResponse],
-    summary="Get my escalated items",
+    summary="Get agent escalations (sent + received)",
     description="""
-    Get all items that I have escalated.
+    Returns two types of escalations for the current agent:
+    - **sent**: Requests the agent escalated to supervisor
+    - **received**: Escalated requests the supervisor assigned to this agent
 
-    Returns service requests where:
-    - escalated = true
-    - escalated_by = current user
+    Use `direction` filter to separate them in the UI.
     """
 )
 async def get_my_escalations(
     include_resolved: bool = Query(False, description="Include resolved escalations"),
+    direction: Optional[str] = Query(None, description="Filter: sent | received | null (both)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
@@ -779,9 +783,17 @@ async def get_my_escalations(
     _=Depends(permission_required("service_request.escalate"))
 ):
     offset = (page - 1) * page_size
-
-    # Resolved = COMPLETED, REJECTED, CANCELLED, EXPIRED
     resolved_statuses = ["COMPLETED", "REJECTED", "CANCELLED", "EXPIRED"]
+
+    # Build direction filter
+    if direction == "sent":
+        direction_filter = "AND sr.escalated_by = $1"
+    elif direction == "received":
+        direction_filter = "AND sr.assigned_to = $1 AND sr.escalated_by != $1"
+    else:
+        # Both: sent OR received
+        direction_filter = "AND (sr.escalated_by = $1 OR (sr.assigned_to = $1 AND sr.escalated_by != $1))"
+
     status_filter = "AND sr.status::text != ALL($4::text[])" if not include_resolved else ""
 
     params = [current_user.id, page_size, offset]
@@ -796,19 +808,29 @@ async def get_my_escalations(
             sr.status::text as status,
             sr.escalation_reason,
             sr.escalated_at,
+            sr.escalated_by,
+            sr.assigned_to,
             sr.created_at,
             sr.notes,
             sr.priority::text as priority,
             CASE
                 WHEN sr.status::text IN ('COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED') THEN 'resolved'
-                WHEN sr.assigned_to IS NOT NULL THEN 'in_review'
+                WHEN sr.assigned_to IS NOT NULL AND sr.escalated_by != sr.assigned_to THEN 'in_review'
                 ELSE 'pending'
-            END as escalation_status
+            END as escalation_status,
+            CASE
+                WHEN sr.escalated_by = $1 THEN 'sent'
+                ELSE 'received'
+            END as direction,
+            escalator.full_name as escalated_by_name,
+            citizen.full_name as citizen_name
         FROM service_requests sr
+        LEFT JOIN users escalator ON escalator.id = sr.escalated_by
+        LEFT JOIN users citizen ON citizen.id = sr.user_id
         WHERE sr.escalated = true
-        AND sr.escalated_by = $1
+        {direction_filter}
         {status_filter}
-        ORDER BY sr.escalated_at DESC
+        ORDER BY sr.escalated_at DESC NULLS LAST
         LIMIT $2 OFFSET $3
     """, *params)
 
@@ -824,7 +846,10 @@ async def get_my_escalations(
             case_type=row['workflow_code'] or '',
             notes=row['notes'],
             created_at=row['created_at'].isoformat(),
-            escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else row['created_at'].isoformat()
+            escalated_at=row['escalated_at'].isoformat() if row['escalated_at'] else row['created_at'].isoformat(),
+            direction=row['direction'],
+            escalated_by_name=row['escalated_by_name'],
+            citizen_name=row['citizen_name'],
         )
         for row in rows
     ]
@@ -948,6 +973,13 @@ async def make_decision(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Service request not found"
+        )
+
+    # Block actions on escalated requests — only supervisor can act
+    if request.get('escalated'):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot process escalated request. Awaiting supervisor decision."
         )
 
     if decision.decision == "approve":
@@ -1354,16 +1386,24 @@ async def escalate_request(
             detail="Service request already escalated"
         )
 
-    # Mark as escalated on service_requests directly
+    # Mark as escalated + unassign agent (supervisor will reassign)
     await db.execute("""
         UPDATE service_requests
         SET escalated = true,
             escalated_at = NOW(),
             escalated_by = $2,
             escalation_reason = $3,
+            assigned_to = NULL,
             updated_at = NOW()
         WHERE id = $1
     """, request_id, current_user.id, escalation.reason)
+
+    # Mark queue item as escalated (removes from agent's active queue)
+    await db.execute("""
+        UPDATE agent_work_queue
+        SET status = 'escalated', escalated = true, updated_at = NOW()
+        WHERE item_id = $1 AND item_type = 'service_request' AND status = 'assigned'
+    """, request_id)
 
     # Record in history for audit and citizen notifications
     previous_status = request['status']
@@ -1402,24 +1442,30 @@ async def escalate_request(
     summary="Resolve escalation on a service request",
     description="""
     Marks the escalated service request as resolved (de-escalates).
-    The request returns to normal processing flow.
+    Only supervisors can de-escalate. The agent who escalated cannot self-resolve.
     """,
 )
 async def resolve_escalation(
     request_id: UUID = Path(..., description="Service request ID"),
     db: asyncpg.Connection = Depends(get_database),
     current_user: User = Depends(get_current_user),
-    _=Depends(permission_required("service_request.escalate")),
+    _=Depends(permission_required("queue.review")),  # Supervisor-only permission
 ):
-    """Resolve (de-escalate) a service request."""
+    """Resolve (de-escalate) a service request. Supervisor only."""
     request = await db.fetchrow(
-        "SELECT id, reference, status, escalated FROM service_requests WHERE id = $1",
+        "SELECT id, reference, status, escalated, escalated_by FROM service_requests WHERE id = $1",
         request_id
     )
     if not request:
         raise HTTPException(status_code=404, detail="Service request not found")
     if not request['escalated']:
         raise HTTPException(status_code=409, detail="Service request is not escalated")
+    # Prevent the escalating agent from self-resolving
+    if request['escalated_by'] == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot resolve your own escalation. Only a supervisor can de-escalate."
+        )
 
     await db.execute("""
         UPDATE service_requests
@@ -2153,6 +2199,8 @@ async def get_entity_service_requests(
         conditions.append(f"sr.status::text = ANY(${param_idx}::text[])")
         params.append(statuses)
         param_idx += 1
+        # Exclude escalated requests from non-escalation views (pending, validation, etc.)
+        conditions.append("sr.escalated = false")
 
     # Filter by entity's workflow codes (unless specific workflow requested)
     if workflow_code:

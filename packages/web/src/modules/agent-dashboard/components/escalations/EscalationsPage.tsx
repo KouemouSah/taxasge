@@ -1,9 +1,9 @@
 /**
- * EscalationsPage - Agent view of their escalated service requests
- * Compact, no-scroll layout optimized for agents (0-10 escalations typical)
+ * EscalationsPage - Agent view of escalations (sent + received)
+ * Two tabs: "Enviadas" (sent to supervisor) and "Recibidas" (assigned by supervisor)
  *
  * @module agent-dashboard/components/escalations
- * @date 2026-03-06
+ * @date 2026-03-07
  */
 
 'use client';
@@ -13,6 +13,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
+  ArrowUpRight,
+  ArrowDownLeft,
   AlertTriangle,
   Clock,
   RefreshCw,
@@ -21,13 +23,16 @@ import {
   CheckCircle2,
   Hourglass,
   Eye,
-  ExternalLink,
+  User,
+  Calendar,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -53,6 +58,20 @@ interface EscalationsPageProps {
 // HELPERS
 // =============================================================================
 
+function formatDate(dateStr: string, locale: string): string {
+  try {
+    return new Date(dateStr).toLocaleDateString(locale, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 function getTimeSince(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -62,8 +81,8 @@ function getTimeSince(dateStr: string): string {
   return `${days}d ${hours % 24}h`;
 }
 
-function getEscalationStatusStyle(status: string) {
-  switch (status) {
+function getEscalationStatusStyle(s: string) {
+  switch (s) {
     case 'pending':
       return { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700', icon: Hourglass };
     case 'in_review':
@@ -75,6 +94,14 @@ function getEscalationStatusStyle(status: string) {
   }
 }
 
+function formatWorkflowType(code: string): string {
+  const parts = code.split('_');
+  if (parts.length > 1) {
+    return parts.map((p) => p.charAt(0) + p.slice(1).toLowerCase()).join(' ');
+  }
+  return code;
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -84,6 +111,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
   const t = useTranslations('agent');
   const tCommon = useTranslations('common');
 
+  const [activeTab, setActiveTab] = useState<'sent' | 'received'>('sent');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [includeResolved, setIncludeResolved] = useState(false);
@@ -94,13 +122,18 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
     staleTime: 30_000,
   });
 
-  // Counts for inline badges
-  const pendingCount = useMemo(() => items.filter((i) => i.escalationStatus === 'pending').length, [items]);
-  const inReviewCount = useMemo(() => items.filter((i) => i.escalationStatus === 'in_review').length, [items]);
+  // Split by direction
+  const sentItems = useMemo(() => items.filter((i) => i.direction === 'sent'), [items]);
+  const receivedItems = useMemo(() => items.filter((i) => i.direction === 'received'), [items]);
+  const currentItems = activeTab === 'sent' ? sentItems : receivedItems;
+
+  // Counts
+  const sentPending = useMemo(() => sentItems.filter((i) => i.escalationStatus === 'pending').length, [sentItems]);
+  const receivedCount = receivedItems.length;
 
   // Filter
   const filtered = useMemo(() => {
-    let result = items;
+    let result = currentItems;
     if (statusFilter !== 'all') {
       result = result.filter((i) => i.escalationStatus === statusFilter);
     }
@@ -110,11 +143,12 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
         (i) =>
           i.caseReference.toLowerCase().includes(q) ||
           i.reason.toLowerCase().includes(q) ||
-          i.caseType.toLowerCase().includes(q)
+          i.caseType.toLowerCase().includes(q) ||
+          (i.citizenName && i.citizenName.toLowerCase().includes(q))
       );
     }
     return result;
-  }, [items, statusFilter, search]);
+  }, [currentItems, statusFilter, search]);
 
   const backHref = basePath
     ? `/${locale}${basePath}`
@@ -122,7 +156,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* Compact header + filters in one row */}
+      {/* Header */}
       <div className="flex flex-wrap items-center gap-3 pb-3 border-b shrink-0">
         <Link href={backHref}>
           <Button variant="ghost" size="sm" className="gap-1 px-2">
@@ -132,23 +166,29 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-orange-600" />
           <h1 className="text-lg font-semibold">{t('escalations.title')}</h1>
-          {items.length > 0 && (
-            <Badge variant="secondary" className="text-xs">{items.length}</Badge>
-          )}
-          {pendingCount > 0 && (
-            <Badge className="bg-orange-100 text-orange-800 text-xs gap-1">
-              <Hourglass className="h-3 w-3" />
-              {pendingCount}
-            </Badge>
-          )}
-          {inReviewCount > 0 && (
-            <Badge className="bg-blue-100 text-blue-800 text-xs gap-1">
-              <Eye className="h-3 w-3" />
-              {inReviewCount}
-            </Badge>
-          )}
         </div>
 
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'sent' | 'received'); setStatusFilter('all'); }}>
+          <TabsList className="h-8">
+            <TabsTrigger value="sent" className="text-xs gap-1.5 px-3">
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              {t('escalations.tabSent')}
+              {sentPending > 0 && (
+                <Badge className="bg-orange-100 text-orange-800 text-[10px] px-1 py-0 ml-1">{sentPending}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="received" className="text-xs gap-1.5 px-3">
+              <ArrowDownLeft className="h-3.5 w-3.5" />
+              {t('escalations.tabReceived')}
+              {receivedCount > 0 && (
+                <Badge className="bg-blue-100 text-blue-800 text-[10px] px-1 py-0 ml-1">{receivedCount}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Filters */}
         <div className="flex items-center gap-2 ml-auto">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -160,7 +200,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-[150px] text-sm">
+            <SelectTrigger className="h-8 w-[140px] text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -185,18 +225,19 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
         </div>
       </div>
 
-      {/* Content area - fills remaining viewport */}
-      <div className="flex-1 min-h-0 overflow-y-auto pt-2">
-        {/* Loading */}
+      {/* Subtitle for active tab */}
+      <p className="text-xs text-muted-foreground pt-2 pb-1">
+        {activeTab === 'sent' ? t('escalations.subtitleSent') : t('escalations.subtitleReceived')}
+      </p>
+
+      {/* Content */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {isLoading && (
           <div className="space-y-2">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-[72px] w-full rounded-lg" />
-            ))}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-[80px] w-full rounded-lg" />)}
           </div>
         )}
 
-        {/* Error */}
         {isError && (
           <div className="flex flex-col items-center justify-center py-12">
             <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
@@ -207,21 +248,27 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
           </div>
         )}
 
-        {/* Empty state */}
         {!isLoading && !isError && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
             <ShieldAlert className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground">
-              {items.length === 0 ? t('escalations.empty') : t('escalations.noResults')}
+              {currentItems.length === 0
+                ? (activeTab === 'sent' ? t('escalations.emptySent') : t('escalations.emptyReceived'))
+                : t('escalations.noResults')}
             </p>
           </div>
         )}
 
-        {/* Escalation cards list */}
         {!isLoading && !isError && filtered.length > 0 && (
           <div className="space-y-2">
             {filtered.map((item) => (
-              <EscalationCard key={item.id} item={item} locale={locale} entityCode={entityCode} t={t} />
+              <EscalationCard
+                key={item.id}
+                item={item}
+                locale={locale}
+                entityCode={entityCode}
+                t={t}
+              />
             ))}
           </div>
         )}
@@ -247,51 +294,91 @@ function EscalationCard({
 }) {
   const style = getEscalationStatusStyle(item.escalationStatus);
   const StatusIcon = style.icon;
-  const elapsed = getTimeSince(item.escalatedAt);
+  const isSent = item.direction === 'sent';
 
   return (
     <div
       className={cn(
-        'flex items-center gap-4 p-3 rounded-lg border transition-colors hover:shadow-sm',
+        'flex items-start gap-3 p-3 rounded-lg border transition-colors hover:shadow-sm',
         style.bg
       )}
     >
-      {/* Status icon */}
-      <div className={cn('shrink-0 flex items-center justify-center h-10 w-10 rounded-full', style.bg)}>
-        <StatusIcon className={cn('h-5 w-5', style.text)} />
+      {/* Direction + Status icon */}
+      <div className={cn('shrink-0 flex items-center justify-center h-9 w-9 rounded-full mt-0.5', style.bg)}>
+        <StatusIcon className={cn('h-4 w-4', style.text)} />
       </div>
 
-      {/* Main info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+      {/* Main content */}
+      <div className="flex-1 min-w-0 space-y-1">
+        {/* Top row: reference + type + status */}
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-mono text-sm font-semibold">{item.caseReference}</span>
           <Badge variant="outline" className="text-[10px]">
-            {item.caseType.replace(/_/g, ' ')}
+            {formatWorkflowType(item.caseType)}
           </Badge>
           <Badge className={cn('text-[10px] gap-0.5', style.text, style.bg)}>
             {t(`escalations.status.${item.escalationStatus}`)}
           </Badge>
+          {isSent ? (
+            <Badge className="text-[10px] bg-orange-100 text-orange-700 gap-0.5">
+              <ArrowUpRight className="h-2.5 w-2.5" />
+              {t('escalations.directionSent')}
+            </Badge>
+          ) : (
+            <Badge className="text-[10px] bg-blue-100 text-blue-700 gap-0.5">
+              <ArrowDownLeft className="h-2.5 w-2.5" />
+              {t('escalations.directionReceived')}
+            </Badge>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1" title={item.reason}>
+
+        {/* Reason */}
+        <p className="text-xs text-muted-foreground line-clamp-2" title={item.reason}>
+          <ShieldAlert className="h-3 w-3 inline mr-1 text-orange-500" />
           {item.reason}
         </p>
+
+        {/* Meta row */}
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          {/* Date */}
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            {formatDate(item.escalatedAt, locale)}
+          </span>
+          {/* Elapsed */}
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {getTimeSince(item.escalatedAt)}
+          </span>
+          {/* Citizen name */}
+          {item.citizenName && (
+            <span className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {item.citizenName}
+            </span>
+          )}
+          {/* Escalated by (for received) */}
+          {!isSent && item.escalatedByName && (
+            <span className="flex items-center gap-1 text-blue-600">
+              <User className="h-3 w-3" />
+              {t('escalations.escalatedBy', { name: item.escalatedByName })}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Time elapsed */}
-      <div className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
-        <Clock className="h-3 w-3" />
-        <span>{elapsed}</span>
-      </div>
-
-      {/* View link */}
-      <Link
-        href={`/${locale}/dashboard/agent/${entityCode}?view=${item.id}`}
-        className="shrink-0"
-      >
-        <Button variant="ghost" size="sm" className="h-8 px-2">
-          <ExternalLink className="h-3.5 w-3.5" />
-        </Button>
-      </Link>
+      {/* Action: link to pending page for received, read-only for sent */}
+      {!isSent && (
+        <Link
+          href={`/${locale}/dashboard/agent/${entityCode}?view=${item.id}`}
+          className="shrink-0 mt-1"
+        >
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+            <FileText className="h-3 w-3" />
+            {t('escalations.viewRequest')}
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }

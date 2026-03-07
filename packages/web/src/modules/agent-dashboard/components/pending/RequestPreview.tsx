@@ -134,8 +134,9 @@ export function RequestPreview({
   escalatedAt,
 }: RequestPreviewProps) {
   // History action is read-only (no approve/reject buttons)
-  const isReadOnly = action === 'history';
+  // Escalated requests are also read-only (supervisor must decide)
   const isEscalationView = action === 'escalations';
+  const isReadOnly = action === 'history' || isEscalationView || !!escalatedAt;
   const locale = useLocale();
   const t = useTranslations('agent.pending.preview');
 
