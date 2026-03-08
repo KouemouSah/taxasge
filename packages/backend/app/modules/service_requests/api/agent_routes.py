@@ -2333,6 +2333,7 @@ class ServiceRequestPreview(BaseModel):
     payment_currency: Optional[str] = None
     payment_paid_at: Optional[str] = None
     payment_reference: Optional[str] = None
+    payment_receipt_number: Optional[str] = None
     # Metadata
     created_at: str
     submitted_at: Optional[str] = None
@@ -3010,6 +3011,7 @@ async def get_request_preview(
             sp.currency AS payment_currency,
             sp.paid_at AS payment_paid_at,
             sp.payment_reference,
+            sp.receipt_number AS payment_receipt_number,
             agent_u.first_name || ' ' || agent_u.last_name AS assigned_agent_name,
             sr.batch_id,
             (SELECT reference FROM batch_requests WHERE id = sr.batch_id) AS batch_reference
@@ -3134,6 +3136,7 @@ async def get_request_preview(
         payment_currency=row['payment_currency'] or 'XAF',
         payment_paid_at=row['payment_paid_at'].isoformat() if row.get('payment_paid_at') else None,
         payment_reference=row['payment_reference'],
+        payment_receipt_number=row.get('payment_receipt_number'),
         created_at=row['created_at'].isoformat(),
         submitted_at=row['submitted_at'].isoformat() if row['submitted_at'] else None,
         batch_id=str(row['batch_id']) if row.get('batch_id') else None,
@@ -3310,16 +3313,29 @@ async def update_verification_checklist(
         WHERE id = $1
     """, request_id, json.dumps(verification_details), new_status)
 
-    # Log to history
-    await db.execute("""
-        INSERT INTO service_request_history
-        (service_request_id, action, performed_by, details)
-        VALUES ($1, 'verification_updated', $2, $3::jsonb)
-    """, request_id, current_user.id, json.dumps({
-        "verification_status": new_status,
-        "checklist_completed": checklist_completed,
-        "checklist_total": checklist_total
-    }))
+    # Detect if checklist actually changed vs only notes
+    old_checklist = current_details.get("checklist", {})
+    checklist_changed = body.checklist != old_checklist
+
+    if checklist_changed:
+        # Log checklist update (include note in comment if present)
+        await db.execute("""
+            INSERT INTO service_request_history
+            (service_request_id, action, performed_by, comment, details)
+            VALUES ($1, 'verification_updated', $2, $3, $4::jsonb)
+        """, request_id, current_user.id, body.notes, json.dumps({
+            "verification_status": new_status,
+            "checklist_completed": checklist_completed,
+            "checklist_total": checklist_total
+        }))
+
+    # If only notes changed (no checklist change), log as note_added
+    if body.notes and body.notes.strip() and not checklist_changed:
+        await db.execute("""
+            INSERT INTO service_request_history
+            (service_request_id, action, performed_by, comment)
+            VALUES ($1, 'note_added', $2, $3)
+        """, request_id, current_user.id, body.notes.strip())
 
     return VerificationResponse(
         message="Verification updated successfully",

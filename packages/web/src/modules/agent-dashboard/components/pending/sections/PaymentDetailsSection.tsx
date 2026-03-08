@@ -21,6 +21,7 @@ interface PaymentDetailsSectionProps {
   method?: string | null;
   paidAt?: string | null;
   reference?: string | null;
+  receiptNumber?: string | null;
 }
 
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -72,6 +73,7 @@ export function PaymentDetailsSection({
   method,
   paidAt,
   reference,
+  receiptNumber,
 }: PaymentDetailsSectionProps) {
   const t = useTranslations('agent.pending.preview');
 
@@ -80,39 +82,39 @@ export function PaymentDetailsSection({
   const statusVariant = STATUS_VARIANTS[status || ''] || 'secondary';
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardContent className="p-3">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
           <CreditCard className="h-3 w-3" />
           {t('paymentDetails')}
         </p>
-        <div className="space-y-1">
+        {/* Line 1: Amount + Reference */}
+        <div className="flex items-baseline gap-2 flex-wrap">
           {amount != null && (
-            <p className="text-lg font-bold leading-tight">{formatAmount(amount, currency || 'XAF')}</p>
+            <span className="text-base font-bold leading-tight">{formatAmount(amount, currency || 'XAF')}</span>
           )}
-          <div className="flex items-center gap-2 flex-wrap">
-            {status && (
-              <Badge variant={statusVariant} className="text-[10px]">
-                {status.replace(/_/g, ' ')}
-              </Badge>
-            )}
-            {method && (
-              <span className="text-xs text-muted-foreground">
-                {METHOD_KEYS[method] ? t(METHOD_KEYS[method]) : method}
-              </span>
-            )}
-          </div>
-          {/* Payment reference */}
-          {reference && (
-            <p className="text-[10px] text-muted-foreground">
-              {t('refLabel')}: <span className="font-mono">{reference}</span>
-            </p>
+          {(reference || receiptNumber) && (
+            <span className="text-[11px] font-mono text-muted-foreground break-all">
+              {receiptNumber || reference}
+            </span>
           )}
-          {/* Paid date */}
+        </div>
+        {/* Line 2: Status + Method + Date */}
+        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+          {status && (
+            <Badge variant={statusVariant} className="text-[10px]">
+              {status.replace(/_/g, ' ')}
+            </Badge>
+          )}
+          {method && (
+            <span className="text-xs text-muted-foreground">
+              {METHOD_KEYS[method] ? t(METHOD_KEYS[method]) : method}
+            </span>
+          )}
           {paidAt && (
-            <p className="text-[10px] text-muted-foreground">
-              {t('paidAtLabel')}: {formatDate(paidAt)}
-            </p>
+            <span className="text-xs text-muted-foreground">
+              {formatDate(paidAt)}
+            </span>
           )}
         </div>
       </CardContent>

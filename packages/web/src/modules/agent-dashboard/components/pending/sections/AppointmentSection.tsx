@@ -152,25 +152,25 @@ export function AppointmentSection({
   // If appointment exists, show compact info
   if (appointment) {
     return (
-      <Card className="border-green-200 bg-green-50/50">
+      <Card className="border-green-200 bg-green-50/50 h-full">
         <CardContent className="p-3">
-          <p className="text-[10px] text-green-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <p className="text-[11px] text-green-700 uppercase tracking-wider mb-1 flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             {t('preview.appointment')}
           </p>
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-green-600 shrink-0" />
-              <span className="text-sm font-medium capitalize">
-                {formatDate(appointment.date)}
-              </span>
-              <Clock className="h-3.5 w-3.5 text-green-600 ml-2 shrink-0" />
-              <span className="text-sm font-medium">{appointment.time}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-green-600 shrink-0" />
-              <span className="text-sm font-medium">{appointment.locationName}</span>
-            </div>
+          {/* Line 1: Date + Time */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Calendar className="h-3.5 w-3.5 text-green-600 shrink-0" />
+            <span className="text-sm font-medium capitalize">
+              {formatDate(appointment.date)}
+            </span>
+            <Clock className="h-3.5 w-3.5 text-green-600 shrink-0" />
+            <span className="text-sm font-medium">{appointment.time}</span>
+          </div>
+          {/* Line 2: Location */}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <MapPin className="h-3.5 w-3.5 text-green-600 shrink-0" />
+            <span className="text-sm font-medium">{appointment.locationName}</span>
           </div>
         </CardContent>
       </Card>
@@ -179,9 +179,9 @@ export function AppointmentSection({
 
   // No appointment - show scheduling form or prompt
   return (
-    <Card className="border-orange-200 bg-orange-50/50">
+    <Card className="border-orange-200 bg-orange-50/50 h-full">
       <CardContent className="p-3">
-        <p className="text-[10px] text-orange-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        <p className="text-[11px] text-orange-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
           {t('appointment.noAppointment')}
         </p>

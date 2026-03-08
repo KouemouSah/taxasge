@@ -7882,7 +7882,19 @@
         "nombre_empresa": "Empresa",
         "nif_contratista": "NIF del Contratista",
         "representante_legal": "Representante Legal",
-        "descripcion": "Descripción"
+        "descripcion": "Descripción",
+        "expiracion_anterior": "Expiración DIP Anterior",
+        "fecha_expiracion_anterior": "Fecha Expiración DIP",
+        "pasaporte_anterior_numero": "Nº Pasaporte Anterior",
+        "fecha_pasaporte_anterior": "Fecha Pasaporte Anterior",
+        "fecha_emision_dip": "Fecha Emisión DIP",
+        "fecha_expiracion_dip": "Fecha Expiración DIP",
+        "domiciliacion": "Domiciliación (DIP)",
+        "direccion": "Dirección",
+        "telefono": "Teléfono",
+        "correo_electronico": "Correo Electrónico",
+        "pais_nacimiento": "País de Nacimiento",
+        "ciudad_nacimiento": "Ciudad de Nacimiento"
       },
       "documentNames": {
         "dip": "DIP (Documento de Identidad)",

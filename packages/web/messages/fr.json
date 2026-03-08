@@ -8020,7 +8020,19 @@
         "nombre_empresa": "Entreprise",
         "nif_contratista": "NIF du Contractant",
         "representante_legal": "Représentant Légal",
-        "descripcion": "Description"
+        "descripcion": "Description",
+        "expiracion_anterior": "Expiration DIP Précédent",
+        "fecha_expiracion_anterior": "Date Expiration DIP",
+        "pasaporte_anterior_numero": "N° Passeport Précédent",
+        "fecha_pasaporte_anterior": "Date Passeport Précédent",
+        "fecha_emision_dip": "Date Émission DIP",
+        "fecha_expiracion_dip": "Date Expiration DIP",
+        "domiciliacion": "Domiciliation (DIP)",
+        "direccion": "Adresse",
+        "telefono": "Téléphone",
+        "correo_electronico": "E-mail",
+        "pais_nacimiento": "Pays de Naissance",
+        "ciudad_nacimiento": "Ville de Naissance"
       },
       "documentNames": {
         "dip": "DIP (Pièce d'Identité)",

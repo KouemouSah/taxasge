@@ -95,7 +95,7 @@ export function DocumentsSection({
     <>
       <Card>
         <CardContent className="p-3">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
             <FileText className="h-3 w-3" />
             {t('documents')}
             <Badge variant="secondary" className="ml-1 text-[10px] h-4 px-1">{documentsCount}</Badge>
@@ -110,8 +110,8 @@ export function DocumentsSection({
           {documents.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('noDocuments')}</p>
           ) : (
-            <div className="space-y-0.5">
-              {documents.map((doc, idx) => {
+            <div className="flex flex-wrap gap-1">
+              {documents.map((doc) => {
                 const effectiveStatus = statusOverrides[doc.id] || doc.validationStatus;
                 const dotColor = STATUS_DOT_COLORS[effectiveStatus] || STATUS_DOT_COLORS.pending;
                 const dotKey = STATUS_DOT_KEYS[effectiveStatus] || 'docStatusPending';
@@ -125,12 +125,11 @@ export function DocumentsSection({
                     onClick={() => handleDocumentClick(doc)}
                     disabled={isLoading}
                     className={cn(
-                      'flex items-center gap-2 w-full px-1.5 py-1 rounded text-left',
+                      'inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-left',
                       'hover:bg-muted/50 transition-colors cursor-pointer',
                       isLoading && 'opacity-60'
                     )}
                   >
-                    <span className="text-[10px] text-muted-foreground w-3 text-right shrink-0">{idx + 1}.</span>
                     <span className={cn('h-2 w-2 rounded-full shrink-0', dotColor)} title={t(dotKey)} />
                     {isLoading ? (
                       <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
@@ -139,8 +138,7 @@ export function DocumentsSection({
                     ) : (
                       <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
                     )}
-                    <span className="text-xs font-medium truncate">{label}</span>
-                    <span className="text-[10px] text-muted-foreground truncate ml-auto">{doc.name}</span>
+                    <span className="text-sm font-medium whitespace-nowrap">{label}</span>
                   </button>
                 );
               })}

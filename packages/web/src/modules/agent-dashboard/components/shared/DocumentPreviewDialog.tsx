@@ -33,10 +33,14 @@ import {
   Loader2,
   ShieldCheck,
   ShieldX,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { validateDocument, rejectDocument } from '../../services/agent-requests-api';
+import { useImageZoom } from '../../hooks/useImageZoom';
 
 // =============================================================================
 // TYPES
@@ -108,12 +112,16 @@ export function DocumentPreviewDialog({
   // Track local status override after action (so UI updates without refetch)
   const [localStatus, setLocalStatus] = useState<string | null>(null);
 
+  // Zoom state for images (shared hook handles passive wheel listener)
+  const { zoomLevel, containerRef: imgContainerRef, zoomIn: handleZoomIn, zoomOut: handleZoomOut, zoomReset: handleZoomReset, setZoomLevel } = useImageZoom({ enabled: open });
+
   // Reset state when dialog closes
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setShowRejectForm(false);
       setRejectReason('');
       setLocalStatus(null);
+      setZoomLevel(1);
     }
     onOpenChange(nextOpen);
   };
@@ -211,12 +219,38 @@ export function DocumentPreviewDialog({
             />
           )}
           {previewUrl && docIsImage && (
-            <div className="flex items-center justify-center p-4 h-full bg-muted/30">
-              <img
-                src={previewUrl}
-                alt={doc.name}
-                className="max-w-full max-h-[60vh] object-contain rounded shadow-sm"
-              />
+            <div className="relative h-full bg-muted/30">
+              {/* Zoom controls */}
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-background/90 backdrop-blur-sm rounded-md border shadow-sm p-0.5">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut} title="Zoom out">
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-xs font-mono w-10 text-center">{Math.round(zoomLevel * 100)}%</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn} title="Zoom in">
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomReset} title="Reset zoom">
+                  <RotateCcw className="h-3 w-3" />
+                </Button>
+              </div>
+              {/* Zoomable image */}
+              <div
+                ref={imgContainerRef}
+                className="flex items-center justify-center p-4 h-full overflow-auto"
+              >
+                <img
+                  src={previewUrl}
+                  alt={doc.name}
+                  className="object-contain rounded shadow-sm transition-transform duration-150"
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: 'center center',
+                    maxWidth: zoomLevel <= 1 ? '100%' : 'none',
+                    maxHeight: zoomLevel <= 1 ? '60vh' : 'none',
+                  }}
+                  draggable={false}
+                />
+              </div>
             </div>
           )}
           {previewUrl && !docIsPdf && !docIsImage && (

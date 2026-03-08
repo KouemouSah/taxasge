@@ -27,6 +27,8 @@ export type { UseEntityServiceRequestsOptions, ActionType, ServiceRequestListIte
 export { useRequestPreview } from './useRequestPreview';
 export type { ServiceRequestPreview } from './useRequestPreview';
 
+export { useImageZoom } from './useImageZoom';
+
 // Widget data hooks
 export {
   useUrgentRequests,

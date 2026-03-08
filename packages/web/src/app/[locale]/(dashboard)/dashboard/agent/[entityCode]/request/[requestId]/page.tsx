@@ -66,6 +66,8 @@ import {
   Scan,
   MessageSquare,
   RotateCcw,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -87,6 +89,7 @@ import {
   getHistoryActionColor,
   getStatusLabel,
 } from '@/modules/service-requests/types';
+import { useImageZoom } from '@/modules/agent-dashboard/hooks/useImageZoom';
 // DocumentPreviewDialog used in splitview; DocumentosTab has inline split-view
 
 // ============================================================================
@@ -500,6 +503,11 @@ const DEDUP_FIELDS = new Set([
   'solicitud_type', 'tipo_solicitud', 'solicitud_sub_type',
 ]);
 
+/** Photo-related fields — displayed as image, not text */
+const PHOTO_FIELDS = new Set([
+  'photo_url', 'foto_url', 'photo', 'photo_carnet',
+]);
+
 /** Fields that identify the applicant — shown in the identity card */
 const IDENTITY_FIELDS = new Set([
   'nombres', 'apellidos', 'numero_dip', 'numero_identificacion',
@@ -837,6 +845,7 @@ function DynamicFormDisplay({ request, ...actionProps }: { request: ServiceReque
   const [previewDocName, setPreviewDocName] = useState('');
   const [previewMime, setPreviewMime] = useState('');
   const [showMobilePreview, setShowMobilePreview] = useState(false);
+  const { zoomLevel: inlineZoom, setZoomLevel: setInlineZoom, containerRef: inlineZoomRef, zoomIn: inlineZoomIn, zoomOut: inlineZoomOut, zoomReset: inlineZoomReset } = useImageZoom({ enabled: !!previewDocCode });
 
   const handleDocPreview = useCallback(async (docCode: string, docName: string, mimeType: string) => {
     if (previewDocCode === docCode) {
@@ -850,6 +859,7 @@ function DynamicFormDisplay({ request, ...actionProps }: { request: ServiceReque
     setPreviewMime(mimeType);
     setPreviewUrl(null);
     setPreviewLoading(true);
+    setInlineZoom(1);
     // Detect mobile via window width (lg breakpoint = 1024px)
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
     if (isMobile) setShowMobilePreview(true);
@@ -887,13 +897,34 @@ function DynamicFormDisplay({ request, ...actionProps }: { request: ServiceReque
 
   const identityEntries = allEntries.filter(([key]) => IDENTITY_FIELDS.has(key));
   const metaEntries = allEntries.filter(([key]) => REQUEST_META_FIELDS.has(key));
-  const otherEntries = allEntries.filter(([key]) => !IDENTITY_FIELDS.has(key) && !REQUEST_META_FIELDS.has(key));
-
-  // Check for photo URL in form_data
-  const photoKey = Object.keys(formData).find((k) =>
-    k === 'photo_url' || k === 'foto_url' || k === 'photo'
+  const otherEntries = allEntries.filter(([key]) =>
+    !IDENTITY_FIELDS.has(key) && !REQUEST_META_FIELDS.has(key) && !PHOTO_FIELDS.has(key)
   );
-  const photoUrl = photoKey ? String(formData[photoKey]) : null;
+
+  // Check for photo URL in form_data (flat keys + nested paths)
+  const photoUrl = (() => {
+    // 1. Flat keys
+    const flatKey = Object.keys(formData).find((k) =>
+      k === 'photo_url' || k === 'foto_url' || k === 'photo'
+    );
+    if (flatKey && formData[flatKey]) return String(formData[flatKey]);
+    // 2. Nested: photo_carnet.url (common in passport/carnet workflows)
+    const nested = getNestedValue(formData as Record<string, unknown>, 'photo_carnet.url');
+    if (nested && typeof nested === 'string') return nested;
+    // 3. Any key containing 'photo' with a URL-like value (strict: https:// or blob:)
+    const photoLikeKey = Object.keys(formData).find((k) => {
+      if (!k.toLowerCase().includes('photo') && !k.toLowerCase().includes('foto')) return false;
+      const v = formData[k];
+      return typeof v === 'string' && (v.startsWith('https://') || v.startsWith('blob:'));
+    });
+    if (photoLikeKey) return String(formData[photoLikeKey]);
+    // 4. Nested object with url property
+    const photoObj = formData['photo_carnet'];
+    if (photoObj && typeof photoObj === 'object' && (photoObj as Record<string, unknown>).url) {
+      return String((photoObj as Record<string, unknown>).url);
+    }
+    return null;
+  })();
 
   const isPdf = (mime?: string) => mime === 'application/pdf' || mime?.endsWith('.pdf');
   const isImg = (mime?: string) => mime?.startsWith('image/');
@@ -974,7 +1005,7 @@ function DynamicFormDisplay({ request, ...actionProps }: { request: ServiceReque
       {(request.paymentAmount || request.citaDate || request.citaLocation) && (
         <Card>
           <CardContent className="py-3 space-y-1.5">
-              {/* Line 1: Payment — monto, método, estado, referencia, recibo, fecha */}
+              {/* Line 1: Payment — monto, referencia, recibo, método, estado, fecha */}
               {request.paymentAmount && (
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-1.5">
@@ -983,22 +1014,22 @@ function DynamicFormDisplay({ request, ...actionProps }: { request: ServiceReque
                       {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'es-ES').format(request.paymentAmount)} {request.paymentCurrency || 'XAF'}
                     </span>
                   </div>
+                  {request.paymentReference && (
+                    <span className="text-sm font-mono text-muted-foreground">{request.paymentReference}</span>
+                  )}
+                  {request.paymentReceiptNumber && (
+                    <span className="text-sm font-mono text-muted-foreground">Recibo: {request.paymentReceiptNumber}</span>
+                  )}
                   {request.paymentMethod && (
-                    <span className="text-xs text-muted-foreground">{request.paymentMethod}</span>
+                    <span className="text-sm text-muted-foreground">{request.paymentMethod}</span>
                   )}
                   {request.paymentWorkflowStatus && (
                     <Badge variant={request.paymentWorkflowStatus === 'completed' ? 'default' : 'destructive'} className="text-xs">
                       {request.paymentWorkflowStatus}
                     </Badge>
                   )}
-                  {request.paymentReference && (
-                    <span className="text-xs font-mono text-muted-foreground">{request.paymentReference}</span>
-                  )}
-                  {request.paymentReceiptNumber && (
-                    <span className="text-xs font-mono text-muted-foreground">Recibo: {request.paymentReceiptNumber}</span>
-                  )}
                   {request.paymentPaidAt && (
-                    <span className="text-xs text-muted-foreground">{formatDisplayValue('', request.paymentPaidAt, locale)}</span>
+                    <span className="text-sm text-muted-foreground">{formatDisplayValue('', request.paymentPaidAt, locale)}</span>
                   )}
                 </div>
               )}
@@ -1102,12 +1133,37 @@ function DynamicFormDisplay({ request, ...actionProps }: { request: ServiceReque
             title={previewDocName}
           />
         ) : previewUrl && isImg(previewMime) ? (
-          <div className="flex items-center justify-center h-full p-4">
-            <img
-              src={previewUrl}
-              alt={previewDocName}
-              className="max-w-full max-h-full object-contain rounded shadow-sm"
-            />
+          <div className="relative h-full">
+            {/* Zoom controls */}
+            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-background/90 backdrop-blur-sm rounded-md border shadow-sm p-0.5">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={inlineZoomOut}>
+                <ZoomOut className="h-3 w-3" />
+              </Button>
+              <span className="text-[10px] font-mono w-8 text-center">{Math.round(inlineZoom * 100)}%</span>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={inlineZoomIn}>
+                <ZoomIn className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={inlineZoomReset}>
+                <RotateCcw className="h-2.5 w-2.5" />
+              </Button>
+            </div>
+            <div
+              ref={inlineZoomRef}
+              className="flex items-center justify-center h-full p-4 overflow-auto"
+            >
+              <img
+                src={previewUrl}
+                alt={previewDocName}
+                className="object-contain rounded shadow-sm transition-transform duration-150"
+                style={{
+                  transform: `scale(${inlineZoom})`,
+                  transformOrigin: 'center center',
+                  maxWidth: inlineZoom <= 1 ? '100%' : 'none',
+                  maxHeight: inlineZoom <= 1 ? '100%' : 'none',
+                }}
+                draggable={false}
+              />
+            </div>
           </div>
         ) : previewUrl ? (
           <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -1577,7 +1633,15 @@ function DocumentKeyDataCard({
       <CardContent>
         <div className={cn(
           'grid gap-3',
-          compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
+          compact
+            ? 'grid-cols-1'
+            : docsWithDecisionFields.length === 1
+              ? 'grid-cols-1'
+              : docsWithDecisionFields.length === 2
+                ? 'grid-cols-1 sm:grid-cols-2'
+                : docsWithDecisionFields.length <= 4
+                  ? 'grid-cols-1 sm:grid-cols-2'
+                  : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'
         )}>
           {docsWithDecisionFields.map((doc) => {
             const fields = DECISION_FIELDS[doc.documentCode]!;
@@ -1636,8 +1700,8 @@ function DocumentKeyDataCard({
                   if (value === undefined) return null;
 
                   return (
-                    <div key={field.key} className="flex items-baseline justify-between gap-1">
-                      <span className="text-[10px] text-muted-foreground shrink-0">{field.label}</span>
+                    <div key={field.key} className="flex items-baseline gap-2">
+                      <span className="text-[11px] text-muted-foreground shrink-0 whitespace-nowrap">{field.label}</span>
                       {field.type === 'result' && field.resultMap ? (
                         <Badge className={cn(
                           'text-[10px] px-1.5 py-0',
@@ -1654,11 +1718,11 @@ function DocumentKeyDataCard({
                           )}
                         </span>
                       ) : field.type === 'id' ? (
-                        <span className="text-xs font-mono font-medium truncate max-w-[120px]" title={String(value)}>
+                        <span className="text-xs font-mono font-medium break-all" title={String(value)}>
                           {String(value)}
                         </span>
                       ) : (
-                        <span className="text-xs font-medium truncate max-w-[120px]" title={String(value)}>
+                        <span className="text-xs font-medium break-words" title={String(value)}>
                           {formatDisplayValue(field.key, value, locale)}
                         </span>
                       )}

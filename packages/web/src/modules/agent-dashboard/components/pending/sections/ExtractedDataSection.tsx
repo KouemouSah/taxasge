@@ -71,7 +71,7 @@ function PhotoThumbnail({ requestId, photoDoc, photoLabel }: { requestId: string
 
   if (loading) {
     return (
-      <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+      <div className="h-20 w-20 rounded-lg bg-muted flex items-center justify-center shrink-0">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     );
@@ -79,7 +79,7 @@ function PhotoThumbnail({ requestId, photoDoc, photoLabel }: { requestId: string
 
   if (!url) {
     return (
-      <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+      <div className="h-20 w-20 rounded-lg bg-muted flex items-center justify-center shrink-0">
         <User className="h-6 w-6 text-muted-foreground" />
       </div>
     );
@@ -89,7 +89,7 @@ function PhotoThumbnail({ requestId, photoDoc, photoLabel }: { requestId: string
     <>
       <button
         onClick={() => setShowFull(true)}
-        className="h-16 w-16 rounded-lg overflow-hidden border hover:ring-2 hover:ring-primary/50 transition-all shrink-0 cursor-pointer"
+        className="h-20 w-20 rounded-lg overflow-hidden border hover:ring-2 hover:ring-primary/50 transition-all shrink-0 cursor-pointer"
       >
         <img src={url} alt={photoLabel} className="h-full w-full object-cover" />
       </button>
@@ -115,7 +115,7 @@ export function ExtractedDataSection({ dataSections, documents, requestId }: Ext
     return (
       <Card>
         <CardContent className="p-3">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
             <ClipboardList className="h-3 w-3" />
             {t('extractedData')}
           </p>
@@ -139,7 +139,7 @@ export function ExtractedDataSection({ dataSections, documents, requestId }: Ext
             <PhotoThumbnail requestId={requestId} photoDoc={photoDoc} photoLabel={t('photoCarnet')} />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+            <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
               <ClipboardList className="h-3 w-3" />
               {t('extractedData')}
               <span className="ml-1 text-muted-foreground/60">({totalFields})</span>
@@ -147,13 +147,13 @@ export function ExtractedDataSection({ dataSections, documents, requestId }: Ext
             {/* First section inline next to photo */}
             {dataSections[0] && (
               <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
                   {dataSections[0].title}
                 </p>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-0.5">
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
                   {dataSections[0].fields.map((field, fIdx) => (
-                    <div key={fIdx}>
-                      <p className="text-[10px] text-muted-foreground leading-tight">{field.label}</p>
+                    <div key={fIdx} className="min-w-[120px]">
+                      <p className="text-[11px] text-muted-foreground leading-tight">{field.label}</p>
                       <p className="text-xs font-medium leading-tight">{formatValue(field.value)}</p>
                     </div>
                   ))}
@@ -167,13 +167,13 @@ export function ExtractedDataSection({ dataSections, documents, requestId }: Ext
           <div className="space-y-2">
             {dataSections.slice(1).map((section, idx) => (
               <div key={idx + 1}>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
                   {section.title}
                 </p>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-0.5">
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
                   {section.fields.map((field, fIdx) => (
-                    <div key={fIdx}>
-                      <p className="text-[10px] text-muted-foreground leading-tight">{field.label}</p>
+                    <div key={fIdx} className="min-w-[120px]">
+                      <p className="text-[11px] text-muted-foreground leading-tight">{field.label}</p>
                       <p className="text-xs font-medium leading-tight">{formatValue(field.value)}</p>
                     </div>
                   ))}

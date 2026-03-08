@@ -439,6 +439,7 @@ export function RequestPreview({
               method={data.paymentMethod}
               paidAt={data.paymentPaidAt}
               reference={data.paymentReference}
+              receiptNumber={data.paymentReceiptNumber}
             />
           )}
         </div>

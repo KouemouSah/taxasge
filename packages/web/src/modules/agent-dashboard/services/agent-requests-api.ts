@@ -251,6 +251,7 @@ export interface ServiceRequestPreview {
   paymentCurrency?: string | null;
   paymentPaidAt?: string | null;
   paymentReference?: string | null;
+  paymentReceiptNumber?: string | null;
   // Metadata
   createdAt: string;
   submittedAt?: string | null;
@@ -337,6 +338,7 @@ interface BackendServiceRequestPreview {
   payment_currency?: string | null;
   payment_paid_at?: string | null;
   payment_reference?: string | null;
+  payment_receipt_number?: string | null;
   created_at: string;
   submitted_at?: string | null;
   batch_id?: string | null;
@@ -420,6 +422,7 @@ function transformServiceRequestPreview(data: BackendServiceRequestPreview): Ser
     paymentCurrency: data.payment_currency,
     paymentPaidAt: data.payment_paid_at,
     paymentReference: data.payment_reference,
+    paymentReceiptNumber: data.payment_receipt_number,
     listIndex: data.list_index,
     listTotal: data.list_total,
   };

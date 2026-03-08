@@ -160,7 +160,7 @@ export function RequestListItem({
       className={cn(
         'p-2.5 border-b cursor-pointer transition-colors',
         'hover:bg-blue-50/60',
-        isSelected && 'bg-blue-50 border-l-2 border-l-blue-500'
+        isSelected && 'bg-blue-100 border-l-4 border-l-blue-600'
       )}
     >
       {/* Header row */}

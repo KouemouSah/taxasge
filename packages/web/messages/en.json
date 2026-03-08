@@ -7780,7 +7780,19 @@
         "nombre_empresa": "Company",
         "nif_contratista": "Contractor NIF",
         "representante_legal": "Legal Representative",
-        "descripcion": "Description"
+        "descripcion": "Description",
+        "expiracion_anterior": "Previous DIP Expiration",
+        "fecha_expiracion_anterior": "DIP Expiration Date",
+        "pasaporte_anterior_numero": "Previous Passport No.",
+        "fecha_pasaporte_anterior": "Previous Passport Date",
+        "fecha_emision_dip": "DIP Issue Date",
+        "fecha_expiracion_dip": "DIP Expiration Date",
+        "domiciliacion": "Domiciliation (DIP)",
+        "direccion": "Address",
+        "telefono": "Phone",
+        "correo_electronico": "Email",
+        "pais_nacimiento": "Country of Birth",
+        "ciudad_nacimiento": "City of Birth"
       },
       "documentNames": {
         "dip": "DIP (Identity Document)",
