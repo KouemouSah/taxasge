@@ -844,6 +844,150 @@ class SummaryPDFService:
 
         return pdf_bytes
 
+    async def generate_validation_certificate_v2(
+        self,
+        request_number: str,
+        workflow_name: str,
+        solicitud_type: str,
+        data_sections: list,
+        documents: list,
+        tariff: Dict[str, Any],
+        appointment: Optional[Dict[str, Any]] = None,
+        agent_name: Optional[str] = None,
+        agent_entity: Optional[str] = None,
+        photo_url: Optional[str] = None,
+        payment_status: Optional[str] = None,
+        language: str = "es",
+    ) -> bytes:
+        """
+        Generate a validation certificate PDF with dynamic data sections.
+
+        Combines the official certificate design (badge VALIDADO, barcode, agent
+        signature, notice) with dynamic data sections from workflow.get_pdf_data_sections().
+        Works for ALL 15+ workflows, not just passport.
+
+        Args:
+            request_number: The service request reference number
+            workflow_name: Name of the workflow
+            solicitud_type: Type of request (expedicion, renovacion, duplicado)
+            data_sections: Dynamic sections from workflow.get_pdf_data_sections().
+                           Each: {"title": str, "fields": [{"label": str, "value": str}]}
+            documents: List of uploaded documents (unused in v2 — shown in data_sections)
+            tariff: Dict with tariff info (total_amount)
+            appointment: Optional appointment details (date, time, location)
+            agent_name: Name of the validating agent
+            agent_entity: Entity of the agent (e.g., CNEDOGE Malabo)
+            photo_url: URL to citizen's photo
+            payment_status: Payment workflow status string
+            language: Language for the PDF (es, fr, en)
+
+        Returns:
+            PDF bytes
+        """
+        if not XHTML2PDF_AVAILABLE:
+            raise RuntimeError("xhtml2pdf is not installed. Cannot generate PDF.")
+
+        # Translations — merge certificate-specific + summary common keys
+        cert_texts = self.CERTIFICATE_TRANSLATIONS.get(language, self.CERTIFICATE_TRANSLATIONS["es"])
+        summary_texts = self.TRANSLATIONS.get(language, self.TRANSLATIONS["es"])
+        texts = {**summary_texts, **cert_texts}
+
+        solicitud_labels = self.SOLICITUD_TYPE_LABELS.get(language, self.SOLICITUD_TYPE_LABELS["es"])
+        solicitud_type_label = solicitud_labels.get(
+            solicitud_type,
+            solicitud_labels.get(solicitud_type.upper() if solicitud_type else "", solicitud_type or "")
+        )
+
+        # Photo
+        photo_base64 = await self.fetch_photo_as_base64(photo_url) if photo_url else None
+
+        # Logo + barcode + QR
+        logo_base64 = self.get_logo_base64()
+        barcode_value = self.generate_barcode_value(request_number)
+
+        frontend_url = settings.FRONTEND_URL.rstrip("/")
+        sr_token = self._generate_sr_verification_token(request_number)
+        verify_url = f"{frontend_url}"
+        qr_code_b64 = self._generate_qr_with_logo(f"{frontend_url}/verify/{request_number}?t={sr_token}", size=180)
+
+        # Format tariff
+        def format_amount(amount) -> str:
+            try:
+                num = float(amount) if amount else 0
+                return f"{int(num):,}".replace(",", " ")
+            except (ValueError, TypeError):
+                return "0"
+
+        formatted_tariff = {
+            "total_amount": format_amount(tariff.get("total_amount", tariff.get("totalAmount", 0))),
+        }
+
+        # Format appointment
+        formatted_appointment = None
+        if appointment:
+            formatted_appointment = {
+                "date": appointment.get("date", "-"),
+                "time": appointment.get("time", "-"),
+                "location": appointment.get("location", "-"),
+            }
+
+        # Payment status label
+        if payment_status == "completed":
+            payment_status_label = texts.get("payment_confirmed", "Pago registrado")
+        elif payment_status in ("pending_agent_review", "submitted"):
+            payment_status_label = texts.get("payment_pending_validation", "Pendiente de validacion")
+        elif payment_status == "processing":
+            payment_status_label = texts.get("payment_processing", "Pago en proceso")
+        else:
+            payment_status_label = texts.get("payment_confirmed", "Pago registrado")
+
+        # Render template
+        template = self.env.get_template("validation_certificate_v2_pdf.html")
+        html_content = template.render(
+            title=f"{texts['certificate_title']} - {request_number}",
+            language=language,
+            texts=texts,
+            request_number=request_number,
+            workflow_name=workflow_name,
+            solicitud_type_label=solicitud_type_label,
+            data_sections=data_sections,
+            tariff=formatted_tariff,
+            appointment=formatted_appointment,
+            agent_name=agent_name,
+            agent_entity=agent_entity,
+            photo_base64=photo_base64,
+            logo_base64=logo_base64,
+            barcode_value=barcode_value,
+            qr_code_b64=qr_code_b64,
+            verify_url=verify_url,
+            payment_status_label=payment_status_label,
+            validated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+            generated_at=datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC"),
+        )
+
+        # Convert HTML to PDF
+        pdf_buffer = BytesIO()
+        pisa_status = pisa.CreatePDF(
+            src=html_content,
+            dest=pdf_buffer,
+            encoding="utf-8"
+        )
+
+        if pisa_status.err:
+            logger.error(f"Validation certificate v2 PDF error: {pisa_status.err}")
+            raise RuntimeError(f"Failed to generate PDF: {pisa_status.err}")
+
+        pdf_buffer.seek(0)
+        pdf_bytes = pdf_buffer.read()
+
+        logger.info(
+            f"Generated validation certificate v2 for {request_number} "
+            f"({len(pdf_bytes)} bytes, sections: {len(data_sections)}, "
+            f"photo: {'yes' if photo_base64 else 'no'}, agent: {agent_name})"
+        )
+
+        return pdf_bytes
+
 
 # Singleton instance
 summary_pdf_service = SummaryPDFService()

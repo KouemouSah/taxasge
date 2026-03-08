@@ -1449,21 +1449,23 @@ async def _bg_approve_pdf_and_notify(
                     "location": appointment_info.get('location') or '',
                 }
 
-            # ── Generate PDF using generate_summary_pdf (universal, dynamic sections) ──
+            # ── Generate validation certificate PDF (v2: dynamic sections + official design) ──
             pdf_attachment = None
             try:
                 pdf_service = SummaryPDFService()
-                pdf_bytes = await pdf_service.generate_summary_pdf(
+                pdf_bytes = await pdf_service.generate_validation_certificate_v2(
                     request_number=request_ref,
                     workflow_name=workflow_name,
                     solicitud_type=solicitud_type,
+                    data_sections=data_sections,
                     documents=documents,
                     tariff=tariff,
-                    data_sections=data_sections,
                     appointment=appointment_pdf,
-                    language=language,
+                    agent_name=agent_name,
+                    agent_entity=agent_entity,
                     photo_url=photo_url,
                     payment_status=payment_status,
+                    language=language,
                 )
                 pdf_filename = f"certificat_validation_{request_ref}.pdf"
                 pdf_attachment = [(pdf_filename, pdf_bytes, "application/pdf")]
