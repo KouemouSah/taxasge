@@ -1046,7 +1046,7 @@ async def make_decision(
 ):
     # Verify agent is assigned to this request
     queue_item = await db.fetchrow("""
-        SELECT * FROM agent_work_queue
+        SELECT id FROM agent_work_queue
         WHERE item_id = $1
         AND item_type = 'service_request'
         AND assigned_to = $2
@@ -1060,7 +1060,9 @@ async def make_decision(
         )
 
     request = await db.fetchrow("""
-        SELECT * FROM service_requests WHERE id = $1
+        SELECT id, reference, status, workflow_code, user_id, form_data,
+               escalated, batch_id, entity_code, cita_date
+        FROM service_requests WHERE id = $1
     """, request_id)
 
     if not request:
@@ -1076,53 +1078,68 @@ async def make_decision(
             detail="Cannot process escalated request. Awaiting supervisor decision."
         )
 
+    # Only allow decisions on active requests
+    allowed_statuses = ('SUBMITTED', 'UNDER_REVIEW')
+    if request['status'] not in allowed_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot make decision on request with status '{request['status']}'. "
+                   f"Allowed: {', '.join(allowed_statuses)}"
+        )
+
     if decision.decision == "approve":
         # Transition to DOSSIER_VALIDE
         new_status = "DOSSIER_VALIDE"
-
         previous_status = request['status']
-        await db.execute("""
-            UPDATE service_requests
-            SET status = $1,
-                validated_at = NOW(),
-                updated_at = NOW()
-            WHERE id = $2
-        """, new_status, request_id)
-
-        # Record history entry for citizen notification
-        await db.execute("""
-            INSERT INTO service_request_history
-            (service_request_id, action, previous_status, new_status, performed_by, comment)
-            VALUES ($1, 'status_change', $2, $3, $4, $5)
-        """, request_id, previous_status, new_status, current_user.id, decision.comments)
-
-        # Complete queue item
-        await agent_queue_service.complete_item(
-            db=db,
-            queue_id=str(queue_item['id']),
-            agent_id=str(current_user.id),
-            result_status="approved"
-        )
-
-        # Schedule appointment if workflow requires it
         workflow_code = request['workflow_code']
+
+        # Atomic: status + history + queue in one transaction
+        async with db.transaction():
+            await db.execute("""
+                UPDATE service_requests
+                SET status = $1,
+                    validated_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $2
+            """, new_status, request_id)
+
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, previous_status, new_status, performed_by, comment)
+                VALUES ($1, 'status_change', $2, $3, $4, $5)
+            """, request_id, previous_status, new_status, current_user.id, decision.comments)
+
+            await agent_queue_service.complete_item(
+                db=db,
+                queue_id=str(queue_item['id']),
+                agent_id=str(current_user.id),
+                result_status="approved"
+            )
+
+        # Post-transaction: appointment (only if citizen didn't already book one)
         workflow_data = await db.fetchrow("""
-            SELECT requires_appointment, name_es, name_fr FROM workflows WHERE code = $1
+            SELECT requires_appointment, name_es FROM workflows WHERE code = $1
         """, workflow_code)
 
         appointment_info = None
         if workflow_data and workflow_data['requires_appointment']:
-            reservation = await appointment_scheduler.reserve_appointment(
-                db=db,
-                service_request_id=request_id,
-                workflow_code=workflow_code,
-                validation_date=date.today()
-            )
-            appointment_info = {
-                "date": reservation.appointment_date.isoformat(),
-                "time": reservation.appointment_time.isoformat(),
-                "location": reservation.appointment_location
-            }
+            # Skip if citizen already has an appointment (cache-first wizard flow)
+            existing_appt = request.get('cita_date')
+            if not existing_appt:
+                try:
+                    reservation = await appointment_scheduler.reserve_appointment(
+                        db=db,
+                        service_request_id=request_id,
+                        workflow_code=workflow_code,
+                        validation_date=date.today()
+                    )
+                    appointment_info = {
+                        "date": reservation.appointment_date.isoformat(),
+                        "time": reservation.appointment_time.isoformat(),
+                        "location": reservation.appointment_location
+                    }
+                except Exception as e:
+                    logger.warning(f"Post-approval appointment scheduling failed for {request_id}: {e}")
 
         # Fetch user info for notification and PDF
         user_info = await db.fetchrow(
@@ -1200,8 +1217,7 @@ async def make_decision(
 
                 # Get workflow name based on language
                 language = user_info['preferred_language'] or 'es'
-                workflow_name = workflow_data.get('name_fr') if language == 'fr' else workflow_data.get('name_es')
-                workflow_name = workflow_name or workflow_code
+                workflow_name = workflow_data.get('name_es') or workflow_code
 
                 # Agent info
                 agent_name = f"{current_user.first_name} {current_user.last_name}"
@@ -1264,8 +1280,8 @@ async def make_decision(
                     event_payload["attachments"] = pdf_attachment
 
                 EventBus.publish_nowait(EventType.REQUEST_APPROVED, event_payload)
-        except Exception:
-            pass  # Non-blocking
+        except Exception as e:
+            logger.warning(f"Failed to publish REQUEST_APPROVED event for {request_id}: {e}")
 
         # Check batch auto-completion
         if request.get("batch_id"):
@@ -1291,29 +1307,34 @@ async def make_decision(
             )
 
         previous_status = request['status']
-        await db.execute("""
-            UPDATE service_requests
-            SET status = 'REJECTED',
-                rejection_reason = $2,
-                validated_at = NOW(),
-                updated_at = NOW()
-            WHERE id = $1
-        """, request_id, decision.rejection_reason)
+        # Build history comment: reason + optional agent comments
+        history_comment = decision.rejection_reason
+        if decision.comments:
+            history_comment = f"{decision.rejection_reason}\n---\n{decision.comments}"
 
-        # Record history entry for citizen notification
-        await db.execute("""
-            INSERT INTO service_request_history
-            (service_request_id, action, previous_status, new_status, performed_by, comment)
-            VALUES ($1, 'status_change', $2, 'REJECTED', $3, $4)
-        """, request_id, previous_status, current_user.id, decision.rejection_reason or decision.comments)
+        # Atomic: status + history + queue
+        async with db.transaction():
+            await db.execute("""
+                UPDATE service_requests
+                SET status = 'REJECTED',
+                    rejection_reason = $2,
+                    validated_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $1
+            """, request_id, decision.rejection_reason)
 
-        # Complete queue item
-        await agent_queue_service.complete_item(
-            db=db,
-            queue_id=str(queue_item['id']),
-            agent_id=str(current_user.id),
-            result_status="rejected"
-        )
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, previous_status, new_status, performed_by, comment)
+                VALUES ($1, 'status_change', $2, 'REJECTED', $3, $4)
+            """, request_id, previous_status, current_user.id, history_comment)
+
+            await agent_queue_service.complete_item(
+                db=db,
+                queue_id=str(queue_item['id']),
+                agent_id=str(current_user.id),
+                result_status="rejected"
+            )
 
         # Publish REQUEST_REJECTED event
         try:
@@ -1326,6 +1347,7 @@ async def make_decision(
                     EventType.REQUEST_REJECTED,
                     {
                         "request_id": str(request_id),
+                        "reference": request['reference'],
                         "user_id": str(user_info['id']),
                         "user_email": user_info['email'],
                         "user_name": f"{user_info['first_name']} {user_info['last_name']}",
@@ -1334,11 +1356,12 @@ async def make_decision(
                         "workflow_code": request['workflow_code'],
                         "agent_id": str(current_user.id),
                         "reason": decision.rejection_reason,
+                        "rejection_reason": decision.rejection_reason,
                         "timestamp": datetime.now().isoformat(),
                     }
                 )
-        except Exception:
-            pass  # Non-blocking
+        except Exception as e:
+            logger.warning(f"Failed to publish REQUEST_REJECTED event for {request_id}: {e}")
 
         # Check batch auto-completion
         if request.get("batch_id"):
@@ -1364,12 +1387,6 @@ async def make_decision(
             )
 
         previous_status = request['status']
-        await db.execute("""
-            UPDATE service_requests
-            SET status = 'DOCUMENTS_REQUIRED',
-                updated_at = NOW()
-            WHERE id = $1
-        """, request_id)
 
         # Build history details (only include requested_documents if provided)
         history_details = {}
@@ -1377,35 +1394,42 @@ async def make_decision(
         if decision.requested_documents:
             history_details["requested_documents"] = decision.requested_documents
             # Resolve document codes to human-readable names for auto-comment
-            if decision.requested_documents:
-                name_rows = await db.fetch("""
-                    SELECT code, name_es FROM document_templates
-                    WHERE code = ANY($1::text[])
-                """, decision.requested_documents)
-                name_map = {r['code']: r['name_es'] for r in name_rows}
-                doc_names = [name_map.get(c, c) for c in decision.requested_documents]
+            name_rows = await db.fetch("""
+                SELECT template_code, document_name_es FROM document_templates
+                WHERE template_code = ANY($1::text[])
+            """, decision.requested_documents)
+            name_map = {r['template_code']: r['document_name_es'] for r in name_rows}
+            doc_names = [name_map.get(c, c) for c in decision.requested_documents]
 
         # Auto-generate comment from document names if no explicit comment provided
         history_comment = decision.comments
         if not history_comment and doc_names:
             history_comment = f"Se requiere volver a enviar: {', '.join(doc_names)}"
 
-        # Record history entry for citizen notification
-        await db.execute("""
-            INSERT INTO service_request_history
-            (service_request_id, action, previous_status, new_status, performed_by, comment, details)
-            VALUES ($1, 'documents_required', $2, 'DOCUMENTS_REQUIRED', $3, $4, $5::jsonb)
-        """, request_id, previous_status, current_user.id, history_comment,
-            json.dumps(history_details))
+        # --- ATOMIC TRANSACTION: status + history + queue cancel ---
+        async with db.transaction():
+            await db.execute("""
+                UPDATE service_requests
+                SET status = 'DOCUMENTS_REQUIRED',
+                    updated_at = NOW()
+                WHERE id = $1
+            """, request_id)
 
-        # Cancel queue item — a new one will be created when citizen re-submits
-        await db.execute("""
-            UPDATE agent_work_queue
-            SET status = 'cancelled',
-                assigned_to = NULL,
-                updated_at = NOW()
-            WHERE id = $1
-        """, str(queue_item['id']))
+            await db.execute("""
+                INSERT INTO service_request_history
+                (service_request_id, action, previous_status, new_status, performed_by, comment, details)
+                VALUES ($1, 'documents_required', $2, 'DOCUMENTS_REQUIRED', $3, $4, $5::jsonb)
+            """, request_id, previous_status, current_user.id, history_comment,
+                json.dumps(history_details))
+
+            # Cancel queue item — a new one will be created when citizen re-submits
+            await db.execute("""
+                UPDATE agent_work_queue
+                SET status = 'cancelled',
+                    assigned_to = NULL,
+                    updated_at = NOW()
+                WHERE id = $1
+            """, str(queue_item['id']))
 
         # Publish event for citizen notification (email/SMS)
         try:
@@ -1416,6 +1440,7 @@ async def make_decision(
             if user_info:
                 event_payload = {
                     "request_id": str(request_id),
+                    "reference": request.get('reference'),
                     "user_id": str(user_info['id']),
                     "user_email": user_info['email'],
                     "user_name": f"{user_info['first_name']} {user_info['last_name']}",
@@ -1432,8 +1457,8 @@ async def make_decision(
                     EventType.REQUEST_DOCUMENTS_REQUIRED,
                     event_payload
                 )
-        except Exception:
-            pass  # Non-blocking
+        except Exception as e:
+            logger.warning(f"Failed to publish REQUEST_DOCUMENTS_REQUIRED event for {request_id}: {e}")
 
         return {
             "message": "Additional documents requested",
@@ -1521,8 +1546,8 @@ async def escalate_request(
                 agent_id=str(current_user.id),
                 reason=escalation.reason
             )
-        except Exception:
-            pass  # Non-blocking: queue is secondary
+        except Exception as e:
+            logger.warning(f"Failed to enqueue escalated request {escalation.request_id}: {e}")
 
     return {
         "message": "Service request escalated",
@@ -1729,8 +1754,8 @@ async def cancel_appointment(
                         "timestamp": datetime.now().isoformat(),
                     }
                 )
-        except Exception:
-            pass  # Non-blocking
+        except Exception as e:
+            logger.warning(f"Failed to publish APPOINTMENT_CANCELLED event: {e}")
 
     return {"message": "Appointment cancelled"}
 
@@ -5253,7 +5278,7 @@ async def get_my_assigned_for_appointment(
         workflow_codes = []
 
     # Statuses eligible for appointments
-    eligible_statuses = ['PAYMENT_PENDING', 'PAID', 'SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'APPROVED']
+    eligible_statuses = ['PAYMENT_PENDING', 'PAID', 'SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE']
 
     # Query assigned requests with existing appointment info
     query = """
@@ -5782,8 +5807,8 @@ async def cancel_appointment_by_reservation(
                     "timestamp": datetime.now().isoformat(),
                 }
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to publish APPOINTMENT_CANCELLED event: {e}")
 
     return {"message": "Appointment cancelled"}
 

@@ -278,9 +278,18 @@ export default function AgentRequestDetailPage() {
         rejectionReason: data.rejectionReason,
         requestedDocuments: data.requestedDocuments,
       }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['agent-request-detail', requestId] });
+      const messages: Record<string, string> = {
+        approve: 'Solicitud aprobada exitosamente',
+        reject: 'Solicitud rechazada',
+        request_documents: 'Documentos adicionales solicitados',
+      };
+      toast.success(messages[variables.decision] || 'Decisión registrada');
       router.back();
+    },
+    onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
+      toast.error(error.response?.data?.detail || error.message || 'Error al procesar la decisión');
     },
   });
 

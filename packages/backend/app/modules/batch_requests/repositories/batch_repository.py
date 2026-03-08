@@ -533,7 +533,7 @@ class BatchRepository:
         remaining = await db.fetchval("""
             SELECT COUNT(*) FROM service_requests
             WHERE batch_id = $1
-            AND status::text NOT IN ('DOSSIER_VALIDE', 'APPROVED', 'REJECTED', 'COMPLETED', 'EXPIRED')
+            AND status::text NOT IN ('DOSSIER_VALIDE', 'REJECTED', 'COMPLETED', 'EXPIRED')
         """, batch_id)
 
         if remaining == 0:

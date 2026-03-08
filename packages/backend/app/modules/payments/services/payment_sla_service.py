@@ -119,10 +119,9 @@ class PaymentSLAService:
             UPDATE service_payments sp
             SET sla_warning_sent = true
             FROM service_requests sr
-            JOIN users u ON u.id = sp.user_id
+            JOIN users u ON u.id = sr.user_id
             LEFT JOIN entity_locations el ON el.id = sr.entity_location_id
             WHERE sp.service_request_id = sr.id
-              AND sp.user_id = u.id
               AND sp.payment_method IN ('cash', 'check')
               AND sp.status = 'pending'
               AND sp.workflow_status = 'pending_agent_review'
@@ -174,10 +173,9 @@ class PaymentSLAService:
             SET sla_escalated = true,
                 workflow_status = 'escalated_supervisor'
             FROM service_requests sr
-            JOIN users u ON u.id = sp.user_id
+            JOIN users u ON u.id = sr.user_id
             LEFT JOIN entity_locations el ON el.id = sr.entity_location_id
             WHERE sp.service_request_id = sr.id
-              AND sp.user_id = u.id
               AND sp.payment_method IN ('cash', 'check')
               AND sp.status = 'pending'
               AND sp.workflow_status = 'pending_agent_review'

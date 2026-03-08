@@ -64,7 +64,6 @@ APPOINTMENT_ALLOWED_STATUSES: List[str] = [
     'SUBMITTED',        # Request submitted (appointment can be modified)
     'UNDER_REVIEW',     # Agent reviewing (appointment can be viewed)
     'DOSSIER_VALIDE',   # Approved (appointment confirmed)
-    'APPROVED',         # Legacy status
 ]
 
 

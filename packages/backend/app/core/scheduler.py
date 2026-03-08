@@ -257,7 +257,7 @@ class InternalScheduler:
                 FROM service_requests sr
                 JOIN users u ON u.id = sr.user_id
                 WHERE sr.cita_date = $1
-                AND sr.status IN ('SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'PAID')
+                AND sr.status IN ('SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'PAID')
                 AND sr.appointment_status IS NULL
                 AND sr.reminder_sent_at IS NULL
             """, tomorrow)
