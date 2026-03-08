@@ -4,10 +4,11 @@ Agent Routes for Service Requests.
 RESTful endpoints for agents to process service requests.
 Includes queue management, approval/rejection, and appointment scheduling.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Path, Body, BackgroundTasks
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import date, time, datetime
+import asyncio
 import asyncpg
 import json
 import logging
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
-from app.database.connection import get_database
+from app.database.connection import get_database, get_db_pool
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.users.models.user import UserResponse as User
@@ -1040,66 +1041,97 @@ async def get_request_for_review(
 async def make_decision(
     request_id: UUID = Path(..., description="Service request ID"),
     decision: AgentDecision = Body(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.process"))
 ):
-    # Verify agent is assigned to this request
-    queue_item = await db.fetchrow("""
-        SELECT id FROM agent_work_queue
-        WHERE item_id = $1
-        AND item_type = 'service_request'
-        AND assigned_to = $2
-        AND status = 'assigned'
-    """, str(request_id), str(current_user.id))
-
-    if not queue_item:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This request is not assigned to you"
+    # ── PRE-FLIGHT: CTE fetches queue + request + idempotency check in 1 query ──
+    preflight = await db.fetchrow("""
+        WITH queue AS (
+            SELECT id AS queue_id
+            FROM agent_work_queue
+            WHERE item_id = $1
+              AND item_type = 'service_request'
+              AND assigned_to = $2
+              AND status = 'assigned'
+        ),
+        req AS (
+            SELECT id, reference, status, workflow_code, user_id, form_data,
+                   escalated, batch_id, entity_code, cita_date
+            FROM service_requests
+            WHERE id = $3
+        ),
+        already_decided AS (
+            SELECT 1 AS decided
+            FROM service_request_history
+            WHERE service_request_id = $3
+              AND action = 'status_change'
+              AND new_status IN ('DOSSIER_VALIDE', 'REJECTED')
+            LIMIT 1
         )
+        SELECT
+            q.queue_id,
+            r.id AS req_id, r.reference, r.status, r.workflow_code,
+            r.user_id, r.form_data, r.escalated, r.batch_id,
+            r.entity_code, r.cita_date,
+            ad.decided
+        FROM req r
+        LEFT JOIN queue q ON TRUE
+        LEFT JOIN already_decided ad ON TRUE
+    """, str(request_id), str(current_user.id), request_id)
 
-    request = await db.fetchrow("""
-        SELECT id, reference, status, workflow_code, user_id, form_data,
-               escalated, batch_id, entity_code, cita_date
-        FROM service_requests WHERE id = $1
-    """, request_id)
+    if not preflight or not preflight['req_id']:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service request not found")
+    if not preflight['queue_id']:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This request is not assigned to you")
+    if preflight.get('decided'):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Decision already recorded for this request (idempotency)")
+    if preflight.get('escalated'):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot process escalated request. Awaiting supervisor decision.")
 
-    if not request:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Service request not found"
-        )
-
-    # Block actions on escalated requests — only supervisor can act
-    if request.get('escalated'):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot process escalated request. Awaiting supervisor decision."
-        )
-
-    # Only allow decisions on active requests
     allowed_statuses = ('SUBMITTED', 'UNDER_REVIEW')
-    if request['status'] not in allowed_statuses:
+    if preflight['status'] not in allowed_statuses:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Cannot make decision on request with status '{request['status']}'. "
-                   f"Allowed: {', '.join(allowed_statuses)}"
+            detail=f"Cannot make decision on request with status '{preflight['status']}'. Allowed: {', '.join(allowed_statuses)}"
         )
 
-    if decision.decision == "approve":
-        # Transition to DOSSIER_VALIDE
-        new_status = "DOSSIER_VALIDE"
-        previous_status = request['status']
-        workflow_code = request['workflow_code']
+    # Store preflight results for use in branches
+    queue_id = str(preflight['queue_id'])
+    request_ref = preflight['reference']
+    workflow_code = preflight['workflow_code']
+    user_id = preflight['user_id']
+    previous_status = preflight['status']
+    batch_id = preflight.get('batch_id')
+    entity_code = preflight.get('entity_code')
+    existing_cita = preflight.get('cita_date')
+    form_data_raw = preflight.get('form_data') or {}
 
-        # Atomic: status + history + queue in one transaction
+    # ══════════════════════════════════════════════════════════════
+    # APPROVE
+    # ══════════════════════════════════════════════════════════════
+    if decision.decision == "approve":
+        new_status = "DOSSIER_VALIDE"
+
+        # ── ATOMIC TRANSACTION with FOR UPDATE (prevents race condition) ──
         async with db.transaction():
+            # Lock the row — any concurrent decision on same request will WAIT
+            locked = await db.fetchval("""
+                SELECT id FROM service_requests
+                WHERE id = $1 AND status = ANY($2::text[])
+                FOR UPDATE
+            """, request_id, list(allowed_statuses))
+
+            if not locked:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Request status changed by another agent"
+                )
+
             await db.execute("""
                 UPDATE service_requests
-                SET status = $1,
-                    validated_at = NOW(),
-                    updated_at = NOW()
+                SET status = $1, validated_at = NOW(), updated_at = NOW()
                 WHERE id = $2
             """, new_status, request_id)
 
@@ -1110,188 +1142,47 @@ async def make_decision(
             """, request_id, previous_status, new_status, current_user.id, decision.comments)
 
             await agent_queue_service.complete_item(
-                db=db,
-                queue_id=str(queue_item['id']),
-                agent_id=str(current_user.id),
-                result_status="approved"
+                db=db, queue_id=queue_id,
+                agent_id=str(current_user.id), result_status="approved"
             )
 
-        # Post-transaction: appointment (only if citizen didn't already book one)
-        workflow_data = await db.fetchrow("""
-            SELECT requires_appointment, name_es FROM workflows WHERE code = $1
-        """, workflow_code)
-
-        appointment_info = None
-        if workflow_data and workflow_data['requires_appointment']:
-            # Skip if citizen already has an appointment (cache-first wizard flow)
-            existing_appt = request.get('cita_date')
-            if not existing_appt:
-                try:
-                    reservation = await appointment_scheduler.reserve_appointment(
-                        db=db,
-                        service_request_id=request_id,
-                        workflow_code=workflow_code,
-                        validation_date=date.today()
-                    )
-                    appointment_info = {
-                        "date": reservation.appointment_date.isoformat(),
-                        "time": reservation.appointment_time.isoformat(),
-                        "location": reservation.appointment_location
-                    }
-                except Exception as e:
-                    logger.warning(f"Post-approval appointment scheduling failed for {request_id}: {e}")
-
-        # Fetch user info for notification and PDF
-        user_info = await db.fetchrow(
-            "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
-            request['user_id']
+        # ── Post-transaction: appointment (if citizen didn't already book one) ──
+        workflow_data = await db.fetchrow(
+            "SELECT requires_appointment, name_es FROM workflows WHERE code = $1",
+            workflow_code
         )
 
-        # Generate validation certificate PDF
-        pdf_attachment = None
-        if user_info:
+        appointment_info = None
+        if workflow_data and workflow_data['requires_appointment'] and not existing_cita:
             try:
-                # Fetch data for PDF generation
-                form_data = request.get('form_data') or {}
-                if isinstance(form_data, str):
-                    form_data = json.loads(form_data)
-
-                # Extract personal data from form_data
-                personal_data = {
-                    "full_name": f"{user_info['first_name']} {user_info['last_name']}",
-                    "dni": form_data.get('dni_pasaporte') or form_data.get('dni') or '',
-                    "birth_date": form_data.get('fecha_nacimiento') or '',
-                    "birth_place": form_data.get('lugar_nacimiento') or '',
-                    "sexo": form_data.get('sexo') or '',
-                    "natural_de": form_data.get('natural_de') or '',
-                    "nombre_padre": form_data.get('nombre_padre') or '',
-                    "nombre_madre": form_data.get('nombre_madre') or '',
-                    "address": form_data.get('direccion') or form_data.get('domicilio') or '',
-                    "phone": user_info['phone_number'] or '',
-                    "email": user_info['email'] or '',
-                }
-
-                # Fetch uploaded documents
-                docs_rows = await db.fetch("""
-                    SELECT COALESCE(dt.document_name_es, srd.document_name, srd.document_code) as doc_name,
-                           srd.is_valid
-                    FROM service_request_documents srd
-                    LEFT JOIN document_templates dt ON dt.template_code = srd.document_code
-                    WHERE srd.service_request_id = $1
-                """, request_id)
-
-                documents = []
-                for doc in docs_rows:
-                    is_verified = doc.get('is_valid', False) is True
-                    documents.append({
-                        "name": doc['doc_name'] or 'Document',
-                        "status": "verified" if is_verified else "pending",
-                        "status_class": "status-verified" if is_verified else "status-pending"
-                    })
-
-                # Fetch tariff info
-                tariff_row = await db.fetchrow("""
-                    SELECT sp.total_amount, sp.workflow_status as status
-                    FROM service_payments sp
-                    WHERE sp.service_request_id = $1
-                    ORDER BY sp.created_at DESC
-                    LIMIT 1
-                """, request_id)
-
-                tariff = {
-                    "total_amount": str(tariff_row['total_amount']) if tariff_row and tariff_row['total_amount'] else "0",
-                    "payment_status": "paid" if tariff_row and tariff_row['status'] == 'completed' else "pending"
-                }
-
-                # Appointment info for PDF
-                appointment_pdf = None
-                if appointment_info:
-                    appointment_pdf = {
-                        "date": appointment_info['date'],
-                        "time": appointment_info['time'],
-                        "location": appointment_info['location'] or ''
-                    }
-
-                # Determine solicitud type
-                solicitud_type = form_data.get('tipo_solicitud', 'expedicion')
-
-                # Get workflow name based on language
-                language = user_info['preferred_language'] or 'es'
-                workflow_name = workflow_data.get('name_es') or workflow_code
-
-                # Agent info
-                agent_name = f"{current_user.first_name} {current_user.last_name}"
-                agent_entity_row = await db.fetchrow("""
-                    SELECT el.location_name FROM entity_locations el
-                    JOIN agent_profiles ap ON ap.entity_location_id = el.id
-                    WHERE ap.user_id = $1 AND ap.is_active = true
-                    LIMIT 1
-                """, current_user.id)
-                agent_entity = agent_entity_row['location_name'] if agent_entity_row else 'DGI'
-
-                # Get photo URL if available
-                photo_url = form_data.get('photo_url') or form_data.get('foto_url')
-
-                # Generate the PDF
-                pdf_service = SummaryPDFService()
-                pdf_bytes = await pdf_service.generate_validation_certificate(
-                    request_number=request['reference'],
-                    workflow_name=workflow_name,
-                    solicitud_type=solicitud_type,
-                    personal_data=personal_data,
-                    documents=documents,
-                    tariff=tariff,
-                    appointment=appointment_pdf,
-                    agent_name=agent_name,
-                    agent_entity=agent_entity,
-                    photo_url=photo_url,
-                    language=language
+                reservation = await appointment_scheduler.reserve_appointment(
+                    db=db, service_request_id=request_id,
+                    workflow_code=workflow_code, validation_date=date.today()
                 )
-
-                # Prepare attachment tuple: (filename, bytes, mime_type)
-                pdf_filename = f"certificat_validation_{request['reference']}.pdf"
-                pdf_attachment = [(pdf_filename, pdf_bytes, "application/pdf")]
-                logger.info(f"Generated validation certificate PDF: {pdf_filename}")
-
-            except Exception as pdf_error:
-                logger.warning(f"Failed to generate validation PDF: {pdf_error}")
-                # Continue without PDF - don't block the approval
-
-        # Publish REQUEST_APPROVED event with optional PDF attachment
-        try:
-            if user_info:
-                event_payload = {
-                    "request_id": str(request_id),
-                    "user_id": str(user_info['id']),
-                    "user_email": user_info['email'],
-                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
-                    "user_phone": user_info['phone_number'],
-                    "preferred_language": user_info['preferred_language'] or 'es',
-                    "workflow_code": request['workflow_code'],
-                    "agent_id": str(current_user.id),
-                    "appointment_date": appointment_info['date'] if appointment_info else None,
-                    "appointment_time": appointment_info['time'] if appointment_info else None,
-                    "location": appointment_info['location'] if appointment_info else None,
-                    "timestamp": datetime.now().isoformat(),
+                appointment_info = {
+                    "date": reservation.appointment_date.isoformat(),
+                    "time": reservation.appointment_time.isoformat(),
+                    "location": reservation.appointment_location
                 }
-
-                # Add PDF attachment if generated
-                if pdf_attachment:
-                    event_payload["attachments"] = pdf_attachment
-
-                EventBus.publish_nowait(EventType.REQUEST_APPROVED, event_payload)
-        except Exception as e:
-            logger.warning(f"Failed to publish REQUEST_APPROVED event for {request_id}: {e}")
-
-        # Check batch auto-completion
-        if request.get("batch_id"):
-            try:
-                completed = await batch_repository.check_and_complete_batch(db, request["batch_id"])
-                if completed:
-                    logger.info(f"Batch auto-completed after approval of SR {request_id}")
-                    await _publish_batch_completed_event(db, request["batch_id"])
             except Exception as e:
-                logger.error(f"Batch auto-completion check failed for SR {request_id}: {e}")
+                logger.warning(f"Post-approval appointment scheduling failed for {request_id}: {e}")
+
+        # ── BACKGROUND TASK: PDF generation + notification (frees DB connection) ──
+        agent_name = f"{current_user.first_name} {current_user.last_name}"
+        agent_id_str = str(current_user.id)
+        background_tasks.add_task(
+            _bg_approve_pdf_and_notify,
+            request_id=request_id,
+            request_ref=request_ref,
+            workflow_code=workflow_code,
+            workflow_name=workflow_data.get('name_es') or workflow_code if workflow_data else workflow_code,
+            user_id=user_id,
+            form_data_raw=form_data_raw,
+            appointment_info=appointment_info,
+            agent_name=agent_name,
+            agent_id_str=agent_id_str,
+            batch_id=batch_id,
+        )
 
         return {
             "message": "Service request approved",
@@ -1299,6 +1190,9 @@ async def make_decision(
             "appointment": appointment_info
         }
 
+    # ══════════════════════════════════════════════════════════════
+    # REJECT
+    # ══════════════════════════════════════════════════════════════
     elif decision.decision == "reject":
         if not decision.rejection_reason:
             raise HTTPException(
@@ -1306,20 +1200,28 @@ async def make_decision(
                 detail="Rejection reason is required"
             )
 
-        previous_status = request['status']
-        # Build history comment: reason + optional agent comments
         history_comment = decision.rejection_reason
         if decision.comments:
             history_comment = f"{decision.rejection_reason}\n---\n{decision.comments}"
 
-        # Atomic: status + history + queue
+        # ── ATOMIC TRANSACTION with FOR UPDATE ──
         async with db.transaction():
+            locked = await db.fetchval("""
+                SELECT id FROM service_requests
+                WHERE id = $1 AND status = ANY($2::text[])
+                FOR UPDATE
+            """, request_id, list(allowed_statuses))
+
+            if not locked:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Request status changed by another agent"
+                )
+
             await db.execute("""
                 UPDATE service_requests
-                SET status = 'REJECTED',
-                    rejection_reason = $2,
-                    validated_at = NOW(),
-                    updated_at = NOW()
+                SET status = 'REJECTED', rejection_reason = $2,
+                    validated_at = NOW(), updated_at = NOW()
                 WHERE id = $1
             """, request_id, decision.rejection_reason)
 
@@ -1330,48 +1232,22 @@ async def make_decision(
             """, request_id, previous_status, current_user.id, history_comment)
 
             await agent_queue_service.complete_item(
-                db=db,
-                queue_id=str(queue_item['id']),
-                agent_id=str(current_user.id),
-                result_status="rejected"
+                db=db, queue_id=queue_id,
+                agent_id=str(current_user.id), result_status="rejected"
             )
 
-        # Publish REQUEST_REJECTED event
-        try:
-            user_info = await db.fetchrow(
-                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
-                request['user_id']
-            )
-            if user_info:
-                EventBus.publish_nowait(
-                    EventType.REQUEST_REJECTED,
-                    {
-                        "request_id": str(request_id),
-                        "reference": request['reference'],
-                        "user_id": str(user_info['id']),
-                        "user_email": user_info['email'],
-                        "user_name": f"{user_info['first_name']} {user_info['last_name']}",
-                        "user_phone": user_info['phone_number'],
-                        "preferred_language": user_info['preferred_language'] or 'es',
-                        "workflow_code": request['workflow_code'],
-                        "agent_id": str(current_user.id),
-                        "reason": decision.rejection_reason,
-                        "rejection_reason": decision.rejection_reason,
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                )
-        except Exception as e:
-            logger.warning(f"Failed to publish REQUEST_REJECTED event for {request_id}: {e}")
-
-        # Check batch auto-completion
-        if request.get("batch_id"):
-            try:
-                completed = await batch_repository.check_and_complete_batch(db, request["batch_id"])
-                if completed:
-                    logger.info(f"Batch auto-completed after rejection of SR {request_id}")
-                    await _publish_batch_completed_event(db, request["batch_id"])
-            except Exception as e:
-                logger.error(f"Batch auto-completion check failed for SR {request_id}: {e}")
+        # ── BACKGROUND: notification + batch check ──
+        agent_id_str = str(current_user.id)
+        background_tasks.add_task(
+            _bg_reject_notify,
+            request_id=request_id,
+            request_ref=request_ref,
+            workflow_code=workflow_code,
+            user_id=user_id,
+            agent_id_str=agent_id_str,
+            rejection_reason=decision.rejection_reason,
+            batch_id=batch_id,
+        )
 
         return {
             "message": "Service request rejected",
@@ -1379,6 +1255,9 @@ async def make_decision(
             "reason": decision.rejection_reason
         }
 
+    # ══════════════════════════════════════════════════════════════
+    # REQUEST DOCUMENTS
+    # ══════════════════════════════════════════════════════════════
     elif decision.decision == "request_documents":
         if not decision.requested_documents and not decision.comments:
             raise HTTPException(
@@ -1386,14 +1265,11 @@ async def make_decision(
                 detail="Either requested documents or a comment must be provided"
             )
 
-        previous_status = request['status']
-
-        # Build history details (only include requested_documents if provided)
+        # Resolve document codes to names (pre-transaction, read-only)
         history_details = {}
         doc_names = []
         if decision.requested_documents:
             history_details["requested_documents"] = decision.requested_documents
-            # Resolve document codes to human-readable names for auto-comment
             name_rows = await db.fetch("""
                 SELECT template_code, document_name_es FROM document_templates
                 WHERE template_code = ANY($1::text[])
@@ -1401,17 +1277,27 @@ async def make_decision(
             name_map = {r['template_code']: r['document_name_es'] for r in name_rows}
             doc_names = [name_map.get(c, c) for c in decision.requested_documents]
 
-        # Auto-generate comment from document names if no explicit comment provided
         history_comment = decision.comments
         if not history_comment and doc_names:
             history_comment = f"Se requiere volver a enviar: {', '.join(doc_names)}"
 
-        # --- ATOMIC TRANSACTION: status + history + queue cancel ---
+        # ── ATOMIC TRANSACTION with FOR UPDATE ──
         async with db.transaction():
+            locked = await db.fetchval("""
+                SELECT id FROM service_requests
+                WHERE id = $1 AND status = ANY($2::text[])
+                FOR UPDATE
+            """, request_id, list(allowed_statuses))
+
+            if not locked:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Request status changed by another agent"
+                )
+
             await db.execute("""
                 UPDATE service_requests
-                SET status = 'DOCUMENTS_REQUIRED',
-                    updated_at = NOW()
+                SET status = 'DOCUMENTS_REQUIRED', updated_at = NOW()
                 WHERE id = $1
             """, request_id)
 
@@ -1422,49 +1308,285 @@ async def make_decision(
             """, request_id, previous_status, current_user.id, history_comment,
                 json.dumps(history_details))
 
-            # Cancel queue item — a new one will be created when citizen re-submits
             await db.execute("""
                 UPDATE agent_work_queue
-                SET status = 'cancelled',
-                    assigned_to = NULL,
-                    updated_at = NOW()
+                SET status = 'cancelled', assigned_to = NULL, updated_at = NOW()
                 WHERE id = $1
-            """, str(queue_item['id']))
+            """, queue_id)
 
-        # Publish event for citizen notification (email/SMS)
-        try:
-            user_info = await db.fetchrow(
-                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
-                request['user_id']
-            )
-            if user_info:
-                event_payload = {
-                    "request_id": str(request_id),
-                    "reference": request.get('reference'),
-                    "user_id": str(user_info['id']),
-                    "user_email": user_info['email'],
-                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
-                    "user_phone": user_info['phone_number'],
-                    "preferred_language": user_info['preferred_language'] or 'es',
-                    "workflow_code": request['workflow_code'],
-                    "agent_id": str(current_user.id),
-                    "comments": history_comment,
-                    "timestamp": datetime.now().isoformat(),
-                }
-                if decision.requested_documents:
-                    event_payload["requested_documents"] = decision.requested_documents
-                EventBus.publish_nowait(
-                    EventType.REQUEST_DOCUMENTS_REQUIRED,
-                    event_payload
-                )
-        except Exception as e:
-            logger.warning(f"Failed to publish REQUEST_DOCUMENTS_REQUIRED event for {request_id}: {e}")
+        # ── BACKGROUND: notification ──
+        background_tasks.add_task(
+            _bg_request_docs_notify,
+            request_id=request_id,
+            request_ref=request_ref,
+            workflow_code=workflow_code,
+            user_id=user_id,
+            agent_id_str=str(current_user.id),
+            history_comment=history_comment,
+            requested_documents=decision.requested_documents,
+        )
 
         return {
             "message": "Additional documents requested",
             "new_status": "DOCUMENTS_REQUIRED",
             "requested_documents": decision.requested_documents
         }
+
+
+# ═══════════════════════════════════════════════════════════════
+# BACKGROUND TASKS for make_decision (PDF + notifications)
+# Runs AFTER HTTP response, using its own DB connection from pool.
+# ═══════════════════════════════════════════════════════════════
+
+async def _bg_approve_pdf_and_notify(
+    *,
+    request_id: UUID,
+    request_ref: str,
+    workflow_code: str,
+    workflow_name: str,
+    user_id: UUID,
+    form_data_raw: Any,
+    appointment_info: Optional[Dict],
+    agent_name: str,
+    agent_id_str: str,
+    batch_id: Optional[UUID],
+):
+    """Background: generate validation PDF, send notification, check batch."""
+    pool = await get_db_pool()
+    async with pool.acquire() as db:
+        try:
+            # ── Parallel fetch: user + documents + payment + agent entity ──
+            form_data = form_data_raw if isinstance(form_data_raw, dict) else {}
+            if isinstance(form_data_raw, str):
+                try:
+                    form_data = json.loads(form_data_raw)
+                except (json.JSONDecodeError, TypeError):
+                    form_data = {}
+
+            user_info, docs_rows, tariff_row, agent_entity_row = await asyncio.gather(
+                db.fetchrow(
+                    "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                    user_id
+                ),
+                db.fetch("""
+                    SELECT COALESCE(dt.document_name_es, srd.document_name, srd.document_code) as doc_name,
+                           srd.is_valid
+                    FROM service_request_documents srd
+                    LEFT JOIN document_templates dt ON dt.template_code = srd.document_code
+                    WHERE srd.service_request_id = $1
+                """, request_id),
+                db.fetchrow("""
+                    SELECT total_amount, workflow_status, payment_method
+                    FROM service_payments
+                    WHERE service_request_id = $1
+                    ORDER BY created_at DESC LIMIT 1
+                """, request_id),
+                db.fetchrow("""
+                    SELECT el.location_name FROM entity_locations el
+                    JOIN agent_profiles ap ON ap.entity_location_id = el.id
+                    WHERE ap.user_id = $1 AND ap.is_active = true
+                    LIMIT 1
+                """, UUID(agent_id_str)),
+            )
+
+            if not user_info:
+                logger.warning(f"[bg_approve] User {user_id} not found for SR {request_id}")
+                return
+
+            language = user_info['preferred_language'] or 'es'
+            agent_entity = agent_entity_row['location_name'] if agent_entity_row else 'DGI'
+
+            # ── Build dynamic data sections from workflow ──
+            data_sections = []
+            photo_url = None
+            solicitud_type = form_data.get('tipo_solicitud', 'expedicion')
+            try:
+                workflow_obj = workflow_engine.get_workflow_by_string(workflow_code)
+                if workflow_obj and hasattr(workflow_obj, 'get_pdf_data_sections'):
+                    from ..workflows.workflow_interface import WorkflowContext, WorkflowCode as WfCode
+                    from ..models.enums import SolicitudType as SolType
+                    # Resolve solicitud_type from form_data or default
+                    sol_type_str = form_data.get('solicitud_type', 'expedicion')
+                    try:
+                        sol_type = SolType(sol_type_str)
+                    except ValueError:
+                        sol_type = SolType.EXPEDICION
+                    ctx = WorkflowContext(
+                        service_request_id=request_id,
+                        user_id=user_id,
+                        workflow_code=WfCode(workflow_code),
+                        solicitud_type=sol_type,
+                        form_data=form_data,
+                    )
+                    data_sections = workflow_obj.get_pdf_data_sections(ctx)
+                photo_url = form_data.get('photo_url') or form_data.get('foto_url')
+            except Exception as e:
+                logger.warning(f"[bg_approve] Failed to build data_sections for {request_id}: {e}")
+
+            # ── Prepare documents list ──
+            documents = []
+            for doc in docs_rows:
+                is_verified = doc.get('is_valid', False) is True
+                documents.append({
+                    "name": doc['doc_name'] or 'Document',
+                    "validation_status": "verified" if is_verified else "pending",
+                })
+
+            # ── Prepare tariff ──
+            tariff = {
+                "base_amount": float(tariff_row['total_amount']) if tariff_row and tariff_row['total_amount'] else 0,
+                "additional_fees": [],
+                "total_amount": float(tariff_row['total_amount']) if tariff_row and tariff_row['total_amount'] else 0,
+            }
+            payment_status = tariff_row['workflow_status'] if tariff_row else None
+
+            # ── Appointment for PDF ──
+            appointment_pdf = None
+            if appointment_info:
+                appointment_pdf = {
+                    "date": appointment_info['date'],
+                    "time": appointment_info['time'],
+                    "location": appointment_info.get('location') or '',
+                }
+
+            # ── Generate PDF using generate_summary_pdf (universal, dynamic sections) ──
+            pdf_attachment = None
+            try:
+                pdf_service = SummaryPDFService()
+                pdf_bytes = await pdf_service.generate_summary_pdf(
+                    request_number=request_ref,
+                    workflow_name=workflow_name,
+                    solicitud_type=solicitud_type,
+                    documents=documents,
+                    tariff=tariff,
+                    data_sections=data_sections,
+                    appointment=appointment_pdf,
+                    language=language,
+                    photo_url=photo_url,
+                    payment_status=payment_status,
+                )
+                pdf_filename = f"certificat_validation_{request_ref}.pdf"
+                pdf_attachment = [(pdf_filename, pdf_bytes, "application/pdf")]
+                logger.info(f"[bg_approve] Generated PDF: {pdf_filename} ({len(pdf_bytes)} bytes)")
+            except Exception as e:
+                logger.warning(f"[bg_approve] PDF generation failed for {request_id}: {e}")
+
+            # ── Publish event ──
+            event_payload = {
+                "request_id": str(request_id),
+                "reference": request_ref,
+                "user_id": str(user_info['id']),
+                "user_email": user_info['email'],
+                "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                "user_phone": user_info['phone_number'],
+                "preferred_language": language,
+                "workflow_code": workflow_code,
+                "agent_id": agent_id_str,
+                "appointment_date": appointment_info['date'] if appointment_info else None,
+                "appointment_time": appointment_info['time'] if appointment_info else None,
+                "location": appointment_info.get('location') if appointment_info else None,
+                "timestamp": datetime.now().isoformat(),
+            }
+            if pdf_attachment:
+                event_payload["attachments"] = pdf_attachment
+            EventBus.publish_nowait(EventType.REQUEST_APPROVED, event_payload)
+
+            # ── Batch auto-completion ──
+            if batch_id:
+                try:
+                    completed = await batch_repository.check_and_complete_batch(db, batch_id)
+                    if completed:
+                        logger.info(f"[bg_approve] Batch auto-completed after approval of SR {request_id}")
+                        await _publish_batch_completed_event(db, batch_id)
+                except Exception as e:
+                    logger.error(f"[bg_approve] Batch check failed for SR {request_id}: {e}")
+
+        except Exception as e:
+            logger.error(f"[bg_approve] Background task failed for SR {request_id}: {e}", exc_info=True)
+
+
+async def _bg_reject_notify(
+    *,
+    request_id: UUID,
+    request_ref: str,
+    workflow_code: str,
+    user_id: UUID,
+    agent_id_str: str,
+    rejection_reason: str,
+    batch_id: Optional[UUID],
+):
+    """Background: send rejection notification, check batch."""
+    pool = await get_db_pool()
+    async with pool.acquire() as db:
+        try:
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                user_id
+            )
+            if user_info:
+                EventBus.publish_nowait(
+                    EventType.REQUEST_REJECTED,
+                    {
+                        "request_id": str(request_id),
+                        "reference": request_ref,
+                        "user_id": str(user_info['id']),
+                        "user_email": user_info['email'],
+                        "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                        "user_phone": user_info['phone_number'],
+                        "preferred_language": user_info['preferred_language'] or 'es',
+                        "workflow_code": workflow_code,
+                        "agent_id": agent_id_str,
+                        "reason": rejection_reason,
+                        "rejection_reason": rejection_reason,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+            if batch_id:
+                completed = await batch_repository.check_and_complete_batch(db, batch_id)
+                if completed:
+                    logger.info(f"[bg_reject] Batch auto-completed after rejection of SR {request_id}")
+                    await _publish_batch_completed_event(db, batch_id)
+        except Exception as e:
+            logger.error(f"[bg_reject] Background task failed for SR {request_id}: {e}", exc_info=True)
+
+
+async def _bg_request_docs_notify(
+    *,
+    request_id: UUID,
+    request_ref: str,
+    workflow_code: str,
+    user_id: UUID,
+    agent_id_str: str,
+    history_comment: Optional[str],
+    requested_documents: Optional[list],
+):
+    """Background: send document request notification."""
+    pool = await get_db_pool()
+    async with pool.acquire() as db:
+        try:
+            user_info = await db.fetchrow(
+                "SELECT id, email, first_name, last_name, phone_number, preferred_language FROM users WHERE id = $1",
+                user_id
+            )
+            if user_info:
+                event_payload = {
+                    "request_id": str(request_id),
+                    "reference": request_ref,
+                    "user_id": str(user_info['id']),
+                    "user_email": user_info['email'],
+                    "user_name": f"{user_info['first_name']} {user_info['last_name']}",
+                    "user_phone": user_info['phone_number'],
+                    "preferred_language": user_info['preferred_language'] or 'es',
+                    "workflow_code": workflow_code,
+                    "agent_id": agent_id_str,
+                    "comments": history_comment,
+                    "timestamp": datetime.now().isoformat(),
+                }
+                if requested_documents:
+                    event_payload["requested_documents"] = requested_documents
+                EventBus.publish_nowait(EventType.REQUEST_DOCUMENTS_REQUIRED, event_payload)
+        except Exception as e:
+            logger.error(f"[bg_request_docs] Background task failed for SR {request_id}: {e}", exc_info=True)
 
 
 # ═══════════════════════════════════════════════════════════════

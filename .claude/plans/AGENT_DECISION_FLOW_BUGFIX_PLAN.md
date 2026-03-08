@@ -1,10 +1,10 @@
-# Plan: Agent Decision Flow — Critical Bugfix
+# Plan: Agent Decision Flow — Critical Bugfix + Scalability
 
 ## Contexte
 Audit complet du flux make_decision() (approve/reject/request_documents).
-11 bugs identifiés (3 critiques, 4 majeurs, 4 mineurs) + 2 problèmes de sécurité.
+11 bugs + 2 sécurité + 6 problèmes scalabilité identifiés.
 
-## Status: COMPLETE
+## Status: COMPLETE (Phase 1-3 bugs + Phase 4 scalabilité)
 
 ---
 
@@ -106,6 +106,46 @@ Audit complet du flux make_decision() (approve/reject/request_documents).
 - **Fichier**: `agent_queue_service.py:356-365`
 - **Note**: Colonne n'existe pas dans agent_work_queue. Log seulement, pas de migration nécessaire.
 - [x] Évalué: non-bloquant, le status est déjà dans service_request_history
+
+---
+
+## Phase 4: SCALABILITÉ (millions de transactions)
+
+### FIX #1 — Race condition: SELECT FOR UPDATE (CRITIQUE)
+- **Problème**: Pas de verrou pessimiste → 2 agents peuvent décider simultanément
+- **Fix**: `SELECT id FROM service_requests WHERE id = $1 FOR UPDATE` dans la transaction
+- [x] Approve: FOR UPDATE avant UPDATE status
+- [x] Reject: FOR UPDATE avant UPDATE status
+- [x] Request_documents: FOR UPDATE avant UPDATE status
+
+### FIX #2 — PDF synchrone bloque connexion BD (HAUTE)
+- **Problème**: PDF (httpx photo + PIL QR + xhtml2pdf) = 400ms-3s, connexion BD bloquée
+- **Fix**: BackgroundTasks — PDF + notifications déportés après réponse HTTP
+- [x] Approve: background_tasks.add_task(_bg_approve_pdf_and_notify)
+- [x] Reject: background_tasks.add_task(_bg_reject_notify)
+- [x] Request_docs: background_tasks.add_task(_bg_request_docs_notify)
+- [x] Chaque background task acquiert sa propre connexion via get_db_pool()
+
+### FIX #3 — Certificat validation hardcodé passeport-only (HAUTE)
+- **Problème**: `generate_validation_certificate()` + `validation_certificate_pdf.html` = 12 champs hardcodés
+- **Fix**: Utiliser `generate_summary_pdf()` + `citizen_summary_pdf.html` (universel, data_sections dynamiques)
+- [x] Background task utilise `workflow.get_pdf_data_sections(context)` (15 workflows couverts)
+- [x] Construit WorkflowContext depuis form_data pour le PDF
+
+### FIX #4 — 10 queries séquentielles par approbation (MOYENNE)
+- **Problème**: user + docs + payment + agent_entity exécutés séquentiellement
+- **Fix**: `asyncio.gather()` pour les 4 queries post-transaction
+- [x] Parallélisation dans _bg_approve_pdf_and_notify
+
+### FIX #5 — Idempotency guard (MOYENNE)
+- **Problème**: Retry HTTP = double traitement possible
+- **Fix**: CTE vérifie si une décision existe déjà dans service_request_history
+- [x] already_decided CTE dans preflight query
+
+### FIX #6 — CTE preflight (optimisation)
+- **Problème**: 2 queries séparées (queue + request) avant la transaction
+- **Fix**: 1 seule CTE combine queue + request + idempotency check
+- [x] Implémenté
 
 ---
 
