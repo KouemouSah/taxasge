@@ -286,19 +286,24 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS middleware - Aligned with Cloud Run deployments
 # Note: Firebase Hosting staging channels use pattern: https://PROJECT--CHANNEL-ID.web.app
+_PROD_ORIGINS = [
+    "https://taxasge.emacsah.com",           # Custom domain (Cloud Run frontend)
+    "https://taxasge-frontend-staging-xrlbgdr5eq-uc.a.run.app",  # Cloud Run direct URL
+    "https://taxasge-dev.web.app",
+    "https://taxasge-pro.web.app",
+    "https://taxasge-dev.firebaseapp.com",
+    "https://taxasge-pro.firebaseapp.com",
+]
+_DEV_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",                  # Local dev
-        "http://localhost:3001",                  # Local dev alt
-    ] if settings.debug else [
-        "https://taxasge.emacsah.com",           # Custom domain (Cloud Run frontend)
-        "https://taxasge-frontend-staging-xrlbgdr5eq-uc.a.run.app",  # Cloud Run direct URL
-        "https://taxasge-dev.web.app",
-        "https://taxasge-pro.web.app",
-        "https://taxasge-dev.firebaseapp.com",
-        "https://taxasge-pro.firebaseapp.com"
-    ],
+    # In debug/staging: allow both localhost AND production origins
+    # In production: production origins only
+    allow_origins=(_DEV_ORIGINS + _PROD_ORIGINS) if settings.debug else _PROD_ORIGINS,
     allow_origin_regex=r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)",  # Allow staging channels
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -316,12 +321,7 @@ except ImportError:
 def get_cors_headers(request: Request) -> dict:
     """Get CORS headers based on request origin."""
     origin = request.headers.get("origin", "")
-    allowed_origins = [
-        "https://taxasge.emacsah.com",
-        "https://taxasge-frontend-staging-xrlbgdr5eq-uc.a.run.app",
-        "https://taxasge-dev.web.app",
-        "https://taxasge-pro.web.app",
-    ]
+    allowed_origins = (_DEV_ORIGINS + _PROD_ORIGINS) if settings.debug else _PROD_ORIGINS
     # Check if origin is allowed or matches staging pattern
     import re
     if origin in allowed_origins or re.match(r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)", origin):
