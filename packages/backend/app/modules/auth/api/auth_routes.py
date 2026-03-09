@@ -660,7 +660,7 @@ async def login(
         logger.info(f"User logged in successfully: {request.email}")
         # Set tokens as HttpOnly cookies + return in body (backward compatible)
         token_resp = TokenResponse(**result)
-        response = JSONResponse(content=token_resp.model_dump())
+        response = JSONResponse(content=token_resp.model_dump(mode="json"))
         _set_refresh_cookie(response, result["refresh_token"])
         _set_access_cookie(response, result["access_token"])
         return response
@@ -726,7 +726,7 @@ async def verify_2fa_login(
         logger.info("2FA login verification successful")
         # Set tokens as HttpOnly cookies + return in body (backward compatible)
         token_resp = TokenResponse(**result)
-        response = JSONResponse(content=token_resp.model_dump())
+        response = JSONResponse(content=token_resp.model_dump(mode="json"))
         _set_refresh_cookie(response, result["refresh_token"])
         _set_access_cookie(response, result["access_token"])
         return response
@@ -783,7 +783,7 @@ async def refresh_token(
         logger.info("Tokens refreshed successfully")
         # Set new tokens as HttpOnly cookies
         resp_data = TokenRefreshResponse(**result) if isinstance(result, dict) else result
-        response = JSONResponse(content=resp_data.model_dump() if hasattr(resp_data, 'model_dump') else result)
+        response = JSONResponse(content=resp_data.model_dump(mode="json") if hasattr(resp_data, 'model_dump') else result)
         new_refresh = result.get("refresh_token") if isinstance(result, dict) else getattr(result, "refresh_token", None)
         new_access = result.get("access_token") if isinstance(result, dict) else getattr(result, "access_token", None)
         if new_refresh:
