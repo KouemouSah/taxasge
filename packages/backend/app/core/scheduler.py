@@ -253,13 +253,15 @@ class InternalScheduler:
                     sr.cita_time as appointment_time,
                     sr.cita_location as location,
                     u.email, u.phone_number as phone,
-                    u.first_name, u.last_name, u.preferred_language
+                    u.first_name, u.last_name, u.preferred_language,
+                    ar.id as reservation_id
                 FROM service_requests sr
                 JOIN users u ON u.id = sr.user_id
+                LEFT JOIN appointment_reservations ar
+                    ON ar.service_request_id = sr.id
                 WHERE sr.cita_date = $1
                 AND sr.status IN ('SUBMITTED', 'UNDER_REVIEW', 'DOSSIER_VALIDE', 'PAID')
-                AND sr.appointment_status IS NULL
-                AND sr.reminder_sent_at IS NULL
+                AND (ar.reminder_sent_at IS NULL OR ar.id IS NULL)
             """, tomorrow)
 
             if not appointments:
@@ -288,10 +290,11 @@ class InternalScheduler:
                             "location": appt.get("location"),
                         },
                     )
-                    await db.execute(
-                        "UPDATE service_requests SET reminder_sent_at = NOW() WHERE id = $1",
-                        appt["request_id"],
-                    )
+                    if appt.get("reservation_id"):
+                        await db.execute(
+                            "UPDATE appointment_reservations SET reminder_sent_at = NOW() WHERE id = $1",
+                            appt["reservation_id"],
+                        )
                     sent += 1
                 except Exception as e:
                     logger.error(f"Reminder failed for {appt['request_id']}: {e}")
@@ -513,7 +516,7 @@ class InternalScheduler:
                 JOIN agent_profiles ap ON ap.id = a.agent_profile_id
                 JOIN users u ON u.id = ap.user_id
                 WHERE srh.action = 'status_change'
-                  AND srh.created_at >= NOW() - MAKE_INTERVAL(days => $1)
+                  AND srh.performed_at >= NOW() - MAKE_INTERVAL(days => $1)
                 GROUP BY a.agent_profile_id, u.full_name
                 HAVING COUNT(*) >= $2
                    AND COUNT(*) FILTER (
