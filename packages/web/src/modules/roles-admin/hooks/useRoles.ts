@@ -23,6 +23,7 @@ export const rolesKeys = {
   withPermissions: (id: string) => [...rolesKeys.detail(id), 'permissions'] as const,
   system: () => [...rolesKeys.all, 'system'] as const,
   custom: () => [...rolesKeys.all, 'custom'] as const,
+  matrix: (module?: string) => [...rolesKeys.all, 'matrix', module] as const,
 }
 
 /**
@@ -155,5 +156,16 @@ export function useRemovePermissions() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: rolesKeys.withPermissions(variables.roleId) })
     },
+  })
+}
+
+/**
+ * Fetch permission matrix (all roles × permissions)
+ */
+export function usePermissionMatrix(module?: string) {
+  return useQuery({
+    queryKey: rolesKeys.matrix(module),
+    queryFn: () => rolesApi.getPermissionMatrix(module),
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }

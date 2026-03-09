@@ -57,3 +57,27 @@ export interface AssignPermissionsRequest {
 export interface RemovePermissionsRequest {
   permission_ids: string[]
 }
+
+export interface PermissionMatrixRole {
+  id: string
+  name: string
+  code: string
+  is_system: boolean
+  entity_type: string | null
+}
+
+export interface PermissionMatrixPermission {
+  id: string
+  name: string
+  resource: string
+  action: string
+  description: string | null
+  is_critical: boolean
+  module_name: string
+}
+
+export interface PermissionMatrixResponse {
+  roles: PermissionMatrixRole[]
+  permissions: PermissionMatrixPermission[]
+  assignments: Record<string, boolean> // "role_id:permission_id" → granted
+}

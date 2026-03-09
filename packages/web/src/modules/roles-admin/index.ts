@@ -26,6 +26,7 @@ export {
   useDeleteRole,
   useAssignPermissions,
   useRemovePermissions,
+  usePermissionMatrix,
 } from './hooks/useRoles'
 
 // Components
@@ -33,3 +34,4 @@ export { RolePermissionsDialog } from './components/RolePermissionsDialog'
 export { RolesTab } from './components/RolesTab'
 export { PermissionsCatalogTab } from './components/PermissionsCatalogTab'
 export { UserPermissionsTab } from './components/UserPermissionsTab'
+export { PermissionMatrix } from './components/PermissionMatrix'

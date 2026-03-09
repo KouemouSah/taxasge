@@ -128,6 +128,32 @@ async def get_agent_rbac_roles(
     return agent_roles
 
 
+@router.get("/permission-matrix", response_model=dict)
+@require_permission("roles.view")
+async def get_permission_matrix(
+    module_name: Optional[str] = Query(None, description="Filter by permission module"),
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Get permission matrix: all roles × permissions with assignment data.
+
+    Requires: roles.view
+
+    Returns a single payload with roles, permissions, and an assignments map
+    keyed by "role_id:permission_id" → granted boolean.
+    Filters permissions by module_name if provided.
+    """
+    matrix = await role_service.repo.get_permission_matrix(module_name)
+    # Serialize UUIDs
+    for role in matrix["roles"]:
+        role["id"] = str(role["id"])
+    for perm in matrix["permissions"]:
+        perm["id"] = str(perm["id"])
+    return matrix
+
+
 @router.get("/{role_id}", response_model=RoleResponse)
 @require_permission("roles.view")
 async def get_role_by_id(

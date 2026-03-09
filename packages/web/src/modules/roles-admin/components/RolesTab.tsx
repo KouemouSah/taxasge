@@ -7,7 +7,7 @@
  * Extracted from monolithic roles/page.tsx for maintainability
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,10 +51,13 @@ import {
   Building2,
   ChevronRight,
   ChevronLeft,
+  Grid3X3,
+  List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRoles, useDeleteRole } from '@/modules/roles-admin';
 import type { Role } from '@/modules/roles-admin';
+import { PermissionMatrix } from './PermissionMatrix';
 
 const PAGE_SIZE = 10;
 
@@ -62,8 +65,19 @@ export function RolesTab() {
   const t = useTranslations('admin.roles');
   const locale = useLocale();
 
+  const [viewMode, setViewMode] = useState<'list' | 'matrix'>('list');
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all');
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Debounce search (300ms)
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchInput]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -126,6 +140,27 @@ export function RolesTab() {
     );
   }
 
+  // Matrix view
+  if (viewMode === 'matrix') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">{t('permissionsTab')} Matrix</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewMode('list')}
+            className="gap-2"
+          >
+            <List className="h-4 w-4" />
+            {t('title')}
+          </Button>
+        </div>
+        <PermissionMatrix />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Stats */}
@@ -170,12 +205,23 @@ export function RolesTab() {
                 {t('found', { count: filteredRoles.length })}
               </CardDescription>
             </div>
-            <Link href={`/${locale}/dashboard/admin/roles/new`}>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('createRole')}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewMode('matrix')}
+                className="gap-2"
+              >
+                <Grid3X3 className="h-4 w-4" />
+                Matrix
               </Button>
-            </Link>
+              <Link href={`/${locale}/dashboard/admin/roles/new`}>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('createRole')}
+                </Button>
+              </Link>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -184,8 +230,8 @@ export function RolesTab() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={t('searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-9"
               />
             </div>

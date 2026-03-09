@@ -31,6 +31,7 @@ import type {
   PaginatedRolesResponse,
   AssignPermissionsRequest,
   RemovePermissionsRequest,
+  PermissionMatrixResponse,
 } from '../types'
 
 // =============================================================================
@@ -118,6 +119,16 @@ export const rolesApi = {
    */
   getByCode: async (code: string): Promise<Role> => {
     return fetchClient.get<Role>(`${ROLES_BASE}/code/${code}`)
+  },
+
+  /**
+   * Get permission matrix: all roles × permissions with assignment data
+   * BACKEND: GET /api/v1/roles/permission-matrix
+   * PERMISSION: roles.view
+   */
+  getPermissionMatrix: async (module_name?: string): Promise<PermissionMatrixResponse> => {
+    const params = module_name ? `?module_name=${encodeURIComponent(module_name)}` : ''
+    return fetchClient.get<PermissionMatrixResponse>(`${ROLES_BASE}/permission-matrix${params}`)
   },
 
   /**

@@ -502,3 +502,59 @@ class RoleRepository:
         """, role_id)
 
         return [str(row['permission_id']) for row in results]
+
+    async def get_permission_matrix(self, module_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get permission matrix: all roles × permissions with assignment data.
+        Single query, no N+1.
+
+        Args:
+            module_name: Optional filter by permission module
+
+        Returns:
+            Dict with roles, permissions, and assignments map
+        """
+        # 1. Get all active roles (sorted)
+        roles = await self.db.fetch("""
+            SELECT id, name, code, is_system, entity_type
+            FROM roles
+            ORDER BY is_system DESC, code
+        """)
+
+        # 2. Get permissions (optionally filtered by module)
+        if module_name:
+            permissions = await self.db.fetch("""
+                SELECT id, name, resource, action, description, is_critical, module_name
+                FROM permissions
+                WHERE module_name = $1
+                ORDER BY module_name, resource, action
+            """, module_name)
+        else:
+            permissions = await self.db.fetch("""
+                SELECT id, name, resource, action, description, is_critical, module_name
+                FROM permissions
+                ORDER BY module_name, resource, action
+            """)
+
+        # 3. Get all role_permissions in one query (the key optimization)
+        perm_ids = [str(p['id']) for p in permissions]
+        if perm_ids:
+            assignments = await self.db.fetch("""
+                SELECT role_id::text, permission_id::text, granted
+                FROM role_permissions
+                WHERE permission_id = ANY($1::uuid[])
+            """, perm_ids)
+        else:
+            assignments = []
+
+        # Build assignment lookup: "role_id:permission_id" → granted
+        assignment_map = {}
+        for a in assignments:
+            key = f"{a['role_id']}:{a['permission_id']}"
+            assignment_map[key] = a['granted']
+
+        return {
+            "roles": [dict(r) for r in roles],
+            "permissions": [dict(p) for p in permissions],
+            "assignments": assignment_map,
+        }
