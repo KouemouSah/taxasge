@@ -71,8 +71,9 @@ export default function AgentAuthPage() {
 
       // Standard login (no 2FA)
       if ('access_token' in response) {
-        // Verify this is an agent account
-        if (response.user.role !== 'agent' && response.user.role !== 'admin') {
+        // Verify this is an agent/admin/supervisor account
+        const role = response.user.role?.toLowerCase() || '';
+        if (role !== 'admin' && !role.startsWith('agent_') && !role.startsWith('supervisor_')) {
           toast({
             variant: 'destructive',
             title: t('accessDenied'),
@@ -89,10 +90,13 @@ export default function AgentAuthPage() {
           description: t('loginWelcome', { name: response.user.first_name || response.user.email }),
         });
 
-        // Redirect to agent dashboard
+        // Redirect based on role
         setTimeout(() => {
-          if (response.user.role === 'admin') {
+          const userRole = response.user.role?.toLowerCase() || '';
+          if (userRole === 'admin') {
             router.push(`/${locale}/dashboard/admin`);
+          } else if (userRole.startsWith('supervisor_')) {
+            router.push(`/${locale}/dashboard/supervisor`);
           } else {
             router.push(`/${locale}/dashboard/agent`);
           }
@@ -149,8 +153,11 @@ export default function AgentAuthPage() {
       });
 
       setTimeout(() => {
-        if (response.user.role === 'admin') {
+        const userRole = response.user.role?.toLowerCase() || '';
+        if (userRole === 'admin') {
           router.push(`/${locale}/dashboard/admin`);
+        } else if (userRole.startsWith('supervisor_')) {
+          router.push(`/${locale}/dashboard/supervisor`);
         } else {
           router.push(`/${locale}/dashboard/agent`);
         }

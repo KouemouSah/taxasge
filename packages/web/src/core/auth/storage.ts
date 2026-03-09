@@ -1,19 +1,23 @@
 /**
- * Token Storage Management — Security Hardened
+ * Token Storage Management
  *
- * Strategy:
- * - access_token: in-memory variable (NOT localStorage — XSS-safe)
- * - refresh_token: HttpOnly cookie set by backend (browser auto-sends, JS cannot read)
+ * Strategy (cross-domain architecture: frontend ≠ backend domain):
+ * - access_token: in-memory + JS cookie (taxasge_auth_token) for middleware & page refresh
+ * - refresh_token: in-memory + sessionStorage (survives page refresh, cleared on tab close)
  * - user profile: localStorage (non-sensitive, needed for UI rendering)
- * - middleware auth cookie: HttpOnly taxasge_auth_token set by backend (XSS-safe, readable by Edge middleware)
  *
- * On page refresh: access_token is lost → triggers refresh via HttpOnly cookie → restored
+ * On page refresh: tokens restored from cookie/sessionStorage → no 401 cycle
+ *
+ * NOTE: Backend HttpOnly cookies are on the backend domain (Cloud Run),
+ * NOT the frontend domain (Firebase Hosting). SameSite=strict prevents
+ * cross-origin cookie sending. So we use JS-accessible storage on frontend.
  */
 
 import type { AuthData, MenuConfig, DashboardConfig } from '@/types/auth';
 import { APP_CONSTANTS } from '@/core/config/constants';
 import { setAuthCookies, clearAuthCookies } from './cookies';
 import { broadcastAuthEvent } from './broadcast';
+import Cookies from 'js-cookie';
 
 const STORAGE_KEY = APP_CONSTANTS.STORAGE_KEYS.AUTH_DATA;
 const MENU_CONFIG_KEY = 'taxasge_menu_config';
@@ -26,24 +30,49 @@ const DASHBOARD_CONFIG_KEY = 'taxasge_dashboard_config';
 let _accessToken: string | null = null;
 let _refreshToken: string | null = null;
 
-/** Get access token from memory */
+/** Get access token from memory, fallback to cookie on page refresh */
 export function getAccessToken(): string | null {
-  return _accessToken;
+  if (_accessToken) return _accessToken;
+  // Page refresh: restore from JS cookie (set during login/refresh)
+  if (typeof window !== 'undefined') {
+    const cookieToken = Cookies.get('taxasge_auth_token');
+    if (cookieToken) {
+      _accessToken = cookieToken;
+      return cookieToken;
+    }
+  }
+  return null;
 }
 
-/** Set access token in memory only */
+/** Set access token in memory */
 export function setAccessToken(token: string | null): void {
   _accessToken = token;
 }
 
-/** Get refresh token from memory (fallback for legacy code) */
+/** Get refresh token from memory, fallback to sessionStorage on page refresh */
 export function getRefreshToken(): string | null {
-  return _refreshToken;
+  if (_refreshToken) return _refreshToken;
+  // Page refresh: restore from sessionStorage (cleared on tab close)
+  if (typeof window !== 'undefined') {
+    const stored = sessionStorage.getItem('_rt');
+    if (stored) {
+      _refreshToken = stored;
+      return stored;
+    }
+  }
+  return null;
 }
 
-/** Set refresh token in memory (backend also sets HttpOnly cookie) */
+/** Set refresh token in memory + sessionStorage (survives page refresh) */
 export function setRefreshToken(token: string | null): void {
   _refreshToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      sessionStorage.setItem('_rt', token);
+    } else {
+      sessionStorage.removeItem('_rt');
+    }
+  }
 }
 
 // ============================================================================
@@ -52,7 +81,7 @@ export function setRefreshToken(token: string | null): void {
 
 /**
  * Get authentication data from storage.
- * Reconstructs AuthData from localStorage (user) + memory (tokens).
+ * Reconstructs AuthData from localStorage (user) + memory/cookie/sessionStorage (tokens).
  */
 export function getAuthData(): AuthData | null {
   if (typeof window === 'undefined') return null;
@@ -62,11 +91,10 @@ export function getAuthData(): AuthData | null {
 
   try {
     const stored = JSON.parse(data);
-    // Reconstruct full AuthData: tokens from memory ONLY (never from localStorage)
     return {
       ...stored,
-      access_token: _accessToken || '',
-      refresh_token: _refreshToken || '',
+      access_token: getAccessToken() || '',
+      refresh_token: getRefreshToken() || '',
     } as AuthData;
   } catch (error) {
     console.error('Error parsing auth data:', error);
@@ -76,26 +104,25 @@ export function getAuthData(): AuthData | null {
 
 /**
  * Save authentication data.
- * Tokens go to memory; user profile goes to localStorage.
- * Also sets middleware cookies.
+ * Tokens → memory + cookie/sessionStorage; user profile → localStorage.
  */
 export function setAuthData(authData: AuthData): void {
   if (typeof window === 'undefined') return;
 
-  // Tokens → memory only (XSS-safe)
-  _accessToken = authData.access_token;
-  _refreshToken = authData.refresh_token;
+  // Tokens → memory + persistent storage for page refresh survival
+  setAccessToken(authData.access_token);
+  setRefreshToken(authData.refresh_token);
 
   // User profile → localStorage (non-sensitive, needed for UI)
   // Strip tokens from localStorage copy
   const storageData = {
     ...authData,
-    access_token: '', // Don't persist tokens in localStorage
-    refresh_token: '', // Backend sets HttpOnly cookie for refresh
+    access_token: '',
+    refresh_token: '',
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData));
 
-  // Set middleware cookies (for Next.js middleware route protection)
+  // Set middleware cookies (access_token + role for Next.js middleware)
   if (authData.access_token && authData.user?.role) {
     setAuthCookies(authData.access_token, authData.user.role);
   }
@@ -105,14 +132,14 @@ export function setAuthData(authData: AuthData): void {
 }
 
 /**
- * Clear all authentication data (memory + localStorage + cookies)
+ * Clear all authentication data (memory + sessionStorage + localStorage + cookies)
  */
 export function clearAuthData(): void {
   if (typeof window === 'undefined') return;
 
-  // Clear in-memory tokens
-  _accessToken = null;
-  _refreshToken = null;
+  // Clear tokens (memory + sessionStorage)
+  setAccessToken(null);
+  setRefreshToken(null);
 
   // Clear localStorage
   localStorage.removeItem(STORAGE_KEY);

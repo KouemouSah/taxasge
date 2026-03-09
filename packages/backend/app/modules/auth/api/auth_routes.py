@@ -837,7 +837,7 @@ async def logout(
 
         logger.info(f"User logged out: {current_user.get('email')}")
         # Clear the refresh_token cookie
-        resp_data = result if isinstance(result, dict) else result.model_dump() if hasattr(result, 'model_dump') else {"message": "Logged out", "sessions_revoked": 0}
+        resp_data = result if isinstance(result, dict) else result.model_dump(mode="json") if hasattr(result, 'model_dump') else {"message": "Logged out", "sessions_revoked": 0}
         response = JSONResponse(content=resp_data)
         _clear_refresh_cookie(response)
         return response
@@ -890,11 +890,10 @@ async def get_profile(
             status=user.get("status"),
             first_name=user.get("first_name"),
             last_name=user.get("last_name"),
-            phone=user.get("phone_number"),  # DB column is phone_number
+            phone_number=user.get("phone_number"),
             address=user.get("address"),
             city=user.get("city"),
-            country=user.get("country"),
-            language=user.get("preferred_language", "es"),  # DB column is preferred_language
+            preferred_language=user.get("preferred_language", "es"),
             avatar_url=user.get("avatar_url"),
             created_at=user.get("created_at"),
             updated_at=user.get("updated_at"),

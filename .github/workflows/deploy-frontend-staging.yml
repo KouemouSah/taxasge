@@ -152,6 +152,7 @@ jobs:
             --set-env-vars="NEXT_PUBLIC_SITE_URL=https://${{ env.DOMAIN }}" \
             --set-env-vars="NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \
             --set-env-vars="NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" \
+            --set-env-vars="JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
             --min-instances=0 \
             --max-instances=10 \
             --memory=512Mi \
