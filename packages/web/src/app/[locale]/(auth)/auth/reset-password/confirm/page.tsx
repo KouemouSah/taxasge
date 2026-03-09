@@ -170,6 +170,7 @@ function ResetPasswordConfirmContent() {
                   <Input
                     id="new-password"
                     type="password"
+                    autoComplete="new-password"
                     placeholder={t('passwordPlaceholder')}
                     value={newPassword}
                     onChange={(e) => handlePasswordChange(e.target.value)}
@@ -204,6 +205,7 @@ function ResetPasswordConfirmContent() {
                   <Input
                     id="confirm-password"
                     type="password"
+                    autoComplete="new-password"
                     placeholder={t('passwordPlaceholder')}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from loguru import logger
 
+_DEFAULT_SECRET = "taxasge-jwt-secret-change-in-production"
+
 
 class JWTService:
     """Service for JWT token operations"""
@@ -29,12 +31,15 @@ class JWTService:
             access_token_expire_minutes: Access token expiration in minutes
             refresh_token_expire_days: Refresh token expiration in days
         """
-        self.secret_key = secret_key or os.getenv(
-            "JWT_SECRET_KEY",
-            "taxasge-jwt-secret-change-in-production"
-        )
+        self.secret_key = secret_key or os.getenv("JWT_SECRET_KEY", _DEFAULT_SECRET)
 
-        if self.secret_key == "taxasge-jwt-secret-change-in-production":
+        environment = os.getenv("ENVIRONMENT", "development")
+        if self.secret_key == _DEFAULT_SECRET:
+            if environment in ("production", "staging"):
+                raise RuntimeError(
+                    "CRITICAL: JWT_SECRET_KEY is not configured! "
+                    "Set JWT_SECRET_KEY environment variable before starting in production/staging."
+                )
             logger.warning(
                 "Using default JWT secret key! "
                 "Set JWT_SECRET_KEY environment variable in production"

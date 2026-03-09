@@ -5,6 +5,7 @@
 
 import { appConfig } from '@/core/config/app';
 import { getAuthData } from '@/core/auth/storage';
+import { getDeviceFingerprint, getDeviceInfo } from '@/core/auth/device-fingerprint';
 
 const AUTH_API_URL = `${appConfig.api.baseUrl}/api/${appConfig.api.version}/auth`;
 
@@ -52,6 +53,7 @@ interface LoginRequest {
   email: string;
   password: string;
   remember_me?: boolean;
+  device_info?: Record<string, string>;
 }
 
 interface RegisterRequest {
@@ -102,6 +104,8 @@ interface TwoFactorLoginResponse {
 interface TwoFactorVerifyRequest {
   temp_token: string;
   code: string;
+  device_fingerprint?: string;
+  device_info?: Record<string, string>;
 }
 
 interface PasswordResetRequestRequest {
@@ -167,12 +171,20 @@ interface LogoutResponse {
  * Returns tokens if no 2FA, or temp_token if 2FA enabled
  */
 async function login(data: LoginRequest): Promise<TokenResponse | TwoFactorLoginResponse> {
+  // Attach device info for session binding + audit
+  const deviceInfo = getDeviceInfo();
+  const payload = {
+    ...data,
+    device_info: Object.keys(deviceInfo).length > 0 ? deviceInfo : undefined,
+  };
+
   const response = await fetch(`${AUTH_API_URL}/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(data),
+    credentials: 'include',
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -188,12 +200,25 @@ async function login(data: LoginRequest): Promise<TokenResponse | TwoFactorLogin
  * Completes login after 2FA verification
  */
 async function verify2FA(data: TwoFactorVerifyRequest): Promise<TokenResponse> {
+  // Attach device fingerprint for 2FA device binding
+  let fingerprint: string | undefined;
+  try {
+    fingerprint = await getDeviceFingerprint();
+  } catch { /* non-blocking */ }
+  const deviceInfo = getDeviceInfo();
+  const payload = {
+    ...data,
+    device_fingerprint: fingerprint,
+    device_info: Object.keys(deviceInfo).length > 0 ? deviceInfo : undefined,
+  };
+
   const response = await fetch(`${AUTH_API_URL}/login/2fa-verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(data),
+    credentials: 'include',
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -213,6 +238,7 @@ async function register(data: RegisterRequest): Promise<TokenResponse> {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify(data),
   });
 
@@ -233,6 +259,7 @@ async function refreshToken(refreshToken: string): Promise<TokenResponse> {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
 
@@ -253,6 +280,7 @@ async function logout(data: LogoutRequest): Promise<LogoutResponse> {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify(data),
   });
 
@@ -274,6 +302,7 @@ async function getProfile(accessToken: string): Promise<UserProfile> {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -295,6 +324,7 @@ async function requestPasswordReset(
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify(data),
   });
 
@@ -317,6 +347,7 @@ async function confirmPasswordReset(
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify(data),
   });
 
@@ -403,6 +434,7 @@ async function requestVerificationCode(
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify({ email }),
   });
 
@@ -460,6 +492,7 @@ async function verifyPasswordChange(data: {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify(data),
   });
 

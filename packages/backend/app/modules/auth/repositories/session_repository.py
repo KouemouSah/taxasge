@@ -3,6 +3,7 @@ Session Repository for TaxasGE Backend
 Handles session data access and management using PostgreSQL direct
 """
 
+import hashlib
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from loguru import logger
@@ -25,6 +26,11 @@ class SessionRepository:
         """Initialize session repository"""
         self.db_manager = db_manager
         self.table = "sessions"
+
+    @staticmethod
+    def _hash_token(token: str) -> str:
+        """Hash a token with SHA256 for secure storage (same pattern as refresh tokens)"""
+        return hashlib.sha256(token.encode()).hexdigest()
 
     def _row_to_session(self, row: asyncpg.Record) -> Session:
         """
@@ -81,6 +87,10 @@ class SessionRepository:
             session_id = str(uuid.uuid4())
             now = datetime.utcnow()
 
+            # Hash tokens before storage (never store plaintext tokens in DB)
+            hashed_access = self._hash_token(session_data.access_token) if session_data.access_token else None
+            hashed_refresh = self._hash_token(session_data.refresh_token) if session_data.refresh_token else None
+
             query = """
                 INSERT INTO sessions (
                     id, user_id, access_token, refresh_token, status,
@@ -96,8 +106,8 @@ class SessionRepository:
                     query,
                     session_id,
                     session_data.user_id,
-                    session_data.access_token,
-                    session_data.refresh_token,
+                    hashed_access,
+                    hashed_refresh,
                     SessionStatus.active.value,
                     session_data.ip_address,
                     session_data.user_agent,
@@ -112,8 +122,8 @@ class SessionRepository:
                     query,
                     session_id,
                     session_data.user_id,
-                    session_data.access_token,
-                    session_data.refresh_token,
+                    hashed_access,
+                    hashed_refresh,
                     SessionStatus.active.value,
                     session_data.ip_address,
                     session_data.user_agent,
@@ -182,6 +192,9 @@ class SessionRepository:
             Optional[Session]: Session if found, None otherwise
         """
         try:
+            # Hash the token to match stored hash
+            hashed_token = self._hash_token(access_token)
+
             query = """
                 SELECT * FROM sessions
                 WHERE access_token = $1 AND status = $2
@@ -189,11 +202,31 @@ class SessionRepository:
             """
 
             if conn:
+                result = await conn.fetchrow(query, hashed_token, SessionStatus.active.value)
+            else:
+                result = await self.db_manager.execute_single(query, hashed_token, SessionStatus.active.value)
+
+            if result:
+                return self._row_to_session(result)
+
+            # Transition: try raw token lookup for pre-migration sessions
+            # When found, rehash in-place so next lookup uses hash directly
+            if conn:
                 result = await conn.fetchrow(query, access_token, SessionStatus.active.value)
             else:
                 result = await self.db_manager.execute_single(query, access_token, SessionStatus.active.value)
 
             if result:
+                # Rehash the legacy plaintext token in-place
+                try:
+                    rehash_query = "UPDATE sessions SET access_token = $1 WHERE id = $2"
+                    if conn:
+                        await conn.execute(rehash_query, hashed_token, result['id'])
+                    else:
+                        await self.db_manager.execute_command(rehash_query, hashed_token, str(result['id']))
+                    logger.info(f"Rehashed legacy access_token for session {result['id']}")
+                except Exception as rehash_err:
+                    logger.warning(f"Failed to rehash legacy session token: {rehash_err}")
                 return self._row_to_session(result)
 
             return None
@@ -218,6 +251,9 @@ class SessionRepository:
             Optional[Session]: Session if found, None otherwise
         """
         try:
+            # Hash the token to match stored hash
+            hashed_token = self._hash_token(refresh_token)
+
             query = """
                 SELECT * FROM sessions
                 WHERE refresh_token = $1 AND status = $2
@@ -225,11 +261,30 @@ class SessionRepository:
             """
 
             if conn:
+                result = await conn.fetchrow(query, hashed_token, SessionStatus.active.value)
+            else:
+                result = await self.db_manager.execute_single(query, hashed_token, SessionStatus.active.value)
+
+            if result:
+                return self._row_to_session(result)
+
+            # Transition: try raw token lookup for pre-migration sessions
+            if conn:
                 result = await conn.fetchrow(query, refresh_token, SessionStatus.active.value)
             else:
                 result = await self.db_manager.execute_single(query, refresh_token, SessionStatus.active.value)
 
             if result:
+                # Rehash the legacy plaintext token in-place
+                try:
+                    rehash_query = "UPDATE sessions SET refresh_token = $1 WHERE id = $2"
+                    if conn:
+                        await conn.execute(rehash_query, hashed_token, result['id'])
+                    else:
+                        await self.db_manager.execute_command(rehash_query, hashed_token, str(result['id']))
+                    logger.info(f"Rehashed legacy refresh_token for session {result['id']}")
+                except Exception as rehash_err:
+                    logger.warning(f"Failed to rehash legacy session token: {rehash_err}")
                 return self._row_to_session(result)
 
             return None

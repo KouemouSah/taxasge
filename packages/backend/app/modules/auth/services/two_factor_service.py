@@ -12,12 +12,14 @@ This service handles:
 - 2FA enable/disable operations
 """
 
+import base64
 import pyotp
 import qrcode
 import qrcode.image.svg
 import secrets
 import hashlib
 import logging
+from cryptography.fernet import Fernet
 from io import BytesIO
 from typing import List, Optional, Tuple
 from datetime import datetime
@@ -25,6 +27,21 @@ from datetime import datetime
 from app.repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
+
+
+def _get_fernet() -> Fernet:
+    """Get Fernet instance for TOTP secret encryption."""
+    from app.config import get_settings
+    settings = get_settings()
+    key = settings.TOTP_ENCRYPTION_KEY
+    if not key:
+        # Derive from JWT secret: SHA256 → base64-encode first 32 bytes → Fernet key
+        jwt_secret = settings.JWT_SECRET_KEY
+        derived = hashlib.sha256(jwt_secret.encode()).digest()
+        key = base64.urlsafe_b64encode(derived)
+    elif isinstance(key, str):
+        key = key.encode()
+    return Fernet(key)
 
 
 class TwoFactorService:
@@ -135,6 +152,37 @@ class TwoFactorService:
             logger.error(f"Error verifying 2FA code: {e}")
             return False
 
+    async def verify_code_with_replay_protection(
+        self, secret: str, code: str, user_id: str
+    ) -> bool:
+        """
+        Verify TOTP code with replay protection via Redis.
+        Prevents the same code from being used twice within the valid window.
+        """
+        if not self.verify_code(secret, code):
+            return False
+
+        # Check replay: has this exact code been used by this user recently?
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            replay_key = f"totp_used:{user_id}:{code}"
+
+            # If key exists, this code was already used → reject
+            existing = await cache.get(replay_key)
+            if existing:
+                logger.warning(f"TOTP replay detected for user {user_id}")
+                return False
+
+            # Mark code as used for 90 seconds (valid_window=1 → 3 × 30s intervals)
+            await cache.set(replay_key, "1", ttl=90)
+            return True
+
+        except Exception as e:
+            # FAIL CLOSED: If Redis is down, deny the code to prevent replay attacks
+            logger.error(f"TOTP replay check failed (Redis?): {e} — denying code for security")
+            return False
+
     def generate_backup_codes(self, count: int = 10) -> List[str]:
         """
         Generate backup codes for 2FA recovery.
@@ -223,21 +271,23 @@ class TwoFactorService:
 
         Returns:
             dict: {
-                'secret': TOTP secret (for verification step),
+                'secret': TOTP secret (for verification step — also cached in Redis),
                 'qr_code': SVG QR code,
                 'backup_codes': List of plain backup codes (show once!)
             }
 
         Workflow:
             1. Generate TOTP secret
-            2. Generate QR code for user to scan
-            3. Generate backup codes
-            4. Return data to user (DO NOT save to DB yet)
-            5. User scans QR code with authenticator app
-            6. User calls verify_2fa_setup() with code from app
-            7. If code valid, save secret to DB and mark 2FA enabled
+            2. Cache secret in Redis (15min TTL) as pending
+            3. Generate QR code for user to scan
+            4. Generate backup codes
+            5. Return data to user (secret also cached server-side)
+            6. User scans QR code with authenticator app
+            7. User calls verify_and_enable_2fa() with code from app
+            8. If code valid, encrypt secret + save to DB + mark 2FA enabled
 
         Security:
+            - Secret cached server-side in Redis (15min TTL)
             - Secret NOT saved to DB until verification
             - Prevents enabling 2FA without confirming user has working setup
         """
@@ -252,6 +302,20 @@ class TwoFactorService:
 
         # Generate backup codes
         backup_codes_plain = self.generate_backup_codes()
+
+        # Cache pending secret + backup codes in Redis (15min TTL)
+        try:
+            import json
+            from app.core.cache import get_cache
+            cache = get_cache()
+            pending_data = {
+                "secret": secret,
+                "backup_codes": backup_codes_plain,
+            }
+            await cache.set(f"2fa_pending:{user_id}", json.dumps(pending_data), ttl=900)
+            logger.info(f"2FA pending secret cached in Redis for user {user_id} (15min TTL)")
+        except Exception as e:
+            logger.warning(f"Failed to cache 2FA pending secret in Redis: {e}")
 
         logger.info(f"Generated 2FA setup for user {user_id}")
 
@@ -273,7 +337,7 @@ class TwoFactorService:
 
         Args:
             user_id: User ID
-            secret: TOTP secret from enable_2fa()
+            secret: TOTP secret from enable_2fa() (also cached in Redis)
             code: 6-digit code from authenticator app
             backup_codes: Backup codes from enable_2fa() (plain text)
 
@@ -281,31 +345,60 @@ class TwoFactorService:
             bool: True if verification successful and 2FA enabled
 
         Workflow:
-            1. Verify code against secret
-            2. If valid:
-                - Save secret to DB (encrypted)
+            1. Try to get pending data from Redis (preferred) or use provided secret
+            2. Verify code against secret
+            3. If valid:
+                - Encrypt secret with Fernet before DB storage
                 - Save backup codes to DB (hashed)
                 - Set two_factor_enabled = True
-            3. If invalid: Return False (do not save anything)
+                - Delete Redis pending data
+            4. If invalid: Return False (do not save anything)
 
         Security:
             - Only enables 2FA after confirming user has working setup
+            - TOTP secret encrypted with Fernet before DB storage
             - Backup codes hashed before storage
+            - Redis pending data deleted after use
         """
+        # Try to get pending secret from Redis (server-side source of truth)
+        actual_secret = secret
+        actual_backup_codes = backup_codes
+        try:
+            import json
+            from app.core.cache import get_cache
+            cache = get_cache()
+            pending_raw = await cache.get(f"2fa_pending:{user_id}")
+            if pending_raw:
+                pending_data = json.loads(pending_raw) if isinstance(pending_raw, str) else pending_raw
+                actual_secret = pending_data.get("secret", secret)
+                actual_backup_codes = pending_data.get("backup_codes", backup_codes)
+                logger.info(f"Using Redis-cached pending secret for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Failed to read Redis 2FA pending data, using client-provided: {e}")
+
         # Verify code
-        if not self.verify_code(secret, code):
+        if not self.verify_code(actual_secret, code):
             logger.warning(f"2FA setup verification failed for user {user_id}: Invalid TOTP code")
             return False
 
         logger.info(f"TOTP code verified successfully for user {user_id}, proceeding with database save...")
 
-        # Hash backup codes
-        hashed_codes = [self.hash_backup_code(code) for code in backup_codes]
+        # Encrypt TOTP secret with Fernet before DB storage
+        try:
+            fernet = _get_fernet()
+            encrypted_secret = fernet.encrypt(actual_secret.encode()).decode()
+        except Exception as e:
+            logger.error(f"🚨 CRITICAL: Failed to encrypt TOTP secret for user {user_id}: {e}")
+            # SECURITY: Never store TOTP secrets in plaintext — fail the 2FA enable
+            raise Exception("Failed to secure 2FA secret. Please try again or contact support.")
 
-        # Save to database
+        # Hash backup codes
+        hashed_codes = [self.hash_backup_code(bc) for bc in actual_backup_codes]
+
+        # Save to database (encrypted secret)
         db_success = await self.user_repo.enable_two_factor(
             user_id=user_id,
-            secret=secret,
+            secret=encrypted_secret,
             backup_codes=hashed_codes
         )
 
@@ -314,7 +407,13 @@ class TwoFactorService:
                        f"2FA will NOT be enabled. Check database logs for details.")
             return False
 
-        logger.info(f"✅ 2FA enabled successfully for user {user_id} - both verification and database save succeeded")
+        # Clean up Redis pending data
+        try:
+            await cache.delete(f"2fa_pending:{user_id}")
+        except Exception:
+            pass
+
+        logger.info(f"✅ 2FA enabled successfully for user {user_id} - encrypted secret saved to DB")
         return True
 
     async def disable_2fa(self, user_id: str) -> bool:
@@ -383,9 +482,22 @@ class TwoFactorService:
             logger.error(f"2FA not enabled for user {user_id} (enabled={two_factor_enabled}, has_secret={bool(two_factor_secret)})")
             return False
 
-        # Try TOTP code first
+        # Decrypt TOTP secret (Fernet-encrypted in DB — migration 189)
+        try:
+            fernet = _get_fernet()
+            secret_bytes = two_factor_secret.encode() if isinstance(two_factor_secret, str) else two_factor_secret
+            decrypted_secret = fernet.decrypt(secret_bytes).decode()
+        except Exception as e:
+            logger.error(
+                f"CRITICAL: Failed to decrypt TOTP secret for user {user_id}: {e}. "
+                f"Possible cause: TOTP_ENCRYPTION_KEY or JWT_SECRET_KEY changed after 2FA setup. "
+                f"Recovery: re-encrypt secrets with new key or user must disable/re-enable 2FA."
+            )
+            raise Exception("2FA verification temporarily unavailable. Please contact support or use a backup code.")
+
+        # Try TOTP code first (with replay protection)
         logger.info(f"Verifying TOTP code for user {user_id}")
-        if self.verify_code(two_factor_secret, code):
+        if await self.verify_code_with_replay_protection(decrypted_secret, code, user_id):
             logger.info(f"✅ TOTP code verified successfully for user {user_id}")
             return True
 
@@ -410,7 +522,14 @@ class TwoFactorService:
             if is_valid:
                 logger.info(f"✅ Backup code verified successfully for user {user_id}")
                 # Update backup codes in DB (remove used code)
-                await self.user_repo.update_backup_codes(user_id, remaining_codes)
+                # CRITICAL: If update fails, do NOT grant access — the code would be reusable
+                update_success = await self.user_repo.update_backup_codes(user_id, remaining_codes)
+                if not update_success:
+                    logger.error(
+                        f"🚨 CRITICAL: Backup code verified but DB update FAILED for user {user_id}. "
+                        "Denying access to prevent code reuse."
+                    )
+                    return False
 
                 # Warn if running low on backup codes
                 if len(remaining_codes) <= 2:

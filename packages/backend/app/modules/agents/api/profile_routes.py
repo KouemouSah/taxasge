@@ -11,10 +11,12 @@ Key endpoints:
 - PUT /profiles/{id} - Update agent profile
 """
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Request
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 from loguru import logger
+
+from app.core.cache import check_rate_limit
 
 from app.modules.agents.models.agent_profile import (
     AgentProfileCreate,
@@ -495,10 +497,10 @@ async def validate_agent(
         result = await agent_profile_service.validate_agent_data(data)
         return result
     except Exception as e:
-        logger.error(f"Agent validation failed: {e}")
+        logger.error(f"Agent validation failed: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur de validation: {str(e)}",
+            detail="Validation failed. Please check your input data.",
         )
 
 
@@ -529,6 +531,13 @@ async def invite_agent(
 
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
+    # Rate limit: 10 invitations per hour per admin (prevent email spam/quota exhaustion)
+    is_allowed, _ = await check_rate_limit(
+        identifier=str(user_id), endpoint="/agents/invite", max_requests=10, window_seconds=3600
+    )
+    if not is_allowed:
+        raise HTTPException(status_code=429, detail="Too many invitations. Please wait before sending more.")
+
     try:
         service = AgentProfileService()
         result = await service.initiate_agent_invitation(data, UUID(user_id))
@@ -537,21 +546,20 @@ async def invite_agent(
         return AgentInviteResponse(**result)
 
     except ValueError as e:
-        # Validation errors (email exists, invalid data, etc.)
         logger.warning(f"Agent invitation failed for {data.user.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invitation data")
     except Exception as e:
-        # Unexpected errors
         logger.error(f"Agent invitation error for {data.user.email}: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de l'invitation: {str(e)}"
+            detail="Invitation failed. Please try again."
         )
 
 
 @router.post("/activate", response_model=AgentActivateResponse, status_code=status.HTTP_201_CREATED)
 async def activate_agent(
     data: AgentActivateRequest,
+    req: Request,
     db = Depends(get_database),
 ):
     """
@@ -566,6 +574,21 @@ async def activate_agent(
 
     The agent can then log in with their email and password.
     """
+    # Rate limit: 5 attempts per 15 min per IP (prevent distributed brute-force)
+    ip = req.client.host if req.client else "unknown"
+    is_allowed_ip, _ = await check_rate_limit(
+        identifier=ip, endpoint="/agents/activate", max_requests=5, window_seconds=900
+    )
+    if not is_allowed_ip:
+        raise HTTPException(status_code=429, detail="Too many activation attempts. Please wait.")
+
+    # Rate limit: 10 attempts per hour per email (prevent targeted brute-force across IPs)
+    is_allowed_email, _ = await check_rate_limit(
+        identifier=data.email.lower(), endpoint="/agents/activate/email", max_requests=10, window_seconds=3600
+    )
+    if not is_allowed_email:
+        raise HTTPException(status_code=429, detail="Too many activation attempts for this email. Please wait.")
+
     from app.modules.agents.services.agent_profile_service import AgentProfileService
 
     try:
@@ -581,15 +604,13 @@ async def activate_agent(
         return AgentActivateResponse(**result)
 
     except ValueError as e:
-        # Validation errors (invalid code, expired, etc.)
         logger.warning(f"Agent activation failed for {data.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification code")
     except Exception as e:
-        # Database or unexpected errors
         logger.error(f"Agent activation error for {data.email}: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de l'activation: {str(e)}"
+            detail="Activation failed. Please try again."
         )
 
 
@@ -652,6 +673,13 @@ async def invite_admin(
 
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
+    # Rate limit: 10 invitations per hour per admin (prevent email spam/quota exhaustion)
+    is_allowed, _ = await check_rate_limit(
+        identifier=str(user_id), endpoint="/agents/admin/invite", max_requests=10, window_seconds=3600
+    )
+    if not is_allowed:
+        raise HTTPException(status_code=429, detail="Too many invitations. Please wait before sending more.")
+
     try:
         service = AgentProfileService()
         result = await service.initiate_admin_invitation(data, UUID(user_id))
@@ -660,21 +688,20 @@ async def invite_admin(
         return AdminInviteResponse(**result)
 
     except ValueError as e:
-        # Validation errors (email exists, invalid data, etc.)
         logger.warning(f"Admin invitation failed for {data.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invitation data")
     except Exception as e:
-        # Unexpected errors
         logger.error(f"Admin invitation error for {data.email}: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de l'invitation: {str(e)}"
+            detail="Invitation failed. Please try again."
         )
 
 
 @router.post("/admin/activate", response_model=AdminActivateResponse, status_code=status.HTTP_201_CREATED)
 async def activate_admin(
     data: AdminActivateRequest,
+    req: Request,
     db = Depends(get_database),
 ):
     """
@@ -686,6 +713,21 @@ async def activate_admin(
 
     The admin can then log in with their email and password.
     """
+    # Rate limit: 5 attempts per 15 min per IP (prevent distributed brute-force)
+    ip = req.client.host if req.client else "unknown"
+    is_allowed_ip, _ = await check_rate_limit(
+        identifier=ip, endpoint="/agents/admin/activate", max_requests=5, window_seconds=900
+    )
+    if not is_allowed_ip:
+        raise HTTPException(status_code=429, detail="Too many activation attempts. Please wait.")
+
+    # Rate limit: 10 attempts per hour per email (prevent targeted brute-force across IPs)
+    is_allowed_email, _ = await check_rate_limit(
+        identifier=data.email.lower(), endpoint="/agents/admin/activate/email", max_requests=10, window_seconds=3600
+    )
+    if not is_allowed_email:
+        raise HTTPException(status_code=429, detail="Too many activation attempts for this email. Please wait.")
+
     from app.modules.agents.services.agent_profile_service import AgentProfileService
 
     try:
@@ -702,12 +744,12 @@ async def activate_admin(
 
     except ValueError as e:
         logger.warning(f"Admin activation failed for {data.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification code")
     except Exception as e:
         logger.error(f"Admin activation error for {data.email}: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de l'activation: {str(e)}"
+            detail="Activation failed. Please try again."
         )
 
 

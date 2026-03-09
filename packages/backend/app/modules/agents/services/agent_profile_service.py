@@ -631,7 +631,7 @@ class AgentProfileService:
         email_service = get_email_service()
         try:
             email_service.send_agent_invitation(
-                to_email=data.user.email,
+                to_email=data.user.email.lower(),
                 first_name=data.user.first_name,
                 verification_code=verification_code,
                 language=data.user.preferred_language or 'es'
@@ -710,6 +710,13 @@ class AgentProfileService:
         # Log agent_data for debugging
         logger.info(f"[AGENT_ACTIVATION] agent_data keys: {list(agent_data.keys())}")
         logger.info(f"[AGENT_ACTIVATION] agent_type={agent_data.get('agent_type')}, ministry_id={agent_data.get('ministry_id')}, entity_id={agent_data.get('entity_id')}")
+
+        # Validate password strength (same rules as citizen registration)
+        from app.modules.auth.services.password_service import PasswordService
+        pwd_service = PasswordService()
+        pwd_check = pwd_service.check_password_strength(password)
+        if not pwd_check["valid"]:
+            raise ValueError(f"Mot de passe trop faible: {', '.join(pwd_check['issues'])}")
 
         # Hash password
         password_hash = bcrypt.hashpw(
@@ -973,7 +980,7 @@ class AgentProfileService:
         email_service = get_email_service()
         try:
             email_service.send_admin_invitation(
-                to_email=data.email,
+                to_email=data.email.lower(),
                 first_name=data.first_name,
                 verification_code=verification_code,
                 language=data.preferred_language or 'es'
@@ -1016,6 +1023,13 @@ class AgentProfileService:
             raise ValueError("Ce code d'invitation n'est pas valide pour un administrateur. Vérifiez le type d'invitation.")
 
         user_data = metadata.get('user_data', {})
+
+        # Validate password strength (same rules as citizen registration)
+        from app.modules.auth.services.password_service import PasswordService
+        pwd_service = PasswordService()
+        pwd_check = pwd_service.check_password_strength(password)
+        if not pwd_check["valid"]:
+            raise ValueError(f"Mot de passe trop faible: {', '.join(pwd_check['issues'])}")
 
         # Hash password
         password_hash = bcrypt.hashpw(

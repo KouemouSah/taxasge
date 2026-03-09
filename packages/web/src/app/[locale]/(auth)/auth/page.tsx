@@ -44,6 +44,7 @@ export default function AuthPage() {
   const [requires2FA, setRequires2FA] = useState(false)
   const [tempToken, setTempToken] = useState("")
   const [twoFactorCode, setTwoFactorCode] = useState("")
+  const [twoFactorExpired, setTwoFactorExpired] = useState(false)
 
   // État Register
   const [registerEmail, setRegisterEmail] = useState("")
@@ -128,7 +129,12 @@ export default function AuthPage() {
       if ('requires_2fa' in response && response.requires_2fa) {
         // 2FA is enabled - show 2FA code input
         setRequires2FA(true)
+        setTwoFactorExpired(false)
         setTempToken(response.temp_token)
+        // Auto-expire 2FA form after 5 minutes (matches backend temp_token TTL)
+        setTimeout(() => {
+          setTwoFactorExpired(true)
+        }, 5 * 60 * 1000)
         toast({
           title: t('twoFactorRequiredToast'),
           description: t('twoFactorRequiredMessage'),
@@ -229,6 +235,20 @@ export default function AuthPage() {
     setLoginLoading(true)
 
     try {
+      // Check if temp_token has expired (5min backend TTL)
+      if (twoFactorExpired) {
+        toast({
+          variant: "destructive",
+          title: t('sessionExpired') || "Sesión expirada",
+          description: t('twoFactorExpiredMessage') || "El código temporal ha expirado. Inicie sesión nuevamente.",
+        })
+        setRequires2FA(false)
+        setTempToken("")
+        setTwoFactorCode("")
+        setLoginLoading(false)
+        return
+      }
+
       // Validate 2FA code
       if (twoFactorCode.length !== 6) {
         toast({
@@ -350,14 +370,16 @@ export default function AuthPage() {
         return
       }
 
-      // Store registration data in localStorage for use on verify-email page
-      localStorage.setItem('pending_registration', JSON.stringify({
+      // Store registration data in sessionStorage (NOT localStorage — avoids XSS exposure)
+      // Password stored temporarily — cleared after successful registration or after 30min
+      sessionStorage.setItem('pending_registration', JSON.stringify({
         email: registerEmail,
         password: registerPassword,
         first_name: firstName,
         last_name: lastName,
         phone: phone,
         role: role,
+        _ts: Date.now(),
       }))
 
       // Request verification code (automatically sends email)
@@ -453,6 +475,7 @@ export default function AuthPage() {
                           placeholder={t('emailPlaceholder')}
                           value={loginEmail}
                           onChange={(e) => setLoginEmail(e.target.value)}
+                          maxLength={254}
                           required
                           disabled={accountLocked}
                         />
@@ -466,9 +489,11 @@ export default function AuthPage() {
                         <Input
                           id="login-password"
                           type="password"
+                          autoComplete="current-password"
                           placeholder={t('passwordPlaceholder')}
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
+                          maxLength={100}
                           required
                           disabled={accountLocked}
                         />
@@ -605,6 +630,7 @@ export default function AuthPage() {
                           placeholder={t('firstNamePlaceholder')}
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
+                          maxLength={50}
                           required
                         />
                         {registerErrors.first_name && (
@@ -620,6 +646,7 @@ export default function AuthPage() {
                           placeholder={t('lastNamePlaceholder')}
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
+                          maxLength={50}
                           required
                         />
                         {registerErrors.last_name && (
@@ -636,6 +663,7 @@ export default function AuthPage() {
                         placeholder={t('emailPlaceholder')}
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
+                        maxLength={254}
                         required
                       />
                       {registerErrors.email && (
@@ -651,6 +679,7 @@ export default function AuthPage() {
                         placeholder={t('phonePlaceholder')}
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
+                        maxLength={9}
                         required
                       />
                       {registerErrors.phone && (
@@ -663,9 +692,11 @@ export default function AuthPage() {
                       <Input
                         id="register-password"
                         type="password"
+                        autoComplete="new-password"
                         placeholder={t('passwordPlaceholder')}
                         value={registerPassword}
                         onChange={(e) => setRegisterPassword(e.target.value)}
+                        maxLength={100}
                         required
                       />
                       {registerErrors.password && (

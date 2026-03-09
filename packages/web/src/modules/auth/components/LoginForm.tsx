@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { usePrefetchMenuConfig } from '@/modules/agent-dashboard/hooks/useMenuCo
 
 export const LoginForm = () => {
   const router = useRouter();
+  const locale = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { prefetch: prefetchMenuConfig } = usePrefetchMenuConfig();
@@ -38,8 +40,9 @@ export const LoginForm = () => {
 
       // Check if 2FA required
       if ('requires_2fa' in response && response.requires_2fa) {
-        // Redirect to 2FA verification page with temp token
-        router.push(`/auth/2fa-verify?token=${response.temp_token}`);
+        // Store temp token in sessionStorage (never in URL — prevents server logs/referer leaks)
+        sessionStorage.setItem('2fa_temp_token', response.temp_token);
+        router.push(`/${locale}/auth/2fa-verify`);
         return;
       }
 

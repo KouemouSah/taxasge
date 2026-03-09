@@ -133,6 +133,10 @@ class Settings(BaseSettings):
     # Password hashing
     BCRYPT_ROUNDS: int = 12
 
+    # TOTP secret encryption key (Fernet, base64-encoded 32 bytes)
+    # If not set, derived from JWT_SECRET_KEY via SHA256 + base64
+    TOTP_ENCRYPTION_KEY: str = Field(default="", env="TOTP_ENCRYPTION_KEY")
+
     # Receipt verification (HMAC key for QR code security)
     # IMPORTANT: Set this as a PERMANENT env var in Cloud Run / Secret Manager.
     # This key signs the QR code tokens on all PDF receipts and service requests.

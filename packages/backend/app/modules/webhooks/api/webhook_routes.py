@@ -88,8 +88,8 @@ async def bange_webhook_callback(
         payload_dict = json.loads(body_bytes.decode('utf-8'))
         payload = BangeWebhookPayload(**payload_dict)
     except Exception as e:
-        logger.error(f"Failed to parse BANGE webhook payload: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid payload: {e}")
+        logger.error(f"Failed to parse BANGE webhook payload: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook payload")
 
     # Check idempotency (prevent duplicates)
     existing = await repository.get_by_bank_reference(db, BankCode.BANGE.value, payload.bank_reference)
@@ -196,10 +196,10 @@ async def generic_webhook_callback(
         payload_dict = json.loads(body_bytes.decode("utf-8"))
         webhook_data = gateway.parse_webhook_data(payload_dict)
     except Exception as e:
-        logger.error(f"Failed to parse {bank_code_upper} webhook payload: {e}")
+        logger.error(f"Failed to parse {bank_code_upper} webhook payload: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid payload: {e}",
+            detail="Invalid webhook payload",
         )
 
     # 5. Check idempotency — use webhook_data.bank_code (not URL path param)

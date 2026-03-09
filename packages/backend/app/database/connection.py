@@ -44,11 +44,15 @@ class DatabaseManager:
                     else:
                         raise ValueError("No database connection configuration found")
 
+                pool_min = settings.DATABASE_MIN_CONNECTIONS or 5
+                pool_max = settings.DATABASE_MAX_CONNECTIONS or 20
+                logger.info(f"  Connection pool: min={pool_min}, max={pool_max}")
+
                 self.pool = await asyncpg.create_pool(
                     connection_string,
-                    min_size=10,  # Aligned with main.py
-                    max_size=50,  # Aligned with main.py
-                    command_timeout=60,  # Aligned with main.py (was 30s)
+                    min_size=pool_min,
+                    max_size=pool_max,
+                    command_timeout=60,
                     max_queries=50000,  # Recycle connections after 50k queries
                     max_inactive_connection_lifetime=300,  # Close idle connections after 5min
                     server_settings={

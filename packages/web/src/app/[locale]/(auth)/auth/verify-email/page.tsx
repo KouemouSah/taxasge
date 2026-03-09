@@ -28,6 +28,8 @@ function VerifyEmailContent() {
   const t = useTranslations('auth')
 
   const [verificationCode, setVerificationCode] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined)
@@ -57,7 +59,7 @@ function VerifyEmailContent() {
       setUserEmail(email)
     } else {
       // Original logic for registration context
-      const pendingData = localStorage.getItem('pending_registration')
+      const pendingData = sessionStorage.getItem('pending_registration')
       if (!pendingData) {
         // No pending registration - check if user is already authenticated
         const authData = getAuthData()
@@ -70,8 +72,15 @@ function VerifyEmailContent() {
         // Has pending registration data - parse and set email
         try {
           const data = JSON.parse(pendingData)
+          // Auto-cleanup if data is older than 30 minutes
+          if (data._ts && Date.now() - data._ts > 30 * 60 * 1000) {
+            sessionStorage.removeItem('pending_registration')
+            router.push(`/${locale}/auth`)
+            return
+          }
           setUserEmail(data.email)
         } catch {
+          sessionStorage.removeItem('pending_registration')
           router.push(`/${locale}/auth`)
         }
       }
@@ -96,19 +105,42 @@ function VerifyEmailContent() {
       // Handle password change context
       if (context === 'password_change') {
         const email = sessionStorage.getItem('password_change_email')
-        const newPassword = sessionStorage.getItem('password_change_new_password')
 
+        // Check empty first
         if (!email || !newPassword) {
           toast({
             variant: 'destructive',
             title: t('sessionExpired'),
             description: t('sessionExpiredMessage'),
           })
-          router.push(`/${locale}/dashboard/settings/security`)
+          if (!email) router.push(`/${locale}/dashboard/settings/security`)
+          setIsLoading(false)
           return
         }
 
-        // Verify password change
+        // Check passwords match
+        if (newPassword !== confirmPassword) {
+          toast({
+            variant: 'destructive',
+            title: t('verificationError'),
+            description: t('passwordsDoNotMatch'),
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // Validate password strength (same rules as registration)
+        if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+          toast({
+            variant: 'destructive',
+            title: t('verificationError'),
+            description: t('passwordRequirements'),
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // Verify password change — new password from form input (never sessionStorage)
         const { authApi: passwordApi } = await import('@/core/api/auth')
         await passwordApi.verifyPasswordChange({
           email,
@@ -116,9 +148,10 @@ function VerifyEmailContent() {
           new_password: newPassword,
         })
 
-        // Clear session storage
+        // Clear sensitive state + session storage
+        setNewPassword('')
+        setConfirmPassword('')
         sessionStorage.removeItem('password_change_email')
-        sessionStorage.removeItem('password_change_new_password')
 
         toast({
           title: t('passwordChangedSuccess'),
@@ -132,7 +165,7 @@ function VerifyEmailContent() {
       }
 
       // Original registration/email verification logic
-      const pendingData = localStorage.getItem('pending_registration')
+      const pendingData = sessionStorage.getItem('pending_registration')
 
       if (pendingData) {
         // NEW USER REGISTRATION - Complete registration with verification code
@@ -153,7 +186,7 @@ function VerifyEmailContent() {
         setAuthData(response)
 
         // Clear pending registration data
-        localStorage.removeItem('pending_registration')
+        sessionStorage.removeItem('pending_registration')
 
         toast({
           title: t('accountCreated'),
@@ -207,7 +240,7 @@ function VerifyEmailContent() {
 
     try {
       // Check if this is from registration or existing user
-      const pendingData = localStorage.getItem('pending_registration')
+      const pendingData = sessionStorage.getItem('pending_registration')
 
       if (pendingData) {
         // NEW USER - Resend verification code for registration
@@ -301,10 +334,48 @@ function VerifyEmailContent() {
                   </p>
                 </div>
 
+                {context === 'password_change' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">{t('newPasswordLabel')}</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder={t('newPasswordPlaceholder')}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        minLength={8}
+                        maxLength={100}
+                        required
+                        disabled={isLoading}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t('passwordRequirements')}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">{t('confirmPasswordLabel')}</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder={t('newPasswordPlaceholder')}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        minLength={8}
+                        maxLength={100}
+                        required
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isLoading || verificationCode.length !== 6}
+                  disabled={isLoading || verificationCode.length !== 6 || (context === 'password_change' && (newPassword.length < 8 || newPassword !== confirmPassword))}
                 >
                   {isLoading ? (
                     <>

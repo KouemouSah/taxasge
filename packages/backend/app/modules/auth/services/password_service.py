@@ -3,7 +3,9 @@ Password Service for TaxasGE Backend
 Handles password hashing and verification using bcrypt
 """
 
+import asyncio
 import bcrypt
+from functools import partial
 from typing import Optional
 from loguru import logger
 
@@ -26,9 +28,15 @@ class PasswordService:
         self.rounds = rounds
         logger.info(f"PasswordService initialized with {rounds} bcrypt rounds")
 
-    def hash_password(self, password: str) -> str:
+    def _hash_password_sync(self, password: str) -> str:
+        """Synchronous bcrypt hash (CPU-intensive, ~300ms at 12 rounds)"""
+        salt = bcrypt.gensalt(rounds=self.rounds)
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
+
+    async def hash_password(self, password: str) -> str:
         """
-        Hash a password using bcrypt
+        Hash a password using bcrypt (non-blocking via thread executor)
 
         Args:
             password: Plain text password
@@ -49,15 +57,12 @@ class PasswordService:
                 raise ValueError("Password must be at least 8 characters")
 
             if len(password) > 72:
-                logger.warning("Password truncated to 72 characters (bcrypt limit)")
-                password = password[:72]
+                raise ValueError("Password must not exceed 72 characters (bcrypt limit)")
 
-            # Generate salt and hash
-            salt = bcrypt.gensalt(rounds=self.rounds)
-            hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-
-            # Return as string (decode from bytes)
-            return hashed.decode('utf-8')
+            # Run bcrypt in thread executor to avoid blocking the event loop
+            loop = asyncio.get_running_loop()
+            hashed = await loop.run_in_executor(None, self._hash_password_sync, password)
+            return hashed
 
         except ValueError as e:
             logger.error(f"Password validation error: {str(e)}")
@@ -67,9 +72,16 @@ class PasswordService:
             logger.error(f"Error hashing password: {str(e)}")
             raise Exception(f"Failed to hash password: {str(e)}")
 
-    def verify_password(self, password: str, hashed_password: str) -> bool:
+    def _verify_password_sync(self, password: str, hashed_password: str) -> bool:
+        """Synchronous bcrypt verify (CPU-intensive)"""
+        return bcrypt.checkpw(
+            password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+
+    async def verify_password(self, password: str, hashed_password: str) -> bool:
         """
-        Verify a password against a hashed password
+        Verify a password against a hashed password (non-blocking via thread executor)
 
         Args:
             password: Plain text password to verify
@@ -92,10 +104,11 @@ class PasswordService:
             if len(password) > 72:
                 password = password[:72]
 
-            # Verify password
-            result = bcrypt.checkpw(
-                password.encode('utf-8'),
-                hashed_password.encode('utf-8')
+            # Run bcrypt in thread executor to avoid blocking the event loop
+            loop = asyncio.get_running_loop()
+            result = await loop.run_in_executor(
+                None,
+                partial(self._verify_password_sync, password, hashed_password)
             )
 
             if result:

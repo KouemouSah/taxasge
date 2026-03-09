@@ -1,11 +1,24 @@
 /**
  * Axios API Client Configuration
  * Configured for TaxasGE Backend API with automatic token refresh
- * Aligned with Cloud Run deployment
+ *
+ * Security:
+ * - Access token: read from in-memory store (XSS-safe)
+ * - Refresh token: sent via HttpOnly cookie (withCredentials)
+ * - Token refresh queue: max 50 requests, 10s timeout
+ * - Cross-tab auth sync via BroadcastChannel
  */
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getAuthData, setAuthData, clearAuthData } from '@/core/auth/storage';
+import {
+  getAuthData,
+  setAuthData,
+  clearAuthData,
+  getAccessToken,
+  setAccessToken,
+  setRefreshToken,
+} from '@/core/auth/storage';
+import { broadcastAuthEvent } from '@/core/auth/broadcast';
 import { appConfig } from '@/core/config/app';
 
 // Create axios instance with Cloud Run backend
@@ -15,15 +28,17 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: appConfig.api.timeout,
+  withCredentials: true, // Send HttpOnly cookies (refresh_token) automatically
 });
 
-// Request interceptor - Add auth token + Accept-Language
+// Request interceptor - Add auth token from memory + Accept-Language
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const authData = getAuthData();
+    // Read access token from memory (NOT localStorage)
+    const accessToken = getAccessToken();
 
-    if (authData?.access_token && config.headers) {
-      config.headers.Authorization = `Bearer ${authData.access_token}`;
+    if (accessToken && config.headers) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
 
     // Send current locale to backend for localized responses
@@ -41,6 +56,8 @@ apiClient.interceptors.request.use(
 );
 
 // Response interceptor - Handle token refresh
+const MAX_QUEUE_SIZE = 50;
+const REFRESH_TIMEOUT_MS = 10_000;
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
@@ -65,8 +82,15 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // If 401 and not already retrying
+    // Skip redirect logic if already on auth pages (prevent redirect loop)
+    const isOnAuthPage = typeof window !== 'undefined' && window.location.pathname.includes('/auth');
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
+        // Reject if queue is full (prevent memory leak)
+        if (failedQueue.length >= MAX_QUEUE_SIZE) {
+          return Promise.reject(new Error('Too many pending requests'));
+        }
         // Queue this request while refresh is in progress
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -82,35 +106,52 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      // Check we have some auth context (user data in localStorage)
       const authData = getAuthData();
-
-      if (!authData?.refresh_token) {
+      if (!authData?.user) {
         clearAuthData();
-        if (typeof window !== 'undefined') {
-          // Extract locale from current URL path (e.g., /es/dashboard -> es)
+        if (typeof window !== 'undefined' && !isOnAuthPage) {
           const pathParts = window.location.pathname.split('/');
           const locale = pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1]) ? pathParts[1] : 'es';
           window.location.href = `/${locale}/auth`;
         }
+        isRefreshing = false;
         return Promise.reject(error);
       }
 
       try {
-        // Refresh token
+        // Refresh token with timeout + AbortController
+        // refresh_token is sent via HttpOnly cookie (withCredentials: true)
+        // Also send in body for backward compatibility
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
+
         const response = await axios.post(
           `${appConfig.api.baseUrl}/api/${appConfig.api.version}/auth/refresh`,
-          { refresh_token: authData.refresh_token },
-          { headers: { 'Content-Type': 'application/json' } }
+          { refresh_token: authData.refresh_token || '' },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            withCredentials: true, // Send HttpOnly cookie
+          }
         );
+        clearTimeout(timeout);
 
         const { access_token, refresh_token } = response.data;
 
-        // Update stored tokens
+        // Update in-memory tokens
+        setAccessToken(access_token);
+        setRefreshToken(refresh_token);
+
+        // Update localStorage (user profile only, tokens stripped)
         setAuthData({
           ...authData,
           access_token,
           refresh_token,
         });
+
+        // Broadcast token refresh to other tabs
+        broadcastAuthEvent('token-refresh');
 
         // Update authorization header
         if (originalRequest.headers) {
@@ -126,8 +167,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError as Error, null);
         clearAuthData();
 
-        if (typeof window !== 'undefined') {
-          // Extract locale from current URL path (e.g., /es/dashboard -> es)
+        if (typeof window !== 'undefined' && !isOnAuthPage) {
           const pathParts = window.location.pathname.split('/');
           const locale = pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1]) ? pathParts[1] : 'es';
           window.location.href = `/${locale}/auth`;
@@ -141,6 +181,21 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Cross-tab auth sync: if another tab logs out, redirect this tab to login
+if (typeof window !== 'undefined') {
+  import('@/core/auth/broadcast').then(({ onAuthBroadcast }) => {
+    onAuthBroadcast((msg) => {
+      if (msg.type === 'logout') {
+        // Another tab logged out — clear local state and redirect
+        clearAuthData();
+        const pathParts = window.location.pathname.split('/');
+        const locale = pathParts[1] && ['es', 'fr', 'en'].includes(pathParts[1]) ? pathParts[1] : 'es';
+        window.location.href = `/${locale}/auth`;
+      }
+    });
+  }).catch(() => { /* SSR or unsupported */ });
+}
 
 export default apiClient;
 export { appConfig };

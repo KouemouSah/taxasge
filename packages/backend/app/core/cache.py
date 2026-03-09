@@ -923,6 +923,11 @@ async def check_rate_limit(
     # Increment counter
     count = await cache.incr(key)
 
+    # Fail-closed: if cache returns 0 (failure), deny the request
+    if count == 0:
+        logger.warning(f"Rate limit cache failure for {identifier}:{endpoint} — denying request (fail-closed)")
+        return False, 0
+
     # Set expiry on first request
     if count == 1:
         await cache.expire(key, window_seconds)

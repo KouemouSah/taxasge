@@ -3,9 +3,20 @@ Authentication Service for TaxasGE Backend
 Orchestrates authentication operations using repositories and services
 """
 
+import asyncio
+import hashlib
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 from loguru import logger
+
+
+def _safe_create_task(coro):
+    """Create an asyncio task with error logging (fire-and-forget safe)."""
+    task = asyncio.create_task(coro)
+    task.add_done_callback(
+        lambda t: logger.error(f"Background task failed: {t.exception()}") if not t.cancelled() and t.exception() else None
+    )
+    return task
 
 from app.repositories.user_repository import UserRepository
 from app.modules.auth.repositories.session_repository import SessionRepository
@@ -36,6 +47,35 @@ class AuthService:
         self.jwt_service = get_jwt_service()
 
         logger.info("AuthService initialized")
+
+    async def _audit_auth_event(
+        self,
+        action: str,
+        user_id: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Log auth event to audit_logs table (fire-and-forget, never blocks auth flow)."""
+        try:
+            import json
+            query = """
+                INSERT INTO audit_logs (
+                    user_id, entity_type, entity_id, action,
+                    new_values, ip_address, user_agent, created_at
+                ) VALUES ($1, 'auth', COALESCE($2, 'system'), $3, $4, $5, $6, NOW())
+            """
+            await db_manager.execute_command(
+                query,
+                user_id,
+                user_id or "system",
+                action,
+                json.dumps(details) if details else None,
+                ip_address,
+                user_agent,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to log auth audit event {action}: {e}")
 
     async def register(
         self,
@@ -74,8 +114,8 @@ class AuthService:
                     f"Password is too weak: {', '.join(password_check['issues'])}"
                 )
 
-            # Hash password
-            hashed_password = self.password_service.hash_password(user_data.password)
+            # Hash password (async — runs bcrypt in thread executor)
+            hashed_password = await self.password_service.hash_password(user_data.password)
 
             # Create user with UserCreate object
             user = await self.user_repo.create_user(
@@ -119,6 +159,15 @@ class AuthService:
                 last_login=user.last_login,
                 email_verified=user.email_verified,  # Important: include verification status
             )
+
+            # Audit: REGISTER
+            _safe_create_task(self._audit_auth_event(
+                action="REGISTER",
+                user_id=user.id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={"email": user.email, "role": user.role.value if hasattr(user.role, 'value') else user.role},
+            ))
 
             return {
                 **tokens,
@@ -171,7 +220,7 @@ class AuthService:
                 raise Exception(f"Account locked. Try again in {remaining_minutes} minute{'s' if remaining_minutes != 1 else ''}.")
 
             # Verify password
-            if not self.password_service.verify_password(password, user_data["password_hash"]):
+            if not await self.password_service.verify_password(password, user_data["password_hash"]):
                 logger.warning(f"Failed login attempt for {email} from IP {ip_address}")
 
                 # LOCKOUT: Increment failed attempts (may lock account)
@@ -204,6 +253,15 @@ class AuthService:
                     )
 
                     logger.info(f"Account lockout email sent to {email}")
+
+                # Audit: LOGIN_FAILURE
+                _safe_create_task(self._audit_auth_event(
+                    action="LOGIN_FAILURE",
+                    user_id=user_id,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    details={"email": email, "attempts": lockout_result.get("failed_attempts", 0)},
+                ))
 
                 raise Exception("Invalid email or password")
 
@@ -296,6 +354,15 @@ class AuthService:
                 two_factor_enabled=user.two_factor_enabled,
                 permissions=user_permissions,
             )
+
+            # Audit: LOGIN_SUCCESS
+            _safe_create_task(self._audit_auth_event(
+                action="LOGIN_SUCCESS",
+                user_id=user.id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details={"email": user.email, "role": user.role.value if hasattr(user.role, 'value') else user.role},
+            ))
 
             return {
                 **tokens,
@@ -470,6 +537,16 @@ class AuthService:
 
                 logger.info(f"Session revoked for user: {user_id}")
 
+            # Cache revocation in Redis (so validate_access_token skips DB)
+            await self._cache_token_revocation(access_token)
+
+            # Audit: LOGOUT
+            _safe_create_task(self._audit_auth_event(
+                action="LOGOUT",
+                user_id=user_id,
+                details={"all_sessions": all_sessions, "sessions_revoked": sessions_revoked},
+            ))
+
             return LogoutResponse(
                 message="Logout successful",
                 sessions_revoked=sessions_revoked,
@@ -479,9 +556,29 @@ class AuthService:
             logger.error(f"Logout failed: {str(e)}")
             raise
 
+    async def _cache_token_revocation(self, token: Optional[str]) -> None:
+        """Cache token revocation in Redis with TTL matching token remaining lifetime."""
+        if not token:
+            return
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+            # Get remaining TTL from JWT exp claim
+            remaining = self.jwt_service.get_remaining_time(token)
+            ttl = int(remaining.total_seconds()) + 60 if remaining else 3600  # +60s safety margin
+            await cache.set(f"revoked:{token_hash}", "1", ttl=ttl)
+        except Exception as e:
+            logger.warning(f"Failed to cache token revocation in Redis: {e}")
+
     async def validate_access_token(self, access_token: str) -> Optional[Dict[str, Any]]:
         """
-        Validate access token and return user data
+        Validate access token and return user data.
+
+        Optimized hot path (0 DB queries for non-revoked tokens):
+        1. JWT verify (CPU only)
+        2. Redis revocation check (O(1) Redis GET)
+        3. Batched activity update (Redis, flushed to DB periodically)
 
         Args:
             access_token: JWT access token
@@ -490,19 +587,65 @@ class AuthService:
             Optional[Dict]: User data if valid, None otherwise
         """
         try:
-            # Verify JWT token
+            # Step 1: Verify JWT signature + expiration (CPU only, 0 DB queries)
             payload = self.jwt_service.verify_access_token(access_token)
             if not payload:
                 return None
 
-            # Find session
-            session = await self.session_repo.find_by_access_token(access_token)
-            if not session or session.status != "active":
-                logger.warning("Session not found or not active")
-                return None
+            # Step 2: Check Redis revocation cache (O(1) — no DB query)
+            token_hash = hashlib.sha256(access_token.encode()).hexdigest()
+            try:
+                from app.core.cache import get_cache
+                cache = get_cache()
+                is_revoked = await cache.get(f"revoked:{token_hash}")
+                if is_revoked:
+                    logger.warning("Token is revoked (Redis cache hit)")
+                    return None
+            except Exception as e:
+                # Redis down: fall back to DB check (graceful degradation)
+                logger.warning(f"Redis revocation check failed, falling back to DB: {e}")
+                session = await self.session_repo.find_by_access_token(access_token)
+                if not session or session.status != "active":
+                    logger.warning("Session not found or not active (DB fallback)")
+                    return None
 
-            # Update session activity
-            await self.session_repo.update_last_activity(session.id)
+            # Step 3: Idle timeout check + batched activity update
+            user_id = payload.get("sub")
+            role = payload.get("role", "citizen")
+            if user_id:
+                try:
+                    activity_key = f"activity:{user_id}"
+                    last_seen = await cache.get(activity_key)
+
+                    # Idle timeout: agents 24h, citizens 2h
+                    is_agent = role in ("admin", "supervisor", "dgi_agent", "ministry_agent") or "agent_" in str(role)
+                    idle_ttl = 86400 if is_agent else 7200  # 24h vs 2h
+
+                    if last_seen:
+                        # User is active — refresh the TTL
+                        await cache.set(activity_key, "1", ttl=idle_ttl)
+                    else:
+                        # No activity marker — could be first request or idle timeout
+                        # Check JWT iat: if token was issued recently, allow (first request)
+                        iat = payload.get("iat")
+                        if iat:
+                            token_age = (datetime.utcnow() - datetime.utcfromtimestamp(iat)).total_seconds()
+                            if token_age > idle_ttl:
+                                logger.warning(f"Session idle timeout for user {user_id} (age={token_age:.0f}s, limit={idle_ttl}s)")
+                                return None
+
+                        # Set activity marker + flush to DB (debounced)
+                        await cache.set(activity_key, "1", ttl=idle_ttl)
+                        # Flush last_activity to DB every 5min (check sub-key)
+                        db_flush_key = f"activity_db:{user_id}"
+                        needs_db_flush = not await cache.get(db_flush_key)
+                        if needs_db_flush:
+                            session = await self.session_repo.find_by_access_token(access_token)
+                            if session:
+                                await self.session_repo.update_last_activity(session.id)
+                            await cache.set(db_flush_key, "1", ttl=300)  # 5min debounce
+                except Exception:
+                    pass  # Activity tracking is best-effort
 
             return payload
 
@@ -625,13 +768,16 @@ class AuthService:
             # Set expiration (1 hour from now)
             expires_at = datetime.utcnow() + timedelta(hours=1)
 
-            # Save token to database
+            # Hash token before storing in DB (never store plaintext tokens)
+            hashed_reset_token = hashlib.sha256(reset_token.encode()).hexdigest()
+
+            # Save hashed token to database
             user_id = user.get("id") if isinstance(user, dict) else user.id
-            logger.debug(f"🔍 [PASSWORD_RESET] Saving token to DB for user_id: {user_id}")
+            logger.debug(f"🔍 [PASSWORD_RESET] Saving hashed token to DB for user_id: {user_id}")
 
             success = await self.user_repo.update_password_reset_token(
                 user_id=user_id,
-                reset_token=reset_token,
+                reset_token=hashed_reset_token,
                 expires_at=expires_at
             )
 
@@ -708,8 +854,11 @@ class AuthService:
         Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
         """
         try:
-            # Find user by reset token (with expiration check)
-            user_data = await self.user_repo.find_by_reset_token(reset_token)
+            # Hash the incoming token to match stored hash
+            hashed_reset_token = hashlib.sha256(reset_token.encode()).hexdigest()
+
+            # Find user by hashed reset token (with expiration check)
+            user_data = await self.user_repo.find_by_reset_token(hashed_reset_token)
             if not user_data:
                 logger.warning(f"Invalid or expired password reset token")
                 raise Exception("Invalid or expired password reset token")
@@ -725,8 +874,8 @@ class AuthService:
                     f"Password is too weak: {', '.join(password_check['issues'])}"
                 )
 
-            # Hash new password
-            new_password_hash = self.password_service.hash_password(new_password)
+            # Hash new password (async — runs bcrypt in thread executor)
+            new_password_hash = await self.password_service.hash_password(new_password)
 
             # Update password
             password_updated = await self.user_repo.update_password(
@@ -759,6 +908,13 @@ class AuthService:
                 to_email=email,
                 user_name=first_name
             )
+
+            # Audit: PASSWORD_RESET
+            _safe_create_task(self._audit_auth_event(
+                action="PASSWORD_RESET",
+                user_id=user_id,
+                details={"email": email},
+            ))
 
             logger.info(f"Password reset successful for user {user_id}")
             return True

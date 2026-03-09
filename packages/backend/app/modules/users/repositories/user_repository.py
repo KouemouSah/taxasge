@@ -1017,15 +1017,23 @@ class UserRepository(BaseRepository[UserResponse]):
             else:
                 new_attempts = current_attempts + 1
 
-            # Check if we need to lock the account
+            # Check if we need to lock the account (exponential backoff)
             locked_until = None
             was_locked = False
 
             if new_attempts >= 5:
-                # Lock for 10 minutes
-                locked_until = datetime.now(timezone.utc) + timedelta(minutes=10)
+                # Exponential backoff: 1min, 5min, 15min, 1h, 24h
+                lockout_minutes_map = {
+                    5: 1,      # 5 attempts → 1 minute
+                    6: 5,      # 6 attempts → 5 minutes
+                    7: 15,     # 7 attempts → 15 minutes
+                    8: 60,     # 8 attempts → 1 hour
+                }
+                # 9+ attempts → 24 hours
+                lockout_minutes = lockout_minutes_map.get(new_attempts, 1440)
+                locked_until = datetime.now(timezone.utc) + timedelta(minutes=lockout_minutes)
                 was_locked = True
-                logger.warning(f"🔒 Account locked for user {user_id} until {locked_until}")
+                logger.warning(f"🔒 Account locked for user {user_id} for {lockout_minutes}min (attempt #{new_attempts})")
 
             # Update database
             now = datetime.utcnow()

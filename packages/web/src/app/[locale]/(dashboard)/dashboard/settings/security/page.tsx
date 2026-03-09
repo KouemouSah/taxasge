@@ -187,6 +187,7 @@ export default function SecuritySettingsPage() {
                 <Input
                   id="current-password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder={t('currentPasswordPlaceholder')}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
@@ -199,6 +200,7 @@ export default function SecuritySettingsPage() {
                 <Input
                   id="new-password"
                   type="password"
+                  autoComplete="new-password"
                   placeholder={t('newPasswordPlaceholder')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -214,6 +216,7 @@ export default function SecuritySettingsPage() {
                 <Input
                   id="confirm-password"
                   type="password"
+                  autoComplete="new-password"
                   placeholder={t('confirmPasswordPlaceholder')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

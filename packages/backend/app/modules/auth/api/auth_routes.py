@@ -5,13 +5,16 @@ Updated to use AuthService, PasswordService, and JWTService
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, EmailStr, validator, model_validator
 from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
 from enum import Enum
 from loguru import logger
+from app.config import get_settings
 
+from app.core.cache import check_rate_limit
 from app.core.events import EventBus, EventType
 from app.modules.auth.services.auth_service import get_auth_service
 from app.modules.auth.services.session_service import get_session_service
@@ -34,6 +37,57 @@ from app.modules.auth.models.auth_models import (
 # Create router
 router = APIRouter()
 security = HTTPBearer()
+
+
+def _set_refresh_cookie(response: JSONResponse, refresh_token: str, max_age: int = 30 * 24 * 3600) -> None:
+    """Set refresh_token as HttpOnly Secure cookie on the response."""
+    settings = get_settings()
+    is_prod = settings.ENVIRONMENT not in ("development", "test")
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=is_prod,  # HTTPS only in prod/staging
+        samesite="strict",
+        path="/api/v1/auth",  # Only sent to auth endpoints
+        max_age=max_age,
+    )
+
+
+def _set_access_cookie(response: JSONResponse, access_token: str, max_age: int = 35 * 60) -> None:
+    """Set access_token as HttpOnly Secure cookie for middleware JWT verification.
+    Path=/ so middleware on all routes can read it. 35min aligned with JWT lifetime + grace."""
+    settings = get_settings()
+    is_prod = settings.ENVIRONMENT not in ("development", "test")
+    response.set_cookie(
+        key="taxasge_auth_token",
+        value=access_token,
+        httponly=True,
+        secure=is_prod,
+        samesite="strict",
+        path="/",
+        max_age=max_age,
+    )
+
+
+def _clear_refresh_cookie(response: JSONResponse) -> None:
+    """Clear refresh_token cookie from the response."""
+    settings = get_settings()
+    is_prod = settings.ENVIRONMENT not in ("development", "test")
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=is_prod,
+        samesite="strict",
+        path="/api/v1/auth",
+    )
+    response.delete_cookie(
+        key="taxasge_auth_token",
+        httponly=True,
+        secure=is_prod,
+        samesite="strict",
+        path="/",
+    )
 
 
 # Request/Response Models
@@ -92,7 +146,7 @@ class RegisterRequest(BaseModel):
             raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in password):
             raise ValueError("Password must contain at least one digit")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/" for c in password):
+        if not any(not c.isalnum() for c in password):
             raise ValueError("Password must contain at least one special character")
         return self
 
@@ -159,7 +213,7 @@ class PasswordChangeVerifyRequest(BaseModel):
             raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in password):
             raise ValueError("Password must contain at least one digit")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?/" for c in password):
+        if not any(not c.isalnum() for c in password):
             raise ValueError("Password must contain at least one special character")
         return self
 
@@ -245,6 +299,8 @@ async def get_current_user(
 
         return token_data
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Token validation error: {str(e)}")
         raise HTTPException(
@@ -290,7 +346,7 @@ async def get_auth_info():
     response_model=RequestVerificationResponse,
     status_code=status.HTTP_200_OK,
 )
-async def request_verification_code(request: RequestVerificationRequest):
+async def request_verification_code(request: RequestVerificationRequest, req: Request):
     """
     Step 1 of 2-step registration: Send verification code to email
 
@@ -304,21 +360,35 @@ async def request_verification_code(request: RequestVerificationRequest):
 
     Args:
         request: Email to verify
+        req: FastAPI request object
 
     Returns:
         RequestVerificationResponse: Success message with expiration time
 
     Raises:
         HTTPException 400: Invalid email or already registered
+        HTTPException 429: Rate limit exceeded
         HTTPException 500: Failed to send email
     """
     try:
+        # Rate limit: 3 requests per 5 minutes per email
+        is_allowed, remaining = await check_rate_limit(
+            identifier=request.email.lower(),
+            endpoint="/auth/request-verification-code",
+            max_requests=3,
+            window_seconds=300,
+        )
+        if not is_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many verification code requests. Try again in a few minutes.",
+            )
         from app.utils.email_validator import EmailValidator
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
         from app.modules.communications.services.email_service import EmailService
         from app.config import get_settings
         from app.repositories.user_repository import UserRepository
-        import random
+        import secrets
 
         settings = get_settings()
 
@@ -327,20 +397,23 @@ async def request_verification_code(request: RequestVerificationRequest):
         if not is_valid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email invalide: {error_msg}"
+                detail="Email invalide"
             )
 
         # 2. Check if email already registered
+        # SECURITY: Return same success response to prevent email enumeration
         user_repo = UserRepository()
         existing = await user_repo.find_by_email(request.email, use_supabase=False)
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cet email est déjà enregistré"
+            logger.info(f"Verification code requested for already registered email: {request.email}")
+            return RequestVerificationResponse(
+                message="Code de vérification envoyé à votre email",
+                email=request.email,
+                expires_in=900
             )
 
-        # 3. Generate 6-digit code
-        code = str(random.randint(100000, 999999))
+        # 3. Generate 6-digit code (cryptographically secure)
+        code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
 
         # 4. Store in pending_registrations (replaces existing if any)
         pending_repo = PendingRegistrationRepository()
@@ -385,7 +458,7 @@ async def request_verification_code(request: RequestVerificationRequest):
         logger.error(f"Error in request_verification_code: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de l'envoi du code: {str(e)}"
+            detail="Erreur lors de l'envoi du code de vérification"
         )
 
 
@@ -414,8 +487,23 @@ async def register(
 
     Raises:
         HTTPException 400: Invalid/expired code or registration fails
+        HTTPException 429: Rate limit exceeded
     """
     try:
+        # Rate limit: 5 attempts per 15 minutes per IP
+        ip_address = req.client.host if req.client else "unknown"
+        is_allowed, remaining = await check_rate_limit(
+            identifier=ip_address,
+            endpoint="/auth/register",
+            max_requests=5,
+            window_seconds=900,
+        )
+        if not is_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many registration attempts. Try again later.",
+            )
+
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
 
         # STEP 1: Verify email verification code
@@ -497,11 +585,13 @@ async def register(
         logger.info(f"User registered successfully with verified email: {request.email}")
         return TokenResponse(**result)
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Registration error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Registration failed. Please try again.",
         )
 
 
@@ -535,6 +625,20 @@ async def login(
     Source: TASK-M01-013 (Login 2FA Integration)
     """
     try:
+        # Rate limit: 10 attempts per 15 minutes per IP
+        ip_address_rl = req.client.host if req.client else "unknown"
+        is_allowed, remaining = await check_rate_limit(
+            identifier=ip_address_rl,
+            endpoint="/auth/login",
+            max_requests=10,
+            window_seconds=900,
+        )
+        if not is_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts. Try again later.",
+            )
+
         # Get client info
         ip_address, user_agent = get_client_info(req)
 
@@ -554,19 +658,27 @@ async def login(
             return TwoFactorLoginResponse(**result)
 
         logger.info(f"User logged in successfully: {request.email}")
-        return TokenResponse(**result)
+        # Set tokens as HttpOnly cookies + return in body (backward compatible)
+        token_resp = TokenResponse(**result)
+        response = JSONResponse(content=token_resp.model_dump())
+        _set_refresh_cookie(response, result["refresh_token"])
+        _set_access_cookie(response, result["access_token"])
+        return response
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Login error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
+            detail="Invalid email or password",
         )
 
 
 @router.post("/login/2fa-verify", response_model=TokenResponse)
 async def verify_2fa_login(
     request: TwoFactorVerifyRequest,
+    req: Request = None,
 ):
     """
     Verify 2FA code and complete login process
@@ -590,9 +702,19 @@ async def verify_2fa_login(
     - Temp token is short-lived (5 minutes)
     - Invalid code = authentication failure
     - Backup codes are one-time use
+    - Rate limited: 5 attempts per 5 minutes per IP
 
     Source: TASK-M01-013 (Login 2FA Integration)
     """
+    # Rate limit: 5 attempts per 5 minutes per IP (brute-force 6-digit codes)
+    if req:
+        ip = req.client.host if req.client else "unknown"
+        is_allowed, remaining = await check_rate_limit(
+            identifier=ip, endpoint="/auth/login/2fa-verify", max_requests=5, window_seconds=300
+        )
+        if not is_allowed:
+            raise HTTPException(status_code=429, detail="Too many 2FA attempts. Please wait 5 minutes.")
+
     try:
         # Verify 2FA code via AuthService
         auth_service = get_auth_service()
@@ -602,67 +724,98 @@ async def verify_2fa_login(
         )
 
         logger.info("2FA login verification successful")
-        return TokenResponse(**result)
+        # Set tokens as HttpOnly cookies + return in body (backward compatible)
+        token_resp = TokenResponse(**result)
+        response = JSONResponse(content=token_resp.model_dump())
+        _set_refresh_cookie(response, result["refresh_token"])
+        _set_access_cookie(response, result["access_token"])
+        return response
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"2FA login verification error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
+            detail="2FA verification failed. Invalid code or expired token.",
         )
 
 
-@router.post("/refresh", response_model=TokenRefreshResponse)
+@router.post("/refresh")
 async def refresh_token(
     request: TokenRefreshRequest,
     req: Request,
 ):
     """
-    Refresh access token using refresh token
+    Refresh access token using refresh token.
+    Reads refresh_token from HttpOnly cookie first, falls back to request body.
 
     Args:
-        request: Refresh token request
+        request: Refresh token request (body fallback)
         req: FastAPI request object
 
     Returns:
-        TokenRefreshResponse: New access/refresh tokens
+        TokenRefreshResponse: New access/refresh tokens (+ Set-Cookie)
 
     Raises:
         HTTPException: If refresh fails
     """
     try:
+        # Prefer HttpOnly cookie, fallback to body (backward compatible)
+        refresh_tok = req.cookies.get("refresh_token") or request.refresh_token
+        if not refresh_tok:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No refresh token provided",
+            )
+
         # Get client info
         ip_address, user_agent = get_client_info(req)
 
         # Refresh tokens via AuthService
         auth_service = get_auth_service()
         result = await auth_service.refresh_tokens(
-            refresh_token=request.refresh_token,
+            refresh_token=refresh_tok,
             ip_address=ip_address,
             user_agent=user_agent,
         )
 
         logger.info("Tokens refreshed successfully")
-        return result
+        # Set new tokens as HttpOnly cookies
+        resp_data = TokenRefreshResponse(**result) if isinstance(result, dict) else result
+        response = JSONResponse(content=resp_data.model_dump() if hasattr(resp_data, 'model_dump') else result)
+        new_refresh = result.get("refresh_token") if isinstance(result, dict) else getattr(result, "refresh_token", None)
+        new_access = result.get("access_token") if isinstance(result, dict) else getattr(result, "access_token", None)
+        if new_refresh:
+            _set_refresh_cookie(response, new_refresh)
+        if new_access:
+            _set_access_cookie(response, new_access)
+        return response
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Token refresh error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
+            detail="Token refresh failed. Please login again.",
         )
 
 
-@router.post("/logout", response_model=LogoutResponse)
+@router.post("/logout")
 async def logout(
     request: LogoutRequest,
+    req: Request,
     current_user: Dict[str, Any] = Depends(get_current_user),
 ):
     """
-    Logout user (revoke tokens and session)
+    Logout user (revoke tokens and session).
+    Reads refresh_token from HttpOnly cookie first, falls back to request body.
+    Clears the refresh_token cookie on response.
 
     Args:
         request: Logout request (optional refresh token, all_sessions flag)
+        req: FastAPI request object
         current_user: Current authenticated user
 
     Returns:
@@ -672,21 +825,30 @@ async def logout(
         HTTPException: If logout fails
     """
     try:
+        # Prefer HttpOnly cookie, fallback to body
+        refresh_tok = req.cookies.get("refresh_token") or request.refresh_token
+
         # Logout via AuthService
         auth_service = get_auth_service()
         result = await auth_service.logout(
-            refresh_token=request.refresh_token,
+            refresh_token=refresh_tok,
             all_sessions=request.all_sessions,
         )
 
         logger.info(f"User logged out: {current_user.get('email')}")
-        return result
+        # Clear the refresh_token cookie
+        resp_data = result if isinstance(result, dict) else result.model_dump() if hasattr(result, 'model_dump') else {"message": "Logged out", "sessions_revoked": 0}
+        response = JSONResponse(content=resp_data)
+        _clear_refresh_cookie(response)
+        return response
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Logout error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Logout failed",
         )
 
 
@@ -779,6 +941,20 @@ async def request_password_reset(request: PasswordResetRequestRequest):
     Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
     """
     try:
+        # Rate limit: 3 requests per hour per email
+        is_allowed, remaining = await check_rate_limit(
+            identifier=request.email.lower(),
+            endpoint="/auth/password-reset-request",
+            max_requests=3,
+            window_seconds=3600,
+        )
+        if not is_allowed:
+            # Still return success for security (don't reveal rate limiting vs no-email)
+            return PasswordResetRequestResponse(
+                message="If your email exists in our system, you will receive a password reset link shortly.",
+                email=request.email
+            )
+
         # Request password reset via AuthService
         auth_service = get_auth_service()
         email_sent = await auth_service.request_password_reset(email=request.email)
@@ -804,7 +980,7 @@ async def request_password_reset(request: PasswordResetRequestRequest):
 
 
 @router.post("/password/reset/confirm", response_model=PasswordResetConfirmResponse)
-async def confirm_password_reset(request: PasswordResetConfirmRequest):
+async def confirm_password_reset(request: PasswordResetConfirmRequest, req: Request = None):
     """
     Confirm password reset - Validate token and update password
 
@@ -824,9 +1000,19 @@ async def confirm_password_reset(request: PasswordResetConfirmRequest):
         - New password must meet strength requirements (min 8 chars)
         - Token cleared after successful reset
         - Confirmation email sent
+        - Rate limited: 5 per 15 min per IP
 
     Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
     """
+    # Rate limit: 5 per 15 min per IP (prevent token brute-force)
+    if req:
+        ip = req.client.host if req.client else "unknown"
+        is_allowed, remaining = await check_rate_limit(
+            identifier=ip, endpoint="/auth/password/reset/confirm", max_requests=5, window_seconds=900
+        )
+        if not is_allowed:
+            raise HTTPException(status_code=429, detail="Too many reset attempts. Please wait.")
+
     try:
         # Confirm password reset via AuthService
         auth_service = get_auth_service()
@@ -845,11 +1031,13 @@ async def confirm_password_reset(request: PasswordResetConfirmRequest):
             message="Password reset successful. You can now login with your new password."
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Password reset confirm error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Password reset failed. Token may be invalid or expired.",
         )
 
 
@@ -886,6 +1074,14 @@ async def change_password(
         4. Send verification code to email
         5. User calls /password/change/verify with code + new password
     """
+    # Rate limit: 5 per 15 min per user (prevent password brute-force)
+    user_id_rl = current_user.get("sub") or current_user.get("id") or "unknown"
+    is_allowed, remaining = await check_rate_limit(
+        identifier=str(user_id_rl), endpoint="/auth/password/change", max_requests=5, window_seconds=900
+    )
+    if not is_allowed:
+        raise HTTPException(status_code=429, detail="Too many password change attempts. Please wait.")
+
     try:
         # Get user from database
         from app.repositories.user_repository import UserRepository
@@ -902,7 +1098,7 @@ async def change_password(
         # Verify current password
         from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
-        is_valid = password_service.verify_password(
+        is_valid = await password_service.verify_password(
             password=request.current_password,
             hashed_password=user.get("password_hash")
         )
@@ -960,12 +1156,12 @@ async def change_password(
         logger.error(f"Password change error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Password change failed: {str(e)}",
+            detail="Password change failed. Please try again.",
         )
 
 
 @router.post("/password/change/verify", response_model=PasswordChangeVerifyResponse)
-async def verify_password_change(request: PasswordChangeVerifyRequest):
+async def verify_password_change(request: PasswordChangeVerifyRequest, req: Request = None):
     """
     Verify password change with code and apply new password (SIMPLIFIED APPROACH)
 
@@ -985,18 +1181,19 @@ async def verify_password_change(request: PasswordChangeVerifyRequest):
         - New password validated for strength (upper, lower, digit, special)
         - New password hash applied to user account immediately
         - Code cleared after successful verification
-
-    Workflow (SIMPLIFIED):
-        1. Find pending record by email
-        2. Verify code matches and not expired
-        3. Hash the new password from request
-        4. Get user by email
-        5. Update user's password in database
-        6. Delete pending record
-        7. Return success message
+        - Rate limited: 5 per 5 min per IP (6-digit code brute-force protection)
 
     Source: SECURITY_SETTINGS_README.md lines 88-95
     """
+    # Rate limit: 5 per 5 min per IP (brute-force 6-digit codes = 1M possibilities)
+    if req:
+        ip = req.client.host if req.client else "unknown"
+        is_allowed, remaining = await check_rate_limit(
+            identifier=ip, endpoint="/auth/password/change/verify", max_requests=5, window_seconds=300
+        )
+        if not is_allowed:
+            raise HTTPException(status_code=429, detail="Too many verification attempts. Please wait 5 minutes.")
+
     try:
         # Get pending registration by email
         from app.repositories.pending_registration_repository import PendingRegistrationRepository
@@ -1027,7 +1224,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest):
         # Hash the new password
         from app.modules.auth.services.password_service import PasswordService
         password_service = PasswordService()
-        new_password_hash = password_service.hash_password(request.new_password)
+        new_password_hash = await password_service.hash_password(request.new_password)
 
         # Update user password in database
         success = await user_repo.update_password(user.get("id") if isinstance(user, dict) else user["id"], new_password_hash)
@@ -1053,7 +1250,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest):
         logger.error(f"Password change verification error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Password change verification failed: {str(e)}",
+            detail="Password change verification failed. Please try again.",
         )
 
 
@@ -1062,7 +1259,7 @@ async def verify_password_change(request: PasswordChangeVerifyRequest):
 # =============================================================================
 
 @router.post("/email/verify", response_model=EmailVerifyResponse)
-async def verify_email(request: EmailVerifyRequest):
+async def verify_email(request: EmailVerifyRequest, req: Request = None):
     """
     Verify email address with 6-digit code
 
@@ -1081,9 +1278,19 @@ async def verify_email(request: EmailVerifyRequest):
         - Code must be valid and not expired (15 minutes validity)
         - Email marked as verified in database
         - Code cleared after successful verification
+        - Rate limited: 5 per 5 min per IP
 
     Source: .github/docs-internal/Documentations/Backend/API_REFERENCE.md
     """
+    # Rate limit: 5 per 5 min per IP (brute-force 6-digit codes)
+    if req:
+        ip = req.client.host if req.client else "unknown"
+        is_allowed, remaining = await check_rate_limit(
+            identifier=ip, endpoint="/auth/email/verify", max_requests=5, window_seconds=300
+        )
+        if not is_allowed:
+            raise HTTPException(status_code=429, detail="Too many verification attempts. Please wait 5 minutes.")
+
     try:
         # Verify email via AuthService
         auth_service = get_auth_service()
@@ -1101,11 +1308,13 @@ async def verify_email(request: EmailVerifyRequest):
             message="Email verified successfully."
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Email verification error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Email verification failed",
         )
 
 
@@ -1194,7 +1403,7 @@ async def resend_verification_email(
         logger.error(f"Email resend error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Failed to resend verification email",
         )
 
 
@@ -1286,5 +1495,65 @@ async def get_sessions(
         logger.error(f"Get sessions error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve sessions: {str(e)}",
+            detail="Failed to retrieve sessions",
         )
+
+
+# =============================================================================
+# CRON CLEANUP ENDPOINT (1.8 — Auth Security Hardening)
+# =============================================================================
+
+@router.post("/cron/auth-cleanup", status_code=200)
+async def cron_auth_cleanup(req: Request):
+    """
+    Cron endpoint to clean up expired auth data.
+    Called by Cloud Scheduler daily.
+
+    Security: Validates X-Cron-Secret header or Cloud Scheduler OIDC token.
+
+    Cleans:
+    - Expired sessions (> 7 days past expiry)
+    - Expired refresh tokens (> 7 days past expiry)
+    - Expired pending registrations
+    """
+    # Verify cron secret — ALWAYS required (User-Agent is spoofable)
+    settings = get_settings()
+    cron_secret = getattr(settings, 'CRON_SECRET', None) or settings.JWT_SECRET_KEY
+    request_secret = req.headers.get("X-Cron-Secret", "")
+
+    if not request_secret or request_secret != cron_secret:
+        logger.warning(f"[AuthCleanup] Unauthorized cron attempt from {req.client.host if req.client else 'unknown'}")
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    from app.database.connection import db_manager
+
+    results = {}
+
+    try:
+        # 1. Delete expired sessions older than 7 days
+        result = await db_manager.execute_command(
+            "DELETE FROM sessions WHERE expires_at < NOW() - INTERVAL '7 days'"
+        )
+        results["sessions_deleted"] = int(result.split()[-1]) if result and result.startswith("DELETE") else 0
+
+        # 2. Delete expired refresh tokens older than 7 days
+        result = await db_manager.execute_command(
+            "DELETE FROM refresh_tokens WHERE expires_at < NOW() - INTERVAL '7 days'"
+        )
+        results["refresh_tokens_deleted"] = int(result.split()[-1]) if result and result.startswith("DELETE") else 0
+
+        # 3. Delete expired pending registrations
+        result = await db_manager.execute_command(
+            "DELETE FROM pending_registrations WHERE expires_at < NOW()"
+        )
+        results["pending_registrations_deleted"] = int(result.split()[-1]) if result and result.startswith("DELETE") else 0
+
+        total = sum(results.values())
+        if total > 0:
+            logger.info(f"[AuthCleanup] Cleaned {total} expired records: {results}")
+
+        return {"status": "ok", **results}
+
+    except Exception as e:
+        logger.error(f"[AuthCleanup] Error: {e}")
+        return {"status": "error", "error": "Internal cleanup error", **results}

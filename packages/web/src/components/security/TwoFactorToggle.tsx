@@ -363,6 +363,7 @@ export default function TwoFactorToggle({ initialEnabled, onStatusChange }: TwoF
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Entrez votre mot de passe"

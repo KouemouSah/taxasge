@@ -2,14 +2,25 @@
  * Next.js Middleware for TaxasGE Cloud Run Deployment
  * Handles i18n, authentication, authorization, and security headers
  *
+ * Security:
+ * - JWT signature verification via `jose` (when JWT_SECRET_KEY is configured)
+ * - Role extracted from JWT claims (not a separate cookie)
+ * - CSP headers hardened (object-src, base-uri, form-action, upgrade-insecure-requests)
+ *
  * @module middleware
  */
 
 import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 import { routing } from './i18n/routing';
 import { locales, defaultLocale } from './i18n/config';
+
+// JWT secret for signature verification (server-side only, NOT NEXT_PUBLIC_)
+const JWT_SECRET = process.env.JWT_SECRET_KEY
+  ? new TextEncoder().encode(process.env.JWT_SECRET_KEY)
+  : null;
 
 /**
  * Protected routes that require authentication
@@ -34,38 +45,67 @@ const ADMIN_ROUTES = ['/admin', '/dashboard/admin', '/agents', '/assignment', '/
 const PUBLIC_ROUTES = ['/', '/search', '/categories', '/guide', '/calculator', '/auth', '/services', '/ministries'];
 
 /**
- * Check if user is authenticated by verifying JWT token in cookies
+ * Verify JWT token and extract payload.
+ * Returns decoded payload if valid, null if invalid/expired.
+ * SECURITY: JWT_SECRET MUST be configured — no fallback to cookie-based auth.
  */
-function isAuthenticated(request: NextRequest): boolean {
+async function verifyJWT(token: string): Promise<{ sub: string; role: string; exp: number } | null> {
+  if (!JWT_SECRET) {
+    // FAIL-CLOSED: No secret = no authentication possible
+    // This prevents attackers from forging cookies when JWT_SECRET_KEY is missing
+    console.error('[SECURITY] JWT_SECRET_KEY not configured — all auth requests denied');
+    return null;
+  }
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET, {
+      algorithms: ['HS256'],
+    });
+    return {
+      sub: payload.sub as string,
+      role: (payload.role as string) || (payload as Record<string, unknown>).user_role as string || '',
+      exp: payload.exp || 0,
+    };
+  } catch {
+    // Token invalid, expired, or tampered
+    return null;
+  }
+}
+
+/**
+ * Check if user is authenticated by verifying JWT token in cookies.
+ * SECURITY: Always verifies JWT signature. No cookie-only fallback.
+ */
+async function isAuthenticated(request: NextRequest): Promise<{ authenticated: boolean; role: string | null }> {
   const authToken = request.cookies.get('taxasge_auth_token');
-  return !!authToken?.value;
+  if (!authToken?.value) {
+    return { authenticated: false, role: null };
+  }
+
+  // ALWAYS verify JWT signature — no fallback to cookie-only auth
+  const payload = await verifyJWT(authToken.value);
+  if (!payload) {
+    return { authenticated: false, role: null };
+  }
+  return { authenticated: true, role: payload.role || null };
 }
 
 /**
- * Get user role from auth token (simplified version)
- * In production, decode and verify JWT properly
- */
-function getUserRole(request: NextRequest): string | null {
-  const userRole = request.cookies.get('taxasge_user_role');
-  return userRole?.value || null;
-}
-
-/**
- * Check if user has admin/supervisor permissions
- * Migration 048: Simplified to 'admin' and 'agent' roles
+ * Check if user has admin/supervisor/agent permissions
+ * Roles in DB: ADMIN, agent_*, supervisor_*
  */
 function hasAdminPermissions(role: string | null): boolean {
   if (!role) return false;
-  return ['admin', 'agent'].includes(role);
+  const r = role.toLowerCase();
+  return r === 'admin' || r.startsWith('agent_') || r.startsWith('supervisor_');
 }
 
 /**
- * Check if user has write permissions
- * Migration 048: Simplified to 'admin' and 'agent' roles
+ * Check if user has write permissions (admin, agent, supervisor)
  */
 function hasWritePermissions(role: string | null): boolean {
   if (!role) return false;
-  return ['admin', 'agent'].includes(role);
+  const r = role.toLowerCase();
+  return r === 'admin' || r.startsWith('agent_') || r.startsWith('supervisor_');
 }
 
 /**
@@ -112,7 +152,7 @@ function _isPublicRoute(pathname: string): boolean {
   );
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for static files and API routes
@@ -133,8 +173,7 @@ export function middleware(request: NextRequest) {
   // Get the response URL after i18n processing
   const responsePathname = intlResponse.headers.get('x-middleware-request-x-matched-path') || pathname;
 
-  const authenticated = isAuthenticated(request);
-  const userRole = getUserRole(request);
+  const { authenticated, role: userRole } = await isAuthenticated(request);
 
   // 2. Protect authenticated routes
   if (isProtectedRoute(responsePathname)) {
@@ -201,13 +240,19 @@ export function middleware(request: NextRequest) {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      process.env.NODE_ENV === 'development'
+        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
+        : "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       `connect-src 'self' ${apiOrigins}`,
       "frame-src 'self' https://storage.googleapis.com https://firebasestorage.googleapis.com https://*.firebasestorage.app",
       "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
     ].join('; ')
   );
 

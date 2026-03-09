@@ -252,11 +252,31 @@ app.add_middleware(
     ]
 )
 
+# Security headers middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if not settings.debug:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 # CORS middleware - Aligned with Cloud Run deployments
 # Note: Firebase Hosting staging channels use pattern: https://PROJECT--CHANNEL-ID.web.app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.debug else [
+    allow_origins=[
+        "http://localhost:3000",                  # Local dev
+        "http://localhost:3001",                  # Local dev alt
+    ] if settings.debug else [
         "https://taxasge.emacsah.com",           # Custom domain (Cloud Run frontend)
         "https://taxasge-frontend-staging-xrlbgdr5eq-uc.a.run.app",  # Cloud Run direct URL
         "https://taxasge-dev.web.app",
@@ -267,7 +287,7 @@ app.add_middleware(
     allow_origin_regex=r"https://taxasge-(dev|frontend-staging)--[\w-]+\.(web\.app|run\.app)",  # Allow staging channels
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Accept-Language", "X-Cron-Secret"],
     expose_headers=["Content-Disposition", "Content-Length", "Content-Type"],
 )
 
@@ -314,8 +334,25 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle HTTP exceptions and return JSON response with CORS headers."""
-    # Handle structured detail (dict) vs string detail
+    """Handle HTTP exceptions and return JSON response with CORS headers.
+
+    SECURITY: For 5xx errors, sanitize the detail to prevent leaking internal
+    exception messages (str(e)) to clients. Full details are logged server-side.
+    """
+    # For 5xx: log the real detail but return generic message to client
+    if exc.status_code >= 500:
+        logger.error(f"HTTP {exc.status_code} on {request.method} {request.url.path}: {exc.detail}")
+        content = {
+            "detail": "Internal server error. Please try again.",
+            "error_code": f"HTTP_{exc.status_code}"
+        }
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=content,
+            headers=get_cors_headers(request)
+        )
+
+    # For 4xx and below: pass through as-is
     if isinstance(exc.detail, dict):
         content = exc.detail
         if "error_code" not in content:

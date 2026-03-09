@@ -340,8 +340,8 @@ async def send_verification_email(
         }
 
     except Exception as e:
-        logger.error(f"Error queuing verification email: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error queuing verification email: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send verification email. Please try again.")
 
 
 @router.post("/email/password-reset")
@@ -381,8 +381,8 @@ async def send_password_reset_email(
         }
 
     except Exception as e:
-        logger.error(f"Error queuing password reset email: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error queuing password reset email: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send password reset email. Please try again.")
 
 
 @router.post("/email/2fa")
@@ -422,8 +422,8 @@ async def send_2fa_code_email(
         }
 
     except Exception as e:
-        logger.error(f"Error queuing 2FA code email: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error queuing 2FA code email: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send verification code. Please try again.")
 
 
 # ============================================================================

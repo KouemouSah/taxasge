@@ -81,6 +81,20 @@ export const twoFactorVerifySchema = z.object({
   code: z.string().length(6, 'Le code doit contenir 6 chiffres'),
 });
 
+/**
+ * Shared password strength check (matches Zod rules above)
+ * Use for real-time validation in forms that don't use Zod (e.g., activation pages)
+ */
+export function isPasswordStrong(password: string): boolean {
+  return (
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password)
+  );
+}
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type VerificationCodeRequestInput = z.infer<typeof verificationCodeRequestSchema>;

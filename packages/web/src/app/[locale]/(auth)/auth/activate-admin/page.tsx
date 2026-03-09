@@ -24,6 +24,7 @@ import { Loader2, CheckCircle, ShieldCheck, Eye, EyeOff } from "lucide-react"
 import Header from "@/components/layout/Header"
 import Footer from "@/components/layout/Footer"
 import { agentCreationApi } from "@/modules/agents-admin/services/api"
+import { isPasswordStrong } from "@/core/validations/auth"
 import { useLocale } from 'next-intl'
 
 function ActivateAdminContent() {
@@ -75,11 +76,11 @@ function ActivateAdminContent() {
       return false
     }
 
-    if (password.length < 8) {
+    if (!isPasswordStrong(password)) {
       toast({
         variant: "destructive",
-        title: "Mot de passe trop court",
-        description: "Le mot de passe doit contenir au moins 8 caracteres.",
+        title: "Mot de passe trop faible",
+        description: "Le mot de passe doit contenir au moins 8 caracteres, une majuscule, une minuscule, un chiffre et un caractere special.",
       })
       return false
     }
@@ -202,6 +203,7 @@ function ActivateAdminContent() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    maxLength={254}
                     disabled={isLoading || !!searchParams?.get('email')}
                   />
                 </div>
@@ -232,11 +234,13 @@ function ActivateAdminContent() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Minimum 8 caracteres"
+                      autoComplete="new-password"
+                      placeholder="Min. 8 car., majuscule, minuscule, chiffre, special"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       disabled={isLoading}
+                      maxLength={100}
                       minLength={8}
                     />
                     <Button
@@ -262,11 +266,13 @@ function ActivateAdminContent() {
                     <Input
                       id="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
                       placeholder="Confirmez votre mot de passe"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
                       disabled={isLoading}
+                      maxLength={100}
                     />
                     <Button
                       type="button"
@@ -288,7 +294,7 @@ function ActivateAdminContent() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isLoading || verificationCode.length !== 6 || password.length < 8}
+                  disabled={isLoading || verificationCode.length !== 6 || !isPasswordStrong(password) || password !== confirmPassword}
                 >
                   {isLoading ? (
                     <>

@@ -14,9 +14,21 @@ Migration 055 adds metadata JSONB column for storing:
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from loguru import logger
+import hashlib
+import hmac
 import json
 
 from app.database.connection import db_manager
+
+
+def _hash_verification_code(code: str) -> str:
+    """Hash verification code with SHA256 before storage/comparison."""
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def _timing_safe_compare(a: str, b: str) -> bool:
+    """Constant-time string comparison to prevent timing attacks."""
+    return hmac.compare_digest(a.encode(), b.encode())
 
 
 class PendingRegistrationRepository:
@@ -50,6 +62,8 @@ class PendingRegistrationRepository:
         try:
             expires_at = datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes)
             metadata_json = json.dumps(metadata or {})
+            # Hash verification code before storage (same pattern as password reset tokens)
+            hashed_code = _hash_verification_code(verification_code)
 
             query = """
                 INSERT INTO pending_registrations (email, verification_code, expires_at, metadata)
@@ -64,7 +78,7 @@ class PendingRegistrationRepository:
             """
 
             row = await self.db_manager.execute_single(
-                query, email, verification_code, expires_at, metadata_json
+                query, email, hashed_code, expires_at, metadata_json
             )
 
             reg_type = (metadata or {}).get('registration_type', 'user')
@@ -189,7 +203,6 @@ class PendingRegistrationRepository:
 
             # Use timezone-aware datetime for comparison
             now_utc = datetime.now(timezone.utc)
-            logger.info(f"Verifying code for {email}: stored='{pending['verification_code']}', received='{code}', expires_at={pending['expires_at']}, now={now_utc}")
 
             # Check if expired
             if now_utc > pending['expires_at']:
@@ -203,10 +216,11 @@ class PendingRegistrationRepository:
                 logger.warning(f"Too many verification attempts for {email}")
                 return False
 
-            # Check code
-            if pending['verification_code'] != code:
+            # Hash received code and compare with stored hash (timing-safe)
+            hashed_code = _hash_verification_code(code)
+            if not _timing_safe_compare(pending['verification_code'], hashed_code):
                 await self.increment_attempts(email)
-                logger.warning(f"Wrong verification code for {email} (attempt {pending['verification_attempts'] + 1}/5) - stored:'{pending['verification_code']}' != received:'{code}'")
+                logger.warning(f"Wrong verification code for {email} (attempt {pending['verification_attempts'] + 1}/5)")
                 return False
 
             # Success
@@ -253,8 +267,9 @@ class PendingRegistrationRepository:
                 logger.warning(f"Too many verification attempts for {email}")
                 return None
 
-            # Check code
-            if pending['verification_code'] != code:
+            # Hash received code and compare with stored hash (timing-safe)
+            hashed_code = _hash_verification_code(code)
+            if not _timing_safe_compare(pending['verification_code'], hashed_code):
                 await self.increment_attempts(email)
                 logger.warning(f"Wrong verification code for {email}")
                 return None
@@ -310,18 +325,35 @@ class PendingRegistrationRepository:
             logger.error(f"Error deleting pending registration for {email}: {e}")
             return False
 
-    async def increment_attempts(self, email: str):
-        """Increment verification attempts counter"""
+    async def increment_attempts(self, email: str) -> int:
+        """
+        Atomically increment verification attempts counter.
+        Returns updated attempt count (0 if record not found or error).
+        Deletes record if attempts >= 5.
+        """
         try:
             query = """
                 UPDATE pending_registrations
-                SET verification_attempts = verification_attempts + 1
+                SET verification_attempts = verification_attempts + 1,
+                    last_attempt_at = NOW()
                 WHERE email = $1
+                RETURNING verification_attempts
             """
-            await self.db_manager.execute_command(query, email)
+            row = await self.db_manager.execute_single(query, email)
+            if not row:
+                return 0
+            attempts = row['verification_attempts']
+
+            # Auto-delete if max attempts reached (atomic enforcement)
+            if attempts >= 5:
+                await self.delete_by_email(email)
+                logger.warning(f"Max verification attempts reached for {email} — record deleted")
+
+            return attempts
 
         except Exception as e:
             logger.error(f"Error incrementing attempts for {email}: {e}")
+            return 0
 
     async def cleanup_expired(self) -> int:
         """

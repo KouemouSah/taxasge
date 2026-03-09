@@ -224,7 +224,7 @@ async def disable_two_factor(
             )
 
         password_service = PasswordService()
-        if not password_service.verify_password(request.password, user_with_password['password_hash']):
+        if not await password_service.verify_password(request.password, user_with_password['password_hash']):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect password"
