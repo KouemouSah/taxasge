@@ -2458,7 +2458,13 @@
       "resource": "Resource",
       "searchPlaceholder": "Name or description...",
       "subtitle": "List and filter system permissions",
-      "title": "Permissions"
+      "title": "Permissions",
+      "criticalDialogTitle": "Critical Permission",
+      "criticalDialogDescription": "This permission is marked as critical and can have significant system-wide impacts.",
+      "criticalDialogConfirm": "Yes, grant",
+      "criticalDialogCancel": "Cancel",
+      "criticalBadge": "Critical",
+      "criticalInfo": "This permission requires confirmation before being granted"
     },
     "redirecting": "Redirecting...",
     "refresh": "Refresh",
@@ -2532,7 +2538,12 @@
       "title": "Roles",
       "totalRoles": "{count} roles configured",
       "updateSuccess": "Role updated successfully",
-      "updating": "Updating..."
+      "updating": "Updating...",
+      "pageTitle": "Roles & Permissions",
+      "pageSubtitle": "Manage roles, permission catalog, and user overrides",
+      "tabRoles": "Roles",
+      "tabPermissions": "Permission Catalog",
+      "tabUserPermissions": "Agent Permissions"
     },
     "save": "Save",
     "search": "Search",

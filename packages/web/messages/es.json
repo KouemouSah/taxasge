@@ -2663,7 +2663,13 @@
       "resource": "Recurso",
       "searchPlaceholder": "Nombre o descripción...",
       "subtitle": "Listar y filtrar permisos del sistema",
-      "title": "Permisos"
+      "title": "Permisos",
+      "criticalDialogTitle": "Permiso Crítico",
+      "criticalDialogDescription": "Este permiso está marcado como crítico y puede tener impactos significativos en el sistema.",
+      "criticalDialogConfirm": "Sí, conceder",
+      "criticalDialogCancel": "Cancelar",
+      "criticalBadge": "Crítico",
+      "criticalInfo": "Este permiso requiere confirmación antes de ser concedido"
     },
     "redirecting": "Redirigiendo...",
     "refresh": "Actualizar",
@@ -2737,7 +2743,12 @@
       "title": "Roles",
       "totalRoles": "{count} roles configurados",
       "updateSuccess": "Rol actualizado exitosamente",
-      "updating": "Actualizando..."
+      "updating": "Actualizando...",
+      "pageTitle": "Roles y Permisos",
+      "pageSubtitle": "Gestionar roles, catálogo de permisos y excepciones de usuarios",
+      "tabRoles": "Roles",
+      "tabPermissions": "Catálogo Permisos",
+      "tabUserPermissions": "Permisos Agentes"
     },
     "save": "Guardar",
     "search": "Buscar",

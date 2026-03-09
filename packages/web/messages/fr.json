@@ -2698,7 +2698,13 @@
       "resource": "Ressource",
       "searchPlaceholder": "Nom ou description...",
       "subtitle": "Lister et filtrer les permissions du système",
-      "title": "Permissions"
+      "title": "Permissions",
+      "criticalDialogTitle": "Permission Critique",
+      "criticalDialogDescription": "Cette permission est marquée comme critique et peut avoir des impacts significatifs sur le système.",
+      "criticalDialogConfirm": "Oui, accorder",
+      "criticalDialogCancel": "Annuler",
+      "criticalBadge": "Critique",
+      "criticalInfo": "Cette permission nécessite une confirmation avant d'être accordée"
     },
     "redirecting": "Redirection...",
     "refresh": "Actualiser",
@@ -2771,6 +2777,11 @@
       "systemRoleWarning": "Les rôles système ont des restrictions d'édition. Certaines modifications peuvent ne pas être autorisées.",
       "title": "Rôles",
       "totalRoles": "{count} rôles configurés",
+      "pageTitle": "Rôles et Permissions",
+      "pageSubtitle": "Gérer les rôles, le catalogue de permissions et les exceptions utilisateurs",
+      "tabRoles": "Rôles",
+      "tabPermissions": "Catalogue Permissions",
+      "tabUserPermissions": "Permissions Agents",
       "updateSuccess": "Rôle mis à jour avec succès",
       "updating": "Mise à jour..."
     },

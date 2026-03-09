@@ -30,3 +30,6 @@ export {
 
 // Components
 export { RolePermissionsDialog } from './components/RolePermissionsDialog'
+export { RolesTab } from './components/RolesTab'
+export { PermissionsCatalogTab } from './components/PermissionsCatalogTab'
+export { UserPermissionsTab } from './components/UserPermissionsTab'
