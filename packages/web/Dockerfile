@@ -2,10 +2,10 @@
 # TaxasGE Frontend - Production Dockerfile for Cloud Run
 # =============================================================================
 # Multi-stage build for optimized Next.js SSR deployment
-# Base: Node.js 18 Alpine
+# Base: Node.js 20 Alpine (matches engines requirement in package.json)
 # =============================================================================
 
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -39,7 +39,8 @@ ENV NODE_ENV=production
 # Log the API URL being baked into the build
 RUN echo "Building with NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}"
 
-# Build Next.js application (NEXT_PUBLIC_API_URL is now available)
+# Build Next.js application with increased memory for large codebase
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # =============================================================================
