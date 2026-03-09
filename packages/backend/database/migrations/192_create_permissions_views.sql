@@ -171,6 +171,61 @@ LEFT JOIN role_averages ra ON ra.role_code = ut.role_code;
 
 
 -- ============================================================================
+-- VIEW 3: Drop and recreate v_permission_usage_analytics with columns the code expects
+-- Must DROP first because CREATE OR REPLACE cannot change column names/order
+-- The existing view is too simple (missing: module alias, usage_category,
+-- users_with_permission). permission_repository.py L452-478 expects these.
+-- ============================================================================
+
+DROP VIEW IF EXISTS v_permission_usage_analytics;
+CREATE VIEW v_permission_usage_analytics AS
+WITH perm_stats AS (
+    SELECT
+        p.id AS permission_id,
+        p.name AS permission_name,
+        p.resource,
+        p.action,
+        p.module_name,
+        p.module_name AS module,  -- alias expected by repository code
+        p.is_critical,
+        p.created_at AS permission_created_at,
+        -- Direct user grants (active)
+        COUNT(DISTINCT up.user_id) FILTER (
+            WHERE up.granted = true AND (up.expires_at IS NULL OR up.expires_at >= NOW())
+        ) AS direct_grant_count,
+        -- Roles that have this permission
+        COUNT(DISTINCT rp.role_id) AS role_grant_count,
+        -- Users who have it via role
+        COUNT(DISTINCT u.id) AS users_with_permission
+    FROM permissions p
+    LEFT JOIN user_permissions up ON up.permission_id = p.id
+    LEFT JOIN role_permissions rp ON rp.permission_id = p.id
+    LEFT JOIN users u ON u.role_id = rp.role_id AND u.status::text = 'active'
+    GROUP BY p.id, p.name, p.resource, p.action, p.module_name, p.is_critical, p.created_at
+)
+SELECT
+    permission_id,
+    permission_name,
+    resource,
+    action,
+    module_name,
+    module,
+    is_critical,
+    permission_created_at,
+    direct_grant_count,
+    role_grant_count,
+    users_with_permission,
+    -- Usage category based on how many users have this permission
+    CASE
+        WHEN users_with_permission + direct_grant_count = 0 THEN 'UNUSED'
+        WHEN users_with_permission + direct_grant_count <= 2 THEN 'RARELY_USED'
+        WHEN users_with_permission + direct_grant_count <= 10 THEN 'MODERATELY_USED'
+        ELSE 'WIDELY_USED'
+    END AS usage_category
+FROM perm_stats;
+
+
+-- ============================================================================
 -- FIX: Assign 15 admin.* permissions to 'admin' role (currently NONE assigned)
 -- ============================================================================
 
