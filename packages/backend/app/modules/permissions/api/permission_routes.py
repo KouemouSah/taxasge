@@ -317,3 +317,44 @@ async def get_user_permissions_summary(
     """
     summary = await permission_service.get_user_permissions_summary(str(user_id))
     return summary
+
+
+@router.get("/anomalies/overprivileged", response_model=dict)
+@require_permission("admin.view_security")
+async def detect_overprivileged_users(
+    min_risk_score: int = Query(20, ge=0, le=100, description="Minimum risk score"),
+    risk_level: Optional[str] = Query(None, description="Filter by risk level (LOW, MEDIUM, HIGH, CRITICAL)"),
+    limit: int = Query(50, ge=1, le=200, description="Max results"),
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Detect overprivileged users based on permission anomalies.
+
+    Requires: admin.view_security
+
+    Uses the v_overprivileged_users_detection view with risk scoring:
+    - +1 per extra user grant
+    - +5 per critical user grant
+    - +10 if >50% more permissions than role average
+    - +15 if >10 critical permissions
+
+    Returns users with risk_score, risk_level, and recommendations.
+    """
+    users = await permission_service.repo.detect_overprivileged_users(
+        min_risk_score=min_risk_score,
+        risk_level=risk_level,
+        limit=limit,
+    )
+    # Serialize UUIDs
+    for u in users:
+        if 'user_id' in u:
+            u['user_id'] = str(u['user_id'])
+    return {
+        "overprivileged_users": users,
+        "count": len(users),
+        "filters": {
+            "min_risk_score": min_risk_score,
+            "risk_level": risk_level,
+        },
+    }
