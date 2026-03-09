@@ -248,12 +248,14 @@ class RefreshTokenRepository:
                     SELECT * FROM refresh_tokens
                     WHERE user_id = $1 AND is_revoked = false
                     ORDER BY created_at DESC
+                    LIMIT 50
                 """
             else:
                 query = """
                     SELECT * FROM refresh_tokens
                     WHERE user_id = $1
                     ORDER BY created_at DESC
+                    LIMIT 50
                 """
 
             if conn:

@@ -263,21 +263,20 @@ class AgentProfileService:
             user_id
         )
 
-        # Copy permissions to user_permissions for per-user override capability
-        perms_query = """
-            SELECT permission_id FROM role_permissions
-            WHERE role_id = $1 AND granted = TRUE
-        """
-        role_permissions = await conn.fetch(perms_query, rbac_role_id)
+        # Batch copy permissions to user_permissions (1 query instead of N round-trips)
+        granted_by_str = str(granted_by) if granted_by else None
+        result = await conn.execute("""
+            INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
+            SELECT $1, rp.permission_id, TRUE, $2, NOW()
+            FROM role_permissions rp
+            WHERE rp.role_id = $3 AND rp.granted = TRUE
+            ON CONFLICT (user_id, permission_id) DO UPDATE
+            SET granted = TRUE, granted_by = EXCLUDED.granted_by, granted_at = NOW()
+        """, user_id, granted_by_str, rbac_role_id)
 
-        for perm in role_permissions:
-            await conn.execute("""
-                INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
-                VALUES ($1, $2, TRUE, $3, NOW())
-                ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE, granted_by = $3, granted_at = NOW()
-            """, user_id, perm["permission_id"], str(granted_by) if granted_by else None)
-
-        logger.info(f"RBAC role updated: role_id set + {len(role_permissions)} permissions copied to user_permissions")
+        # Extract count from result (e.g. "INSERT 0 147")
+        perm_count = int(result.split()[-1]) if result else 0
+        logger.info(f"RBAC role updated: role_id set + {perm_count} permissions batch-copied to user_permissions")
 
     async def deactivate_agent_profile(
         self,
@@ -837,20 +836,17 @@ class AgentProfileService:
                         rbac_role_id
                     )
                     if role_check:
-                        perms_query = """
-                            SELECT permission_id FROM role_permissions
-                            WHERE role_id = $1 AND granted = TRUE
-                        """
-                        role_permissions = await conn.fetch(perms_query, rbac_role_id)
+                        # Batch copy permissions (1 query instead of N round-trips)
+                        result = await conn.execute("""
+                            INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
+                            SELECT $1, rp.permission_id, TRUE, $2, NOW()
+                            FROM role_permissions rp
+                            WHERE rp.role_id = $3 AND rp.granted = TRUE
+                            ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE
+                        """, user_id, assigned_by, rbac_role_id)
 
-                        for perm in role_permissions:
-                            await conn.execute("""
-                                INSERT INTO user_permissions (user_id, permission_id, granted, granted_by, granted_at)
-                                VALUES ($1, $2, TRUE, $3, NOW())
-                                ON CONFLICT (user_id, permission_id) DO UPDATE SET granted = TRUE
-                            """, user_id, perm["permission_id"], assigned_by)
-
-                        logger.info(f"[AGENT_ACTIVATION] Step 4 OK - RBAC role assigned with {len(role_permissions)} permissions")
+                        perm_count = int(result.split()[-1]) if result else 0
+                        logger.info(f"[AGENT_ACTIVATION] Step 4 OK - RBAC role assigned with {perm_count} permissions (batch)")
                     else:
                         logger.warning(f"[AGENT_ACTIVATION] Step 4 - RBAC role {rbac_role_id} not found or invalid")
                 else:

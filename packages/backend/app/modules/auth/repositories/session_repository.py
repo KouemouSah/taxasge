@@ -316,6 +316,7 @@ class SessionRepository:
                     SELECT * FROM sessions
                     WHERE user_id = $1 AND status = $2
                     ORDER BY created_at DESC
+                    LIMIT 50
                 """
                 if conn:
                     results = await conn.fetch(query, user_id, SessionStatus.active.value)
@@ -326,6 +327,7 @@ class SessionRepository:
                     SELECT * FROM sessions
                     WHERE user_id = $1
                     ORDER BY created_at DESC
+                    LIMIT 50
                 """
                 if conn:
                     results = await conn.fetch(query, user_id)
