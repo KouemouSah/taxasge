@@ -60,7 +60,7 @@
     "info": "echo '📋 Facil Project Info:' && yarn workspaces info"
   },
   "dependencies": {
-    "jose": "^6.2.0",
+    "jose": "^5.10.0",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
