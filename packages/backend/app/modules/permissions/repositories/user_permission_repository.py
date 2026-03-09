@@ -147,9 +147,13 @@ class UserPermissionRepository:
         results = await self.db.fetch(query, user_id)
         return [_row_to_dict(row) for row in results]
 
-    async def get_expired_permissions(self) -> List[Dict[str, Any]]:
+    async def get_expired_permissions(self, limit: int = 500, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        Get all expired permissions
+        Get expired permissions with pagination
+
+        Args:
+            limit: Max results (default 500)
+            offset: Pagination offset
 
         Returns:
             List of expired user permission dicts
@@ -160,7 +164,8 @@ class UserPermissionRepository:
             FROM user_permissions
             WHERE expires_at IS NOT NULL AND expires_at < NOW()
             ORDER BY expires_at DESC
-        """)
+            LIMIT $1 OFFSET $2
+        """, limit, offset)
 
         return [_row_to_dict(row) for row in results]
 

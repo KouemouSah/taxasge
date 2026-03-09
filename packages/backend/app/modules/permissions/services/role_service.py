@@ -268,12 +268,13 @@ class RoleService:
                 detail=f"Role with id '{role_id}' not found"
             )
 
-        # Verify all permissions exist
-        invalid_permissions = []
-        for perm_id in permission_ids:
-            permission = await self.permission_repo.get_by_id(perm_id)
-            if not permission:
-                invalid_permissions.append(perm_id)
+        # Batch-validate all permissions exist (1 query instead of N)
+        existing = await self.permission_repo.db.fetch(
+            "SELECT id::text FROM permissions WHERE id = ANY($1::uuid[])",
+            permission_ids
+        )
+        existing_ids = {str(row['id']) for row in existing}
+        invalid_permissions = [pid for pid in permission_ids if pid not in existing_ids]
 
         if invalid_permissions:
             raise HTTPException(
@@ -281,11 +282,10 @@ class RoleService:
                 detail=f"Permissions not found: {', '.join(invalid_permissions)}"
             )
 
-        # Assign permissions
-        assigned_count = 0
-        for perm_id in permission_ids:
-            await self.role_repo.assign_permission(role_id, perm_id, granted, assigned_by)
-            assigned_count += 1
+        # Batch-assign permissions (1 query instead of N)
+        assigned_count = await self.role_repo.assign_permissions_batch(
+            role_id, permission_ids, granted, assigned_by
+        )
 
         return {
             "role_id": role_id,
@@ -319,11 +319,8 @@ class RoleService:
                 detail=f"Role with id '{role_id}' not found"
             )
 
-        # Remove permissions
-        removed_count = 0
-        for perm_id in permission_ids:
-            if await self.role_repo.remove_permission(role_id, perm_id):
-                removed_count += 1
+        # Batch-remove permissions (1 query instead of N)
+        removed_count = await self.role_repo.remove_permissions_batch(role_id, permission_ids)
 
         return {
             "role_id": role_id,

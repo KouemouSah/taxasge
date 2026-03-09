@@ -426,6 +426,65 @@ class RoleRepository:
 
         return "DELETE 1" in result
 
+    async def assign_permissions_batch(
+        self,
+        role_id: str,
+        permission_ids: List[str],
+        granted: bool = True,
+        created_by: Optional[str] = None
+    ) -> int:
+        """
+        Assign multiple permissions to a role in a single query
+
+        Args:
+            role_id: Role UUID
+            permission_ids: List of permission UUIDs
+            granted: True to grant, False to deny
+            created_by: User ID who made the assignment
+
+        Returns:
+            Number of permissions assigned
+        """
+        if not permission_ids:
+            return 0
+
+        result = await self.db.execute("""
+            INSERT INTO role_permissions (role_id, permission_id, granted, created_by)
+            SELECT $1, unnest($2::uuid[]), $3, $4
+            ON CONFLICT (role_id, permission_id) DO UPDATE
+            SET granted = EXCLUDED.granted, created_by = EXCLUDED.created_by
+        """, role_id, permission_ids, granted, created_by)
+
+        # Extract count from "INSERT 0 N"
+        try:
+            return int(result.split()[-1])
+        except (ValueError, IndexError):
+            return len(permission_ids)
+
+    async def remove_permissions_batch(self, role_id: str, permission_ids: List[str]) -> int:
+        """
+        Remove multiple permissions from a role in a single query
+
+        Args:
+            role_id: Role UUID
+            permission_ids: List of permission UUIDs
+
+        Returns:
+            Number of permissions removed
+        """
+        if not permission_ids:
+            return 0
+
+        result = await self.db.execute("""
+            DELETE FROM role_permissions
+            WHERE role_id = $1 AND permission_id = ANY($2::uuid[])
+        """, role_id, permission_ids)
+
+        try:
+            return int(result.split()[-1])
+        except (ValueError, IndexError):
+            return 0
+
     async def get_role_permissions(self, role_id: str) -> List[str]:
         """
         Get list of permission IDs for a role

@@ -96,6 +96,7 @@ class UserPermissionListResponse(BaseModel):
 
 class GrantPermissionToUserRequest(BaseModel):
     """Schema for granting a permission to a user"""
+    user_id: UUID = Field(..., description="Target user UUID")
     permission_id: UUID = Field(..., description="Permission UUID to grant")
     expires_at: Optional[datetime] = Field(None, description="Expiration date (NULL for permanent)")
     reason: Optional[str] = Field(None, description="Reason for granting (for audit)")
@@ -110,6 +111,7 @@ class GrantPermissionToUserRequest(BaseModel):
 
 class RevokePermissionFromUserRequest(BaseModel):
     """Schema for revoking a permission from a user"""
+    user_id: UUID = Field(..., description="Target user UUID")
     permission_id: UUID = Field(..., description="Permission UUID to revoke")
     reason: Optional[str] = Field(None, description="Reason for revoking (for audit)")
 

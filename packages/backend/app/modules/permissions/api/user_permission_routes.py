@@ -295,19 +295,21 @@ async def update_user_permission(
 @router.get("/expired", response_model=List[UserPermissionWithDetails])
 @require_permission("user_permissions.view")
 async def get_expired_permissions(
+    limit: int = Query(500, ge=1, le=1000, description="Max results"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
     current_user: UserResponse = Depends(get_current_user),
     user_permission_repo: UserPermissionRepository = Depends(get_user_permission_repo),
     permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
-    Get all expired user permissions
+    Get expired user permissions (paginated)
 
     Requires: user_permissions.view
 
     Returns:
         List of expired permissions across all users
     """
-    expired = await user_permission_repo.get_expired_permissions()
+    expired = await user_permission_repo.get_expired_permissions(limit=limit, offset=offset)
     return expired
 
 
