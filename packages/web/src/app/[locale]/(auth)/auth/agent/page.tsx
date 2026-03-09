@@ -73,7 +73,7 @@ export default function AgentAuthPage() {
       if ('access_token' in response) {
         // Verify this is an agent/admin/supervisor account
         const role = response.user.role?.toLowerCase() || '';
-        if (role !== 'admin' && !role.startsWith('agent_') && !role.startsWith('supervisor_')) {
+        if (role !== 'admin' && role !== 'agent' && !role.startsWith('agent_') && !role.startsWith('supervisor_')) {
           toast({
             variant: 'destructive',
             title: t('accessDenied'),
