@@ -654,12 +654,11 @@ class AgentQueueService:
         result = await db.execute("""
             UPDATE agent_work_queue
             SET status = 'cancelled',
-                cancellation_reason = $2,
                 updated_at = NOW()
             WHERE item_type = $1
-            AND item_id = $3
+            AND item_id = $2
             AND status NOT IN ('completed', 'cancelled')
-        """, self.ITEM_TYPE, reason, service_request_id)
+        """, self.ITEM_TYPE, service_request_id)
 
         removed = 'UPDATE 1' in result
         if removed:

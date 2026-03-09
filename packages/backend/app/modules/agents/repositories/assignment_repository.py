@@ -24,10 +24,12 @@ class AssignmentRepository:
         conn: asyncpg.Connection,
         assignment: AssignmentCreate,
     ) -> Dict[str, Any]:
-        """Create new assignment"""
+        """Create new assignment.
+        LEGACY: Uses old model fields. Modern: assignment/ module.
+        """
         query = """
             INSERT INTO assignments (
-                declaration_id, declaration_type, agent_id, assigned_by,
+                item_id, item_type, agent_profile_id, assigned_by_profile_id,
                 assignment_method, status, notes, auto_assignment_score,
                 score_breakdown, rule_applied_id, deadline, priority_level,
                 assigned_at, created_at, updated_at
@@ -64,18 +66,20 @@ class AssignmentRepository:
         result = await conn.fetchrow(query, assignment_id)
         return dict(result) if result else None
 
-    async def get_assignments_by_declaration(
+    async def get_assignments_by_item(
         self,
         conn: asyncpg.Connection,
-        declaration_id: str,
+        item_id: str,
     ) -> List[Dict[str, Any]]:
-        """Get all assignments for a declaration"""
+        """Get all assignments for an item (service request).
+        LEGACY: Modern: assignment/ module.
+        """
         query = """
             SELECT * FROM assignments
-            WHERE declaration_id = $1
+            WHERE item_id = $1
             ORDER BY assigned_at DESC
         """
-        results = await conn.fetch(query, declaration_id)
+        results = await conn.fetch(query, item_id)
         return [dict(r) for r in results]
 
     async def get_assignments_by_agent(
@@ -87,7 +91,7 @@ class AssignmentRepository:
         offset: int = 0,
     ) -> tuple[List[Dict[str, Any]], int]:
         """Get assignments for an agent"""
-        where_clause = "WHERE agent_id = $1"
+        where_clause = "WHERE agent_profile_id = $1"
         params = [agent_id]
 
         if status:
@@ -153,7 +157,7 @@ class AssignmentRepository:
         query = """
             UPDATE assignments
             SET status = 'reassigned',
-                reassigned_to = $2,
+                reassigned_to_profile_id = $2,
                 reassigned_at = NOW(),
                 reassignment_reason = $3,
                 reassignment_notes = $4,

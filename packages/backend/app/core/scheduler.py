@@ -599,7 +599,7 @@ class InternalScheduler:
                         new_max = max(settings.ANOMALY_CAPACITY_MIN_FLOOR, current_max - settings.ANOMALY_CAPACITY_REDUCTION_STEP)
                         await db.execute(
                             "UPDATE agent_workloads "
-                            "SET max_concurrent_assignments = $2, updated_at = NOW() "
+                            "SET max_concurrent_assignments = $2, last_updated_at = NOW() "
                             "WHERE agent_profile_id = $1",
                             row["agent_profile_id"], new_max,
                         )
