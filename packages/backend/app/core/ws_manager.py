@@ -51,13 +51,17 @@ class WebSocketManager:
             "timestamp": datetime.utcnow().isoformat() + "Z",
         })
 
-        disconnected: list[str] = []
+        async def _send(user_id: str, ws: WebSocket) -> str | None:
+            try:
+                await asyncio.wait_for(ws.send_text(message), timeout=5.0)
+                return None
+            except Exception:
+                return user_id
+
         async with self._lock:
-            for user_id, ws in self._connections.items():
-                try:
-                    await ws.send_text(message)
-                except Exception:
-                    disconnected.append(user_id)
+            tasks = [_send(uid, ws) for uid, ws in self._connections.items()]
+            results = await asyncio.gather(*tasks)
+            disconnected = [uid for uid in results if uid is not None]
 
             for uid in disconnected:
                 self._connections.pop(uid, None)

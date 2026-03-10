@@ -41,10 +41,31 @@ async def ws_admin_endpoint(
             return
 
         user_id = str(user.get("id") or user.get("sub", ""))
-        role = user.get("role", user.get("role_code", "")) or ""
+        if not user_id:
+            await websocket.close(code=4001, reason="no_user_id")
+            return
 
-        # Only admin/supervisor roles can connect
-        if not (role.startswith("admin") or role == "supervisor"):
+        role = user.get("role", "") or ""
+
+        # Admin role can connect directly via JWT
+        if role == "admin":
+            pass
+        elif role == "agent":
+            # Agents need DB check — supervisors have role=agent but role_code=supervisor_*
+            from app.database.connection import db_manager
+            try:
+                async with db_manager.get_connection() as conn:
+                    role_code = await conn.fetchval(
+                        "SELECT r.code FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = $1::uuid",
+                        user_id,
+                    )
+                    if not role_code or not role_code.startswith("supervisor"):
+                        await websocket.close(code=4003, reason="admin_only")
+                        return
+            except Exception:
+                await websocket.close(code=4003, reason="admin_only")
+                return
+        else:
             await websocket.close(code=4003, reason="admin_only")
             return
 

@@ -64,13 +64,14 @@ class PermissionSimulator:
                 "permission_names": permission_names,
             }
 
-        # 2. For each user, compute current permissions
+        # 2. Batch-fetch current permissions for all affected users (1 query instead of N)
+        user_ids = [str(u["id"]) for u in affected_users]
+        all_perms = await self._get_effective_permissions_batch(user_ids)
+
         results = []
         for user in affected_users:
             user_id = str(user["id"])
-
-            # Current permissions (via recursive CTE)
-            current_perms = await self._get_effective_permissions(user_id)
+            current_perms = all_perms.get(user_id, set())
 
             # Simulate the change
             if action == "grant":
@@ -181,6 +182,29 @@ class PermissionSimulator:
             "total_after": len(after_perms),
             "unchanged": len(current_perms & after_perms),
         }
+
+    async def _get_effective_permissions_batch(self, user_ids: List[str]) -> Dict[str, Set[str]]:
+        """Get effective permissions for multiple users in 1 query (uses materialized view with CTE fallback)."""
+        # Try materialized view first (O(1) per user)
+        try:
+            rows = await self.db.fetch("""
+                SELECT user_id::text, permission_name
+                FROM effective_permissions_mv
+                WHERE user_id = ANY($1::uuid[])
+            """, user_ids)
+            result: Dict[str, Set[str]] = {}
+            for row in rows:
+                uid = row["user_id"]
+                if uid not in result:
+                    result[uid] = set()
+                result[uid].add(row["permission_name"])
+            return result
+        except Exception:
+            # MV doesn't exist yet — fall back to per-user CTE
+            result = {}
+            for uid in user_ids:
+                result[uid] = await self._get_effective_permissions(uid)
+            return result
 
     async def _get_effective_permissions(self, user_id: str) -> Set[str]:
         """Get the effective permission set for a user (role hierarchy + overrides)."""

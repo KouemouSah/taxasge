@@ -129,7 +129,11 @@ export interface OverprivilegedUser {
   role_code: string
   risk_score: number
   risk_level: string
-  recommendations: string[]
+  recommendation: string | null
+  total_permissions?: number
+  total_critical?: number
+  user_grants?: number
+  user_denies?: number
 }
 
 export interface OverprivilegedUsersResponse {
