@@ -42,7 +42,7 @@ class PermissionSimulator:
 
         Returns list of affected users with before/after permission diffs.
         """
-        # 1. Find all users with this role (direct or via hierarchy)
+        # 1. Find all active users with this role (direct or via hierarchy)
         affected_users = await self.db.fetch("""
             WITH RECURSIVE role_tree AS (
                 SELECT id FROM roles WHERE id = $1::uuid
@@ -53,6 +53,7 @@ class PermissionSimulator:
             FROM users u
             JOIN roles r ON u.role_id = r.id
             WHERE u.role_id IN (SELECT id FROM role_tree)
+              AND u.status != 'deactivated'
             ORDER BY u.full_name
         """, role_id)
 
@@ -212,7 +213,7 @@ class PermissionSimulator:
             WITH RECURSIVE role_chain AS MATERIALIZED (
                 SELECT r.id, r.parent_role_id
                 FROM users u JOIN roles r ON r.id = u.role_id
-                WHERE u.id = $1::uuid
+                WHERE u.id = $1::uuid AND u.status != 'deactivated'
                 UNION ALL
                 SELECT parent.id, parent.parent_role_id
                 FROM roles parent

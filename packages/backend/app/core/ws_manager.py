@@ -9,7 +9,7 @@ Only admin users (role_code starts with 'admin') can connect.
 """
 import asyncio
 import json
-from typing import Dict, Set, Optional
+from typing import Dict, Optional
 from datetime import datetime
 
 from fastapi import WebSocket, WebSocketDisconnect

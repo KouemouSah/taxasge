@@ -384,7 +384,6 @@ class SimulateUserRoleChangeRequest(BaseModel):
 async def simulate_role_permission_change(
     request: SimulateRolePermissionRequest,
     current_user: UserResponse = Depends(get_current_user),
-    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Simulate granting/revoking permissions on a role WITHOUT applying.
@@ -413,7 +412,6 @@ async def simulate_role_permission_change(
 async def simulate_user_role_change(
     request: SimulateUserRoleChangeRequest,
     current_user: UserResponse = Depends(get_current_user),
-    permission_service: PermissionService = Depends(get_permission_service),
 ):
     """
     Simulate changing a user's role WITHOUT applying.

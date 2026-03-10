@@ -226,7 +226,7 @@ export function useSimulateUserRoleChange() {
 }
 
 /**
- * Fetch overprivileged users
+ * Fetch overprivileged users (manual trigger only — not auto-fired)
  */
 export function useOverprivilegedUsers(params?: {
   min_risk_score?: number
@@ -237,5 +237,6 @@ export function useOverprivilegedUsers(params?: {
     queryKey: ['permissions', 'overprivileged', params],
     queryFn: () => permissionsSimulatorApi.getOverprivilegedUsers(params),
     staleTime: 5 * 60 * 1000,
+    enabled: false, // Only fires via refetch() — prevents auto-fire on mount/keystroke
   })
 }

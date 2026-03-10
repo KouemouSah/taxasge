@@ -40,7 +40,7 @@ async def ws_admin_endpoint(
             await websocket.close(code=4001, reason="invalid_token")
             return
 
-        user_id = str(user.get("id") or user.get("sub", ""))
+        user_id = str(user.get("sub", ""))
         if not user_id:
             await websocket.close(code=4001, reason="no_user_id")
             return

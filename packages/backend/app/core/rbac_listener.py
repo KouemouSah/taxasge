@@ -16,7 +16,6 @@ from typing import Optional
 import asyncpg
 from loguru import logger
 
-from app.config import settings
 from app.core.cache import (
     invalidate_user_permissions_cache,
     invalidate_role_permissions_cache,

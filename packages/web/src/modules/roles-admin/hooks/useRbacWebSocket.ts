@@ -30,7 +30,15 @@ export function useRbacWebSocket(options?: { enabled?: boolean }) {
   const connect = useCallback(() => {
     if (!enabled) return
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    // Use the same token source as fetchClient (in-memory + cookie fallback)
+    let token: string | null = null
+    try {
+      // Dynamic import to avoid SSR issues
+      const { getAccessToken } = require('@/core/auth/storage')
+      token = getAccessToken()
+    } catch {
+      token = null
+    }
     if (!token) return
 
     // Build WebSocket URL from current location
