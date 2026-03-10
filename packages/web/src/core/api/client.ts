@@ -137,18 +137,22 @@ apiClient.interceptors.response.use(
         );
         clearTimeout(timeout);
 
-        const { access_token, refresh_token } = response.data;
+        const { access_token, refresh_token, user: refreshedUser } = response.data;
 
         // Update in-memory tokens
         setAccessToken(access_token);
         setRefreshToken(refresh_token);
 
-        // Update localStorage (user profile only, tokens stripped)
-        setAuthData({
+        // Update localStorage — merge user data (role_code) from refresh response
+        const updatedAuthData = {
           ...authData,
           access_token,
           refresh_token,
-        });
+        };
+        if (refreshedUser && updatedAuthData.user) {
+          updatedAuthData.user = { ...updatedAuthData.user, ...refreshedUser };
+        }
+        setAuthData(updatedAuthData);
 
         // Broadcast token refresh to other tabs
         broadcastAuthEvent('token-refresh');

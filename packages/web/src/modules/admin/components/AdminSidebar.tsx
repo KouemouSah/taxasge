@@ -68,7 +68,7 @@ const FULL_ACCESS_ROLES = ['admin', 'super_admin']
 
 // Section-level filtering: which scoped admin roles can see which sidebar groups
 const SECTION_ROLE_MAP: Record<string, string[]> = {
-  access: ['admin_agents', 'admin_security'],
+  access: ['admin_agents'],            // admin_security should NOT manage agents/users
   fiscal: ['admin_services'],
   config: ['admin_config'],
   support: ['admin_support'],
@@ -77,10 +77,10 @@ const SECTION_ROLE_MAP: Record<string, string[]> = {
 // Sub-category-level filtering within 'config' group
 const SUBCAT_ROLE_MAP: Record<string, string[]> = {
   communications: ['admin_config'],
-  workflows: ['admin_config', 'admin_services'],
-  system: ['admin_security', 'admin_config'],
+  workflows: ['admin_services'],        // admin_config should NOT see workflows/tariffs
+  system: ['admin_security'],           // only security admins see audit/monitoring
   menuConfig: ['admin_config'],
-  paymentInfra: ['admin_config', 'admin_services'],
+  paymentInfra: ['admin_services'],     // payment infra = services domain
 }
 
 // Type definitions for navigation items
@@ -134,25 +134,29 @@ export default function AdminSidebar() {
   const [expandedSubCategories, setExpandedSubCategories] = React.useState<Set<string>>(new Set())
 
   // Get the user's RBAC role code for sidebar filtering
+  // Fail-closed: if no role_code available, restrict to empty (no sections visible)
   const userRoleCode = useMemo(() => {
     const authData = getAuthData()
-    return authData?.user?.role_code || authData?.user?.role || 'admin'
+    // role_code from RBAC roles table; fallback to user.role for full admins only
+    const code = authData?.user?.role_code || authData?.user?.role || ''
+    return code
   }, [])
 
   const hasFullAccess = FULL_ACCESS_ROLES.includes(userRoleCode)
 
   // Check if the current user's role can see a given section/sub-category
+  // Fail-closed: unknown sections are HIDDEN unless explicitly allowed
   const canSeeSection = useCallback((sectionId: string) => {
     if (hasFullAccess) return true
     const allowedRoles = SECTION_ROLE_MAP[sectionId]
-    if (!allowedRoles) return true // No restriction = visible to all
+    if (!allowedRoles) return false // Fail-closed: no explicit mapping = hidden
     return allowedRoles.includes(userRoleCode)
   }, [userRoleCode, hasFullAccess])
 
   const canSeeSubCategory = useCallback((subCatId: string) => {
     if (hasFullAccess) return true
     const allowedRoles = SUBCAT_ROLE_MAP[subCatId]
-    if (!allowedRoles) return true
+    if (!allowedRoles) return false // Fail-closed
     return allowedRoles.includes(userRoleCode)
   }, [userRoleCode, hasFullAccess])
 

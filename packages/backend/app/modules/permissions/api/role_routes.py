@@ -28,7 +28,7 @@ from app.modules.permissions.services.permission_service import (
     get_permission_service,
 )
 from app.modules.permissions.middleware.permission_middleware import require_permission
-from app.core.cache import invalidate_role_menu_cache
+from app.core.cache import invalidate_role_menu_cache, invalidate_role_permissions_cache
 
 
 router = APIRouter(prefix="/roles", tags=["Roles"])
@@ -364,6 +364,11 @@ async def assign_permissions_to_role(
         assigned_by=current_user.id
     )
 
+    # Invalidate cached permissions for all users with this role
+    role = await role_service.get_role_by_id(str(role_id))
+    if role and role.get("code"):
+        await invalidate_role_permissions_cache(role["code"])
+
     return result
 
 
@@ -396,6 +401,11 @@ async def remove_permissions_from_role(
         permission_ids=[str(pid) for pid in request.permission_ids]
     )
 
+    # Invalidate cached permissions for all users with this role
+    role = await role_service.get_role_by_id(str(role_id))
+    if role and role.get("code"):
+        await invalidate_role_permissions_cache(role["code"])
+
     return result
 
 
@@ -421,6 +431,11 @@ async def remove_permissions_from_role_post(
         role_id=str(role_id),
         permission_ids=[str(pid) for pid in request.permission_ids]
     )
+
+    # Invalidate cached permissions for all users with this role
+    role = await role_service.get_role_by_id(str(role_id))
+    if role and role.get("code"):
+        await invalidate_role_permissions_cache(role["code"])
 
     return result
 

@@ -22,6 +22,29 @@ class UserRepository(BaseRepository[UserResponse]):
     def __init__(self):
         super().__init__("users")
 
+    async def find_by_id(self, id: str, conn=None) -> Optional[UserResponse]:
+        """
+        Find user by ID with RBAC role code from roles table.
+        Overrides base find_by_id to LEFT JOIN roles for role_code.
+        """
+        try:
+            query = """
+                SELECT u.*, r.code as role_code
+                FROM users u
+                LEFT JOIN roles r ON r.id = u.role_id
+                WHERE u.id = $1
+            """
+            if conn:
+                result = await conn.fetchrow(query, id)
+            else:
+                result = await self.db_manager.execute_single(query, id)
+
+            if result:
+                return self._map_to_model(dict(result))
+        except Exception as e:
+            logger.error(f"Error finding user by ID {id}: {e}")
+        return None
+
     def _map_to_model(self, data: Dict[str, Any]) -> UserResponse:
         """Map database row to UserResponse model"""
         import json
@@ -61,6 +84,8 @@ class UserRepository(BaseRepository[UserResponse]):
             funcionario_verified_at=data.get("funcionario_verified_at"),
             funcionario_verified_by=str(data["funcionario_verified_by"]) if data.get("funcionario_verified_by") else None,
             # funcionario_status will be enriched by auth middleware
+            # RBAC role code from LEFT JOIN roles (available when fetched via find_by_id)
+            role_code=data.get("role_code"),
         )
 
     def _map_from_model(self, model: UserResponse) -> Dict[str, Any]:

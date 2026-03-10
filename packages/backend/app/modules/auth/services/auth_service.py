@@ -478,11 +478,23 @@ class AuthService:
 
             logger.info(f"Tokens refreshed for user: {user_id}")
 
+            # Include minimal user data so frontend can update role_code
+            user_data_for_response = {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role.value if hasattr(user.role, 'value') else user.role,
+                "role_code": user.role_code,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "status": user.status.value if hasattr(user.status, 'value') else user.status,
+            }
+
             return TokenRefreshResponse(
                 access_token=new_tokens["access_token"],
                 refresh_token=new_tokens["refresh_token"],
                 token_type="bearer",
                 expires_in=new_tokens["expires_in"],
+                user=user_data_for_response,
             )
 
         except Exception as e:

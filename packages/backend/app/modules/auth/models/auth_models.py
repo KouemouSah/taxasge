@@ -105,6 +105,8 @@ class TokenRefreshResponse(BaseModel):
     refresh_token: str = Field(..., description="New refresh token")
     token_type: str = Field(default="bearer", description="Token type")
     expires_in: int = Field(..., description="Access token expiration in seconds")
+    # User data so frontend can update role_code/permissions after token refresh
+    user: Optional[dict] = Field(None, description="Updated user data with role_code")
 
 
 class LogoutRequest(BaseModel):
