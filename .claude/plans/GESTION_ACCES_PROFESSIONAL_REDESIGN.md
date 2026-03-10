@@ -321,39 +321,38 @@
 
 ## PLAN ÉLÉMENTS REPORTÉS (Phase 4.5, 6.2/6.3, 7.2)
 
-### Phase R1 : Propagation du rôle RBAC au frontend (BLOQUEUR 6.2 + 6.3)
+### Phase R1 : Propagation du rôle RBAC au frontend (BLOQUEUR 6.2 + 6.3) ✅ COMPLÉTÉ
 **Priorité** : 🔴 P0 — Débloque sidebar dynamique + middleware + permissions client-side
-**Prérequis** : Aucun
-**Effort** : ~2-3h
+**Commits** : `451f5dde` (initial) + `e7562da5` (audit critique)
 
-**Problème** : `users.role` (enum BD) = `admin` pour TOUS les admin users. Le code RBAC scopé (`admin_agents`, `admin_security`, etc.) est dans `roles.code` mais n'est **jamais propagé** au frontend.
+**Solution** : `UserRepository.find_by_id()` overridé avec LEFT JOIN roles → `role_code` automatique sur chaque auth request. Pas de requête supplémentaire. TokenRefreshResponse enrichi avec user data pour survivre au refresh 30min.
 
-**Étape R1.1 — Backend: enrichir la réponse login**
-- [ ] Modifier `auth_service.py` login response : ajouter `rbac_role_code` (requête `roles.code` via `user_permissions` ou `agent_profiles.role_id`)
-- [ ] Ajouter `rbac_role_code: Optional[str]` au modèle `LoginResponse` / `UserResponse`
-- [ ] Ajouter `rbac_permissions: list[str]` (optionnel, pour client-side permission check)
-- [ ] Vérifier : comment l'admin est-il associé à son rôle RBAC ? Table `user_roles` ? `agent_profiles.role_id` ? Requêter la BD.
+**Étape R1.1 — Backend: enrichir la réponse login** ✅
+- [x] `UserRepository.find_by_id()` : LEFT JOIN roles → role_code automatique
+- [x] `role_code: Optional[str]` dans UserResponse (via _map_to_model)
+- [x] Login + 2FA verify : role_code résolu dans auth_service.py
+- [x] Token refresh : role_code inclus via `TokenRefreshResponse.user`
 
-**Étape R1.2 — Frontend: stocker le rôle RBAC dans auth context**
-- [ ] Modifier `core/auth/storage.ts` : stocker `rbac_role_code` dans le token/localStorage
-- [ ] Modifier `getAuthData()` : exposer `rbac_role_code` en plus de `role`
-- [ ] Créer hook `useRbacRole()` : retourne le code RBAC de l'utilisateur courant
+**Étape R1.2 — Frontend: stocker le rôle RBAC dans auth context** ✅
+- [x] `User.role_code?: string` dans types/auth.ts
+- [x] `getAuthData().user.role_code` exposé automatiquement
+- [x] Token refresh handler merge user data dans localStorage (client.ts)
 
-**Étape R1.3 — Réactiver le sidebar filtering (Phase 6.2)**
-- [ ] Restaurer `SECTION_ROLE_MAP` / `SUBCAT_ROLE_MAP` dans AdminSidebar.tsx
-- [ ] Utiliser `useRbacRole()` au lieu de `getAuthData().user.role`
-- [ ] Tester : admin_agents voit SEULEMENT Agents + Accès, admin_config voit Config + Traductions + etc.
+**Étape R1.3 — Sidebar filtering sécurisé** ✅
+- [x] SECTION_ROLE_MAP / SUBCAT_ROLE_MAP corrigés (overpermissions fixées)
+- [x] Fail-closed : sections inconnues masquées par défaut
+- [x] Fallback sécurisé : `|| ''` au lieu de `|| 'admin'`
 
-**Étape R1.4 — Middleware route protection (Phase 6.3)**
-- [ ] Stocker `rbac_role_code` dans un cookie httpOnly (ou JWT claim)
-- [ ] Middleware Next.js : lire le cookie, vérifier les routes admin autorisées par rôle
-- [ ] Rediriger vers `/dashboard` si route non autorisée
+**Étape R1.4 — Middleware route protection (Phase 6.3)** 🔶 REPORTÉ
+- [ ] Middleware Next.js pour bloquer navigation vers routes admin non autorisées
+- Note : Backend enforce toujours via permissions. Le sidebar filtering est la 1ère couche.
 
 **Checklist validation R1:**
-- [ ] Login response inclut `rbac_role_code`
-- [ ] AdminSidebar filtre par rôle RBAC réel
-- [ ] admin_agents ne peut PAS naviguer vers /admin/config (middleware bloque)
-- [ ] Backend unchanged (enforce toujours via permissions)
+- [x] Login response inclut `role_code`
+- [x] AdminSidebar filtre par rôle RBAC réel (fail-closed)
+- [x] Token refresh préserve role_code
+- [x] Cache invalidée sur modifications role_permissions
+- [ ] Middleware Next.js route protection (R1.4 — reporté)
 
 ---
 
@@ -405,5 +404,11 @@
 | # | Sévérité | Description | Fichier | Statut |
 |---|----------|-------------|---------|--------|
 | B1 | **MAJEUR** | RolesTab filter `ministry_agent` → corrigé en `agent` (valeur BD réelle) | `RolesTab.tsx:245` | ✅ CORRIGÉ |
-| B2 | **MAJEUR** | Cache invalidation pas appelée après grant/revoke/deny | `user_permission_routes.py` | ⬜ À FAIRE |
-| B3 | **MINEUR** | `use-enum-labels.ts` fallback values obsolètes (dgi_agent, ministry_agent) | `hooks/use-enum-labels.ts` | ⬜ À FAIRE |
+| B2 | **MAJEUR** | Cache invalidation pas appelée après grant/revoke/deny | `user_permission_routes.py` | ✅ CORRIGÉ (commit 451f5dde) |
+| B3 | **MINEUR** | `use-enum-labels.ts` fallback values obsolètes (dgi_agent, ministry_agent) | `hooks/use-enum-labels.ts` | ✅ CORRIGÉ (commit 451f5dde) |
+| B4 | **CRITIQUE** | role_code absent du refresh_tokens → frontend perd le role_code après 30min | `auth_service.py + auth_models.py` | ✅ CORRIGÉ (commit e7562da5) |
+| B5 | **CRITIQUE** | get_current_user() ne résolvait pas role_code → APIs sans RBAC | `user_repository.py find_by_id override` | ✅ CORRIGÉ (commit e7562da5) |
+| B6 | **CRITIQUE** | Sidebar fallback `\|\| 'admin'` = escalade de privilèges | `AdminSidebar.tsx` | ✅ CORRIGÉ (commit e7562da5) |
+| B7 | **MAJEUR** | Sidebar fail-open (sections inconnues visibles) | `AdminSidebar.tsx` | ✅ CORRIGÉ (commit e7562da5) |
+| B8 | **MAJEUR** | SUBCAT_ROLE_MAP overpermissive (admin_config voyait workflows) | `AdminSidebar.tsx` | ✅ CORRIGÉ (commit e7562da5) |
+| B9 | **MAJEUR** | role_routes.py assign/remove permissions sans cache invalidation | `role_routes.py` | ✅ CORRIGÉ (commit e7562da5) |
