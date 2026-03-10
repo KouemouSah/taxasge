@@ -242,7 +242,7 @@ export function RolesTab() {
               <SelectContent>
                 <SelectItem value="all">{t('allTypes')}</SelectItem>
                 <SelectItem value="null">{t('global')}</SelectItem>
-                <SelectItem value="ministry_agent">{t('ministry')}</SelectItem>
+                <SelectItem value="agent">{t('ministry')}</SelectItem>
                 <SelectItem value="entity_agent">{t('entityType')}</SelectItem>
               </SelectContent>
             </Select>

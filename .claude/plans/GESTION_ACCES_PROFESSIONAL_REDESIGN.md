@@ -213,7 +213,7 @@
 
 ---
 
-### Phase 6 : Admin Modulaire (Delegation Chain) ✅ COMPLETED (2026-03-10)
+### Phase 6 : Admin Modulaire (Delegation Chain) 🔶 PARTIELLEMENT COMPLÉTÉE (2026-03-10)
 **Objectif** : Remplacer le modèle "1 super-admin voit tout" par des profils admin scopés par module
 
 **Problème actuel** :
@@ -222,40 +222,38 @@
 - 1 seul admin dans tout le système, aucune délégation possible
 - Rôle `ADMIN` (29 perms) = fantôme (pas dans user_role_enum)
 
-**Étape 6.1 — Créer les profils admin modulaires (migration BD)**
+**Étape 6.1 — Créer les profils admin modulaires (migration BD)** ✅
 - [x] `super_admin` : 291 permissions (ALL)
-- [x] `admin_agents` : 76 permissions (agent + assignment + users + dashboard + reports)
-- [x] `admin_services` : 39 permissions (fiscal_service + document + workflows + tariffs)
+- [x] `admin_agents` : 81 permissions (agent + assignment + users + dashboard + reports + service_request read)
+- [x] `admin_services` : 42 permissions (fiscal_service + document + workflows + tariffs + service_request read)
 - [x] `admin_config` : 56 permissions (communication + menu + translation + webhook + system)
-- [x] `admin_security` : 28 permissions (permissions + roles + audit + system)
-- [x] `admin_support` : 19 permissions (support + diagnostics)
+- [x] `admin_security` : 27 permissions (permissions + roles + audit + system, sans admin.run_migrations)
+- [x] `admin_support` : 22 permissions (support + diagnostics + service_request read)
+- [x] `admin` : 209 permissions (superset de tous les scoped admins, privilege inversion corrigée)
 - [x] Created `admin.view_security` permission for anomaly endpoint
-- [x] Migration: `194_scoped_admin_roles.sql` (executed)
-- Note: `ADMIN` fantôme already cleaned up in migration 193
+- [x] Migration: `194_scoped_admin_roles.sql` + `196_fix_admin_privilege_inversion.sql` (exécutées)
 
-**Étape 6.2 — Rendre le sidebar admin dynamique (role-filtered)**
-- [x] AdminSidebar.tsx: Added role-based visibility filtering
-- [x] `FULL_ACCESS_ROLES` (admin, super_admin) see all sections
-- [x] `SECTION_ROLE_MAP` maps sidebar groups to scoped role codes
-- [x] `SUBCAT_ROLE_MAP` maps sub-categories to scoped role codes
-- [x] Filters groups AND sub-categories by user role code from getAuthData()
-- [x] Pragmatic approach: uses role code (not permissions) since permissions not stored client-side
+**Étape 6.2 — Rendre le sidebar admin dynamique (role-filtered)** ⬜ BLOQUÉE
+- [x] Code ajouté (SECTION_ROLE_MAP, SUBCAT_ROLE_MAP, canSeeSection)
+- [x] Code RETIRÉ car `getAuthData().user.role` retourne toujours `'admin'` (enum BD users.role), JAMAIS le code RBAC scopé (`admin_agents`, etc.)
+- [ ] **BLOQUEUR** : La réponse login doit inclure le code du rôle RBAC (table `roles`) en plus du `user.role` enum
+- [ ] Tant que le bloqueur n'est pas résolu, tous les admins voient toutes les sections (backend enforce le vrai contrôle)
 
 **Étape 6.3 — Middleware route protection** (DEFERRED)
-- Requires auth context refactor to pass permissions to middleware
-- Current Next.js middleware only has access to role cookie
-- Low priority: sidebar filtering provides UX-level protection, backend permissions.view enforces real access control
+- Requires auth context refactor to pass RBAC role code + permissions to middleware
+- Current Next.js middleware only has access to role cookie (user.role enum)
+- Dépend de la résolution du bloqueur 6.2
 
 **Checklist validation Phase 6:**
-- [x] admin_agents sees ONLY access + relevant sections in sidebar
-- [x] super_admin sees everything (same as admin)
-- [x] ADMIN fantôme already cleaned up
-- [x] admin.view_security granted to admin role
+- [x] Profils admin scopés créés en BD (6 rôles, permissions correctes, hiérarchie respectée)
+- [x] admin.view_security permission existe et assignée
+- [x] ADMIN fantôme already cleaned up (migration 193)
+- [ ] ~~admin_agents sees ONLY relevant sections~~ **FAUX** — filtrage retiré (bloqueur architectural)
 - [ ] Route-level middleware protection (deferred — backend already enforces)
 
 ---
 
-### Phase 7 : Presets Agents & Superviseurs par Métier ✅ COMPLETED (2026-03-10)
+### Phase 7 : Presets Agents & Superviseurs par Métier 🔶 PARTIELLEMENT COMPLÉTÉE (2026-03-10)
 **Objectif** : Différencier les permissions par métier, créer les rôles manquants, enrichir les superviseurs
 
 **Problème actuel** :
@@ -266,80 +264,146 @@
 - EXTRANJERIA et POLICIA n'ont pas de supervisor
 - Legacy `pasaporte` a 5 perms utiles absentes des `agent_*`
 
-**Étape 7.1 — Enrichir le socle commun agent**
-- [ ] Ajouter à TOUS les `agent_*` les 5 perms manquantes du legacy `pasaporte` :
-  - `service_request.escalate`
-  - `service_request.export`
-  - `service_request.view_audit_log`
-  - `service_request.view_available_slots`
-  - (`service_request.reassign` → NON, c'est supervisor-level)
-- [ ] Total agent de base : 20 + 4 = 24 permissions
+**Étape 7.1 — Enrichir le socle commun agent** ✅
+- [x] 7 agents non-treasury ont les 4 perms legacy (escalate, export, view_audit_log, view_available_slots)
+- [x] agent_itv (19) et agent_onrc (19) : view_available_slots exclue (pas d'appointments pour inspections/contrats)
+- [x] Total agent de base : 24 permissions (ITV/ONRC: 19)
 
-**Étape 7.2 — Ajouter les permissions métier-spécifiques**
-- [ ] `agent_cnedoge_pasaporte` + `agent_cnedoge_residencia` : `+service_request.schedule_appointment` (déjà), `+service_request.manage_minors` (à créer si workflow mineur)
-- [ ] `agent_dgt` + `agent_ofive` : `+document.verify_vehicle` (à créer), `+service_request.verify_plates`
-- [ ] `agent_onrc` : `+document.verify_contract` (à créer), `+service_request.verify_signatures`
-- [ ] `agent_extranjeria` + `agent_policia` : `+document.verify_visa` (à créer), `+service_request.verify_identity`
-- [ ] Créer les nouvelles permissions si elles n'existent pas
+**Étape 7.2 — Ajouter les permissions métier-spécifiques** ⬜ NON FAIT
+- [ ] `document.verify_vehicle`, `service_request.verify_plates` — **N'EXISTENT PAS en BD**
+- [ ] `document.verify_contract`, `service_request.verify_signatures` — **N'EXISTENT PAS en BD**
+- [ ] `document.verify_visa`, `service_request.verify_identity` — **N'EXISTENT PAS en BD**
+- [ ] `service_request.manage_minors` — **N'EXISTE PAS en BD**
+- **Décision** : Reportée — ces permissions seront créées quand les workflows métier-spécifiques en auront besoin. Pas de valeur à créer des permissions fantômes sans logique backend associée.
 
-**Étape 7.3 — Enrichir les superviseurs non-treasury**
-- [ ] Ajouter à TOUS les 5 superviseurs les permissions manquantes :
-  - `agent.list`, `agent.view`, `agent.view_performance` (voir ses agents)
-  - `document.view`, `document.download` (voir les documents)
-  - `service_request.view`, `service_request.view_queue` (voir les demandes)
-  - `reports.view`, `reports.export_pdf` (rapports basiques)
-  - `service_request.escalate` (escalader)
-- [ ] Total supervisor de base : 11 + 11 = 22 permissions (vs 11 actuellement)
+**Étape 7.3 — Enrichir les superviseurs non-treasury** ✅
+- [x] 9 superviseurs non-treasury = 21 perms chacun (10 perms enrichies : agent.list/view/view_performance, document.view/download, service_request.view/view_queue, reports.view/export_pdf, service_request.escalate)
 
-**Étape 7.4 — Créer les rôles manquants**
-- [ ] `agent_minfp` : socle agent (24) + permissions Función Pública
-- [ ] `supervisor_minfp` : socle supervisor (22)
-- [ ] `agent_itv` : socle agent (24) + permissions inspection véhicules
-- [ ] `supervisor_itv` : socle supervisor (22)
-- [ ] `supervisor_extranjeria` : socle supervisor (22)
-- [ ] `supervisor_policia` : socle supervisor (22)
-- [ ] Tous avec `default_agent_config` approprié
-- [ ] Migration: `194_agent_trade_presets.sql`
+**Étape 7.4 — Créer les rôles manquants** ✅
+- [x] agent_minfp (24) + supervisor_minfp (21)
+- [x] agent_itv (19) + supervisor_itv (21)
+- [x] supervisor_extranjeria (21) + supervisor_policia (21)
+- [x] Migration: `195_agent_trade_presets.sql` (exécutée)
 
-**Étape 7.5 — Supprimer le legacy**
-- [ ] Déprécier rôle `pasaporte` (migrer users vers `agent_cnedoge_pasaporte`)
-- [ ] Déprécier rôle `supervisor` générique (147 perms, non-assignable)
-- [ ] Déprécier rôle `ADMIN` (déjà traité en Phase 6)
+**Étape 7.5 — Supprimer le legacy** ✅
+- [x] pasaporte, supervisor, ADMIN — tous supprimés (migration 193, vérifié 0 résultats en BD)
 
-**Étape 7.6 — Templates de création de rôle (frontend)**
-- [ ] Sur la page "Créer un rôle", ajouter étape 0 : "Choisir un template"
-- [ ] Templates basés sur les profils existants :
-  - `Agent [Entité]` → pré-sélectionne le socle agent + perms métier
-  - `Supervisor [Entité]` → pré-sélectionne le socle supervisor
-  - `Admin [Module]` → pré-sélectionne les perms admin module
-  - `Personnalisé` → vierge (comportement actuel)
-- [ ] L'admin peut ensuite ajuster les permissions pré-cochées
-- [ ] Fichier: `admin/roles/new/page.tsx`
+**Étape 7.6 — Templates de création de rôle (frontend)** ✅
+- [x] Step 0 wizard avec 4 templates (Agent/Supervisor/Admin Module/Custom)
+- [x] `rolesApi.getByCode()` et `getPermissions()` implémentés et exportés
+- [x] 62 clés i18n en 3 langues (es/fr/en), 0 string FR hardcodée
+- [x] entity_type corrigé : `agent`/`entity_agent`/`null` (pas `ministry_agent`)
 
 **Checklist validation Phase 7:**
-- [x] 9/9 entities with workflows have both agent + supervisor roles (100% coverage)
-- [x] Supervisors non-treasury have 21 permissions each (up from 11)
-- [x] Agents non-treasury have 19-24 permissions (ITV/ONRC: 19 sans appointments, others: 24)
-- [x] MINFP: agent_minfp (24) + supervisor_minfp (21) created
-- [x] ITV: agent_itv (19) + supervisor_itv (21) created
-- [x] supervisor_extranjeria (21) + supervisor_policia (21) created
-- [x] Legacy roles (pasaporte, supervisor, ADMIN) already cleaned up
-- [x] Wizard creation page has Step 0 template selection (Agent/Supervisor/Admin Module/Custom)
-- [x] Templates load permissions from reference roles via API
-- [x] Migration: `195_agent_trade_presets.sql` (executed)
+- [x] 9/9 entities have both agent + supervisor roles (100% coverage)
+- [x] Superviseurs enrichis : 21 perms (était 11)
+- [x] Agents enrichis : 19-24 perms selon métier
+- [x] 6 rôles manquants créés (MINFP, ITV, EXTRANJERIA sup, POLICIA sup)
+- [x] Legacy supprimé (pasaporte, supervisor, ADMIN)
+- [x] Wizard creation page + templates fonctionnels
+- [ ] **Permissions métier-spécifiques (7.2)** — reporté (pas de logique backend pour les utiliser)
 
 ---
 
 ## RÉSUMÉ MIS À JOUR
 
-| Phase | Items | Priorité | Impact |
-|-------|-------|----------|--------|
-| 1 - Fix CRITIQUES | 3 bugs (modèle + 2 vues) | 🔴 P0 | Endpoints cassés |
-| 2 - Performance | 4 fixes (N+1 + LIMIT + SQL + batch) | 🟠 P1 | Performance dégradée |
-| 3 - Nettoyage BD | 2 cleanups (doublons rôles + hooks) | 🟡 P2 | Cohérence |
-| 4 - Frontend UX | 5 améliorations (i18n + split + matrice + search + audit) | 🟡 P2 | UX professionnelle |
-| 5 - Scale 100+ | 3 optimisations (cache + bulk + anomalies) | 🟢 P3 | Production-grade |
-| **6 - Admin Modulaire** | **Profils admin scopés + sidebar dynamique + route protection** | **🔴 P1** | **Delegation chain** |
-| **7 - Presets Métier** | **Rôles trade-specific + enrichissement superviseurs + templates création** | **🟠 P1** | **RBAC réel par entité** |
+| Phase | Statut | Items | Impact |
+|-------|--------|-------|--------|
+| 1 - Fix CRITIQUES | ✅ | 3 bugs (modèle + 2 vues) | Endpoints cassés |
+| 2 - Performance | ✅ | 4 fixes (N+1 + LIMIT + SQL + batch) | Performance |
+| 3 - Nettoyage BD | ✅ | 2 cleanups (doublons rôles + hooks) | Cohérence |
+| 4 - Frontend UX | 🔶 4/5 | i18n + split + matrice + search (4.5 reporté) | UX |
+| 5 - Scale 100+ | ⬜ | 3 optimisations (cache + bulk + anomalies) | Production-grade |
+| 6 - Admin Modulaire | 🔶 1/3 | BD OK, sidebar BLOQUÉE, middleware REPORTÉ | Delegation |
+| 7 - Presets Métier | 🔶 5/6 | BD OK, templates OK, 7.2 métier-spécifique reporté | RBAC entité |
 
-**Ordre d'exécution** : Phase 1 → 2 → 3 → 7 → 6 → 4 → 5
+---
+
+## PLAN ÉLÉMENTS REPORTÉS (Phase 4.5, 6.2/6.3, 7.2)
+
+### Phase R1 : Propagation du rôle RBAC au frontend (BLOQUEUR 6.2 + 6.3)
+**Priorité** : 🔴 P0 — Débloque sidebar dynamique + middleware + permissions client-side
+**Prérequis** : Aucun
+**Effort** : ~2-3h
+
+**Problème** : `users.role` (enum BD) = `admin` pour TOUS les admin users. Le code RBAC scopé (`admin_agents`, `admin_security`, etc.) est dans `roles.code` mais n'est **jamais propagé** au frontend.
+
+**Étape R1.1 — Backend: enrichir la réponse login**
+- [ ] Modifier `auth_service.py` login response : ajouter `rbac_role_code` (requête `roles.code` via `user_permissions` ou `agent_profiles.role_id`)
+- [ ] Ajouter `rbac_role_code: Optional[str]` au modèle `LoginResponse` / `UserResponse`
+- [ ] Ajouter `rbac_permissions: list[str]` (optionnel, pour client-side permission check)
+- [ ] Vérifier : comment l'admin est-il associé à son rôle RBAC ? Table `user_roles` ? `agent_profiles.role_id` ? Requêter la BD.
+
+**Étape R1.2 — Frontend: stocker le rôle RBAC dans auth context**
+- [ ] Modifier `core/auth/storage.ts` : stocker `rbac_role_code` dans le token/localStorage
+- [ ] Modifier `getAuthData()` : exposer `rbac_role_code` en plus de `role`
+- [ ] Créer hook `useRbacRole()` : retourne le code RBAC de l'utilisateur courant
+
+**Étape R1.3 — Réactiver le sidebar filtering (Phase 6.2)**
+- [ ] Restaurer `SECTION_ROLE_MAP` / `SUBCAT_ROLE_MAP` dans AdminSidebar.tsx
+- [ ] Utiliser `useRbacRole()` au lieu de `getAuthData().user.role`
+- [ ] Tester : admin_agents voit SEULEMENT Agents + Accès, admin_config voit Config + Traductions + etc.
+
+**Étape R1.4 — Middleware route protection (Phase 6.3)**
+- [ ] Stocker `rbac_role_code` dans un cookie httpOnly (ou JWT claim)
+- [ ] Middleware Next.js : lire le cookie, vérifier les routes admin autorisées par rôle
+- [ ] Rediriger vers `/dashboard` si route non autorisée
+
+**Checklist validation R1:**
+- [ ] Login response inclut `rbac_role_code`
+- [ ] AdminSidebar filtre par rôle RBAC réel
+- [ ] admin_agents ne peut PAS naviguer vers /admin/config (middleware bloque)
+- [ ] Backend unchanged (enforce toujours via permissions)
+
+---
+
+### Phase R2 : Indicateurs temps réel (Phase 4.5)
+**Priorité** : 🟡 P2 — UX professionnelle
+**Prérequis** : Aucun (indépendant de R1)
+**Effort** : ~1-2h
+
+**Étape R2.1 — Badge permissions critiques**
+- [ ] Header page "Gestion Accès" : badge compteur des permissions critiques assignées
+- [ ] Requête : `SELECT COUNT(*) FROM role_permissions rp JOIN permissions p ON ... WHERE p.is_critical`
+
+**Étape R2.2 — Timeline audit dans drawer rôle/utilisateur**
+- [ ] Composant `AuditTimeline.tsx` : affiche `audit_logs` filtrés par entity_id (rôle ou user)
+- [ ] Endpoint existant : `GET /audit-logs?entity_type=role&entity_id=X` (vérifier)
+- [ ] Intégrer dans le drawer détail de chaque rôle (page roles/[id])
+
+**Étape R2.3 — Indicateur "dernière modification"**
+- [ ] Colonne `updated_at` déjà existante sur `roles`
+- [ ] Afficher "Modifié il y a X" dans la liste des rôles
+- [ ] Badge "Récent" si modifié dans les 24h
+
+**Checklist validation R2:**
+- [ ] Badge critiques visible dans le header
+- [ ] Timeline audit fonctionnelle dans drawer rôle
+- [ ] "Dernière modification" affichée dans la liste
+
+---
+
+### Phase R3 : Permissions métier-spécifiques (Phase 7.2)
+**Priorité** : 🟢 P3 — À implémenter quand les workflows métier le nécessitent
+**Prérequis** : Workflows métier actifs pour chaque entité
+**Effort** : ~1h par entité
+
+**Principe** : Ne créer une permission métier que quand la logique backend l'utilise réellement.
+
+**Étape R3.1 — Par entité, quand le besoin se présente**
+- [ ] CNEDOGE : `service_request.manage_minors` → quand le workflow mineur a un check backend
+- [ ] DGT/OFIVE : `document.verify_vehicle` → quand l'agent fait une vérification véhicule
+- [ ] ONRC : `document.verify_contract` → quand l'agent valide les signatures contrat
+- [ ] EXTRANJERIA/POLICIA : `document.verify_visa` → quand le check visa est implémenté
+
+**Règle** : JAMAIS de permission fantôme. Chaque permission DOIT avoir un `@permission_required()` backend qui l'utilise.
+
+---
+
+### BUGS À CORRIGER (identifiés lors de l'audit)
+
+| # | Sévérité | Description | Fichier | Statut |
+|---|----------|-------------|---------|--------|
+| B1 | **MAJEUR** | RolesTab filter `ministry_agent` → corrigé en `agent` (valeur BD réelle) | `RolesTab.tsx:245` | ✅ CORRIGÉ |
+| B2 | **MAJEUR** | Cache invalidation pas appelée après grant/revoke/deny | `user_permission_routes.py` | ⬜ À FAIRE |
+| B3 | **MINEUR** | `use-enum-labels.ts` fallback values obsolètes (dgi_agent, ministry_agent) | `hooks/use-enum-labels.ts` | ⬜ À FAIRE |
