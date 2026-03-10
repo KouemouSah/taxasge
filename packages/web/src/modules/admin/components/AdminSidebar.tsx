@@ -16,7 +16,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { cn } from '@/core/utils'
-import { getAuthData } from '@/core/auth/storage'
 import {
   LayoutDashboard,
   Users,
@@ -64,25 +63,21 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Menu } from 'lucide-react'
 
-// Roles that can see ALL admin sections
-const FULL_ACCESS_ROLES = ['admin', 'super_admin']
-
-// Mapping: sidebar section id → which scoped admin roles can see it
-const SECTION_ROLE_MAP: Record<string, string[]> = {
-  access: ['admin_agents', 'admin_security'],
-  fiscal: ['admin_services'],
-  config: ['admin_config'],
-  support: ['admin_support'],
-}
-
-// Sub-category specific restrictions within config section
-const SUBCAT_ROLE_MAP: Record<string, string[]> = {
-  communications: ['admin_config'],
-  workflows: ['admin_services', 'admin_config'],
-  system: ['admin_security', 'admin_config'],
-  menuConfig: ['admin_config'],
-  paymentInfra: ['admin_config'],
-}
+// Role-based sidebar filtering
+// NOTE: Currently user.role (from users table enum) is always 'admin' for all admin users.
+// The scoped admin roles (admin_agents, admin_security, etc.) exist in the roles table
+// but are NOT reflected in user.role. For sidebar filtering to work with scoped roles,
+// the login response must include the user's RBAC role code from the roles table.
+// Until then, all admin users see all sections (backend enforces real access control).
+//
+// When RBAC role propagation is implemented, uncomment and use these maps:
+// const SECTION_ROLE_MAP: Record<string, string[]> = {
+//   access: ['admin_agents', 'admin_security'],
+//   fiscal: ['admin_services'],
+//   config: ['admin_config'],
+//   support: ['admin_support'],
+// }
+// const SUBCAT_ROLE_MAP: Record<string, string[]> = { ... }
 
 // Type definitions for navigation items
 interface NavSubItem {
@@ -134,29 +129,9 @@ export default function AdminSidebar() {
   const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set())
   const [expandedSubCategories, setExpandedSubCategories] = React.useState<Set<string>>(new Set())
 
-  // Get user role for visibility filtering
-  const userRole = useMemo(() => {
-    const authData = getAuthData()
-    return authData?.user?.role || ''
-  }, [])
-
-  const hasFullAccess = FULL_ACCESS_ROLES.includes(userRole)
-
-  // Check if user can see a sidebar section
-  const canSeeSection = useCallback((sectionId: string) => {
-    if (hasFullAccess) return true
-    const allowedRoles = SECTION_ROLE_MAP[sectionId]
-    if (!allowedRoles) return true // No restriction = visible to all admin roles
-    return allowedRoles.includes(userRole)
-  }, [userRole, hasFullAccess])
-
-  // Check if user can see a sub-category
-  const canSeeSubCategory = useCallback((subCatId: string) => {
-    if (hasFullAccess) return true
-    const allowedRoles = SUBCAT_ROLE_MAP[subCatId]
-    if (!allowedRoles) return true
-    return allowedRoles.includes(userRole)
-  }, [userRole, hasFullAccess])
+  // NOTE: Sidebar filtering by scoped admin role is deferred until the login
+  // response includes the user's RBAC role code (from roles table).
+  // Currently all admin users see all sections. Backend enforces access control.
 
   // Navigation items with i18n
   const navigationItems: NavItem[] = useMemo(() => [
@@ -567,24 +542,9 @@ export default function AdminSidebar() {
             {navigationItems.map((item) => {
               // Group with collapsible sub-items or sub-categories
               if (isNavGroup(item)) {
-                // Role-based visibility: skip entire section if user can't see it
-                if (!canSeeSection(item.id)) return null
-
                 const GroupIcon = item.icon
                 const isExpanded = expandedGroups.has(item.id)
-
-                // For sub-categories, filter by role before checking active state
-                const visibleItem = hasSubCategories(item)
-                  ? {
-                      ...item,
-                      subCategories: item.subCategories.filter(sc => canSeeSubCategory(sc.id)),
-                    }
-                  : item
-
-                // Skip if all sub-categories are filtered out
-                if (hasSubCategories(visibleItem) && visibleItem.subCategories.length === 0) return null
-
-                const hasActiveChild = isGroupActive(visibleItem)
+                const hasActiveChild = isGroupActive(item)
 
                 return (
                   <div key={item.id} className="pt-2">
@@ -621,9 +581,9 @@ export default function AdminSidebar() {
                           isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
                         )}
                       >
-                        {hasSubCategories(visibleItem)
-                          ? renderSubCategories(visibleItem.subCategories)
-                          : visibleItem.items && renderSubItems(visibleItem.items)
+                        {hasSubCategories(item)
+                          ? renderSubCategories(item.subCategories)
+                          : item.items && renderSubItems(item.items)
                         }
                       </div>
                     )}

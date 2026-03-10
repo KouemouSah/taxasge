@@ -96,18 +96,18 @@ const ROLE_TEMPLATES: RoleTemplate[] = [
   },
 ];
 
-// Step definitions
-const STEPS = [
-  { id: 0, title: 'Template', description: 'Choisir un modèle', icon: Shield },
-  { id: 1, title: 'Informations', description: 'Définir le rôle', icon: FileText },
-  { id: 2, title: 'Permissions', description: 'Sélectionner les accès', icon: Key },
-  { id: 3, title: 'Confirmation', description: 'Vérifier et créer', icon: CheckCircle2 },
-];
-
 export default function CreateRolePage() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('admin.roles');
+
+  // Step definitions using i18n
+  const STEPS = useMemo(() => [
+    { id: 0, title: t('stepTemplate'), description: t('stepTemplateDesc'), icon: Shield },
+    { id: 1, title: t('stepInfoLabel'), description: t('stepInfoDesc'), icon: FileText },
+    { id: 2, title: t('stepPermissionsLabel'), description: t('stepPermissionsDesc'), icon: Key },
+    { id: 3, title: t('stepConfirmationLabel'), description: t('stepConfirmationDesc'), icon: CheckCircle2 },
+  ], [t]);
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0);
@@ -165,7 +165,7 @@ export default function CreateRolePage() {
   // Template selection handler
   const handleSelectTemplate = async (templateId: string) => {
     setSelectedTemplate(templateId);
-    const template = ROLE_TEMPLATES.find((t) => t.id === templateId);
+    const template = ROLE_TEMPLATES.find((tpl) => tpl.id === templateId);
     if (!template) return;
 
     // Pre-fill form defaults
@@ -230,7 +230,7 @@ export default function CreateRolePage() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.code.trim()) {
-      toast.error('Le nom et le code sont requis');
+      toast.error(t('nameCodeRequired'));
       return;
     }
 
@@ -246,24 +246,24 @@ export default function CreateRolePage() {
             granted: true,
           });
           toast.success(
-            `Rôle créé avec ${selectedPermissions.length} permissions`,
-            { description: `Le rôle "${formData.name}" a été créé avec succès.` }
+            t('roleCreatedWithPerms', { count: selectedPermissions.length }),
+            { description: t('roleCreatedWithPermsDesc', { name: formData.name }) }
           );
         } catch (permErr) {
           // Role created but permissions failed
           toast.warning(
-            'Rôle créé, mais erreur lors de l\'assignation des permissions',
-            { description: 'Vous pouvez assigner les permissions manuellement.' }
+            t('roleCreatedPermsError'),
+            { description: t('roleCreatedPermsErrorDesc') }
           );
           console.error('Permission assignment error:', permErr);
         }
       } else {
-        toast.success(t('createSuccess') || 'Rôle créé avec succès');
+        toast.success(t('createSuccess'));
       }
 
       router.push(`/${locale}/dashboard/admin/roles/${newRole.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erreur lors de la création');
+      toast.error(err instanceof Error ? err.message : t('createError'));
     }
   };
 
@@ -279,6 +279,11 @@ export default function CreateRolePage() {
     }
   };
 
+  const getEntityTypeLabel = (entityType: string | null) => {
+    if (entityType === 'entity_agent' || entityType === 'agent') return t('entityTypeValue_agent');
+    return t('entityTypeValue_global');
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -291,10 +296,10 @@ export default function CreateRolePage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
             <Shield className="h-7 w-7" />
-            Créer un Nouveau Rôle
+            {t('createRoleTitle')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Assistant de création de rôle personnalisé
+            {t('createRoleSubtitle')}
           </p>
         </div>
       </div>
@@ -363,10 +368,10 @@ export default function CreateRolePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  {t('templateSelection') || 'Choisir un modèle'}
+                  {t('templateSelection')}
                 </CardTitle>
                 <CardDescription>
-                  {t('templateDescription') || 'Commencez avec un profil pré-configuré ou créez un rôle personnalisé'}
+                  {t('templateDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -395,14 +400,10 @@ export default function CreateRolePage() {
                         </div>
                         <div>
                           <div className="font-semibold text-base">
-                            {t(`template_${template.id}`) || template.id}
+                            {t(`template_${template.id}`)}
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">
-                            {t(`template_${template.id}_desc`) || (
-                              template.sourceRoleCode
-                                ? `${t('basedOn') || 'Basé sur'} ${template.sourceRoleCode}`
-                                : t('templateCustomDesc') || 'Aucune permission pré-sélectionnée'
-                            )}
+                            {t(`template_${template.id}_desc`)}
                           </p>
                         </div>
                         {template.sourceRoleCode && (
@@ -417,7 +418,7 @@ export default function CreateRolePage() {
                 {templateLoading && (
                   <div className="flex items-center justify-center mt-4 gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">{t('loadingTemplate') || 'Chargement du modèle...'}</span>
+                    <span className="text-sm">{t('loadingTemplate')}</span>
                   </div>
                 )}
               </CardContent>
@@ -430,55 +431,50 @@ export default function CreateRolePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Informations du Rôle
+                  {t('roleInfoTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Définissez les informations de base du nouveau rôle
+                  {t('roleInfoSubtitle')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Name */}
                 <div className="grid gap-2">
                   <Label htmlFor="name" className="flex items-center gap-1">
-                    Nom du rôle <span className="text-destructive">*</span>
+                    {t('roleName')} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ex: Superviseur Junior, Agent Vérificateur..."
+                    placeholder={t('roleNamePlaceholder')}
                     className="text-lg"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Nom affichable pour identifier ce rôle
+                    {t('roleNameHelp')}
                   </p>
                 </div>
 
                 {/* Code */}
                 <div className="grid gap-2">
                   <Label htmlFor="code" className="flex items-center gap-1">
-                    Code technique <span className="text-destructive">*</span>
+                    {t('codeLabel')} <span className="text-destructive">*</span>
                   </Label>
-                  <div className="flex gap-2">
-                    <code className="flex items-center px-3 bg-muted rounded-md text-sm font-mono">
-                      role_
-                    </code>
-                    <Input
-                      id="code"
-                      value={formData.code}
-                      onChange={(e) => handleCodeChange(e.target.value)}
-                      placeholder="supervisor_junior"
-                      className="font-mono"
-                    />
-                  </div>
+                  <Input
+                    id="code"
+                    value={formData.code}
+                    onChange={(e) => handleCodeChange(e.target.value)}
+                    placeholder={t('codePlaceholder')}
+                    className="font-mono"
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Identifiant unique (minuscules, chiffres, underscores)
+                    {t('codeHelp')}
                   </p>
                 </div>
 
                 {/* Entity Type */}
                 <div className="grid gap-2">
-                  <Label htmlFor="entity_type">Type d&apos;agent cible</Label>
+                  <Label htmlFor="entity_type">{t('entityTypeLabel')}</Label>
                   <Select
                     value={formData.entity_type || 'none'}
                     onValueChange={(value) =>
@@ -486,42 +482,42 @@ export default function CreateRolePage() {
                     }
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sélectionner un type" />
+                      <SelectValue placeholder={t('entityTypePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          Global (tous les agents)
+                          {t('entityTypeGlobal')}
                         </div>
                       </SelectItem>
-                      <SelectItem value="ministry_agent">
+                      <SelectItem value="agent">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-blue-500" />
-                          Agent Ministériel
+                          {t('entityTypeAgent')}
                         </div>
                       </SelectItem>
                       <SelectItem value="entity_agent">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-green-500" />
-                          Agent Entité
+                          {t('entityTypeAgent')}
                         </div>
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Restreint ce rôle à un type d&apos;agent spécifique (optionnel)
+                    {t('entityTypeHelp')}
                   </p>
                 </div>
 
                 {/* Description */}
                 <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('descriptionLabel')}</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Décrivez les responsabilités et le contexte d'utilisation de ce rôle..."
+                    placeholder={t('descriptionPlaceholder')}
                     rows={4}
                   />
                 </div>
@@ -535,10 +531,10 @@ export default function CreateRolePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Key className="h-5 w-5" />
-                  Sélection des Permissions
+                  {t('permissionsTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Choisissez les permissions à attribuer à ce rôle ({selectedPermissions.length} sélectionnées)
+                  {t('permissionsSubtitle', { count: selectedPermissions.length })}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -547,7 +543,7 @@ export default function CreateRolePage() {
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Rechercher une permission..."
+                      placeholder={t('searchPermission')}
                       value={permissionSearch}
                       onChange={(e) => setPermissionSearch(e.target.value)}
                       className="pl-9"
@@ -558,7 +554,7 @@ export default function CreateRolePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous les modules</SelectItem>
+                      <SelectItem value="all">{t('allModules')}</SelectItem>
                       <Separator className="my-1" />
                       {modules.map(
                         (mod: string | null) =>
@@ -575,7 +571,7 @@ export default function CreateRolePage() {
                 {/* Quick Actions */}
                 <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">
-                    {filteredPermissions.length} permissions disponibles
+                    {t('permissionsAvailable', { count: filteredPermissions.length })}
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -583,7 +579,7 @@ export default function CreateRolePage() {
                       size="sm"
                       onClick={() => setSelectedPermissions(filteredPermissions.map((p) => p.id))}
                     >
-                      Tout sélectionner
+                      {t('selectAll')}
                     </Button>
                     <Button
                       variant="outline"
@@ -591,7 +587,7 @@ export default function CreateRolePage() {
                       onClick={() => setSelectedPermissions([])}
                       disabled={selectedPermissions.length === 0}
                     >
-                      Tout désélectionner
+                      {t('deselectAll')}
                     </Button>
                   </div>
                 </div>
@@ -605,7 +601,7 @@ export default function CreateRolePage() {
                   ) : Object.keys(groupedPermissions).length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <AlertCircle className="h-8 w-8 mb-2" />
-                      <p>Aucune permission trouvée</p>
+                      <p>{t('noPermissionsFound')}</p>
                     </div>
                   ) : (
                     <Accordion
@@ -678,7 +674,7 @@ export default function CreateRolePage() {
                                               variant="secondary"
                                               className="text-xs bg-amber-100 text-amber-700"
                                             >
-                                              Critique
+                                              {t('criticalLabel')}
                                             </Badge>
                                           )}
                                         </div>
@@ -706,10 +702,10 @@ export default function CreateRolePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  Confirmation
+                  {t('confirmationTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Vérifiez les informations avant de créer le rôle
+                  {t('confirmationSubtitle')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -717,34 +713,30 @@ export default function CreateRolePage() {
                 <div className="space-y-4">
                   <h3 className="font-semibold flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    Informations du Rôle
+                    {t('roleInfoTitle')}
                   </h3>
                   <div className="grid gap-3 p-4 bg-muted/50 rounded-lg">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Nom</span>
+                      <span className="text-muted-foreground">{t('nameLabel')}</span>
                       <span className="font-medium">{formData.name}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Code</span>
+                      <span className="text-muted-foreground">{t('codeLabel')}</span>
                       <code className="bg-muted px-2 py-0.5 rounded text-sm">{formData.code}</code>
                     </div>
                     <Separator />
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Type d&apos;agent</span>
+                      <span className="text-muted-foreground">{t('entityTypeLabel')}</span>
                       <Badge variant="outline">
-                        {formData.entity_type === 'ministry_agent'
-                          ? 'Agent Ministériel'
-                          : formData.entity_type === 'entity_agent'
-                          ? 'Agent Entité'
-                          : 'Global'}
+                        {getEntityTypeLabel(formData.entity_type)}
                       </Badge>
                     </div>
                     {formData.description && (
                       <>
                         <Separator />
                         <div className="space-y-1">
-                          <span className="text-muted-foreground text-sm">Description</span>
+                          <span className="text-muted-foreground text-sm">{t('descriptionLabel')}</span>
                           <p className="text-sm">{formData.description}</p>
                         </div>
                       </>
@@ -756,14 +748,14 @@ export default function CreateRolePage() {
                 <div className="space-y-4">
                   <h3 className="font-semibold flex items-center gap-2">
                     <Key className="h-4 w-4" />
-                    Permissions ({selectedPermissions.length})
+                    {t('permissionsCount')} ({selectedPermissions.length})
                   </h3>
                   {selectedPermissions.length === 0 ? (
                     <div className="p-4 bg-muted/50 rounded-lg text-center text-muted-foreground">
                       <AlertCircle className="h-6 w-6 mx-auto mb-2" />
-                      <p>Aucune permission sélectionnée</p>
+                      <p>{t('noPermissionsSelected')}</p>
                       <p className="text-xs mt-1">
-                        Vous pourrez assigner des permissions après la création
+                        {t('noPermissionsSelectedHelp')}
                       </p>
                     </div>
                   ) : (
@@ -788,10 +780,9 @@ export default function CreateRolePage() {
                   <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
                     <div>
-                      <p className="font-medium text-amber-800">Permissions critiques incluses</p>
+                      <p className="font-medium text-amber-800">{t('criticalWarningTitle')}</p>
                       <p className="text-sm text-amber-700 mt-1">
-                        Ce rôle inclut {selectedPermissionsDetails.filter((p) => p.is_critical).length}{' '}
-                        permission(s) critique(s). Assurez-vous que c&apos;est intentionnel.
+                        {t('criticalWarningDesc', { count: selectedPermissionsDetails.filter((p) => p.is_critical).length })}
                       </p>
                     </div>
                   </div>
@@ -805,14 +796,14 @@ export default function CreateRolePage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-6">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Résumé</CardTitle>
+              <CardTitle className="text-base">{t('summaryTitle')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Role Info */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <Shield className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium truncate">{formData.name || 'Nouveau rôle'}</span>
+                  <span className="font-medium truncate">{formData.name || t('newRole')}</span>
                 </div>
                 {formData.code && (
                   <code className="text-xs bg-muted px-2 py-1 rounded block truncate">
@@ -827,11 +818,7 @@ export default function CreateRolePage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Type</span>
                 <Badge variant="outline" className="text-xs">
-                  {formData.entity_type === 'ministry_agent'
-                    ? 'Ministériel'
-                    : formData.entity_type === 'entity_agent'
-                    ? 'Entité'
-                    : 'Global'}
+                  {getEntityTypeLabel(formData.entity_type)}
                 </Badge>
               </div>
 
@@ -840,7 +827,7 @@ export default function CreateRolePage() {
               {/* Permissions Count */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Permissions</span>
+                  <span className="text-muted-foreground">{t('permissionsCount')}</span>
                   <Badge variant={selectedPermissions.length > 0 ? 'default' : 'secondary'}>
                     {selectedPermissions.length}
                   </Badge>
@@ -849,7 +836,7 @@ export default function CreateRolePage() {
                   <div className="text-xs text-muted-foreground">
                     {selectedPermissionsDetails.filter((p) => p.is_critical).length > 0 && (
                       <span className="text-amber-600">
-                        dont {selectedPermissionsDetails.filter((p) => p.is_critical).length} critiques
+                        {t('includingCritical', { count: selectedPermissionsDetails.filter((p) => p.is_critical).length })}
                       </span>
                     )}
                   </div>
@@ -861,7 +848,7 @@ export default function CreateRolePage() {
                 <>
                   <Separator />
                   <div className="space-y-2">
-                    <span className="text-xs text-muted-foreground">Aperçu:</span>
+                    <span className="text-xs text-muted-foreground">{t('previewLabel')}</span>
                     <div className="flex flex-wrap gap-1">
                       {selectedPermissionsDetails.slice(0, 5).map((perm) => (
                         <Badge key={perm.id} variant="outline" className="text-xs">
@@ -886,24 +873,24 @@ export default function CreateRolePage() {
       <div className="flex items-center justify-between pt-4 border-t">
         <Button variant="outline" onClick={prevStep} disabled={currentStep === 0}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          {t('previous') || 'Précédent'}
+          {t('previous')}
         </Button>
 
         <div className="flex items-center gap-2">
           <Link href={`/${locale}/dashboard/admin/roles`}>
-            <Button variant="ghost">Annuler</Button>
+            <Button variant="ghost">{t('cancel')}</Button>
           </Link>
 
           {currentStep < 3 ? (
             <Button onClick={nextStep} disabled={!canProceed}>
-              Suivant
+              {t('next')}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={createMutation.isPending || !isStep1Valid}>
               {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <Check className="mr-2 h-4 w-4" />
-              Créer le Rôle
+              {t('createRoleButton')}
             </Button>
           )}
         </div>
