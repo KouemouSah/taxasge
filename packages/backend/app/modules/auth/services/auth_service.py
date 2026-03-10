@@ -334,6 +334,17 @@ class AuthService:
                     user_permissions = await perm_repo.get_all_permission_names(user.id)
                     logger.debug(f"Loaded {len(user_permissions)} permissions for user {user.email}")
 
+                    # Cache warming: pre-populate Redis permissions cache at login
+                    # Eliminates cold-start latency on first authenticated request
+                    try:
+                        from app.core.cache import get_permissions_cache, CacheKeys
+                        cache = get_permissions_cache()
+                        cache_key = CacheKeys.user_permissions(user.id)
+                        await cache.set(cache_key, user_permissions, ttl=600)  # 10 min
+                        logger.debug(f"Warmed permissions cache for {user.email} ({len(user_permissions)} perms)")
+                    except Exception as cache_err:
+                        logger.warning(f"Cache warming failed for {user.email}: {cache_err}")
+
                     # Resolve RBAC role code from users.role_id → roles.code
                     if user_role_id:
                         row = await db.fetchrow(

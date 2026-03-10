@@ -80,7 +80,8 @@ class PermissionService:
     async def has_permission(
         self,
         user_id: str,
-        permission_name: str
+        permission_name: str,
+        user: Optional[Any] = None
     ) -> bool:
         """
         Check if a user has a specific permission
@@ -97,13 +98,16 @@ class PermissionService:
         Args:
             user_id: User UUID
             permission_name: Permission name (e.g., "assignment.reassign_in_progress")
+            user: Optional pre-fetched UserResponse (avoids redundant DB query)
 
         Returns:
             True if user has permission, False otherwise
         """
         # CRITICAL: Admins have ALL permissions automatically
         try:
-            user = await self.user_repo.find_by_id(user_id)
+            # Reuse pre-fetched user from middleware — eliminates redundant DB query
+            if user is None:
+                user = await self.user_repo.find_by_id(user_id)
             if user:
                 # Check role - handle both UserRole enum and string values
                 user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)

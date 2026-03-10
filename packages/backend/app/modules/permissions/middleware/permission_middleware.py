@@ -46,8 +46,6 @@ def permission_required(permission_name: str):
                 detail="Authentication required"
             )
 
-        # Get user ID from UserResponse object (not a dict!)
-        # UserResponse has 'id' attribute, not 'sub'
         user_id = str(current_user.id) if current_user.id else None
         if not user_id:
             raise HTTPException(
@@ -55,8 +53,8 @@ def permission_required(permission_name: str):
                 detail="Invalid user: no ID found"
             )
 
-        # Check permission
-        has_perm = await permission_service.has_permission(user_id, permission_name)
+        # Pass pre-fetched user to avoid redundant DB query in has_permission()
+        has_perm = await permission_service.has_permission(user_id, permission_name, user=current_user)
 
         if not has_perm:
             raise HTTPException(
@@ -118,9 +116,9 @@ def permission_required_any(*permission_names: str):
                 detail="Invalid user: no ID found"
             )
 
-        # Check if user has ANY of the required permissions
+        # Check if user has ANY of the required permissions (pass user to avoid redundant fetch)
         for permission_name in permission_names:
-            has_perm = await permission_service.has_permission(user_id, permission_name)
+            has_perm = await permission_service.has_permission(user_id, permission_name, user=current_user)
             if has_perm:
                 return None  # User has at least one permission
 
@@ -195,8 +193,8 @@ def require_permission(permission_name: str, raise_on_deny: bool = True):
                     detail="Permission service not available"
                 )
 
-            # Check permission
-            has_perm = await permission_service.has_permission(str(current_user.id), permission_name)
+            # Pass pre-fetched user to avoid redundant DB query
+            has_perm = await permission_service.has_permission(str(current_user.id), permission_name, user=current_user)
 
             if not has_perm:
                 if raise_on_deny:
@@ -263,10 +261,10 @@ def require_any_permission(*permission_names: str, raise_on_deny: bool = True):
                     detail="Permission service not available"
                 )
 
-            # Check if user has ANY of the permissions
+            # Check if user has ANY of the permissions (pass user to avoid redundant fetch)
             has_any = False
             for perm_name in permission_names:
-                if await permission_service.has_permission(current_user.id, perm_name):
+                if await permission_service.has_permission(current_user.id, perm_name, user=current_user):
                     has_any = True
                     break
 
@@ -337,10 +335,10 @@ def require_all_permissions(*permission_names: str, raise_on_deny: bool = True):
                     detail="Permission service not available"
                 )
 
-            # Check if user has ALL permissions
+            # Check if user has ALL permissions (pass user to avoid redundant fetch)
             missing_permissions = []
             for perm_name in permission_names:
-                if not await permission_service.has_permission(current_user.id, perm_name):
+                if not await permission_service.has_permission(current_user.id, perm_name, user=current_user):
                     missing_permissions.append(perm_name)
 
             if missing_permissions:

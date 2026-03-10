@@ -122,10 +122,19 @@ async def get_current_user(
             )
 
         # Enrich with funcionario_status if user is a verified funcionario
+        # Cached for 5 minutes to avoid DB query on every authenticated request
         if user.matricula_funcionario and user.funcionario_verified_at:
             try:
-                funcionario_status = await _check_funcionario_status(user.matricula_funcionario)
-                user.funcionario_status = funcionario_status
+                from app.core.cache import get_cache
+                cache = get_cache()
+                cache_key = f"func:status:{user.matricula_funcionario}"
+                cached_status = await cache.get(cache_key)
+                if cached_status is not None:
+                    user.funcionario_status = cached_status
+                else:
+                    funcionario_status = await _check_funcionario_status(user.matricula_funcionario)
+                    user.funcionario_status = funcionario_status
+                    await cache.set(cache_key, funcionario_status, ttl=300)  # 5 min
             except Exception as e:
                 logger.warning(f"Failed to check funcionario status: {e}")
                 # Don't block access on failure - just log
