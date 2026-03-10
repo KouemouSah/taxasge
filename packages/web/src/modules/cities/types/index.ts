@@ -49,7 +49,7 @@ export interface CityListResponse {
 }
 
 // Entity type enum
-export const ENTITY_TYPES = ['entity', 'department'] as const
+export const ENTITY_TYPES = ['entity', 'department', 'treasury'] as const
 export type EntityType = (typeof ENTITY_TYPES)[number]
 
 // Entity interfaces

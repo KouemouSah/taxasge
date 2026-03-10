@@ -16,8 +16,8 @@ from enum import Enum
 
 
 class TypeCompte(str, Enum):
-    """Type de compte pour paiement"""
-    COMPTE_PROPIA = "compte_propia"      # Particulier
+    """Type de compte pour paiement — matches DB type_compte_enum"""
+    CUENTA_PROPIA = "cuenta_propia"      # Particulier
     CUENTA_EMPRESA = "cuenta_empresa"    # Entreprise
 
 

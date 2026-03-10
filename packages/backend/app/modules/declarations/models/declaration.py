@@ -30,54 +30,60 @@ class DeclarationStatus(str, Enum):
 
 class DeclarationType(str, Enum):
     """
-    Type enum for tax declarations (28 types)
-    Source: DATABASE_SCHEMA_REFERENCE.md declaration_type_enum
-
-    Répartition:
-    - IVA: 90% volume (iva_destajo, iva_real)
-    - IRPF: 5% volume (income tax)
-    - Pétrolifères: 4% volume, GROS MONTANTS (6 sous-types)
-    - Retenciones: 1% volume (3%, 5%, 10%)
-    - Autres: <1% volume (7 autres types)
+    Type enum for tax declarations — MUST match DB declaration_type_enum exactly.
+    Source: SELECT enumlabel FROM pg_enum (34 values, verified 2026-03-10)
     """
-    # IVA (Impuesto al Valor Agregado) - 90% volume
-    IVA_DESTAJO = "iva_destajo"                    # IVA au coup par coup
-    IVA_REAL = "iva_real"                          # IVA régime réel
+    # General taxes
+    INCOME_TAX = "income_tax"
+    CORPORATE_TAX = "corporate_tax"
+    VAT_DECLARATION = "vat_declaration"
+    SOCIAL_CONTRIBUTION = "social_contribution"
+    PROPERTY_TAX = "property_tax"
+    OTHER_TAX = "other_tax"
 
-    # IRPF (Impuesto sobre la Renta de las Personas Físicas) - 5% volume
-    INCOME_TAX = "income_tax"                      # Impôt sur le revenu
-    CORPORATE_TAX = "corporate_tax"                # Impôt sociétés
+    # Settlement & vouchers
+    SETTLEMENT_VOUCHER = "settlement_voucher"
+    COMMON_VOUCHER = "common_voucher"
 
-    # Pétrolifères - 4% volume, GROS MONTANTS
-    RETENCION_3PCT_PETROLERO = "retencion_3pct_petrolero"       # Retenue 3% pétrole
-    RETENCION_5PCT_PETROLERO = "retencion_5pct_petrolero"       # Retenue 5% pétrole
-    RETENCION_10PCT_PETROLERO = "retencion_10pct_petrolero"     # Retenue 10% pétrole
-    PETROLEO_GAS = "petroleo_gas"                  # Pétrole et gaz
-    PETROLEO_DIESEL = "petroleo_diesel"            # Diesel
-    PETROLEO_ESSENCE = "petroleo_essence"          # Essence
+    # Minimum fiscal contributions
+    MINIMUM_FISCAL_CONTRIBUTION = "minimum_fiscal_contribution"
+    MINIMUM_FISCAL_OIL_MINING = "minimum_fiscal_oil_mining"
+    CUOTA_MIN_PETROLERA = "cuota_min_petrolera"
+    CUOTA_MIN_COMUN = "cuota_min_comun"
 
-    # Retenciones (Retenues à la source) - 1% volume
-    RETENCION_3PCT = "retencion_3pct"              # Retenue 3% générale
-    RETENCION_5PCT = "retencion_5pct"              # Retenue 5% générale
-    RETENCION_10PCT = "retencion_10pct"            # Retenue 10% générale
+    # IVA (90% volume)
+    IVA_DESTAJO = "iva_destajo"
+    IVA_REAL = "iva_real"
+    WITHHELD_VAT = "withheld_vat"
+    ACTUAL_VAT = "actual_vat"
 
-    # Autres types (<1% volume) - Stockés dans declaration_other_details
-    VAT_DECLARATION = "vat_declaration"            # Déclaration TVA
-    SALES_TAX = "sales_tax"                        # Taxe sur les ventes
-    PROPERTY_TAX = "property_tax"                  # Taxe foncière
-    PAYROLL_TAX = "payroll_tax"                    # Taxe sur salaires
-    EXCISE_TAX = "excise_tax"                      # Taxe d'accise
-    CUSTOMS_DECLARATION = "customs_declaration"    # Déclaration douanière
-    SPECIAL_TAX = "special_tax"                    # Taxe spéciale
+    # Petroleum products
+    PETROLEUM_PRODUCTS_TAX = "petroleum_products_tax"
+    PETROLEUM_PRODUCTS_TAX_IVS = "petroleum_products_tax_ivs"
+    IMP_PROD_PETROLEROS_IVS = "imp_prod_petroleros_ivs"
+    IMP_PROD_PETROLEROS_FMI = "imp_prod_petroleros_fmi"
 
-    # Types additionnels
-    QUARTERLY_RETURN = "quarterly_return"          # Déclaration trimestrielle
-    ANNUAL_RETURN = "annual_return"                # Déclaration annuelle
-    AMENDED_RETURN = "amended_return"              # Déclaration rectificative
-    ESTIMATED_TAX = "estimated_tax"                # Impôt estimé
-    WITHHOLDING_TAX = "withholding_tax"            # Retenue à la source générique
-    CAPITAL_GAINS = "capital_gains"                # Plus-values
-    INHERITANCE_TAX = "inheritance_tax"            # Droits de succession
+    # Wages taxes
+    WAGES_TAX_OIL_MINING = "wages_tax_oil_mining"
+    WAGES_TAX_COMMON_SECTOR = "wages_tax_common_sector"
+    IMP_SUELDOS_PETROLERO = "imp_sueldos_petrolero"
+    IMP_SUELDOS_COMUN = "imp_sueldos_comun"
+
+    # Withholdings — petroleum sector
+    RETENCION_3PCT_PETROLERO = "retencion_3pct_petrolero"
+    RETENCION_5PCT_PETROLERO = "retencion_5pct_petrolero"
+    RETENCION_10PCT_NO_RESIDENTES_PETROLERO = "retencion_10pct_no_residentes_petrolero"
+    WITHHOLDING_3PCT_OIL_MINING_RESIDENTS = "withholding_3pct_oil_mining_residents"
+    WITHHOLDING_5PCT_OIL_MINING_RESIDENTS = "withholding_5pct_oil_mining_residents"
+    WITHHOLDING_10PCT_OIL_MINING_NONRESIDENTS = "withholding_10pct_oil_mining_nonresidents"
+
+    # Withholdings — common sector
+    WITHHOLDING_10PCT_COMMON_RESIDENTS = "withholding_10pct_common_residents"
+    RETENCION_10PCT_NO_RESIDENTES_COMUN = "retencion_10pct_no_residentes_comun"
+
+    # Printed forms
+    IMPRESO_COMUN = "impreso_comun"
+    IMPRESO_LIQUIDACION = "impreso_liquidacion"
 
 
 class DeclarationBase(BaseModel):

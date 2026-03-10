@@ -45,6 +45,8 @@ interface AgentOrganizationFieldsProps {
   isLoadingLocations: boolean;
   /** Whether the form is in edit mode (skip cascade resets on initial load) */
   isEditMode?: boolean;
+  /** Inline mode: agent_type(30%) + entity/ministry(70%) on same row */
+  inline?: boolean;
 }
 
 export function AgentOrganizationFields({
@@ -56,6 +58,7 @@ export function AgentOrganizationFields({
   isLoadingEntities,
   isLoadingLocations,
   isEditMode = false,
+  inline = false,
 }: AgentOrganizationFieldsProps) {
   const t = useTranslations('admin.agents');
   const watchAgentType = form.watch('agent_type');
@@ -93,115 +96,141 @@ export function AgentOrganizationFields({
     label: `${loc.location_name} — ${loc.city}${loc.is_main_office ? ` (${t('form.mainOffice')})` : ''}`,
   }));
 
+  // Shared entity/ministry select based on agent type
+  const orgSelect = watchAgentType === AgentType.MINISTRY_AGENT ? (
+    <FormField
+      control={form.control}
+      name="ministry_id"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{t('form.ministry')} <span className="text-destructive">*</span></FormLabel>
+          <FormControl>
+            <SafeSelect
+              value={field.value?.toString() || ''}
+              onValueChange={(val) => field.onChange(parseInt(val, 10))}
+              items={ministryItems}
+              isLoading={isLoadingMinistries}
+              emptyMessage={t('form.noMinistry')}
+              placeholder={t('form.selectMinistry')}
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  ) : watchAgentType === AgentType.ENTITY_AGENT ? (
+    <FormField
+      control={form.control}
+      name="entity_id"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{t('form.entity')} <span className="text-destructive">*</span></FormLabel>
+          <FormControl>
+            <SafeSelect
+              value={field.value || ''}
+              onValueChange={field.onChange}
+              items={entityItems}
+              isLoading={isLoadingEntities}
+              emptyMessage={t('form.noEntity')}
+              placeholder={t('form.selectEntity')}
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  ) : null;
+
   return (
     <div className="space-y-4">
-      {/* Agent Type */}
-      <FormField
-        control={form.control}
-        name="agent_type"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t('form.agentType')} <span className="text-destructive">*</span></FormLabel>
-            <FormControl>
-              <SafeSelect
-                value={field.value}
-                onValueChange={(val) => {
-                  field.onChange(val);
-                  // Reset organization fields on type change
-                  form.setValue('ministry_id', undefined);
-                  form.setValue('entity_id', '');
-                  form.setValue('entity_location_id', '');
-                }}
-                items={agentTypeOptions}
-                placeholder={t('form.selectType')}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Ministry (for MINISTRY_AGENT) */}
-      {watchAgentType === AgentType.MINISTRY_AGENT && (
-        <FormField
-          control={form.control}
-          name="ministry_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('form.ministry')} <span className="text-destructive">*</span></FormLabel>
-              <FormControl>
-                <SafeSelect
-                  value={field.value?.toString() || ''}
-                  onValueChange={(val) => field.onChange(parseInt(val, 10))}
-                  items={ministryItems}
-                  isLoading={isLoadingMinistries}
-                  emptyMessage={t('form.noMinistry')}
-                  placeholder={t('form.selectMinistry')}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-
-      {/* Entity (for ENTITY_AGENT) */}
-      {watchAgentType === AgentType.ENTITY_AGENT && (
-        <>
+      {/* Agent Type + Entity/Ministry — inline(30/70) or stacked */}
+      {inline ? (
+        <div className="grid grid-cols-[30%_1fr] gap-4 items-start">
           <FormField
             control={form.control}
-            name="entity_id"
+            name="agent_type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t('form.entity')} <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>{t('form.agentType')} <span className="text-destructive">*</span></FormLabel>
                 <FormControl>
                   <SafeSelect
-                    value={field.value || ''}
-                    onValueChange={field.onChange}
-                    items={entityItems}
-                    isLoading={isLoadingEntities}
-                    emptyMessage={t('form.noEntity')}
-                    placeholder={t('form.selectEntity')}
+                    value={field.value}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      form.setValue('ministry_id', undefined);
+                      form.setValue('entity_id', '');
+                      form.setValue('entity_location_id', '');
+                    }}
+                    items={agentTypeOptions}
+                    placeholder={t('form.selectType')}
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-
-          {/* Entity Location */}
-          {watchEntityId && (
-            <FormField
-              control={form.control}
-              name="entity_location_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {t('form.site')}
-                    {isDepartmentEntity && <span className="text-destructive ml-1">*</span>}
-                  </FormLabel>
-                  <FormControl>
-                    <SafeSelect
-                      value={field.value || ''}
-                      onValueChange={field.onChange}
-                      items={locationItems}
-                      isLoading={isLoadingLocations}
-                      emptyMessage={t('form.noSite')}
-                      placeholder={isDepartmentEntity ? t('form.selectSiteRequired') : t('form.selectSiteOptional')}
-                      allOption={!isDepartmentEntity ? { value: 'ALL_SITES', label: t('form.allSites') } : undefined}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {isDepartmentEntity
-                      ? t('form.siteDeptRequired')
-                      : t('form.siteOptional')}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+          <div>{orgSelect}</div>
+        </div>
+      ) : (
+        <>
+          <FormField
+            control={form.control}
+            name="agent_type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('form.agentType')} <span className="text-destructive">*</span></FormLabel>
+                <FormControl>
+                  <SafeSelect
+                    value={field.value}
+                    onValueChange={(val) => {
+                      field.onChange(val);
+                      form.setValue('ministry_id', undefined);
+                      form.setValue('entity_id', '');
+                      form.setValue('entity_location_id', '');
+                    }}
+                    items={agentTypeOptions}
+                    placeholder={t('form.selectType')}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          {orgSelect}
         </>
+      )}
+
+      {/* Entity Location — only when entity is selected */}
+      {watchAgentType === AgentType.ENTITY_AGENT && watchEntityId && (
+        <FormField
+          control={form.control}
+          name="entity_location_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                {t('form.site')}
+                {isDepartmentEntity && <span className="text-destructive ml-1">*</span>}
+              </FormLabel>
+              <FormControl>
+                <SafeSelect
+                  value={field.value || ''}
+                  onValueChange={field.onChange}
+                  items={locationItems}
+                  isLoading={isLoadingLocations}
+                  emptyMessage={t('form.noSite')}
+                  placeholder={isDepartmentEntity ? t('form.selectSiteRequired') : t('form.selectSiteOptional')}
+                  allOption={!isDepartmentEntity ? { value: 'ALL_SITES', label: t('form.allSites') } : undefined}
+                />
+              </FormControl>
+              <FormDescription>
+                {isDepartmentEntity
+                  ? t('form.siteDeptRequired')
+                  : t('form.siteOptional')}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       )}
     </div>
   );

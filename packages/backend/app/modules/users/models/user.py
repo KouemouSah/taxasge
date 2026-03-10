@@ -25,6 +25,7 @@ class UserRole(str, Enum):
     accountant = "accountant"
     admin = "admin"
     agent = "agent"
+    funcionario = "funcionario"
 
 
 class UserStatus(str, Enum):

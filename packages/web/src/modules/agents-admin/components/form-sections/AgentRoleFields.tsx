@@ -35,12 +35,15 @@ interface AgentRoleFieldsProps {
   form: UseFormReturn<any>;
   rbacRoles: RoleOption[];
   isLoadingRoles: boolean;
+  /** Inline mode: supervisor(30%) + RBAC role(70%) on same row */
+  inline?: boolean;
 }
 
 export function AgentRoleFields({
   form,
   rbacRoles,
   isLoadingRoles,
+  inline = false,
 }: AgentRoleFieldsProps) {
   const t = useTranslations('admin.agents');
   const watchIsSupervisor = form.watch('is_supervisor');
@@ -75,63 +78,80 @@ export function AgentRoleFields({
     description: r.description ?? undefined,
   }));
 
-  return (
-    <div className="space-y-4">
-      {/* Supervisor Toggle */}
-      <FormField
-        control={form.control}
-        name="is_supervisor"
-        render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-            <FormControl>
-              <Checkbox
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
-            <div className="space-y-1 leading-none">
-              <FormLabel>{t('form.supervisor')}</FormLabel>
+  const supervisorField = (
+    <FormField
+      control={form.control}
+      name="is_supervisor"
+      render={({ field }) => (
+        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+          <FormControl>
+            <Checkbox
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+          </FormControl>
+          <div className="space-y-1 leading-none">
+            <FormLabel>{t('form.supervisor')}</FormLabel>
+            {!inline && (
               <FormDescription>
                 {t('form.supervisorDescFull')}
               </FormDescription>
-            </div>
-          </FormItem>
-        )}
-      />
+            )}
+          </div>
+        </FormItem>
+      )}
+    />
+  );
 
-      {/* RBAC Role */}
-      <FormField
-        control={form.control}
-        name="rbac_role_id"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="flex items-center gap-2">
-              {t('form.rbacRole')} <span className="text-destructive">*</span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>{t('form.rbacTooltip')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </FormLabel>
-            <FormControl>
-              <SafeSelect
-                value={field.value || ''}
-                onValueChange={field.onChange}
-                items={roleItems}
-                isLoading={isLoadingRoles}
-                emptyMessage={t('form.noRoles')}
-                placeholder={t('form.selectRole')}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+  const rbacRoleField = (
+    <FormField
+      control={form.control}
+      name="rbac_role_id"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel className="flex items-center gap-2">
+            {t('form.rbacRole')} <span className="text-destructive">*</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>{t('form.rbacTooltip')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </FormLabel>
+          <FormControl>
+            <SafeSelect
+              value={field.value || ''}
+              onValueChange={field.onChange}
+              items={roleItems}
+              isLoading={isLoadingRoles}
+              emptyMessage={t('form.noRoles')}
+              placeholder={t('form.selectRole')}
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Supervisor + RBAC Role — inline(30/70) or stacked */}
+      {inline ? (
+        <div className="grid grid-cols-[30%_1fr] gap-4 items-start">
+          {supervisorField}
+          {rbacRoleField}
+        </div>
+      ) : (
+        <>
+          {supervisorField}
+          {rbacRoleField}
+        </>
+      )}
 
       {/* Role defaults applied info */}
       {hasDefaultConfig && (

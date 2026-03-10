@@ -13,10 +13,11 @@ from enum import Enum
 
 
 class PaymentType(str, Enum):
-    """Type de paiement"""
-    FULL = "full"              # Paiement complet
-    PARTIAL = "partial"        # Paiement partiel
-    INSTALLMENT = "installment"  # Acompte (échéancier)
+    """Type de paiement — matches DB payment_type_enum"""
+    FULL = "full"                        # Paiement complet
+    PARTIAL = "partial"                  # Paiement partiel
+    INSTALLMENT = "installment"          # Acompte (échéancier)
+    COMPLEMENTARY = "complementary"      # Paiement complémentaire
 
 
 class PaymentStatus(str, Enum):
@@ -30,11 +31,12 @@ class PaymentStatus(str, Enum):
 
 
 class PaymentMethod(str, Enum):
-    """Méthode de paiement"""
+    """Méthode de paiement — matches DB payment_method_enum"""
     BANK_TRANSFER = "bank_transfer"  # Virement bancaire
+    CARD = "card"                    # Carte bancaire
     MOBILE_MONEY = "mobile_money"    # Mobile money (BANGE)
     CASH = "cash"                    # Espèces
-    CARD = "card"                    # Carte bancaire
+    BANGE_WALLET = "bange_wallet"    # Portefeuille BANGE
     CHECK = "check"                  # Chèque
 
 

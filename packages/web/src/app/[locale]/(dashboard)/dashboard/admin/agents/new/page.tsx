@@ -367,7 +367,7 @@ export default function CreateAgentPage() {
   }
 
   // =========================================================================
-  // RENDER — Agent form (2-column compact layout)
+  // RENDER — Agent form (full-width stacked cards, compact inline fields)
   // =========================================================================
   return (
     <div className="space-y-4">
@@ -397,82 +397,77 @@ export default function CreateAgentPage() {
       </div>
 
       <Form {...agentForm}>
-        <form onSubmit={agentForm.handleSubmit(handleAgentSubmit)}>
-          {/* === 2-Column Layout: Account | Organization + Role === */}
+        <form onSubmit={agentForm.handleSubmit(handleAgentSubmit)} className="space-y-4">
+          {/* === Account Info — full width === */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t('sections.accountInfo')}</CardTitle>
+              <p className="text-xs text-muted-foreground">{t('sections.accountInfoDesc')}</p>
+            </CardHeader>
+            <CardContent>
+              <AgentAccountFields form={agentForm} />
+            </CardContent>
+          </Card>
+
+          {/* === Organization — full width, inline fields === */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t('sections.organization')}</CardTitle>
+              <p className="text-xs text-muted-foreground">{t('sections.organizationDesc')}</p>
+            </CardHeader>
+            <CardContent>
+              <AgentOrganizationFields
+                form={agentForm}
+                ministries={ministries}
+                entities={entities}
+                entityLocations={entityLocations}
+                isLoadingMinistries={isLoadingMinistries}
+                isLoadingEntities={isLoadingEntities}
+                isLoadingLocations={isLoadingLocations}
+                inline
+              />
+            </CardContent>
+          </Card>
+
+          {/* === Role & Permissions — full width, inline fields === */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t('sections.rolePermissions')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <AgentRoleFields
+                form={agentForm}
+                rbacRoles={rbacRoles}
+                isLoadingRoles={isLoadingRbacRoles}
+                inline
+              />
+
+              {/* Capabilities — supervisor only */}
+              {watchIsSupervisor && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">{t('sections.supervisorCapabilities')}</h4>
+                    <AgentCapabilitiesFields form={agentForm} />
+                  </div>
+                </>
+              )}
+
+              {/* Approval — payment entities only */}
+              {isPaymentEntity && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">{t('sections.approvalLimits')}</h4>
+                    <AgentApprovalFields form={agentForm} />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* === Bottom row: Schedule + Review Summary side by side === */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* LEFT: Account Info */}
-            <Card className="h-fit">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{t('sections.accountInfo')}</CardTitle>
-                <p className="text-xs text-muted-foreground">{t('sections.accountInfoDesc')}</p>
-              </CardHeader>
-              <CardContent>
-                <AgentAccountFields form={agentForm} />
-              </CardContent>
-            </Card>
-
-            {/* RIGHT: Organization + Role stacked */}
-            <div className="space-y-4">
-              {/* Organization */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{t('sections.organization')}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{t('sections.organizationDesc')}</p>
-                </CardHeader>
-                <CardContent>
-                  <AgentOrganizationFields
-                    form={agentForm}
-                    ministries={ministries}
-                    entities={entities}
-                    entityLocations={entityLocations}
-                    isLoadingMinistries={isLoadingMinistries}
-                    isLoadingEntities={isLoadingEntities}
-                    isLoadingLocations={isLoadingLocations}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Role & Permissions */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{t('sections.rolePermissions')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <AgentRoleFields
-                    form={agentForm}
-                    rbacRoles={rbacRoles}
-                    isLoadingRoles={isLoadingRbacRoles}
-                  />
-
-                  {/* Capabilities — supervisor only */}
-                  {watchIsSupervisor && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h4 className="text-sm font-medium mb-3">{t('sections.supervisorCapabilities')}</h4>
-                        <AgentCapabilitiesFields form={agentForm} />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Approval — payment entities only */}
-                  {isPaymentEntity && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h4 className="text-sm font-medium mb-3">{t('sections.approvalLimits')}</h4>
-                        <AgentApprovalFields form={agentForm} />
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* === Bottom row: Schedule (inline) + Review Summary === */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-            {/* Schedule — compact */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">{t('sections.schedule')}</CardTitle>
@@ -482,7 +477,6 @@ export default function CreateAgentPage() {
               </CardContent>
             </Card>
 
-            {/* Review Summary — always visible */}
             <AgentReviewSummary
               form={agentForm}
               entityName={selectedEntity?.name}
