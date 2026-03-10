@@ -44,7 +44,7 @@ import {
   useDeactivateAgent, useReactivateAgent, useActivateUser,
   useDeactivateUser, useDeleteAgentUser,
 } from '@/modules/agents-admin/hooks';
-import type { AgentProfile, AgentType } from '@/modules/agents-admin/types';
+import type { AgentProfile, AgentType, AgentAvailability } from '@/modules/agents-admin/types';
 import { WorkloadOverviewTab } from '@/modules/agents-admin/components/WorkloadOverviewTab';
 import { AdminAssistantTab } from '@/modules/agents-admin/components/AdminAssistantTab';
 import { BackendUnavailableAlert } from '@/modules/admin/components';
@@ -59,6 +59,10 @@ export default function AgentsPage() {
   const [activeTab, setActiveTab] = useState('agents');
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | AgentType>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [supervisorFilter, setSupervisorFilter] = useState<'all' | 'yes' | 'no'>('all');
+  const [entityFilter, setEntityFilter] = useState<string>('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState<'all' | AgentAvailability>('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AgentProfile | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -68,7 +72,9 @@ export default function AgentsPage() {
     data: agentsData, isLoading: agentsLoading, error: agentsError, refetch: refetchAgents,
   } = useAgentProfiles({
     agent_type: typeFilter !== 'all' ? typeFilter : undefined,
-    is_active: undefined,
+    is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
+    is_supervisor: supervisorFilter === 'all' ? undefined : supervisorFilter === 'yes',
+    availability: availabilityFilter !== 'all' ? availabilityFilter as AgentAvailability : undefined,
     page: 1,
     page_size: 100,
   });
@@ -89,12 +95,22 @@ export default function AgentsPage() {
   const agents = agentsData?.items || [];
   const admins = adminsData?.items || [];
 
+  // Unique entities for filter dropdown (derived from loaded agents)
+  const uniqueEntities = Array.from(
+    new Map(
+      agents
+        .filter((a) => a.entity_code)
+        .map((a) => [a.entity_code, { code: a.entity_code!, name: a.entity_name || a.entity_code! }])
+    ).values()
+  ).sort((a, b) => a.code.localeCompare(b.code));
+
   const filteredAgents = agents.filter((agent) => {
     const matchesSearch =
       !searchQuery ||
       agent.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.user_full_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    const matchesEntity = entityFilter === 'all' || agent.entity_code === entityFilter;
+    return matchesSearch && matchesEntity;
   });
 
   const filteredAdmins = admins.filter((admin) => {
@@ -172,6 +188,12 @@ export default function AgentsPage() {
     return <Badge variant="secondary">{t('status.entityBadge')}</Badge>;
   };
 
+  const hasActiveFilters = typeFilter !== 'all' || statusFilter !== 'all' || supervisorFilter !== 'all' || entityFilter !== 'all' || availabilityFilter !== 'all' || searchQuery !== '';
+  const resetFilters = () => {
+    setTypeFilter('all'); setStatusFilter('all'); setSupervisorFilter('all');
+    setEntityFilter('all'); setAvailabilityFilter('all'); setSearchQuery('');
+  };
+
   const isBackendUnavailable = !!agentsError || !!adminsError;
 
   // --- Export helpers ---
@@ -182,7 +204,9 @@ export default function AgentsPage() {
       [t('table.type')]: a.agent_type === 'ministry_agent' ? t('status.ministry') : t('status.entityBadge'),
       [t('status.supervisor')]: a.is_supervisor ? 'Si' : 'No',
       [t('table.organization')]: a.ministry_name || a.entity_name || '-',
+      Code: a.entity_code || a.ministry_code || '-',
       [t('table.status')]: a.is_active ? t('status.active') : t('status.inactive'),
+      [t('table.availability')]: a.availability || '-',
       [t('table.tasks')]: a.current_assignments ?? 0,
     }));
 
@@ -267,7 +291,7 @@ export default function AgentsPage() {
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>{t('listAgents')}</CardTitle>
@@ -275,26 +299,7 @@ export default function AgentsPage() {
                     {t('agentsFound', { count: filteredAgents.length })}
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder={tAdmin('searchPlaceholder')}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                  <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder={t('filters.allTypes')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('filters.allTypes')}</SelectItem>
-                      <SelectItem value="ministry_agent">{t('filters.ministryAgent')}</SelectItem>
-                      <SelectItem value="entity_agent">{t('filters.entityAgent')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" disabled={filteredAgents.length === 0}>
@@ -315,6 +320,78 @@ export default function AgentsPage() {
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+              {/* Filters row */}
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                <div className="relative w-52">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={tAdmin('searchPlaceholder')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+                  <SelectTrigger className="w-[150px] h-9">
+                    <SelectValue placeholder={t('filters.allTypes')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('filters.allTypes')}</SelectItem>
+                    <SelectItem value="ministry_agent">{t('filters.ministryAgent')}</SelectItem>
+                    <SelectItem value="entity_agent">{t('filters.entityAgent')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={entityFilter} onValueChange={setEntityFilter}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue placeholder={t('filters.allEntities')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('filters.allEntities')}</SelectItem>
+                    {uniqueEntities.map((e) => (
+                      <SelectItem key={e.code} value={e.code}>{e.code} — {e.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+                  <SelectTrigger className="w-[130px] h-9">
+                    <SelectValue placeholder={t('filters.allStatuses')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
+                    <SelectItem value="active">{t('status.active')}</SelectItem>
+                    <SelectItem value="inactive">{t('status.inactive')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={supervisorFilter} onValueChange={(v) => setSupervisorFilter(v as typeof supervisorFilter)}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue placeholder={t('filters.allSupervisors')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('filters.allSupervisors')}</SelectItem>
+                    <SelectItem value="yes">{t('status.supervisor')}</SelectItem>
+                    <SelectItem value="no">{t('filters.noSupervisor')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={availabilityFilter} onValueChange={(v) => setAvailabilityFilter(v as typeof availabilityFilter)}>
+                  <SelectTrigger className="w-[155px] h-9">
+                    <SelectValue placeholder={t('filters.allAvailability')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('filters.allAvailability')}</SelectItem>
+                    <SelectItem value="available">{t('availability.available')}</SelectItem>
+                    <SelectItem value="on_leave">{t('availability.onLeave')}</SelectItem>
+                    <SelectItem value="sick_leave">{t('availability.sickLeave')}</SelectItem>
+                    <SelectItem value="training">{t('availability.training')}</SelectItem>
+                    <SelectItem value="mission">{t('availability.mission')}</SelectItem>
+                    <SelectItem value="temporarily_unavailable">{t('availability.temporarilyUnavailable')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 text-xs text-muted-foreground">
+                    {t('filters.reset')}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -337,6 +414,7 @@ export default function AgentsPage() {
                       <TableHead>{t('table.type')}</TableHead>
                       <TableHead className="hidden lg:table-cell">{t('table.organization')}</TableHead>
                       <TableHead>{t('table.status')}</TableHead>
+                      <TableHead className="hidden md:table-cell">{t('table.availability')}</TableHead>
                       <TableHead className="hidden md:table-cell">{t('table.tasks')}</TableHead>
                       <TableHead className="text-right">{t('table.actions')}</TableHead>
                     </TableRow>
@@ -362,8 +440,13 @@ export default function AgentsPage() {
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <span>{agent.ministry_name || agent.entity_name || '-'}</span>
+                            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                              <div className="truncate">{agent.ministry_name || agent.entity_name || '-'}</div>
+                              {agent.entity_code && (
+                                <div className="text-xs text-muted-foreground">{agent.entity_code}</div>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -377,6 +460,13 @@ export default function AgentsPage() {
                               {agent.is_active ? t('status.active') : t('status.inactive')}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {agent.availability ? (
+                            <Badge variant={agent.availability === 'available' ? 'default' : 'secondary'} className="text-xs">
+                              {t(`availability.${agent.availability === 'on_leave' ? 'onLeave' : agent.availability === 'sick_leave' ? 'sickLeave' : agent.availability === 'temporarily_unavailable' ? 'temporarilyUnavailable' : agent.availability}`)}
+                            </Badge>
+                          ) : '-'}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {agent.current_assignments !== undefined ? <span>{agent.current_assignments}</span> : '-'}

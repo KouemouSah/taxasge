@@ -164,6 +164,7 @@ export const agentProfilesApi = {
       if (filters.entity_id) params.append('entity_id', filters.entity_id);
       if (filters.agent_category) params.append('agent_category', filters.agent_category);
       if (filters.is_active !== undefined) params.append('is_active', String(filters.is_active));
+      if (filters.availability) params.append('availability', filters.availability);
       if (filters.page) params.append('page', String(filters.page));
       if (filters.page_size) params.append('page_size', String(filters.page_size));
     }

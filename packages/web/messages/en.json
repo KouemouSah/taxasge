@@ -36,7 +36,13 @@
       "filters": {
         "allTypes": "All types",
         "ministryAgent": "Ministry Agent",
-        "entityAgent": "Entity Agent"
+        "entityAgent": "Entity Agent",
+        "allEntities": "All entities",
+        "allStatuses": "All statuses",
+        "allSupervisors": "Supervisor",
+        "noSupervisor": "Non-supervisor",
+        "allAvailability": "Availability",
+        "reset": "Clear filters"
       },
       "overview": "Overview",
       "assistant": "AI Assistant",
