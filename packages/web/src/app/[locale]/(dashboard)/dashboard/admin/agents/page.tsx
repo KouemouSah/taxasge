@@ -35,7 +35,9 @@ import { Switch } from '@/components/ui/switch';
 import {
   Users, UserCog, Shield, Sparkles, Activity, RefreshCw, Search,
   Plus, MoreVertical, Edit, Trash2, UserCheck, UserX, Eye, Building2,
+  Download, FileSpreadsheet,
 } from 'lucide-react';
+import { exportToCsv, exportToExcel } from '@/core/utils/export';
 import { useToast } from '@/hooks/use-toast';
 import {
   useAgentProfiles, useAdminUsers, useAlertsDashboard,
@@ -172,6 +174,29 @@ export default function AgentsPage() {
 
   const isBackendUnavailable = !!agentsError || !!adminsError;
 
+  // --- Export helpers ---
+  const getAgentExportData = () =>
+    filteredAgents.map((a) => ({
+      [t('table.agent')]: a.user_full_name || '',
+      Email: a.user_email || '',
+      [t('table.type')]: a.agent_type === 'ministry_agent' ? t('status.ministry') : t('status.entityBadge'),
+      [t('status.supervisor')]: a.is_supervisor ? 'Si' : 'No',
+      [t('table.organization')]: a.ministry_name || a.entity_name || '-',
+      [t('table.status')]: a.is_active ? t('status.active') : t('status.inactive'),
+      [t('table.tasks')]: a.current_assignments ?? 0,
+    }));
+
+  const getAdminExportData = () =>
+    filteredAdmins.map((a) => ({
+      [t('table.administrator')]: `${a.first_name} ${a.last_name}`,
+      Email: a.email || '',
+      [t('table.status')]: a.status === 'active' ? t('status.active') : t('status.inactive'),
+      [t('table.lastLogin')]: a.last_login ? new Date(a.last_login).toLocaleString() : t('never'),
+      [t('table.createdAt')]: new Date(a.created_at).toLocaleDateString(),
+    }));
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -270,6 +295,22 @@ export default function AgentsPage() {
                       <SelectItem value="entity_agent">{t('filters.entityAgent')}</SelectItem>
                     </SelectContent>
                   </Select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={filteredAgents.length === 0}>
+                        <Download className="h-4 w-4 mr-1" />
+                        {tAdmin('export') || 'Export'}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => exportToCsv(getAgentExportData(), { fileName: `agents_${dateStr}` })}>
+                        <Download className="h-4 w-4 mr-2" />CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => exportToExcel(getAgentExportData(), { fileName: `agents_${dateStr}`, sheetName: 'Agents' })}>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button variant="outline" size="sm" onClick={() => refetchAgents()}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
@@ -403,6 +444,22 @@ export default function AgentsPage() {
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input placeholder={tAdmin('searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
                   </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={filteredAdmins.length === 0}>
+                        <Download className="h-4 w-4 mr-1" />
+                        {tAdmin('export') || 'Export'}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => exportToCsv(getAdminExportData(), { fileName: `admins_${dateStr}` })}>
+                        <Download className="h-4 w-4 mr-2" />CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => exportToExcel(getAdminExportData(), { fileName: `admins_${dateStr}`, sheetName: 'Admins' })}>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button variant="outline" size="sm" onClick={() => refetchAdmins()}><RefreshCw className="h-4 w-4" /></Button>
                 </div>
               </div>

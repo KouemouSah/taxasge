@@ -56,6 +56,8 @@ import {
   Briefcase,
   User as UserIcon,
   UserCheck,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import usersApi from '@/modules/users-admin/services/api';
@@ -63,6 +65,7 @@ import type { User } from '@/modules/users-admin/types';
 import { UserRole } from '@/types/user';
 import { useUserLabels } from '@/hooks/use-user-labels';
 import { BackendUnavailableAlert } from '@/modules/admin/components';
+import { exportToCsv, exportToExcel } from '@/core/utils/export';
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table';
 
 // Roles managed in this page (NOT admin/agent - those are in /admin/agents)
@@ -394,6 +397,19 @@ export default function UsersPage() {
     },
   ], [t, toast]);
 
+  // Export helpers
+  const getUserExportData = () =>
+    filteredUsers.map((u) => ({
+      [t('tableFullName')]: `${u.first_name} ${u.last_name}`,
+      Email: u.email,
+      [t('tableRole')]: getRoleLabel(u.role),
+      [t('tableStatus')]: u.is_active ? t('statusActive') : t('statusInactive'),
+      '2FA': u.two_factor_enabled ? 'Si' : 'No',
+      [t('tableLastLogin')]: u.last_login ? new Date(u.last_login).toLocaleString() : '-',
+      [t('tableCity')]: u.city || '-',
+      [t('tablePhone')]: u.phone_number || '-',
+    }));
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -477,6 +493,24 @@ export default function UsersPage() {
                   className="pl-9"
                 />
               </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    {tCommon('export') || 'Export'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => exportToCsv(getUserExportData(), { fileName: `usuarios_${new Date().toISOString().slice(0, 10)}` })}>
+                    <Download className="h-4 w-4 mr-2" />
+                    CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportToExcel(getUserExportData(), { fileName: `usuarios_${new Date().toISOString().slice(0, 10)}`, sheetName: 'Usuarios' })}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" size="sm" onClick={fetchUsers}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 {tCommon('refresh')}
