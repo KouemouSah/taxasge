@@ -56,8 +56,49 @@ import type { CreateRoleRequest } from '@/modules/roles-admin';
 import { usePermissions, useModuleNames } from '@/modules/permissions-admin';
 import type { Permission } from '@/modules/permissions-admin';
 
+// Role templates based on existing profiles
+interface RoleTemplate {
+  id: string
+  icon: React.ComponentType<{ className?: string }>
+  sourceRoleCode: string // Existing role to copy permissions from
+  defaultEntityType: string | null
+  defaultCodePrefix: string
+}
+
+const ROLE_TEMPLATES: RoleTemplate[] = [
+  {
+    id: 'agent',
+    icon: Users,
+    sourceRoleCode: 'agent_cnedoge_pasaporte', // 24 perms base agent
+    defaultEntityType: 'agent',
+    defaultCodePrefix: 'agent_',
+  },
+  {
+    id: 'supervisor',
+    icon: Shield,
+    sourceRoleCode: 'supervisor_cnedoge_pasaporte', // 21 perms base supervisor
+    defaultEntityType: 'entity_agent',
+    defaultCodePrefix: 'supervisor_',
+  },
+  {
+    id: 'admin_module',
+    icon: Key,
+    sourceRoleCode: 'admin_security', // 28 perms scoped admin
+    defaultEntityType: null,
+    defaultCodePrefix: 'admin_',
+  },
+  {
+    id: 'custom',
+    icon: FileText,
+    sourceRoleCode: '', // No template
+    defaultEntityType: null,
+    defaultCodePrefix: '',
+  },
+];
+
 // Step definitions
 const STEPS = [
+  { id: 0, title: 'Template', description: 'Choisir un modèle', icon: Shield },
   { id: 1, title: 'Informations', description: 'Définir le rôle', icon: FileText },
   { id: 2, title: 'Permissions', description: 'Sélectionner les accès', icon: Key },
   { id: 3, title: 'Confirmation', description: 'Vérifier et créer', icon: CheckCircle2 },
@@ -69,7 +110,9 @@ export default function CreateRolePage() {
   const t = useTranslations('admin.roles');
 
   // Wizard state
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [templateLoading, setTemplateLoading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<CreateRoleRequest>({
@@ -119,10 +162,44 @@ export default function CreateRolePage() {
     return permissions.filter((p) => selectedPermissions.includes(p.id));
   }, [permissions, selectedPermissions]);
 
+  // Template selection handler
+  const handleSelectTemplate = async (templateId: string) => {
+    setSelectedTemplate(templateId);
+    const template = ROLE_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+
+    // Pre-fill form defaults
+    setFormData((prev) => ({
+      ...prev,
+      entity_type: template.defaultEntityType,
+      code: template.defaultCodePrefix,
+    }));
+
+    // Load permissions from source role
+    if (template.sourceRoleCode) {
+      setTemplateLoading(true);
+      try {
+        const sourceRole = await rolesApi.getByCode(template.sourceRoleCode);
+        const permIds = await rolesApi.getPermissions(sourceRole.id);
+        setSelectedPermissions(permIds);
+      } catch (err) {
+        console.error('Failed to load template permissions:', err);
+        // Non-blocking: user can still manually select permissions
+      } finally {
+        setTemplateLoading(false);
+      }
+    } else {
+      setSelectedPermissions([]);
+    }
+
+    setCurrentStep(1);
+  };
+
   // Validation for each step
+  const isStep0Valid = selectedTemplate !== null;
   const isStep1Valid = formData.name.trim().length >= 2 && formData.code.trim().length >= 2;
   const isStep2Valid = true; // Permissions are optional
-  const canProceed = currentStep === 1 ? isStep1Valid : currentStep === 2 ? isStep2Valid : true;
+  const canProceed = currentStep === 0 ? isStep0Valid : currentStep === 1 ? isStep1Valid : currentStep === 2 ? isStep2Valid : true;
 
   const handleCodeChange = (value: string) => {
     const formatted = value.toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -197,7 +274,7 @@ export default function CreateRolePage() {
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep((prev) => prev - 1);
     }
   };
@@ -280,6 +357,73 @@ export default function CreateRolePage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2">
+          {/* Step 0: Template Selection */}
+          {currentStep === 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  {t('templateSelection') || 'Choisir un modèle'}
+                </CardTitle>
+                <CardDescription>
+                  {t('templateDescription') || 'Commencez avec un profil pré-configuré ou créez un rôle personnalisé'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {ROLE_TEMPLATES.map((template) => {
+                    const TemplateIcon = template.icon;
+                    const isSelected = selectedTemplate === template.id;
+
+                    return (
+                      <button
+                        key={template.id}
+                        onClick={() => handleSelectTemplate(template.id)}
+                        disabled={templateLoading}
+                        className={`flex flex-col items-start gap-3 p-5 rounded-lg border-2 text-left transition-all hover:shadow-md ${
+                          isSelected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-muted hover:border-primary/30'
+                        }`}
+                      >
+                        <div className={`p-3 rounded-lg ${
+                          isSelected ? 'bg-primary/10' : 'bg-muted'
+                        }`}>
+                          <TemplateIcon className={`h-6 w-6 ${
+                            isSelected ? 'text-primary' : 'text-muted-foreground'
+                          }`} />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-base">
+                            {t(`template_${template.id}`) || template.id}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {t(`template_${template.id}_desc`) || (
+                              template.sourceRoleCode
+                                ? `${t('basedOn') || 'Basé sur'} ${template.sourceRoleCode}`
+                                : t('templateCustomDesc') || 'Aucune permission pré-sélectionnée'
+                            )}
+                          </p>
+                        </div>
+                        {template.sourceRoleCode && (
+                          <Badge variant="secondary" className="text-xs">
+                            {template.sourceRoleCode}
+                          </Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {templateLoading && (
+                  <div className="flex items-center justify-center mt-4 gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">{t('loadingTemplate') || 'Chargement du modèle...'}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Step 1: Basic Info */}
           {currentStep === 1 && (
             <Card>
@@ -740,9 +884,9 @@ export default function CreateRolePage() {
 
       {/* Navigation Buttons */}
       <div className="flex items-center justify-between pt-4 border-t">
-        <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>
+        <Button variant="outline" onClick={prevStep} disabled={currentStep === 0}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Précédent
+          {t('previous') || 'Précédent'}
         </Button>
 
         <div className="flex items-center gap-2">
