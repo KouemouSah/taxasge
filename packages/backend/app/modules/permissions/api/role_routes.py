@@ -148,7 +148,7 @@ async def get_permission_matrix(
     keyed by "role_id:permission_id" → granted boolean.
     Filters permissions by module_name if provided.
     """
-    matrix = await role_service.repo.get_permission_matrix(module_name)
+    matrix = await role_service.role_repo.get_permission_matrix(module_name)
     # Serialize UUIDs
     for role in matrix["roles"]:
         role["id"] = str(role["id"])

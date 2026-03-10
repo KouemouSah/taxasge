@@ -1,12 +1,15 @@
 'use client';
 
 /**
- * Create Agent/Admin Page (Refactored)
- * Context-adaptive form — sections appear/hide based on entity, supervisor, role.
+ * Create Agent/Admin Page — Compact 2-column layout
+ * Zero-scroll design: Account (left) + Organization & Role (right)
+ * Schedule + Review inline at bottom.
+ *
+ * All text via i18n (useTranslations). No hardcoded strings.
  *
  * Query params:
- * - ?type=agent - Create agent with profile
- * - ?type=admin - Create admin user only
+ * - ?type=agent — Create agent with profile
+ * - ?type=admin — Create admin user only
  *
  * @module dashboard/admin/agents/new
  */
@@ -17,7 +20,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Form } from '@/components/ui/form';
@@ -51,16 +55,16 @@ import {
 } from '@/modules/agents-admin/components/form-sections';
 
 // =============================================================================
-// VALIDATION SCHEMAS
+// VALIDATION SCHEMAS — messages from i18n (resolved at render time in Zod refine)
 // =============================================================================
 
 const adminSchema = z.object({
-  email: z.string().email('Email invalide'),
-  first_name: z.string().min(2, 'Minimum 2 caractères').max(100),
-  last_name: z.string().min(2, 'Minimum 2 caractères').max(100),
+  email: z.string().email(),
+  first_name: z.string().min(2).max(100),
+  last_name: z.string().min(2).max(100),
   phone_number: z
     .string()
-    .regex(/^(222|555|551|333)\d{6}$/, 'Format: 222/555/551/333 + 6 chiffres')
+    .regex(/^(222|555|551|333)\d{6}$/)
     .optional()
     .or(z.literal('')),
   preferred_language: z.enum(['es', 'fr', 'en']).default('es'),
@@ -68,12 +72,12 @@ const adminSchema = z.object({
 
 const agentSchema = z.object({
   // User info
-  email: z.string().email('Email invalide'),
-  first_name: z.string().min(2, 'Minimum 2 caractères').max(100),
-  last_name: z.string().min(2, 'Minimum 2 caractères').max(100),
+  email: z.string().email(),
+  first_name: z.string().min(2).max(100),
+  last_name: z.string().min(2).max(100),
   phone_number: z
     .string()
-    .regex(/^(222|555|551|333)\d{6}$/, 'Format: 222/555/551/333 + 6 chiffres')
+    .regex(/^(222|555|551|333)\d{6}$/)
     .optional()
     .or(z.literal('')),
   preferred_language: z.enum(['es', 'fr', 'en']).default('es'),
@@ -84,12 +88,12 @@ const agentSchema = z.object({
   entity_location_id: z.string().uuid().optional().nullable().or(z.literal('ALL_SITES')).or(z.literal('')),
   // Role
   is_supervisor: z.boolean().default(false),
-  rbac_role_id: z.string().uuid('Sélectionnez un rôle RBAC'),
-  // Capabilities (supervisor-only, but always in schema with defaults)
+  rbac_role_id: z.string().uuid(),
+  // Capabilities
   can_escalate: z.boolean().default(true),
   can_assign_tasks: z.boolean().default(false),
   can_reassign: z.boolean().default(false),
-  // Approval limits (payment-entity-only)
+  // Approval
   can_approve_unlimited: z.boolean().default(false),
   max_approval_amount: z.coerce.number().positive().optional(),
   // Schedule
@@ -109,6 +113,7 @@ export default function CreateAgentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const t = useTranslations('admin.agents');
 
   const type = searchParams.get('type') || 'agent';
   const isAdmin = type === 'admin';
@@ -120,7 +125,6 @@ export default function CreateAgentPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Use full Entity (not EntitySimple) to get workflow_codes for context-adaptive UX
   const { data: entitiesData, isLoading: isLoadingEntities } = useEntities({ is_active: true });
 
   const { data: rbacRolesData, isLoading: isLoadingRbacRoles } = useQuery({
@@ -184,25 +188,19 @@ export default function CreateAgentPage() {
     },
   });
 
-  // --- Watchers for context-adaptive visibility ---
+  // --- Watchers ---
   const watchAgentType = agentForm.watch('agent_type');
   const watchEntityId = agentForm.watch('entity_id');
   const watchIsSupervisor = agentForm.watch('is_supervisor');
 
-  // Derive entity info
   const selectedEntity = entities.find(e => e.id === watchEntityId);
-  const selectedEntityCode = selectedEntity?.code;
-
-  // Context-adaptive flags
   const isPaymentEntity = selectedEntity && (!selectedEntity.workflow_codes || selectedEntity.workflow_codes.length === 0);
 
-  // Fetch locations for selected entity
   const { data: entityLocations, isLoading: isLoadingLocations } = useLocationsByEntity(
-    selectedEntityCode || '',
-    !!selectedEntityCode && watchAgentType === AgentType.ENTITY_AGENT
+    selectedEntity?.code || '',
+    !!selectedEntity?.code && watchAgentType === AgentType.ENTITY_AGENT
   );
 
-  // --- Lookup names for review summary ---
   const watchRbacRoleId = agentForm.watch('rbac_role_id');
   const selectedRole = rbacRoles.find(r => r.id === watchRbacRoleId);
 
@@ -218,20 +216,16 @@ export default function CreateAgentPage() {
       });
 
       toast({
-        title: 'Invitation envoyée',
-        description: response.message || `Un email d'activation a été envoyé à ${data.email}.`,
+        title: t('toast.invitationSent') || response.message,
+        description: `${data.email}`,
       });
       router.push('/dashboard/admin/agents?tab=admins');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: error?.message || "Impossible d'envoyer l'invitation",
-      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast({ variant: 'destructive', title: t('toast.error') || 'Error', description: message });
     }
   };
 
-  // Actual invite call (after validation passes or warnings confirmed)
   const doInviteAgent = useCallback(async (data: AgentFormData) => {
     try {
       const capabilities = data.is_supervisor
@@ -266,20 +260,16 @@ export default function CreateAgentPage() {
       });
 
       toast({
-        title: 'Invitation envoyée',
-        description: response.message || `Un email d'activation a été envoyé à ${data.email}.`,
+        title: t('toast.invitationSent') || response.message,
+        description: `${data.email}`,
       });
       router.push('/dashboard/admin/agents');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: error?.message || "Impossible d'envoyer l'invitation",
-      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast({ variant: 'destructive', title: t('toast.error') || 'Error', description: message });
     }
-  }, [inviteAgentMutation, toast, router]);
+  }, [inviteAgentMutation, toast, router, t]);
 
-  // Pre-submit: validate first, then either submit or show warnings dialog
   const handleAgentSubmit = async (data: AgentFormData) => {
     setValidationErrors([]);
     setValidationWarnings([]);
@@ -301,31 +291,26 @@ export default function CreateAgentPage() {
       setValidationWarnings(result.warnings);
 
       if (result.errors.length > 0) {
-        // Errors block submit — show in review summary + toast
         toast({
           variant: 'destructive',
-          title: `${result.errors.length} erreur(s) de validation`,
+          title: t('sections.validationErrors', { count: result.errors.length }),
           description: result.errors[0].message,
         });
         return;
       }
 
       if (result.warnings.length > 0) {
-        // Warnings: show confirmation dialog
         setPendingSubmitData(data);
         setShowWarningsDialog(true);
         return;
       }
 
-      // Clean: submit directly
       await doInviteAgent(data);
     } catch {
-      // Validation endpoint unreachable — submit anyway (graceful degradation)
       await doInviteAgent(data);
     }
   };
 
-  // Confirm submission despite warnings
   const handleConfirmWithWarnings = async () => {
     setShowWarningsDialog(false);
     if (pendingSubmitData) {
@@ -336,152 +321,168 @@ export default function CreateAgentPage() {
 
   const isLoading = inviteAgentMutation.isPending || inviteAdminMutation.isPending || validateMutation.isPending;
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            {isAdmin ? (
-              <>
-                <Shield className="h-8 w-8" />
-                Créer un Administrateur
-              </>
-            ) : (
-              <>
-                <UserCog className="h-8 w-8" />
-                Créer un Agent
-              </>
-            )}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {isAdmin
-              ? "L'administrateur aura accès complet au système"
-              : "L'agent sera associé à un ministère ou une entité"}
-          </p>
+  // =========================================================================
+  // RENDER — Admin form (simple single card)
+  // =========================================================================
+  if (isAdmin) {
+    return (
+      <div className="space-y-4">
+        {/* Compact header with actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Shield className="h-6 w-6" />
+              <h1 className="text-xl font-bold">{t('sections.createAdmin')}</h1>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+              {t('sections.cancel')}
+            </Button>
+            <Button size="sm" disabled={isLoading} onClick={adminForm.handleSubmit(handleAdminSubmit)}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('sections.sendInvitation')}
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Admin Form */}
-      {isAdmin && (
         <Form {...adminForm}>
-          <form onSubmit={adminForm.handleSubmit(handleAdminSubmit)} className="space-y-6">
+          <form onSubmit={adminForm.handleSubmit(handleAdminSubmit)}>
             <Card>
-              <CardHeader>
-                <CardTitle>Informations du compte</CardTitle>
-                <CardDescription>
-                  L&apos;administrateur recevra un email pour vérifier son compte
-                </CardDescription>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">{t('sections.accountInfo')}</CardTitle>
+                <p className="text-sm text-muted-foreground">{t('sections.accountInfoAdminDesc')}</p>
               </CardHeader>
               <CardContent>
                 <AgentAccountFields form={adminForm} />
               </CardContent>
             </Card>
-
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => router.back()}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Envoyer l&apos;Invitation
-              </Button>
-            </div>
           </form>
         </Form>
-      )}
+      </div>
+    );
+  }
 
-      {/* Agent Form */}
-      {!isAdmin && (
-        <Form {...agentForm}>
-          <form onSubmit={agentForm.handleSubmit(handleAgentSubmit)} className="space-y-6">
-            {/* 1. Account Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Informations du compte</CardTitle>
-                <CardDescription>
-                  L&apos;agent recevra un email pour vérifier son compte
-                </CardDescription>
+  // =========================================================================
+  // RENDER — Agent form (2-column compact layout)
+  // =========================================================================
+  return (
+    <div className="space-y-4">
+      {/* Compact header with inline actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <UserCog className="h-6 w-6" />
+            <div>
+              <h1 className="text-xl font-bold">{t('sections.createAgent')}</h1>
+              <p className="text-xs text-muted-foreground">{t('sections.createAgentDesc')}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+            {t('sections.cancel')}
+          </Button>
+          <Button size="sm" disabled={isLoading} onClick={agentForm.handleSubmit(handleAgentSubmit)}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {t('sections.sendInvitation')}
+          </Button>
+        </div>
+      </div>
+
+      <Form {...agentForm}>
+        <form onSubmit={agentForm.handleSubmit(handleAgentSubmit)}>
+          {/* === 2-Column Layout: Account | Organization + Role === */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* LEFT: Account Info */}
+            <Card className="h-fit">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{t('sections.accountInfo')}</CardTitle>
+                <p className="text-xs text-muted-foreground">{t('sections.accountInfoDesc')}</p>
               </CardHeader>
               <CardContent>
                 <AgentAccountFields form={agentForm} />
               </CardContent>
             </Card>
 
-            {/* 2. Organization */}
+            {/* RIGHT: Organization + Role stacked */}
+            <div className="space-y-4">
+              {/* Organization */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{t('sections.organization')}</CardTitle>
+                  <p className="text-xs text-muted-foreground">{t('sections.organizationDesc')}</p>
+                </CardHeader>
+                <CardContent>
+                  <AgentOrganizationFields
+                    form={agentForm}
+                    ministries={ministries}
+                    entities={entities}
+                    entityLocations={entityLocations}
+                    isLoadingMinistries={isLoadingMinistries}
+                    isLoadingEntities={isLoadingEntities}
+                    isLoadingLocations={isLoadingLocations}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Role & Permissions */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{t('sections.rolePermissions')}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <AgentRoleFields
+                    form={agentForm}
+                    rbacRoles={rbacRoles}
+                    isLoadingRoles={isLoadingRbacRoles}
+                  />
+
+                  {/* Capabilities — supervisor only */}
+                  {watchIsSupervisor && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-medium mb-3">{t('sections.supervisorCapabilities')}</h4>
+                        <AgentCapabilitiesFields form={agentForm} />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Approval — payment entities only */}
+                  {isPaymentEntity && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h4 className="text-sm font-medium mb-3">{t('sections.approvalLimits')}</h4>
+                        <AgentApprovalFields form={agentForm} />
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* === Bottom row: Schedule (inline) + Review Summary === */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            {/* Schedule — compact */}
             <Card>
-              <CardHeader>
-                <CardTitle>Organisation</CardTitle>
-                <CardDescription>
-                  Définir le type d&apos;agent et son affectation
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AgentOrganizationFields
-                  form={agentForm}
-                  ministries={ministries}
-                  entities={entities}
-                  entityLocations={entityLocations}
-                  isLoadingMinistries={isLoadingMinistries}
-                  isLoadingEntities={isLoadingEntities}
-                  isLoadingLocations={isLoadingLocations}
-                />
-              </CardContent>
-            </Card>
-
-            {/* 3. Role & Supervisor */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Rôle et Permissions</CardTitle>
-                <CardDescription>
-                  Superviseur, rôle RBAC et capacités
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <AgentRoleFields
-                  form={agentForm}
-                  rbacRoles={rbacRoles}
-                  isLoadingRoles={isLoadingRbacRoles}
-                />
-
-                {/* 4. Capabilities — supervisor only */}
-                {watchIsSupervisor && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="text-sm font-medium mb-3">Capacités superviseur</h4>
-                      <AgentCapabilitiesFields form={agentForm} />
-                    </div>
-                  </>
-                )}
-
-                {/* 5. Approval Limits — payment entities only */}
-                {isPaymentEntity && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h4 className="text-sm font-medium mb-3">Limites d&apos;approbation</h4>
-                      <AgentApprovalFields form={agentForm} />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 6. Schedule */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Horaires de travail</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{t('sections.schedule')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <AgentScheduleFields form={agentForm} />
               </CardContent>
             </Card>
 
-            {/* 7. Review Summary */}
+            {/* Review Summary — always visible */}
             <AgentReviewSummary
               form={agentForm}
               entityName={selectedEntity?.name}
@@ -490,20 +491,9 @@ export default function CreateAgentPage() {
               validationWarnings={validationWarnings}
               forceOpen={validationErrors.length > 0 || validationWarnings.length > 0}
             />
-
-            {/* Submit */}
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => router.back()}>
-                Annuler
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Envoyer l&apos;Invitation
-              </Button>
-            </div>
-          </form>
-        </Form>
-      )}
+          </div>
+        </form>
+      </Form>
 
       {/* Warnings Confirmation Dialog */}
       <AlertDialog open={showWarningsDialog} onOpenChange={setShowWarningsDialog}>
@@ -511,11 +501,11 @@ export default function CreateAgentPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Avertissements de validation
+              {t('sections.warningsTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>La validation a détecté {validationWarnings.length} avertissement(s) :</p>
+                <p>{t('sections.warningsDetected', { count: validationWarnings.length })}</p>
                 <ul className="space-y-1.5">
                   {validationWarnings.map((w, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-orange-700">
@@ -524,14 +514,14 @@ export default function CreateAgentPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="text-sm">Voulez-vous continuer malgré ces avertissements ?</p>
+                <p className="text-sm">{t('sections.warningsContinue')}</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Corriger</AlertDialogCancel>
+            <AlertDialogCancel>{t('sections.warningsCorrect')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmWithWarnings}>
-              Continuer quand même
+              {t('sections.warningsContinueAnyway')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

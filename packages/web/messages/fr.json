@@ -94,7 +94,10 @@
         "errorAgentStatus": "Impossible de modifier le statut de l'agent",
         "errorAdminStatus": "Impossible de modifier le statut de l'administrateur",
         "errorDeleteAgent": "Impossible de supprimer l'agent",
-        "deactivatedByAdmin": "Désactivé par administrateur"
+        "deactivatedByAdmin": "Désactivé par administrateur",
+        "invitationSent": "Invitation envoyée",
+        "error": "Erreur",
+        "invitationError": "Impossible d'envoyer l'invitation"
       },
       "alerts": {
         "allNormal": "Tous les indicateurs sont normaux",
@@ -212,6 +215,30 @@
         "invalidEmail": "Email invalide",
         "minChars": "Minimum {min} caractères",
         "phoneFormat": "Format: 222/555/551/333 + 6 chiffres"
+      },
+      "sections": {
+        "accountInfo": "Informations du compte",
+        "accountInfoDesc": "L'agent recevra un email pour vérifier son compte",
+        "accountInfoAdminDesc": "L'administrateur recevra un email pour vérifier son compte",
+        "organization": "Organisation",
+        "organizationDesc": "Type d'agent et affectation",
+        "rolePermissions": "Rôle et Permissions",
+        "rolePermissionsDesc": "Superviseur, rôle RBAC et capacités",
+        "schedule": "Horaire de travail",
+        "supervisorCapabilities": "Capacités superviseur",
+        "approvalLimits": "Limites d'approbation",
+        "createAgent": "Créer un Agent",
+        "createAgentDesc": "L'agent sera associé à un ministère ou une entité",
+        "createAdmin": "Créer un Administrateur",
+        "createAdminDesc": "L'administrateur aura accès complet au système",
+        "cancel": "Annuler",
+        "sendInvitation": "Envoyer l'Invitation",
+        "warningsTitle": "Avertissements de validation",
+        "warningsDetected": "La validation a détecté {count} avertissement(s) :",
+        "warningsContinue": "Voulez-vous continuer malgré ces avertissements ?",
+        "warningsCorrect": "Corriger",
+        "warningsContinueAnyway": "Continuer quand même",
+        "validationErrors": "{count} erreur(s) de validation"
       },
       "days": {
         "mon": "Lun",

@@ -187,11 +187,6 @@ export default function AdminSidebar() {
           href: `/${locale}/dashboard/admin/roles`,
           icon: Key,
         },
-        {
-          title: t('nav.assignments'),
-          href: `/${locale}/dashboard/admin/assignments`,
-          icon: ClipboardList,
-        },
       ],
     },
     // SERVICES FISCAUX
@@ -306,6 +301,11 @@ export default function AdminSidebar() {
               title: t('nav.entities'),
               href: `/${locale}/dashboard/admin/entities`,
               icon: Landmark,
+            },
+            {
+              title: t('nav.assignments'),
+              href: `/${locale}/dashboard/admin/assignments`,
+              icon: ClipboardList,
             },
           ],
         },

@@ -94,7 +94,10 @@
         "errorAgentStatus": "Could not change agent status",
         "errorAdminStatus": "Could not change administrator status",
         "errorDeleteAgent": "Could not delete the agent",
-        "deactivatedByAdmin": "Deactivated by administrator"
+        "deactivatedByAdmin": "Deactivated by administrator",
+        "invitationSent": "Invitation sent",
+        "error": "Error",
+        "invitationError": "Failed to send the invitation"
       },
       "alerts": {
         "allNormal": "All indicators are normal",
@@ -212,6 +215,30 @@
         "invalidEmail": "Invalid email",
         "minChars": "Minimum {min} characters",
         "phoneFormat": "Format: 222/555/551/333 + 6 digits"
+      },
+      "sections": {
+        "accountInfo": "Account Information",
+        "accountInfoDesc": "The agent will receive an email to verify their account",
+        "accountInfoAdminDesc": "The administrator will receive an email to verify their account",
+        "organization": "Organization",
+        "organizationDesc": "Agent type and assignment",
+        "rolePermissions": "Role & Permissions",
+        "rolePermissionsDesc": "Supervisor, RBAC role and capabilities",
+        "schedule": "Working Hours",
+        "supervisorCapabilities": "Supervisor capabilities",
+        "approvalLimits": "Approval limits",
+        "createAgent": "Create Agent",
+        "createAgentDesc": "The agent will be associated with a ministry or entity",
+        "createAdmin": "Create Administrator",
+        "createAdminDesc": "The administrator will have full system access",
+        "cancel": "Cancel",
+        "sendInvitation": "Send Invitation",
+        "warningsTitle": "Validation warnings",
+        "warningsDetected": "Validation detected {count} warning(s):",
+        "warningsContinue": "Do you want to continue despite these warnings?",
+        "warningsCorrect": "Fix",
+        "warningsContinueAnyway": "Continue anyway",
+        "validationErrors": "{count} validation error(s)"
       },
       "days": {
         "mon": "Mon",
