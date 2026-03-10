@@ -4,11 +4,14 @@ Includes Redis cache for frequently accessed data (ministries, sectors, categori
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query, UploadFile, File
+from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer
 from typing import Dict, Any, List, Optional
 from loguru import logger
 from pydantic import BaseModel
 import time
+import csv
+import io
 from io import BytesIO
 from PIL import Image
 
@@ -155,15 +158,25 @@ async def list_categories(
 @router.get("", response_model=FiscalServiceListResponse)
 async def list_fiscal_services(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=1000),
+    page_size: int = Query(20, ge=1, le=100),
     category_id: Optional[int] = Query(None, description="Filter by category"),
     status: Optional[str] = Query(None, description="Filter by status (active, inactive, draft, deprecated)"),
+    ministry_id: Optional[int] = Query(None, description="Filter by ministry"),
+    sector_id: Optional[int] = Query(None, description="Filter by sector"),
+    search: Optional[str] = Query(None, min_length=1, max_length=200, description="Search by name or code"),
+    sort_by: str = Query("service_code", description="Sort field: service_code, name, price, status, popular, updated"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     language: str = Query("es", pattern="^(es|fr|en)$", description="Language for translations"),
     db=Depends(get_database),
 ):
-    """List fiscal services with pagination and i18n support"""
+    """List fiscal services with server-side filtering, search, sorting, and pagination"""
     offset = (page - 1) * page_size
-    services, total = await repository.list(db, category_id, status, page_size, offset)
+    services, total = await repository.list(
+        db, category_id=category_id, status=status,
+        ministry_id=ministry_id, sector_id=sector_id, search=search,
+        sort_by=sort_by, sort_order=sort_order,
+        limit=page_size, offset=offset,
+    )
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     return FiscalServiceListResponse(
         services=[FiscalServiceResponse(**s) for s in services],
@@ -491,13 +504,13 @@ async def calculate_service_amount(
 
     try:
         # Calculate
-        result = await calculation_service.calculate(db, request.fiscal_service_id, request.input_data)
+        result = await calculation_service.calculate(db, request)
 
         # Increment usage counter
         await repository.increment_usage(db, request.fiscal_service_id)
 
         logger.info(f"User {user_id} calculated service {request.fiscal_service_id}")
-        return CalculateServiceResponse(**result, created_at=result.get("created_at"))
+        return result
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -1411,6 +1424,12 @@ async def create_fiscal_service(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Service code already exists")
 
     result = await repository.create(db, service)
+    # Refresh materialized view + invalidate cache
+    try:
+        await db.execute("SELECT refresh_fiscal_services_catalog()")
+    except Exception:
+        logger.warning("mv_fiscal_services_catalog refresh skipped (view may not exist yet)")
+    await invalidate_services_cache()
     logger.info(f"Admin {user_id} created fiscal service {result['id']}")
     return FiscalServiceResponse(**result)
 
@@ -1426,10 +1445,16 @@ async def update_fiscal_service(
     """Update fiscal service - Requires fiscal_services.update permission"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    updated = await repository.update(db, service_id, update_data)
+    updated = await repository.update(db, service_id, update_data, updated_by=user_id)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
 
+    # Refresh materialized view + invalidate cache
+    try:
+        await db.execute("SELECT refresh_fiscal_services_catalog()")
+    except Exception:
+        logger.warning("mv_fiscal_services_catalog refresh skipped (view may not exist yet)")
+    await invalidate_services_cache()
     logger.info(f"Admin {user_id} updated fiscal service {service_id}")
     return FiscalServiceResponse(**updated)
 
@@ -1448,6 +1473,12 @@ async def delete_fiscal_service(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service not found")
 
+    # Refresh materialized view + invalidate cache
+    try:
+        await db.execute("SELECT refresh_fiscal_services_catalog()")
+    except Exception:
+        logger.warning("mv_fiscal_services_catalog refresh skipped (view may not exist yet)")
+    await invalidate_services_cache()
     logger.info(f"Admin {user_id} deleted fiscal service {service_id}")
     return {"message": "Fiscal service deleted successfully"}
 
@@ -1489,6 +1520,53 @@ async def get_fiscal_services_statistics(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving statistics: {str(e)}"
         )
+
+
+@router.get("/admin/export/csv")
+async def export_fiscal_services_csv(
+    category_id: Optional[int] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    ministry_id: Optional[int] = Query(None),
+    sector_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _: None = Depends(permission_required("fiscal_services.view_stats"))
+):
+    """Export fiscal services as CSV (max 5000 rows). Requires fiscal_services.view_stats permission."""
+    services, total = await repository.list(
+        db, category_id=category_id, status=status_filter,
+        ministry_id=ministry_id, sector_id=sector_id, search=search,
+        limit=5000, offset=0,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "service_code", "name_es", "service_type", "calculation_method",
+        "status", "tasa_expedicion", "tasa_renovacion",
+        "processing_time_days", "category_name", "sector_name", "ministry_name",
+        "view_count", "calculation_count",
+    ])
+    for s in services:
+        writer.writerow([
+            s.get("service_code", ""), s.get("name_es", ""),
+            s.get("service_type", ""), s.get("calculation_method", ""),
+            s.get("status", ""), s.get("tasa_expedicion", 0), s.get("tasa_renovacion", 0),
+            s.get("processing_time_days", ""), s.get("category_name", ""),
+            s.get("sector_name", ""), s.get("ministry_name", ""),
+            s.get("view_count", 0), s.get("calculation_count", 0),
+        ])
+
+    output.seek(0)
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    logger.info(f"Admin {user_id} exported {len(services)} fiscal services as CSV")
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=fiscal_services_export_{total}.csv"},
+    )
 
 
 @router.post("/admin/bulk/import", status_code=status.HTTP_201_CREATED)
@@ -1871,44 +1949,3 @@ async def unassign_procedure_from_service(
         )
 
 
-# ========== DEBUG ENDPOINT - TO REMOVE AFTER TESTING ==========
-
-@router.get("/debug/translations/{template_code}")
-async def debug_translations(
-    template_code: str,
-    language: str = Query("fr", description="Language code"),
-    db=Depends(get_database),
-):
-    """
-    Debug endpoint to check translations for a procedure template.
-    Returns all entity_translations matching the template_code pattern.
-    """
-    query = """
-        SELECT entity_type, entity_code, language_code, field_name, translation_text
-        FROM entity_translations
-        WHERE (entity_code LIKE $1 OR entity_code = $2)
-        AND language_code = $3
-        ORDER BY entity_type, entity_code
-    """
-
-    async with db.acquire() as conn:
-        rows = await conn.fetch(query, f"{template_code}%", template_code, language)
-
-        # Also get the procedure template info
-        proc_query = """
-            SELECT pt.id, pt.template_code, pt.name_es, pts.step_number, pts.description_es
-            FROM procedure_templates pt
-            LEFT JOIN procedure_template_steps pts ON pts.template_id = pt.id
-            WHERE pt.template_code = $1
-            ORDER BY pts.step_number
-        """
-        proc_rows = await conn.fetch(proc_query, template_code)
-
-        return {
-            "translations_found": len(rows),
-            "translations": [dict(r) for r in rows],
-            "procedure_template": [dict(r) for r in proc_rows],
-            "expected_entity_codes": [
-                f"{template_code}_{r['step_number']}" for r in proc_rows if r['step_number']
-            ] if proc_rows else []
-        }

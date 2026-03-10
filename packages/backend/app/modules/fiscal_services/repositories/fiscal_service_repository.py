@@ -433,20 +433,44 @@ class FiscalServiceRepository:
 
         return service_dict
 
+    # Full column list for detail views (all columns except embedding and search_vector)
+    _DETAIL_COLUMNS = """
+        fs.id, fs.service_code, fs.category_id,
+        fs.name_es, fs.description_es,
+        fs.service_type, fs.calculation_method, fs.status,
+        fs.tasa_expedicion, fs.tasa_renovacion,
+        fs.base_percentage, fs.percentage_of,
+        fs.unit_rate, fs.unit_type,
+        fs.expedition_formula, fs.expedition_unit_measure,
+        fs.renewal_formula, fs.renewal_unit_measure,
+        fs.calculation_config, fs.rate_tiers,
+        fs.tier_group_name, fs.is_tier_component,
+        fs.validity_period_months, fs.renewal_frequency_months,
+        fs.grace_period_days,
+        fs.late_penalty_percentage, fs.late_penalty_fixed,
+        fs.penalty_calculation_rules, fs.eligibility_criteria, fs.exemption_conditions,
+        fs.parent_service_id,
+        fs.legal_reference, fs.regulatory_articles,
+        fs.tariff_effective_from, fs.tariff_effective_to,
+        fs.processing_time_days, fs.priority, fs.complexity_level,
+        fs.view_count, fs.calculation_count, fs.payment_count, fs.favorite_count,
+        fs.created_at, fs.updated_at
+    """
+
     async def get_by_id(
         self, conn: asyncpg.Connection, service_id: int
     ) -> Optional[Dict[str, Any]]:
         """Get fiscal service by ID with hierarchical data"""
-        query = """
+        query = f"""
             SELECT
-                fs.*,
+                {self._DETAIL_COLUMNS},
                 c.name_es as category_name,
                 s.name_es as sector_name,
                 m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
-            JOIN sectors s ON c.sector_id = s.id
-            JOIN ministries m ON s.ministry_id = m.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
             WHERE fs.id = $1
         """
         result = await conn.fetchrow(query, service_id)
@@ -498,7 +522,13 @@ class FiscalServiceRepository:
         self, conn: asyncpg.Connection, code: str
     ) -> Optional[Dict[str, Any]]:
         """Get fiscal service by service_code"""
-        query = "SELECT * FROM fiscal_services WHERE service_code = $1"
+        query = f"""
+            SELECT {self._DETAIL_COLUMNS},
+                   c.name_es as category_name
+            FROM fiscal_services fs
+            JOIN categories c ON fs.category_id = c.id
+            WHERE fs.service_code = $1
+        """
         result = await conn.fetchrow(query, code)
         return dict(result) if result else None
 
@@ -507,13 +537,29 @@ class FiscalServiceRepository:
         conn: asyncpg.Connection,
         category_id: Optional[int] = None,
         status: Optional[str] = None,
+        ministry_id: Optional[int] = None,
+        sector_id: Optional[int] = None,
+        search: Optional[str] = None,
+        sort_by: str = "service_code",
+        sort_order: str = "asc",
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[List[Dict[str, Any]], int]:
-        """List fiscal services with filters"""
+        """List fiscal services with server-side filters, search, sort, pagination"""
         conditions = []
-        params = []
+        params: List[Any] = []
         param_idx = 1
+
+        # Text search — tsvector + ILIKE fallback
+        if search:
+            conditions.append(
+                f"(fs.search_vector @@ plainto_tsquery('spanish', ${param_idx})"
+                f" OR fs.name_es ILIKE ${param_idx + 1}"
+                f" OR fs.service_code ILIKE ${param_idx + 1})"
+            )
+            params.append(search)
+            params.append(f"%{search}%")
+            param_idx += 2
 
         if category_id:
             conditions.append(f"fs.category_id = ${param_idx}")
@@ -525,45 +571,56 @@ class FiscalServiceRepository:
             params.append(status)
             param_idx += 1
 
+        if ministry_id:
+            conditions.append(f"m.id = ${param_idx}")
+            params.append(ministry_id)
+            param_idx += 1
+
+        if sector_id:
+            conditions.append(f"s.id = ${param_idx}")
+            params.append(sector_id)
+            param_idx += 1
+
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-        # Count
-        count_query = f"SELECT COUNT(*) FROM fiscal_services fs {where_clause}"
-        total = await conn.fetchval(count_query, *params)
-
-        # Data - Optimized query with aggregated keywords
-        data_query = f"""
-            SELECT
-                fs.id,
-                fs.service_code,
-                fs.category_id,
-                fs.name_es,
-                fs.description_es,
-                fs.service_type,
-                fs.calculation_method,
-                fs.tasa_expedicion,
-                fs.tasa_renovacion,
-                fs.status,
-                fs.priority,
-                fs.processing_time_days,
-                fs.view_count,
-                fs.created_at,
-                fs.updated_at,
-                c.name_es as category_name,
-                s.name_es as sector_name,
-                m.name_es as ministry_name,
-                COALESCE(
-                    (SELECT array_agg(sk.keyword)
-                     FROM service_keywords sk
-                     WHERE sk.fiscal_service_id = fs.id),
-                    ARRAY[]::text[]
-                ) as keywords
+        # Count (need JOINs for ministry/sector filters)
+        count_query = f"""
+            SELECT COUNT(fs.id)
             FROM fiscal_services fs
             LEFT JOIN categories c ON fs.category_id = c.id
             LEFT JOIN sectors s ON c.sector_id = s.id
             LEFT JOIN ministries m ON s.ministry_id = m.id
             {where_clause}
-            ORDER BY fs.service_code
+        """
+        total = await conn.fetchval(count_query, *params)
+
+        # Sort — whitelist to prevent injection
+        sort_map = {
+            "service_code": "fs.service_code",
+            "name": "fs.name_es",
+            "price": "COALESCE(fs.tasa_expedicion, 0)",
+            "status": "fs.status",
+            "popular": "fs.calculation_count DESC, fs.view_count DESC",
+            "updated": "fs.updated_at",
+        }
+        order_col = sort_map.get(sort_by, "fs.service_code")
+        safe_order = "DESC" if sort_order.upper() == "DESC" else "ASC"
+        # 'popular' already includes direction
+        order_clause = order_col if sort_by == "popular" else f"{order_col} {safe_order}"
+
+        # Data — explicit columns
+        data_query = f"""
+            SELECT
+                {self._LIST_COLUMNS},
+                c.name_es as category_name,
+                s.name_es as sector_name,
+                m.name_es as ministry_name
+            FROM fiscal_services fs
+            LEFT JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
+            {where_clause}
+            ORDER BY {order_clause}
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
         params.extend([limit, offset])
@@ -578,21 +635,35 @@ class FiscalServiceRepository:
 
         return services, total
 
+    # Explicit column list for list/search queries (no embedding, no search_vector, no JSONB blobs)
+    _LIST_COLUMNS = """
+        fs.id, fs.service_code, fs.category_id,
+        fs.name_es, fs.description_es,
+        fs.service_type, fs.calculation_method, fs.status,
+        fs.tasa_expedicion, fs.tasa_renovacion,
+        fs.processing_time_days, fs.priority, fs.complexity_level,
+        fs.validity_period_months, fs.parent_service_id,
+        fs.view_count, fs.calculation_count, fs.payment_count, fs.favorite_count,
+        fs.created_at, fs.updated_at
+    """
+
     async def search(
         self, conn: asyncpg.Connection, search: FiscalServiceSearchRequest, limit: int = 50, offset: int = 0
     ) -> tuple[List[Dict[str, Any]], int]:
-        """Advanced search for fiscal services"""
+        """Advanced search for fiscal services using tsvector + materialized view"""
         conditions = []
         params = []
         param_idx = 1
 
-        # Text search
-        if search.query:
+        # Text search — use tsvector GIN index (O(log N) instead of seq scan ILIKE)
+        if search.search_term:
             conditions.append(
-                f"(fs.name_es ILIKE ${param_idx} OR fs.description_es ILIKE ${param_idx} OR EXISTS (SELECT 1 FROM service_keywords sk WHERE sk.fiscal_service_id = fs.id AND sk.keyword ILIKE ${param_idx}))"
+                f"(fs.search_vector @@ plainto_tsquery('spanish', ${param_idx})"
+                f" OR EXISTS (SELECT 1 FROM service_keywords sk WHERE sk.fiscal_service_id = fs.id AND sk.keyword ILIKE ${param_idx + 1}))"
             )
-            params.append(f"%{search.query}%")
-            param_idx += 1
+            params.append(search.search_term)
+            params.append(f"%{search.search_term}%")
+            param_idx += 2
 
         if search.ministry_id:
             conditions.append(f"m.id = ${param_idx}")
@@ -609,9 +680,9 @@ class FiscalServiceRepository:
             params.append(search.category_id)
             param_idx += 1
 
-        if search.calculation_type:
-            conditions.append(f"fs.calculation_type = ${param_idx}")
-            params.append(search.calculation_type.value)
+        if search.calculation_method:
+            conditions.append(f"fs.calculation_method = ${param_idx}")
+            params.append(search.calculation_method.value)
             param_idx += 1
 
         if search.status is not None:
@@ -619,88 +690,100 @@ class FiscalServiceRepository:
             params.append(search.status)
             param_idx += 1
 
-        if search.requires_documents is not None:
-            conditions.append(f"fs.requires_documents = ${param_idx}")
-            params.append(search.requires_documents)
+        if search.min_amount is not None:
+            conditions.append(f"fs.tasa_expedicion >= ${param_idx}")
+            params.append(search.min_amount)
             param_idx += 1
 
-        if search.requires_procedure is not None:
-            conditions.append(f"fs.requires_procedure = ${param_idx}")
-            params.append(search.requires_procedure)
+        if search.max_amount is not None:
+            conditions.append(f"fs.tasa_expedicion <= ${param_idx}")
+            params.append(search.max_amount)
             param_idx += 1
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
         # Count
         count_query = f"""
-            SELECT COUNT(DISTINCT fs.id)
+            SELECT COUNT(fs.id)
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
-            JOIN sectors s ON c.sector_id = s.id
-            JOIN ministries m ON s.ministry_id = m.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
             {where_clause}
         """
         total = await conn.fetchval(count_query, *params)
 
-        # Data
+        # Data — explicit columns, no embedding/search_vector/JSONB blobs
         data_query = f"""
-            SELECT DISTINCT
-                fs.*,
+            SELECT
+                {self._LIST_COLUMNS},
                 c.name_es as category_name,
                 s.name_es as sector_name,
                 m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
-            JOIN sectors s ON c.sector_id = s.id
-            JOIN ministries m ON s.ministry_id = m.id
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
             {where_clause}
-            ORDER BY fs.usage_count DESC, fs.code
+            ORDER BY fs.calculation_count DESC, fs.service_code
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
         """
         params.extend([limit, offset])
         results = await conn.fetch(data_query, *params)
 
+        service_ids = [r["id"] for r in results]
+        keywords_map = await self._batch_keywords(conn, service_ids)
+
         services = []
         for r in results:
             service = dict(r)
-            keywords = await conn.fetch(
-                "SELECT keyword FROM service_keywords WHERE fiscal_service_id = $1",
-                service["id"],
-            )
-            service["keywords"] = [k["keyword"] for k in keywords]
+            service["keywords"] = keywords_map.get(service["id"], [])
             service["required_documents"] = []
             services.append(service)
 
         return services, total
 
+    async def _batch_keywords(
+        self, conn: asyncpg.Connection, service_ids: List[int]
+    ) -> Dict[int, List[str]]:
+        """Batch fetch keywords for multiple services (no N+1)"""
+        keywords_map: Dict[int, List[str]] = {sid: [] for sid in service_ids}
+        if service_ids:
+            kw_rows = await conn.fetch(
+                "SELECT fiscal_service_id, keyword FROM service_keywords WHERE fiscal_service_id = ANY($1)",
+                service_ids,
+            )
+            for kw in kw_rows:
+                keywords_map[kw["fiscal_service_id"]].append(kw["keyword"])
+        return keywords_map
+
     async def get_popular(
         self, conn: asyncpg.Connection, limit: int = 10
     ) -> List[Dict[str, Any]]:
-        """Get most used services"""
-        query = """
+        """Get most used services — uses materialized view when available"""
+        query = f"""
             SELECT
-                fs.*,
+                {self._LIST_COLUMNS},
                 c.name_es as category_name,
                 s.name_es as sector_name,
                 m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
-            JOIN sectors s ON c.sector_id = s.id
-            JOIN ministries m ON s.ministry_id = m.id
-            WHERE fs.is_active = true
-            ORDER BY fs.usage_count DESC, fs.last_used_at DESC NULLS LAST
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
+            WHERE fs.status = 'active'
+            ORDER BY fs.calculation_count DESC, fs.view_count DESC NULLS LAST
             LIMIT $1
         """
         results = await conn.fetch(query, limit)
 
+        service_ids = [r["id"] for r in results]
+        keywords_map = await self._batch_keywords(conn, service_ids)
+
         services = []
         for r in results:
             service = dict(r)
-            keywords = await conn.fetch(
-                "SELECT keyword FROM service_keywords WHERE fiscal_service_id = $1",
-                service["id"],
-            )
-            service["keywords"] = [k["keyword"] for k in keywords]
+            service["keywords"] = keywords_map.get(service["id"], [])
             service["required_documents"] = []
             services.append(service)
 
@@ -709,38 +792,38 @@ class FiscalServiceRepository:
     async def get_recent(
         self, conn: asyncpg.Connection, limit: int = 10
     ) -> List[Dict[str, Any]]:
-        """Get recently used services"""
-        query = """
+        """Get recently created/updated services"""
+        query = f"""
             SELECT
-                fs.*,
+                {self._LIST_COLUMNS},
                 c.name_es as category_name,
                 s.name_es as sector_name,
                 m.name_es as ministry_name
             FROM fiscal_services fs
             JOIN categories c ON fs.category_id = c.id
-            JOIN sectors s ON c.sector_id = s.id
-            JOIN ministries m ON s.ministry_id = m.id
-            WHERE fs.is_active = true AND fs.last_used_at IS NOT NULL
-            ORDER BY fs.last_used_at DESC
+            LEFT JOIN sectors s ON c.sector_id = s.id
+            LEFT JOIN ministries m ON s.ministry_id = m.id
+            WHERE fs.status = 'active'
+            ORDER BY fs.updated_at DESC NULLS LAST
             LIMIT $1
         """
         results = await conn.fetch(query, limit)
 
+        service_ids = [r["id"] for r in results]
+        keywords_map = await self._batch_keywords(conn, service_ids)
+
         services = []
         for r in results:
             service = dict(r)
-            keywords = await conn.fetch(
-                "SELECT keyword FROM service_keywords WHERE fiscal_service_id = $1",
-                service["id"],
-            )
-            service["keywords"] = [k["keyword"] for k in keywords]
+            service["keywords"] = keywords_map.get(service["id"], [])
             service["required_documents"] = []
             services.append(service)
 
         return services
 
     async def update(
-        self, conn: asyncpg.Connection, service_id: int, update_data: FiscalServiceUpdate
+        self, conn: asyncpg.Connection, service_id: int, update_data: FiscalServiceUpdate,
+        updated_by: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """Update fiscal service - matches database schema"""
         import json
@@ -771,6 +854,10 @@ class FiscalServiceRepository:
             return await self.get_by_id(conn, service_id)
 
         updates.append("updated_at = NOW()")
+        if updated_by:
+            updates.append(f"updated_by = ${param_idx}")
+            params.append(updated_by)
+            param_idx += 1
 
         query = f"UPDATE fiscal_services SET {', '.join(updates)} WHERE id = $1 RETURNING *"
         result = await conn.fetchrow(query, *params)
@@ -922,11 +1009,11 @@ class FiscalServiceRepository:
         for service in services:
             try:
                 # Check if code already exists
-                existing = await self.get_by_code(conn, service.code)
+                existing = await self.get_by_code(conn, service.service_code)
                 if existing:
                     failed += 1
                     errors.append({
-                        "code": service.code,
+                        "code": service.service_code,
                         "error": "Service code already exists"
                     })
                     continue

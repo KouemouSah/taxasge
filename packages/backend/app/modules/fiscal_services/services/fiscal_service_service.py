@@ -31,6 +31,7 @@ IMPORTANT CLARIFICATIONS:
    - Control display order in UI
 """
 
+import json
 from typing import Optional, List, Dict, Any
 from loguru import logger
 import asyncpg
@@ -80,24 +81,36 @@ class FiscalServiceService:
         logger.info(f"Creating fiscal service: {service.service_code}")
 
         # 1. Create the fiscal service
+        # Column names match database schema exactly (verified against information_schema)
         service_query = """
             INSERT INTO fiscal_services (
                 service_code, category_id,
                 name_es, description_es,
                 service_type, calculation_method,
                 tasa_expedicion, tasa_renovacion,
-                percentage_rate, unit_price,
+                base_percentage, percentage_of,
+                unit_rate, unit_type,
+                expedition_formula, expedition_unit_measure,
+                renewal_formula, renewal_unit_measure,
                 calculation_config, rate_tiers,
+                tier_group_name, is_tier_component,
                 validity_period_months, renewal_frequency_months,
+                grace_period_days,
+                late_penalty_percentage, late_penalty_fixed,
+                penalty_calculation_rules,
+                eligibility_criteria, exemption_conditions,
                 parent_service_id,
-                required_documents, processing_time_days,
-                legal_reference, notes,
+                legal_reference, regulatory_articles,
+                tariff_effective_from, tariff_effective_to,
+                processing_time_days, priority, complexity_level,
                 status,
                 created_at, updated_at
             )
             VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                 $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+                $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                $31, $32, $33, $34, $35, $36, $37,
                 NOW(), NOW()
             )
             RETURNING *
@@ -105,26 +118,43 @@ class FiscalServiceService:
 
         fiscal_service = await conn.fetchrow(
             service_query,
-            service.service_code,
-            service.category_id,
-            service.name_es,
-            service.description_es,
-            service.service_type.value,
-            service.calculation_method.value,
-            service.tasa_expedicion,
-            service.tasa_renovacion,
-            service.percentage_rate,
-            service.unit_price,
-            service.calculation_config,
-            service.rate_tiers,
-            service.validity_period_months,
-            service.renewal_frequency_months,
-            service.parent_service_id,
-            service.required_documents,
-            service.processing_time_days,
-            service.legal_reference,
-            service.notes,
-            service.status.value,
+            service.service_code,                                                       # $1
+            service.category_id,                                                        # $2
+            service.name_es,                                                            # $3
+            service.description_es,                                                     # $4
+            service.service_type.value,                                                 # $5
+            service.calculation_method.value,                                            # $6
+            service.tasa_expedicion,                                                     # $7
+            service.tasa_renovacion,                                                     # $8
+            service.base_percentage,                                                     # $9
+            service.percentage_of,                                                       # $10
+            service.unit_rate,                                                           # $11
+            service.unit_type,                                                           # $12
+            service.expedition_formula,                                                  # $13
+            service.expedition_unit_measure,                                              # $14
+            service.renewal_formula,                                                     # $15
+            service.renewal_unit_measure,                                                 # $16
+            json.dumps(service.calculation_config) if service.calculation_config else None,  # $17
+            json.dumps(service.rate_tiers) if service.rate_tiers else None,               # $18
+            service.tier_group_name,                                                     # $19
+            service.is_tier_component,                                                   # $20
+            service.validity_period_months,                                               # $21
+            service.renewal_frequency_months,                                             # $22
+            service.grace_period_days,                                                   # $23
+            service.late_penalty_percentage,                                              # $24
+            service.late_penalty_fixed,                                                  # $25
+            json.dumps(service.penalty_calculation_rules) if service.penalty_calculation_rules else None,  # $26
+            json.dumps(service.eligibility_criteria) if service.eligibility_criteria else None,  # $27
+            json.dumps(service.exemption_conditions) if service.exemption_conditions else None,  # $28
+            service.parent_service_id,                                                   # $29
+            service.legal_reference,                                                     # $30
+            service.regulatory_articles,                                                 # $31
+            service.tariff_effective_from,                                                # $32
+            service.tariff_effective_to,                                                  # $33
+            service.processing_time_days,                                                # $34
+            service.priority,                                                            # $35
+            service.complexity_level,                                                    # $36
+            service.status.value,                                                        # $37
         )
 
         service_id = fiscal_service["id"]

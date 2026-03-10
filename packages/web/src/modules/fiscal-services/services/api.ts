@@ -377,6 +377,11 @@ export const fiscalServicesApi = {
     pageSize?: number
     categoryId?: number
     status?: string
+    ministryId?: number
+    sectorId?: number
+    search?: string
+    sortBy?: string
+    sortOrder?: string
     language?: string
   }): Promise<FiscalServiceListResponse> => {
     const queryParams = new URLSearchParams()
@@ -384,6 +389,11 @@ export const fiscalServicesApi = {
     if (params?.pageSize) queryParams.append('page_size', String(params.pageSize))
     if (params?.categoryId) queryParams.append('category_id', String(params.categoryId))
     if (params?.status) queryParams.append('status', params.status)
+    if (params?.ministryId) queryParams.append('ministry_id', String(params.ministryId))
+    if (params?.sectorId) queryParams.append('sector_id', String(params.sectorId))
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.sortBy) queryParams.append('sort_by', params.sortBy)
+    if (params?.sortOrder) queryParams.append('sort_order', params.sortOrder)
     if (params?.language) queryParams.append('language', params.language)
 
     const query = queryParams.toString()
@@ -520,6 +530,36 @@ export const fiscalServicesAdminApi = {
    * Bulk update service status (max 50 per request)
    * Auth: Required + Permission "fiscal_services.bulk_update"
    */
+  /**
+   * GET /api/v1/fiscal-services/admin/export/csv
+   * Export filtered services as CSV
+   */
+  exportCsv: async (params?: {
+    categoryId?: number
+    status?: string
+    ministryId?: number
+    sectorId?: number
+    search?: string
+  }): Promise<Blob> => {
+    const queryParams = new URLSearchParams()
+    if (params?.categoryId) queryParams.append('category_id', String(params.categoryId))
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.ministryId) queryParams.append('ministry_id', String(params.ministryId))
+    if (params?.sectorId) queryParams.append('sector_id', String(params.sectorId))
+    if (params?.search) queryParams.append('search', params.search)
+    const query = queryParams.toString()
+    const response = await fetch(
+      `${typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || '') : ''}/api/v1/fiscal-services/admin/export/csv${query ? `?${query}` : ''}`,
+      {
+        headers: {
+          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') || '' : ''}`,
+        },
+      }
+    )
+    if (!response.ok) throw new Error('Export failed')
+    return response.blob()
+  },
+
   bulkUpdateStatus: async (serviceIds: string[], newStatus: ServiceStatusEnum): Promise<{
     success: boolean
     totalRequested: number

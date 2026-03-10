@@ -43,19 +43,21 @@ class SearchRepository:
         params: List[Any] = []
         param_idx = 1
 
-        # Text search (Spanish only - name_es, description_es in DB)
+        # Text search — use tsvector GIN index when possible, ILIKE as fallback
         if q:
+            # Use search_vector (GIN indexed) for Spanish full-text search
+            # Falls back to ILIKE for category names and keywords (not in tsvector)
             conditions.append(f"""(
-                fs.name_es ILIKE ${param_idx}
-                OR fs.description_es ILIKE ${param_idx}
-                OR c.name_es ILIKE ${param_idx}
+                fs.search_vector @@ plainto_tsquery('spanish', ${param_idx})
+                OR c.name_es ILIKE ${param_idx + 1}
                 OR EXISTS (
                     SELECT 1 FROM service_keywords sk
-                    WHERE sk.fiscal_service_id = fs.id AND sk.keyword ILIKE ${param_idx}
+                    WHERE sk.fiscal_service_id = fs.id AND sk.keyword ILIKE ${param_idx + 1}
                 )
             )""")
+            params.append(q)
             params.append(f"%{q}%")
-            param_idx += 1
+            param_idx += 2
 
         # Category filter
         if category_id:
@@ -81,32 +83,32 @@ class SearchRepository:
 
         # Price filters
         if min_price is not None:
-            conditions.append(f"(fs.expedition_amount >= ${param_idx} OR fs.renewal_amount >= ${param_idx})")
+            conditions.append(f"(fs.tasa_expedicion >= ${param_idx} OR fs.tasa_renovacion >= ${param_idx})")
             params.append(min_price)
             param_idx += 1
 
         if max_price is not None:
-            conditions.append(f"(fs.expedition_amount <= ${param_idx} OR fs.renewal_amount <= ${param_idx})")
+            conditions.append(f"(fs.tasa_expedicion <= ${param_idx} OR fs.tasa_renovacion <= ${param_idx})")
             params.append(max_price)
             param_idx += 1
 
         if min_expedition_price is not None:
-            conditions.append(f"fs.expedition_amount >= ${param_idx}")
+            conditions.append(f"fs.tasa_expedicion >= ${param_idx}")
             params.append(min_expedition_price)
             param_idx += 1
 
         if max_expedition_price is not None:
-            conditions.append(f"fs.expedition_amount <= ${param_idx}")
+            conditions.append(f"fs.tasa_expedicion <= ${param_idx}")
             params.append(max_expedition_price)
             param_idx += 1
 
         if min_renewal_price is not None:
-            conditions.append(f"fs.renewal_amount >= ${param_idx}")
+            conditions.append(f"fs.tasa_renovacion >= ${param_idx}")
             params.append(min_renewal_price)
             param_idx += 1
 
         if max_renewal_price is not None:
-            conditions.append(f"fs.renewal_amount <= ${param_idx}")
+            conditions.append(f"fs.tasa_renovacion <= ${param_idx}")
             params.append(max_renewal_price)
             param_idx += 1
 
@@ -116,12 +118,13 @@ class SearchRepository:
         order_map = {
             "relevance": "view_count DESC, calculation_count DESC",
             "name": "name_es",
-            "price": "COALESCE(expedition_amount, 0)",
+            "price": "COALESCE(tasa_expedicion, 0)",
             "popular": "calculation_count DESC, view_count DESC",
         }
         order_by = order_map.get(sort_by, order_map["relevance"])
         if sort_by in ["name", "price"]:
-            order_by += f" {sort_order.upper()}"
+            safe_order = "DESC" if sort_order.upper() == "DESC" else "ASC"
+            order_by += f" {safe_order}"
 
         # Single CTE: filter+count in base, translate only paginated rows
         offset = (page - 1) * limit
@@ -129,7 +132,7 @@ class SearchRepository:
         data_query = f"""
             WITH base AS (
                 SELECT DISTINCT fs.id, fs.service_code, fs.name_es, fs.description_es,
-                       fs.service_type, fs.expedition_amount, fs.renewal_amount,
+                       fs.service_type, fs.tasa_expedicion, fs.tasa_renovacion,
                        fs.processing_time_days, fs.status, fs.view_count, fs.calculation_count,
                        c.category_code, c.name_es AS cat_name,
                        s.sector_code, s.name_es AS sec_name,
@@ -154,8 +157,8 @@ class SearchRepository:
                 COALESCE(et_min.translation_text, p.min_name) as ministry_name,
                 COALESCE(et_sec.translation_text, p.sec_name) as sector_name,
                 p.service_type,
-                COALESCE(p.expedition_amount, 0) as expedition_price,
-                COALESCE(p.renewal_amount, 0) as renewal_price,
+                COALESCE(p.tasa_expedicion, 0) as expedition_price,
+                COALESCE(p.tasa_renovacion, 0) as renewal_price,
                 COALESCE(p.processing_time_days, 1) as processing_time_days,
                 p.status
             FROM page p
@@ -268,10 +271,10 @@ class SearchRepository:
             price_query = """
                 SELECT
                     CASE
-                        WHEN COALESCE(expedition_amount, 0) = 0 AND COALESCE(renewal_amount, 0) = 0 THEN 'free'
-                        WHEN COALESCE(expedition_amount, 0) < 50000 THEN 'low'
-                        WHEN COALESCE(expedition_amount, 0) < 200000 THEN 'medium'
-                        WHEN COALESCE(expedition_amount, 0) < 500000 THEN 'high'
+                        WHEN COALESCE(tasa_expedicion, 0) = 0 AND COALESCE(tasa_renovacion, 0) = 0 THEN 'free'
+                        WHEN COALESCE(tasa_expedicion, 0) < 50000 THEN 'low'
+                        WHEN COALESCE(tasa_expedicion, 0) < 200000 THEN 'medium'
+                        WHEN COALESCE(tasa_expedicion, 0) < 500000 THEN 'high'
                         ELSE 'very_high'
                     END as range,
                     COUNT(*) as count

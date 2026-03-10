@@ -41,10 +41,19 @@ class CalculationService:
         Raises:
             ValueError: If service not found or invalid configuration
         """
-        # Get fiscal service from database
+        # Get fiscal service from database — only columns needed for calculation
         service = await conn.fetchrow(
             """
-            SELECT * FROM fiscal_services
+            SELECT id, service_code, name_es, calculation_method, status,
+                   tasa_expedicion, tasa_renovacion,
+                   base_percentage, percentage_of, unit_rate, unit_type,
+                   expedition_formula, expedition_unit_measure,
+                   renewal_formula, renewal_unit_measure,
+                   calculation_config, rate_tiers,
+                   tier_group_name, is_tier_component,
+                   grace_period_days, late_penalty_percentage, late_penalty_fixed,
+                   penalty_calculation_rules
+            FROM fiscal_services
             WHERE id = $1 AND status = 'active'
             """,
             calculation_input.fiscal_service_id
@@ -187,7 +196,7 @@ class CalculationService:
         if input_data.base_value is None:
             raise ValueError("base_value required for percentage_based calculation")
 
-        percentage = service.get("percentage_rate") or 0.0
+        percentage = service.get("base_percentage") or 0.0
         base_value = input_data.base_value
 
         amount = (base_value * percentage) / 100
@@ -208,16 +217,16 @@ class CalculationService:
         if input_data.quantity is None:
             raise ValueError("quantity required for unit_based calculation")
 
-        unit_price = service.get("unit_price") or 0.0
+        unit_rate = service.get("unit_rate") or 0.0
         quantity = input_data.quantity
 
-        amount = unit_price * quantity
+        amount = unit_rate * quantity
 
         return CalculationBreakdown(
             method=CalculationMethodEnum.UNIT_BASED,
             is_renewal=is_renewal,
             variable_amount=amount,
-            formula_used=f"{unit_price} × {quantity} units = {amount}",
+            formula_used=f"{unit_rate} × {quantity} units = {amount}",
             subtotal=amount,
             total=amount,
         )
@@ -340,9 +349,9 @@ class CalculationService:
             base_fee = service.get("tasa_expedicion") or 0.0
 
         # Per-unit charge
-        unit_price = service.get("unit_price") or 0.0
+        unit_rate = service.get("unit_rate") or 0.0
         quantity = input_data.quantity
-        variable_amount = unit_price * quantity
+        variable_amount = unit_rate * quantity
 
         total = base_fee + variable_amount
 
@@ -351,7 +360,7 @@ class CalculationService:
             is_renewal=is_renewal,
             base_fee=base_fee,
             variable_amount=variable_amount,
-            formula_used=f"{base_fee} + ({unit_price} × {quantity}) = {total}",
+            formula_used=f"{base_fee} + ({unit_rate} × {quantity}) = {total}",
             subtotal=total,
             total=total,
         )
