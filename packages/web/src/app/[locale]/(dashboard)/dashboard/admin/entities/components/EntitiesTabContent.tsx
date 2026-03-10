@@ -404,6 +404,7 @@ export default function EntitiesTabContent() {
                   <SelectItem value="all">{t('allTypes')}</SelectItem>
                   <SelectItem value="entity">{t('typeEntity')}</SelectItem>
                   <SelectItem value="department">{t('typeDepartment')}</SelectItem>
+                  <SelectItem value="treasury">{t('typeTreasury')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select
