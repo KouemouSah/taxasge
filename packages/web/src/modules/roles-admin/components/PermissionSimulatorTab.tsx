@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,8 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertTriangle, ArrowRight, Minus, Plus, Search, Shield, User, Zap } from 'lucide-react'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { AlertTriangle, ArrowRight, Check, ChevronsUpDown, Minus, Plus, Search, Shield, User, Zap } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useRoles, useSimulateRolePermission, useSimulateUserRoleChange, useOverprivilegedUsers } from '../hooks/useRoles'
+import usersApi from '@/modules/users-admin/services/api'
+import type { User as UserType } from '@/modules/users-admin/types'
 import type { SimulateRolePermissionResponse, SimulateUserRoleChangeResponse, OverprivilegedUser } from '../types'
 
 export function PermissionSimulatorTab() {
@@ -50,7 +55,7 @@ export function PermissionSimulatorTab() {
 // =============================================================================
 
 function RolePermissionSimulator() {
-  const { data: rolesData } = useRoles({ page_size: 200 })
+  const { data: rolesData } = useRoles({ page_size: 100 })
   const simulateMutation = useSimulateRolePermission()
   const [selectedRoleId, setSelectedRoleId] = useState('')
   const [permissionInput, setPermissionInput] = useState('')
@@ -207,13 +212,36 @@ function RolePermissionSimulator() {
 // =============================================================================
 
 function UserRoleChangeSimulator() {
-  const { data: rolesData } = useRoles({ page_size: 200 })
+  const { data: rolesData } = useRoles({ page_size: 100 })
   const simulateMutation = useSimulateUserRoleChange()
   const [userId, setUserId] = useState('')
   const [newRoleId, setNewRoleId] = useState('')
   const [result, setResult] = useState<SimulateUserRoleChangeResponse | null>(null)
+  const [allUsers, setAllUsers] = useState<UserType[]>([])
+  const [userSearchOpen, setUserSearchOpen] = useState(false)
+  const [userSearchQuery, setUserSearchQuery] = useState('')
 
   const roles = rolesData?.roles || []
+
+  // Load users list on mount
+  useEffect(() => {
+    usersApi.getAll({}).then(setAllUsers).catch(() => {})
+  }, [])
+
+  // Filter users based on search
+  const filteredUsers = useMemo(() => {
+    if (!userSearchQuery) return allUsers.slice(0, 50)
+    const q = userSearchQuery.toLowerCase()
+    return allUsers
+      .filter(u =>
+        u.email.toLowerCase().includes(q) ||
+        u.first_name.toLowerCase().includes(q) ||
+        u.last_name.toLowerCase().includes(q)
+      )
+      .slice(0, 50)
+  }, [allUsers, userSearchQuery])
+
+  const selectedUser = allUsers.find(u => u.id === userId)
 
   const handleSimulate = async () => {
     if (!userId.trim() || !newRoleId) return
@@ -242,12 +270,52 @@ function UserRoleChangeSimulator() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label>ID del Usuario (UUID)</Label>
-            <Input
-              value={userId}
-              onChange={e => setUserId(e.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            />
+            <Label>Usuario</Label>
+            <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={userSearchOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {selectedUser
+                    ? `${selectedUser.first_name} ${selectedUser.last_name}`
+                    : 'Buscar usuario...'}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[350px] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Buscar por nombre o email..."
+                    value={userSearchQuery}
+                    onValueChange={setUserSearchQuery}
+                  />
+                  <CommandList>
+                    <CommandEmpty>No se encontraron usuarios.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredUsers.map(u => (
+                        <CommandItem
+                          key={u.id}
+                          value={u.id}
+                          onSelect={(val) => {
+                            setUserId(val === userId ? '' : val)
+                            setUserSearchOpen(false)
+                          }}
+                        >
+                          <Check className={cn('mr-2 h-4 w-4', userId === u.id ? 'opacity-100' : 'opacity-0')} />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{u.first_name} {u.last_name}</span>
+                            <span className="text-xs text-muted-foreground">{u.email} · {u.role}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
