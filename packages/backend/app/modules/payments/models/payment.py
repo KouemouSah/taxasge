@@ -36,7 +36,6 @@ class PaymentMethod(str, Enum):
     CARD = "card"                    # Carte bancaire
     MOBILE_MONEY = "mobile_money"    # Mobile money (BANGE)
     CASH = "cash"                    # Espèces
-    BANGE_WALLET = "bange_wallet"    # Portefeuille BANGE
     CHECK = "check"                  # Chèque
 
 

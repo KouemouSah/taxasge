@@ -1788,6 +1788,7 @@
       "fieldActive": "Activo",
       "typeEntity": "Entidad",
       "typeDepartment": "Departamento",
+      "typeTreasury": "Tesoro Público",
       "noEntitiesFound": "No se encontraron entidades",
       "entitiesFound": "{count} entidad(es) encontrada(s)",
       "workflowCodesHint": "Separados por coma o salto de línea",
@@ -1833,7 +1834,8 @@
       },
       "entityTypes": {
         "entity": "Entidad (Principal)",
-        "department": "Departamento"
+        "department": "Departamento",
+        "treasury": "Tesoro Público"
       },
       "locations": {
         "title": "Ubicaciones de Entidades",

@@ -103,7 +103,7 @@ class EntityType(str, Enum):
     """Entity type enum - matches DB entity_type_enum."""
     ENTITY = "entity"        # Top-level entity (independent or ministry-linked)
     DEPARTMENT = "department"  # Department within an entity (must have parent)
-    TREASURY = "treasury"    # Treasury entity (Tesoro Público)
+    TREASURY = "treasury"    # Treasury entity (Tesoro Público — payment validation)
 
 
 class EntityBase(BaseModel):

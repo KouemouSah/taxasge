@@ -1823,6 +1823,7 @@
       "fieldActive": "Actif",
       "typeEntity": "Entité",
       "typeDepartment": "Département",
+      "typeTreasury": "Trésor Public",
       "noEntitiesFound": "Aucune entité trouvée",
       "entitiesFound": "{count} entité(s) trouvée(s)",
       "workflowCodesHint": "Séparés par virgule ou saut de ligne",
@@ -1868,7 +1869,8 @@
       },
       "entityTypes": {
         "entity": "Entité (Principale)",
-        "department": "Département"
+        "department": "Département",
+        "treasury": "Trésor Public"
       },
       "locations": {
         "title": "Emplacements des Entités",

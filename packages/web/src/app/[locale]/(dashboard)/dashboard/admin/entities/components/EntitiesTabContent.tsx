@@ -468,13 +468,15 @@ export default function EntitiesTabContent() {
                     <TableCell className="font-mono text-sm">{entity.code}</TableCell>
                     <TableCell className="font-medium max-w-[200px] truncate">{entity.name}</TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <Badge variant={entity.entity_type === 'entity' ? 'default' : 'secondary'}>
+                      <Badge variant={entity.entity_type === 'entity' ? 'default' : entity.entity_type === 'treasury' ? 'outline' : 'secondary'}>
                         {entity.entity_type === 'entity' ? (
+                          <Building className="h-3 w-3 mr-1" />
+                        ) : entity.entity_type === 'treasury' ? (
                           <Building className="h-3 w-3 mr-1" />
                         ) : (
                           <Layers className="h-3 w-3 mr-1" />
                         )}
-                        {entity.entity_type === 'entity' ? t('typeEntity') : t('typeDepartment')}
+                        {entity.entity_type === 'entity' ? t('typeEntity') : entity.entity_type === 'treasury' ? t('typeTreasury') : t('typeDepartment')}
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
@@ -580,6 +582,7 @@ export default function EntitiesTabContent() {
                   <SelectContent>
                     <SelectItem value="entity">{t('entityTypes.entity')}</SelectItem>
                     <SelectItem value="department">{t('entityTypes.department')}</SelectItem>
+                    <SelectItem value="treasury">{t('entityTypes.treasury')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -675,7 +678,7 @@ export default function EntitiesTabContent() {
                   </SelectTrigger>
                   <SelectContent>
                     {parentEntities
-                      ?.filter((e) => e.entity_type === 'entity')
+                      ?.filter((e) => e.entity_type === 'entity' || e.entity_type === 'treasury')
                       .map((e) => (
                         <SelectItem key={e.id} value={e.id}>
                           {e.code} - {e.name}
