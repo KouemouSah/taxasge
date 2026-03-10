@@ -18,6 +18,7 @@ from app.modules.agents.repositories.agent_profile_repository import (
     AgentProfileRepository,
 )
 from app.modules.agents.repositories.workload_repository import WorkloadRepository
+from app.core.cache import invalidate_user_permissions_cache
 from app.modules.agents.models.agent_profile import (
     AgentProfileCreate,
     AgentProfileUpdate,
@@ -277,6 +278,13 @@ class AgentProfileService:
         # Extract count from result (e.g. "INSERT 0 147")
         perm_count = int(result.split()[-1]) if result else 0
         logger.info(f"RBAC role updated: role_id set + {perm_count} permissions batch-copied to user_permissions")
+
+        # CRITICAL: Invalidate permission cache immediately (not wait 10min TTL)
+        try:
+            await invalidate_user_permissions_cache(str(user_id))
+            logger.info(f"Permission cache invalidated for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Failed to invalidate permission cache for {user_id}: {e}")
 
     async def deactivate_agent_profile(
         self,

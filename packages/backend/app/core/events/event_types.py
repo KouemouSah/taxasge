@@ -161,6 +161,35 @@ class EventType(str, Enum):
     # USER EVENTS
     # ==========================================================================
 
+    # ==========================================================================
+    # RBAC EVENTS
+    # ==========================================================================
+
+    RBAC_PERMISSION_GRANTED = "rbac.permission.granted"
+    """Permission granted to a role or user"""
+
+    RBAC_PERMISSION_REVOKED = "rbac.permission.revoked"
+    """Permission revoked from a role or user"""
+
+    RBAC_ROLE_UPDATED = "rbac.role.updated"
+    """Role updated (name, code, entity_type, parent_role_id)"""
+
+    RBAC_ROLE_CREATED = "rbac.role.created"
+    """New role created"""
+
+    RBAC_ROLE_DELETED = "rbac.role.deleted"
+    """Role deleted"""
+
+    RBAC_USER_ROLE_CHANGED = "rbac.user.role_changed"
+    """User's role_id changed (role promotion/demotion)"""
+
+    RBAC_AGENT_DEACTIVATED = "rbac.agent.deactivated"
+    """Agent deactivated"""
+
+    # ==========================================================================
+    # USER EVENTS
+    # ==========================================================================
+
     USER_REGISTERED = "user.registered"
     """New user registered"""
 

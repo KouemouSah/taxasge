@@ -27,6 +27,8 @@ export {
   useAssignPermissions,
   useRemovePermissions,
   usePermissionMatrix,
+  useCloneRole,
+  useBulkDeleteRoles,
 } from './hooks/useRoles'
 
 // Components

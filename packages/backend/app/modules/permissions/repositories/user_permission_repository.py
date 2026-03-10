@@ -335,23 +335,30 @@ class UserPermissionRepository:
         if user_override:
             return True
 
-        # Check role permissions (if no override)
+        # Check role permissions with hierarchy (recursive CTE)
         role_permission = await self.db.fetchval("""
+            WITH RECURSIVE role_chain AS (
+                SELECT r.id, r.parent_role_id
+                FROM users u
+                JOIN roles r ON r.id = u.role_id
+                WHERE u.id = $1
+                UNION ALL
+                SELECT parent.id, parent.parent_role_id
+                FROM roles parent
+                JOIN role_chain child ON child.parent_role_id = parent.id
+            )
             SELECT EXISTS (
                 SELECT 1
-                FROM users u
-                INNER JOIN roles r ON u.role_id = r.id
-                INNER JOIN role_permissions rp ON r.id = rp.role_id
-                INNER JOIN permissions p ON rp.permission_id = p.id
-                WHERE u.id = $1
+                FROM role_permissions rp
+                JOIN permissions p ON rp.permission_id = p.id
+                WHERE rp.role_id IN (SELECT id FROM role_chain)
                   AND p.name = $2
                   AND rp.granted = TRUE
                   AND NOT EXISTS (
-                      -- No explicit deny in user overrides
                       SELECT 1
                       FROM user_permissions up2
-                      INNER JOIN permissions p2 ON up2.permission_id = p2.id
-                      WHERE up2.user_id = u.id
+                      JOIN permissions p2 ON up2.permission_id = p2.id
+                      WHERE up2.user_id = $1
                         AND p2.name = $2
                         AND up2.granted = FALSE
                   )
@@ -371,12 +378,21 @@ class UserPermissionRepository:
             Summary dict with counts and details
         """
         result = await self.db.fetchrow("""
-            WITH role_perms AS (
-                SELECT COUNT(*) as role_count
+            WITH RECURSIVE role_chain AS (
+                SELECT r.id, r.parent_role_id
                 FROM users u
-                INNER JOIN roles r ON u.role_id = r.id
-                INNER JOIN role_permissions rp ON r.id = rp.role_id
-                WHERE u.id = $1 AND rp.granted = TRUE
+                JOIN roles r ON r.id = u.role_id
+                WHERE u.id = $1
+                UNION ALL
+                SELECT parent.id, parent.parent_role_id
+                FROM roles parent
+                JOIN role_chain child ON child.parent_role_id = parent.id
+            ),
+            role_perms AS (
+                SELECT COUNT(*) as role_count
+                FROM role_permissions rp
+                WHERE rp.role_id IN (SELECT id FROM role_chain)
+                  AND rp.granted = TRUE
             ),
             user_overrides AS (
                 SELECT COUNT(*) as override_count
@@ -470,9 +486,97 @@ class UserPermissionRepository:
             -- Role permissions (including inherited) minus user denies
             SELECT name FROM role_perms
             WHERE name NOT IN (SELECT name FROM user_denies)
-            UNION ALL
-            -- Plus user-specific grants (Set dedup in Python)
+            UNION
+            -- Plus user-specific grants (UNION deduplicates automatically)
             SELECT name FROM user_grants
         """, user_id)
 
         return [row['name'] for row in results]
+
+    async def has_permission_scoped(
+        self,
+        user_id: str,
+        permission_name: str,
+        entity_code: Optional[str] = None,
+    ) -> bool:
+        """
+        Check if user has a permission, optionally scoped to an entity.
+
+        Scope resolution:
+        - scope IS NULL → global permission (matches any entity)
+        - scope->>'entity_code' = entity_code → scoped match
+        - scope->'entity_codes' @> '["entity_code"]' → multi-entity scoped match
+
+        Args:
+            user_id: User UUID
+            permission_name: Permission name (e.g., "service_requests.approve")
+            entity_code: Optional entity code to check scope against
+
+        Returns:
+            True if user has permission (globally or for the given entity)
+        """
+        # User override first (highest priority)
+        user_override = await self.db.fetchval("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM user_permissions up
+                JOIN permissions p ON up.permission_id = p.id
+                WHERE up.user_id = $1
+                  AND p.name = $2
+                  AND up.granted = TRUE
+                  AND (up.expires_at IS NULL OR up.expires_at >= NOW())
+                  AND (
+                      up.scope IS NULL
+                      OR ($3 IS NULL)
+                      OR up.scope->>'entity_code' = $3
+                      OR up.scope->'entity_codes' @> to_jsonb($3::text)
+                  )
+            )
+        """, user_id, permission_name, entity_code)
+
+        if user_override:
+            return True
+
+        # Check deny
+        user_deny = await self.db.fetchval("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM user_permissions up
+                JOIN permissions p ON up.permission_id = p.id
+                WHERE up.user_id = $1
+                  AND p.name = $2
+                  AND up.granted = FALSE
+                  AND (up.expires_at IS NULL OR up.expires_at >= NOW())
+            )
+        """, user_id, permission_name)
+
+        if user_deny:
+            return False
+
+        # Role permissions with hierarchy + scope
+        return await self.db.fetchval("""
+            WITH RECURSIVE role_chain AS (
+                SELECT r.id, r.parent_role_id
+                FROM users u
+                JOIN roles r ON r.id = u.role_id
+                WHERE u.id = $1
+                UNION ALL
+                SELECT parent.id, parent.parent_role_id
+                FROM roles parent
+                JOIN role_chain child ON child.parent_role_id = parent.id
+            )
+            SELECT EXISTS (
+                SELECT 1
+                FROM role_permissions rp
+                JOIN permissions p ON rp.permission_id = p.id
+                WHERE rp.role_id IN (SELECT id FROM role_chain)
+                  AND p.name = $2
+                  AND rp.granted = TRUE
+                  AND (
+                      rp.scope IS NULL
+                      OR ($3 IS NULL)
+                      OR rp.scope->>'entity_code' = $3
+                      OR rp.scope->'entity_codes' @> to_jsonb($3::text)
+                  )
+            )
+        """, user_id, permission_name, entity_code) or False

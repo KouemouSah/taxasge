@@ -264,7 +264,7 @@ def require_any_permission(*permission_names: str, raise_on_deny: bool = True):
             # Check if user has ANY of the permissions (pass user to avoid redundant fetch)
             has_any = False
             for perm_name in permission_names:
-                if await permission_service.has_permission(current_user.id, perm_name, user=current_user):
+                if await permission_service.has_permission(str(current_user.id), perm_name, user=current_user):
                     has_any = True
                     break
 
@@ -338,7 +338,7 @@ def require_all_permissions(*permission_names: str, raise_on_deny: bool = True):
             # Check if user has ALL permissions (pass user to avoid redundant fetch)
             missing_permissions = []
             for perm_name in permission_names:
-                if not await permission_service.has_permission(current_user.id, perm_name, user=current_user):
+                if not await permission_service.has_permission(str(current_user.id), perm_name, user=current_user):
                     missing_permissions.append(perm_name)
 
             if missing_permissions:

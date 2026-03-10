@@ -197,6 +197,15 @@ async def lifespan(app: FastAPI):
         else:
             raise
 
+    # Start RBAC cache invalidation listener (PostgreSQL NOTIFY → Redis)
+    try:
+        from app.core.rbac_listener import rbac_listener
+        if db_manager.pool:
+            await rbac_listener.start(db_manager.pool)
+            logger.info("✅ RBAC cache listener started (real-time invalidation)")
+    except Exception as e:
+        logger.warning(f"⚠️ RBAC listener failed (cache TTL fallback): {e}")
+
     # Start internal cron scheduler (replaces Cloud Scheduler)
     try:
         from app.core.scheduler import internal_scheduler
@@ -213,6 +222,10 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     try:
+        # Stop RBAC listener
+        from app.core.rbac_listener import rbac_listener
+        await rbac_listener.stop(db_manager.pool)
+
         # Shutdown cache system
         from app.core.cache import shutdown_cache
         await shutdown_cache()

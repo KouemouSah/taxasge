@@ -5,7 +5,10 @@ BUG 6 Fix deployed: 2026-01-15 - Validators moved from Base to Create models
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from uuid import UUID
+import csv
+import io
 
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.core.database import get_db_connection
@@ -526,8 +529,97 @@ async def clone_role(
                 granted=True,
                 assigned_by=current_user.id
             )
+            # Invalidate cache — new role with permissions needs to be visible
+            await invalidate_role_permissions_cache(clone_code)
 
     return created
+
+
+# =============================================================================
+# EXPORT & BULK OPERATIONS
+# =============================================================================
+
+
+@router.get("/export/csv")
+@require_permission("roles.view")
+async def export_roles_csv(
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Export all roles as CSV file.
+
+    Requires: roles.view
+    """
+    roles_data = await role_service.get_all_roles(page=1, page_size=1000)
+    roles = roles_data.get("roles", [])
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["name", "code", "entity_type", "is_system", "description", "created_at"])
+
+    for role in roles:
+        writer.writerow([
+            role.get("name", ""),
+            role.get("code", ""),
+            role.get("entity_type", ""),
+            role.get("is_system", False),
+            role.get("description", ""),
+            str(role.get("created_at", "")),
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=roles_export.csv"},
+    )
+
+
+@router.post("/bulk-delete", status_code=status.HTTP_200_OK)
+@require_permission("roles.delete")
+async def bulk_delete_roles(
+    role_ids: List[UUID],
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Bulk delete custom roles (system roles are protected).
+
+    Requires: roles.delete
+
+    Returns:
+        Dict with deleted count and any failures
+    """
+    deleted = []
+    failed = []
+
+    for role_id in role_ids:
+        try:
+            role = await role_service.get_role(str(role_id))
+            if not role:
+                failed.append({"id": str(role_id), "reason": "not_found"})
+                continue
+            if role.get("is_system"):
+                failed.append({"id": str(role_id), "reason": "system_role_protected"})
+                continue
+            await role_service.delete_role(str(role_id))
+            deleted.append(str(role_id))
+        except Exception as e:
+            failed.append({"id": str(role_id), "reason": str(e)})
+
+    if deleted:
+        from app.core.cache import invalidate_all_permissions_cache
+        await invalidate_all_permissions_cache()
+
+    return {
+        "deleted_count": len(deleted),
+        "deleted": deleted,
+        "failed_count": len(failed),
+        "failed": failed,
+    }
 
 
 # =============================================================================

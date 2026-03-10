@@ -187,6 +187,49 @@ export const rolesApi = {
   getPermissions: async (roleId: string): Promise<string[]> => {
     return fetchClient.get<string[]>(`${ROLES_BASE}/${roleId}/permissions`)
   },
+
+  /**
+   * Clone a role with all its permissions
+   * BACKEND: POST /api/v1/roles/{role_id}/clone
+   * PERMISSION: roles.create
+   */
+  clone: async (roleId: string, newName?: string, newCode?: string): Promise<Role> => {
+    const params = new URLSearchParams()
+    if (newName) params.set('new_name', newName)
+    if (newCode) params.set('new_code', newCode)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return fetchClient.post<Role>(`${ROLES_BASE}/${roleId}/clone${qs}`, {})
+  },
+
+  /**
+   * Bulk delete custom roles
+   * BACKEND: POST /api/v1/roles/bulk-delete
+   * PERMISSION: roles.delete
+   */
+  bulkDelete: async (roleIds: string[]): Promise<{ deleted_count: number; failed_count: number; failed: Array<{ id: string; reason: string }> }> => {
+    return fetchClient.post(`${ROLES_BASE}/bulk-delete`, roleIds)
+  },
+
+  /**
+   * Export roles as CSV
+   * BACKEND: GET /api/v1/roles/export/csv
+   * PERMISSION: roles.view
+   */
+  exportCsv: async (): Promise<void> => {
+    const response = await fetch(`/api/v1/roles/export/csv`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('access_token') || ''}`,
+      },
+    })
+    if (!response.ok) throw new Error('Export failed')
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'roles_export.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }
 
 // =============================================================================

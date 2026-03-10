@@ -169,3 +169,34 @@ export function usePermissionMatrix(module?: string) {
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
+
+/**
+ * Clone a role with all its permissions
+ */
+export function useCloneRole() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ roleId, newName, newCode }: { roleId: string; newName?: string; newCode?: string }) =>
+      rolesApi.clone(roleId, newName, newCode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rolesKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: rolesKeys.custom() })
+    },
+  })
+}
+
+/**
+ * Bulk delete custom roles
+ */
+export function useBulkDeleteRoles() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (roleIds: string[]) => rolesApi.bulkDelete(roleIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rolesKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: rolesKeys.custom() })
+    },
+  })
+}

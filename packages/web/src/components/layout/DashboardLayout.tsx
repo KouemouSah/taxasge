@@ -16,6 +16,7 @@ import { DashboardSidebar } from './DashboardSidebar'
 import { DashboardErrorBoundary } from './DashboardErrorBoundary'
 import { SessionTimeoutDialog } from './SessionTimeoutDialog'
 import { AdminSidebar, MobileAdminSidebar } from '@/modules/admin/components'
+import { AdminCommandPalette } from '@/modules/admin/components/AdminCommandPalette'
 import { GenericAgentSidebar, MobileAgentSidebar } from '@/modules/agent-dashboard'
 import { getAuthData } from '@/core/auth/storage'
 import { APP_CONSTANTS } from '@/core/config/constants'
@@ -117,6 +118,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       <SessionTimeoutDialog />
+      {isAdmin && <AdminCommandPalette />}
 
       {/* Desktop Sidebar - Role-based */}
       <div className="hidden md:flex md:w-64 md:flex-col">
