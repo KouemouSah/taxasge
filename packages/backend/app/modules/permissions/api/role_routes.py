@@ -466,6 +466,70 @@ async def get_role_permissions(
     return permission_ids
 
 
+@router.post("/{role_id}/clone", response_model=RoleResponse, status_code=status.HTTP_201_CREATED)
+@require_permission("roles.create")
+async def clone_role(
+    role_id: UUID,
+    new_name: Optional[str] = Query(None, description="Name for cloned role (default: 'Original Name (Copy)')"),
+    new_code: Optional[str] = Query(None, description="Code for cloned role (default: 'original_code_copy')"),
+    current_user: UserResponse = Depends(get_current_user),
+    role_service: RoleService = Depends(get_role_service),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Clone a role with all its permissions
+
+    Requires: roles.create
+
+    Creates a new custom role that is an exact copy of the source role,
+    including all permission assignments. Menu/dashboard config are NOT copied.
+
+    Args:
+        role_id: Source role UUID to clone
+        new_name: Optional custom name (default adds ' (Copy)')
+        new_code: Optional custom code (default adds '_copy')
+
+    Returns:
+        Created role
+
+    Raises:
+        404: Source role not found
+        409: Role with same code already exists
+    """
+    source_role = await role_service.get_role_with_permissions(str(role_id))
+    if not source_role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Role with id '{role_id}' not found"
+        )
+
+    # Generate clone names
+    clone_name = new_name or f"{source_role.get('name', 'Role')} (Copy)"
+    clone_code = new_code or f"{source_role.get('code', 'role')}_copy"
+
+    # Create the new role
+    clone_data = RoleCreate(
+        name=clone_name,
+        code=clone_code,
+        entity_type=source_role.get('entity_type'),
+        description=f"Cloned from {source_role.get('name', 'unknown')}",
+    )
+    created = await role_service.create_role(clone_data, current_user.id)
+
+    # Copy all permissions from source role
+    if source_role.get('permissions'):
+        permission_ids = [str(p['id']) for p in source_role['permissions']]
+        if permission_ids:
+            await role_service.assign_permissions_to_role(
+                role_id=str(created['id']),
+                permission_ids=permission_ids,
+                granted=True,
+                assigned_by=current_user.id
+            )
+
+    return created
+
+
 # =============================================================================
 # ROLE MENU CONFIG ENDPOINTS
 # =============================================================================

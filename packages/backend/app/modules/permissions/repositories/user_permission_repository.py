@@ -425,22 +425,36 @@ class UserPermissionRepository:
         Returns:
             List of permission names the user has
         """
-        # Optimized CTE query — replaces 4-way JOIN + UNION with materialized CTEs
-        # Performance: <10ms vs 50-200ms (measured on 290 permissions, 30 roles)
+        # Optimized CTE query with role hierarchy support
+        # Resolves: user role + parent roles (recursive) → permissions - user denies + user grants
+        # Performance: <10ms vs 50-200ms (4-way JOIN + UNION)
         results = await self.db.fetch("""
-            WITH user_role AS MATERIALIZED (
-                SELECT role_id FROM users WHERE id = $1
+            WITH RECURSIVE role_chain AS MATERIALIZED (
+                -- Start with user's direct role
+                SELECT r.id, r.parent_role_id
+                FROM users u
+                JOIN roles r ON r.id = u.role_id
+                WHERE u.id = $1
+
+                UNION ALL
+
+                -- Walk up the hierarchy (e.g., admin_agents → admin)
+                SELECT parent.id, parent.parent_role_id
+                FROM roles parent
+                JOIN role_chain child ON child.parent_role_id = parent.id
             ),
             role_perms AS MATERIALIZED (
-                SELECT p.name
+                -- Collect permissions from all roles in the chain
+                SELECT DISTINCT p.name
                 FROM role_permissions rp
                 JOIN permissions p ON rp.permission_id = p.id
-                WHERE rp.role_id = (SELECT role_id FROM user_role)
+                WHERE rp.role_id IN (SELECT id FROM role_chain)
                   AND rp.granted = TRUE
             ),
             user_denies AS MATERIALIZED (
-                SELECT up.permission_id
+                SELECT p.name
                 FROM user_permissions up
+                JOIN permissions p ON up.permission_id = p.id
                 WHERE up.user_id = $1
                   AND up.granted = FALSE
                   AND (up.expires_at IS NULL OR up.expires_at >= NOW())
@@ -453,15 +467,11 @@ class UserPermissionRepository:
                   AND up.granted = TRUE
                   AND (up.expires_at IS NULL OR up.expires_at >= NOW())
             )
-            -- Role permissions minus user denies
-            SELECT rp.name FROM role_perms rp
-            WHERE NOT EXISTS (
-                SELECT 1 FROM user_denies ud
-                JOIN permissions p ON p.id = ud.permission_id
-                WHERE p.name = rp.name
-            )
+            -- Role permissions (including inherited) minus user denies
+            SELECT name FROM role_perms
+            WHERE name NOT IN (SELECT name FROM user_denies)
             UNION ALL
-            -- Plus user-specific grants (may duplicate role perms, but Set dedup in Python is O(1))
+            -- Plus user-specific grants (Set dedup in Python)
             SELECT name FROM user_grants
         """, user_id)
 
