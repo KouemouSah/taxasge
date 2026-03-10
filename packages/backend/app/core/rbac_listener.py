@@ -24,6 +24,7 @@ from app.core.cache import (
 )
 from app.core.events import EventBus
 from app.core.events.event_types import EventType
+from app.core.ws_manager import ws_manager
 
 
 class RBACListener:
@@ -101,24 +102,41 @@ class RBACListener:
                         "new_role_id": data.get("new_role_id"),
                     })
                     logger.info(f"RBAC NOTIFY: user {user_id} role changed → cache invalidated")
+                    # Broadcast to admin WebSocket clients
+                    await ws_manager.broadcast("rbac.user.role_changed", {
+                        "user_id": str(user_id),
+                        "old_role_id": data.get("old_role_id"),
+                        "new_role_id": data.get("new_role_id"),
+                    })
 
             elif table == 'user_permissions':
                 # User-level permission changed → invalidate that user
                 user_id = data.get('user_id')
                 if user_id:
                     await invalidate_user_permissions_cache(str(user_id))
+                    event_name = "rbac.permission.granted" if op == 'INSERT' else "rbac.permission.revoked"
                     event = EventType.RBAC_PERMISSION_GRANTED if op == 'INSERT' else EventType.RBAC_PERMISSION_REVOKED
                     EventBus.publish_nowait(event, {"user_id": str(user_id), "source": "user_override"})
                     logger.debug(f"RBAC NOTIFY: user_permission {op} for {user_id}")
+                    await ws_manager.broadcast(event_name, {
+                        "user_id": str(user_id), "source": "user_override", "op": op,
+                    })
 
             elif table in ('role_permissions', 'roles'):
                 # Role-level change → invalidate all user caches (users inherit from roles)
                 await invalidate_all_permissions_cache()
                 if table == 'role_permissions':
+                    event_name = "rbac.permission.granted" if op == 'INSERT' else "rbac.permission.revoked"
                     event = EventType.RBAC_PERMISSION_GRANTED if op == 'INSERT' else EventType.RBAC_PERMISSION_REVOKED
                     EventBus.publish_nowait(event, {"role_id": data.get("role_id"), "source": "role"})
+                    await ws_manager.broadcast(event_name, {
+                        "role_id": data.get("role_id"), "source": "role", "op": op,
+                    })
                 else:
                     EventBus.publish_nowait(EventType.RBAC_ROLE_UPDATED, {"role_id": data.get("role_id")})
+                    await ws_manager.broadcast("rbac.role.updated", {
+                        "role_id": data.get("role_id"), "op": op,
+                    })
                 logger.info(f"RBAC NOTIFY: {table} {op} → all permission caches invalidated")
 
         except json.JSONDecodeError:

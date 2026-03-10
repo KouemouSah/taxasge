@@ -11,7 +11,7 @@
 export * from './types'
 
 // API
-export { rolesApi } from './services/api'
+export { rolesApi, permissionsSimulatorApi } from './services/api'
 
 // Hooks
 export {
@@ -29,7 +29,12 @@ export {
   usePermissionMatrix,
   useCloneRole,
   useBulkDeleteRoles,
+  useSimulateRolePermission,
+  useSimulateUserRoleChange,
+  useOverprivilegedUsers,
 } from './hooks/useRoles'
+
+export { useRbacWebSocket } from './hooks/useRbacWebSocket'
 
 // Components
 export { RolePermissionsDialog } from './components/RolePermissionsDialog'
@@ -37,3 +42,4 @@ export { RolesTab } from './components/RolesTab'
 export { PermissionsCatalogTab } from './components/PermissionsCatalogTab'
 export { UserPermissionsTab } from './components/UserPermissionsTab'
 export { PermissionMatrix } from './components/PermissionMatrix'
+export { PermissionSimulatorTab } from './components/PermissionSimulatorTab'

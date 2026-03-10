@@ -14,10 +14,10 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Key, Users } from 'lucide-react';
-import { RolesTab, PermissionsCatalogTab, UserPermissionsTab } from '@/modules/roles-admin';
+import { Shield, Key, Users, Zap } from 'lucide-react';
+import { RolesTab, PermissionsCatalogTab, UserPermissionsTab, PermissionSimulatorTab } from '@/modules/roles-admin';
 
-const VALID_TABS = ['roles', 'permissions', 'user-permissions'] as const;
+const VALID_TABS = ['roles', 'permissions', 'user-permissions', 'simulator'] as const;
 
 export default function RolesPermissionsPage() {
   const router = useRouter();
@@ -58,7 +58,7 @@ export default function RolesPermissionsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="roles" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             {t('tabRoles')}
@@ -70,6 +70,10 @@ export default function RolesPermissionsPage() {
           <TabsTrigger value="user-permissions" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             {t('tabUserPermissions')}
+          </TabsTrigger>
+          <TabsTrigger value="simulator" className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Simulador
           </TabsTrigger>
         </TabsList>
 
@@ -83,6 +87,10 @@ export default function RolesPermissionsPage() {
 
         <TabsContent value="user-permissions" className="mt-6">
           <UserPermissionsTab />
+        </TabsContent>
+
+        <TabsContent value="simulator" className="mt-6">
+          <PermissionSimulatorTab />
         </TabsContent>
       </Tabs>
     </div>

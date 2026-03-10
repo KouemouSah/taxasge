@@ -2,6 +2,7 @@
 Permission API Routes - REST endpoints for permission management
 """
 from typing import List, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from uuid import UUID
 
@@ -358,3 +359,75 @@ async def detect_overprivileged_users(
             "risk_level": risk_level,
         },
     }
+
+
+# =============================================================================
+# PERMISSION SIMULATOR
+# =============================================================================
+
+
+class SimulateRolePermissionRequest(BaseModel):
+    """Request body for role permission simulation."""
+    role_id: str
+    permission_names: List[str]
+    action: str  # "grant" or "revoke"
+
+
+class SimulateUserRoleChangeRequest(BaseModel):
+    """Request body for user role change simulation."""
+    user_id: str
+    new_role_id: str
+
+
+@router.post("/simulate/role-permission")
+@require_permission("roles.view")
+async def simulate_role_permission_change(
+    request: SimulateRolePermissionRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Simulate granting/revoking permissions on a role WITHOUT applying.
+
+    Shows which users would be affected and how their permissions would change.
+
+    Requires: roles.view
+    """
+    if request.action not in ("grant", "revoke"):
+        raise HTTPException(status_code=400, detail="action must be 'grant' or 'revoke'")
+
+    from app.modules.permissions.services.permission_simulator import PermissionSimulator
+    from app.database.connection import db_manager
+
+    async with db_manager.get_connection() as conn:
+        simulator = PermissionSimulator(conn)
+        return await simulator.simulate_role_permission_change(
+            role_id=request.role_id,
+            permission_names=request.permission_names,
+            action=request.action,
+        )
+
+
+@router.post("/simulate/user-role-change")
+@require_permission("roles.view")
+async def simulate_user_role_change(
+    request: SimulateUserRoleChangeRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    permission_service: PermissionService = Depends(get_permission_service),
+):
+    """
+    Simulate changing a user's role WITHOUT applying.
+
+    Shows permission diff (added/removed) that would result from the role change.
+
+    Requires: roles.view
+    """
+    from app.modules.permissions.services.permission_simulator import PermissionSimulator
+    from app.database.connection import db_manager
+
+    async with db_manager.get_connection() as conn:
+        simulator = PermissionSimulator(conn)
+        return await simulator.simulate_user_role_change(
+            user_id=request.user_id,
+            new_role_id=request.new_role_id,
+        )

@@ -99,6 +99,11 @@ class InternalScheduler:
                 self._supervisor_weekly_report,
                 settings.SCHEDULER_WEEKLY_INTERVAL,
             ),
+            (
+                "refresh-effective-permissions",
+                self._refresh_effective_permissions,
+                60,  # Every 60 seconds — lightweight CONCURRENTLY refresh
+            ),
         ]
 
         for name, handler, interval in jobs:
@@ -777,6 +782,20 @@ class InternalScheduler:
                 logger.info(f"Supervisor weekly reports: {emails_sent} sent, {emails_failed} failed")
                 return {"emails_sent": emails_sent, "emails_failed": emails_failed}
         return None
+
+    async def _refresh_effective_permissions(self):
+        """Refresh the effective_permissions_mv materialized view (CONCURRENTLY)."""
+        from app.database.connection import db_manager
+
+        try:
+            async with db_manager.get_connection() as db:
+                await db.execute("SELECT refresh_effective_permissions()")
+            return "refreshed"
+        except Exception as e:
+            # View may not exist yet (migration not applied)
+            if "does not exist" in str(e):
+                return None
+            raise
 
 
 # Singleton

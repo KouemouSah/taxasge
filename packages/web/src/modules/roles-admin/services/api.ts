@@ -32,6 +32,9 @@ import type {
   AssignPermissionsRequest,
   RemovePermissionsRequest,
   PermissionMatrixResponse,
+  SimulateRolePermissionResponse,
+  SimulateUserRoleChangeResponse,
+  OverprivilegedUsersResponse,
 } from '../types'
 
 // =============================================================================
@@ -229,6 +232,61 @@ export const rolesApi = {
     a.download = 'roles_export.csv'
     a.click()
     URL.revokeObjectURL(url)
+  },
+}
+
+// =============================================================================
+// PERMISSIONS SIMULATOR API
+// =============================================================================
+
+const PERMISSIONS_BASE = '/permissions'
+
+export const permissionsSimulatorApi = {
+  /**
+   * Simulate granting/revoking permissions on a role
+   * BACKEND: POST /api/v1/permissions/simulate/role-permission
+   * PERMISSION: roles.view
+   */
+  simulateRolePermission: async (data: {
+    role_id: string
+    permission_names: string[]
+    action: 'grant' | 'revoke'
+  }): Promise<SimulateRolePermissionResponse> => {
+    return fetchClient.post<SimulateRolePermissionResponse>(
+      `${PERMISSIONS_BASE}/simulate/role-permission`,
+      data,
+    )
+  },
+
+  /**
+   * Simulate changing a user's role
+   * BACKEND: POST /api/v1/permissions/simulate/user-role-change
+   * PERMISSION: roles.view
+   */
+  simulateUserRoleChange: async (data: {
+    user_id: string
+    new_role_id: string
+  }): Promise<SimulateUserRoleChangeResponse> => {
+    return fetchClient.post<SimulateUserRoleChangeResponse>(
+      `${PERMISSIONS_BASE}/simulate/user-role-change`,
+      data,
+    )
+  },
+
+  /**
+   * Detect overprivileged users
+   * BACKEND: GET /api/v1/permissions/anomalies/overprivileged
+   * PERMISSION: admin.view_security
+   */
+  getOverprivilegedUsers: async (params?: {
+    min_risk_score?: number
+    risk_level?: string
+    limit?: number
+  }): Promise<OverprivilegedUsersResponse> => {
+    return fetchClient.get<OverprivilegedUsersResponse>(
+      `${PERMISSIONS_BASE}/anomalies/overprivileged`,
+      params,
+    )
   },
 }
 

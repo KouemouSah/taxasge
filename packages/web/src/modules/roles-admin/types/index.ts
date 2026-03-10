@@ -81,3 +81,62 @@ export interface PermissionMatrixResponse {
   permissions: PermissionMatrixPermission[]
   assignments: Record<string, boolean> // "role_id:permission_id" → granted
 }
+
+// =============================================================================
+// PERMISSION SIMULATOR TYPES
+// =============================================================================
+
+export interface SimulatedUserDiff {
+  user_id: string
+  email: string
+  full_name: string
+  role_code: string
+  added: string[]
+  removed: string[]
+  total_before: number
+  total_after: number
+}
+
+export interface SimulateRolePermissionResponse {
+  action: string
+  permission_names: string[]
+  role_id: string
+  affected_users_count: number
+  affected_users: SimulatedUserDiff[]
+}
+
+export interface SimulateUserRoleChangeResponse {
+  action: string
+  user_id: string
+  email: string | null
+  full_name: string | null
+  new_role: {
+    id: string
+    code: string | null
+    name: string | null
+  }
+  added: string[]
+  removed: string[]
+  total_before: number
+  total_after: number
+  unchanged: number
+}
+
+export interface OverprivilegedUser {
+  user_id: string
+  email: string
+  full_name: string
+  role_code: string
+  risk_score: number
+  risk_level: string
+  recommendations: string[]
+}
+
+export interface OverprivilegedUsersResponse {
+  overprivileged_users: OverprivilegedUser[]
+  count: number
+  filters: {
+    min_risk_score: number
+    risk_level: string | null
+  }
+}

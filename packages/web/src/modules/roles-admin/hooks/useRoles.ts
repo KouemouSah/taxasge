@@ -10,7 +10,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { rolesApi } from '../services/api'
+import { rolesApi, permissionsSimulatorApi } from '../services/api'
 import type { CreateRoleRequest, UpdateRoleRequest, AssignPermissionsRequest, RemovePermissionsRequest } from '../types'
 
 // Query keys
@@ -198,5 +198,44 @@ export function useBulkDeleteRoles() {
       queryClient.invalidateQueries({ queryKey: rolesKeys.lists() })
       queryClient.invalidateQueries({ queryKey: rolesKeys.custom() })
     },
+  })
+}
+
+// =============================================================================
+// PERMISSION SIMULATOR HOOKS
+// =============================================================================
+
+/**
+ * Simulate granting/revoking permissions on a role
+ */
+export function useSimulateRolePermission() {
+  return useMutation({
+    mutationFn: (data: { role_id: string; permission_names: string[]; action: 'grant' | 'revoke' }) =>
+      permissionsSimulatorApi.simulateRolePermission(data),
+  })
+}
+
+/**
+ * Simulate changing a user's role
+ */
+export function useSimulateUserRoleChange() {
+  return useMutation({
+    mutationFn: (data: { user_id: string; new_role_id: string }) =>
+      permissionsSimulatorApi.simulateUserRoleChange(data),
+  })
+}
+
+/**
+ * Fetch overprivileged users
+ */
+export function useOverprivilegedUsers(params?: {
+  min_risk_score?: number
+  risk_level?: string
+  limit?: number
+}) {
+  return useQuery({
+    queryKey: ['permissions', 'overprivileged', params],
+    queryFn: () => permissionsSimulatorApi.getOverprivilegedUsers(params),
+    staleTime: 5 * 60 * 1000,
   })
 }

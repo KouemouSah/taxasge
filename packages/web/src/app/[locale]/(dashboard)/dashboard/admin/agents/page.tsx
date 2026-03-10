@@ -31,6 +31,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Switch } from '@/components/ui/switch';
 import {
   Users, UserCog, Shield, Sparkles, Activity, RefreshCw, Search,
   Plus, MoreVertical, Edit, Trash2, UserCheck, UserX, Eye, Building2,
@@ -330,7 +331,18 @@ export default function AgentsPage() {
                             <span>{agent.ministry_name || agent.entity_name || '-'}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{getStatusBadge(agent.is_active)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={agent.is_active}
+                              onCheckedChange={() => handleToggleAgentStatus(agent)}
+                              disabled={deactivateAgentMutation.isPending || reactivateAgentMutation.isPending}
+                            />
+                            <span className={`text-xs ${agent.is_active ? 'text-green-700' : 'text-muted-foreground'}`}>
+                              {agent.is_active ? t('status.active') : t('status.inactive')}
+                            </span>
+                          </div>
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {agent.current_assignments !== undefined ? <span>{agent.current_assignments}</span> : '-'}
                         </TableCell>

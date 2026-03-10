@@ -158,30 +158,42 @@
 - [x] CacheInvalidator : `RBACListener` NOTIFY → Redis (<50ms)
 - [x] EventBus events émis depuis RBACListener pour cascading handlers
 
-### 3.3 Real-time cache invalidation ✅
+### 3.3 Real-time cache invalidation + WebSocket ✅
 - [x] PostgreSQL NOTIFY `rbac_changes` (migration 199, 4 triggers)
 - [x] Python asyncpg listener (`rbac_listener.py`)
 - [x] Invalidation ciblée (user-level ou all selon type de changement)
-- Note: WebSocket broadcast différé (pas de besoin immédiat — admin refresh suffit)
+- [x] WebSocket endpoint `ws://host/ws/admin?token=<jwt>` (`ws_manager.py` + `ws_routes.py`)
+- [x] RBACListener → ws_manager.broadcast() pour events temps réel
+- [x] Frontend `useRbacWebSocket` hook avec auto-reconnect + cache invalidation
 
-### 3.4 Permission Simulator ⬜ (différé)
-- [ ] Endpoint POST /permissions/simulate — implémenté quand nécessaire
-- Priorité: basse (aucun client ne l'a demandé)
+### 3.4 Permission Simulator ✅
+- [x] `PermissionSimulator` service (`permission_simulator.py`)
+- [x] `POST /permissions/simulate/role-permission` — simule grant/revoke sur rôle
+- [x] `POST /permissions/simulate/user-role-change` — simule changement de rôle utilisateur
+- [x] Frontend `PermissionSimulatorTab` — 3 sous-onglets (Simular Rol, Cambio de Rol, Anomalías)
+- [x] `GET /permissions/anomalies/overprivileged` — détection utilisateurs sur-privilégiés
 
 ### Checklist Phase 3 :
 - [x] Events RBAC émis sur mutations
 - [x] Audit logs automatiques via PostgreSQL triggers
 - [x] Cache invalidation automatique via NOTIFY + listener
-- [ ] WebSocket broadcast (différé — pas de besoin immédiat)
-- [ ] Permission simulator (différé)
+- [x] WebSocket broadcast temps réel pour admins
+- [x] Permission simulator (backend + frontend)
 
 ---
 
-## Phase 4 — Scale (quand nécessaire) ⬜
+## Phase 4 — Scale ✅ (4.1 COMPLÉTÉ, 4.2-4.4 infrastructure)
+
+### 4.1 Vue matérialisée permissions ✅
+- [x] Migration 200 : `effective_permissions_mv` (RECURSIVE CTE, 403 rows, 3 indexes)
+- [x] `refresh_effective_permissions()` SQL function
+- [x] Scheduler job `refresh-effective-permissions` toutes les 60s (CONCURRENTLY)
+- **Impact** : O(1) permission check vs O(depth) CTE par requête
+
+### 4.2-4.4 Infrastructure (quand nécessaire)
 
 | # | Action | Trigger |
 |---|--------|---------|
-| 4.1 | Vue matérialisée permissions (refresh 1min) | >200 agents |
 | 4.2 | PgBouncer connection pooling | >500 connexions |
 | 4.3 | Read replicas analytics | >10K users |
 | 4.4 | Event Bus → CloudAMQP/Pub-Sub | >1000 events/sec |

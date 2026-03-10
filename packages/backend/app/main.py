@@ -206,6 +206,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ RBAC listener failed (cache TTL fallback): {e}")
 
+    # Register WebSocket routes (admin real-time notifications)
+    try:
+        from app.core.ws_routes import router as ws_router
+        app.include_router(ws_router)
+        logger.info("✅ WebSocket admin endpoint registered (/ws/admin)")
+    except Exception as e:
+        logger.warning(f"⚠️ WebSocket routes failed (non-blocking): {e}")
+
     # Start internal cron scheduler (replaces Cloud Scheduler)
     try:
         from app.core.scheduler import internal_scheduler
