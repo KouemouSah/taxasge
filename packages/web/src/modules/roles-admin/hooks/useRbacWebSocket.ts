@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { getAccessToken } from '@/core/auth/storage'
 import { rolesKeys } from './useRoles'
 
 export interface RbacEvent {
@@ -33,8 +34,6 @@ export function useRbacWebSocket(options?: { enabled?: boolean }) {
     // Use the same token source as fetchClient (in-memory + cookie fallback)
     let token: string | null = null
     try {
-      // Dynamic import to avoid SSR issues
-      const { getAccessToken } = require('@/core/auth/storage')
       token = getAccessToken()
     } catch {
       token = null

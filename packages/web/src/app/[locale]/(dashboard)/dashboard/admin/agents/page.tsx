@@ -170,12 +170,6 @@ export default function AgentsPage() {
     return <Badge variant="secondary">{t('status.entityBadge')}</Badge>;
   };
 
-  const getStatusBadge = (isActive: boolean) => {
-    return isActive
-      ? <Badge className="bg-green-100 text-green-800">{t('status.active')}</Badge>
-      : <Badge variant="destructive">{t('status.inactive')}</Badge>;
-  };
-
   const isBackendUnavailable = !!agentsError || !!adminsError;
 
   return (

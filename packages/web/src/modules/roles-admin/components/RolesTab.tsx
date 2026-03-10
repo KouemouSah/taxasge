@@ -67,7 +67,6 @@ import {
   List,
   Copy,
   Download,
-  CheckSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRoles, useDeleteRole, useCloneRole, useBulkDeleteRoles, useRoleWithPermissions, rolesApi } from '@/modules/roles-admin';

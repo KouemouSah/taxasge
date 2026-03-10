@@ -152,7 +152,6 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
   // Supervisor
   Users,
-  UserPlus,
   BarChart2,
   Settings2,
   ListChecks,
