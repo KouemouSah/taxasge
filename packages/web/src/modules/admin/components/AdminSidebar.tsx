@@ -57,27 +57,31 @@ import {
   CreditCard,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { clearAuthData } from '@/core/auth/storage'
+import { clearAuthData, getAuthData } from '@/core/auth/storage'
 import { useToast } from '@/hooks/use-toast'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Menu } from 'lucide-react'
 
-// Role-based sidebar filtering
-// NOTE: Currently user.role (from users table enum) is always 'admin' for all admin users.
-// The scoped admin roles (admin_agents, admin_security, etc.) exist in the roles table
-// but are NOT reflected in user.role. For sidebar filtering to work with scoped roles,
-// the login response must include the user's RBAC role code from the roles table.
-// Until then, all admin users see all sections (backend enforces real access control).
-//
-// When RBAC role propagation is implemented, uncomment and use these maps:
-// const SECTION_ROLE_MAP: Record<string, string[]> = {
-//   access: ['admin_agents', 'admin_security'],
-//   fiscal: ['admin_services'],
-//   config: ['admin_config'],
-//   support: ['admin_support'],
-// }
-// const SUBCAT_ROLE_MAP: Record<string, string[]> = { ... }
+// Full-access roles: see everything (admin role_code = 'admin', super_admin = 'super_admin')
+const FULL_ACCESS_ROLES = ['admin', 'super_admin']
+
+// Section-level filtering: which scoped admin roles can see which sidebar groups
+const SECTION_ROLE_MAP: Record<string, string[]> = {
+  access: ['admin_agents', 'admin_security'],
+  fiscal: ['admin_services'],
+  config: ['admin_config'],
+  support: ['admin_support'],
+}
+
+// Sub-category-level filtering within 'config' group
+const SUBCAT_ROLE_MAP: Record<string, string[]> = {
+  communications: ['admin_config'],
+  workflows: ['admin_config', 'admin_services'],
+  system: ['admin_security', 'admin_config'],
+  menuConfig: ['admin_config'],
+  paymentInfra: ['admin_config', 'admin_services'],
+}
 
 // Type definitions for navigation items
 interface NavSubItem {
@@ -129,9 +133,28 @@ export default function AdminSidebar() {
   const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set())
   const [expandedSubCategories, setExpandedSubCategories] = React.useState<Set<string>>(new Set())
 
-  // NOTE: Sidebar filtering by scoped admin role is deferred until the login
-  // response includes the user's RBAC role code (from roles table).
-  // Currently all admin users see all sections. Backend enforces access control.
+  // Get the user's RBAC role code for sidebar filtering
+  const userRoleCode = useMemo(() => {
+    const authData = getAuthData()
+    return authData?.user?.role_code || authData?.user?.role || 'admin'
+  }, [])
+
+  const hasFullAccess = FULL_ACCESS_ROLES.includes(userRoleCode)
+
+  // Check if the current user's role can see a given section/sub-category
+  const canSeeSection = useCallback((sectionId: string) => {
+    if (hasFullAccess) return true
+    const allowedRoles = SECTION_ROLE_MAP[sectionId]
+    if (!allowedRoles) return true // No restriction = visible to all
+    return allowedRoles.includes(userRoleCode)
+  }, [userRoleCode, hasFullAccess])
+
+  const canSeeSubCategory = useCallback((subCatId: string) => {
+    if (hasFullAccess) return true
+    const allowedRoles = SUBCAT_ROLE_MAP[subCatId]
+    if (!allowedRoles) return true
+    return allowedRoles.includes(userRoleCode)
+  }, [userRoleCode, hasFullAccess])
 
   // Navigation items with i18n
   const navigationItems: NavItem[] = useMemo(() => [
@@ -454,10 +477,10 @@ export default function AdminSidebar() {
     </div>
   )
 
-  // Render sub-categories
+  // Render sub-categories (filtered by role)
   const renderSubCategories = (subCategories: NavSubCategory[]) => (
     <div className={cn('space-y-1 mt-1', !collapsed && 'ml-2')}>
-      {subCategories.map((subCat) => {
+      {subCategories.filter((subCat) => canSeeSubCategory(subCat.id)).map((subCat) => {
         const SubCatIcon = subCat.icon
         const isSubCatExpanded = expandedSubCategories.has(subCat.id)
         const hasActiveChild = isPathActiveInItems(subCat.items)
@@ -542,6 +565,9 @@ export default function AdminSidebar() {
             {navigationItems.map((item) => {
               // Group with collapsible sub-items or sub-categories
               if (isNavGroup(item)) {
+                // Role-based section filtering
+                if (!canSeeSection(item.id)) return null
+
                 const GroupIcon = item.icon
                 const isExpanded = expandedGroups.has(item.id)
                 const hasActiveChild = isGroupActive(item)

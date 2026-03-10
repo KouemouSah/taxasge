@@ -26,6 +26,7 @@ from app.modules.permissions.services.permission_service import (
     get_permission_service,
 )
 from app.modules.permissions.middleware.permission_middleware import require_permission
+from app.core.cache import invalidate_user_permissions_cache
 
 
 router = APIRouter(prefix="/user-permissions", tags=["User Permissions"])
@@ -144,6 +145,9 @@ async def grant_permission_to_user(
             detail="Failed to grant permission"
         )
 
+    # Invalidate cached permissions for this user
+    await invalidate_user_permissions_cache(str(request.user_id))
+
     return created
 
 
@@ -183,6 +187,9 @@ async def revoke_permission_from_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User permission not found for user '{request.user_id}' and permission '{request.permission_id}'"
         )
+
+    # Invalidate cached permissions for this user
+    await invalidate_user_permissions_cache(str(request.user_id))
 
     return {
         "success": True,
@@ -238,6 +245,9 @@ async def deny_permission_to_user(
             detail="Failed to deny permission"
         )
 
+    # Invalidate cached permissions for this user
+    await invalidate_user_permissions_cache(str(user_id))
+
     return created
 
 
@@ -288,6 +298,9 @@ async def update_user_permission(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User permission not found for user '{user_id}' and permission '{permission_id}'"
         )
+
+    # Invalidate cached permissions for this user
+    await invalidate_user_permissions_cache(str(user_id))
 
     return updated
 

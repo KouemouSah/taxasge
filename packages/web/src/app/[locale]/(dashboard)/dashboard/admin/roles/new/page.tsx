@@ -279,7 +279,7 @@ export default function CreateRolePage() {
     }
   };
 
-  const getEntityTypeLabel = (entityType: string | null) => {
+  const getEntityTypeLabel = (entityType: string | null | undefined) => {
     if (entityType === 'entity_agent' || entityType === 'agent') return t('entityTypeValue_agent');
     return t('entityTypeValue_global');
   };

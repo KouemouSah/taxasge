@@ -227,6 +227,9 @@ class UserResponse(BaseModel):
     # Funcionario status from verified_identifiers (real-time check)
     funcionario_status: Optional[Dict[str, Any]] = Field(None, description="Real-time funcionario status from verified_identifiers")
 
+    # RBAC role code (from roles table via users.role_id)
+    role_code: Optional[str] = Field(None, description="RBAC role code from roles table (e.g. admin_agents, agent_cnedoge_pasaporte)")
+
     # User permissions (from role + user-specific overrides)
     permissions: Optional[List[str]] = Field(None, description="User's effective permissions (from role and user-specific grants)")
 

@@ -114,6 +114,9 @@ export interface User {
   // Funcionario status from verified_identifiers table (real-time check)
   funcionario_status?: FuncionarioStatus;
 
+  // RBAC role code from roles table (e.g. 'admin_agents', 'agent_cnedoge_pasaporte')
+  role_code?: string;
+
   // Permissions from role_permissions and user_permissions
   permissions?: string[];
 }

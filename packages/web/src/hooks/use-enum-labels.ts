@@ -58,15 +58,14 @@ const ENUM_TO_JSON_NAMESPACE: Record<string, { namespace: string; prefix: string
  * Source: DATABASE_SCHEMA_REFERENCE.md
  */
 const KNOWN_ENUM_VALUES: Record<string, string[]> = {
-  // From DATABASE_SCHEMA_REFERENCE.md lines 280-287
+  // Updated per migration 048 (unified agent roles)
   user_role_enum: [
     'citizen',
     'business',
     'accountant',
     'admin',
-    'supervisor',
-    'dgi_agent',
-    'ministry_agent',
+    'agent',
+    'funcionario',
   ],
   // From DATABASE_SCHEMA_REFERENCE.md lines 142-148
   declaration_status_enum: [

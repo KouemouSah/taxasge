@@ -267,6 +267,8 @@ class AuthService:
 
             # Map user data to UserResponse model (excluding password_hash)
             user = self.user_repo._map_to_model(user_data)
+            # Keep role_id from raw data for RBAC role code resolution
+            user_role_id = user_data.get("role_id")
 
             # Check user status
             if user.status == UserStatus.suspended:
@@ -323,13 +325,23 @@ class AuthService:
                 remember_me=remember_me,
             )
 
-            # Fetch user permissions (from role + user-specific grants)
+            # Fetch user permissions + RBAC role code (from role + user-specific grants)
             user_permissions = []
+            role_code = None
             try:
                 async with db_manager.get_connection() as db:
                     perm_repo = UserPermissionRepository(db)
                     user_permissions = await perm_repo.get_all_permission_names(user.id)
                     logger.debug(f"Loaded {len(user_permissions)} permissions for user {user.email}")
+
+                    # Resolve RBAC role code from users.role_id → roles.code
+                    if user_role_id:
+                        row = await db.fetchrow(
+                            "SELECT code FROM roles WHERE id = $1", user_role_id
+                        )
+                        if row:
+                            role_code = row["code"]
+                            logger.debug(f"Resolved RBAC role code for {user.email}: {role_code}")
             except Exception as perm_error:
                 logger.warning(f"Failed to load permissions for user {user.email}: {perm_error}")
                 # Continue without permissions - user will have role-based access
@@ -352,6 +364,7 @@ class AuthService:
                 last_login=datetime.utcnow(),
                 email_verified=user.email_verified,
                 two_factor_enabled=user.two_factor_enabled,
+                role_code=role_code,
                 permissions=user_permissions,
             )
 
@@ -1039,13 +1052,23 @@ class AuthService:
                 remember_me=remember_me,
             )
 
-            # Fetch user permissions (from role + user-specific grants)
+            # Fetch user permissions + RBAC role code (from role + user-specific grants)
             user_permissions = []
+            role_code_2fa = None
             try:
                 async with db_manager.get_connection() as db:
                     perm_repo = UserPermissionRepository(db)
                     user_permissions = await perm_repo.get_all_permission_names(user_id)
                     logger.debug(f"Loaded {len(user_permissions)} permissions for user {email} (2FA login)")
+
+                    # Resolve RBAC role code from users.role_id → roles.code
+                    user_role_id_2fa = user_data.get("role_id")
+                    if user_role_id_2fa:
+                        row = await db.fetchrow(
+                            "SELECT code FROM roles WHERE id = $1", user_role_id_2fa
+                        )
+                        if row:
+                            role_code_2fa = row["code"]
             except Exception as perm_error:
                 logger.warning(f"Failed to load permissions for user {email}: {perm_error}")
                 # Continue without permissions - user will have role-based access
@@ -1071,6 +1094,7 @@ class AuthService:
                 last_login=datetime.utcnow(),
                 email_verified=user.email_verified,
                 two_factor_enabled=user.two_factor_enabled,
+                role_code=role_code_2fa,
                 permissions=user_permissions,
             )
 
