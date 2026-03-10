@@ -959,6 +959,16 @@ except Exception as e:
     logger.error(f"❌ Fiscal services router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load service bundles router (Module - Service Bundles - Phase 3)
+try:
+    from app.modules.fiscal_services.api.bundle_routes import router as bundle_router
+    app.include_router(bundle_router, prefix="/api/v1", tags=["service-bundles"])
+    routers_loaded.append("service_bundles")
+    logger.info("✅ Service bundles router loaded (zone-based pricing)")
+except Exception as e:
+    logger.error(f"❌ Service bundles router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load users router (Module - Users System)
 try:
     from app.modules.users.api import user_routes
