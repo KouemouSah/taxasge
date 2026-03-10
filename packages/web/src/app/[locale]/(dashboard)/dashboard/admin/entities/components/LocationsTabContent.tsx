@@ -93,6 +93,7 @@ export default function LocationsTabContent() {
   const [pageSize] = useState(20)
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [cityFilter, setCityFilter] = useState<string>('all')
+  const [regionFilter, setRegionFilter] = useState<'all' | 'Insular' | 'Continental'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -114,11 +115,12 @@ export default function LocationsTabContent() {
     () => ({
       entity_code: entityFilter !== 'all' ? entityFilter : undefined,
       city: cityFilter !== 'all' ? cityFilter : undefined,
+      region: regionFilter !== 'all' ? regionFilter : undefined,
       is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
       page,
       page_size: pageSize,
     }),
-    [entityFilter, cityFilter, statusFilter, page, pageSize]
+    [entityFilter, cityFilter, regionFilter, statusFilter, page, pageSize]
   )
 
   // Queries
@@ -233,7 +235,7 @@ export default function LocationsTabContent() {
   useEffect(() => {
     setPage(1)
     setAllLoadedItems([])
-  }, [entityFilter, cityFilter, statusFilter])
+  }, [entityFilter, cityFilter, regionFilter, statusFilter])
 
   // City options from API
   const cityOptions = useMemo(() => {
@@ -405,6 +407,24 @@ export default function LocationsTabContent() {
                     {entity.code}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={regionFilter}
+              onValueChange={(v) => {
+                setRegionFilter(v as 'all' | 'Insular' | 'Continental')
+                setPage(1)
+                setAllLoadedItems([])
+              }}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder={t('filters.region')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('filters.allRegions')}</SelectItem>
+                <SelectItem value="Insular">Insular</SelectItem>
+                <SelectItem value="Continental">Continental</SelectItem>
               </SelectContent>
             </Select>
 

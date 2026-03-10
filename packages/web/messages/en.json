@@ -2307,6 +2307,8 @@
           "filterStatus": "Filter status",
           "allCities": "All cities",
           "allEntities": "All entities",
+          "region": "Region",
+          "allRegions": "All regions",
           "allStatus": "All statuses",
           "activeOnly": "Active only",
           "inactiveOnly": "Inactive only",

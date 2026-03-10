@@ -1902,6 +1902,8 @@
           "status": "Statut",
           "allCities": "Toutes les villes",
           "allEntities": "Toutes les entités",
+          "region": "Région",
+          "allRegions": "Toutes les régions",
           "allStatus": "Tous les statuts",
           "activeOnly": "Actifs uniquement",
           "inactiveOnly": "Inactifs uniquement",

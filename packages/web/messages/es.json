@@ -1867,6 +1867,8 @@
           "status": "Estado",
           "allCities": "Todas las ciudades",
           "allEntities": "Todas las entidades",
+          "region": "Región",
+          "allRegions": "Todas las regiones",
           "allStatus": "Todos los estados",
           "activeOnly": "Solo activas",
           "inactiveOnly": "Solo inactivas",
