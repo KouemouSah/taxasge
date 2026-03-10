@@ -278,18 +278,33 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     if (!menuConfigData?.menu_config?.menus) {
       return [];
     }
-    const items = menuConfigData.menu_config.menus.map((menu) => ({
-      ...menu,
-      href: menu.href
-        ? menu.href.startsWith('/')
-          ? `/${locale}${menu.href}`
-          : menu.href
-        : undefined,
-      items: menu.items?.map((item) => ({
-        ...item,
-        href: item.href.startsWith('/') ? `/${locale}${item.href}` : item.href,
-      })),
-    }));
+    // Check if user has a specific permission
+    const checkPerm = (perm?: string) => {
+      if (!perm) return true; // No permission required → visible
+      if (context?.isSupervisor) return true; // Supervisors see everything
+      return userPermissions.has(perm);
+    };
+
+    const items = menuConfigData.menu_config.menus
+      // Filter top-level items by permission
+      .filter((menu) => checkPerm(menu.permission))
+      .map((menu) => ({
+        ...menu,
+        href: menu.href
+          ? menu.href.startsWith('/')
+            ? `/${locale}${menu.href}`
+            : menu.href
+          : undefined,
+        // Filter sub-items by permission
+        items: menu.items
+          ?.filter((item) => checkPerm(item.permission))
+          .map((item) => ({
+            ...item,
+            href: item.href.startsWith('/') ? `/${locale}${item.href}` : item.href,
+          })),
+      }))
+      // Remove groups with no visible sub-items (after permission filtering)
+      .filter((menu) => menu.href || (menu.items && menu.items.length > 0));
 
     // Inject AI Assistant right after dashboard item (i18n via agent.nav.assistant)
     const hasAnalystPermission = context?.permissions?.includes('analyst.ask');
@@ -308,7 +323,7 @@ export function useAgentDashboard(): UseAgentDashboardReturn {
     }
 
     return items;
-  }, [menuConfigData?.menu_config?.menus, locale, context?.permissions]);
+  }, [menuConfigData?.menu_config?.menus, locale, context?.permissions, context?.isSupervisor, userPermissions]);
 
   // Derive base path from menu_config dashboard href (role-aware)
   // Priority: 1) ministry agent → /ministry  2) menu_config dashboard href  3) entity code fallback

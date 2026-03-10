@@ -496,20 +496,36 @@ class MenuConfigService:
                         titleKey="supervisor.nav.pendingEscalations",
                         href="/dashboard/supervisor/escalations/pending",
                         icon="Clock",
+                        permission="queue.escalate",
                     ),
                     SubMenuItemWithBadge(
                         id="resolved",
                         titleKey="supervisor.nav.resolvedEscalations",
                         href="/dashboard/supervisor/escalations/resolved",
                         icon="CheckCircle",
+                        permission="queue.view",
                     ),
                 ],
             ),
             MenuItemBase(
-                id="supervisor-rules",
+                id="supervisor-assignments",
                 titleKey="supervisor.nav.assignments",
                 icon="Settings2",
                 items=[
+                    SubMenuItemWithBadge(
+                        id="manual",
+                        titleKey="supervisor.nav.manualAssignment",
+                        href="/dashboard/supervisor/assignments/manual",
+                        icon="UserPlus",
+                        permission="assignment.create",
+                    ),
+                    SubMenuItemWithBadge(
+                        id="list",
+                        titleKey="supervisor.nav.assignmentsList",
+                        href="/dashboard/supervisor/assignments/manual?tab=active",
+                        icon="ClipboardList",
+                        permission="assignment.list",
+                    ),
                     SubMenuItemWithBadge(
                         id="rules",
                         titleKey="supervisor.nav.rules",
@@ -524,6 +540,7 @@ class MenuConfigService:
                 titleKey="supervisor.nav.reports",
                 href="/dashboard/supervisor/reports",
                 icon="FileBarChart",
+                permission="reports.view",
             ),
         ]
 

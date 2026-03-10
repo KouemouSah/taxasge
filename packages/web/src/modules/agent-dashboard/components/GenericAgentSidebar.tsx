@@ -73,6 +73,7 @@ import {
   Settings2,
   ListChecks,
   FileBarChart,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -132,6 +133,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
   // Users & Security
   User,
+  UserPlus,
   Settings,
   Shield,
   ShieldAlert,
@@ -150,6 +152,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
   // Supervisor
   Users,
+  UserPlus,
   BarChart2,
   Settings2,
   ListChecks,
