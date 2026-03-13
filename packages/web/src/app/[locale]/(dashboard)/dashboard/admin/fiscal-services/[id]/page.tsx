@@ -354,7 +354,9 @@ export default function FiscalServiceDetailPage() {
                     )}
                     {service.descriptionSource && (
                       <Badge variant="outline" className="text-xs">
-                        {service.descriptionSource === 'ai_generated' ? t('descriptionSourceAI') : t('descriptionSourceManual')}
+                        {service.descriptionSource === 'ai_generated' || service.descriptionSource === 'ai_draft'
+                          ? t('descriptionSourceAI')
+                          : t('descriptionSourceManual')}
                       </Badge>
                     )}
                   </div>

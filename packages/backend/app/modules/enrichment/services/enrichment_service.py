@@ -291,6 +291,12 @@ class EnrichmentService:
                     continue
 
                 elapsed = round(time.monotonic() - start, 2)
+
+                # tokens == 0 means handler called mark_failed internally
+                if tokens == 0:
+                    failed += 1
+                    continue
+
                 tokens_total += tokens
                 processed += 1
                 details.append({

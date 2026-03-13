@@ -513,7 +513,11 @@ export default function EditFiscalServicePage() {
                   />
                   {service?.descriptionSource && (
                     <p className="text-xs text-muted-foreground">
-                      {t('descriptionSource')}: {service.descriptionSource === 'ai_generated' ? t('descriptionSourceAI') : t('descriptionSourceManual')}
+                      {t('descriptionSource')}: {
+                        service.descriptionSource === 'ai_generated' || service.descriptionSource === 'ai_draft'
+                          ? t('descriptionSourceAI')
+                          : t('descriptionSourceManual')
+                      }
                     </p>
                   )}
                 </div>
