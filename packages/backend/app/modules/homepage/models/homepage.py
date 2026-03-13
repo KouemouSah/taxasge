@@ -166,6 +166,16 @@ class SearchFacets(BaseModel):
     price_ranges: List[FacetItem] = []
 
 
+class BundleResultItem(BaseModel):
+    """Bundle search result (commercial license package)"""
+    id: str
+    name: str
+    description: Optional[str] = None
+    bundle_code: str
+    commerce_type: str
+    item_count: int = 0
+
+
 class SearchResponse(BaseModel):
     """Search response"""
     success: bool = True
@@ -175,6 +185,7 @@ class SearchResponse(BaseModel):
     limit: int = 20
     total_pages: int = 0
     results: List[SearchResultItem] = []
+    bundles: List[BundleResultItem] = []
     facets: Optional[SearchFacets] = None
     suggestions: List[str] = []
     execution_time_ms: float = 0

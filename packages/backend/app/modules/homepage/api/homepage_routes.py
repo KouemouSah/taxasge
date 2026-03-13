@@ -21,7 +21,8 @@ import json
 from app.modules.homepage.models import (
     HomepageStats, CategoryDirectory, ServicesByTypeResponse,
     MinistryDirectory, MinistryDetails, MinistryItem,
-    SearchRequest, SearchResponse, SearchResultItem, SearchFacets, FacetItem
+    SearchRequest, SearchResponse, SearchResultItem, SearchFacets, FacetItem,
+    BundleResultItem,
 )
 import time
 from app.modules.homepage.services import HomepageService
@@ -802,6 +803,27 @@ async def search_services(
                 price_ranges=[]
             )
 
+        # Search bundles when text query is provided (page 1 only — bundles are top-level)
+        bundle_results: list = []
+        if request.q and request.q.strip() and request.page == 1:
+            try:
+                raw_bundles = await repo.search_bundles(
+                    q=request.q, language=request.language, limit=3
+                )
+                bundle_results = [
+                    BundleResultItem(
+                        id=str(b["id"]),
+                        name=b["name"],
+                        description=b.get("description"),
+                        bundle_code=b["bundle_code"],
+                        commerce_type=b["commerce_type"],
+                        item_count=b.get("item_count", 0),
+                    )
+                    for b in raw_bundles
+                ]
+            except Exception as e:
+                logger.warning(f"Bundle search failed (non-blocking): {e}")
+
         execution_time = (time.time() - start_time) * 1000  # Convert to ms
 
         result = SearchResponse(
@@ -828,6 +850,7 @@ async def search_services(
                 )
                 for r in search_result['results']
             ],
+            bundles=bundle_results,
             facets=facets,
             suggestions=[],
             execution_time_ms=execution_time,
@@ -851,6 +874,37 @@ async def search_services(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred. Please try again."
         )
+
+
+# ========== AUTOCOMPLETE ==========
+
+@router.get("/autocomplete", summary="Autocomplete Suggestions")
+async def autocomplete_services(
+    raw_request: Request,
+    q: str = Query(..., min_length=2, max_length=100, description="Search prefix"),
+    language: str = Query("es", pattern="^(es|fr|en)$"),
+    limit: int = Query(7, ge=1, le=15),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Fast type-ahead autocomplete for service search.
+    Uses tsvector prefix matching + pg_trgm similarity.
+    Designed for <100ms response (frontend debounce 200-300ms).
+    """
+    await enforce_rate_limit(raw_request, *RATE_LIMIT_SEARCH)
+
+    cache = get_services_cache()
+    cache_key = CacheKeys.custom("autocomplete", q.strip().lower(), language)
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    repo = HomepageRepository(db)
+    results = await repo.autocomplete(q=q, language=language, limit=limit)
+
+    response = {"suggestions": results}
+    await cache.set(cache_key, response, ttl=120)  # 2min TTL (fast changing)
+    return response
 
 
 # ========== DEBUG ENDPOINT - TO REMOVE AFTER TESTING ==========

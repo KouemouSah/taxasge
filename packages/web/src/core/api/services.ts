@@ -76,6 +76,23 @@ export interface SearchFacets {
   price_ranges: FacetItem[];
 }
 
+export interface BundleResult {
+  id: string;
+  name: string;
+  description: string | null;
+  bundle_code: string;
+  commerce_type: string;
+  item_count: number;
+}
+
+export interface AutocompleteItem {
+  id: number;
+  name: string;
+  category_name: string;
+  service_type: string;
+  expedition_price: number;
+}
+
 export interface SearchResponse {
   success: boolean;
   query: string;
@@ -84,6 +101,7 @@ export interface SearchResponse {
   limit: number;
   total_pages: number;
   results: ServiceResult[];
+  bundles: BundleResult[];
   facets: SearchFacets | null;
   suggestions: string[];
   execution_time_ms: number;
@@ -147,6 +165,27 @@ export async function searchServices(filters: SearchFilters = {}): Promise<Searc
 }
 
 /**
+ * Autocomplete suggestions (type-ahead, debounce 200-300ms)
+ */
+export async function autocompleteServices(
+  q: string,
+  language: string = 'es',
+  limit: number = 7
+): Promise<AutocompleteItem[]> {
+  if (!q || q.trim().length < 2) return [];
+
+  try {
+    const params = new URLSearchParams({ q: q.trim(), language, limit: String(limit) });
+    const response = await fetch(`${SERVICES_API_URL}/autocomplete?${params}`);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.suggestions || [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Get default/fallback search response for error cases
  */
 export function getDefaultSearchResponse(): SearchResponse {
@@ -158,6 +197,7 @@ export function getDefaultSearchResponse(): SearchResponse {
     limit: 20,
     total_pages: 0,
     results: [],
+    bundles: [],
     facets: {
       categories: [],
       ministries: [],

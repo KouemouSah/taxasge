@@ -27,7 +27,7 @@ import {
   type SearchFilters,
   type SearchResponse,
   type ServiceResult,
-  type FacetItem
+  type FacetItem,
 } from "@/core/api/services"
 
 type ViewMode = 'grid' | 'list'
@@ -684,6 +684,35 @@ function ServicesContent() {
                 </div>
               )}
             </Card>
+          )}
+
+          {/* Bundle Results (commercial license packages matching the search) */}
+          {!loading && searchResults && searchResults.bundles && searchResults.bundles.length > 0 && (
+            <div className="mb-6">
+              <p className="text-sm font-medium text-muted-foreground mb-2">
+                {t('bundlesFound', { count: searchResults.bundles.length, defaultValue: `${searchResults.bundles.length} paquete(s) comercial(es)` })}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {searchResults.bundles.map((bundle) => (
+                  <Card
+                    key={bundle.id}
+                    className="group hover:shadow-md transition-all cursor-pointer border-primary/20 bg-primary/5 flex-1 min-w-[250px] max-w-[400px]"
+                    onClick={() => router.push(`/${locale}/licencias-comerciales?bundle=${bundle.bundle_code}`)}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="secondary" className="text-xs">{t('bundle', { defaultValue: 'Paquete' })}</Badge>
+                        <span className="text-xs text-muted-foreground">{bundle.item_count} {t('servicesIncluded', { defaultValue: 'servicios' })}</span>
+                      </div>
+                      <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">{bundle.name}</h3>
+                      {bundle.description && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{bundle.description}</p>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Grid View */}

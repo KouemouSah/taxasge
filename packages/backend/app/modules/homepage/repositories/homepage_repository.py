@@ -522,28 +522,30 @@ class HomepageRepository:
         Returns:
             Dict with results, total_results, total_pages, facets
         """
-        # Build WHERE conditions (uses mv_services_translated — no JOINs needed)
+        # Build WHERE conditions (uses mv_services_translated + tsvector JOIN for text search)
         conditions = ["true"]  # mv already filtered to status='active'
         params = []
         param_idx = 1
+        use_fts = False  # Full-text search JOIN flag
 
-        # Search query - search in multiple fields including translated names + keywords
+        # Search query — tsvector GIN index (2-10ms) + ILIKE fallback for translations/categories
         if q and q.strip():
+            use_fts = True
             search_term = f"%{q.strip()}%"
             conditions.append(f"""(
-                mv.name_es ILIKE ${param_idx}
-                OR mv.description_es ILIKE ${param_idx}
-                OR mv.category_name_es ILIKE ${param_idx}
-                OR mv.name_fr ILIKE ${param_idx}
-                OR mv.name_en ILIKE ${param_idx}
+                fs.search_vector @@ plainto_tsquery('spanish', ${param_idx})
+                OR mv.category_name_es ILIKE ${param_idx + 1}
+                OR mv.name_fr ILIKE ${param_idx + 1}
+                OR mv.name_en ILIKE ${param_idx + 1}
                 OR EXISTS (
                     SELECT 1 FROM service_keywords sk
                     WHERE sk.fiscal_service_id = mv.id
-                    AND sk.keyword ILIKE ${param_idx}
+                    AND sk.keyword ILIKE ${param_idx + 1}
                 )
             )""")
-            params.append(search_term)
-            param_idx += 1
+            params.append(q.strip())      # $1 for plainto_tsquery (raw text, not %wrapped%)
+            params.append(search_term)     # $2 for ILIKE fallback
+            param_idx += 2
 
         # Category filter
         if category_id:
@@ -588,14 +590,18 @@ class HomepageRepository:
 
         where_clause = " AND ".join(conditions)
 
-        # Build ORDER BY
-        order_mapping = {
-            "name": "name_es",
-            "price": "COALESCE(tasa_expedicion, 0)",
-            "relevance": "id"
-        }
-        order_field = order_mapping.get(sort_by, "id")
-        order_dir = "DESC" if sort_order == "desc" else "ASC"
+        # Build ORDER BY — use ts_rank for relevance when FTS is active
+        if sort_by == "relevance" and use_fts:
+            order_field = "search_rank DESC, mv.view_count DESC, mv.calculation_count"
+            order_dir = "DESC"
+        else:
+            order_mapping = {
+                "name": "name_es",
+                "price": "COALESCE(tasa_expedicion, 0)",
+                "relevance": "mv.view_count DESC, mv.calculation_count",
+            }
+            order_field = order_mapping.get(sort_by, "mv.id")
+            order_dir = "DESC" if sort_order == "desc" else "ASC"
 
         # Single query on materialized view — 0 JOINs, all translations pre-computed
         offset = (page - 1) * limit
@@ -607,6 +613,10 @@ class HomepageRepository:
         cat_col = f"COALESCE(mv.category_name_{lang_suffix}, mv.category_name_es)" if lang_suffix else "mv.category_name_es"
         min_col = f"COALESCE(mv.ministry_name_{lang_suffix}, mv.ministry_name_es)" if lang_suffix else "mv.ministry_name_es"
         sec_col = f"COALESCE(mv.sector_name_{lang_suffix}, mv.sector_name_es)" if lang_suffix else "mv.sector_name_es"
+
+        # Build FTS JOIN + rank column when text search is active
+        fts_join = "JOIN fiscal_services fs ON fs.id = mv.id" if use_fts else ""
+        rank_col = f", ts_rank(fs.search_vector, plainto_tsquery('spanish', $1)) AS search_rank" if use_fts else ""
 
         search_query = f"""
             SELECT
@@ -623,7 +633,9 @@ class HomepageRepository:
                 COALESCE(mv.processing_time_days, 30) as processing_time_days,
                 mv.status::TEXT as status,
                 COALESCE(mv.calculation_method::TEXT, 'fixed_expedition') as calculation_method
+                {rank_col}
             FROM mv_services_translated mv
+            {fts_join}
             WHERE {where_clause}
             ORDER BY {order_field} {order_dir}
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -636,9 +648,10 @@ class HomepageRepository:
             rows = await self.db.fetch(search_query, *params)
             results = [dict(row) for row in rows]
             total_results = rows[0]['total_count'] if rows else 0
-            # Remove total_count from each result
+            # Remove internal columns from each result
             for r in results:
                 r.pop('total_count', None)
+                r.pop('search_rank', None)
             total_pages = max(1, (total_results + limit - 1) // limit)
 
             return {
@@ -782,3 +795,112 @@ class HomepageRepository:
         except asyncpg.PostgresError as e:
             logger.error(f"Database error in get_search_facets: {e}")
             raise
+
+    async def autocomplete(
+        self,
+        q: str,
+        language: str = "es",
+        limit: int = 7,
+    ) -> List[Dict[str, Any]]:
+        """
+        Fast autocomplete suggestions using tsvector prefix matching + pg_trgm similarity.
+
+        Returns up to `limit` results with: id, name, category_name, service_type, expedition_price.
+        Designed for <100ms response on type-ahead (debounced 200-300ms frontend).
+        """
+        if not q or len(q.strip()) < 2:
+            return []
+
+        q_clean = q.strip()
+
+        # Language column mapping
+        lang_suffix = {"fr": "fr", "en": "en"}.get(language, "")
+        name_col = f"COALESCE(mv.name_{lang_suffix}, mv.name_es)" if lang_suffix else "mv.name_es"
+        cat_col = f"COALESCE(mv.category_name_{lang_suffix}, mv.category_name_es)" if lang_suffix else "mv.category_name_es"
+
+        # Prefix tsquery: "licen" → "licen:*" for prefix matching
+        ts_prefix = " & ".join(f"{word}:*" for word in q_clean.split() if word)
+
+        query = f"""
+            SELECT
+                mv.id,
+                {name_col} AS name,
+                {cat_col} AS category_name,
+                mv.service_type::TEXT AS service_type,
+                COALESCE(mv.tasa_expedicion, 0)::FLOAT AS expedition_price,
+                ts_rank(fs.search_vector, to_tsquery('spanish', $1)) AS rank,
+                similarity(mv.name_es, $2) AS sim
+            FROM mv_services_translated mv
+            JOIN fiscal_services fs ON fs.id = mv.id
+            WHERE fs.search_vector @@ to_tsquery('spanish', $1)
+               OR similarity(mv.name_es, $2) > 0.15
+            ORDER BY rank DESC, sim DESC
+            LIMIT $3
+        """
+
+        try:
+            rows = await self.db.fetch(query, ts_prefix, q_clean, limit)
+            return [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "category_name": row["category_name"],
+                    "service_type": row["service_type"],
+                    "expedition_price": row["expedition_price"],
+                }
+                for row in rows
+            ]
+        except asyncpg.PostgresError as e:
+            logger.error(f"Autocomplete error: {e}")
+            return []
+
+    async def search_bundles(
+        self,
+        q: str,
+        language: str = "es",
+        limit: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """
+        Search service bundles by name/commerce_type.
+        Surfaced alongside service results when a query matches a bundle.
+        """
+        if not q or len(q.strip()) < 2:
+            return []
+
+        search_term = f"%{q.strip()}%"
+
+        # Language column mapping for bundle translations
+        lang_suffix = {"fr": "fr", "en": "en"}.get(language, "")
+        name_col = f"COALESCE(et_name.translation_text, sb.name_es)" if lang_suffix else "sb.name_es"
+        desc_col = f"COALESCE(et_desc.translation_text, sb.description_es)" if lang_suffix else "sb.description_es"
+        et_lang = lang_suffix or "es"
+
+        query = f"""
+            SELECT
+                sb.id,
+                {name_col} AS name,
+                {desc_col} AS description,
+                sb.bundle_code,
+                sb.commerce_type,
+                (SELECT COUNT(*) FROM service_bundle_items sbi
+                 WHERE sbi.bundle_id = sb.id AND sbi.is_active = true) AS item_count
+            FROM service_bundles sb
+            LEFT JOIN entity_translations et_name ON
+                et_name.entity_type = 'bundle' AND et_name.entity_code = sb.bundle_code
+                AND et_name.field_name = 'name' AND et_name.language_code = $2
+            LEFT JOIN entity_translations et_desc ON
+                et_desc.entity_type = 'bundle' AND et_desc.entity_code = sb.bundle_code
+                AND et_desc.field_name = 'description' AND et_desc.language_code = $2
+            WHERE sb.is_active = true
+              AND (sb.name_es ILIKE $1 OR sb.commerce_type ILIKE $1
+                   OR sb.description_es ILIKE $1)
+            ORDER BY sb.name_es
+            LIMIT $3
+        """
+
+        try:
+            rows = await self.db.fetch(query, search_term, et_lang, limit)
+            return [dict(row) for row in rows]
+        except asyncpg.PostgresError as e:
+            logger.error(f"Bundle search error: {e}")
+            return []
