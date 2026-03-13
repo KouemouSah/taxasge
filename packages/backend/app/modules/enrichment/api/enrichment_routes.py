@@ -121,6 +121,38 @@ async def seed_enrichment_batch(
     )
 
 
+@router.post(
+    "/admin/seed-ministries",
+    summary="Seed enrichment queue for ministries without descriptions",
+)
+async def seed_ministry_descriptions(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _perm: None = Depends(permission_required("fiscal_service.create")),
+):
+    """
+    Enqueue generate_ministry_description for all ministries without descriptions.
+    Generated descriptions are stored as 'ai_draft' — admin must approve.
+    """
+    user_id = current_user.get("sub", "unknown")
+
+    is_allowed, remaining = await check_rate_limit(
+        identifier=str(user_id),
+        endpoint="/enrichment/admin/seed-ministries",
+        max_requests=1,
+        window_seconds=60,
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Seed-ministries can only be called once per minute.",
+        )
+
+    count = await EnrichmentRepository.seed_ministry_descriptions(db)
+    logger.info(f"Admin {user_id} triggered ministry seed: {count} enqueued")
+    return {"enqueued_ministry_descriptions": count}
+
+
 @router.get(
     "/admin/stats",
     response_model=EnrichmentStats,
@@ -151,9 +183,13 @@ async def get_recent_enrichments(
         """
         SELECT eq.id, eq.fiscal_service_id, eq.task_type, eq.status,
                eq.tokens_used, eq.output_data, eq.processed_at,
-               fs.service_code, fs.name_es
+               fs.service_code, fs.name_es,
+               m.ministry_code, m.name_es as ministry_name
         FROM enrichment_queue eq
-        JOIN fiscal_services fs ON fs.id = eq.fiscal_service_id
+        LEFT JOIN fiscal_services fs ON fs.id = eq.fiscal_service_id
+            AND eq.task_type != 'generate_ministry_description'
+        LEFT JOIN ministries m ON m.id = eq.fiscal_service_id
+            AND eq.task_type = 'generate_ministry_description'
         WHERE eq.status IN ('completed', 'failed')
         ORDER BY eq.processed_at DESC NULLS LAST
         LIMIT $1

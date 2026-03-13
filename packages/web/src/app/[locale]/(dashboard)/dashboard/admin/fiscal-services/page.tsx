@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  FileText, RefreshCw, AlertTriangle, Search, Plus, Upload, Eye, Edit, Trash2,
+  FileText, RefreshCw, AlertTriangle, Search, Plus, Upload, Eye, EyeOff, Edit, Trash2,
   TrendingUp, CheckCircle2, BarChart3, ChevronLeft, ChevronRight, Download,
   ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
@@ -483,7 +483,16 @@ export default function FiscalServicesPage() {
                   <TableRow key={service.id} className="cursor-pointer hover:bg-muted/50"
                     onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services/${service.id}`)}>
                     <TableCell className="font-mono text-xs">{service.serviceCode}</TableCell>
-                    <TableCell className="font-medium text-sm max-w-[300px] truncate">{service.nameEs}</TableCell>
+                    <TableCell className="font-medium text-sm max-w-[300px]">
+                      <span className="flex items-center gap-1.5 truncate">
+                        {service.nameEs}
+                        {service.descriptionEs && service.descriptionVisible === false && (
+                          <span title={t('descriptionHidden')}>
+                            <EyeOff className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                          </span>
+                        )}
+                      </span>
+                    </TableCell>
                     <TableCell>{getTypeBadge(service.serviceType)}</TableCell>
                     <TableCell>{getStatusBadge(service.status)}</TableCell>
                     <TableCell className="text-sm">{formatCurrency(service.tasaExpedicion)}</TableCell>

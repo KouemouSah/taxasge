@@ -36,6 +36,8 @@ import {
   Link2,
   Check,
   X,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import fiscalServicesAPI from '@/modules/fiscal-services/services/api'
@@ -339,7 +341,23 @@ export default function FiscalServiceDetailPage() {
 
               {service.descriptionEs && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">{t('descriptionEs')}</label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-muted-foreground">{t('descriptionEs')}</label>
+                    {service.descriptionVisible === false ? (
+                      <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                        <EyeOff className="h-3 w-3 mr-1" />{t('descriptionHidden')}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                        <Eye className="h-3 w-3 mr-1" />{t('descriptionPublic')}
+                      </Badge>
+                    )}
+                    {service.descriptionSource && (
+                      <Badge variant="outline" className="text-xs">
+                        {service.descriptionSource === 'ai_generated' ? t('descriptionSourceAI') : t('descriptionSourceManual')}
+                      </Badge>
+                    )}
+                  </div>
                   <p className="mt-1 text-sm whitespace-pre-wrap">{service.descriptionEs}</p>
                 </div>
               )}

@@ -34,7 +34,10 @@ class ServiceDetailsRepository:
                 fs.id,
                 fs.service_code,
                 COALESCE(et_name.translation_text, fs.name_es) as name,
-                COALESCE(et_desc.translation_text, fs.description_es) as description,
+                CASE WHEN COALESCE(fs.description_visible, true)
+                     THEN COALESCE(et_desc.translation_text, fs.description_es)
+                     ELSE NULL
+                END as description,
                 fs.service_type,
                 fs.status,
                 COALESCE(fs.calculation_method, 'fixed_expedition') as calculation_method,

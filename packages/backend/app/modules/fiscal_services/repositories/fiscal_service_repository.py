@@ -26,7 +26,7 @@ class FiscalServiceRepository:
                 COALESCE(et_desc.translation_text, m.description_es) as description_es,
                 m.display_order, m.icon, m.color,
                 m.website_url, m.contact_email, m.contact_phone,
-                m.is_active, m.created_at, m.updated_at
+                m.is_active, m.description_source, m.created_at, m.updated_at
             FROM ministries m
             LEFT JOIN entity_translations et_name ON
                 et_name.entity_type = 'ministry'
@@ -377,13 +377,14 @@ class FiscalServiceRepository:
                 parent_service_id, legal_reference, regulatory_articles,
                 tariff_effective_from, tariff_effective_to,
                 processing_time_days, priority, complexity_level, status,
+                description_visible,
                 created_at, updated_at
             )
             VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                 $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
                 $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-                $31, $32, $33, $34, $35, $36, $37,
+                $31, $32, $33, $34, $35, $36, $37, $38,
                 NOW(), NOW()
             )
             RETURNING *
@@ -427,6 +428,7 @@ class FiscalServiceRepository:
             service.priority,
             service.complexity_level,
             service.status.value if service.status else 'active',
+            service.description_visible if service.description_visible is not None else True,
         )
 
         service_dict = dict(result)
@@ -436,7 +438,7 @@ class FiscalServiceRepository:
     # Full column list for detail views (all columns except embedding and search_vector)
     _DETAIL_COLUMNS = """
         fs.id, fs.service_code, fs.category_id,
-        fs.name_es, fs.description_es,
+        fs.name_es, fs.description_es, fs.description_visible, fs.description_source,
         fs.service_type, fs.calculation_method, fs.status,
         fs.tasa_expedicion, fs.tasa_renovacion,
         fs.base_percentage, fs.percentage_of,
@@ -638,7 +640,7 @@ class FiscalServiceRepository:
     # Explicit column list for list/search queries (no embedding, no search_vector, no JSONB blobs)
     _LIST_COLUMNS = """
         fs.id, fs.service_code, fs.category_id,
-        fs.name_es, fs.description_es,
+        fs.name_es, fs.description_es, fs.description_visible, fs.description_source,
         fs.service_type, fs.calculation_method, fs.status,
         fs.tasa_expedicion, fs.tasa_renovacion,
         fs.processing_time_days, fs.priority, fs.complexity_level,
@@ -836,9 +838,13 @@ class FiscalServiceRepository:
         enum_fields = {"service_type", "calculation_method", "status"}
         json_fields = {"calculation_config", "rate_tiers", "penalty_calculation_rules",
                        "eligibility_criteria", "exemption_conditions"}
+        # Boolean fields: include even when value is False (not None)
+        bool_fields = {"description_visible", "is_tier_component"}
 
         for field, value in update_data.model_dump(exclude_unset=True).items():
-            if value is not None:
+            if value is not None or field in bool_fields:
+                if value is None and field in bool_fields:
+                    continue  # skip if truly None (not set)
                 if field in enum_fields:
                     updates.append(f"{field} = ${param_idx}")
                     params.append(value.value if hasattr(value, 'value') else value)

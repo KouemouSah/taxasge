@@ -313,7 +313,8 @@ class BundleService:
                     "SET LOCAL app.current_user_id = $1::text", str(user_id)
                 )
             success, bundle_id = await BundleRepository.delete_item(conn, item_id)
-            await BundleService._invalidate_cache(bundle_id)
+            if success and bundle_id:
+                await BundleService._invalidate_cache(bundle_id)
         return success
 
     @staticmethod

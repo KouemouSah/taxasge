@@ -110,6 +110,7 @@ export default function EditFiscalServicePage() {
           categoryId: serviceData.categoryId,
           nameEs: serviceData.nameEs,
           descriptionEs: serviceData.descriptionEs,
+          descriptionVisible: serviceData.descriptionVisible ?? true,
           serviceType: serviceData.serviceType,
           calculationMethod: serviceData.calculationMethod,
           tasaExpedicion: serviceData.tasaExpedicion,
@@ -331,6 +332,7 @@ export default function EditFiscalServicePage() {
       if (formData.categoryId !== undefined) updateData.categoryId = formData.categoryId
       if (formData.nameEs !== undefined) updateData.nameEs = formData.nameEs
       if (formData.descriptionEs !== undefined) updateData.descriptionEs = formData.descriptionEs
+      if (formData.descriptionVisible !== undefined) updateData.descriptionVisible = formData.descriptionVisible
       if (formData.serviceType !== undefined) updateData.serviceType = formData.serviceType
       if (formData.status !== undefined) updateData.status = formData.status
 
@@ -490,13 +492,30 @@ export default function EditFiscalServicePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="descriptionEs">{t('description')}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="descriptionEs">{t('description')}</Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="descriptionVisible" className="text-xs text-muted-foreground">
+                        {t('descriptionVisibleLabel')}
+                      </Label>
+                      <Switch
+                        id="descriptionVisible"
+                        checked={formData.descriptionVisible ?? true}
+                        onCheckedChange={(checked) => setFormData({ ...formData, descriptionVisible: checked })}
+                      />
+                    </div>
+                  </div>
                   <Textarea
                     id="descriptionEs"
                     value={formData.descriptionEs || ''}
                     onChange={(e) => setFormData({ ...formData, descriptionEs: e.target.value })}
                     rows={3}
                   />
+                  {service?.descriptionSource && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('descriptionSource')}: {service.descriptionSource === 'ai_generated' ? t('descriptionSourceAI') : t('descriptionSourceManual')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

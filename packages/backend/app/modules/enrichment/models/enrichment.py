@@ -62,4 +62,3 @@ class EnrichmentSeedResult(BaseModel):
     enqueued_descriptions: int = 0
     enqueued_translations: int = 0
     enqueued_keywords: int = 0
-    already_pending: int = 0

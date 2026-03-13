@@ -132,6 +132,7 @@ class SearchRepository:
         data_query = f"""
             WITH base AS (
                 SELECT DISTINCT fs.id, fs.service_code, fs.name_es, fs.description_es,
+                       COALESCE(fs.description_visible, true) AS description_visible,
                        fs.service_type, fs.tasa_expedicion, fs.tasa_renovacion,
                        fs.processing_time_days, fs.status, fs.view_count, fs.calculation_count,
                        c.category_code, c.name_es AS cat_name,
@@ -152,7 +153,10 @@ class SearchRepository:
             SELECT
                 p.id, p.total_count,
                 COALESCE(et_name.translation_text, p.name_es) as name,
-                COALESCE(et_desc.translation_text, p.description_es) as description,
+                CASE WHEN p.description_visible
+                     THEN COALESCE(et_desc.translation_text, p.description_es)
+                     ELSE NULL
+                END as description,
                 COALESCE(et_cat.translation_text, p.cat_name) as category_name,
                 COALESCE(et_min.translation_text, p.min_name) as ministry_name,
                 COALESCE(et_sec.translation_text, p.sec_name) as sector_name,

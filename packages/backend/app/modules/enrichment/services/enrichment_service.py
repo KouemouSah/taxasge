@@ -64,6 +64,24 @@ Descripción: {description_es}
 
 Responde SOLO con JSON válido: {{"name": "traducción del nombre", "description": "traducción de la descripción"}}"""
 
+MINISTRY_DESCRIPTION_PROMPT = """Eres un experto en la administración pública de Guinea Ecuatorial.
+Genera una descripción concisa (2-3 frases, máximo 250 caracteres) para el siguiente ministerio.
+La descripción debe explicar: la misión del ministerio y sus competencias principales.
+
+DATOS DEL MINISTERIO:
+- Nombre: {name_es}
+- Código: {ministry_code}
+- Sectores: {sectors}
+- Número de servicios fiscales gestionados: {service_count}
+
+REGLAS CRÍTICAS:
+1. SOLO información derivable de los datos y del nombre del ministerio — NO inventar
+2. Tono formal institucional
+3. En español
+4. Máximo 250 caracteres
+
+Responde SOLO con el texto de la descripción, sin comillas ni prefijos."""
+
 KEYWORDS_PROMPT = """Genera entre 5 y 8 palabras clave de búsqueda para el siguiente servicio fiscal.
 Las palabras clave deben ayudar a los ciudadanos a encontrar este servicio.
 
@@ -227,26 +245,30 @@ class EnrichmentService:
             task_type = task["task_type"]
 
             try:
-                # Fetch service context
-                context = await EnrichmentRepository.get_service_context(
-                    conn, service_id
-                )
-                if not context:
-                    await EnrichmentRepository.mark_failed(
-                        conn, task_id, f"Service {service_id} not found"
+                # Ministry tasks use a different context path
+                if task_type == "generate_ministry_description":
+                    context = None  # handled inside the handler
+                else:
+                    # Fetch service context
+                    context = await EnrichmentRepository.get_service_context(
+                        conn, service_id
                     )
-                    failed += 1
-                    continue
-
-                # Skip translations if no description yet
-                if task_type in ("translate_fr", "translate_en"):
-                    if not context.get("description_es"):
+                    if not context:
                         await EnrichmentRepository.mark_failed(
-                            conn, task_id,
-                            "No description_es to translate — will retry after generation"
+                            conn, task_id, f"Service {service_id} not found"
                         )
-                        skipped += 1
+                        failed += 1
                         continue
+
+                    # Defer translations if no description yet (don't waste attempts)
+                    if task_type in ("translate_fr", "translate_en"):
+                        if not context.get("description_es"):
+                            await EnrichmentRepository.mark_deferred(
+                                conn, task_id,
+                                "No description_es to translate — deferred until description is generated"
+                            )
+                            skipped += 1
+                            continue
 
                 # Dispatch to handler
                 start = time.monotonic()
@@ -259,6 +281,8 @@ class EnrichmentService:
                 elif task_type in ("translate_fr", "translate_en"):
                     target = task_type.replace("translate_", "")
                     tokens = await self._translate(conn, task_id, context, target)
+                elif task_type == "generate_ministry_description":
+                    tokens = await self._generate_ministry_description(conn, task_id, service_id)
                 else:
                     await EnrichmentRepository.mark_failed(
                         conn, task_id, f"Unknown task_type: {task_type}"
@@ -484,6 +508,60 @@ class EnrichmentService:
         await EnrichmentRepository.mark_completed(
             conn, task_id,
             output_data={"keywords": data, "inserted": inserted},
+            tokens_used=tokens,
+        )
+        return tokens
+
+    # ------------------------------------------------------------------
+    # Ministry description generation
+    # ------------------------------------------------------------------
+
+    async def _generate_ministry_description(
+        self, conn, task_id: UUID, ministry_id: int
+    ) -> int:
+        """Generate draft description for a ministry via Gemini Flash."""
+        context = await EnrichmentRepository.get_ministry_context(conn, ministry_id)
+        if not context:
+            await EnrichmentRepository.mark_failed(
+                conn, task_id, f"Ministry {ministry_id} not found"
+            )
+            return 0
+
+        prompt = MINISTRY_DESCRIPTION_PROMPT.format(
+            name_es=context.get("name_es", ""),
+            ministry_code=context.get("ministry_code", ""),
+            sectors=context.get("sector_names", "Sin sectores"),
+            service_count=context.get("service_count", 0),
+        )
+
+        text = await self._call_gemini(prompt, max_tokens=300)
+        if not text:
+            await EnrichmentRepository.mark_failed(conn, task_id, "Empty Gemini response")
+            return 0
+
+        description = _sanitize_llm_text(text.strip('"').strip("'"), _MAX_DESCRIPTION_LEN)
+        if len(description) < 10:
+            await EnrichmentRepository.mark_failed(
+                conn, task_id, f"Description too short: {description}"
+            )
+            return 0
+
+        # Store as ai_draft — admin must approve before it becomes visible
+        await conn.execute(
+            """
+            UPDATE ministries
+            SET description_es = $1, description_source = 'ai_draft', updated_at = NOW()
+            WHERE id = $2
+              AND (description_source IS NULL OR description_source = 'ai_draft')
+            """,
+            description,
+            ministry_id,
+        )
+
+        tokens = len(prompt.split()) + len(description.split())
+        await EnrichmentRepository.mark_completed(
+            conn, task_id,
+            output_data={"description": description, "entity": "ministry"},
             tokens_used=tokens,
         )
         return tokens

@@ -62,18 +62,6 @@ class EnrichmentRepository:
         return [dict(r) for r in rows]
 
     @staticmethod
-    async def mark_processing(conn, task_id: UUID) -> None:
-        """Mark a single task as processing and increment attempt counter."""
-        await conn.execute(
-            """
-            UPDATE enrichment_queue
-            SET status = 'processing', attempts = attempts + 1
-            WHERE id = $1
-            """,
-            task_id,
-        )
-
-    @staticmethod
     async def mark_processing_batch(conn, task_ids: List[UUID]) -> None:
         """
         Atomically mark a batch of tasks as 'processing'.
@@ -134,6 +122,27 @@ class EnrichmentRepository:
             """,
             task_id,
             error_message,
+        )
+
+    @staticmethod
+    async def mark_deferred(
+        conn, task_id: UUID, reason: str
+    ) -> None:
+        """
+        Defer a task back to 'pending' WITHOUT incrementing attempts.
+        Used when a dependency is not yet ready (e.g., translate task
+        waiting for description generation). Avoids retry storm.
+        """
+        await conn.execute(
+            """
+            UPDATE enrichment_queue
+            SET status = 'pending',
+                error_message = $2,
+                processed_at = NOW()
+            WHERE id = $1
+            """,
+            task_id,
+            reason,
         )
 
     @staticmethod
@@ -336,3 +345,56 @@ class EnrichmentRepository:
             "translations": tr_count,
             "keywords": kw_count,
         }
+
+    @staticmethod
+    async def get_ministry_context(
+        conn, ministry_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch ministry context for Gemini prompt."""
+        row = await conn.fetchrow(
+            """
+            SELECT
+                m.id, m.ministry_code, m.name_es, m.description_es,
+                m.description_source,
+                (
+                    SELECT string_agg(DISTINCT s.name_es, ', ')
+                    FROM sectors s WHERE s.ministry_id = m.id
+                ) as sector_names,
+                (
+                    SELECT COUNT(DISTINCT fs.id)
+                    FROM fiscal_services fs
+                    JOIN categories c ON c.id = fs.category_id
+                    LEFT JOIN sectors s2 ON s2.id = c.sector_id
+                    WHERE COALESCE(c.ministry_id, s2.ministry_id) = m.id
+                      AND fs.status = 'active'
+                ) as service_count
+            FROM ministries m
+            WHERE m.id = $1
+            """,
+            ministry_id,
+        )
+        return dict(row) if row else None
+
+    @staticmethod
+    async def seed_ministry_descriptions(conn) -> int:
+        """
+        Enqueue generate_ministry_description for ministries without descriptions.
+        Uses fiscal_service_id column to store ministry_id (reused for all entity types).
+        """
+        result = await conn.execute(
+            """
+            INSERT INTO enrichment_queue (fiscal_service_id, task_type, priority)
+            SELECT id, 'generate_ministry_description', 0
+            FROM ministries
+            WHERE (description_es IS NULL OR description_es = '')
+              AND NOT EXISTS (
+                  SELECT 1 FROM enrichment_queue eq
+                  WHERE eq.fiscal_service_id = ministries.id
+                    AND eq.task_type = 'generate_ministry_description'
+                    AND eq.status IN ('pending', 'processing')
+              )
+            """
+        )
+        count = int(result.split()[-1]) if result else 0
+        logger.info(f"Enrichment seed: {count} ministry descriptions enqueued")
+        return count

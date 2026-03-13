@@ -112,6 +112,7 @@ class MinistryResponse(BaseModel):
     contact_email: Optional[str] = Field(None, description="Contact email")
     contact_phone: Optional[str] = Field(None, description="Contact phone")
     is_active: bool = Field(True, description="Whether ministry is active")
+    description_source: Optional[str] = Field(None, description="Source of description: manual, ai_draft, ai_generated")
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -334,6 +335,9 @@ class FiscalServiceBase(BaseModel):
     # Status
     status: Optional[ServiceStatusEnum] = Field(ServiceStatusEnum.ACTIVE, description="Service status")
 
+    # Description visibility (admin toggle — hides description on public site)
+    description_visible: Optional[bool] = Field(True, description="Show description on public site")
+
     # Computed field for API compatibility (not in DB, populated by repository)
     required_documents: Optional[List[str]] = Field(None, description="List of required document types")
 
@@ -383,6 +387,7 @@ class FiscalServiceUpdate(BaseModel):
     priority: Optional[int] = None
     complexity_level: Optional[int] = Field(None, ge=1, le=5)
     status: Optional[ServiceStatusEnum] = None
+    description_visible: Optional[bool] = None
 
 
 class FiscalServiceResponse(FiscalServiceBase):
@@ -396,6 +401,9 @@ class FiscalServiceResponse(FiscalServiceBase):
     sector_name: Optional[str] = None
     ministry_name: Optional[str] = None
     keywords: Optional[List[str]] = None
+
+    # Enrichment metadata
+    description_source: Optional[str] = None
 
     # Usage statistics
     view_count: Optional[int] = 0

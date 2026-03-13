@@ -91,6 +91,8 @@ export interface Ministry {
   contactPhone?: string  // camelCase alias after transformKeys
   is_active: boolean
   isActive?: boolean     // camelCase alias after transformKeys
+  description_source?: string
+  descriptionSource?: string  // camelCase alias after transformKeys
   created_at: string
   createdAt?: string     // camelCase alias after transformKeys
   updated_at?: string
@@ -230,6 +232,9 @@ export interface FiscalServiceBase {
   priority?: number
   complexityLevel?: number
   processingTimeDays?: number
+
+  // Description visibility (admin toggle)
+  descriptionVisible?: boolean
 }
 
 export interface FiscalServiceCreate extends FiscalServiceBase {}
@@ -271,6 +276,7 @@ export interface FiscalServiceUpdate {
   priority?: number
   complexityLevel?: number
   processingTimeDays?: number
+  descriptionVisible?: boolean
 }
 
 export interface FiscalServiceResponse extends FiscalServiceBase {
@@ -287,6 +293,8 @@ export interface FiscalServiceResponse extends FiscalServiceBase {
   categoryName?: string
   sectorName?: string
   ministryName?: string
+  // Enrichment metadata
+  descriptionSource?: string
 }
 
 export interface FiscalServiceWithCategory extends FiscalServiceResponse {
