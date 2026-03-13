@@ -7,10 +7,10 @@ Admin: POST /enrichment/admin/seed-batch, GET /enrichment/admin/stats
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
-from app.core.cache import invalidate_services_cache
+from app.core.cache import check_rate_limit, invalidate_services_cache
 from app.database.connection import get_database
 from app.modules.auth.dependencies import get_current_user, permission_required
 from app.modules.enrichment.models.enrichment import (
@@ -54,16 +54,17 @@ async def process_enrichment_batch(
     # Refresh materialized view if any tasks completed
     if result.get("processed", 0) > 0:
         try:
-            await db.execute("SET LOCAL statement_timeout = '120000'")
-            await db.execute(
-                "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_services_translated"
-            )
+            async with db.transaction():
+                await db.execute("SET LOCAL statement_timeout = '120000'")
+                await db.execute(
+                    "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_services_translated"
+                )
             logger.info("mv_services_translated refreshed after enrichment")
         except Exception as e:
-            logger.warning(f"MV refresh failed (non-blocking): {e}")
-            # Fallback to non-concurrent refresh
+            logger.warning(f"MV refresh CONCURRENTLY failed: {e}")
             try:
                 await db.execute("REFRESH MATERIALIZED VIEW mv_services_translated")
+                logger.info("mv_services_translated refreshed (non-concurrent fallback)")
             except Exception as e2:
                 logger.error(f"MV refresh fallback also failed: {e2}")
 
@@ -92,6 +93,20 @@ async def seed_enrichment_batch(
     Idempotent — skips already pending/processing tasks.
     """
     user_id = current_user.get("sub", "unknown")
+
+    # Rate limit: 1 call per 60 seconds per user (heavy DB operation)
+    is_allowed, remaining = await check_rate_limit(
+        identifier=str(user_id),
+        endpoint="/enrichment/admin/seed-batch",
+        max_requests=1,
+        window_seconds=60,
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Seed-batch can only be called once per minute. Try again shortly.",
+        )
+
     counts = await EnrichmentRepository.seed_descriptions(db)
 
     logger.info(
@@ -102,6 +117,7 @@ async def seed_enrichment_batch(
     return EnrichmentSeedResult(
         enqueued_descriptions=counts["descriptions"],
         enqueued_translations=counts["translations"],
+        enqueued_keywords=counts.get("keywords", 0),
     )
 
 
@@ -125,7 +141,7 @@ async def get_enrichment_stats(
     summary="Get recent completed enrichment tasks",
 )
 async def get_recent_enrichments(
-    limit: int = 20,
+    limit: int = Query(default=20, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.view")),
@@ -142,6 +158,6 @@ async def get_recent_enrichments(
         ORDER BY eq.processed_at DESC NULLS LAST
         LIMIT $1
         """,
-        min(limit, 100),
+        limit,
     )
     return [dict(r) for r in rows]

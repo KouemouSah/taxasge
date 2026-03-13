@@ -7,6 +7,7 @@ Pattern: Same as LLMBriefingService (lazy init, run_in_executor, timeout, gracef
 
 import asyncio
 import json
+import re
 import time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -77,6 +78,19 @@ Genera palabras clave en los 3 idiomas:
 
 Responde SOLO con JSON válido:
 {{"es": ["palabra1", "palabra2", ...], "fr": ["mot1", "mot2", ...], "en": ["word1", "word2", ...]}}"""
+
+# Max lengths — defense against unusually long LLM output
+_MAX_DESCRIPTION_LEN = 500
+_MAX_NAME_LEN = 200
+_MAX_KEYWORD_LEN = 50
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _sanitize_llm_text(text: str, max_len: int = 500) -> str:
+    """Strip HTML tags and truncate LLM output. Defense-in-depth against XSS."""
+    cleaned = _HTML_TAG_RE.sub("", text).strip()
+    return cleaned[:max_len]
 
 
 class EnrichmentService:
@@ -161,6 +175,11 @@ class EnrichmentService:
         """
         Process a batch of pending enrichment tasks.
         Called by cron endpoint every 5 minutes.
+
+        Uses atomic claim pattern:
+        1. Transaction: SELECT FOR UPDATE SKIP LOCKED + UPDATE status='processing'
+        2. Commit (releases locks, but tasks are now 'processing' = safe from other replicas)
+        3. Process tasks one by one (Gemini calls, outside transaction)
         """
         self._ensure_initialized()
 
@@ -168,10 +187,16 @@ class EnrichmentService:
             logger.warning("Gemini model not available — skipping enrichment batch")
             return {"processed": 0, "failed": 0, "skipped": 0, "tokens_total": 0}
 
-        tasks = await EnrichmentRepository.fetch_pending_batch(conn, limit)
-        if not tasks:
-            return {"processed": 0, "failed": 0, "skipped": 0, "tokens_total": 0}
+        # Phase 1: Atomically claim a batch (fetch + mark processing in 1 TX)
+        async with conn.transaction():
+            tasks = await EnrichmentRepository.fetch_pending_batch(conn, limit)
+            if not tasks:
+                return {"processed": 0, "failed": 0, "skipped": 0, "tokens_total": 0}
+            # Immediately mark ALL fetched tasks as 'processing' while lock is held
+            task_ids = [t["id"] for t in tasks]
+            await EnrichmentRepository.mark_processing_batch(conn, task_ids)
 
+        # Phase 2: Process tasks one by one (outside transaction — Gemini calls are slow)
         processed = 0
         failed = 0
         skipped = 0
@@ -184,8 +209,6 @@ class EnrichmentService:
             task_type = task["task_type"]
 
             try:
-                await EnrichmentRepository.mark_processing(conn, task_id)
-
                 # Fetch service context
                 context = await EnrichmentRepository.get_service_context(
                     conn, service_id
@@ -280,8 +303,8 @@ class EnrichmentService:
             await EnrichmentRepository.mark_failed(conn, task_id, "Empty Gemini response")
             return 0
 
-        # Clean response
-        description = text.strip().strip('"').strip("'")
+        # Clean response — strip HTML tags (defense-in-depth) + quotes
+        description = _sanitize_llm_text(text.strip('"').strip("'"), _MAX_DESCRIPTION_LEN)
         if len(description) < 10:
             await EnrichmentRepository.mark_failed(
                 conn, task_id, f"Description too short: {description}"
@@ -326,11 +349,11 @@ class EnrichmentService:
             await EnrichmentRepository.mark_failed(conn, task_id, "Empty Gemini response")
             return 0
 
-        # Parse JSON response
+        # Parse JSON response + sanitize
         try:
             data = json.loads(text)
-            translated_name = data.get("name", "")
-            translated_desc = data.get("description", "")
+            translated_name = _sanitize_llm_text(data.get("name", ""), _MAX_NAME_LEN)
+            translated_desc = _sanitize_llm_text(data.get("description", ""), _MAX_DESCRIPTION_LEN)
         except (json.JSONDecodeError, TypeError) as e:
             await EnrichmentRepository.mark_failed(
                 conn, task_id, f"JSON parse error: {e} — raw: {text[:200]}"
@@ -365,6 +388,7 @@ class EnrichmentService:
                     translation_source = EXCLUDED.translation_source,
                     translation_quality = EXCLUDED.translation_quality,
                     updated_at = NOW()
+                WHERE entity_translations.translation_source != 'manual'
                 """,
                 service_code,
                 target_lang,
@@ -412,6 +436,9 @@ class EnrichmentService:
             for kw in keywords[:8]:
                 if not isinstance(kw, str) or len(kw) < 2:
                     continue
+                clean_kw = _sanitize_llm_text(kw, _MAX_KEYWORD_LEN).lower().strip()
+                if len(clean_kw) < 2:
+                    continue
                 await conn.execute(
                     """
                     INSERT INTO service_keywords (
@@ -422,7 +449,7 @@ class EnrichmentService:
                     ON CONFLICT (fiscal_service_id, keyword, language_code) DO NOTHING
                     """,
                     service_id,
-                    kw.lower().strip(),
+                    clean_kw,
                     lang_code,
                 )
                 inserted += 1

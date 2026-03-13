@@ -1,5 +1,6 @@
 """Data access layer for the enrichment queue. All queries use asyncpg $N params."""
 
+import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -62,7 +63,7 @@ class EnrichmentRepository:
 
     @staticmethod
     async def mark_processing(conn, task_id: UUID) -> None:
-        """Mark a task as processing and increment attempt counter."""
+        """Mark a single task as processing and increment attempt counter."""
         await conn.execute(
             """
             UPDATE enrichment_queue
@@ -70,6 +71,24 @@ class EnrichmentRepository:
             WHERE id = $1
             """,
             task_id,
+        )
+
+    @staticmethod
+    async def mark_processing_batch(conn, task_ids: List[UUID]) -> None:
+        """
+        Atomically mark a batch of tasks as 'processing'.
+        Must be called within the same transaction as fetch_pending_batch()
+        so FOR UPDATE SKIP LOCKED locks are still held.
+        """
+        if not task_ids:
+            return
+        await conn.execute(
+            """
+            UPDATE enrichment_queue
+            SET status = 'processing', attempts = attempts + 1
+            WHERE id = ANY($1::uuid[])
+            """,
+            task_ids,
         )
 
     @staticmethod
@@ -84,13 +103,13 @@ class EnrichmentRepository:
             """
             UPDATE enrichment_queue
             SET status = 'completed',
-                output_data = $2,
+                output_data = $2::jsonb,
                 tokens_used = $3,
                 processed_at = NOW()
             WHERE id = $1
             """,
             task_id,
-            output_data,
+            json.dumps(output_data) if output_data else None,
             tokens_used,
         )
 
@@ -276,5 +295,34 @@ class EnrichmentRepository:
         )
         tr_count = int(result_tr.split()[-1]) if result_tr else 0
 
-        logger.info(f"Enrichment seed: {desc_count} descriptions, {tr_count} translations enqueued")
-        return {"descriptions": desc_count, "translations": tr_count}
+        # Enqueue keyword generation for services with descriptions but no keywords
+        result_kw = await conn.execute(
+            """
+            INSERT INTO enrichment_queue (fiscal_service_id, task_type, priority)
+            SELECT fs.id, 'generate_keywords', 0
+            FROM fiscal_services fs
+            WHERE fs.status = 'active'
+              AND fs.description_es IS NOT NULL AND fs.description_es != ''
+              AND NOT EXISTS (
+                  SELECT 1 FROM service_keywords sk
+                  WHERE sk.fiscal_service_id = fs.id
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM enrichment_queue eq
+                  WHERE eq.fiscal_service_id = fs.id
+                    AND eq.task_type = 'generate_keywords'
+                    AND eq.status IN ('pending', 'processing')
+              )
+            """
+        )
+        kw_count = int(result_kw.split()[-1]) if result_kw else 0
+
+        logger.info(
+            f"Enrichment seed: {desc_count} descriptions, "
+            f"{tr_count} translations, {kw_count} keywords enqueued"
+        )
+        return {
+            "descriptions": desc_count,
+            "translations": tr_count,
+            "keywords": kw_count,
+        }
