@@ -2171,6 +2171,7 @@
       "permissions": "Permissions",
       "procedureTemplates": "Modèles de Procédures",
       "serviceBundles": "Bundles Commerciaux",
+      "enrichment": "Enrichissement IA",
       "pushTemplates": "Modèles Push",
       "providerSettings": "Fournisseurs",
       "roles": "Rôles",
@@ -5156,7 +5157,9 @@
     "legalReference": "Référence Légale",
     "servicesIncluded": "{count} services inclus",
     "priceRange": "De {min} à {max} XAF selon la zone",
-    "print": "Imprimer"
+    "print": "Imprimer",
+    "loadError": "Impossible de charger les données. Veuillez réessayer.",
+    "retry": "Réessayer"
   },
   "profile": {
     "accountInfoDesc": "Détails et sécurité de votre compte",

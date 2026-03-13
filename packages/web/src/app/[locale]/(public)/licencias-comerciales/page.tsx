@@ -398,25 +398,39 @@ function LicenciasContent() {
   const [simulating, setSimulating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Initial data load
-  useEffect(() => {
-    async function load() {
+  // Retry helper with exponential backoff (handles Cloud Run cold starts)
+  const fetchWithRetry = useCallback(async <T,>(fn: () => Promise<T>, retries = 3, baseDelay = 1500): Promise<T> => {
+    for (let attempt = 0; attempt < retries; attempt++) {
       try {
-        const [types, zoneList] = await Promise.all([
-          bundleApi.listCommerceTypes(),
-          bundleApi.listZones(),
-        ])
-        setCommerceTypes(types)
-        setZones(zoneList)
+        return await fn()
       } catch (e) {
-        console.error('Failed to load bundle data:', e)
-        setError('Failed to load data')
-      } finally {
-        setLoading(false)
+        if (attempt === retries - 1) throw e
+        await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)))
       }
     }
-    load()
+    throw new Error('Unreachable')
   }, [])
+
+  // Initial data load with auto-retry
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [types, zoneList] = await Promise.all([
+        fetchWithRetry(() => bundleApi.listCommerceTypes()),
+        fetchWithRetry(() => bundleApi.listZones()),
+      ])
+      setCommerceTypes(types)
+      setZones(zoneList)
+    } catch (e) {
+      console.error('Failed to load bundle data:', e)
+      setError('loadError')
+    } finally {
+      setLoading(false)
+    }
+  }, [fetchWithRetry])
+
+  useEffect(() => { loadData() }, [loadData])
 
   // Handle commerce type selection
   const handleCommerceSelect = useCallback((ct: CommerceTypeOption) => {
@@ -475,7 +489,14 @@ function LicenciasContent() {
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error === 'loadError' ? t('loadError') : error}</span>
+            {error === 'loadError' && (
+              <Button variant="outline" size="sm" onClick={loadData} className="ml-3 shrink-0">
+                {t('retry')}
+              </Button>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 

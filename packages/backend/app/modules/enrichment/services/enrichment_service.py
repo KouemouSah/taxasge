@@ -360,13 +360,17 @@ class EnrichmentService:
             )
             return 0
 
-        # Update fiscal_services — NEVER overwrite manual descriptions
+        # Update fiscal_services — NEVER overwrite manual or approved descriptions
+        # AI descriptions start as 'ai_draft' with description_visible=false
+        # Admin must approve (→ 'ai_approved', visible=true) before public display
         await conn.execute(
             """
             UPDATE fiscal_services
-            SET description_es = $1, description_source = 'ai_generated', updated_at = NOW()
+            SET description_es = $1, description_source = 'ai_draft',
+                description_visible = false, updated_at = NOW()
             WHERE id = $2
-              AND (description_source IS NULL OR description_source != 'manual')
+              AND (description_source IS NULL
+                   OR description_source NOT IN ('manual', 'ai_approved'))
             """,
             description,
             context["id"],

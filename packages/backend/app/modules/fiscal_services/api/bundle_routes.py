@@ -158,24 +158,18 @@ async def get_bundles_for_service(
 
 @router.get("/commerce-types")
 async def list_commerce_types(db=Depends(get_database)):
-    """List distinct commerce types with bundle names (for public selector)."""
-    rows = await db.fetch("""
-        SELECT sb.commerce_type, sb.name_es, sb.bundle_code, sb.id,
-               sb.description_es, sb.installment_eligible
-        FROM service_bundles sb
-        WHERE sb.is_active = true
-        ORDER BY sb.name_es
-    """)
+    """List distinct commerce types with bundle names (for public selector). Cached 1h."""
+    types = await BundleService.list_commerce_types(db)
     return [
         {
             "commerce_type": r["commerce_type"],
             "name_es": r["name_es"],
             "bundle_code": r["bundle_code"],
             "id": str(r["id"]),
-            "description_es": r["description_es"],
+            "description_es": r.get("description_es"),
             "installment_eligible": r["installment_eligible"],
         }
-        for r in rows
+        for r in types
     ]
 
 

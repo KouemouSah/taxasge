@@ -34,6 +34,26 @@ class BundleService:
         await cache.set(cache_key, zones, ttl=CACHE_TTL)
         return zones
 
+    @staticmethod
+    async def list_commerce_types(conn) -> List[Dict]:
+        """List active commerce types (cached 1h)."""
+        cache = get_services_cache()
+        cache_key = "bundle:commerce_types"
+        cached = await cache.get(cache_key)
+        if cached:
+            return cached
+
+        rows = await conn.fetch("""
+            SELECT sb.commerce_type, sb.name_es, sb.bundle_code, sb.id,
+                   sb.description_es, sb.installment_eligible
+            FROM service_bundles sb
+            WHERE sb.is_active = true
+            ORDER BY sb.name_es
+        """)
+        result = [dict(r) for r in rows]
+        await cache.set(cache_key, result, ttl=CACHE_TTL)
+        return result
+
     # ------------------------------------------------------------------
     # Bundles — Read
     # ------------------------------------------------------------------
@@ -357,7 +377,8 @@ class BundleService:
             # Simulator keys use commerce_type, not bundle_id — nuke all sim cache
             # Only 10 types × 12 zones = 120 keys max, acceptable
             await cache.delete_pattern("bundle:sim:")
-            # Always invalidate zones list (cheap to refresh)
+            # Always invalidate zones + commerce_types (cheap to refresh)
             await cache.delete("bundle:zones:all")
+            await cache.delete("bundle:commerce_types")
         except Exception as e:
             logger.warning(f"Cache invalidation failed: {e}")

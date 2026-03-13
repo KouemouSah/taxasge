@@ -214,6 +214,10 @@ class EnrichmentRepository:
                 COUNT(*) FILTER (WHERE status = 'active'
                     AND description_source = 'ai_generated') as desc_ai_generated,
                 COUNT(*) FILTER (WHERE status = 'active'
+                    AND description_source = 'ai_draft') as desc_ai_draft,
+                COUNT(*) FILTER (WHERE status = 'active'
+                    AND description_source = 'ai_approved') as desc_ai_approved,
+                COUNT(*) FILTER (WHERE status = 'active'
                     AND EXISTS (
                         SELECT 1 FROM service_keywords sk
                         WHERE sk.fiscal_service_id = fiscal_services.id
@@ -238,6 +242,8 @@ class EnrichmentRepository:
         with_kw = coverage["with_keywords"] if coverage else 0
         desc_manual = coverage["desc_manual"] if coverage else 0
         desc_ai = coverage["desc_ai_generated"] if coverage else 0
+        desc_draft = coverage["desc_ai_draft"] if coverage else 0
+        desc_approved = coverage["desc_ai_approved"] if coverage else 0
 
         # Sum queue statuses
         queue_totals: Dict[str, int] = {
@@ -254,6 +260,8 @@ class EnrichmentRepository:
             "with_description_pct": round(with_desc / total * 100, 1) if total else 0,
             "desc_manual": desc_manual,
             "desc_ai_generated": desc_ai,
+            "desc_ai_draft": desc_draft,
+            "desc_ai_approved": desc_approved,
             "with_keywords": with_kw,
             "with_keywords_pct": round(with_kw / total * 100, 1) if total else 0,
             "with_translations_fr": translations["with_fr"] if translations else 0,

@@ -2138,6 +2138,7 @@
       "providerSettings": "Proveedores",
       "procedureTemplates": "Plantillas de Procedimientos",
       "serviceBundles": "Bundles Comerciales",
+      "enrichment": "Enriquecimiento IA",
       "roles": "Roles",
       "rolesPermissions": "Roles y Permisos",
       "sectors": "Sectores",
@@ -5137,7 +5138,9 @@
     "legalReference": "Referencia Legal",
     "servicesIncluded": "{count} servicios incluidos",
     "priceRange": "Desde {min} hasta {max} XAF según zona",
-    "print": "Imprimir"
+    "print": "Imprimir",
+    "loadError": "No se pudo cargar la información. Por favor, inténtelo de nuevo.",
+    "retry": "Reintentar"
   },
   "profile": {
     "accountInfoDesc": "Detalles y seguridad de su cuenta",

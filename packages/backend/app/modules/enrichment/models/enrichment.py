@@ -1,7 +1,7 @@
 """Pydantic v2 models for the enrichment queue."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,6 +35,8 @@ class EnrichmentStats(BaseModel):
     with_description_pct: float = 0.0
     desc_manual: int = 0
     desc_ai_generated: int = 0
+    desc_ai_draft: int = 0
+    desc_ai_approved: int = 0
     with_keywords: int = 0
     with_keywords_pct: float = 0.0
     with_translations_fr: int = 0
@@ -62,3 +64,35 @@ class EnrichmentSeedResult(BaseModel):
     enqueued_descriptions: int = 0
     enqueued_translations: int = 0
     enqueued_keywords: int = 0
+
+
+class EnrichmentReviewRequest(BaseModel):
+    """Admin review action for AI-generated description."""
+
+    action: Literal["approve", "reject"]
+    edited_text: Optional[str] = Field(None, max_length=500,
+        description="Optional edited description text (on approve, replaces AI text)")
+
+
+class EnrichmentReviewResponse(BaseModel):
+    """Response after admin reviews a description."""
+
+    service_id: int
+    action: str
+    previous_source: Optional[str] = None
+    new_source: Optional[str] = None
+
+
+class PendingDraftItem(BaseModel):
+    """A service/ministry with an AI draft description awaiting review."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_code: Optional[str] = None
+    name_es: str
+    description_es: Optional[str] = None
+    description_source: Optional[str] = None
+    category_name: Optional[str] = None
+    ministry_name: Optional[str] = None
+    updated_at: Optional[datetime] = None
