@@ -818,9 +818,8 @@ class HomepageRepository:
         name_col = f"COALESCE(mv.name_{lang_suffix}, mv.name_es)" if lang_suffix else "mv.name_es"
         cat_col = f"COALESCE(mv.category_name_{lang_suffix}, mv.category_name_es)" if lang_suffix else "mv.category_name_es"
 
-        # Prefix tsquery: "licen" → "licen:*" for prefix matching
-        ts_prefix = " & ".join(f"{word}:*" for word in q_clean.split() if word)
-
+        # Use plainto_tsquery (safe for user input) — no prefix matching needed,
+        # pg_trgm similarity handles partial matches as fallback
         query = f"""
             SELECT
                 mv.id,
@@ -828,18 +827,18 @@ class HomepageRepository:
                 {cat_col} AS category_name,
                 mv.service_type::TEXT AS service_type,
                 COALESCE(mv.tasa_expedicion, 0)::FLOAT AS expedition_price,
-                ts_rank(fs.search_vector, to_tsquery('spanish', $1)) AS rank,
-                similarity(mv.name_es, $2) AS sim
+                ts_rank(fs.search_vector, plainto_tsquery('spanish', $1)) AS rank,
+                similarity(mv.name_es, $1) AS sim
             FROM mv_services_translated mv
             JOIN fiscal_services fs ON fs.id = mv.id
-            WHERE fs.search_vector @@ to_tsquery('spanish', $1)
-               OR similarity(mv.name_es, $2) > 0.15
+            WHERE fs.search_vector @@ plainto_tsquery('spanish', $1)
+               OR similarity(mv.name_es, $1) > 0.15
             ORDER BY rank DESC, sim DESC
-            LIMIT $3
+            LIMIT $2
         """
 
         try:
-            rows = await self.db.fetch(query, ts_prefix, q_clean, limit)
+            rows = await self.db.fetch(query, q_clean, limit)
             return [
                 {
                     "id": row["id"],
@@ -869,37 +868,46 @@ class HomepageRepository:
 
         search_term = f"%{q.strip()}%"
 
-        # Language column mapping for bundle translations
-        lang_suffix = {"fr": "fr", "en": "en"}.get(language, "")
-        name_col = f"COALESCE(et_name.translation_text, sb.name_es)" if lang_suffix else "sb.name_es"
-        desc_col = f"COALESCE(et_desc.translation_text, sb.description_es)" if lang_suffix else "sb.description_es"
-        et_lang = lang_suffix or "es"
+        # For es: no translation JOINs needed. For fr/en: JOIN entity_translations.
+        needs_translation = language in ("fr", "en")
 
-        query = f"""
-            SELECT
-                sb.id,
-                {name_col} AS name,
-                {desc_col} AS description,
-                sb.bundle_code,
-                sb.commerce_type,
-                (SELECT COUNT(*) FROM service_bundle_items sbi
-                 WHERE sbi.bundle_id = sb.id AND sbi.is_active = true) AS item_count
-            FROM service_bundles sb
-            LEFT JOIN entity_translations et_name ON
-                et_name.entity_type = 'bundle' AND et_name.entity_code = sb.bundle_code
-                AND et_name.field_name = 'name' AND et_name.language_code = $2
-            LEFT JOIN entity_translations et_desc ON
-                et_desc.entity_type = 'bundle' AND et_desc.entity_code = sb.bundle_code
-                AND et_desc.field_name = 'description' AND et_desc.language_code = $2
-            WHERE sb.is_active = true
-              AND (sb.name_es ILIKE $1 OR sb.commerce_type ILIKE $1
-                   OR sb.description_es ILIKE $1)
-            ORDER BY sb.name_es
-            LIMIT $3
-        """
+        if needs_translation:
+            query = f"""
+                SELECT sb.id,
+                    COALESCE(et_name.translation_text, sb.name_es) AS name,
+                    COALESCE(et_desc.translation_text, sb.description_es) AS description,
+                    sb.bundle_code, sb.commerce_type,
+                    (SELECT COUNT(*) FROM service_bundle_items sbi
+                     WHERE sbi.bundle_id = sb.id AND sbi.is_active = true) AS item_count
+                FROM service_bundles sb
+                LEFT JOIN entity_translations et_name ON
+                    et_name.entity_type = 'bundle' AND et_name.entity_code = sb.bundle_code
+                    AND et_name.field_name = 'name' AND et_name.language_code = $2
+                LEFT JOIN entity_translations et_desc ON
+                    et_desc.entity_type = 'bundle' AND et_desc.entity_code = sb.bundle_code
+                    AND et_desc.field_name = 'description' AND et_desc.language_code = $2
+                WHERE sb.is_active = true
+                  AND (sb.name_es ILIKE $1 OR sb.commerce_type ILIKE $1
+                       OR sb.description_es ILIKE $1)
+                ORDER BY sb.name_es LIMIT $3
+            """
+            query_params = (search_term, language, limit)
+        else:
+            query = """
+                SELECT sb.id, sb.name_es AS name, sb.description_es AS description,
+                    sb.bundle_code, sb.commerce_type,
+                    (SELECT COUNT(*) FROM service_bundle_items sbi
+                     WHERE sbi.bundle_id = sb.id AND sbi.is_active = true) AS item_count
+                FROM service_bundles sb
+                WHERE sb.is_active = true
+                  AND (sb.name_es ILIKE $1 OR sb.commerce_type ILIKE $1
+                       OR sb.description_es ILIKE $1)
+                ORDER BY sb.name_es LIMIT $2
+            """
+            query_params = (search_term, limit)
 
         try:
-            rows = await self.db.fetch(query, search_term, et_lang, limit)
+            rows = await self.db.fetch(query, *query_params)
             return [dict(row) for row in rows]
         except asyncpg.PostgresError as e:
             logger.error(f"Bundle search error: {e}")
