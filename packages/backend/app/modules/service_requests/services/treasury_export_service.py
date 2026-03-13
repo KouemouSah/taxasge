@@ -234,6 +234,20 @@ class TreasuryExportService:
             logger.error(f"Failed to generate download URL: {e}")
             raise
 
+    @staticmethod
+    def _is_data_empty(data) -> bool:
+        """Check if fetched export data is effectively empty (no records)."""
+        if isinstance(data, list):
+            return len(data) == 0
+        if isinstance(data, dict):
+            # Ministry/audit reports use total_count; others use details list
+            total_count = data.get("total_count", None)
+            if total_count is not None:
+                return int(total_count) == 0
+            details = data.get("details", data.get("rows", data.get("records", [])))
+            return len(details) == 0
+        return not data
+
     async def generate_export(
         self,
         db: asyncpg.Connection,
@@ -284,22 +298,54 @@ class TreasuryExportService:
                 result = await self._generate_sage_x3_export(data, export_format, export_id)
             elif export_type == "ministry_report":
                 data = await self._fetch_ministry_data(db, period_start, period_end, filters)
+                # Guard: warn if no data for the period
+                if self._is_data_empty(data):
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"No hay datos de pagos para el periodo {period_start} - {period_end}. "
+                               "Verifique los filtros o seleccione otro rango de fechas."
+                    )
                 result = await self._generate_ministry_report(
                     data, export_format, export_id, period_start, period_end,
                     generated_by_name=generated_by_name,
                 )
             elif export_type == "reconciliation":
                 data = await self._fetch_reconciliation_data(db, period_start, period_end, filters)
+                if self._is_data_empty(data):
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"No hay datos de conciliación para el periodo {period_start} - {period_end}."
+                    )
                 result = await self._generate_reconciliation_export(data, export_format, export_id)
             elif export_type == "audit_report":
                 data = await self._fetch_audit_data(db, period_start, period_end, filters)
+                if self._is_data_empty(data):
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"No hay datos de auditoría para el periodo {period_start} - {period_end}."
+                    )
                 result = await self._generate_audit_report(data, export_format, export_id, period_start, period_end)
             elif export_type == "bank_central":
                 data = await self._fetch_beac_data(db, period_start, period_end, filters)
+                if self._is_data_empty(data):
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"No hay datos bancarios para el periodo {period_start} - {period_end}."
+                    )
                 result = await self._generate_beac_export(data, export_format, export_id, period_start, period_end)
             else:
                 # Generic export (custom or unknown type)
                 data = await self._fetch_generic_data(db, period_start, period_end, filters)
+                if self._is_data_empty(data):
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"No hay datos para el periodo {period_start} - {period_end}."
+                    )
                 result = await self._generate_generic_export(
                     data, export_format, export_id, period_start, period_end,
                     generated_by_name=generated_by_name,
@@ -1392,7 +1438,17 @@ class TreasuryExportService:
 
         # Convert to PDF in-memory
         buffer = BytesIO()
-        pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=buffer)
+        try:
+            pisa.CreatePDF(BytesIO(html_content.encode("utf-8")), dest=buffer)
+        except (ValueError, Exception) as e:
+            logger.error(f"xhtml2pdf failed for ministry PDF: {e}")
+            # Fallback: return CSV instead of crashing
+            return await self._write_csv(
+                data.get("details", []),
+                export_id,
+                [(k, k, lambda x: x) for k in (data.get("details", [{}])[0].keys() if data.get("details") else [])],
+                data.get("total_amount", 0),
+            )
         file_content = buffer.getvalue()
 
         return {

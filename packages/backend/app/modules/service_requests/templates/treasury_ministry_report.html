@@ -374,9 +374,11 @@
     </tr></table>
 </div>
 
+{% if charts and (charts.entity_bar or charts.method_pie or charts.service_hbar or charts.entity_pie) %}
 <table class="charts-grid">
+    {% if charts.entity_bar or charts.method_pie %}
     <tr>
-        {% if charts and charts.entity_bar %}
+        {% if charts.entity_bar %}
         <td>
             <div class="chart-box">
                 <img src="data:image/png;base64,{{ charts.entity_bar }}" alt="Recaudación por entidad" />
@@ -384,7 +386,7 @@
             </div>
         </td>
         {% endif %}
-        {% if charts and charts.method_pie %}
+        {% if charts.method_pie %}
         <td>
             <div class="chart-box">
                 <img src="data:image/png;base64,{{ charts.method_pie }}" alt="Métodos de pago" />
@@ -393,8 +395,10 @@
         </td>
         {% endif %}
     </tr>
+    {% endif %}
+    {% if charts.service_hbar or charts.entity_pie %}
     <tr>
-        {% if charts and charts.service_hbar %}
+        {% if charts.service_hbar %}
         <td>
             <div class="chart-box">
                 <img src="data:image/png;base64,{{ charts.service_hbar }}" alt="Top servicios" />
@@ -402,7 +406,7 @@
             </div>
         </td>
         {% endif %}
-        {% if charts and charts.entity_pie %}
+        {% if charts.entity_pie %}
         <td>
             <div class="chart-box">
                 <img src="data:image/png;base64,{{ charts.entity_pie }}" alt="Participación por entidad" />
@@ -411,7 +415,9 @@
         </td>
         {% endif %}
     </tr>
+    {% endif %}
 </table>
+{% endif %}
 
 {% if charts and charts.daily_line %}
 <table class="charts-grid">
@@ -422,7 +428,7 @@
                 <div class="chart-caption">Fig 5 — Evolución diaria de recaudación (miles XAF)</div>
             </div>
         </td>
-        {% if charts and charts.daily_count_line %}
+        {% if charts.daily_count_line %}
         <td>
             <div class="chart-box">
                 <img src="data:image/png;base64,{{ charts.daily_count_line }}" alt="Evolución diaria transacciones" />

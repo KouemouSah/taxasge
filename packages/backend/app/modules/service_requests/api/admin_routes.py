@@ -3119,29 +3119,8 @@ async def get_agent_profile_id(db: asyncpg.Connection, user_id: str) -> Optional
     return str(result) if result else None
 
 
-async def is_treasury_supervisor(db: asyncpg.Connection, user_id: str) -> bool:
-    """Check if user has treasury supervisor privileges. Prefer _get_treasury_context for new code."""
-    return await db.fetchval("""
-        SELECT EXISTS(
-            SELECT 1 FROM user_permissions up
-            JOIN permissions p ON p.id = up.permission_id
-            WHERE up.user_id = $1::uuid AND p.name = 'treasury.view_all'
-            UNION
-            SELECT 1 FROM users u
-            JOIN roles r ON u.role_id = r.id
-            JOIN role_permissions rp ON rp.role_id = r.id
-            JOIN permissions p ON p.id = rp.permission_id
-            WHERE u.id = $1::uuid AND p.name = 'treasury.view_all'
-        )
-    """, user_id) or False
-
-
-async def _resolve_treasury_location_scope(
-    db: asyncpg.Connection, user_id: str, explicit_location_id: Optional[str] = None
-) -> Optional[str]:
-    """Resolve effective location. Prefer TreasuryAgentContext.get_effective_location() for new code."""
-    ctx = await _get_treasury_context(db, user_id)
-    return ctx.get_effective_location(explicit_location_id)
+    # is_treasury_supervisor() and _resolve_treasury_location_scope() removed —
+    # fully replaced by _get_treasury_context() + TreasuryAgentContext methods.
 
 
 class PaymentValidationRequest(BaseModel):
@@ -3475,7 +3454,7 @@ async def get_pending_payments(
         # Site supervisors only see agents at their location
         agents_list = None
         if is_supervisor:
-            if sup_profile and not sup_profile["is_main_office"] and sup_profile["entity_location_id"]:
+            if tctx.has_profile and not tctx.is_main_office and tctx.entity_location_id:
                 agent_rows = await db.fetch("""
                     SELECT ap.id, u.full_name
                     FROM agent_profiles ap
@@ -3484,7 +3463,7 @@ async def get_pending_payments(
                     WHERE e.code = 'TESORO' AND ap.is_active = true AND ap.is_supervisor = false
                       AND ap.entity_location_id = $1::uuid
                     ORDER BY u.full_name
-                """, str(sup_profile["entity_location_id"]))
+                """, str(tctx.entity_location_id))
             else:
                 agent_rows = await db.fetch("""
                     SELECT ap.id, u.full_name
@@ -3496,18 +3475,13 @@ async def get_pending_payments(
                 """)
             agents_list = [{"id": str(r["id"]), "name": r["full_name"]} for r in agent_rows]
 
-        # Resolve is_main_office for response (already computed for supervisors above)
-        resp_is_main_office = False
-        if is_supervisor and sup_profile:
-            resp_is_main_office = sup_profile["is_main_office"] or False
-
         response = PendingPaymentsListResponse(
             payments=payments,
             total=total or 0,
             page=page,
             page_size=limit,
             is_supervisor=is_supervisor,
-            is_main_office=resp_is_main_office,
+            is_main_office=tctx.is_main_office if tctx.has_profile else False,
             treasury_agents=agents_list,
         )
 
@@ -3547,9 +3521,11 @@ async def get_my_payment_escalations(
     """Get payments escalated by the current agent"""
     from loguru import logger
 
-    agent_profile_id = await get_agent_profile_id(db, current_user.id)
-    if not agent_profile_id:
+    tctx = await _get_treasury_context(db, current_user.id)
+    if not tctx.has_profile:
         no_agent_profile()
+    agent_profile_id = tctx.profile_id
+    is_supervisor = tctx.has_global_scope or tctx.is_supervisor
 
     try:
         offset = (page - 1) * limit
@@ -3641,25 +3617,13 @@ async def get_my_payment_escalations(
             )
             payments.append(payment)
 
-        # Resolve is_main_office for escalations response
-        esc_is_main_office = False
-        if is_supervisor:
-            esc_profile = await db.fetchrow("""
-                SELECT COALESCE(el.is_main_office, false) AS is_main_office
-                FROM agent_profiles ap
-                LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
-                WHERE ap.id = $1::uuid
-            """, agent_profile_id)
-            if esc_profile:
-                esc_is_main_office = esc_profile["is_main_office"] or False
-
         return PendingPaymentsListResponse(
             payments=payments,
             total=total or 0,
             page=page,
             page_size=limit,
             is_supervisor=is_supervisor,
-            is_main_office=esc_is_main_office,
+            is_main_office=tctx.is_main_office,
         )
 
     except Exception as e:
@@ -3797,10 +3761,10 @@ async def validate_payment(
     """Validate (approve) a payment"""
     from app.modules.payments.services.processors import payment_processor_registry
 
-    # Get agent_profile_id for current user
-    agent_profile_id = await get_agent_profile_id(db, current_user.id)
-    if not agent_profile_id:
+    tctx = await _get_treasury_context(db, current_user.id)
+    if not tctx.has_profile:
         no_agent_profile()
+    agent_profile_id = tctx.profile_id
 
     # Get payment with workflow status
     payment = await db.fetchrow(
@@ -4085,10 +4049,10 @@ async def reject_payment(
     """Reject a payment"""
     from app.modules.payments.services.processors import payment_processor_registry
 
-    # Get agent_profile_id for current user
-    agent_profile_id = await get_agent_profile_id(db, current_user.id)
-    if not agent_profile_id:
+    tctx = await _get_treasury_context(db, current_user.id)
+    if not tctx.has_profile:
         no_agent_profile()
+    agent_profile_id = tctx.profile_id
 
     # Get payment with workflow status
     payment = await db.fetchrow(
@@ -4246,6 +4210,10 @@ async def reassign_payment(
     _=Depends(permission_required("treasury.view_all"))
 ):
     """Reassign a payment to another treasury agent."""
+    # Resolve supervisor context upfront (before transaction)
+    tctx = await _get_treasury_context(db, current_user.id)
+    supervisor_profile_id = tctx.profile_id  # may be None if admin without agent profile
+
     # Verify payment exists and is in actionable status
     payment = await db.fetchrow(
         "SELECT id, workflow_status, assigned_agent_id FROM service_payments WHERE id = $1::uuid",
@@ -4312,8 +4280,7 @@ async def reassign_payment(
                 WHERE id = $1::uuid
             """, payment_id)
 
-        # Audit log
-        supervisor_profile_id = await get_agent_profile_id(db, current_user.id)
+        # Audit log (supervisor_profile_id resolved before transaction)
         await db.execute("""
             INSERT INTO payment_validation_audit
                 (id, payment_id, agent_profile_id, agent_user_id, action,
@@ -4503,9 +4470,10 @@ async def validate_batch_payments(
     from uuid import UUID as UUIDType
     from loguru import logger
 
-    agent_profile_id = await get_agent_profile_id(db, current_user.id)
-    if not agent_profile_id:
+    tctx = await _get_treasury_context(db, current_user.id)
+    if not tctx.has_profile:
         no_agent_profile()
+    agent_profile_id = tctx.profile_id
 
     try:
         # 1. Check batch exists and has pending payments
@@ -4597,9 +4565,10 @@ async def escalate_payment(
     from datetime import datetime
     from loguru import logger
 
-    agent_profile_id = await get_agent_profile_id(db, current_user.id)
-    if not agent_profile_id:
+    tctx = await _get_treasury_context(db, current_user.id)
+    if not tctx.has_profile:
         no_agent_profile()
+    agent_profile_id = tctx.profile_id
 
     try:
         # 1. Verify payment exists and is in escalatable state
@@ -4625,10 +4594,8 @@ async def escalate_payment(
 
         # 3. Find TESORO supervisor — prefer supervisor at the SAME SITE as the escalating agent
         # This ensures site-local escalation (agent at TGE BATA → supervisor at TGE BATA)
-        agent_location_id = await db.fetchval(
-            "SELECT entity_location_id FROM agent_profiles WHERE id = $1",
-            agent_profile_id
-        )
+        # entity_location_id already resolved by _get_treasury_context (no extra SQL)
+        agent_location_id = tctx.entity_location_id
         supervisor_id = None
         if agent_location_id:
             # Try same-site supervisor first
@@ -5228,7 +5195,8 @@ async def get_treasury_audit(
 ):
     """Get Treasury audit trail"""
     # Resolve site scope for non-main-office supervisors
-    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+    tctx = await _get_treasury_context(db, current_user.id)
+    effective_location_id = tctx.get_effective_location(entity_location_id)
 
     # Build dynamic WHERE clause
     where_clauses = ["1=1"]
@@ -5660,7 +5628,8 @@ async def get_sla_stats(
 ):
     """Get SLA statistics for Treasury dashboard"""
     # Site-scoping
-    effective_loc = await _resolve_treasury_location_scope(db, current_user.id, entity_location_id)
+    tctx = await _get_treasury_context(db, current_user.id)
+    effective_loc = tctx.get_effective_location(entity_location_id)
     loc_filter = "AND sp.assigned_agent_id IN (SELECT id FROM agent_profiles WHERE entity_location_id = $1::uuid AND is_active = true)" if effective_loc else ""
     loc_params = [effective_loc] if effective_loc else []
 
@@ -5880,7 +5849,8 @@ async def get_treasury_kpis(
     from datetime import datetime, timedelta
 
     # Site-scoping: filter by agents at a specific TESORO location
-    effective_loc = await _resolve_treasury_location_scope(db, current_user.id, entity_location_id)
+    tctx = await _get_treasury_context(db, current_user.id)
+    effective_loc = tctx.get_effective_location(entity_location_id)
 
     # Calculate date range based on period
     now = datetime.now()
@@ -6123,7 +6093,8 @@ async def get_agent_performance(
         end_date = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
     # Resolve site scope for non-main-office supervisors
-    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+    tctx = await _get_treasury_context(db, current_user.id)
+    effective_location_id = tctx.get_effective_location(entity_location_id)
 
     # Build location filter for agent site scoping
     agent_loc_filter = ""
@@ -6242,22 +6213,10 @@ async def get_supervisor_overview(
     from app.core.cache import get_cache
     from app.database.connection import db_manager
 
-    # Resolve effective location filter:
-    # - Main-office supervisor: can filter by any location (or all)
-    # - Site supervisor: auto-scoped to their own location
-    effective_location_id = location_id
-    is_main_office = False
-    agent_profile = await db.fetchrow("""
-        SELECT ap.entity_location_id, el.is_main_office
-        FROM agent_profiles ap
-        LEFT JOIN entity_locations el ON el.id = ap.entity_location_id
-        WHERE ap.user_id = $1 AND ap.is_active = true
-    """, current_user.id)
-    if agent_profile:
-        is_main_office = agent_profile["is_main_office"] or False
-        if not is_main_office:
-            # Site supervisor: always scoped to their own location
-            effective_location_id = str(agent_profile["entity_location_id"]) if agent_profile["entity_location_id"] else None
+    # Resolve effective location filter via shared context
+    tctx = await _get_treasury_context(db, current_user.id)
+    effective_location_id = tctx.get_effective_location(location_id)
+    is_main_office = tctx.is_main_office
 
     cache = get_cache()
     loc_suffix = f":{effective_location_id}" if effective_location_id else ""
@@ -6550,7 +6509,8 @@ async def get_workload_dashboard(
     from app.database.connection import db_manager
 
     # Resolve site scope for non-main-office supervisors
-    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+    tctx = await _get_treasury_context(db, current_user.id)
+    effective_location_id = tctx.get_effective_location(entity_location_id)
 
     cache = get_cache()
     loc_key = effective_location_id or "all"
@@ -7019,7 +6979,8 @@ async def list_anomalies(
 ):
     """Get list of payment anomalies."""
     # Resolve site scope for non-main-office supervisors
-    effective_location_id = await _resolve_treasury_location_scope(db, str(current_user.id), entity_location_id)
+    tctx = await _get_treasury_context(db, current_user.id)
+    effective_location_id = tctx.get_effective_location(entity_location_id)
 
     # Build dynamic WHERE clause
     where_clauses = ["1=1"]
@@ -7991,6 +7952,15 @@ async def generate_treasury_export(
             requested_at=updated_row["requested_at"].isoformat(),
             completed_at=updated_row["completed_at"].isoformat() if updated_row["completed_at"] else None,
         )
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (e.g. 422 no-data warning) directly to client
+        await db.execute("""
+            UPDATE treasury_exports SET status = 'failed'::export_status_enum,
+            error_message = 'No data for selected period'
+            WHERE id = $1::uuid
+        """, export_id)
+        raise
 
     except Exception as e:
         # Return with error status
