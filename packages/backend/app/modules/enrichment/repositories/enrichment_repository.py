@@ -193,15 +193,22 @@ class EnrichmentRepository:
             """
         )
 
-        # Service coverage
+        # Service coverage (single scan with FILTER)
         coverage = await conn.fetchrow(
             """
             SELECT
                 COUNT(*) FILTER (WHERE status = 'active') as total_services,
-                COUNT(*) FILTER (WHERE status = 'active' AND description_es IS NOT NULL AND description_es != '') as with_description,
-                COUNT(*) FILTER (WHERE status = 'active' AND id IN (
-                    SELECT DISTINCT fiscal_service_id FROM service_keywords
-                )) as with_keywords
+                COUNT(*) FILTER (WHERE status = 'active'
+                    AND description_es IS NOT NULL AND description_es != '') as with_description,
+                COUNT(*) FILTER (WHERE status = 'active'
+                    AND description_source = 'manual') as desc_manual,
+                COUNT(*) FILTER (WHERE status = 'active'
+                    AND description_source = 'ai_generated') as desc_ai_generated,
+                COUNT(*) FILTER (WHERE status = 'active'
+                    AND EXISTS (
+                        SELECT 1 FROM service_keywords sk
+                        WHERE sk.fiscal_service_id = fiscal_services.id
+                    )) as with_keywords
             FROM fiscal_services
             """
         )
@@ -220,6 +227,8 @@ class EnrichmentRepository:
         total = coverage["total_services"] if coverage else 0
         with_desc = coverage["with_description"] if coverage else 0
         with_kw = coverage["with_keywords"] if coverage else 0
+        desc_manual = coverage["desc_manual"] if coverage else 0
+        desc_ai = coverage["desc_ai_generated"] if coverage else 0
 
         # Sum queue statuses
         queue_totals: Dict[str, int] = {
@@ -234,6 +243,8 @@ class EnrichmentRepository:
             "total_services": total,
             "with_description": with_desc,
             "with_description_pct": round(with_desc / total * 100, 1) if total else 0,
+            "desc_manual": desc_manual,
+            "desc_ai_generated": desc_ai,
             "with_keywords": with_kw,
             "with_keywords_pct": round(with_kw / total * 100, 1) if total else 0,
             "with_translations_fr": translations["with_fr"] if translations else 0,

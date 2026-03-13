@@ -33,6 +33,8 @@ class EnrichmentStats(BaseModel):
     total_services: int = 0
     with_description: int = 0
     with_description_pct: float = 0.0
+    desc_manual: int = 0
+    desc_ai_generated: int = 0
     with_keywords: int = 0
     with_keywords_pct: float = 0.0
     with_translations_fr: int = 0

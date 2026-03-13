@@ -86,6 +86,18 @@ _MAX_KEYWORD_LEN = 50
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
+# Human-readable labels for service_type enum
+_SERVICE_TYPE_LABELS = {
+    "document_processing": "Procesamiento de documentos",
+    "license_permit": "Licencia o permiso",
+    "residence_permit": "Permiso de residencia",
+    "registration_fee": "Tasa de registro",
+    "inspection_fee": "Tasa de inspección",
+    "administrative_tax": "Tasa administrativa",
+    "customs_duty": "Derecho de aduana",
+    "declaration_tax": "Tasa de declaración",
+}
+
 
 def _sanitize_llm_text(text: str, max_len: int = 500) -> str:
     """Strip HTML tags and truncate LLM output. Defense-in-depth against XSS."""
@@ -141,23 +153,29 @@ class EnrichmentService:
         Returns number of tasks enqueued.
         """
         enqueued = 0
+        has_description = bool(
+            current_description and current_description.strip()
+        )
 
-        # Generate description if empty AND not manually authored
-        if not current_description or current_description.strip() == "":
+        if not has_description:
+            # No description → enqueue generation (unless manually cleared)
             if description_source != "manual":
                 result = await EnrichmentRepository.enqueue(
                     conn, service_id, "generate_description", priority=1
                 )
                 if result:
                     enqueued += 1
-
-        # Always enqueue translations (idempotent — skips if already pending)
-        for lang in ("translate_fr", "translate_en"):
-            result = await EnrichmentRepository.enqueue(
-                conn, service_id, lang, priority=0
-            )
-            if result:
-                enqueued += 1
+            # Do NOT enqueue translations — nothing to translate yet.
+            # Translations will be enqueued after description is generated
+            # (via seed-batch or next CRUD update).
+        else:
+            # Has description → enqueue translations (idempotent)
+            for lang in ("translate_fr", "translate_en"):
+                result = await EnrichmentRepository.enqueue(
+                    conn, service_id, lang, priority=0
+                )
+                if result:
+                    enqueued += 1
 
         if enqueued:
             logger.info(
@@ -288,11 +306,12 @@ class EnrichmentService:
         self, conn, task_id: UUID, context: Dict[str, Any]
     ) -> int:
         """Generate Spanish description via Gemini Flash."""
+        raw_type = context.get("service_type", "")
         prompt = DESCRIPTION_PROMPT.format(
             name_es=context.get("name_es", ""),
             category=context.get("category_name", "Sin categoría"),
             ministry=context.get("ministry_name", "Sin ministerio"),
-            service_type=context.get("service_type", ""),
+            service_type=_SERVICE_TYPE_LABELS.get(raw_type, raw_type),
             price=context.get("tasa_expedicion", 0),
             documents=context.get("documents_es", "No especificados"),
             keywords=context.get("keywords_es", ""),
@@ -329,6 +348,13 @@ class EnrichmentService:
             output_data={"description": description},
             tokens_used=tokens,
         )
+
+        # Auto-enqueue translations now that we have a description
+        for lang_task in ("translate_fr", "translate_en"):
+            await EnrichmentRepository.enqueue(
+                conn, context["id"], lang_task, priority=0
+            )
+
         return tokens
 
     async def _translate(
