@@ -219,12 +219,14 @@ export async function getServiceDetails(
 /**
  * Format price for display
  */
-export function formatPrice(price: number, currency: string = 'XAF'): string {
+export function formatPrice(price: number, currency: string = 'XAF', locale: string = 'es'): string {
   if (price === 0) {
-    return 'Gratuit';
+    const freeLabels: Record<string, string> = { es: 'Gratuito', fr: 'Gratuit', en: 'Free' }
+    return freeLabels[locale] || freeLabels['es']
   }
 
-  return new Intl.NumberFormat('es-ES', {
+  const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ'
+  return new Intl.NumberFormat(intlLocale, {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 0,

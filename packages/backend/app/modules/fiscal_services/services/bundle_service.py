@@ -298,10 +298,10 @@ class BundleService:
         async with conn.transaction():
             if user_id:
                 await conn.execute(
-                    f"SET LOCAL app.current_user_id = '{user_id}'"
+                    "SET LOCAL app.current_user_id = $1::text", str(user_id)
                 )
             result = await BundleRepository.upsert_item(conn, bundle_id, data)
-        await BundleService._invalidate_cache(bundle_id)
+            await BundleService._invalidate_cache(bundle_id)
         return result
 
     @staticmethod
@@ -310,10 +310,9 @@ class BundleService:
         async with conn.transaction():
             if user_id:
                 await conn.execute(
-                    f"SET LOCAL app.current_user_id = '{user_id}'"
+                    "SET LOCAL app.current_user_id = $1::text", str(user_id)
                 )
             success, bundle_id = await BundleRepository.delete_item(conn, item_id)
-        if success:
             await BundleService._invalidate_cache(bundle_id)
         return success
 
@@ -331,15 +330,15 @@ class BundleService:
         async with conn.transaction():
             if user_id:
                 await conn.execute(
-                    f"SET LOCAL app.current_user_id = '{user_id}'"
+                    "SET LOCAL app.current_user_id = $1::text", str(user_id)
                 )
             await conn.execute(
-                f"SET LOCAL app.audit_batch_id = '{batch_id}'"
+                "SET LOCAL app.audit_batch_id = $1::text", str(batch_id)
             )
             count = await BundleRepository.copy_zone_prices(
                 conn, bundle_id, source_zone_id, target_zone_id, multiplier
             )
-        await BundleService._invalidate_cache(bundle_id)
+            await BundleService._invalidate_cache(bundle_id)
         return count
 
     # ------------------------------------------------------------------

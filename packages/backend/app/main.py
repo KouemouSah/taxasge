@@ -1110,7 +1110,16 @@ try:
     routers_loaded.append("service_requests_cron")
     logger.info("✅ Service Requests router loaded (citizen, agent, admin, wizard, appointments, cron)")
 except Exception as e:
-    logger.error(f"❌ Service Requests router failed: {e}")
+    logger.error(f"❌ Failed to load service_requests routers: {e}")
+
+# --- Enrichment (Gemini auto-enrichment) ---
+try:
+    from app.modules.enrichment.api.enrichment_routes import router as enrichment_router
+    app.include_router(enrichment_router, prefix="/api/v1", tags=["enrichment"])
+    routers_loaded.append("enrichment")
+    logger.info("✅ Enrichment router loaded")
+except Exception as e:
+    logger.error(f"❌ Enrichment router failed: {e}")
     logger.error(traceback.format_exc())
 
 # Try to load batch requests router (Module - Batch Service Requests)

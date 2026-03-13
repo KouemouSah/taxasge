@@ -182,7 +182,7 @@ export default function ServiceDetailsPage() {
     if (expeditionPrice === renewalPrice && expeditionPrice > 0) {
       return (
         <p className="text-2xl font-bold text-primary">
-          {formatPrice(expeditionPrice, service.pricing.currency)}
+          {formatPrice(expeditionPrice, service.pricing.currency, locale)}
         </p>
       )
     }
@@ -193,7 +193,7 @@ export default function ServiceDetailsPage() {
         <div>
           <p className="text-sm text-muted-foreground">{t('firstExpedition')}</p>
           <p className="text-xl font-bold text-emerald-600">
-            {formatPrice(expeditionPrice, service.pricing.currency)}
+            {formatPrice(expeditionPrice, service.pricing.currency, locale)}
           </p>
         </div>
         {renewalPrice > 0 && (
@@ -202,7 +202,7 @@ export default function ServiceDetailsPage() {
             <div>
               <p className="text-sm text-muted-foreground">{t('renewalPrice')}</p>
               <p className="text-xl font-bold text-blue-600">
-                {formatPrice(renewalPrice, service.pricing.currency)}
+                {formatPrice(renewalPrice, service.pricing.currency, locale)}
               </p>
             </div>
           </>

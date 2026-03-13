@@ -1430,6 +1430,14 @@ async def create_fiscal_service(
     except Exception:
         logger.warning("mv_fiscal_services_catalog refresh skipped (view may not exist yet)")
     await invalidate_services_cache()
+    # Auto-enqueue Gemini enrichment (non-blocking)
+    try:
+        from app.modules.enrichment.services.enrichment_service import EnrichmentService
+        await EnrichmentService.auto_enqueue(
+            db, result['id'], result.get('description_es'), result.get('description_source')
+        )
+    except Exception as enrich_err:
+        logger.warning(f"Enrichment enqueue failed (non-blocking): {enrich_err}")
     logger.info(f"Admin {user_id} created fiscal service {result['id']}")
     return FiscalServiceResponse(**result)
 
@@ -1455,6 +1463,14 @@ async def update_fiscal_service(
     except Exception:
         logger.warning("mv_fiscal_services_catalog refresh skipped (view may not exist yet)")
     await invalidate_services_cache()
+    # Auto-enqueue Gemini enrichment (non-blocking)
+    try:
+        from app.modules.enrichment.services.enrichment_service import EnrichmentService
+        await EnrichmentService.auto_enqueue(
+            db, service_id, updated.get('description_es'), updated.get('description_source')
+        )
+    except Exception as enrich_err:
+        logger.warning(f"Enrichment enqueue failed (non-blocking): {enrich_err}")
     logger.info(f"Admin {user_id} updated fiscal service {service_id}")
     return FiscalServiceResponse(**updated)
 
