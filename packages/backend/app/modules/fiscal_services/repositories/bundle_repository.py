@@ -27,9 +27,40 @@ class BundleRepository:
         """)
         return [dict(r) for r in rows]
 
+    @staticmethod
+    async def get_zone_by_code(conn, zone_code: str) -> Optional[Dict]:
+        """Get a single zone by zone_code (e.g. 'A1')."""
+        row = await conn.fetchrow("""
+            SELECT id, zone_code, zone_tier, zone_rank,
+                   name_es, description_es, display_order,
+                   created_at, updated_at
+            FROM commerce_zones
+            WHERE zone_code = $1
+        """, zone_code.upper())
+        return dict(row) if row else None
+
     # ------------------------------------------------------------------
     # Service Bundles — Read
     # ------------------------------------------------------------------
+
+    @staticmethod
+    async def get_bundle_by_commerce_type(conn, commerce_type: str) -> Optional[Dict]:
+        """Get a single active bundle by commerce_type."""
+        row = await conn.fetchrow("""
+            SELECT sb.*,
+                   COALESCE(stats.item_count, 0) as item_count,
+                   COALESCE(stats.zone_count, 0) as zone_count
+            FROM service_bundles sb
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) as item_count,
+                       COUNT(DISTINCT zone_id) as zone_count
+                FROM service_bundle_items
+                WHERE bundle_id = sb.id AND is_active = true
+            ) stats ON true
+            WHERE sb.commerce_type = $1 AND sb.is_active = true
+            LIMIT 1
+        """, commerce_type)
+        return dict(row) if row else None
 
     @staticmethod
     async def list_bundles(
@@ -119,7 +150,8 @@ class BundleRepository:
         """Get items for a bundle+zone with enriched service/ministry names."""
         rows = await conn.fetch("""
             SELECT sbi.id, sbi.bundle_id, sbi.fiscal_service_id, sbi.zone_id,
-                   sbi.ministry_id, sbi.amount, sbi.is_fixed_across_zones,
+                   sbi.ministry_id, sbi.amount, sbi.fee_type,
+                   sbi.is_fixed_across_zones,
                    sbi.display_order, sbi.notes, sbi.is_active,
                    fs.service_code, fs.name_es as service_name,
                    m.name_es as ministry_name
@@ -127,7 +159,7 @@ class BundleRepository:
             JOIN fiscal_services fs ON sbi.fiscal_service_id = fs.id
             LEFT JOIN ministries m ON sbi.ministry_id = m.id
             WHERE sbi.bundle_id = $1 AND sbi.zone_id = $2 AND sbi.is_active = true
-            ORDER BY sbi.display_order, fs.service_code
+            ORDER BY sbi.fee_type, sbi.display_order, fs.service_code
         """, bundle_id, zone_id)
         return [dict(r) for r in rows]
 
@@ -135,7 +167,7 @@ class BundleRepository:
     async def calculate_total(
         conn, bundle_id: UUID, zone_id: UUID
     ) -> Decimal:
-        """Calculate total amount for a bundle+zone."""
+        """Calculate total amount for a bundle+zone (all fee types)."""
         row = await conn.fetchrow("""
             SELECT COALESCE(SUM(amount), 0) as total
             FROM service_bundle_items
@@ -144,11 +176,32 @@ class BundleRepository:
         return row["total"]
 
     @staticmethod
+    async def calculate_totals_by_fee_type(
+        conn, bundle_id: UUID, zone_id: UUID
+    ) -> Dict[str, Decimal]:
+        """Calculate sub-totals per fee_type + grand total for a bundle+zone."""
+        rows = await conn.fetch("""
+            SELECT fee_type, COALESCE(SUM(amount), 0) as subtotal
+            FROM service_bundle_items
+            WHERE bundle_id = $1 AND zone_id = $2 AND is_active = true
+            GROUP BY fee_type
+            ORDER BY CASE fee_type
+                WHEN 'tesoro' THEN 1
+                WHEN 'municipal' THEN 2
+                WHEN 'chamber' THEN 3
+            END
+        """, bundle_id, zone_id)
+        result = {r["fee_type"]: r["subtotal"] for r in rows}
+        result["grand_total"] = sum(result.values())
+        return result
+
+    @staticmethod
     async def get_pricing_matrix(conn, bundle_id: UUID) -> List[Dict]:
         """Get all items across all zones for a bundle (for matrix view)."""
         rows = await conn.fetch("""
             SELECT sbi.id, sbi.bundle_id, sbi.fiscal_service_id, sbi.zone_id,
-                   sbi.ministry_id, sbi.amount, sbi.is_fixed_across_zones,
+                   sbi.ministry_id, sbi.amount, sbi.fee_type,
+                   sbi.is_fixed_across_zones,
                    sbi.display_order, sbi.notes, sbi.is_active,
                    fs.service_code, fs.name_es as service_name,
                    m.name_es as ministry_name
@@ -157,19 +210,22 @@ class BundleRepository:
             LEFT JOIN ministries m ON sbi.ministry_id = m.id
             JOIN commerce_zones cz ON sbi.zone_id = cz.id
             WHERE sbi.bundle_id = $1 AND sbi.is_active = true
-            ORDER BY sbi.display_order, fs.service_code, cz.display_order
+            ORDER BY sbi.fee_type, sbi.display_order, fs.service_code, cz.display_order
         """, bundle_id)
         return [dict(r) for r in rows]
 
     @staticmethod
     async def get_zone_totals(conn, bundle_id: UUID) -> List[Dict]:
-        """Get total amount per zone for a bundle."""
+        """Get total amount per zone for a bundle, including fee_type sub-totals."""
         rows = await conn.fetch("""
             SELECT cz.id, cz.zone_code, cz.zone_tier, cz.zone_rank,
                    cz.name_es, cz.description_es, cz.display_order,
                    cz.created_at, cz.updated_at,
                    COALESCE(SUM(sbi.amount), 0) as total_amount,
-                   COUNT(sbi.id) as item_count
+                   COUNT(sbi.id) as item_count,
+                   COALESCE(SUM(sbi.amount) FILTER (WHERE sbi.fee_type = 'tesoro'), 0) as tesoro_total,
+                   COALESCE(SUM(sbi.amount) FILTER (WHERE sbi.fee_type = 'municipal'), 0) as municipal_total,
+                   COALESCE(SUM(sbi.amount) FILTER (WHERE sbi.fee_type = 'chamber'), 0) as chamber_total
             FROM commerce_zones cz
             LEFT JOIN service_bundle_items sbi
                 ON sbi.zone_id = cz.id AND sbi.bundle_id = $1 AND sbi.is_active = true
@@ -208,8 +264,8 @@ class BundleRepository:
             INSERT INTO service_bundles
                 (bundle_code, commerce_type, name_es, description_es, legal_reference,
                  is_active, installment_eligible, max_installments, installment_frequency,
-                 created_by, updated_by)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
+                 public_installment_visible, created_by, updated_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
             RETURNING *
         """,
             data["bundle_code"], data["commerce_type"], data["name_es"],
@@ -218,6 +274,7 @@ class BundleRepository:
             data.get("installment_eligible", False),
             data.get("max_installments", 1),
             data.get("installment_frequency", "monthly"),
+            data.get("public_installment_visible", False),
             user_id,
         )
         result = dict(row)
@@ -229,7 +286,7 @@ class BundleRepository:
     async def update_bundle(
         conn, bundle_id: UUID, data: Dict, user_id: Optional[UUID] = None
     ) -> Optional[Dict]:
-        """Update bundle metadata."""
+        """Update bundle metadata. Re-queries with real item/zone counts."""
         sets = []
         params = []
         idx = 1
@@ -238,6 +295,7 @@ class BundleRepository:
             "bundle_code", "commerce_type", "name_es", "description_es",
             "legal_reference", "is_active", "installment_eligible",
             "max_installments", "installment_frequency",
+            "public_installment_visible",
         ]:
             if field in data and data[field] is not None:
                 sets.append(f"{field} = ${idx}")
@@ -263,10 +321,8 @@ class BundleRepository:
 
         if not row:
             return None
-        result = dict(row)
-        result["item_count"] = 0
-        result["zone_count"] = 0
-        return result
+        # Re-query with LATERAL for real item/zone counts
+        return await BundleRepository.get_bundle(conn, bundle_id)
 
     @staticmethod
     async def delete_bundle(conn, bundle_id: UUID) -> bool:
@@ -283,13 +339,17 @@ class BundleRepository:
 
     @staticmethod
     async def upsert_item(conn, bundle_id: UUID, data: Dict) -> Dict:
-        """Insert or update a bundle item (ON CONFLICT upsert)."""
+        """Insert or update a bundle item (ON CONFLICT upsert on bundle+service+zone+fee_type)."""
+        fee_type = data.get("fee_type", "tesoro")
+        # Handle enum values
+        if hasattr(fee_type, "value"):
+            fee_type = fee_type.value
         row = await conn.fetchrow("""
             INSERT INTO service_bundle_items
                 (bundle_id, fiscal_service_id, zone_id, ministry_id,
-                 amount, is_fixed_across_zones, display_order, notes, is_active)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (bundle_id, fiscal_service_id, zone_id)
+                 amount, fee_type, is_fixed_across_zones, display_order, notes, is_active)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (bundle_id, fiscal_service_id, zone_id, fee_type)
             DO UPDATE SET
                 amount = EXCLUDED.amount,
                 ministry_id = EXCLUDED.ministry_id,
@@ -305,6 +365,7 @@ class BundleRepository:
             data["zone_id"],
             data.get("ministry_id"),
             data["amount"],
+            fee_type,
             data.get("is_fixed_across_zones", False),
             data.get("display_order", 0),
             data.get("notes"),
@@ -313,12 +374,15 @@ class BundleRepository:
         return dict(row)
 
     @staticmethod
-    async def delete_item(conn, item_id: UUID) -> bool:
-        """Delete a bundle item."""
-        result = await conn.execute(
-            "DELETE FROM service_bundle_items WHERE id = $1", item_id
+    async def delete_item(conn, item_id: UUID) -> Tuple[bool, Optional[UUID]]:
+        """Delete a bundle item. Returns (success, bundle_id) for cache invalidation."""
+        row = await conn.fetchrow(
+            "DELETE FROM service_bundle_items WHERE id = $1 RETURNING bundle_id",
+            item_id,
         )
-        return result == "DELETE 1"
+        if row:
+            return True, row["bundle_id"]
+        return False, None
 
     @staticmethod
     async def copy_zone_prices(
@@ -332,12 +396,12 @@ class BundleRepository:
         result = await conn.execute("""
             INSERT INTO service_bundle_items
                 (bundle_id, fiscal_service_id, zone_id, ministry_id,
-                 amount, is_fixed_across_zones, display_order, notes, is_active)
+                 amount, fee_type, is_fixed_across_zones, display_order, notes, is_active)
             SELECT bundle_id, fiscal_service_id, $3, ministry_id,
-                   ROUND(amount * $4, 2), is_fixed_across_zones, display_order, notes, is_active
+                   ROUND(amount * $4, 2), fee_type, is_fixed_across_zones, display_order, notes, is_active
             FROM service_bundle_items
             WHERE bundle_id = $1 AND zone_id = $2 AND is_active = true
-            ON CONFLICT (bundle_id, fiscal_service_id, zone_id)
+            ON CONFLICT (bundle_id, fiscal_service_id, zone_id, fee_type)
             DO UPDATE SET
                 amount = EXCLUDED.amount,
                 ministry_id = EXCLUDED.ministry_id,

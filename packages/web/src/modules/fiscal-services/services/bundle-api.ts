@@ -1,9 +1,9 @@
 /**
  * Service Bundles API Client
- * Handles all API calls to /api/v1/service-bundles
+ * Uses shared apiClient (Axios) for automatic token refresh, Accept-Language, etc.
  */
 
-import { appConfig } from '@/core/config/app'
+import apiClient from '@/core/api/client'
 
 import type {
   CommerceZone,
@@ -18,13 +18,19 @@ import type {
   BundleUpdateInput,
   BundleItemCreateInput,
   CopyZonePricesInput,
+  FiscalServiceOption,
+  BundleStats,
+  BulkImportItem,
+  BulkImportResult,
+  ParsePdfResult,
+  SimulatorResponse,
+  CommerceTypeOption,
+  ServiceBundleBadge,
 } from '@/types/service-bundle'
 
-const API_BASE_URL = appConfig.api.baseUrl
-const API_VERSION = `/api/${appConfig.api.version}`
-const BUNDLES_BASE = '/service-bundles'
+const BASE = '/service-bundles'
 
-// ========== Utility Functions ==========
+// ========== Key transformations ==========
 
 function snakeToCamel(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
@@ -56,47 +62,31 @@ function toSnakeCase<T>(obj: unknown): T {
   return transformed as T
 }
 
-function getAuthData() {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem('auth_data')
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-function getHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const auth = getAuthData()
-  if (auth?.access_token) {
-    headers['Authorization'] = `Bearer ${auth.access_token}`
-  }
-  return headers
-}
-
-async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE_URL}${API_VERSION}${BUNDLES_BASE}${path}`
-  const response = await fetch(url, {
-    headers: getHeaders(),
-    ...options,
-  })
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: response.statusText }))
-    throw new Error(error.detail || `API Error ${response.status}`)
-  }
-  if (response.status === 204) return undefined as T
-  const data = await response.json()
+async function get<T>(path: string): Promise<T> {
+  const { data } = await apiClient.get(`${BASE}${path}`)
   return transformKeys<T>(data)
+}
+
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const { data } = await apiClient.post(`${BASE}${path}`, body ? toSnakeCase(body) : undefined)
+  return transformKeys<T>(data)
+}
+
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const { data } = await apiClient.put(`${BASE}${path}`, toSnakeCase(body))
+  return transformKeys<T>(data)
+}
+
+async function del<T>(path: string): Promise<T> {
+  const { data } = await apiClient.delete(`${BASE}${path}`)
+  return data as T
 }
 
 // ========== Public API ==========
 
 export const bundleApi = {
-  // Zones
-  listZones: () => fetchApi<CommerceZone[]>('/zones'),
+  listZones: () => get<CommerceZone[]>('/zones'),
 
-  // Bundles
   listBundles: (params?: {
     page?: number
     pageSize?: number
@@ -104,68 +94,101 @@ export const bundleApi = {
     commerceType?: string
     isActive?: boolean
   }) => {
-    const searchParams = new URLSearchParams()
-    if (params?.page) searchParams.set('page', String(params.page))
-    if (params?.pageSize) searchParams.set('page_size', String(params.pageSize))
-    if (params?.search) searchParams.set('search', params.search)
-    if (params?.commerceType) searchParams.set('commerce_type', params.commerceType)
-    if (params?.isActive !== undefined) searchParams.set('is_active', String(params.isActive))
-    const query = searchParams.toString()
-    return fetchApi<BundleListResponse>(`/${query ? `?${query}` : ''}`)
+    const sp = new URLSearchParams()
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.pageSize) sp.set('page_size', String(params.pageSize))
+    if (params?.search) sp.set('search', params.search)
+    if (params?.commerceType) sp.set('commerce_type', params.commerceType)
+    if (params?.isActive !== undefined) sp.set('is_active', String(params.isActive))
+    const q = sp.toString()
+    return get<BundleListResponse>(`/${q ? `?${q}` : ''}`)
   },
 
-  getBundle: (id: string) => fetchApi<ServiceBundle>(`/${id}`),
+  getBundle: (id: string) => get<ServiceBundle>(`/${id}`),
 
   getBundlePricing: (id: string, zoneId: string) =>
-    fetchApi<BundleWithItems>(`/${id}/pricing?zone_id=${zoneId}`),
+    get<BundleWithItems>(`/${id}/pricing?zone_id=${zoneId}`),
 
-  getPricingMatrix: (id: string) => fetchApi<PricingMatrix>(`/${id}/matrix`),
+  getPricingMatrix: (id: string) => get<PricingMatrix>(`/${id}/matrix`),
 
-  getBundleDocuments: (id: string) => fetchApi<BundleDocument[]>(`/${id}/documents`),
+  getBundleDocuments: (id: string) => get<BundleDocument[]>(`/${id}/documents`),
 
   previewInstallments: (id: string, zoneId: string, installments: number) =>
-    fetchApi<InstallmentPreview>(
+    get<InstallmentPreview>(
       `/${id}/installment-preview?zone_id=${zoneId}&installments=${installments}`
     ),
+
+  getBundlesForService: (fiscalServiceId: number) =>
+    get<ServiceBundleBadge[]>(`/by-service/${fiscalServiceId}`),
+
+  simulate: (commerceType: string, zoneCode: string) =>
+    get<SimulatorResponse>(
+      `/simulator?commerce_type=${encodeURIComponent(commerceType)}&zone_code=${encodeURIComponent(zoneCode)}`
+    ),
+
+  listCommerceTypes: () => get<CommerceTypeOption[]>('/commerce-types'),
 }
 
 // ========== Admin API ==========
 
 export const bundleAdminApi = {
+  getStats: () => get<BundleStats>('/admin/stats'),
+
+  searchServices: (q: string, limit = 15) =>
+    get<FiscalServiceOption[]>(`/admin/search-services?q=${encodeURIComponent(q)}&limit=${limit}`),
+
   createBundle: (data: BundleCreateInput) =>
-    fetchApi<ServiceBundle>('/admin/bundles', {
-      method: 'POST',
-      body: JSON.stringify(toSnakeCase(data)),
-    }),
+    post<ServiceBundle>('/admin/bundles', data),
 
   updateBundle: (id: string, data: BundleUpdateInput) =>
-    fetchApi<ServiceBundle>(`/admin/bundles/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(toSnakeCase(data)),
-    }),
+    put<ServiceBundle>(`/admin/bundles/${id}`, data),
 
-  deleteBundle: (id: string) =>
-    fetchApi<void>(`/admin/bundles/${id}`, { method: 'DELETE' }),
+  deleteBundle: (id: string) => del<void>(`/admin/bundles/${id}`),
 
   upsertItem: (bundleId: string, data: BundleItemCreateInput) =>
-    fetchApi<BundleItem>(`/admin/bundles/${bundleId}/items`, {
-      method: 'POST',
-      body: JSON.stringify(toSnakeCase(data)),
-    }),
+    post<BundleItem>(`/admin/bundles/${bundleId}/items`, data),
 
-  deleteItem: (itemId: string) =>
-    fetchApi<void>(`/admin/items/${itemId}`, { method: 'DELETE' }),
+  deleteItem: (itemId: string) => del<void>(`/admin/items/${itemId}`),
 
   copyZonePrices: (bundleId: string, data: CopyZonePricesInput) =>
-    fetchApi<{ copiedItems: number }>(`/admin/bundles/${bundleId}/copy-zone-prices`, {
-      method: 'POST',
-      body: JSON.stringify(toSnakeCase(data)),
-    }),
+    post<{ copiedItems: number }>(`/admin/bundles/${bundleId}/copy-zone-prices`, data),
 
   exportCsv: async (bundleId: string): Promise<Blob> => {
-    const url = `${API_BASE_URL}${API_VERSION}${BUNDLES_BASE}/admin/export/csv?bundle_id=${bundleId}`
-    const response = await fetch(url, { headers: getHeaders() })
-    if (!response.ok) throw new Error(`Export failed: ${response.status}`)
-    return response.blob()
+    const response = await apiClient.get(
+      `${BASE}/admin/export/csv?bundle_id=${bundleId}`,
+      { responseType: 'blob' }
+    )
+    return response.data
+  },
+
+  exportXlsx: async (bundleId: string): Promise<Blob> => {
+    const response = await apiClient.get(
+      `${BASE}/admin/export/xlsx?bundle_id=${bundleId}`,
+      { responseType: 'blob' }
+    )
+    return response.data
+  },
+
+  reorderItems: (bundleId: string, itemIds: string[]) =>
+    post<{ updated: number; total: number }>(
+      `/admin/bundles/${bundleId}/reorder-items`,
+      { itemIds }
+    ),
+
+  bulkImport: (bundleId: string, items: BulkImportItem[]) =>
+    post<BulkImportResult>(
+      `/admin/bundles/${bundleId}/bulk-import`,
+      { items }
+    ),
+
+  parsePdf: async (bundleId: string, file: File): Promise<ParsePdfResult> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await apiClient.post(
+      `${BASE}/admin/parse-pdf?bundle_id=${bundleId}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return transformKeys<ParsePdfResult>(data)
   },
 }

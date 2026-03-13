@@ -53,6 +53,17 @@ export function formatCurrency(amount: number, language: string = 'es'): string 
 }
 
 /**
+ * Format amount in XAF (Franc CFA) with locale-aware decimal separator.
+ * Accepts number or string (from backend Decimal). Used by service-bundles.
+ */
+export function formatXAF(amount: number | string, locale: string = 'es'): string {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount
+  if (isNaN(num)) return '0 XAF'
+  const intlLocale = locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ'
+  return new Intl.NumberFormat(intlLocale, { style: 'decimal', maximumFractionDigits: 0 }).format(num) + ' XAF'
+}
+
+/**
  * Format number with thousands separator
  */
 export function formatNumber(value: number, language: string = 'es'): string {

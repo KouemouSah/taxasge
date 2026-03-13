@@ -10,8 +10,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import {
   AlertCircle, Loader2, ArrowLeft, Calculator, ExternalLink,
-  FileText, ListChecks, Building2, Clock, DollarSign, Info, MapPin
+  FileText, ListChecks, Building2, Clock, DollarSign, Info, MapPin, Package
 } from "lucide-react"
+import Link from "next/link"
 import Breadcrumb from "@/components/ui/breadcrumb"
 import {
   getServiceDetails,
@@ -20,6 +21,8 @@ import {
   getCalculationMethodLabel,
   type ServiceDetailsResponse,
 } from "@/core/api/serviceDetails"
+import { bundleApi } from "@/modules/fiscal-services/services/bundle-api"
+import type { ServiceBundleBadge } from "@/types/service-bundle"
 
 /**
  * Service Details Page
@@ -37,11 +40,12 @@ export default function ServiceDetailsPage() {
 
   // State
   const [service, setService] = useState<ServiceDetailsResponse | null>(null)
+  const [bundles, setBundles] = useState<ServiceBundleBadge[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
 
-  // Fetch service details
+  // Fetch service details + bundles in parallel
   useEffect(() => {
     async function fetchDetails() {
       if (!serviceId || isNaN(serviceId)) {
@@ -53,8 +57,12 @@ export default function ServiceDetailsPage() {
       try {
         setLoading(true)
         setError(null)
-        const data = await getServiceDetails(serviceId, locale)
+        const [data, bundleData] = await Promise.all([
+          getServiceDetails(serviceId, locale),
+          bundleApi.getBundlesForService(serviceId).catch(() => []),
+        ])
         setService(data)
+        setBundles(bundleData)
       } catch (err) {
         console.error('Failed to fetch service details:', err)
         setError(err instanceof Error ? err.message : 'Failed to load service details')
@@ -231,9 +239,19 @@ export default function ServiceDetailsPage() {
       {/* Header Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">{service.name}</h1>
-        <Badge variant="secondary" className="mt-2">
-          {getServiceTypeLabel(service.service_type, locale)}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          <Badge variant="secondary">
+            {getServiceTypeLabel(service.service_type, locale)}
+          </Badge>
+          {bundles.map((b) => (
+            <Link key={b.id} href={`/${locale}/licencias-comerciales`}>
+              <Badge variant="outline" className="cursor-pointer hover:bg-primary/10 transition-colors gap-1">
+                <Package className="h-3 w-3" />
+                {t('includedInBundle', { bundle: b.nameEs })}
+              </Badge>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Main Content: 2 Columns */}

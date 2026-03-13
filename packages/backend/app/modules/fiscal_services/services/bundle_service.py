@@ -4,7 +4,7 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.core.cache import get_services_cache
 from app.modules.fiscal_services.repositories.bundle_repository import BundleRepository
@@ -64,7 +64,10 @@ class BundleService:
 
     @staticmethod
     async def get_bundle_pricing(conn, bundle_id: UUID, zone_id: UUID) -> Dict:
-        """Get bundle items + total for a specific zone (cached)."""
+        """Get bundle items + total for a specific zone (cached).
+
+        Total is computed from items in Python — avoids a second SQL query.
+        """
         cache = get_services_cache()
         cache_key = f"bundle:{bundle_id}:zone:{zone_id}"
         cached = await cache.get(cache_key)
@@ -72,11 +75,19 @@ class BundleService:
             return cached
 
         items = await BundleRepository.get_bundle_items(conn, bundle_id, zone_id)
-        total = await BundleRepository.calculate_total(conn, bundle_id, zone_id)
+        total = sum(item["amount"] for item in items)
+
+        # Calculate sub-totals by fee_type
+        fee_totals = {"tesoro": Decimal("0"), "municipal": Decimal("0"), "chamber": Decimal("0")}
+        for item in items:
+            ft = item.get("fee_type", "tesoro")
+            fee_totals[ft] = fee_totals.get(ft, Decimal("0")) + item["amount"]
+        fee_totals["grand_total"] = total
 
         result = {
             "items": items,
             "total_amount": str(total),
+            "fee_type_totals": {k: str(v) for k, v in fee_totals.items()},
             "currency": "XAF",
         }
         await cache.set(cache_key, result, ttl=CACHE_TTL)
@@ -173,6 +184,81 @@ class BundleService:
         }
 
     # ------------------------------------------------------------------
+    # Simulator — single call for public page
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def simulate(conn, commerce_type: str, zone_code: str) -> Dict:
+        """Simulate bundle pricing for a commerce_type + zone_code.
+
+        Returns bundle + items grouped by fee_type + totals + documents
+        + installment preview — all in 1 call. Cached 1h.
+        """
+        cache = get_services_cache()
+        cache_key = f"bundle:sim:{commerce_type}:{zone_code}"
+        cached = await cache.get(cache_key)
+        if cached:
+            return cached
+
+        # Resolve commerce_type → bundle
+        bundle = await BundleRepository.get_bundle_by_commerce_type(conn, commerce_type)
+        if not bundle:
+            return {"error": f"No active bundle for commerce_type '{commerce_type}'"}
+
+        # Resolve zone_code → zone
+        zone = await BundleRepository.get_zone_by_code(conn, zone_code)
+        if not zone:
+            return {"error": f"Unknown zone_code '{zone_code}'"}
+
+        bundle_id = bundle["id"]
+        zone_id = zone["id"]
+
+        # Parallel-safe: all reads, no writes
+        items = await BundleRepository.get_bundle_items(conn, bundle_id, zone_id)
+        documents = await BundleRepository.get_required_documents(conn, bundle_id)
+
+        # Group items by fee_type + compute totals
+        fee_groups: Dict[str, list] = {"tesoro": [], "municipal": [], "chamber": []}
+        fee_totals = {"tesoro": Decimal("0"), "municipal": Decimal("0"), "chamber": Decimal("0")}
+        for item in items:
+            ft = item.get("fee_type", "tesoro")
+            fee_groups.setdefault(ft, []).append(item)
+            fee_totals[ft] = fee_totals.get(ft, Decimal("0")) + item["amount"]
+
+        grand_total = sum(fee_totals.values())
+
+        # Installment preview (only if eligible AND public visibility enabled)
+        installment_preview = None
+        if (
+            bundle.get("installment_eligible")
+            and bundle.get("public_installment_visible")
+            and grand_total > 0
+        ):
+            max_inst = bundle.get("max_installments", 1)
+            preview = await BundleService.preview_installments(
+                conn, bundle_id, zone_id, min(max_inst, 4)
+            )
+            if "error" not in preview:
+                installment_preview = preview
+
+        result = {
+            "bundle": bundle,
+            "zone": zone,
+            "fee_groups": {
+                ft: [dict(i) for i in group]
+                for ft, group in fee_groups.items()
+                if group
+            },
+            "fee_totals": {k: str(v) for k, v in fee_totals.items()},
+            "grand_total": str(grand_total),
+            "documents": documents,
+            "installment_preview": installment_preview,
+            "currency": "XAF",
+        }
+        await cache.set(cache_key, result, ttl=CACHE_TTL)
+        return result
+
+    # ------------------------------------------------------------------
     # Bundles — Write
     # ------------------------------------------------------------------
 
@@ -205,18 +291,30 @@ class BundleService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    async def upsert_item(conn, bundle_id: UUID, data: Dict) -> Dict:
-        """Upsert a bundle item."""
-        result = await BundleRepository.upsert_item(conn, bundle_id, data)
+    async def upsert_item(
+        conn, bundle_id: UUID, data: Dict, user_id: Optional[UUID] = None
+    ) -> Dict:
+        """Upsert a bundle item with audit context."""
+        async with conn.transaction():
+            if user_id:
+                await conn.execute(
+                    f"SET LOCAL app.current_user_id = '{user_id}'"
+                )
+            result = await BundleRepository.upsert_item(conn, bundle_id, data)
         await BundleService._invalidate_cache(bundle_id)
         return result
 
     @staticmethod
-    async def delete_item(conn, item_id: UUID) -> bool:
-        """Delete a bundle item."""
-        success = await BundleRepository.delete_item(conn, item_id)
-        # Can't easily get bundle_id here, invalidate all
-        await BundleService._invalidate_cache()
+    async def delete_item(conn, item_id: UUID, user_id: Optional[UUID] = None) -> bool:
+        """Delete a bundle item with audit context."""
+        async with conn.transaction():
+            if user_id:
+                await conn.execute(
+                    f"SET LOCAL app.current_user_id = '{user_id}'"
+                )
+            success, bundle_id = await BundleRepository.delete_item(conn, item_id)
+        if success:
+            await BundleService._invalidate_cache(bundle_id)
         return success
 
     @staticmethod
@@ -226,11 +324,21 @@ class BundleService:
         source_zone_id: UUID,
         target_zone_id: UUID,
         multiplier: Decimal = Decimal("1.0"),
+        user_id: Optional[UUID] = None,
     ) -> int:
-        """Copy prices from one zone to another."""
-        count = await BundleRepository.copy_zone_prices(
-            conn, bundle_id, source_zone_id, target_zone_id, multiplier
-        )
+        """Copy prices from one zone to another with audit context + batch_id."""
+        batch_id = uuid4()
+        async with conn.transaction():
+            if user_id:
+                await conn.execute(
+                    f"SET LOCAL app.current_user_id = '{user_id}'"
+                )
+            await conn.execute(
+                f"SET LOCAL app.audit_batch_id = '{batch_id}'"
+            )
+            count = await BundleRepository.copy_zone_prices(
+                conn, bundle_id, source_zone_id, target_zone_id, multiplier
+            )
         await BundleService._invalidate_cache(bundle_id)
         return count
 
@@ -240,13 +348,15 @@ class BundleService:
 
     @staticmethod
     async def _invalidate_cache(bundle_id: Optional[UUID] = None):
-        """Invalidate bundle cache entries."""
+        """Invalidate bundle cache entries using pattern delete."""
         try:
             cache = get_services_cache()
             if bundle_id:
-                # Invalidate specific bundle entries
-                await cache.delete(f"bundle:{bundle_id}:matrix")
-                # Zone-specific keys harder to enumerate — rely on TTL
+                # Zone-specific + matrix keys
+                await cache.delete_pattern(f"bundle:{bundle_id}:")
+            # Simulator keys use commerce_type, not bundle_id — nuke all sim cache
+            # Only 10 types × 12 zones = 120 keys max, acceptable
+            await cache.delete_pattern("bundle:sim:")
             # Always invalidate zones list (cheap to refresh)
             await cache.delete("bundle:zones:all")
         except Exception as e:

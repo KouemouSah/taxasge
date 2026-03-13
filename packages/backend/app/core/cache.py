@@ -261,14 +261,19 @@ class RedisCache:
             return False
 
     async def delete_pattern(self, pattern: str) -> int:
-        """Delete keys matching pattern using SCAN (safe for production)."""
+        """Delete keys matching pattern using SCAN + pipeline (1 round-trip per batch)."""
         try:
             client = await self._get_client()
             deleted = 0
-            # Use SCAN to find keys matching pattern
+            keys_batch = []
             async for key in client.scan_iter(match=f"{pattern}*", count=100):
-                await client.delete(key)
-                deleted += 1
+                keys_batch.append(key)
+            if keys_batch:
+                pipe = client.pipeline(transaction=False)
+                for key in keys_batch:
+                    pipe.delete(key)
+                results = await pipe.execute()
+                deleted = sum(1 for r in results if r)
             return deleted
         except Exception as e:
             logger.warning(f"Redis DELETE_PATTERN failed for pattern {pattern}: {e}")

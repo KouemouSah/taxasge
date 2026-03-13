@@ -33,6 +33,12 @@ const Header = () => {
               {t('services')}
             </Link>
             <Link
+              href={`/${locale}/licencias-comerciales`}
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+            >
+              {t('licenses')}
+            </Link>
+            <Link
               href={`/${locale}/ministere`}
               className="text-sm font-medium text-foreground hover:text-primary transition-colors"
             >
@@ -92,6 +98,13 @@ const Header = () => {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {t('services')}
+              </Link>
+              <Link
+                href={`/${locale}/licencias-comerciales`}
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {t('licenses')}
               </Link>
               <Link
                 href={`/${locale}/ministere`}

@@ -5,7 +5,16 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
+from enum import Enum
+
 from pydantic import BaseModel, Field, ConfigDict
+
+
+class FeeType(str, Enum):
+    """Fee type discriminator for bundle items."""
+    tesoro = "tesoro"
+    municipal = "municipal"
+    chamber = "chamber"
 
 
 # ============================================================
@@ -40,6 +49,7 @@ class ServiceBundleBase(BaseModel):
     installment_eligible: bool = False
     max_installments: int = Field(default=1, ge=1, le=12)
     installment_frequency: str = Field(default="monthly")
+    public_installment_visible: bool = False
 
 
 class ServiceBundleCreate(ServiceBundleBase):
@@ -58,10 +68,11 @@ class ServiceBundleUpdate(BaseModel):
     installment_eligible: Optional[bool] = None
     max_installments: Optional[int] = Field(None, ge=1, le=12)
     installment_frequency: Optional[str] = None
+    public_installment_visible: Optional[bool] = None
 
 
 class ServiceBundleResponse(ServiceBundleBase):
-    """Service bundle response with metadata."""
+    """Service bundle response with metadata (admin)."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -74,6 +85,18 @@ class ServiceBundleResponse(ServiceBundleBase):
     zone_count: int = 0
 
 
+class ServiceBundlePublicResponse(BaseModel):
+    """Minimal bundle info for public-facing pages (no admin fields)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    bundle_code: str
+    commerce_type: str
+    name_es: str
+    description_es: Optional[str] = None
+    legal_reference: Optional[str] = None
+    installment_eligible: bool = False
+
+
 # ============================================================
 # Bundle Items
 # ============================================================
@@ -84,6 +107,7 @@ class BundleItemCreate(BaseModel):
     zone_id: UUID
     ministry_id: Optional[int] = None
     amount: Decimal = Field(..., ge=0)
+    fee_type: FeeType = FeeType.tesoro
     is_fixed_across_zones: bool = False
     display_order: int = 0
     notes: Optional[str] = None
@@ -100,6 +124,7 @@ class BundleItemResponse(BaseModel):
     zone_id: UUID
     ministry_id: Optional[int] = None
     amount: Decimal
+    fee_type: str = "tesoro"
     is_fixed_across_zones: bool
     display_order: int
     notes: Optional[str] = None
@@ -114,6 +139,14 @@ class BundleItemResponse(BaseModel):
 # Bundle with Items (for a specific zone)
 # ============================================================
 
+class FeeTypeTotals(BaseModel):
+    """Sub-totals by fee type."""
+    tesoro: Decimal = Decimal("0")
+    municipal: Decimal = Decimal("0")
+    chamber: Decimal = Decimal("0")
+    grand_total: Decimal = Decimal("0")
+
+
 class BundleWithItemsResponse(BaseModel):
     """Bundle detail for a specific zone, with items and total."""
     model_config = ConfigDict(from_attributes=True)
@@ -122,6 +155,7 @@ class BundleWithItemsResponse(BaseModel):
     zone: CommerceZoneResponse
     items: List[BundleItemResponse]
     total_amount: Decimal
+    fee_type_totals: Optional[FeeTypeTotals] = None
     currency: str = "XAF"
     # Installment info
     installment_eligible: bool = False
@@ -146,6 +180,9 @@ class ZoneTotalItem(BaseModel):
     zone: CommerceZoneResponse
     total_amount: Decimal
     item_count: int
+    tesoro_total: Decimal = Decimal("0")
+    municipal_total: Decimal = Decimal("0")
+    chamber_total: Decimal = Decimal("0")
 
 
 class PricingMatrixResponse(BaseModel):
@@ -170,6 +207,31 @@ class BundleDocumentItem(BaseModel):
 
 
 # ============================================================
+# Simulator Response (single-call public endpoint)
+# ============================================================
+
+class FeeGroupItems(BaseModel):
+    """Items grouped by fee type with sub-total."""
+    fee_type: str
+    label_es: str
+    items: List[BundleItemResponse]
+    subtotal: Decimal
+
+
+class SimulatorResponse(BaseModel):
+    """Complete bundle pricing simulation for commerce_type + zone."""
+    model_config = ConfigDict(from_attributes=True)
+
+    bundle: ServiceBundlePublicResponse
+    zone: CommerceZoneResponse
+    fee_groups: List[FeeGroupItems]
+    grand_total: Decimal
+    documents: List[BundleDocumentItem]
+    installment_preview: Optional[dict] = None
+    currency: str = "XAF"
+
+
+# ============================================================
 # Paginated List
 # ============================================================
 
@@ -190,6 +252,30 @@ class CopyZonePricesRequest(BaseModel):
     source_zone_id: UUID
     target_zone_id: UUID
     multiplier: Decimal = Field(default=Decimal("1.0"), ge=0)
+
+
+# ============================================================
+# Bulk Import
+# ============================================================
+
+class BulkImportItem(BaseModel):
+    """Single item in a bulk import payload."""
+    service_code: str
+    zone_code: str
+    amount: Decimal = Field(..., ge=0)
+    fee_type: FeeType = FeeType.tesoro
+    ministry_id: Optional[int] = None
+    is_fixed_across_zones: bool = False
+
+
+class BulkImportRequest(BaseModel):
+    """Bulk import items for a bundle (from Excel/PDF parsing)."""
+    items: List[BulkImportItem]
+
+
+class ReorderItemRequest(BaseModel):
+    """Reorder items — list of item IDs in desired order."""
+    item_ids: List[UUID]
 
 
 # Forward ref update

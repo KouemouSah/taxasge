@@ -2,6 +2,21 @@
  * Service Bundles — Types for commerce zone-based pricing.
  */
 
+export type FeeType = 'tesoro' | 'municipal' | 'chamber';
+
+export const FEE_TYPE_LABELS: Record<FeeType, { es: string; fr: string; en: string }> = {
+  tesoro: { es: 'TESORO PÚBLICO', fr: 'TRÉSOR PUBLIC', en: 'PUBLIC TREASURY' },
+  municipal: { es: 'AYUNTAMIENTO', fr: 'MUNICIPALITÉ', en: 'MUNICIPALITY' },
+  chamber: { es: 'CÁMARA DE COMERCIO', fr: 'CHAMBRE DE COMMERCE', en: 'CHAMBER OF COMMERCE' },
+};
+
+export interface FeeTypeTotals {
+  tesoro: number | string;
+  municipal: number | string;
+  chamber: number | string;
+  grandTotal: number | string;
+}
+
 export interface CommerceZone {
   id: string;
   zoneCode: string;
@@ -23,6 +38,7 @@ export interface ServiceBundle {
   installmentEligible: boolean;
   maxInstallments: number;
   installmentFrequency: string;
+  publicInstallmentVisible: boolean;
   createdBy?: string;
   updatedBy?: string;
   createdAt: string;
@@ -38,6 +54,7 @@ export interface BundleItem {
   zoneId: string;
   ministryId?: number;
   amount: number;
+  feeType: FeeType;
   isFixedAcrossZones: boolean;
   displayOrder: number;
   notes?: string;
@@ -52,6 +69,7 @@ export interface BundleWithItems {
   bundle: ServiceBundle;
   items: BundleItem[];
   totalAmount: number | string;
+  feeTypeTotals?: FeeTypeTotals;
   currency: string;
   installmentEligible: boolean;
   maxInstallments: number;
@@ -61,6 +79,9 @@ export interface ZoneTotal {
   zone: CommerceZone;
   totalAmount: number | string;
   itemCount: number;
+  tesoroTotal: number | string;
+  municipalTotal: number | string;
+  chamberTotal: number | string;
 }
 
 export interface PricingMatrix {
@@ -96,6 +117,50 @@ export interface InstallmentPreview {
   currency: string;
 }
 
+// Simulator (public single-call endpoint)
+
+export interface FeeGroupItems {
+  feeType: FeeType;
+  labelEs: string;
+  items: BundleItem[];
+  subtotal: number | string;
+}
+
+export interface CommerceTypeOption {
+  commerceType: string;
+  nameEs: string;
+  bundleCode: string;
+  id: string;
+  descriptionEs?: string;
+  installmentEligible: boolean;
+}
+
+export interface ServiceBundlePublic {
+  bundleCode: string;
+  commerceType: string;
+  nameEs: string;
+  descriptionEs?: string;
+  legalReference?: string;
+  installmentEligible: boolean;
+}
+
+export interface SimulatorResponse {
+  bundle: ServiceBundlePublic;
+  zone: CommerceZone;
+  feeGroups: FeeGroupItems[];
+  grandTotal: number | string;
+  documents: BundleDocument[];
+  installmentPreview?: InstallmentPreview | null;
+  currency: string;
+}
+
+export interface ServiceBundleBadge {
+  id: string;
+  bundleCode: string;
+  nameEs: string;
+  commerceType: string;
+}
+
 export interface BundleListResponse {
   items: ServiceBundle[];
   total: number;
@@ -108,6 +173,7 @@ export interface BundleItemCreateInput {
   zoneId: string;
   ministryId?: number;
   amount: number;
+  feeType?: FeeType;
   isFixedAcrossZones?: boolean;
   displayOrder?: number;
   notes?: string;
@@ -124,6 +190,7 @@ export interface BundleCreateInput {
   installmentEligible?: boolean;
   maxInstallments?: number;
   installmentFrequency?: string;
+  publicInstallmentVisible?: boolean;
 }
 
 export interface BundleUpdateInput {
@@ -136,10 +203,56 @@ export interface BundleUpdateInput {
   installmentEligible?: boolean;
   maxInstallments?: number;
   installmentFrequency?: string;
+  publicInstallmentVisible?: boolean;
 }
 
 export interface CopyZonePricesInput {
   sourceZoneId: string;
   targetZoneId: string;
   multiplier?: number;
+}
+
+export interface FiscalServiceOption {
+  id: number;
+  serviceCode: string;
+  nameEs: string;
+  ministryId: number | null;
+  ministryName: string | null;
+}
+
+export interface BundleStats {
+  bundles: number;
+  zones: number;
+  items: number;
+}
+
+export interface BulkImportItem {
+  serviceCode: string;
+  zoneCode: string;
+  amount: number;
+  feeType?: FeeType;
+  ministryId?: number;
+  isFixedAcrossZones?: boolean;
+}
+
+export interface BulkImportResult {
+  imported: number;
+  skipped: { serviceCode: string; zoneCode: string; reason: string }[];
+  total: number;
+}
+
+export interface ParsedPdfItem {
+  serviceCode: string;
+  zoneCode: string;
+  amount: number;
+  isFixedAcrossZones: boolean;
+  knownService: boolean;
+}
+
+export interface ParsePdfResult {
+  extractedItems: ParsedPdfItem[];
+  totalExtracted: number;
+  tablesFound: number;
+  method: string;
+  note: string;
 }

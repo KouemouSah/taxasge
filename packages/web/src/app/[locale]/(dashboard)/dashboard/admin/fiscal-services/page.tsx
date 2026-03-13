@@ -48,10 +48,12 @@ import type {
   ServiceStatusEnum,
 } from '@/types/fiscal-service'
 import { BackendUnavailableAlert } from '@/modules/admin/components'
+import { Package } from 'lucide-react'
 
 export default function FiscalServicesPage() {
   const locale = useLocale()
   const t = useTranslations('admin.fiscalServices')
+  const tBundles = useTranslations('admin.serviceBundles')
   const router = useRouter()
   const { toast } = useToast()
 
@@ -276,6 +278,21 @@ export default function FiscalServicesPage() {
 
   return (
     <div className="space-y-4">
+      {/* Tab Navigation: Catalog | Bundles */}
+      <div className="flex gap-1 border-b">
+        <button className="px-4 py-2 text-sm font-medium border-b-2 border-primary text-primary">
+          <FileText className="h-3.5 w-3.5 inline mr-1" />
+          {t('title')}
+        </button>
+        <button
+          className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground border-b-2 border-transparent"
+          onClick={() => router.push(`/${locale}/dashboard/admin/service-bundles`)}
+        >
+          <Package className="h-3.5 w-3.5 inline mr-1" />
+          {tBundles('tabBundles')}
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
