@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EnrichmentTask(BaseModel):
@@ -72,6 +72,14 @@ class EnrichmentReviewRequest(BaseModel):
     action: Literal["approve", "reject"]
     edited_text: Optional[str] = Field(None, max_length=500,
         description="Optional edited description text (on approve, replaces AI text)")
+
+    @field_validator("edited_text")
+    @classmethod
+    def strip_edited_text(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            v = v.strip()
+            return v if v else None
+        return v
 
 
 class EnrichmentReviewResponse(BaseModel):

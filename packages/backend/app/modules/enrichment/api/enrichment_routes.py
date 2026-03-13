@@ -6,7 +6,8 @@ Admin: POST /enrichment/admin/seed-batch, GET /enrichment/admin/stats
 Approval: GET /enrichment/admin/pending-drafts, PUT /enrichment/admin/review/{id}
 """
 
-from typing import Any, Dict, List
+import json
+from typing import Any, Dict, List, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -178,7 +179,7 @@ async def get_enrichment_stats(
 )
 async def get_recent_enrichments(
     limit: int = Query(default=20, ge=1, le=100),
-    status_filter: str = Query(default="all", regex="^(all|completed|failed|pending)$"),
+    status_filter: Literal["all", "completed", "failed", "pending"] = Query(default="all"),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.view")),
@@ -307,7 +308,7 @@ async def review_service_description(
                 UPDATE fiscal_services
                 SET description_es = $1, description_source = 'ai_approved',
                     description_visible = true, updated_at = NOW()
-                WHERE id = $2
+                WHERE id = $2 AND description_source = 'ai_draft'
                 """,
                 body.edited_text.strip(),
                 service_id,
@@ -318,19 +319,19 @@ async def review_service_description(
                 UPDATE fiscal_services
                 SET description_source = 'ai_approved',
                     description_visible = true, updated_at = NOW()
-                WHERE id = $1
+                WHERE id = $1 AND description_source = 'ai_draft'
                 """,
                 service_id,
             )
         new_source = "ai_approved"
     else:
-        # Reject — clear the AI description
+        # Reject — clear the AI description, keep invisible
         await db.execute(
             """
             UPDATE fiscal_services
             SET description_es = NULL, description_source = NULL,
-                description_visible = true, updated_at = NOW()
-            WHERE id = $1
+                description_visible = false, updated_at = NOW()
+            WHERE id = $1 AND description_source = 'ai_draft'
             """,
             service_id,
         )
@@ -424,21 +425,34 @@ async def approve_all_drafts(
     if not is_allowed:
         raise HTTPException(status_code=429, detail="Approve-all limited to once per minute.")
 
-    # Approve services
-    svc_result = await db.execute(
-        """UPDATE fiscal_services
-        SET description_source = 'ai_approved', description_visible = true, updated_at = NOW()
-        WHERE description_source = 'ai_draft' AND status = 'active'"""
-    )
-    svc_count = int(svc_result.split()[-1]) if svc_result else 0
+    # Atomic: approve services + ministries in 1 transaction
+    async with db.transaction():
+        svc_result = await db.execute(
+            """UPDATE fiscal_services
+            SET description_source = 'ai_approved', description_visible = true, updated_at = NOW()
+            WHERE description_source = 'ai_draft' AND status = 'active'"""
+        )
+        svc_count = int(svc_result.split()[-1]) if svc_result else 0
 
-    # Approve ministries
-    min_result = await db.execute(
-        """UPDATE ministries
-        SET description_source = 'ai_approved', updated_at = NOW()
-        WHERE description_source = 'ai_draft'"""
-    )
-    min_count = int(min_result.split()[-1]) if min_result else 0
+        min_result = await db.execute(
+            """UPDATE ministries
+            SET description_source = 'ai_approved', updated_at = NOW()
+            WHERE description_source = 'ai_draft'"""
+        )
+        min_count = int(min_result.split()[-1]) if min_result else 0
+
+        # Audit trail for government compliance
+        if svc_count > 0 or min_count > 0:
+            await db.execute(
+                """INSERT INTO audit_logs (user_id, entity_type, entity_id, action, new_values, created_at)
+                VALUES ($1::uuid, 'fiscal_services', 'bulk_approve', 'enrichment_bulk_approve',
+                    $2::jsonb, NOW())""",
+                str(user_id),
+                json.dumps({
+                    "approved_services": svc_count,
+                    "approved_ministries": min_count,
+                }),
+            )
 
     if svc_count > 0:
         await invalidate_services_cache()

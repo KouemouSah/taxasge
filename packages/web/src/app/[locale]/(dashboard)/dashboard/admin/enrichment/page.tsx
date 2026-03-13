@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Sparkles, FileText, Languages, Search,
   CheckCircle, XCircle, Clock, AlertTriangle,
-  RefreshCw, Loader2, ChevronRight, Eye,
+  RefreshCw, Loader2, ChevronRight, Pencil,
   RotateCcw, CheckCheck, Building2,
 } from 'lucide-react'
 import { enrichmentApi } from '@/modules/enrichment/services/enrichment-api'
@@ -249,7 +249,7 @@ function ApprovalTable({
                   className="h-7 text-xs"
                   onClick={() => { setEditingId(d.id); setEditText(d.descriptionEs || '') }}
                 >
-                  <Eye className="h-3 w-3 mr-1" />
+                  <Pencil className="h-3 w-3 mr-1" />
                   Editar
                 </Button>
               ) : (
@@ -304,7 +304,7 @@ function QueueTable({
   const statusBadge = (s: string) => {
     switch (s) {
       case 'completed': return <Badge className="bg-emerald-100 text-emerald-800 text-[10px]">OK</Badge>
-      case 'failed': return <Badge variant="destructive" className="text-[10px]">Error</Badge>
+      case 'failed': return <Badge variant="destructive" className="text-[10px]" title={s}>Error</Badge>
       case 'pending': return <Badge variant="secondary" className="text-[10px]">Pendiente</Badge>
       case 'processing': return <Badge className="bg-blue-100 text-blue-800 text-[10px]">En curso</Badge>
       default: return <Badge variant="outline" className="text-[10px]">{s}</Badge>
@@ -338,6 +338,9 @@ function QueueTable({
             {t.serviceCode && (
               <span className="text-[10px] text-muted-foreground ml-1">[{t.serviceCode}]</span>
             )}
+            {t.status === 'failed' && t.errorMessage && (
+              <p className="text-[10px] text-red-500 truncate" title={t.errorMessage}>{t.errorMessage}</p>
+            )}
           </div>
           <span className="text-xs">{taskLabel(t.taskType)}</span>
           {statusBadge(t.status)}
@@ -350,8 +353,11 @@ function QueueTable({
                 className="h-6 text-[11px] px-2"
                 onClick={async () => {
                   setRetrying(t.id)
-                  await onRetry(t.id)
-                  setRetrying(null)
+                  try {
+                    await onRetry(t.id)
+                  } finally {
+                    setRetrying(null)
+                  }
                 }}
                 disabled={retrying !== null}
               >
@@ -381,7 +387,8 @@ export default function EnrichmentAdminPage() {
   const [ministryDrafts, setMinistryDrafts] = useState<PendingDraft[]>([])
   const [recentTasks, setRecentTasks] = useState<EnrichmentTask[]>([])
   const [loading, setLoading] = useState(true)
-  const [seeding, setSeeding] = useState(false)
+  const [seedingServices, setSeedingServices] = useState(false)
+  const [seedingMinistries, setSeedingMinistries] = useState(false)
   const [activeTab, setActiveTab] = useState('approval')
 
   const loadAll = useCallback(async () => {
@@ -413,15 +420,25 @@ export default function EnrichmentAdminPage() {
         title: action === 'approve' ? 'Descripción aprobada' : 'Descripción rechazada',
         description: `Servicio #${id} — ${action === 'approve' ? 'visible en sitio público' : 'eliminada'}`,
       })
-      // Optimistic update
+      // Optimistic update — keep stats consistent
       setDrafts(prev => prev.filter(d => d.id !== id))
-      if (stats) {
-        setStats(prev => prev ? {
-          ...prev,
-          descAiDraft: prev.descAiDraft - 1,
-          ...(action === 'approve' ? { descAiApproved: prev.descAiApproved + 1 } : {}),
-        } : null)
-      }
+      setStats(prev => {
+        if (!prev) return null
+        const newDraft = prev.descAiDraft - 1
+        if (action === 'approve') {
+          const newWithDesc = prev.withDescription + 1
+          return {
+            ...prev,
+            descAiDraft: newDraft,
+            descAiApproved: prev.descAiApproved + 1,
+            withDescription: newWithDesc,
+            withDescriptionPct: prev.totalServices > 0
+              ? Math.round(newWithDesc / prev.totalServices * 1000) / 10
+              : 0,
+          }
+        }
+        return { ...prev, descAiDraft: newDraft }
+      })
     } catch {
       toast({ title: 'Error', description: 'No se pudo procesar la acción', variant: 'destructive' })
     }
@@ -434,6 +451,7 @@ export default function EnrichmentAdminPage() {
         title: action === 'approve' ? 'Descripción ministerio aprobada' : 'Descripción rechazada',
       })
       setMinistryDrafts(prev => prev.filter(d => d.id !== id))
+      setStats(prev => prev ? { ...prev, descAiDraft: prev.descAiDraft - 1 } : null)
     } catch {
       toast({ title: 'Error', description: 'No se pudo procesar la acción', variant: 'destructive' })
     }
@@ -444,13 +462,14 @@ export default function EnrichmentAdminPage() {
       await enrichmentApi.retryTask(taskId)
       toast({ title: 'Tarea reintentada', description: 'Se procesará en el próximo ciclo cron' })
       setRecentTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending' } : t))
-    } catch {
-      toast({ title: 'Error', variant: 'destructive' })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo reintentar la tarea'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
     }
   }
 
   const handleSeedBatch = async () => {
-    setSeeding(true)
+    setSeedingServices(true)
     try {
       const result = await enrichmentApi.seedBatch()
       toast({
@@ -462,12 +481,12 @@ export default function EnrichmentAdminPage() {
       const msg = e instanceof Error ? e.message : 'Error'
       toast({ title: 'Error', description: msg.includes('429') ? 'Espere 1 minuto entre cada lanzamiento' : msg, variant: 'destructive' })
     } finally {
-      setSeeding(false)
+      setSeedingServices(false)
     }
   }
 
   const handleSeedMinistries = async () => {
-    setSeeding(true)
+    setSeedingMinistries(true)
     try {
       const result = await enrichmentApi.seedMinistries()
       toast({ title: 'Ministerios encolados', description: `${result.enqueuedMinistryDescriptions} descripciones encoladas` })
@@ -476,7 +495,7 @@ export default function EnrichmentAdminPage() {
       const msg = e instanceof Error ? e.message : 'Error'
       toast({ title: 'Error', description: msg.includes('429') ? 'Espere 1 minuto' : msg, variant: 'destructive' })
     } finally {
-      setSeeding(false)
+      setSeedingMinistries(false)
     }
   }
 
@@ -649,8 +668,8 @@ export default function EnrichmentAdminPage() {
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button disabled={seeding} className="w-full">
-                      {seeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                    <Button disabled={seedingServices} className="w-full">
+                      {seedingServices ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
                       Generar Descripciones Servicios
                     </Button>
                   </AlertDialogTrigger>
@@ -658,7 +677,7 @@ export default function EnrichmentAdminPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Lanzar generación masiva?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Se encolará la generación de descripciones para ~{stats?.totalServices ?? 0 - (stats?.withDescription ?? 0)} servicios.
+                        Se encolará la generación de descripciones para ~{(stats?.totalServices ?? 0) - (stats?.withDescription ?? 0)} servicios sin descripción.
                         El proceso es asíncrono (5 min/batch de 20).
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -685,8 +704,8 @@ export default function EnrichmentAdminPage() {
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" disabled={seeding} className="w-full">
-                      {seeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Building2 className="h-4 w-4 mr-2" />}
+                    <Button variant="outline" disabled={seedingMinistries} className="w-full">
+                      {seedingMinistries ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Building2 className="h-4 w-4 mr-2" />}
                       Generar Descripciones Ministerios
                     </Button>
                   </AlertDialogTrigger>
@@ -694,7 +713,7 @@ export default function EnrichmentAdminPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Lanzar generación ministerios?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Se generarán descripciones IA pour les ministerios actifs sans description.
+                        Se generarán descripciones IA para los ministerios activos sin descripción.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

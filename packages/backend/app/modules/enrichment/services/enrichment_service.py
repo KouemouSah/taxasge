@@ -616,7 +616,12 @@ class EnrichmentService:
             )
 
             if not response.candidates:
-                logger.warning("Enrichment Gemini: empty candidates")
+                # Log safety filter reason if available (helps debug false positives)
+                feedback = getattr(response, "prompt_feedback", None)
+                logger.warning(
+                    f"Enrichment Gemini: empty candidates — "
+                    f"prompt_feedback={feedback}"
+                )
                 return None
 
             text = response.text

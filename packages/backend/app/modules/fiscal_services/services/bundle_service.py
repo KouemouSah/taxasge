@@ -104,8 +104,17 @@ class BundleService:
             fee_totals[ft] = fee_totals.get(ft, Decimal("0")) + item["amount"]
         fee_totals["grand_total"] = total
 
+        # Normalize Decimal→str in items for cache consistency
+        normalized_items = []
+        for item in items:
+            d = dict(item)
+            for k in ("amount", "base_amount", "tasa_expedicion"):
+                if k in d and isinstance(d[k], Decimal):
+                    d[k] = str(d[k])
+            normalized_items.append(d)
+
         result = {
-            "items": items,
+            "items": normalized_items,
             "total_amount": str(total),
             "fee_type_totals": {k: str(v) for k, v in fee_totals.items()},
             "currency": "XAF",
@@ -261,11 +270,21 @@ class BundleService:
             if "error" not in preview:
                 installment_preview = preview
 
+        # Normalize Decimal→str in items to avoid cache deserialization mismatch
+        # (Decimal → json.dumps(default=str) → "50000" on cache write,
+        #  but Decimal → FastAPI JSON → 50000.0 on uncached response)
+        def _normalize_item(item: dict) -> dict:
+            d = dict(item)
+            for k in ("amount", "base_amount", "tasa_expedicion"):
+                if k in d and isinstance(d[k], Decimal):
+                    d[k] = str(d[k])
+            return d
+
         result = {
             "bundle": bundle,
             "zone": zone,
             "fee_groups": {
-                ft: [dict(i) for i in group]
+                ft: [_normalize_item(i) for i in group]
                 for ft, group in fee_groups.items()
                 if group
             },

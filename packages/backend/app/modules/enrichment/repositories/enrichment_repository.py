@@ -129,14 +129,16 @@ class EnrichmentRepository:
         conn, task_id: UUID, reason: str
     ) -> None:
         """
-        Defer a task back to 'pending' WITHOUT incrementing attempts.
-        Used when a dependency is not yet ready (e.g., translate task
-        waiting for description generation). Avoids retry storm.
+        Defer a task back to 'pending' AND roll back the attempt increment.
+        mark_processing_batch() already did `attempts + 1`, so we undo it here.
+        Without this, deferred tasks drain max_attempts and permanently fail
+        even though they were never actually attempted.
         """
         await conn.execute(
             """
             UPDATE enrichment_queue
             SET status = 'pending',
+                attempts = GREATEST(attempts - 1, 0),
                 error_message = $2,
                 processed_at = NOW()
             WHERE id = $1
