@@ -156,8 +156,8 @@ class EnrichmentRepository:
                 fs.calculation_method::TEXT as calculation_method,
                 COALESCE(fs.tasa_expedicion, 0) as tasa_expedicion,
                 COALESCE(fs.tasa_renovacion, 0) as tasa_renovacion,
-                c.name as category_name,
-                m.name as ministry_name,
+                c.name_es as category_name,
+                m.name_es as ministry_name,
                 (
                     SELECT string_agg(DISTINCT sk.keyword, ', ')
                     FROM service_keywords sk
@@ -172,9 +172,8 @@ class EnrichmentRepository:
                 ) as documents_es
             FROM fiscal_services fs
             LEFT JOIN categories c ON c.id = fs.category_id
-            LEFT JOIN ministries m ON m.id = (
-                SELECT s.ministry_id FROM sectors s WHERE s.id = c.sector_id LIMIT 1
-            )
+            LEFT JOIN sectors s ON s.id = c.sector_id
+            LEFT JOIN ministries m ON m.id = COALESCE(c.ministry_id, s.ministry_id)
             WHERE fs.id = $1
             """,
             fiscal_service_id,
