@@ -84,7 +84,7 @@ async def process_enrichment_batch(
 async def seed_enrichment_batch(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _perm: None = Depends(permission_required("fiscal_services.create")),
+    _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
     """
     Enqueue generate_description for all active services without descriptions.
@@ -113,7 +113,7 @@ async def seed_enrichment_batch(
 async def get_enrichment_stats(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _perm: None = Depends(permission_required("fiscal_services.view")),
+    _perm: None = Depends(permission_required("fiscal_service.view")),
 ):
     """Return queue stats + service description/translation coverage."""
     stats = await EnrichmentRepository.get_stats(db)
@@ -128,7 +128,7 @@ async def get_recent_enrichments(
     limit: int = 20,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
-    _perm: None = Depends(permission_required("fiscal_services.view")),
+    _perm: None = Depends(permission_required("fiscal_service.view")),
 ):
     """Return recent completed tasks with output preview."""
     rows = await db.fetch(

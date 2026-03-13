@@ -1110,7 +1110,8 @@ try:
     routers_loaded.append("service_requests_cron")
     logger.info("✅ Service Requests router loaded (citizen, agent, admin, wizard, appointments, cron)")
 except Exception as e:
-    logger.error(f"❌ Failed to load service_requests routers: {e}")
+    logger.error(f"❌ Service Requests router failed: {e}")
+    logger.error(traceback.format_exc())
 
 # --- Enrichment (Gemini auto-enrichment) ---
 try:
