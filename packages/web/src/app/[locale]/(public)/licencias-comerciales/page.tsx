@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   MapPin, FileText, CreditCard, ChevronRight, ChevronLeft,
   Loader2, AlertCircle, Check, Printer, Calendar,
-  Store, UtensilsCrossed, Coffee, Hammer, Heart,
+  Store, UtensilsCrossed, Coffee, Hammer, HeartPulse,
   Music, Wrench, Palette, Building, Film,
 } from 'lucide-react'
 import Breadcrumb from '@/components/ui/breadcrumb'
@@ -33,7 +33,7 @@ const COMMERCE_ICONS: Record<string, { icon: typeof Store; color: string; bg: st
   bar_restaurante:     { icon: UtensilsCrossed,  color: 'text-amber-600',   bg: 'bg-amber-100' },
   cafeteria_pasteleria:{ icon: Coffee,           color: 'text-orange-600',  bg: 'bg-orange-100' },
   carpinteria:         { icon: Hammer,           color: 'text-yellow-700',  bg: 'bg-yellow-100' },
-  clinica_farmacia:    { icon: Heart,            color: 'text-rose-600',    bg: 'bg-rose-100' },
+  clinica_farmacia:    { icon: HeartPulse,       color: 'text-rose-600',    bg: 'bg-rose-100' },
   discoteca:           { icon: Music,            color: 'text-purple-600',  bg: 'bg-purple-100' },
   ferreteria:          { icon: Wrench,           color: 'text-slate-600',   bg: 'bg-slate-100' },
   taller_artesanal:    { icon: Palette,          color: 'text-pink-600',    bg: 'bg-pink-100' },
@@ -132,20 +132,20 @@ function CommerceTypeStep({
             <button
               key={ct.commerceType}
               onClick={() => onSelect(ct)}
-              className="group relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-transparent bg-card hover:border-primary/60 hover:shadow-lg transition-all duration-200 text-center"
+              className="group relative flex flex-col items-center gap-3 p-5 rounded-xl border border-border/60 bg-card shadow-sm hover:border-primary/60 hover:shadow-lg transition-all duration-200 text-center"
             >
               {/* Icon circle */}
               <div className={`flex items-center justify-center h-14 w-14 rounded-full ${iconConfig.bg} transition-transform group-hover:scale-110`}>
                 <Icon className={`h-7 w-7 ${iconConfig.color}`} strokeWidth={1.8} />
               </div>
 
-              {/* Name */}
-              <span className="text-sm font-medium leading-tight group-hover:text-primary transition-colors min-h-[2.5rem] flex items-center">
+              {/* Name — flex-1 pushes badge to bottom for alignment */}
+              <span className="text-sm font-medium leading-tight group-hover:text-primary transition-colors flex-1 flex items-center">
                 {ct.nameEs}
               </span>
 
-              {/* Plazos badge — fixed at bottom for alignment */}
-              <div className="h-5">
+              {/* Plazos badge — mt-auto anchors all badges to same bottom line */}
+              <div className="mt-auto h-5">
                 {ct.installmentEligible && (
                   <Badge variant="secondary" className="text-[10px] px-2 py-0 font-medium">
                     <CreditCard className="h-3 w-3 mr-0.5" />
