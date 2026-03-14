@@ -32,7 +32,7 @@ import { useToast } from '@/hooks/use-toast'
 // ============================================================
 // Stats Cards
 // ============================================================
-function StatsCards({ stats, loading, t }: { stats: EnrichmentStats | null; loading: boolean; t: (key: string, values?: Record<string, unknown>) => string }) {
+function StatsCards({ stats, loading, t }: { stats: EnrichmentStats | null; loading: boolean; t: ReturnType<typeof import('next-intl').useTranslations> }) {
   if (loading || !stats) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
