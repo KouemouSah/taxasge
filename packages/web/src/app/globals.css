@@ -166,3 +166,44 @@ All colors MUST be HSL.
     }
   }
 }
+
+/* ============================================================
+   Print styles — clean A4 layout for licencias pricing sheet
+   ============================================================ */
+@media print {
+  /* Reset page */
+  @page {
+    size: A4;
+    margin: 15mm 12mm;
+  }
+
+  /* Hide all non-content elements */
+  header, footer, nav,
+  .breadcrumb, [role="navigation"],
+  [class*="print:hidden"] {
+    display: none !important;
+  }
+
+  /* Reset backgrounds and shadows */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Cards: no shadows, minimal border */
+  [class*="rounded"] {
+    border-radius: 2px !important;
+  }
+
+  /* Ensure content doesn't break awkwardly */
+  .space-y-4 > * {
+    break-inside: avoid;
+  }
+
+  /* Show print-only elements */
+  .print\\:block {
+    display: block !important;
+  }
+}

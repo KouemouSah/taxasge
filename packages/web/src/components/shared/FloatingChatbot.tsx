@@ -133,7 +133,7 @@ export const FloatingChatbot = () => {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-all duration-300 hover:scale-110 z-50"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-all duration-300 hover:scale-110 z-50 print:hidden"
           size="icon"
           aria-label={t('openChat') || 'Open chat'}
         >
@@ -144,7 +144,7 @@ export const FloatingChatbot = () => {
       {/* Chat Window */}
       {isOpen && (
         <div
-          className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4"
+          className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-4 print:hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="chatbot-title"

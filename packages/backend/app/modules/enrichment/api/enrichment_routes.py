@@ -17,6 +17,8 @@ from app.core.cache import check_rate_limit, invalidate_services_cache
 from app.database.connection import get_database
 from app.modules.auth.dependencies import get_current_user, permission_required
 from app.modules.enrichment.models.enrichment import (
+    BulkVisibilityRequest,
+    BulkVisibilityResponse,
     EnrichmentProcessResult,
     EnrichmentReviewRequest,
     EnrichmentReviewResponse,
@@ -464,6 +466,114 @@ async def approve_all_drafts(
         "approved_services": svc_count,
         "approved_ministries": min_count,
     }
+
+
+@router.patch(
+    "/admin/bulk-visibility",
+    response_model=BulkVisibilityResponse,
+    summary="Bulk toggle description_visible for fiscal services",
+)
+async def bulk_toggle_visibility(
+    body: BulkVisibilityRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _perm: None = Depends(permission_required("fiscal_service.create")),
+):
+    """
+    Bulk set description_visible = true/false for active fiscal services.
+    Optional filters: description_source, ministry_id.
+    """
+    user_id = current_user.get("sub", "unknown")
+
+    is_allowed, _ = await check_rate_limit(
+        identifier=str(user_id),
+        endpoint="/enrichment/admin/bulk-visibility",
+        max_requests=3,
+        window_seconds=60,
+    )
+    if not is_allowed:
+        raise HTTPException(status_code=429, detail="Bulk visibility limited to 3 times per minute.")
+
+    # Build parameterized query with optional filters
+    conditions = ["status = 'active'"]
+    params: list = [body.visible]
+    idx = 2  # $1 is visible
+
+    filters_applied: Dict[str, Any] = {"visible": body.visible}
+
+    if body.description_source is not None:
+        conditions.append(f"description_source = ${idx}")
+        params.append(body.description_source)
+        filters_applied["description_source"] = body.description_source
+        idx += 1
+
+    if body.ministry_id is not None:
+        # Ministry is linked via sectors → categories → fiscal_services
+        conditions.append(f"""category_id IN (
+            SELECT c.id FROM categories c
+            JOIN sectors s ON s.id = c.sector_id
+            WHERE s.ministry_id = ${idx}
+        )""")
+        params.append(body.ministry_id)
+        filters_applied["ministry_id"] = body.ministry_id
+        idx += 1
+
+    where_clause = " AND ".join(conditions)
+
+    async with db.transaction():
+        result = await db.execute(
+            f"""UPDATE fiscal_services
+            SET description_visible = $1, updated_at = NOW()
+            WHERE {where_clause}""",
+            *params,
+        )
+        affected = int(result.split()[-1]) if result else 0
+
+        # Audit trail
+        if affected > 0:
+            await db.execute(
+                """INSERT INTO audit_logs (user_id, entity_type, entity_id, action, new_values, created_at)
+                VALUES ($1::uuid, 'fiscal_services', 'bulk_visibility', 'enrichment_bulk_visibility',
+                    $2::jsonb, NOW())""",
+                str(user_id),
+                json.dumps({"affected": affected, **filters_applied}),
+            )
+
+    if affected > 0:
+        await invalidate_services_cache()
+
+    logger.info(
+        f"Admin {user_id} bulk visibility: {affected} services → visible={body.visible} "
+        f"(filters: {filters_applied})"
+    )
+
+    return BulkVisibilityResponse(
+        affected=affected,
+        visible=body.visible,
+        filters_applied=filters_applied,
+    )
+
+
+@router.get(
+    "/admin/ministries",
+    summary="List ministries with service counts for bulk filters",
+)
+async def list_ministries_for_filter(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+    _perm: None = Depends(permission_required("fiscal_service.view")),
+):
+    """Return ministries with active service counts for the bulk visibility filter."""
+    rows = await db.fetch("""
+        SELECT m.id, m.name_es, COUNT(fs.id) as service_count
+        FROM ministries m
+        JOIN sectors s ON s.ministry_id = m.id
+        JOIN categories c ON c.sector_id = s.id
+        JOIN fiscal_services fs ON fs.category_id = c.id AND fs.status = 'active'
+        GROUP BY m.id, m.name_es
+        ORDER BY m.name_es
+    """)
+    return [dict(r) for r in rows]
 
 
 @router.post(

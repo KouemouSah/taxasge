@@ -57,3 +57,15 @@ export interface ReviewResponse {
   previousSource: string | null
   newSource: string | null
 }
+
+export interface BulkVisibilityResult {
+  affected: number
+  visible: boolean
+  filtersApplied: Record<string, unknown>
+}
+
+export interface MinistryOption {
+  id: number
+  nameEs: string
+  serviceCount: number
+}

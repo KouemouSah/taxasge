@@ -91,6 +91,24 @@ class EnrichmentReviewResponse(BaseModel):
     new_source: Optional[str] = None
 
 
+class BulkVisibilityRequest(BaseModel):
+    """Bulk toggle description_visible for fiscal services."""
+
+    visible: bool = Field(..., description="Target visibility state")
+    description_source: Optional[Literal[
+        "manual", "ai_generated", "ai_draft", "ai_approved"
+    ]] = Field(None, description="Filter by description source (optional)")
+    ministry_id: Optional[int] = Field(None, description="Filter by ministry (optional)")
+
+
+class BulkVisibilityResponse(BaseModel):
+    """Result of bulk visibility toggle."""
+
+    affected: int = 0
+    visible: bool = False
+    filters_applied: Dict[str, Any] = Field(default_factory=dict)
+
+
 class PendingDraftItem(BaseModel):
     """A service/ministry with an AI draft description awaiting review."""
 

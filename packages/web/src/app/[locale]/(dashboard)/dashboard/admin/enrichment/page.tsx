@@ -18,20 +18,21 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Sparkles, FileText, Languages, Search,
   CheckCircle, XCircle, Clock, AlertTriangle,
   RefreshCw, Loader2, ChevronRight, Pencil,
-  RotateCcw, CheckCheck, Building2,
+  RotateCcw, CheckCheck, Building2, Eye, EyeOff,
 } from 'lucide-react'
 import { enrichmentApi } from '@/modules/enrichment/services/enrichment-api'
-import type { EnrichmentStats, EnrichmentTask, PendingDraft } from '@/modules/enrichment/types/enrichment'
+import type { EnrichmentStats, EnrichmentTask, PendingDraft, MinistryOption } from '@/modules/enrichment/types/enrichment'
 import { useToast } from '@/hooks/use-toast'
 
 // ============================================================
 // Stats Cards
 // ============================================================
-function StatsCards({ stats, loading }: { stats: EnrichmentStats | null; loading: boolean }) {
+function StatsCards({ stats, loading, t }: { stats: EnrichmentStats | null; loading: boolean; t: (key: string, values?: Record<string, unknown>) => string }) {
   if (loading || !stats) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -49,34 +50,34 @@ function StatsCards({ stats, loading }: { stats: EnrichmentStats | null; loading
 
   const cards = [
     {
-      title: 'Descripciones',
+      title: t('descriptions'),
       value: stats.withDescription,
       total: stats.totalServices,
       icon: FileText,
-      detail: `${stats.descManual} manual · ${stats.descAiApproved} IA aprobadas`,
+      detail: `${stats.descManual} ${t('manual')} · ${stats.descAiApproved} ${t('aiApproved')}`,
       color: 'text-blue-600',
       pct: stats.withDescriptionPct,
     },
     {
-      title: 'Pendientes Revisión',
+      title: t('pendingReview'),
       value: stats.descAiDraft,
       icon: Clock,
-      detail: stats.descAiDraft > 0 ? 'Requieren aprobación admin' : 'Sin borradores pendientes',
+      detail: stats.descAiDraft > 0 ? t('requiresApproval') : t('noPendingDrafts'),
       color: stats.descAiDraft > 0 ? 'text-amber-600' : 'text-emerald-600',
       badge: stats.descAiDraft > 0 ? 'amber' : undefined,
     },
     {
-      title: 'Traducciones',
+      title: t('translations'),
       value: stats.withTranslationsFr + stats.withTranslationsEn,
       icon: Languages,
       detail: `FR: ${stats.withTranslationsFr} · EN: ${stats.withTranslationsEn}`,
       color: 'text-violet-600',
     },
     {
-      title: 'Cola',
+      title: t('queue'),
       value: stats.queuePending + stats.queueProcessing,
       icon: RefreshCw,
-      detail: `${stats.queueCompleted} ok · ${stats.queueFailed} err`,
+      detail: `${stats.queueCompleted} ${t('ok')} · ${stats.queueFailed} err`,
       color: stats.queueFailed > 0 ? 'text-red-600' : 'text-emerald-600',
       badge: stats.queueFailed > 0 ? 'red' : undefined,
     },
@@ -102,12 +103,12 @@ function StatsCards({ stats, loading }: { stats: EnrichmentStats | null; loading
                 )}
                 {c.badge === 'amber' && (
                   <Badge variant="outline" className="ml-auto text-amber-700 border-amber-300 bg-amber-50 text-[10px]">
-                    Pendiente
+                    {t('pendingBadge')}
                   </Badge>
                 )}
                 {c.badge === 'red' && (
                   <Badge variant="destructive" className="ml-auto text-[10px]">
-                    Errores
+                    {t('errors')}
                   </Badge>
                 )}
               </div>
@@ -135,12 +136,12 @@ function ApprovalTable({
   drafts,
   loading,
   onReview,
-  entityType: _entityType,
+  t,
 }: {
   drafts: PendingDraft[]
   loading: boolean
   onReview: (id: number, action: 'approve' | 'reject', editedText?: string) => Promise<void>
-  entityType: 'service' | 'ministry'
+  t: (key: string) => string
 }) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editText, setEditText] = useState('')
@@ -170,8 +171,8 @@ function ApprovalTable({
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <CheckCircle className="h-10 w-10 mb-2 text-emerald-500" />
-        <p className="font-medium">Sin borradores pendientes</p>
-        <p className="text-sm">Todas las descripciones IA han sido revisadas</p>
+        <p className="font-medium">{t('noPendingDrafts')}</p>
+        <p className="text-sm">{t('allReviewed')}</p>
       </div>
     )
   }
@@ -203,11 +204,12 @@ function ApprovalTable({
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
                   className="text-sm mt-1 h-20"
-                  placeholder="Editar descripción antes de aprobar..."
+                  maxLength={500}
+                  placeholder={t('editPlaceholder')}
                 />
               ) : (
                 <p className="text-sm text-foreground/80 line-clamp-2 bg-amber-50 rounded px-2 py-1 border border-amber-200">
-                  {d.descriptionEs || '(vacío)'}
+                  {d.descriptionEs || t('empty')}
                 </p>
               )}
             </div>
@@ -226,22 +228,43 @@ function ApprovalTable({
                 ) : (
                   <CheckCircle className="h-3 w-3 mr-1" />
                 )}
-                Aprobar
+                {t('approve')}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs text-red-600 hover:bg-red-50"
-                onClick={() => handleAction(d.id, 'reject')}
-                disabled={actionLoading !== null}
-              >
-                {actionLoading === `${d.id}-reject` ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <XCircle className="h-3 w-3 mr-1" />
-                )}
-                Rechazar
-              </Button>
+
+              {/* Reject with confirmation dialog */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs text-red-600 hover:bg-red-50"
+                    disabled={actionLoading !== null}
+                  >
+                    {actionLoading === `${d.id}-reject` ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <XCircle className="h-3 w-3 mr-1" />
+                    )}
+                    {t('reject')}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('rejectConfirmTitle')}</AlertDialogTitle>
+                    <AlertDialogDescription>{t('rejectConfirmDesc')}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleAction(d.id, 'reject')}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {t('reject')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               {editingId !== d.id ? (
                 <Button
                   size="sm"
@@ -250,7 +273,7 @@ function ApprovalTable({
                   onClick={() => { setEditingId(d.id); setEditText(d.descriptionEs || '') }}
                 >
                   <Pencil className="h-3 w-3 mr-1" />
-                  Editar
+                  {t('edit')}
                 </Button>
               ) : (
                 <Button
@@ -259,7 +282,7 @@ function ApprovalTable({
                   className="h-7 text-xs"
                   onClick={() => { setEditingId(null); setEditText('') }}
                 >
-                  Cancelar
+                  {t('cancel')}
                 </Button>
               )}
             </div>
@@ -277,10 +300,12 @@ function QueueTable({
   tasks,
   loading,
   onRetry,
+  t,
 }: {
   tasks: EnrichmentTask[]
   loading: boolean
   onRetry: (taskId: string) => Promise<void>
+  t: (key: string) => string
 }) {
   const [retrying, setRetrying] = useState<string | null>(null)
 
@@ -296,72 +321,72 @@ function QueueTable({
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Search className="h-8 w-8 mx-auto mb-2" />
-        <p>Sin tareas recientes</p>
+        <p>{t('noTasks')}</p>
       </div>
     )
   }
 
   const statusBadge = (s: string) => {
     switch (s) {
-      case 'completed': return <Badge className="bg-emerald-100 text-emerald-800 text-[10px]">OK</Badge>
-      case 'failed': return <Badge variant="destructive" className="text-[10px]" title={s}>Error</Badge>
-      case 'pending': return <Badge variant="secondary" className="text-[10px]">Pendiente</Badge>
-      case 'processing': return <Badge className="bg-blue-100 text-blue-800 text-[10px]">En curso</Badge>
+      case 'completed': return <Badge className="bg-emerald-100 text-emerald-800 text-[10px]">{t('ok')}</Badge>
+      case 'failed': return <Badge variant="destructive" className="text-[10px]">{t('error')}</Badge>
+      case 'pending': return <Badge variant="secondary" className="text-[10px]">{t('pendingBadge')}</Badge>
+      case 'processing': return <Badge className="bg-blue-100 text-blue-800 text-[10px]">{t('inProgress')}</Badge>
       default: return <Badge variant="outline" className="text-[10px]">{s}</Badge>
     }
   }
 
-  const taskLabel = (t: string) => {
-    switch (t) {
-      case 'generate_description': return 'Descripción'
-      case 'translate_fr': return 'Trad. FR'
-      case 'translate_en': return 'Trad. EN'
-      case 'generate_keywords': return 'Keywords'
-      case 'generate_ministry_description': return 'Desc. Ministerio'
-      default: return t
+  const taskLabel = (taskType: string) => {
+    switch (taskType) {
+      case 'generate_description': return t('taskDescription')
+      case 'translate_fr': return t('taskTranslateFr')
+      case 'translate_en': return t('taskTranslateEn')
+      case 'generate_keywords': return t('taskKeywords')
+      case 'generate_ministry_description': return t('taskMinistryDesc')
+      default: return taskType
     }
   }
 
   return (
     <div className="divide-y max-h-[400px] overflow-y-auto">
       <div className="grid grid-cols-[1fr_100px_70px_60px_70px] gap-2 px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide bg-muted/50 sticky top-0">
-        <span>Servicio</span>
-        <span>Tipo</span>
-        <span>Estado</span>
-        <span>Tokens</span>
-        <span>Acción</span>
+        <span>{t('service')}</span>
+        <span>{t('type')}</span>
+        <span>{t('status')}</span>
+        <span>{t('tokens')}</span>
+        <span>{t('action')}</span>
       </div>
-      {tasks.map((t) => (
-        <div key={t.id} className="grid grid-cols-[1fr_100px_70px_60px_70px] gap-2 px-2 py-2 items-center text-sm hover:bg-muted/30">
+      {tasks.map((task) => (
+        <div key={task.id} className="grid grid-cols-[1fr_100px_70px_60px_70px] gap-2 px-2 py-2 items-center text-sm hover:bg-muted/30">
           <div className="truncate">
-            <span className="font-medium">{t.nameEs || t.ministryName || `ID ${t.fiscalServiceId}`}</span>
-            {t.serviceCode && (
-              <span className="text-[10px] text-muted-foreground ml-1">[{t.serviceCode}]</span>
+            <span className="font-medium">{task.nameEs || task.ministryName || `ID ${task.fiscalServiceId}`}</span>
+            {task.serviceCode && (
+              <span className="text-[10px] text-muted-foreground ml-1">[{task.serviceCode}]</span>
             )}
-            {t.status === 'failed' && t.errorMessage && (
-              <p className="text-[10px] text-red-500 truncate" title={t.errorMessage}>{t.errorMessage}</p>
+            {task.status === 'failed' && task.errorMessage && (
+              <p className="text-[10px] text-red-500 truncate" title={task.errorMessage}>{task.errorMessage}</p>
             )}
           </div>
-          <span className="text-xs">{taskLabel(t.taskType)}</span>
-          {statusBadge(t.status)}
-          <span className="text-xs tabular-nums text-muted-foreground">{t.tokensUsed || '-'}</span>
+          <span className="text-xs">{taskLabel(task.taskType)}</span>
+          {statusBadge(task.status)}
+          <span className="text-xs tabular-nums text-muted-foreground">{task.tokensUsed || '-'}</span>
           <div>
-            {t.status === 'failed' && (
+            {task.status === 'failed' && (
               <Button
                 size="sm"
                 variant="ghost"
                 className="h-6 text-[11px] px-2"
                 onClick={async () => {
-                  setRetrying(t.id)
+                  setRetrying(task.id)
                   try {
-                    await onRetry(t.id)
+                    await onRetry(task.id)
                   } finally {
                     setRetrying(null)
                   }
                 }}
                 disabled={retrying !== null}
               >
-                {retrying === t.id ? (
+                {retrying === task.id ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <RotateCcw className="h-3 w-3" />
@@ -379,7 +404,7 @@ function QueueTable({
 // Main Page
 // ============================================================
 export default function EnrichmentAdminPage() {
-  const _t = useTranslations('admin')
+  const t = useTranslations('enrichment')
   const { toast } = useToast()
 
   const [stats, setStats] = useState<EnrichmentStats | null>(null)
@@ -390,35 +415,48 @@ export default function EnrichmentAdminPage() {
   const [seedingServices, setSeedingServices] = useState(false)
   const [seedingMinistries, setSeedingMinistries] = useState(false)
   const [activeTab, setActiveTab] = useState('approval')
+  const [queueFilter, setQueueFilter] = useState<'all' | 'completed' | 'failed' | 'pending'>('all')
+  // Bulk visibility state
+  const [ministries, setMinistries] = useState<MinistryOption[]>([])
+  const [bulkMinistry, setBulkMinistry] = useState<string>('all')
+  const [bulkSource, setBulkSource] = useState<string>('all')
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [s, d, md, r] = await Promise.all([
+      const [s, d, md, r, m] = await Promise.all([
         enrichmentApi.getStats(),
         enrichmentApi.getPendingDrafts(),
         enrichmentApi.getPendingMinistryDrafts(),
-        enrichmentApi.getRecent(30),
+        enrichmentApi.getRecent(30, queueFilter),
+        enrichmentApi.getMinistries(),
       ])
       setStats(s)
       setDrafts(d)
       setMinistryDrafts(md)
       setRecentTasks(r)
-    } catch (e) {
-      toast({ title: 'Error', description: 'No se pudieron cargar los datos', variant: 'destructive' })
+      setMinistries(m)
+    } catch {
+      toast({ title: t('error'), description: t('loadError'), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, t, queueFilter])
 
   useEffect(() => { loadAll() }, [loadAll])
+
+  // Reload queue when filter changes
+  const handleFilterChange = useCallback(async (filter: 'all' | 'completed' | 'failed' | 'pending') => {
+    setQueueFilter(filter)
+  }, [])
 
   const handleReviewService = async (id: number, action: 'approve' | 'reject', editedText?: string) => {
     try {
       await enrichmentApi.reviewService(id, action, editedText)
       toast({
-        title: action === 'approve' ? 'Descripción aprobada' : 'Descripción rechazada',
-        description: `Servicio #${id} — ${action === 'approve' ? 'visible en sitio público' : 'eliminada'}`,
+        title: action === 'approve' ? t('approved') : t('rejected'),
+        description: `${t('service')} #${id} — ${action === 'approve' ? t('visibleOnSite') : t('deleted')}`,
       })
       // Optimistic update — keep stats consistent
       setDrafts(prev => prev.filter(d => d.id !== id))
@@ -440,7 +478,7 @@ export default function EnrichmentAdminPage() {
         return { ...prev, descAiDraft: newDraft }
       })
     } catch {
-      toast({ title: 'Error', description: 'No se pudo procesar la acción', variant: 'destructive' })
+      toast({ title: t('error'), description: t('actionError'), variant: 'destructive' })
     }
   }
 
@@ -448,23 +486,23 @@ export default function EnrichmentAdminPage() {
     try {
       await enrichmentApi.reviewMinistry(id, action, editedText)
       toast({
-        title: action === 'approve' ? 'Descripción ministerio aprobada' : 'Descripción rechazada',
+        title: action === 'approve' ? t('ministryApproved') : t('rejected'),
       })
       setMinistryDrafts(prev => prev.filter(d => d.id !== id))
       setStats(prev => prev ? { ...prev, descAiDraft: prev.descAiDraft - 1 } : null)
     } catch {
-      toast({ title: 'Error', description: 'No se pudo procesar la acción', variant: 'destructive' })
+      toast({ title: t('error'), description: t('actionError'), variant: 'destructive' })
     }
   }
 
   const handleRetry = async (taskId: string) => {
     try {
       await enrichmentApi.retryTask(taskId)
-      toast({ title: 'Tarea reintentada', description: 'Se procesará en el próximo ciclo cron' })
-      setRecentTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending' } : t))
+      toast({ title: t('taskRetried'), description: t('taskRetriedDesc') })
+      setRecentTasks(prev => prev.map(task => task.id === taskId ? { ...task, status: 'pending' } : task))
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'No se pudo reintentar la tarea'
-      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      const msg = e instanceof Error ? e.message : t('retryError')
+      toast({ title: t('error'), description: msg, variant: 'destructive' })
     }
   }
 
@@ -473,13 +511,20 @@ export default function EnrichmentAdminPage() {
     try {
       const result = await enrichmentApi.seedBatch()
       toast({
-        title: 'Enriquecimiento lanzado',
-        description: `${result.enqueuedDescriptions} descripciones + ${result.enqueuedTranslations} traducciones encoladas`,
+        title: t('seedLaunched'),
+        description: t('seedResult', {
+          descriptions: result.enqueuedDescriptions,
+          translations: result.enqueuedTranslations,
+        }),
       })
       await loadAll()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error'
-      toast({ title: 'Error', description: msg.includes('429') ? 'Espere 1 minuto entre cada lanzamiento' : msg, variant: 'destructive' })
+      const msg = e instanceof Error ? e.message : t('error')
+      toast({
+        title: t('error'),
+        description: msg.includes('429') ? t('waitOneMinute') : msg,
+        variant: 'destructive',
+      })
     } finally {
       setSeedingServices(false)
     }
@@ -489,11 +534,18 @@ export default function EnrichmentAdminPage() {
     setSeedingMinistries(true)
     try {
       const result = await enrichmentApi.seedMinistries()
-      toast({ title: 'Ministerios encolados', description: `${result.enqueuedMinistryDescriptions} descripciones encoladas` })
+      toast({
+        title: t('ministriesQueued'),
+        description: t('ministriesQueuedResult', { count: result.enqueuedMinistryDescriptions }),
+      })
       await loadAll()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error'
-      toast({ title: 'Error', description: msg.includes('429') ? 'Espere 1 minuto' : msg, variant: 'destructive' })
+      const msg = e instanceof Error ? e.message : t('error')
+      toast({
+        title: t('error'),
+        description: msg.includes('429') ? t('waitOneMinute') : msg,
+        variant: 'destructive',
+      })
     } finally {
       setSeedingMinistries(false)
     }
@@ -503,17 +555,48 @@ export default function EnrichmentAdminPage() {
     try {
       const result = await enrichmentApi.approveAll()
       toast({
-        title: 'Aprobación masiva completada',
-        description: `${result.approvedServices} servicios + ${result.approvedMinistries} ministerios aprobados`,
+        title: t('bulkApproveComplete'),
+        description: t('bulkApproveResult', {
+          services: result.approvedServices,
+          ministries: result.approvedMinistries,
+        }),
       })
       await loadAll()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error'
-      toast({ title: 'Error', description: msg.includes('429') ? 'Espere 1 minuto' : msg, variant: 'destructive' })
+      const msg = e instanceof Error ? e.message : t('error')
+      toast({
+        title: t('error'),
+        description: msg.includes('429') ? t('waitOneMinute') : msg,
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleBulkVisibility = async (visible: boolean) => {
+    setBulkLoading(true)
+    try {
+      const source = bulkSource !== 'all' ? bulkSource : undefined
+      const ministry = bulkMinistry !== 'all' ? Number(bulkMinistry) : undefined
+      const result = await enrichmentApi.bulkVisibility(visible, source, ministry)
+      toast({
+        title: visible ? t('bulkShowComplete') : t('bulkHideComplete'),
+        description: t('bulkVisibilityResult', { count: result.affected }),
+      })
+      await loadAll()
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : t('error')
+      toast({
+        title: t('error'),
+        description: msg.includes('429') ? t('waitOneMinute') : msg,
+        variant: 'destructive',
+      })
+    } finally {
+      setBulkLoading(false)
     }
   }
 
   const pendingCount = drafts.length + ministryDrafts.length
+  const missingDescCount = (stats?.totalServices ?? 0) - (stats?.withDescription ?? 0)
 
   return (
     <div className="space-y-4 p-4 max-w-[1400px] mx-auto">
@@ -521,10 +604,10 @@ export default function EnrichmentAdminPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-bold">Enriquecimiento IA</h1>
+          <h1 className="text-xl font-bold">{t('title')}</h1>
           {pendingCount > 0 && (
             <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50">
-              {pendingCount} pendientes
+              {pendingCount} {t('pending')}
             </Badge>
           )}
         </div>
@@ -534,32 +617,32 @@ export default function EnrichmentAdminPage() {
       </div>
 
       {/* Stats */}
-      <StatsCards stats={stats} loading={loading} />
+      <StatsCards stats={stats} loading={loading} t={t} />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="approval" className="text-xs sm:text-sm">
             <CheckCircle className="h-3.5 w-3.5 mr-1 hidden sm:inline" />
-            Revisión
+            {t('tabApproval')}
             {drafts.length > 0 && (
               <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{drafts.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="ministries" className="text-xs sm:text-sm">
             <Building2 className="h-3.5 w-3.5 mr-1 hidden sm:inline" />
-            Ministerios
+            {t('tabMinistries')}
             {ministryDrafts.length > 0 && (
               <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{ministryDrafts.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="queue" className="text-xs sm:text-sm">
             <RefreshCw className="h-3.5 w-3.5 mr-1 hidden sm:inline" />
-            Cola
+            {t('tabQueue')}
           </TabsTrigger>
           <TabsTrigger value="actions" className="text-xs sm:text-sm">
             <Sparkles className="h-3.5 w-3.5 mr-1 hidden sm:inline" />
-            Acciones
+            {t('tabActions')}
           </TabsTrigger>
         </TabsList>
 
@@ -567,27 +650,26 @@ export default function EnrichmentAdminPage() {
         <TabsContent value="approval">
           <Card>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Descripciones IA — Servicios</CardTitle>
+              <CardTitle className="text-base">{t('serviceDescriptions')}</CardTitle>
               {drafts.length > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button size="sm" variant="outline" className="text-xs">
                       <CheckCheck className="h-3.5 w-3.5 mr-1" />
-                      Aprobar todo ({drafts.length})
+                      {t('approveAll')} ({drafts.length})
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Aprobar todas las descripciones IA?</AlertDialogTitle>
+                      <AlertDialogTitle>{t('approveAllTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Esta acción aprobará {drafts.length} descripciones de servicios y {ministryDrafts.length} de ministerios.
-                        Todas serán visibles en el sitio público.
+                        {t('approveAllDesc', { services: drafts.length, ministries: ministryDrafts.length })}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                       <AlertDialogAction onClick={handleApproveAll} className="bg-emerald-600 hover:bg-emerald-700">
-                        Aprobar todo
+                        {t('approveAll')}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -599,7 +681,7 @@ export default function EnrichmentAdminPage() {
                 drafts={drafts}
                 loading={loading}
                 onReview={handleReviewService}
-                entityType="service"
+                t={t}
               />
             </CardContent>
           </Card>
@@ -609,14 +691,14 @@ export default function EnrichmentAdminPage() {
         <TabsContent value="ministries">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Descripciones IA — Ministerios</CardTitle>
+              <CardTitle className="text-base">{t('ministryDescriptions')}</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <ApprovalTable
                 drafts={ministryDrafts}
                 loading={loading}
                 onReview={handleReviewMinistry}
-                entityType="ministry"
+                t={t}
               />
             </CardContent>
           </Card>
@@ -626,12 +708,26 @@ export default function EnrichmentAdminPage() {
         <TabsContent value="queue">
           <Card>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Monitor de Cola</CardTitle>
+              <CardTitle className="text-base">{t('queueMonitor')}</CardTitle>
               <div className="flex items-center gap-2">
+                {/* Status filter buttons */}
+                <div className="flex gap-1">
+                  {(['all', 'completed', 'failed', 'pending'] as const).map((f) => (
+                    <Button
+                      key={f}
+                      size="sm"
+                      variant={queueFilter === f ? 'default' : 'ghost'}
+                      className="h-6 text-[11px] px-2"
+                      onClick={() => handleFilterChange(f)}
+                    >
+                      {t(`filter${f.charAt(0).toUpperCase() + f.slice(1)}` as 'filterAll' | 'filterCompleted' | 'filterFailed' | 'filterPending')}
+                    </Button>
+                  ))}
+                </div>
                 {stats && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="flex items-center gap-0.5">
-                      <Clock className="h-3 w-3" /> {stats.queuePending} pendientes
+                      <Clock className="h-3 w-3" /> {stats.queuePending} {t('queuePending')}
                     </span>
                     <ChevronRight className="h-3 w-3" />
                     <span className="flex items-center gap-0.5">
@@ -646,7 +742,7 @@ export default function EnrichmentAdminPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <QueueTable tasks={recentTasks} loading={loading} onRetry={handleRetry} />
+              <QueueTable tasks={recentTasks} loading={loading} onRetry={handleRetry} t={t} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -658,32 +754,30 @@ export default function EnrichmentAdminPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileText className="h-4 w-4 text-blue-600" />
-                  Generar Descripciones
+                  {t('generateDescriptions')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Encolar generación Gemini para todos los servicios activos sin descripción.
-                  Las descripciones generadas quedarán como borrador hasta aprobación.
+                  {t('generateDescriptionsDesc')}
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button disabled={seedingServices} className="w-full">
                       {seedingServices ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                      Generar Descripciones Servicios
+                      {t('generateServices')}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Lanzar generación masiva?</AlertDialogTitle>
+                      <AlertDialogTitle>{t('seedConfirmTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Se encolará la generación de descripciones para ~{(stats?.totalServices ?? 0) - (stats?.withDescription ?? 0)} servicios sin descripción.
-                        El proceso es asíncrono (5 min/batch de 20).
+                        {t('seedConfirmDesc', { count: missingDescCount })}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleSeedBatch}>Confirmar</AlertDialogAction>
+                      <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleSeedBatch}>{t('confirm')}</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -694,34 +788,132 @@ export default function EnrichmentAdminPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-violet-600" />
-                  Generar Descripciones Ministerios
+                  {t('generateMinistriesTitle')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Encolar generación para ministerios sin descripción.
-                  Los borradores requieren aprobación antes de ser visibles.
+                  {t('generateMinistriesDesc')}
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" disabled={seedingMinistries} className="w-full">
                       {seedingMinistries ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Building2 className="h-4 w-4 mr-2" />}
-                      Generar Descripciones Ministerios
+                      {t('generateMinistries')}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Lanzar generación ministerios?</AlertDialogTitle>
+                      <AlertDialogTitle>{t('seedMinistryConfirmTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Se generarán descripciones IA para los ministerios activos sin descripción.
+                        {t('seedMinistryConfirmDesc')}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleSeedMinistries}>Confirmar</AlertDialogAction>
+                      <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleSeedMinistries}>{t('confirm')}</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              </CardContent>
+            </Card>
+
+            {/* Bulk visibility toggle */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-emerald-600" />
+                  {t('bulkVisibilityTitle')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {t('bulkVisibilityDesc')}
+                </p>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-end gap-3 mb-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                      {t('filterMinistry')}
+                    </label>
+                    <Select value={bulkMinistry} onValueChange={setBulkMinistry}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('allMinistries')}</SelectItem>
+                        {ministries.map((m) => (
+                          <SelectItem key={m.id} value={String(m.id)}>
+                            {m.nameEs} ({m.serviceCount})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-[200px]">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                      {t('filterSource')}
+                    </label>
+                    <Select value={bulkSource} onValueChange={setBulkSource}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('allSources')}</SelectItem>
+                        <SelectItem value="manual">{t('manual')}</SelectItem>
+                        <SelectItem value="ai_draft">{t('aiDraft')}</SelectItem>
+                        <SelectItem value="ai_approved">{t('aiApproved')}</SelectItem>
+                        <SelectItem value="ai_generated">{t('aiGenerated')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="default" disabled={bulkLoading} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                        {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                        {t('bulkShow')}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t('bulkShowConfirmTitle')}</AlertDialogTitle>
+                        <AlertDialogDescription>{t('bulkShowConfirmDesc')}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleBulkVisibility(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                          {t('confirm')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" disabled={bulkLoading} className="flex-1 text-red-600 hover:bg-red-50">
+                        {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
+                        {t('bulkHide')}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t('bulkHideConfirmTitle')}</AlertDialogTitle>
+                        <AlertDialogDescription>{t('bulkHideConfirmDesc')}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleBulkVisibility(false)} className="bg-red-600 hover:bg-red-700">
+                          {t('confirm')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CardContent>
             </Card>
           </div>

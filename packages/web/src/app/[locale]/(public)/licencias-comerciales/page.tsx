@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,11 +10,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   MapPin, FileText, CreditCard, ChevronRight, ChevronLeft,
   Loader2, AlertCircle, Check, Printer, Calendar,
+  Store, UtensilsCrossed, Coffee, Hammer, Heart,
+  Music, Wrench, Palette, Building, Film,
 } from 'lucide-react'
 import Breadcrumb from '@/components/ui/breadcrumb'
 import { bundleApi } from '@/modules/fiscal-services/services/bundle-api'
 import { formatXAF } from '@/core/utils/format'
 import type {
+  BundleItem,
   CommerceTypeOption,
   CommerceZone,
   SimulatorResponse,
@@ -23,27 +26,29 @@ import type {
 import { FEE_TYPE_LABELS } from '@/types/service-bundle'
 
 // ============================================================
-// Commerce type icons mapping
+// Commerce type SVG icons — lucide vector icons in colored circles
 // ============================================================
-const COMMERCE_ICONS: Record<string, string> = {
-  abaceria: '🏪',
-  bar_restaurante: '🍽️',
-  cafeteria_pasteleria: '☕',
-  carpinteria: '🪚',
-  clinica_farmacia: '🏥',
-  discoteca: '🎵',
-  ferreteria: '🔧',
-  taller_artesanal: '🎨',
-  taller_bloqueria: '🏗️',
-  video_club: '📀',
+const COMMERCE_ICONS: Record<string, { icon: typeof Store; color: string; bg: string }> = {
+  abaceria:            { icon: Store,            color: 'text-blue-600',    bg: 'bg-blue-100' },
+  bar_restaurante:     { icon: UtensilsCrossed,  color: 'text-amber-600',   bg: 'bg-amber-100' },
+  cafeteria_pasteleria:{ icon: Coffee,           color: 'text-orange-600',  bg: 'bg-orange-100' },
+  carpinteria:         { icon: Hammer,           color: 'text-yellow-700',  bg: 'bg-yellow-100' },
+  clinica_farmacia:    { icon: Heart,            color: 'text-rose-600',    bg: 'bg-rose-100' },
+  discoteca:           { icon: Music,            color: 'text-purple-600',  bg: 'bg-purple-100' },
+  ferreteria:          { icon: Wrench,           color: 'text-slate-600',   bg: 'bg-slate-100' },
+  taller_artesanal:    { icon: Palette,          color: 'text-pink-600',    bg: 'bg-pink-100' },
+  taller_bloqueria:    { icon: Building,         color: 'text-teal-600',    bg: 'bg-teal-100' },
+  video_club:          { icon: Film,             color: 'text-indigo-600',  bg: 'bg-indigo-100' },
 }
+
+const DEFAULT_ICON = { icon: Store, color: 'text-gray-600', bg: 'bg-gray-100' }
 
 // Zone tier colors
 const ZONE_TIER_COLORS: Record<string, string> = {
-  A: 'bg-red-50 border-red-200 text-red-800',
-  B: 'bg-orange-50 border-orange-200 text-orange-800',
-  C: 'bg-blue-50 border-blue-200 text-blue-800',
-  D: 'bg-green-50 border-green-200 text-green-800',
+  A: 'bg-red-50 border-red-200 text-red-800 hover:border-red-400',
+  B: 'bg-orange-50 border-orange-200 text-orange-800 hover:border-orange-400',
+  C: 'bg-blue-50 border-blue-200 text-blue-800 hover:border-blue-400',
+  D: 'bg-green-50 border-green-200 text-green-800 hover:border-green-400',
 }
 
 // Fee type section colors
@@ -54,7 +59,7 @@ const FEE_TYPE_COLORS: Record<string, { bg: string; border: string; header: stri
 }
 
 // ============================================================
-// Steps indicator
+// Steps indicator — compact horizontal stepper
 // ============================================================
 function StepIndicator({ current, labels }: { current: number; labels: string[] }) {
   return (
@@ -96,7 +101,7 @@ function StepIndicator({ current, labels }: { current: number; labels: string[] 
 }
 
 // ============================================================
-// Step 1 — Commerce type selection
+// Step 1 — Commerce type selection (professional card grid)
 // ============================================================
 function CommerceTypeStep({
   types,
@@ -107,30 +112,50 @@ function CommerceTypeStep({
   onSelect: (ct: CommerceTypeOption) => void
   t: ReturnType<typeof useTranslations>
 }) {
+  if (!types.length) {
+    return (
+      <div className="text-center py-16 text-muted-foreground">
+        <Store className="h-12 w-12 mx-auto mb-3 opacity-40" />
+        <p className="text-sm">No hay tipos de comercio disponibles</p>
+      </div>
+    )
+  }
+
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6 text-center">{t('selectCommerce')}</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {types.map((ct) => (
-          <button
-            key={ct.commerceType}
-            onClick={() => onSelect(ct)}
-            className="group flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-transparent bg-card hover:border-primary hover:shadow-md transition-all text-center"
-          >
-            <span className="text-3xl" role="img" aria-hidden>
-              {COMMERCE_ICONS[ct.commerceType] || '🏢'}
-            </span>
-            <span className="text-sm font-medium group-hover:text-primary transition-colors leading-tight">
-              {ct.nameEs}
-            </span>
-            {ct.installmentEligible && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                <CreditCard className="h-3 w-3 mr-0.5" />
-                Plazos
-              </Badge>
-            )}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {types.map((ct) => {
+          const iconConfig = COMMERCE_ICONS[ct.commerceType] || DEFAULT_ICON
+          const Icon = iconConfig.icon
+          return (
+            <button
+              key={ct.commerceType}
+              onClick={() => onSelect(ct)}
+              className="group relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-transparent bg-card hover:border-primary/60 hover:shadow-lg transition-all duration-200 text-center"
+            >
+              {/* Icon circle */}
+              <div className={`flex items-center justify-center h-14 w-14 rounded-full ${iconConfig.bg} transition-transform group-hover:scale-110`}>
+                <Icon className={`h-7 w-7 ${iconConfig.color}`} strokeWidth={1.8} />
+              </div>
+
+              {/* Name */}
+              <span className="text-sm font-medium leading-tight group-hover:text-primary transition-colors min-h-[2.5rem] flex items-center">
+                {ct.nameEs}
+              </span>
+
+              {/* Plazos badge — fixed at bottom for alignment */}
+              <div className="h-5">
+                {ct.installmentEligible && (
+                  <Badge variant="secondary" className="text-[10px] px-2 py-0 font-medium">
+                    <CreditCard className="h-3 w-3 mr-0.5" />
+                    Plazos
+                  </Badge>
+                )}
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -152,7 +177,6 @@ function ZoneStep({
   onBack: () => void
   t: ReturnType<typeof useTranslations>
 }) {
-  // Group zones by tier
   const tiers = zones.reduce<Record<string, CommerceZone[]>>((acc, z) => {
     const tier = z.zoneTier
     if (!acc[tier]) acc[tier] = []
@@ -167,6 +191,9 @@ function ZoneStep({
     D: t('zoneTierD'),
   }
 
+  const iconConfig = COMMERCE_ICONS[commerceType.commerceType] || DEFAULT_ICON
+  const Icon = iconConfig.icon
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -174,14 +201,15 @@ function ZoneStep({
           <ChevronLeft className="h-4 w-4 mr-1" />
           {t('changeCommerce')}
         </Button>
-        <Badge variant="outline" className="text-sm">
-          {COMMERCE_ICONS[commerceType.commerceType] || '🏢'} {commerceType.nameEs}
+        <Badge variant="outline" className="text-sm gap-1.5 py-1 px-3">
+          <Icon className={`h-4 w-4 ${iconConfig.color}`} strokeWidth={1.8} />
+          {commerceType.nameEs}
         </Badge>
       </div>
 
       <h2 className="text-xl font-semibold mb-6 text-center">{t('selectZone')}</h2>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         {['A', 'B', 'C', 'D'].map((tier) => {
           const tierZones = tiers[tier] || []
           if (!tierZones.length) return null
@@ -190,12 +218,12 @@ function ZoneStep({
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                 {tierLabels[tier] || tier}
               </h3>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {tierZones.map((z) => (
                   <button
                     key={z.id}
                     onClick={() => onSelect(z)}
-                    className={`p-3 rounded-lg border-2 text-center transition-all hover:shadow-md hover:scale-[1.02] ${ZONE_TIER_COLORS[tier] || 'bg-muted'}`}
+                    className={`p-3 rounded-lg border-2 text-center transition-all hover:shadow-md active:scale-[0.98] ${ZONE_TIER_COLORS[tier] || 'bg-muted'}`}
                   >
                     <div className="text-lg font-bold">{z.zoneCode}</div>
                     <div className="text-xs leading-tight mt-0.5">{z.descriptionEs || z.nameEs}</div>
@@ -211,7 +239,30 @@ function ZoneStep({
 }
 
 // ============================================================
-// Step 3 — Pricing result
+// Helper: group items by ministry within a fee group
+// ============================================================
+interface MinistryGroup {
+  ministryName: string
+  items: BundleItem[]
+  subtotal: number
+}
+
+function groupByMinistry(items: BundleItem[]): MinistryGroup[] {
+  const map = new Map<string, BundleItem[]>()
+  for (const item of items) {
+    const key = item.ministryName || '—'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(item)
+  }
+  return Array.from(map.entries()).map(([ministryName, grpItems]) => ({
+    ministryName,
+    items: grpItems,
+    subtotal: grpItems.reduce((s, it) => s + (typeof it.amount === 'string' ? parseFloat(it.amount) : it.amount), 0),
+  }))
+}
+
+// ============================================================
+// Step 3 — Pricing result (grouped by ministry + print layout)
 // ============================================================
 function PricingResult({
   data,
@@ -228,62 +279,115 @@ function PricingResult({
   t: ReturnType<typeof useTranslations>
   locale: string
 }) {
+  const iconConfig = COMMERCE_ICONS[commerceType.commerceType] || DEFAULT_ICON
+  const Icon = iconConfig.icon
+
+  const printDate = new Date().toLocaleDateString(
+    locale === 'fr' ? 'fr-FR' : locale === 'en' ? 'en-US' : 'es-GQ',
+    { year: 'numeric', month: 'long', day: 'numeric' },
+  )
+
   return (
-    <div className="space-y-6">
-      {/* Header with context */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="space-y-5">
+      {/* ---- PRINT HEADER (hidden on screen, visible on print) ---- */}
+      <div className="hidden print:block mb-6">
+        <div className="text-center border-b-2 border-black pb-3 mb-4">
+          <h1 className="text-xl font-bold tracking-wide">FACIL — {t('title')}</h1>
+          <p className="text-xs mt-1 text-gray-600">
+            {t('legalReference')}: {data.bundle.legalReference || 'Decreto Presidencial'}
+          </p>
+        </div>
+        <div className="flex justify-between text-xs text-gray-700 mb-4">
+          <div>
+            <strong>{t('stepCommerce')}:</strong> {commerceType.nameEs}
+          </div>
+          <div>
+            <strong>{t('stepZone')}:</strong> {zone.zoneCode} — {zone.descriptionEs || zone.nameEs}
+          </div>
+          <div>{printDate}</div>
+        </div>
+      </div>
+
+      {/* ---- SCREEN-ONLY: header with context ---- */}
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ChevronLeft className="h-4 w-4 mr-1" />
           {t('changeZone')}
         </Button>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            {COMMERCE_ICONS[commerceType.commerceType] || '🏢'} {commerceType.nameEs}
+          <Badge variant="outline" className="gap-1.5 py-1 px-3">
+            <Icon className={`h-3.5 w-3.5 ${iconConfig.color}`} strokeWidth={1.8} />
+            {commerceType.nameEs}
           </Badge>
-          <Badge variant="secondary">
-            <MapPin className="h-3 w-3 mr-1" />
+          <Badge variant="secondary" className="gap-1">
+            <MapPin className="h-3 w-3" />
             {zone.zoneCode} — {zone.descriptionEs || zone.nameEs}
           </Badge>
         </div>
       </div>
 
-      {/* Legal reference */}
+      {/* Legal reference (screen only — print header already has it) */}
       {data.bundle.legalReference && (
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-xs text-muted-foreground text-center print:hidden">
           {t('legalReference')}: {data.bundle.legalReference}
         </p>
       )}
 
-      {/* Fee type sections */}
-      <div className="space-y-4">
+      {/* Fee type sections — grouped by ministry */}
+      <div className="space-y-4 print:space-y-3">
         {data.feeGroups.map((group) => {
           const colors = FEE_TYPE_COLORS[group.feeType] || FEE_TYPE_COLORS.tesoro
           const feeLabel = FEE_TYPE_LABELS[group.feeType as FeeType]?.[locale as 'es' | 'fr' | 'en'] || group.labelEs
+          const ministryGroups = groupByMinistry(group.items)
+          const hasMultipleMinistries = ministryGroups.length > 1
+
           return (
-            <Card key={group.feeType} className={`${colors.border} border`}>
-              <div className={`${colors.header} px-4 py-2.5 rounded-t-lg`}>
+            <Card key={group.feeType} className={`${colors.border} border print:border print:border-gray-400 print:shadow-none`}>
+              {/* Section header */}
+              <div className={`${colors.header} px-4 py-2.5 rounded-t-lg print:bg-gray-800 print:text-white print:rounded-none`}>
                 <h3 className="font-semibold text-sm tracking-wide">
                   {feeLabel}
                 </h3>
               </div>
-              <div className="divide-y">
-                {group.items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium">{item.serviceName}</span>
-                      {item.ministryName && (
-                        <span className="text-muted-foreground ml-2 text-xs hidden sm:inline">
-                          ({item.ministryName})
-                        </span>
-                      )}
+              <div className="divide-y print:divide-gray-300">
+                {ministryGroups.map((mGroup, mIdx) => (
+                  <div key={mGroup.ministryName}>
+                    {/* Ministry sub-header — always shown */}
+                    <div className="px-4 py-1.5 bg-muted/40 print:bg-gray-100">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground print:text-gray-700">
+                        {mGroup.ministryName}
+                      </span>
                     </div>
-                    <span className="font-semibold tabular-nums ml-4 whitespace-nowrap">
-                      {formatXAF(item.amount, locale)}
-                    </span>
+                    {/* Items */}
+                    {mGroup.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between px-4 py-2.5 text-sm print:py-1.5 print:text-xs">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{item.serviceName}</span>
+                        </div>
+                        <span className="font-semibold tabular-nums ml-4 whitespace-nowrap">
+                          {formatXAF(item.amount, locale)}
+                        </span>
+                      </div>
+                    ))}
+                    {/* Ministry subtotal (only if multiple ministries) */}
+                    {hasMultipleMinistries && (
+                      <div className="flex items-center justify-between px-4 py-1.5 text-xs text-muted-foreground print:text-gray-600">
+                        <span className="italic pl-2">
+                          Subtotal {mGroup.ministryName}
+                        </span>
+                        <span className="font-semibold tabular-nums">
+                          {formatXAF(mGroup.subtotal, locale)}
+                        </span>
+                      </div>
+                    )}
+                    {/* Separator between ministry groups */}
+                    {hasMultipleMinistries && mIdx < ministryGroups.length - 1 && (
+                      <div className="border-t border-dashed border-gray-200 print:border-gray-300" />
+                    )}
                   </div>
                 ))}
-                {/* Subtotal */}
-                <div className={`flex items-center justify-between px-4 py-2.5 ${colors.bg}`}>
+                {/* Section subtotal */}
+                <div className={`flex items-center justify-between px-4 py-2.5 ${colors.bg} print:bg-gray-100 print:font-bold`}>
                   <span className="text-sm font-semibold">Sub-Total {feeLabel}</span>
                   <span className="font-bold tabular-nums">
                     {formatXAF(group.subtotal, locale)}
@@ -296,10 +400,10 @@ function PricingResult({
       </div>
 
       {/* Grand total */}
-      <Card className="border-2 border-amber-300 bg-amber-50">
-        <div className="flex items-center justify-between px-5 py-4">
-          <span className="text-lg font-bold">{t('totalGeneral')}</span>
-          <span className="text-2xl font-extrabold text-amber-900 tabular-nums">
+      <Card className="border-2 border-amber-300 bg-amber-50 print:border-2 print:border-black print:bg-gray-50">
+        <div className="flex items-center justify-between px-5 py-4 print:py-3">
+          <span className="text-lg font-bold print:text-base">{t('totalGeneral')}</span>
+          <span className="text-2xl font-extrabold text-amber-900 tabular-nums print:text-black print:text-xl">
             {formatXAF(data.grandTotal, locale)}
           </span>
         </div>
@@ -307,20 +411,20 @@ function PricingResult({
 
       {/* Installment preview */}
       {data.installmentPreview && (
-        <Card>
+        <Card className="print:border print:border-gray-400 print:shadow-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-primary" />
+              <CreditCard className="h-4 w-4 text-primary print:hidden" />
               {t('installmentTitle')}
             </CardTitle>
             <p className="text-sm text-muted-foreground">{t('installmentDesc')}</p>
           </CardHeader>
           <CardContent>
-            <div className="divide-y">
+            <div className="divide-y print:divide-gray-300">
               {data.installmentPreview.installments.map((inst) => (
-                <div key={inst.installmentNumber} className="flex items-center justify-between py-2.5 text-sm">
+                <div key={inst.installmentNumber} className="flex items-center justify-between py-2.5 text-sm print:py-1.5 print:text-xs">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground print:hidden" />
                     <span>
                       {t('installmentOf', {
                         number: inst.installmentNumber,
@@ -343,22 +447,22 @@ function PricingResult({
 
       {/* Documents */}
       {data.documents.length > 0 && (
-        <Card>
+        <Card className="print:border print:border-gray-400 print:shadow-none">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
+              <FileText className="h-4 w-4 text-primary print:hidden" />
               {t('documentsRequired')}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-1.5">
+            <ul className="space-y-1.5 print:space-y-0.5">
               {data.documents.map((doc, i) => (
-                <li key={doc.documentTemplateId} className="flex items-start gap-2 text-sm">
+                <li key={doc.documentTemplateId} className="flex items-start gap-2 text-sm print:text-xs">
                   <span className="flex-shrink-0 font-mono text-xs text-muted-foreground w-5 text-right">
                     {i + 1}.
                   </span>
                   <span className="flex-1">{doc.documentNameEs}</span>
-                  <Badge variant={doc.isRequired ? 'default' : 'secondary'} className="text-[10px] flex-shrink-0">
+                  <Badge variant={doc.isRequired ? 'default' : 'secondary'} className="text-[10px] flex-shrink-0 print:border print:border-gray-400 print:bg-transparent print:text-black">
                     {doc.isRequired ? t('documentRequired') : t('documentOptional')}
                   </Badge>
                 </li>
@@ -368,8 +472,14 @@ function PricingResult({
         </Card>
       )}
 
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+      {/* Print footer (hidden on screen) */}
+      <div className="hidden print:block mt-6 pt-3 border-t border-gray-300 text-center text-[10px] text-gray-500">
+        <p>FACIL — Plataforma de Servicios Fiscales de Guinea Ecuatorial</p>
+        <p>Documento informativo generado el {printDate}. Los precios pueden estar sujetos a modificaciones.</p>
+      </div>
+
+      {/* Print action (hidden on print) */}
+      <div className="flex justify-center pt-2 print:hidden">
         <Button size="lg" onClick={() => window.print()}>
           <Printer className="h-4 w-4 mr-2" />
           {t('print')}
@@ -398,12 +508,22 @@ function LicenciasContent() {
   const [simulating, setSimulating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // AbortController ref — cancels in-flight requests on unmount
+  const abortRef = useRef<AbortController | null>(null)
+
   // Retry helper with exponential backoff (handles Cloud Run cold starts)
-  const fetchWithRetry = useCallback(async <T,>(fn: () => Promise<T>, retries = 3, baseDelay = 1500): Promise<T> => {
+  const fetchWithRetry = useCallback(async <T,>(
+    fn: () => Promise<T>,
+    retries = 3,
+    baseDelay = 1500,
+  ): Promise<T> => {
     for (let attempt = 0; attempt < retries; attempt++) {
+      // Check if aborted
+      if (abortRef.current?.signal.aborted) throw new Error('Aborted')
       try {
         return await fn()
       } catch (e) {
+        if (abortRef.current?.signal.aborted) throw new Error('Aborted')
         if (attempt === retries - 1) throw e
         await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)))
       }
@@ -413,6 +533,10 @@ function LicenciasContent() {
 
   // Initial data load with auto-retry
   const loadData = useCallback(async () => {
+    // Cancel any previous in-flight request
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+
     setLoading(true)
     setError(null)
     try {
@@ -420,17 +544,25 @@ function LicenciasContent() {
         fetchWithRetry(() => bundleApi.listCommerceTypes()),
         fetchWithRetry(() => bundleApi.listZones()),
       ])
-      setCommerceTypes(types)
-      setZones(zoneList)
+      if (!abortRef.current?.signal.aborted) {
+        setCommerceTypes(types)
+        setZones(zoneList)
+      }
     } catch (e) {
+      if (abortRef.current?.signal.aborted) return
       console.error('Failed to load bundle data:', e)
       setError('loadError')
     } finally {
-      setLoading(false)
+      if (!abortRef.current?.signal.aborted) {
+        setLoading(false)
+      }
     }
   }, [fetchWithRetry])
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => {
+    loadData()
+    return () => { abortRef.current?.abort() }
+  }, [loadData])
 
   // Handle commerce type selection
   const handleCommerceSelect = useCallback((ct: CommerceTypeOption) => {
@@ -446,17 +578,23 @@ function LicenciasContent() {
       setStep(3)
       setSimulating(true)
       setError(null)
+      setSimulatorResult(null)
       try {
         const result = await bundleApi.simulate(selectedCommerce.commerceType, zone.zoneCode)
-        setSimulatorResult(result)
+        if (!abortRef.current?.signal.aborted) {
+          setSimulatorResult(result)
+        }
       } catch (e) {
+        if (abortRef.current?.signal.aborted) return
         console.error('Simulator failed:', e)
-        setError(t('noResults'))
+        setError('simError')
       } finally {
-        setSimulating(false)
+        if (!abortRef.current?.signal.aborted) {
+          setSimulating(false)
+        }
       }
     },
-    [selectedCommerce, t]
+    [selectedCommerce]
   )
 
   const breadcrumbItems = [
@@ -473,35 +611,51 @@ function LicenciasContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
-      <Breadcrumb items={breadcrumbItems} />
+    <div className="container mx-auto px-4 py-6 max-w-4xl print:px-0 print:py-0 print:max-w-none">
+      <div className="print:hidden">
+        <Breadcrumb items={breadcrumbItems} />
+      </div>
 
-      <div className="text-center mb-6 mt-4">
+      <div className="text-center mb-6 mt-4 print:hidden">
         <h1 className="text-2xl sm:text-3xl font-bold">{t('title')}</h1>
         <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
       </div>
 
-      <StepIndicator
-        current={step}
-        labels={[t('stepCommerce'), t('stepZone'), t('stepResult')]}
-      />
+      <div className="print:hidden">
+        <StepIndicator
+          current={step}
+          labels={[t('stepCommerce'), t('stepZone'), t('stepResult')]}
+        />
+      </div>
 
-      {error && (
+      {/* Error: initial load failure */}
+      {error === 'loadError' && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
-            <span>{error === 'loadError' ? t('loadError') : error}</span>
-            {error === 'loadError' && (
-              <Button variant="outline" size="sm" onClick={loadData} className="ml-3 shrink-0">
-                {t('retry')}
-              </Button>
-            )}
+            <span>{t('loadError')}</span>
+            <Button variant="outline" size="sm" onClick={loadData} className="ml-3 shrink-0">
+              {t('retry')}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Error: simulation failure (step 3) — show with retry to step 2 */}
+      {error === 'simError' && step === 3 && !simulating && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{t('noResults')}</span>
+            <Button variant="outline" size="sm" onClick={() => { setStep(2); setError(null) }} className="ml-3 shrink-0">
+              {t('changeZone')}
+            </Button>
           </AlertDescription>
         </Alert>
       )}
 
       {/* Step 1: Commerce type */}
-      {step === 1 && (
+      {step === 1 && !error && (
         <CommerceTypeStep
           types={commerceTypes}
           onSelect={handleCommerceSelect}
@@ -520,7 +674,7 @@ function LicenciasContent() {
         />
       )}
 
-      {/* Step 3: Result */}
+      {/* Step 3: Loading */}
       {step === 3 && simulating && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -528,6 +682,7 @@ function LicenciasContent() {
         </div>
       )}
 
+      {/* Step 3: Result */}
       {step === 3 && !simulating && simulatorResult && selectedCommerce && selectedZone && (
         <PricingResult
           data={simulatorResult}
@@ -546,15 +701,5 @@ function LicenciasContent() {
 }
 
 export default function LicenciasPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      }
-    >
-      <LicenciasContent />
-    </Suspense>
-  )
+  return <LicenciasContent />
 }

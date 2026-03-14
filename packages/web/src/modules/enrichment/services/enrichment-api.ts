@@ -9,6 +9,8 @@ import type {
   PendingDraft,
   EnrichmentSeedResult,
   ReviewResponse,
+  BulkVisibilityResult,
+  MinistryOption,
 } from '../types/enrichment'
 
 const BASE = '/enrichment'
@@ -43,6 +45,11 @@ async function put<T>(path: string, body?: unknown): Promise<T> {
   return transformKeys<T>(data)
 }
 
+async function patch<T>(path: string, body?: unknown): Promise<T> {
+  const { data } = await apiClient.patch(`${BASE}${path}`, body)
+  return transformKeys<T>(data)
+}
+
 export const enrichmentApi = {
   // Stats & monitoring
   getStats: () => get<EnrichmentStats>('/admin/stats'),
@@ -71,6 +78,17 @@ export const enrichmentApi = {
   // Seed operations
   seedBatch: () => post<EnrichmentSeedResult>('/admin/seed-batch'),
   seedMinistries: () => post<{ enqueuedMinistryDescriptions: number }>('/admin/seed-ministries'),
+
+  // Bulk visibility
+  bulkVisibility: (visible: boolean, descriptionSource?: string, ministryId?: number) =>
+    patch<BulkVisibilityResult>('/admin/bulk-visibility', {
+      visible,
+      ...(descriptionSource ? { description_source: descriptionSource } : {}),
+      ...(ministryId ? { ministry_id: ministryId } : {}),
+    }),
+
+  // Ministries for filter dropdown
+  getMinistries: () => get<MinistryOption[]>('/admin/ministries'),
 
   // Retry
   retryTask: (taskId: string) => post<{ taskId: string; newStatus: string }>(`/admin/retry/${taskId}`),
