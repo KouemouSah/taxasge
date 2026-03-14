@@ -108,6 +108,28 @@ export interface SearchResponse {
   cached: boolean;
 }
 
+export interface SemanticResult {
+  id: number;
+  name: string;
+  description: string | null;
+  category_name: string;
+  ministry_name: string | null;
+  service_type: string;
+  expedition_price: number;
+  renewal_price: number;
+  similarity: number;
+}
+
+export interface SemanticSearchResponse {
+  success: boolean;
+  query: string;
+  results: SemanticResult[];
+  total_results: number;
+  execution_time_ms: number;
+  embedding_model: string;
+  cached: boolean;
+}
+
 // ===================================================================================================
 // API FUNCTIONS
 // ===================================================================================================
@@ -182,6 +204,30 @@ export async function autocompleteServices(
     return data.suggestions || [];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Semantic search — understands meaning, not just keywords
+ */
+export async function semanticSearchServices(
+  q: string,
+  language: string = 'es',
+  limit: number = 10
+): Promise<SemanticSearchResponse> {
+  if (!q || q.trim().length < 2) {
+    return { success: false, query: q, results: [], total_results: 0, execution_time_ms: 0, embedding_model: '', cached: false };
+  }
+
+  try {
+    const params = new URLSearchParams({ q: q.trim(), language, limit: String(limit) });
+    const response = await fetch(`${SERVICES_API_URL}/search/semantic?${params}`);
+    if (!response.ok) {
+      return { success: false, query: q, results: [], total_results: 0, execution_time_ms: 0, embedding_model: '', cached: false };
+    }
+    return await response.json();
+  } catch {
+    return { success: false, query: q, results: [], total_results: 0, execution_time_ms: 0, embedding_model: '', cached: false };
   }
 }
 

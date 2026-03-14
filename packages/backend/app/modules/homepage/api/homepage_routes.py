@@ -23,6 +23,7 @@ from app.modules.homepage.models import (
     MinistryDirectory, MinistryDetails, MinistryItem,
     SearchRequest, SearchResponse, SearchResultItem, SearchFacets, FacetItem,
     BundleResultItem,
+    SemanticResultItem, SemanticSearchResponse,
 )
 import time
 from app.modules.homepage.services import HomepageService
@@ -905,6 +906,105 @@ async def autocomplete_services(
     response = {"suggestions": results}
     await cache.set(cache_key, response, ttl=120)  # 2min TTL (fast changing)
     return response
+
+
+# ========== SEMANTIC SEARCH (pgvector) ==========
+
+@router.get("/search/semantic", response_model=SemanticSearchResponse, summary="Semantic Search")
+async def semantic_search(
+    raw_request: Request,
+    q: str = Query(..., min_length=2, max_length=200, description="Search query"),
+    language: str = Query("es", pattern="^(es|fr|en)$"),
+    limit: int = Query(10, ge=1, le=30),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """
+    Semantic search using Gemini embeddings + pgvector cosine similarity.
+
+    Understands meaning, not just keywords. Example: "abrir un negocio" →
+    finds commercial license services even without exact keyword match.
+
+    **Performance:**
+    - Embedding generation: ~100-200ms (Vertex AI)
+    - Vector search: ~10-50ms (HNSW index)
+    - Cached: ~2-5ms (5min TTL)
+    """
+    await enforce_rate_limit(raw_request, *RATE_LIMIT_SEARCH)
+    start_time = time.time()
+
+    try:
+        # Check cache first
+        cache = get_services_cache()
+        cache_key = CacheKeys.custom("semantic", q.strip().lower(), language, str(limit))
+
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            logger.debug(f"Cache HIT for semantic search: {q}")
+            cached["cached"] = True
+            return SemanticSearchResponse(**cached)
+
+        # Generate query embedding via Gemini
+        from app.modules.chatbot.services.embedding_service import embedding_service
+
+        if not embedding_service.enabled:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Semantic search unavailable (embedding service disabled)"
+            )
+
+        query_embedding = await embedding_service.generate_query_embedding(q.strip())
+        if query_embedding is None:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to generate query embedding"
+            )
+
+        # Run vector similarity search
+        repo = HomepageRepository(db)
+        raw_results = await repo.semantic_search(
+            query_embedding=query_embedding,
+            language=language,
+            limit=limit,
+            similarity_threshold=0.1,
+        )
+
+        execution_time = (time.time() - start_time) * 1000
+
+        result = SemanticSearchResponse(
+            success=True,
+            query=q,
+            results=[
+                SemanticResultItem(
+                    id=r["id"],
+                    name=r["name"] or "",
+                    description=r.get("description"),
+                    category_name=r.get("category_name") or "",
+                    ministry_name=r.get("ministry_name"),
+                    service_type=r.get("service_type", ""),
+                    expedition_price=float(r.get("expedition_price", 0) or 0),
+                    renewal_price=float(r.get("renewal_price", 0) or 0),
+                    similarity=round(r.get("similarity", 0), 4),
+                )
+                for r in raw_results
+            ],
+            total_results=len(raw_results),
+            execution_time_ms=round(execution_time, 1),
+            embedding_model="text-embedding-004",
+            cached=False,
+        )
+
+        # Cache for 5 min
+        await cache.set(cache_key, result.model_dump(), ttl=300)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Semantic search error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Semantic search failed. Please try again."
+        )
 
 
 # ========== DEBUG ENDPOINT - TO REMOVE AFTER TESTING ==========

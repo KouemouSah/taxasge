@@ -190,3 +190,31 @@ class SearchResponse(BaseModel):
     suggestions: List[str] = []
     execution_time_ms: float = 0
     cached: bool = False
+
+
+# ============================================================================
+# SEMANTIC SEARCH MODELS
+# ============================================================================
+
+class SemanticResultItem(BaseModel):
+    """Single semantic search result with similarity score"""
+    id: int
+    name: str
+    description: Optional[str] = None
+    category_name: str = ""
+    ministry_name: Optional[str] = None
+    service_type: str
+    expedition_price: float = 0
+    renewal_price: float = 0
+    similarity: float = Field(0, description="Cosine similarity score (0-1)")
+
+
+class SemanticSearchResponse(BaseModel):
+    """Semantic search response"""
+    success: bool = True
+    query: str = ""
+    results: List[SemanticResultItem] = []
+    total_results: int = 0
+    execution_time_ms: float = 0
+    embedding_model: str = ""
+    cached: bool = False

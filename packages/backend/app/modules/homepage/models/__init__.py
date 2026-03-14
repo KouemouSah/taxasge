@@ -15,7 +15,9 @@ from app.modules.homepage.models.homepage import (
     BundleResultItem,
     FacetItem,
     SearchFacets,
-    SearchResponse
+    SearchResponse,
+    SemanticResultItem,
+    SemanticSearchResponse,
 )
 
 __all__ = [
@@ -33,5 +35,7 @@ __all__ = [
     "BundleResultItem",
     "FacetItem",
     "SearchFacets",
-    "SearchResponse"
+    "SearchResponse",
+    "SemanticResultItem",
+    "SemanticSearchResponse",
 ]

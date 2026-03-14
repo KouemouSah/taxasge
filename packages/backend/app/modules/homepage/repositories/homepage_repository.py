@@ -912,3 +912,70 @@ class HomepageRepository:
         except asyncpg.PostgresError as e:
             logger.error(f"Bundle search error: {e}")
             return []
+
+    # ========================================================================
+    # SEMANTIC SEARCH (pgvector cosine similarity)
+    # ========================================================================
+
+    async def semantic_search(
+        self,
+        query_embedding: list,
+        language: str = "es",
+        limit: int = 10,
+        similarity_threshold: float = 0.1,
+    ) -> List[Dict[str, Any]]:
+        """
+        Semantic search using pgvector cosine similarity on fiscal_services.embedding.
+        Uses mv_services_translated for multilingual results.
+
+        Args:
+            query_embedding: 768-dim vector from EmbeddingService
+            language: Language code (es/fr/en)
+            limit: Max results
+            similarity_threshold: Minimum similarity score (0-1)
+
+        Returns:
+            List of services with similarity scores, translated names/descriptions
+        """
+        embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
+
+        # Language-specific column mapping on mv_services_translated
+        lang_suffix = "" if language == "es" else f"_{language}"
+        name_col = f"mv.name{lang_suffix}" if language != "es" else "mv.name_es"
+        desc_col = f"mv.description{lang_suffix}" if language != "es" else "mv.description_es"
+        cat_col = f"mv.category_name{lang_suffix}" if language != "es" else "mv.category_name_es"
+        min_col = f"mv.ministry_name{lang_suffix}" if language != "es" else "mv.ministry_name_es"
+
+        # For FR/EN, COALESCE to ES fallback
+        if language != "es":
+            name_col = f"COALESCE({name_col}, mv.name_es)"
+            desc_col = f"COALESCE({desc_col}, mv.description_es)"
+            cat_col = f"COALESCE({cat_col}, mv.category_name_es)"
+            min_col = f"COALESCE({min_col}, mv.ministry_name_es)"
+
+        query = f"""
+            SELECT
+                mv.id,
+                {name_col} AS name,
+                {desc_col} AS description,
+                {cat_col} AS category_name,
+                {min_col} AS ministry_name,
+                mv.service_type,
+                COALESCE(mv.tasa_expedicion, 0) AS expedition_price,
+                COALESCE(mv.tasa_renovacion, 0) AS renewal_price,
+                (1 - (fs.embedding <-> $1::vector))::FLOAT AS similarity
+            FROM mv_services_translated mv
+            JOIN fiscal_services fs ON fs.id = mv.id
+            WHERE fs.embedding IS NOT NULL
+              AND fs.status = 'active'
+              AND (1 - (fs.embedding <-> $1::vector)) >= $2
+            ORDER BY fs.embedding <-> $1::vector
+            LIMIT $3
+        """
+
+        try:
+            rows = await self.db.fetch(query, embedding_str, similarity_threshold, limit)
+            return [dict(row) for row in rows]
+        except asyncpg.PostgresError as e:
+            logger.error(f"Semantic search error: {e}")
+            return []
