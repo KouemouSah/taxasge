@@ -156,3 +156,9 @@ export interface CompanySearchResult {
   city_name?: string | null
   is_verified: boolean
 }
+
+export interface CompanyClassifyResult {
+  regimen_fiscal: string
+  confidence: number
+  reason: string
+}

@@ -195,3 +195,10 @@ class CompanySearchResult(BaseModel):
 class CompanyVerifyRequest(BaseModel):
     """Toggle company verification status."""
     is_verified: bool
+
+
+class CompanyClassifyResponse(BaseModel):
+    """Result of fiscal regime classification."""
+    regimen_fiscal: str
+    confidence: float
+    reason: str

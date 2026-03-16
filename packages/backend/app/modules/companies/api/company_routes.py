@@ -16,8 +16,10 @@ from app.modules.companies.models import (
     AddMemberRequest, UpdateMemberRoleRequest,
     CompanyAdminResponse, CompanyAdminListResponse,
     CompanyStatsResponse, CompanySearchResult, CompanyVerifyRequest,
+    CompanyClassifyResponse,
 )
 from app.modules.companies.repositories import CompanyRepository
+from app.modules.companies.services.company_classifier import CompanyClassifier
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
@@ -25,6 +27,7 @@ from app.database.connection import get_database
 router = APIRouter(tags=["Companies"])
 security = HTTPBearer()
 company_repository = CompanyRepository()
+company_classifier = CompanyClassifier()
 
 
 # =============================================================================
@@ -116,6 +119,110 @@ async def admin_verify_company(
     action = "verified" if body.is_verified else "unverified"
     logger.info(f"Admin {user_id} {action} company {company_id}")
     return CompanyResponse(**result)
+
+
+@router.post("/admin/{company_id}/classify", response_model=CompanyClassifyResponse)
+@permission_required("company.update")
+async def admin_classify_company(
+    company_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Classify company's fiscal regime using rules-based engine.
+
+    Updates regimen_fiscal if classification differs from current value.
+    """
+    result = await company_classifier.classify_and_update(db, company_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    logger.info(f"Admin {user_id} classified company {company_id}: {result['regimen_fiscal']} (confidence={result['confidence']:.0%})")
+    return CompanyClassifyResponse(**result)
+
+
+# =============================================================================
+# SUPERVISOR ENDPOINTS (entity-scoped)
+# =============================================================================
+
+async def _get_supervisor_entity_id(user_id: str, db) -> Optional[str]:
+    """Get entity_id from agent_profiles for the current user."""
+    row = await db.fetchrow(
+        "SELECT entity_id, is_supervisor FROM agent_profiles WHERE user_id = $1 AND is_active = true",
+        user_id,
+    )
+    if not row:
+        return None
+    return str(row["entity_id"]) if row["entity_id"] else None
+
+
+@router.get("/supervisor/my-companies", response_model=CompanyAdminListResponse)
+@permission_required("company.view_entity_scoped")
+async def supervisor_list_companies(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None, max_length=100),
+    is_active: Optional[bool] = Query(None),
+    is_verified: Optional[bool] = Query(None),
+    regimen_fiscal: Optional[str] = Query(None),
+    sort_by: str = Query("created_at", regex="^(created_at|legal_name|is_active|is_verified|member_count|license_count)$"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """List companies scoped to supervisor's entity cities.
+
+    Scoping: entity → entity_locations → city_ids →
+    companies (city_id match OR commercial_licenses.city_id match).
+    """
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    entity_id = await _get_supervisor_entity_id(user_id, db)
+    if not entity_id:
+        # No entity = no scope = empty result
+        return CompanyAdminListResponse(items=[], total=0, page=page, page_size=page_size)
+
+    city_ids = await company_repository.get_entity_city_ids(db, entity_id)
+    if not city_ids:
+        return CompanyAdminListResponse(items=[], total=0, page=page, page_size=page_size)
+
+    offset = (page - 1) * page_size
+    items = await company_repository.list_all(
+        db, limit=page_size, offset=offset,
+        search=search, is_active=is_active, is_verified=is_verified,
+        regimen_fiscal=regimen_fiscal, city_ids=city_ids,
+        sort_by=sort_by, sort_order=sort_order,
+    )
+    total = await company_repository.count_all(
+        db, search=search, is_active=is_active, is_verified=is_verified,
+        regimen_fiscal=regimen_fiscal, city_ids=city_ids,
+    )
+
+    return CompanyAdminListResponse(
+        items=[CompanyAdminResponse(**c) for c in items],
+        total=total, page=page, page_size=page_size,
+    )
+
+
+@router.get("/supervisor/stats", response_model=CompanyStatsResponse)
+@permission_required("company.view_entity_scoped")
+async def supervisor_company_stats(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Entity-scoped company statistics for supervisor dashboard."""
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    entity_id = await _get_supervisor_entity_id(user_id, db)
+    if not entity_id:
+        return CompanyStatsResponse()
+
+    city_ids = await company_repository.get_entity_city_ids(db, entity_id)
+    if not city_ids:
+        return CompanyStatsResponse()
+
+    stats = await company_repository.get_stats_by_cities(db, city_ids)
+    return CompanyStatsResponse(**stats)
 
 
 # =============================================================================

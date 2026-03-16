@@ -212,6 +212,7 @@ class CompanyRepository:
         regimen_fiscal: Optional[str] = None,
         zone_id: Optional[str] = None,
         city_id: Optional[str] = None,
+        city_ids: Optional[List[str]] = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
     ) -> List[Dict[str, Any]]:
@@ -258,6 +259,17 @@ class CompanyRepository:
             conditions.append(f"c.city_id = ${idx}")
             params.append(city_id)
             idx += 1
+        if city_ids:
+            conditions.append(f"""(
+                c.city_id = ANY(${idx}::uuid[])
+                OR c.id IN (
+                    SELECT DISTINCT cl.company_id
+                    FROM commercial_licenses cl
+                    WHERE cl.city_id = ANY(${idx}::uuid[])
+                )
+            )""")
+            params.append(city_ids)
+            idx += 1
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
@@ -298,6 +310,7 @@ class CompanyRepository:
         regimen_fiscal: Optional[str] = None,
         zone_id: Optional[str] = None,
         city_id: Optional[str] = None,
+        city_ids: Optional[List[str]] = None,
     ) -> int:
         """Count companies matching filters."""
         conditions = []
@@ -328,6 +341,17 @@ class CompanyRepository:
             conditions.append(f"city_id = ${idx}")
             params.append(city_id)
             idx += 1
+        if city_ids:
+            conditions.append(f"""(
+                city_id = ANY(${idx}::uuid[])
+                OR id IN (
+                    SELECT DISTINCT cl.company_id
+                    FROM commercial_licenses cl
+                    WHERE cl.city_id = ANY(${idx}::uuid[])
+                )
+            )""")
+            params.append(city_ids)
+            idx += 1
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
         query = f"SELECT COUNT(*) FROM companies {where}"
@@ -357,6 +381,80 @@ class CompanyRepository:
         stats["by_regimen"] = {r["regimen"]: r["count"] for r in regimen_rows}
 
         return stats
+
+    async def get_stats_by_cities(
+        self,
+        conn: asyncpg.Connection,
+        city_ids: List[str],
+    ) -> Dict[str, Any]:
+        """Aggregated company statistics scoped to specific cities.
+
+        Companies matched via city_id OR commercial_licenses.city_id.
+        """
+        query = """
+            WITH scoped_companies AS (
+                SELECT DISTINCT c.id, c.is_active, c.is_verified, c.regimen_fiscal
+                FROM companies c
+                WHERE c.city_id = ANY($1::uuid[])
+                UNION
+                SELECT DISTINCT c.id, c.is_active, c.is_verified, c.regimen_fiscal
+                FROM companies c
+                JOIN commercial_licenses cl ON cl.company_id = c.id
+                WHERE cl.city_id = ANY($1::uuid[])
+            )
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE is_active = true) as active,
+                COUNT(*) FILTER (WHERE is_verified = true) as verified,
+                COUNT(*) FILTER (WHERE is_active = false) as inactive,
+                (SELECT COUNT(DISTINCT cl.company_id)
+                 FROM commercial_licenses cl
+                 WHERE cl.city_id = ANY($1::uuid[])
+                ) as with_licenses
+            FROM scoped_companies
+        """
+        row = await conn.fetchrow(query, city_ids)
+        stats = dict(row)
+
+        # by_regimen breakdown
+        regimen_query = """
+            WITH scoped_companies AS (
+                SELECT DISTINCT c.id, c.regimen_fiscal
+                FROM companies c
+                WHERE c.city_id = ANY($1::uuid[])
+                UNION
+                SELECT DISTINCT c.id, c.regimen_fiscal
+                FROM companies c
+                JOIN commercial_licenses cl ON cl.company_id = c.id
+                WHERE cl.city_id = ANY($1::uuid[])
+            )
+            SELECT COALESCE(regimen_fiscal, 'pendiente') as regimen, COUNT(*) as count
+            FROM scoped_companies
+            GROUP BY regimen_fiscal
+        """
+        regimen_rows = await conn.fetch(regimen_query, city_ids)
+        stats["by_regimen"] = {r["regimen"]: r["count"] for r in regimen_rows}
+
+        return stats
+
+    async def get_entity_city_ids(
+        self,
+        conn: asyncpg.Connection,
+        entity_id: str,
+    ) -> List[str]:
+        """Get city_ids served by an entity (from entity_locations).
+
+        Returns list of city_id UUIDs as strings.
+        """
+        query = """
+            SELECT DISTINCT city_id
+            FROM entity_locations
+            WHERE entity_id = $1
+              AND is_active = true
+              AND city_id IS NOT NULL
+        """
+        rows = await conn.fetch(query, entity_id)
+        return [str(r["city_id"]) for r in rows]
 
     async def search(
         self,

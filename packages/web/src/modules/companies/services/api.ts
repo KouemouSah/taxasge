@@ -16,6 +16,7 @@ import type {
   CompanyAdminListResponse,
   CompanyStats,
   CompanySearchResult,
+  CompanyClassifyResult,
 } from '../types'
 
 const BASE = '/companies'
@@ -119,10 +120,45 @@ export const companiesAdminApi = {
     put<Company>(`/admin/${id}/verify`, { is_verified: isVerified }),
 
   delete: (id: string) => del<{ message: string }>(`/${id}`),
+
+  classify: (id: string) =>
+    post<CompanyClassifyResult>(`/admin/${id}/classify`),
+}
+
+// ========== Supervisor API (entity-scoped) ==========
+
+export interface CompanySupervisorListParams {
+  page?: number
+  pageSize?: number
+  search?: string
+  isActive?: boolean
+  isVerified?: boolean
+  regimenFiscal?: string
+  sortBy?: string
+  sortOrder?: string
+}
+
+export const companiesSupervisorApi = {
+  listMyCompanies: (params?: CompanySupervisorListParams) => {
+    const sp = new URLSearchParams()
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.pageSize) sp.set('page_size', String(params.pageSize))
+    if (params?.search) sp.set('search', params.search)
+    if (params?.isActive !== undefined) sp.set('is_active', String(params.isActive))
+    if (params?.isVerified !== undefined) sp.set('is_verified', String(params.isVerified))
+    if (params?.regimenFiscal) sp.set('regimen_fiscal', params.regimenFiscal)
+    if (params?.sortBy) sp.set('sort_by', params.sortBy)
+    if (params?.sortOrder) sp.set('sort_order', params.sortOrder)
+    const q = sp.toString()
+    return get<CompanyAdminListResponse>(`/supervisor/my-companies${q ? `?${q}` : ''}`)
+  },
+
+  getStats: () => get<CompanyStats>('/supervisor/stats'),
 }
 
 export default {
   companies: companiesApi,
   members: companyMembersApi,
   admin: companiesAdminApi,
+  supervisor: companiesSupervisorApi,
 }

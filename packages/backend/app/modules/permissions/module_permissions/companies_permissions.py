@@ -12,9 +12,10 @@ MODULE_NAME = "company"
 
 PERMISSIONS = [
     # --- View ---
-    ("company.view",           "company", "view",           "Ver detalles de empresa",               False),
-    ("company.view_all",       "company", "view_all",       "Ver todas las empresas (admin)",         False),
-    ("company.view_stats",     "company", "view_stats",     "Ver estadisticas de empresas",           False),
+    ("company.view",                "company", "view",                "Ver detalles de empresa",               False),
+    ("company.view_all",            "company", "view_all",            "Ver todas las empresas (admin)",         False),
+    ("company.view_entity_scoped",  "company", "view_entity_scoped",  "Ver empresas de mi entidad (supervisor)", False),
+    ("company.view_stats",          "company", "view_stats",          "Ver estadisticas de empresas",           False),
 
     # --- Mutations ---
     ("company.create",         "company", "create",         "Crear nuevas empresas",                 True),
@@ -37,26 +38,25 @@ ROLE_PERMISSIONS = {
     "supervisor_tesoro": [
         "company.view",
         "company.view_all",
+        "company.view_entity_scoped",
         "company.view_stats",
     ],
 
-    # OMS polyvalent agent — view for license workflows
+    # OMS polyvalent agent — view for license workflows (via OMS queue only)
     "agent_oms_polyvalent": [
         "company.view",
-        "company.view_all",
     ],
 
     # ONRC agents — company registration entity
     "agent_onrc": [
         "company.view",
-        "company.view_all",
         "company.create",
         "company.update",
         "company.verify",
     ],
     "supervisor_onrc": [
         "company.view",
-        "company.view_all",
+        "company.view_entity_scoped",
         "company.view_stats",
         "company.create",
         "company.update",
@@ -64,14 +64,30 @@ ROLE_PERMISSIONS = {
         "company.manage_members",
     ],
 
-    # Commerce ministry agents — need company view for license management
+    # Commerce ministry — supervisors see entity-scoped companies
     "agent_min_comercio": [
         "company.view",
-        "company.view_all",
     ],
     "supervisor_min_comercio": [
         "company.view",
-        "company.view_all",
+        "company.view_entity_scoped",
+        "company.view_stats",
+    ],
+
+    # All other supervisors — entity-scoped company view
+    "supervisor_ayuntamiento": [
+        "company.view",
+        "company.view_entity_scoped",
+        "company.view_stats",
+    ],
+    "supervisor_camara": [
+        "company.view",
+        "company.view_entity_scoped",
+        "company.view_stats",
+    ],
+    "supervisor_min_hacienda": [
+        "company.view",
+        "company.view_entity_scoped",
         "company.view_stats",
     ],
 }

@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/table"
 import {
   ArrowLeft, Building2, ShieldCheck, Users, FileText, Loader2,
-  CheckCircle, XCircle, MapPin, Mail, Phone, Calendar,
+  CheckCircle, XCircle, MapPin, Mail, Phone, Calendar, Brain,
 } from "lucide-react"
 import { companiesApi, companiesAdminApi, companyMembersApi } from "@/modules/companies/services/api"
-import type { Company, CompanyMember } from "@/modules/companies/types"
+import type { Company, CompanyMember, CompanyClassifyResult } from "@/modules/companies/types"
 
 export default function AdminCompanyDetailPage() {
   const router = useRouter()
@@ -28,6 +28,8 @@ export default function AdminCompanyDetailPage() {
   const [members, setMembers] = useState<CompanyMember[]>([])
   const [loading, setLoading] = useState(true)
   const [membersLoading, setMembersLoading] = useState(false)
+  const [classifying, setClassifying] = useState(false)
+  const [classifyResult, setClassifyResult] = useState<CompanyClassifyResult | null>(null)
 
   const fetchCompany = useCallback(async () => {
     setLoading(true)
@@ -64,6 +66,20 @@ export default function AdminCompanyDetailPage() {
       fetchCompany()
     } catch (err) {
       console.error("Verify failed:", err)
+    }
+  }
+
+  const handleClassify = async () => {
+    setClassifying(true)
+    setClassifyResult(null)
+    try {
+      const result = await companiesAdminApi.classify(companyId)
+      setClassifyResult(result)
+      fetchCompany() // refresh to show updated regimen
+    } catch (err) {
+      console.error("Classify failed:", err)
+    } finally {
+      setClassifying(false)
     }
   }
 
@@ -124,11 +140,30 @@ export default function AdminCompanyDetailPage() {
             <p className="text-sm text-muted-foreground mt-1">{company.trade_name}</p>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={handleVerify}>
-          <ShieldCheck className="h-4 w-4 mr-1" />
-          {company.is_verified ? t("unverify") : t("verify")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleClassify} disabled={classifying}>
+            {classifying ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Brain className="h-4 w-4 mr-1" />}
+            {t("classify")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleVerify}>
+            <ShieldCheck className="h-4 w-4 mr-1" />
+            {company.is_verified ? t("unverify") : t("verify")}
+          </Button>
+        </div>
       </div>
+
+      {/* Classification result */}
+      {classifyResult && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
+          <p className="font-medium text-blue-800">
+            {t("classifyResult", {
+              regimen: classifyResult.regimen_fiscal,
+              confidence: Math.round(classifyResult.confidence * 100),
+            })}
+          </p>
+          <p className="text-blue-600 mt-1">{classifyResult.reason}</p>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="info" onValueChange={(v) => { if (v === "members") fetchMembers() }}>

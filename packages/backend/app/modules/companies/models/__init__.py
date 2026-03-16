@@ -16,6 +16,7 @@ from app.modules.companies.models.company import (
     CompanyStatsResponse,
     CompanySearchResult,
     CompanyVerifyRequest,
+    CompanyClassifyResponse,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "CompanyStatsResponse",
     "CompanySearchResult",
     "CompanyVerifyRequest",
+    "CompanyClassifyResponse",
 ]
