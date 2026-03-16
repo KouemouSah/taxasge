@@ -38,12 +38,12 @@ class AdminPermissionService:
             "users.view_any_activities",
         ],
         "companies": [
-            "companies.view",
-            "companies.create",
-            "companies.update",
-            "companies.delete",
-            "companies.manage_members",
-            "companies.view_all",
+            "company.view",
+            "company.create",
+            "company.update",
+            "company.delete",
+            "company.manage_members",
+            "company.view_all",
         ],
         "agents": [
             "agent.view",

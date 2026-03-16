@@ -265,16 +265,23 @@ class CompanyRepository:
             SELECT c.*,
                    ct.name as city_name,
                    cz.zone_code,
-                   COUNT(DISTINCT ucr.user_id) as member_count,
-                   COUNT(DISTINCT cl.id) as license_count,
-                   COALESCE(SUM(cl.total_amount), 0) as total_obligations_amount
+                   COALESCE(mem.cnt, 0) as member_count,
+                   COALESCE(lic.cnt, 0) as license_count,
+                   COALESCE(lic.total_amt, 0) as total_obligations_amount
             FROM companies c
             LEFT JOIN cities ct ON c.city_id = ct.id
             LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
-            LEFT JOIN user_company_roles ucr ON c.id = ucr.company_id
-            LEFT JOIN commercial_licenses cl ON c.id = cl.company_id
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) as cnt
+                FROM user_company_roles ucr
+                WHERE ucr.company_id = c.id
+            ) mem ON true
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total_amt
+                FROM commercial_licenses cl
+                WHERE cl.company_id = c.id
+            ) lic ON true
             {where}
-            GROUP BY c.id, ct.name, cz.zone_code
             ORDER BY {sort_col} {sort_dir}
             LIMIT ${idx} OFFSET ${idx + 1}
         """
@@ -331,12 +338,11 @@ class CompanyRepository:
         query = """
             SELECT
                 COUNT(*) as total,
-                COUNT(*) FILTER (WHERE c.is_active = true) as active,
-                COUNT(*) FILTER (WHERE c.is_verified = true) as verified,
-                COUNT(*) FILTER (WHERE c.is_active = false) as inactive,
-                COUNT(DISTINCT cl.company_id) as with_licenses
-            FROM companies c
-            LEFT JOIN commercial_licenses cl ON c.id = cl.company_id
+                COUNT(*) FILTER (WHERE is_active = true) as active,
+                COUNT(*) FILTER (WHERE is_verified = true) as verified,
+                COUNT(*) FILTER (WHERE is_active = false) as inactive,
+                (SELECT COUNT(DISTINCT company_id) FROM commercial_licenses) as with_licenses
+            FROM companies
         """
         row = await conn.fetchrow(query)
         stats = dict(row)

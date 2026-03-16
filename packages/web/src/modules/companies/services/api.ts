@@ -4,7 +4,7 @@
  */
 
 import apiClient from '@/core/api/client'
-import { transformKeys, toSnakeCase } from '@/core/utils/api-transform'
+import { toSnakeCase } from '@/core/utils/api-transform'
 
 import type {
   Company,
@@ -20,24 +20,26 @@ import type {
 
 const BASE = '/companies'
 
+// NOTE: No transformKeys — Company types use snake_case matching backend/DB.
+// Other modules (accountant) extend Company and depend on snake_case fields.
 async function get<T>(path: string): Promise<T> {
   const { data } = await apiClient.get(`${BASE}${path}`)
-  return transformKeys<T>(data)
+  return data as T
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
   const { data } = await apiClient.post(`${BASE}${path}`, body ? toSnakeCase(body) : undefined)
-  return transformKeys<T>(data)
+  return data as T
 }
 
 async function put<T>(path: string, body: unknown): Promise<T> {
   const { data } = await apiClient.put(`${BASE}${path}`, toSnakeCase(body))
-  return transformKeys<T>(data)
+  return data as T
 }
 
 async function del<T>(path: string): Promise<T> {
   const { data } = await apiClient.delete(`${BASE}${path}`)
-  return transformKeys<T>(data)
+  return data as T
 }
 
 // ========== User-Scoped API ==========
