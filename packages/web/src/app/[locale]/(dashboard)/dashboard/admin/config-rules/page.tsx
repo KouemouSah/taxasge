@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,7 +17,7 @@ import {
 } from "@/components/ui/select"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle, DialogTrigger,
+  DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
@@ -56,7 +55,6 @@ function getMonthNames(locale: string): string[] {
 }
 
 export default function ConfigRulesPage() {
-  const router = useRouter()
   const locale = useLocale()
   const t = useTranslations("admin.configRules")
   const { toast } = useToast()
