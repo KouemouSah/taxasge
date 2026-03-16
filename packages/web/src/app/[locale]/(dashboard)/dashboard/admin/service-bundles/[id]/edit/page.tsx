@@ -37,6 +37,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { bundleApi, bundleAdminApi } from "@/modules/fiscal-services/services/bundle-api"
+import { useToast } from "@/hooks/use-toast"
 import { formatXAF } from "@/core/utils/format"
 import type {
   ServiceBundle, CommerceZone, BundleItem, FiscalServiceOption,
@@ -224,6 +225,7 @@ export default function BundleEditPage() {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations("admin.serviceBundles")
+  const { toast } = useToast()
   const bundleId = params.id as string
 
   // Bundle metadata
@@ -336,8 +338,11 @@ export default function BundleEditPage() {
         maxInstallments: form.maxInstallments, installmentFrequency: form.installmentFrequency,
       })
       setBundle(updated)
-    } catch (err) { console.error("Save failed:", err) }
-    finally { setSaving(false) }
+      toast({ title: t("saveSuccess") })
+    } catch (err) {
+      console.error("Save failed:", err)
+      toast({ variant: "destructive", title: t("saveError") })
+    } finally { setSaving(false) }
   }
 
   // Add item
@@ -519,33 +524,37 @@ export default function BundleEditPage() {
               <Label className="text-xs">{t("legalReference")}</Label>
               <Input value={form.legalReference} onChange={(e) => setForm(f => ({ ...f, legalReference: e.target.value }))} className="h-8 text-sm" placeholder={t("legalReferencePlaceholder")} />
             </div>
-            <div>
-              <Label className="text-xs">{t("frequency")}</Label>
-              <Select value={form.installmentFrequency} onValueChange={(v) => setForm(f => ({ ...f, installmentFrequency: v }))}>
-                <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">{t("monthly")}</SelectItem>
-                  <SelectItem value="bi-monthly">{t("biMonthly")}</SelectItem>
-                  <SelectItem value="quarterly">{t("quarterly")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-5">
               <Switch checked={form.isActive} onCheckedChange={(v) => setForm(f => ({ ...f, isActive: v }))} />
               <Label className="text-xs">{t("isActive")}</Label>
             </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 items-end">
             <div className="flex items-center gap-2">
-              <Switch checked={form.installmentEligible} onCheckedChange={(v) => setForm(f => ({ ...f, installmentEligible: v }))} />
+              <Switch checked={form.installmentEligible} onCheckedChange={(v) => setForm(f => ({ ...f, installmentEligible: v, ...(v ? {} : { maxInstallments: 1, installmentFrequency: "monthly" }) }))} />
               <Label className="text-xs">{t("allowInstallments")}</Label>
             </div>
-            <div>
-              <Label className="text-xs">{t("maxInstallments")}</Label>
-              <Input type="number" min={1} max={12} value={form.maxInstallments}
-                onChange={(e) => setForm(f => ({ ...f, maxInstallments: parseInt(e.target.value) || 1 }))}
-                className="h-8 text-sm" disabled={!form.installmentEligible} />
-            </div>
+            {form.installmentEligible && (
+              <>
+                <div>
+                  <Label className="text-xs">{t("maxInstallments")}</Label>
+                  <Input type="number" min={1} max={12} value={form.maxInstallments}
+                    onChange={(e) => setForm(f => ({ ...f, maxInstallments: parseInt(e.target.value) || 1 }))}
+                    className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">{t("frequency")}</Label>
+                  <Select value={form.installmentFrequency} onValueChange={(v) => setForm(f => ({ ...f, installmentFrequency: v }))}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">{t("monthly")}</SelectItem>
+                      <SelectItem value="bi-monthly">{t("biMonthly")}</SelectItem>
+                      <SelectItem value="quarterly">{t("quarterly")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </div>
           <div className="flex justify-end">
             <Button size="sm" onClick={handleSaveMetadata} disabled={saving}>

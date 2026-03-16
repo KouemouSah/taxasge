@@ -124,7 +124,7 @@ export default function ConfigRulesPage() {
       if (seq === fetchSeq.current) setData(result)
     } catch {
       if (seq === fetchSeq.current) {
-        toast({ variant: "destructive", title: t("createError") })
+        toast({ variant: "destructive", title: t("loadError") })
       }
     } finally {
       if (seq === fetchSeq.current) setLoading(false)
