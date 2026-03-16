@@ -230,6 +230,11 @@ export default function AdminSidebar() {
           icon: ListOrdered,
         },
         {
+          title: t('nav.companies'),
+          href: `/${locale}/dashboard/admin/companies`,
+          icon: Building2,
+        },
+        {
           title: t('nav.serviceBundles'),
           href: `/${locale}/dashboard/admin/service-bundles`,
           icon: Package,

@@ -13,6 +13,9 @@ import type {
   PaginatedCompaniesResponse,
   CompanyMember,
   CompanyMemberRole,
+  CompanyAdminListResponse,
+  CompanyStats,
+  CompanySearchResult,
 } from '../types'
 
 const BASE = '/companies'
@@ -73,7 +76,51 @@ export const companyMembersApi = {
     put<CompanyMember>(`/${companyId}/members/${userId}/role`, { role }),
 }
 
+// ========== Admin API ==========
+
+export interface CompanyAdminListParams {
+  page?: number
+  pageSize?: number
+  search?: string
+  isActive?: boolean
+  isVerified?: boolean
+  regimenFiscal?: string
+  zoneId?: string
+  cityId?: string
+  sortBy?: string
+  sortOrder?: string
+}
+
+export const companiesAdminApi = {
+  listAll: (params?: CompanyAdminListParams) => {
+    const sp = new URLSearchParams()
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.pageSize) sp.set('page_size', String(params.pageSize))
+    if (params?.search) sp.set('search', params.search)
+    if (params?.isActive !== undefined) sp.set('is_active', String(params.isActive))
+    if (params?.isVerified !== undefined) sp.set('is_verified', String(params.isVerified))
+    if (params?.regimenFiscal) sp.set('regimen_fiscal', params.regimenFiscal)
+    if (params?.zoneId) sp.set('zone_id', params.zoneId)
+    if (params?.cityId) sp.set('city_id', params.cityId)
+    if (params?.sortBy) sp.set('sort_by', params.sortBy)
+    if (params?.sortOrder) sp.set('sort_order', params.sortOrder)
+    const q = sp.toString()
+    return get<CompanyAdminListResponse>(`/admin/all${q ? `?${q}` : ''}`)
+  },
+
+  getStats: () => get<CompanyStats>('/admin/stats'),
+
+  search: (q: string, limit: number = 10) =>
+    get<CompanySearchResult[]>(`/admin/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  verify: (id: string, isVerified: boolean) =>
+    put<Company>(`/admin/${id}/verify`, { is_verified: isVerified }),
+
+  delete: (id: string) => del<{ message: string }>(`/${id}`),
+}
+
 export default {
   companies: companiesApi,
   members: companyMembersApi,
+  admin: companiesAdminApi,
 }
