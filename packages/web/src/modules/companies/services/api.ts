@@ -1,24 +1,11 @@
 /**
  * Companies API Service
- * Handles all API calls to the backend companies endpoints
- *
- * @module companies/services
- * @author Claude Code
- * @date 2025-12-03
- *
- * BACKEND ALIGNMENT:
- * Routes: /api/v1/companies (from app/modules/companies/api/company_routes.py)
- * - POST   /api/v1/companies                              → create_company
- * - GET    /api/v1/companies                              → list_companies (paginated)
- * - GET    /api/v1/companies/{company_id}                 → get_company
- * - PUT    /api/v1/companies/{company_id}                 → update_company
- * - DELETE /api/v1/companies/{company_id}                 → delete_company
- * - GET    /api/v1/companies/{company_id}/members         → get_company_members
- * - POST   /api/v1/companies/{company_id}/members         → add_company_member
- * - DELETE /api/v1/companies/{company_id}/members/{user_id} → remove_company_member
+ * Uses shared apiClient (Axios) for automatic token refresh, Accept-Language, etc.
  */
 
-import { fetchClient } from '@/core/api'
+import apiClient from '@/core/api/client'
+import { transformKeys, toSnakeCase } from '@/core/utils/api-transform'
+
 import type {
   Company,
   CompanyCreate,
@@ -28,144 +15,63 @@ import type {
   CompanyMemberRole,
 } from '../types'
 
-// =============================================================================
-// CONFIGURATION
-// =============================================================================
+const BASE = '/companies'
 
-const COMPANIES_BASE = '/companies'
+async function get<T>(path: string): Promise<T> {
+  const { data } = await apiClient.get(`${BASE}${path}`)
+  return transformKeys<T>(data)
+}
 
-// =============================================================================
-// COMPANIES API
-// =============================================================================
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const { data } = await apiClient.post(`${BASE}${path}`, body ? toSnakeCase(body) : undefined)
+  return transformKeys<T>(data)
+}
+
+async function put<T>(path: string, body: unknown): Promise<T> {
+  const { data } = await apiClient.put(`${BASE}${path}`, toSnakeCase(body))
+  return transformKeys<T>(data)
+}
+
+async function del<T>(path: string): Promise<T> {
+  const { data } = await apiClient.delete(`${BASE}${path}`)
+  return transformKeys<T>(data)
+}
+
+// ========== User-Scoped API ==========
 
 export const companiesApi = {
-  /**
-   * Get all companies for current user with pagination
-   * BACKEND: GET /api/v1/companies
-   * ROUTE: list_companies() in company_routes.py:35
-   */
-  getAll: async (params?: {
-    page?: number
-    page_size?: number
-  }): Promise<PaginatedCompaniesResponse> => {
-    return fetchClient.get<PaginatedCompaniesResponse>(COMPANIES_BASE, {
-      page: params?.page ?? 1,
-      page_size: params?.page_size ?? 20,
-    })
+  getAll: (params?: { page?: number; pageSize?: number }) => {
+    const sp = new URLSearchParams()
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.pageSize) sp.set('page_size', String(params.pageSize))
+    const q = sp.toString()
+    return get<PaginatedCompaniesResponse>(`${q ? `?${q}` : ''}`)
   },
 
-  /**
-   * Get company by ID
-   * BACKEND: GET /api/v1/companies/{company_id}
-   * ROUTE: get_company() in company_routes.py:54
-   */
-  getById: async (id: string): Promise<Company> => {
-    return fetchClient.get<Company>(`${COMPANIES_BASE}/${id}`)
-  },
+  getById: (id: string) => get<Company>(`/${id}`),
 
-  /**
-   * Create new company
-   * BACKEND: POST /api/v1/companies
-   * ROUTE: create_company() in company_routes.py:22
-   *
-   * NOTE: Backend automatically assigns creator as company_owner
-   */
-  create: async (data: CompanyCreate): Promise<Company> => {
-    return fetchClient.post<Company>(COMPANIES_BASE, data)
-  },
+  create: (data: CompanyCreate) => post<Company>('', data),
 
-  /**
-   * Update company (owner/admin only)
-   * BACKEND: PUT /api/v1/companies/{company_id}
-   * ROUTE: update_company() in company_routes.py:75
-   *
-   * NOTE: Requires company_owner or company_admin role
-   */
-  update: async (id: string, data: CompanyUpdate): Promise<Company> => {
-    return fetchClient.put<Company>(`${COMPANIES_BASE}/${id}`, data)
-  },
+  update: (id: string, data: CompanyUpdate) => put<Company>(`/${id}`, data),
 
-  /**
-   * Delete company
-   * BACKEND: DELETE /api/v1/companies/{company_id}
-   * ROUTE: delete_company() in company_routes.py:97
-   *
-   * NOTE: Requires company_owner role or companies.delete permission
-   */
-  delete: async (id: string): Promise<void> => {
-    await fetchClient.delete<{ message: string }>(`${COMPANIES_BASE}/${id}`)
-  },
+  delete: (id: string) => del<{ message: string }>(`/${id}`),
 }
 
-// =============================================================================
-// MEMBERS API
-// =============================================================================
+// ========== Members API ==========
 
 export const companyMembersApi = {
-  /**
-   * Get company members
-   * BACKEND: GET /api/v1/companies/{company_id}/members
-   * ROUTE: get_company_members() in company_routes.py:131
-   */
-  getAll: async (companyId: string): Promise<CompanyMember[]> => {
-    return fetchClient.get<CompanyMember[]>(`${COMPANIES_BASE}/${companyId}/members`)
+  getAll: (companyId: string) => get<CompanyMember[]>(`/${companyId}/members`),
+
+  add: (companyId: string, memberUserId: string, role: CompanyMemberRole) =>
+    post<CompanyMember>(`/${companyId}/members`, { memberUserId, role }),
+
+  remove: async (companyId: string, userId: string) => {
+    await apiClient.delete(`${BASE}/${companyId}/members/${userId}`)
   },
 
-  /**
-   * Add member to company
-   * BACKEND: POST /api/v1/companies/{company_id}/members
-   * ROUTE: add_company_member() in company_routes.py:148
-   *
-   * NOTE: Requires company_owner/company_admin role or companies.manage_members permission
-   */
-  add: async (
-    companyId: string,
-    memberUserId: string,
-    role: CompanyMemberRole
-  ): Promise<CompanyMember> => {
-    return fetchClient.post<CompanyMember>(
-      `${COMPANIES_BASE}/${companyId}/members`,
-      null,
-      {
-        member_user_id: memberUserId,
-        role,
-      }
-    )
-  },
-
-  /**
-   * Remove member from company
-   * BACKEND: DELETE /api/v1/companies/{company_id}/members/{member_user_id}
-   * ROUTE: remove_company_member() in company_routes.py:181
-   *
-   * NOTE: Requires company_owner/company_admin role
-   * NOTE: Owner cannot remove themselves
-   */
-  remove: async (companyId: string, userId: string): Promise<void> => {
-    await fetchClient.delete<{ message: string }>(
-      `${COMPANIES_BASE}/${companyId}/members/${userId}`
-    )
-  },
-
-  /**
-   * Update member role
-   * NOTE: Backend doesn't have dedicated endpoint yet
-   * This would need to be implemented on backend or use remove + add
-   */
-  updateRole: async (
-    _companyId: string,
-    _userId: string,
-    _role: CompanyMemberRole
-  ): Promise<CompanyMember> => {
-    // TODO: Implement when backend endpoint is available
-    // For now, would require remove + add pattern
-    throw new Error('Update role endpoint not yet implemented on backend')
-  },
+  updateRole: (companyId: string, userId: string, role: CompanyMemberRole) =>
+    put<CompanyMember>(`/${companyId}/members/${userId}/role`, { role }),
 }
-
-// =============================================================================
-// EXPORTS
-// =============================================================================
 
 export default {
   companies: companiesApi,

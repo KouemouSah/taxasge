@@ -59,7 +59,7 @@ export const accountantClientsApi = {
       params.has_pending = filters.hasPendingDeclarations
     if (filters?.hasOverduePayments !== undefined)
       params.has_overdue = filters.hasOverduePayments
-    if (filters?.city) params.city = filters.city
+    if (filters?.city_name) params.city_name = filters.city_name
     if (filters?.sortBy) params.sort_by = filters.sortBy
     if (filters?.sortOrder) params.sort_order = filters.sortOrder
 

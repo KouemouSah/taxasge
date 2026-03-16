@@ -25,7 +25,7 @@ export interface ClientQuickStats {
   companyId: string
   companyName: string
   taxId: string
-  city?: string | null
+  city_name?: string | null
 
   // Declaration stats
   pendingDeclarations: number
@@ -174,7 +174,7 @@ export interface ClientFilters {
   status?: 'active' | 'inactive' | 'suspended' | 'all'
   hasPendingDeclarations?: boolean
   hasOverduePayments?: boolean
-  city?: string
+  city_name?: string
   sortBy?: 'name' | 'lastActivity' | 'pendingCount' | 'totalDue'
   sortOrder?: 'asc' | 'desc'
 }

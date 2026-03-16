@@ -217,10 +217,10 @@ export const ClientList = ({
               </div>
 
               {/* Location */}
-              {client.city && (
+              {client.city_name && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                   <MapPin className="h-4 w-4" />
-                  <span>{client.city}</span>
+                  <span>{client.city_name}</span>
                 </div>
               )}
 

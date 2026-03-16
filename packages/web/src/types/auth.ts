@@ -49,32 +49,6 @@ export interface BusinessProfile extends UserProfile {
   website?: string;
 }
 
-// Company object (aligned with companies table in DATABASE_SCHEMA_REFERENCE.md)
-export interface Company {
-  id: string;
-  tax_id: string; // NIF ou RC
-  legal_name: string;
-  trade_name?: string;
-  primary_sector_id?: number;
-  address?: string;
-  city?: string;
-  phone?: string;
-  email?: string;
-  is_active?: boolean;
-  is_verified?: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-// User-Company relationship (aligned with user_company_roles table)
-export interface UserCompanyRole {
-  user_id: string;
-  company_id: string;
-  role: string;
-  is_active?: boolean;
-  assigned_at: string;
-}
-
 // User object returned from backend (aligned with users table in DATABASE_SCHEMA_REFERENCE.md)
 export interface User {
   id: string;
@@ -102,9 +76,6 @@ export interface User {
   last_login?: string;
   two_factor_enabled?: boolean;
   is_active: boolean;
-
-  // For business users, include company information
-  company?: Company;
 
   // Funcionario (civil servant) verification fields
   matricula_funcionario?: string;

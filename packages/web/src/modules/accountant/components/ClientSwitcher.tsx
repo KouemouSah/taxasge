@@ -53,7 +53,7 @@ export const ClientSwitcher = ({
     return (
       company.legal_name.toLowerCase().includes(search) ||
       company.tax_id.toLowerCase().includes(search) ||
-      company.city?.toLowerCase().includes(search)
+      company.city_name?.toLowerCase().includes(search)
     )
   })
 
@@ -138,7 +138,7 @@ export const ClientSwitcher = ({
                       </div>
                       <div className="text-sm text-muted-foreground">
                         NIF: {company.tax_id}
-                        {company.city && ` • ${company.city}`}
+                        {company.city_name && ` • ${company.city_name}`}
                       </div>
                     </div>
                     {company.stats && (

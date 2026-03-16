@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { User, Mail, Phone, MapPin, Calendar, Shield, Edit2, Save, X, Building2, Bell, FileText, CreditCard, Languages, BadgeCheck } from 'lucide-react'
+import { User, Mail, Phone, MapPin, Calendar, Shield, Edit2, Save, X, Bell, CreditCard, Languages, BadgeCheck } from 'lucide-react'
 import { getAuthData } from '@/core/auth/storage'
 import type { User as UserType } from '@/types/auth'
 import { Badge } from '@/components/ui/badge'
@@ -34,7 +34,6 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
-  const [isEditingCompany, setIsEditingCompany] = useState(false)
 
   // Personal info form state (from users table)
   const [personalForm, setPersonalForm] = useState({
@@ -45,17 +44,6 @@ export default function ProfilePage() {
     document_number: '',
     address: '',
     city: '',
-  })
-
-  // Company info form state (from companies table)
-  const [companyForm, setCompanyForm] = useState({
-    legal_name: '',
-    trade_name: '',
-    tax_id: '',
-    address: '',
-    city: '',
-    phone: '',
-    email: '',
   })
 
   // Notification preferences and language
@@ -92,19 +80,6 @@ export default function ProfilePage() {
       address: userData.address || '',
       city: userData.city || '',
     })
-
-    // Initialize company form if business user and company data exists
-    if (userData.role === 'business' && userData.company) {
-      setCompanyForm({
-        legal_name: userData.company.legal_name || '',
-        trade_name: userData.company.trade_name || '',
-        tax_id: userData.company.tax_id || '',
-        address: userData.company.address || '',
-        city: userData.company.city || '',
-        phone: userData.company.phone || '',
-        email: userData.company.email || '',
-      })
-    }
 
     setNotificationPrefs({
       email_notifications: userData.email_notifications ?? true,
@@ -157,38 +132,6 @@ export default function ProfilePage() {
         setUser({
           ...user,
           ...personalForm,
-        })
-      }
-    } catch (error: unknown) {
-      toast({
-        variant: 'destructive',
-        title: t('updateError'),
-        description: error instanceof Error ? error.message : t('updateErrorMessage'),
-      })
-    }
-  }
-
-  const handleSaveCompany = async () => {
-    try {
-      // TODO: Implement API call to update company info
-      // const { companyApi } = await import('@/lib/api/company')
-      // await companyApi.updateCompany(companyForm)
-
-      toast({
-        title: t('companyUpdated'),
-        description: t('companyUpdatedMessage'),
-      })
-
-      setIsEditingCompany(false)
-
-      // Update local user state
-      if (user && user.company) {
-        setUser({
-          ...user,
-          company: {
-            ...user.company,
-            ...companyForm,
-          },
         })
       }
     } catch (error: unknown) {
@@ -266,11 +209,9 @@ export default function ProfilePage() {
     )
   }
 
-  const isBusiness = user.role === 'business'
   // Show verification tab for citizen/accountant (not business/admin/agent)
   const showVerificationTab = ['citizen', 'accountant'].includes(user.role || '')
-  // Calculate grid columns based on visible tabs
-  const tabCount = isBusiness ? 3 : (showVerificationTab ? 4 : 3)
+  const tabCount = showVerificationTab ? 4 : 3
 
   return (
     <div className="space-y-6">
@@ -291,17 +232,10 @@ export default function ProfilePage() {
             <User className="mr-2 h-4 w-4" />
             {t('personalTab')}
           </TabsTrigger>
-          {isBusiness ? (
-            <TabsTrigger value="company">
-              <Building2 className="mr-2 h-4 w-4" />
-              {t('companyTab')}
-            </TabsTrigger>
-          ) : (
-            <TabsTrigger value="account">
-              <Shield className="mr-2 h-4 w-4" />
-              {t('accountTab')}
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="account">
+            <Shield className="mr-2 h-4 w-4" />
+            {t('accountTab')}
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="mr-2 h-4 w-4" />
             {t('notificationsTab')}
@@ -511,177 +445,8 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
 
-        {/* Company & Account Tab (Business users) */}
-        {isBusiness && (
-          <TabsContent value="company" className="space-y-4">
-            {/* Company Information Card */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5" />
-                      {t('companyInfoTitle')}
-                    </CardTitle>
-                    <CardDescription>
-                      {t('companyInfoDesc')}
-                    </CardDescription>
-                  </div>
-                  {!isEditingCompany ? (
-                    <Button onClick={() => setIsEditingCompany(true)}>
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      {t('editButton')}
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setIsEditingCompany(false)}>
-                        <X className="mr-2 h-4 w-4" />
-                        {t('cancelButton')}
-                      </Button>
-                      <Button onClick={handleSaveCompany}>
-                        <Save className="mr-2 h-4 w-4" />
-                        {t('saveButton')}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* Organisation en 2 colonnes : Identité | Contact */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Colonne 1 : Identité de l'entreprise */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                      {t('identitySection')}
-                    </h3>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="legal_name">{t('legalName')}</Label>
-                      {isEditingCompany ? (
-                        <Input
-                          id="legal_name"
-                          value={companyForm.legal_name}
-                          onChange={(e) => setCompanyForm({ ...companyForm, legal_name: e.target.value })}
-                          required
-                        />
-                      ) : (
-                        <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                          {user.company?.legal_name || t('notProvided')}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="trade_name">{t('tradeName')}</Label>
-                      {isEditingCompany ? (
-                        <Input
-                          id="trade_name"
-                          value={companyForm.trade_name}
-                          onChange={(e) => setCompanyForm({ ...companyForm, trade_name: e.target.value })}
-                        />
-                      ) : (
-                        <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                          {user.company?.trade_name || t('notProvided')}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="tax_id" className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        {t('taxId')}
-                      </Label>
-                      {isEditingCompany ? (
-                        <Input
-                          id="tax_id"
-                          value={companyForm.tax_id}
-                          onChange={(e) => setCompanyForm({ ...companyForm, tax_id: e.target.value })}
-                          required
-                        />
-                      ) : (
-                        <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                          {user.company?.tax_id || t('notProvided')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Colonne 2 : Contact */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                      {t('contactSection')}
-                    </h3>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="company_address">{t('companyAddress')}</Label>
-                      {isEditingCompany ? (
-                        <Input
-                          id="company_address"
-                          value={companyForm.address}
-                          onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
-                          required
-                        />
-                      ) : (
-                        <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                          {user.company?.address || t('notProvidedFeminine')}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="company_city">{t('companyCity')}</Label>
-                      {isEditingCompany ? (
-                        <Input
-                          id="company_city"
-                          value={companyForm.city}
-                          onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
-                          required
-                        />
-                      ) : (
-                        <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                          {user.company?.city || t('notProvidedFeminine')}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="company_phone">{t('companyPhone')}</Label>
-                      {isEditingCompany ? (
-                        <Input
-                          id="company_phone"
-                          value={companyForm.phone}
-                          onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
-                          required
-                        />
-                      ) : (
-                        <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                          {user.company?.phone || t('notProvided')}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="company_email">{t('companyEmail')}</Label>
-                      {isEditingCompany ? (
-                        <Input
-                          id="company_email"
-                          type="email"
-                          value={companyForm.email}
-                          onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
-                          required
-                        />
-                      ) : (
-                        <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                          {user.company?.email || t('notProvided')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Account Information Card (for business) */}
+        {/* Account Information Tab */}
+        <TabsContent value="account" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -697,7 +462,7 @@ export default function ProfilePage() {
                   <div className="space-y-2">
                     <Label>{t('role')}</Label>
                     <p className="text-sm py-2 px-3 bg-muted rounded-md capitalize">
-                      {user.role === 'business' ? t('roleBusiness') : user.role}
+                      {user.role === 'citizen' ? t('roleCitizen') : user.role === 'business' ? t('roleBusiness') : user.role}
                     </p>
                   </div>
 
@@ -771,101 +536,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           </TabsContent>
-        )}
-
-        {/* Account Information Tab (Citizen users) */}
-        {!isBusiness && (
-          <TabsContent value="account" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  {t('accountInfoTitle')}
-                </CardTitle>
-                <CardDescription>
-                  {t('accountInfoDesc')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t('role')}</Label>
-                    <p className="text-sm py-2 px-3 bg-muted rounded-md capitalize">
-                      {user.role === 'citizen' ? t('roleCitizen') : user.role}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{t('accountStatus')}</Label>
-                    <div>
-                      {user.is_active ? (
-                        <Badge className="bg-green-500">{t('accountStatusActive')}</Badge>
-                      ) : (
-                        <Badge variant="destructive">{t('accountStatusInactive')}</Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {t('creationDate')}
-                    </Label>
-                    <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                      {user.created_at
-                        ? new Date(user.created_at).toLocaleDateString(locale, {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : t('notAvailable')}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      {t('twoFactorAuth')}
-                    </Label>
-                    <div>
-                      {user.two_factor_enabled ? (
-                        <Badge className="bg-green-500">{t('twoFactorEnabled')}</Badge>
-                      ) : (
-                        <Badge variant="outline">{t('twoFactorDisabled')}</Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {user.last_login && (
-                  <div className="space-y-2">
-                    <Label>{t('lastLogin')}</Label>
-                    <p className="text-sm py-2 px-3 bg-muted rounded-md">
-                      {new Date(user.last_login).toLocaleString(locale, {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-                )}
-
-                <div className="pt-4">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => router.push(`/${locale}/dashboard/settings/security`)}
-                  >
-                    <Shield className="mr-2 h-4 w-4" />
-                    {t('securitySettingsButton')}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
 
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-4">
