@@ -149,6 +149,13 @@ class EntityLocationRepository:
                 f"Ciudad '{data.city}' no existe. Ciudades disponibles: {', '.join(city_names)}"
             )
         region = city_row['region']
+        city_id = city_row['id']
+
+        # Resolve entity_id from entity_code
+        entity_id = await self.db.fetchval(
+            "SELECT id FROM entities WHERE code = $1",
+            data.entity_code.upper()
+        )
 
         operating_hours = None
         if data.operating_hours:
@@ -156,20 +163,23 @@ class EntityLocationRepository:
 
         query = """
             INSERT INTO entity_locations (
-                entity_code, city, region, location_name, location_address,
+                entity_code, entity_id, city, city_id, region,
+                location_name, location_address,
                 phone, email, is_main_office, is_active, operating_hours, notes,
                 created_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14)
             RETURNING
-                id, entity_code, city, region, location_name, location_address,
+                id, entity_code, city, city_id, region, location_name, location_address,
                 phone, email, is_main_office, is_active, operating_hours, notes,
                 created_at, updated_at, created_by, updated_by
         """
         row = await self.db.fetchrow(
             query,
             data.entity_code.upper(),
+            entity_id,
             data.city,
+            city_id,
             region,
             data.location_name,
             data.location_address,
@@ -210,8 +220,9 @@ class EntityLocationRepository:
                     f"Ciudad '{update_data['city']}' no existe. "
                     f"Ciudades disponibles: {', '.join(city_names)}"
                 )
-            # Auto-set region from cities table
+            # Auto-set region and city_id from cities table
             update_data['region'] = city_row['region']
+            update_data['city_id'] = city_row['id']
 
         for field, value in update_data.items():
             if field == "operating_hours" and value is not None:

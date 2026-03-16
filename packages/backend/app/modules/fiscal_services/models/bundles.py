@@ -38,6 +38,12 @@ class CommerceZoneResponse(BaseModel):
 # Service Bundles
 # ============================================================
 
+class ProcessingMode(str, Enum):
+    """Bundle processing mode."""
+    per_line = "per_line"
+    consolidated = "consolidated"
+
+
 class ServiceBundleBase(BaseModel):
     """Base fields for service bundles."""
     bundle_code: str = Field(..., max_length=50)
@@ -50,6 +56,10 @@ class ServiceBundleBase(BaseModel):
     max_installments: int = Field(default=1, ge=1, le=12)
     installment_frequency: str = Field(default="monthly")
     public_installment_visible: bool = False
+    # OMS fields (Migration 218 Phase 1.4)
+    processing_mode: ProcessingMode = ProcessingMode.per_line
+    deadline_month: int = Field(default=4, ge=1, le=12)
+    deadline_day: int = Field(default=30, ge=1, le=31)
 
 
 class ServiceBundleCreate(ServiceBundleBase):
@@ -69,6 +79,9 @@ class ServiceBundleUpdate(BaseModel):
     max_installments: Optional[int] = Field(None, ge=1, le=12)
     installment_frequency: Optional[str] = None
     public_installment_visible: Optional[bool] = None
+    processing_mode: Optional[ProcessingMode] = None
+    deadline_month: Optional[int] = Field(None, ge=1, le=12)
+    deadline_day: Optional[int] = Field(None, ge=1, le=31)
 
 
 class ServiceBundleResponse(ServiceBundleBase):
@@ -129,6 +142,12 @@ class BundleItemResponse(BaseModel):
     display_order: int
     notes: Optional[str] = None
     is_active: bool
+    # OMS fields (Migration 218 Phase 1.5)
+    effective_penalty: Optional[dict] = None
+    effective_deadline: Optional[dict] = None
+    config_resolved_at: Optional[datetime] = None
+    requires_document: bool = False
+    document_template_id: Optional[int] = None
     # Enriched from JOINs
     service_code: Optional[str] = None
     service_name: Optional[str] = None

@@ -494,6 +494,18 @@ async def reconcile_service_payment(db, merchant_reference: str, gateway_transac
                     exc_info=True,
                 )
 
+        # 6b. OMS hook: if this payment has fee_type, route linked obligations
+        try:
+            from app.modules.fiscal_services.services.license_service import (
+                LicenseService,
+            )
+            await LicenseService.on_payment_completed(db, payment_id)
+        except Exception as e:
+            logger.error(
+                f"OMS hook failed for BANGE webhook payment {payment_id}: {e}",
+                exc_info=True,
+            )
+
         # 7. Publish PAYMENT_COMPLETED event (fallback + notifications)
         try:
             paid_at = datetime.utcnow()

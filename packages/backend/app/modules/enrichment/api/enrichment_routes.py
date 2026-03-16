@@ -100,7 +100,7 @@ async def seed_enrichment_batch(
     Also enqueue translations for services with descriptions but no translations.
     Idempotent — skips already pending/processing tasks.
     """
-    user_id = current_user.get("sub", "unknown")
+    user_id = current_user.id
 
     is_allowed, remaining = await check_rate_limit(
         identifier=str(user_id),
@@ -141,7 +141,7 @@ async def seed_ministry_descriptions(
     Enqueue generate_ministry_description for all ministries without descriptions.
     Generated descriptions are stored as 'ai_draft' — admin must approve.
     """
-    user_id = current_user.get("sub", "unknown")
+    user_id = current_user.id
 
     is_allowed, remaining = await check_rate_limit(
         identifier=str(user_id),
@@ -287,7 +287,7 @@ async def review_service_description(
     Reject: description_es → NULL, description_source → NULL.
     Optionally edit the text on approve via edited_text field.
     """
-    user_id = current_user.get("sub", "unknown")
+    user_id = current_user.id
 
     # Verify service exists and is in ai_draft state
     row = await db.fetchrow(
@@ -364,7 +364,7 @@ async def review_ministry_description(
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
     """Approve or reject ministry AI draft description."""
-    user_id = current_user.get("sub", "unknown")
+    user_id = current_user.id
 
     row = await db.fetchrow(
         "SELECT id, description_source FROM ministries WHERE id = $1",
@@ -416,7 +416,7 @@ async def approve_all_drafts(
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
     """Approve all services and ministries with description_source='ai_draft'."""
-    user_id = current_user.get("sub", "unknown")
+    user_id = current_user.id
 
     is_allowed, _ = await check_rate_limit(
         identifier=str(user_id),
@@ -483,7 +483,7 @@ async def bulk_toggle_visibility(
     Bulk set description_visible = true/false for active fiscal services.
     Optional filters: description_source, ministry_id.
     """
-    user_id = current_user.get("sub", "unknown")
+    user_id = current_user.id
 
     is_allowed, _ = await check_rate_limit(
         identifier=str(user_id),
@@ -602,5 +602,5 @@ async def retry_failed_task(
             detail="Task not found or not in 'failed' status",
         )
 
-    logger.info(f"Admin {current_user.get('sub')} retried task {task_id}")
+    logger.info(f"Admin {current_user.id} retried task {task_id}")
     return {"task_id": str(task_id), "new_status": "pending"}

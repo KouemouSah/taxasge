@@ -535,6 +535,18 @@ class GatewayProcessor(PaymentProcessorBase):
                 f"service_request {result['service_request_id']} status=PAID"
             )
 
+            # OMS hook: if this payment has fee_type, route linked obligations
+            try:
+                from app.modules.fiscal_services.services.license_service import (
+                    LicenseService,
+                )
+                await LicenseService.on_payment_completed(db, payment_id)
+            except Exception as e:
+                logger.error(
+                    f"OMS hook failed for payment {payment_id}: {e}",
+                    exc_info=True,
+                )
+
     async def _get_payment(
         self,
         db: asyncpg.Connection,

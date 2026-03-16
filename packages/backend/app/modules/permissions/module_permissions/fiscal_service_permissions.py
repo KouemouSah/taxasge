@@ -85,6 +85,31 @@ PERMISSIONS = [
     ),
 
     # =========================================================================
+    # BUNDLES & LICENSES (OMS)
+    # =========================================================================
+    (
+        "fiscal_service.view_bundles",
+        "fiscal_service",
+        "view_bundles",
+        "Ver paquetes de servicios, licencias y obligaciones",
+        False
+    ),
+    (
+        "fiscal_service.manage_bundles",
+        "fiscal_service",
+        "manage_bundles",
+        "Gestionar paquetes, licencias, obligaciones y reglas de configuración",
+        True
+    ),
+    (
+        "fiscal_service.process_obligations",
+        "fiscal_service",
+        "process_obligations",
+        "Validar pagos, actualizar estado de obligaciones (agentes OMS)",
+        False
+    ),
+
+    # =========================================================================
     # BULK OPERATIONS
     # =========================================================================
     (
@@ -124,6 +149,8 @@ ROLE_PERMISSIONS = {
     ],
 
     # Generic agent role - all agent types
+    # NOTE: view_bundles/manage_bundles NOT here — only OMS-specific roles
+    # (agent_tesoro, future agent_ayuntamiento, etc.) get those via migration 219+
     "agent": [
         "fiscal_service.view",
     ],

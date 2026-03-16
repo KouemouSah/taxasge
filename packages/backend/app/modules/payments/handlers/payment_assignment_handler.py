@@ -109,12 +109,12 @@ class PaymentAssignmentHandler:
             treasury_location_id = payload.get("treasury_location_id")
 
             if not treasury_location_id and service_request_id:
-                # Auto-resolve: SR's entity_location → city → matching TESORO location
+                # Auto-resolve: SR's entity_location → city_id → matching TESORO location
                 treasury_location_id = await conn.fetchval("""
                     SELECT tel.id
                     FROM service_requests sr
                     JOIN entity_locations sr_el ON sr_el.id = sr.entity_location_id
-                    JOIN entity_locations tel ON tel.city = sr_el.city
+                    JOIN entity_locations tel ON tel.city_id = sr_el.city_id
                         AND tel.entity_code = $2
                         AND tel.is_active = true
                     WHERE sr.id = $1::uuid

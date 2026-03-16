@@ -481,7 +481,7 @@ async def create_bundle(
 ):
     """Create a new service bundle."""
     bundle = await BundleService.create_bundle(
-        db, data.model_dump(), user_id=UUID(current_user["id"])
+        db, data.model_dump(), user_id=UUID(current_user.id)
     )
     return ServiceBundleResponse(**bundle)
 
@@ -497,7 +497,7 @@ async def update_bundle(
     """Update bundle metadata and installment config."""
     bundle = await BundleService.update_bundle(
         db, bundle_id, data.model_dump(exclude_unset=True),
-        user_id=UUID(current_user["id"]),
+        user_id=UUID(current_user.id),
     )
     if not bundle:
         raise HTTPException(status_code=404, detail="Bundle not found")
@@ -545,7 +545,7 @@ async def upsert_bundle_item(
             detail="ministry_id is required. The payment recipient ministry must be specified explicitly."
         )
 
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id)
     item = await BundleService.upsert_item(db, bundle_id, item_data, user_id=user_id)
     return item
 
@@ -558,7 +558,7 @@ async def delete_bundle_item(
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Delete a bundle item."""
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id)
     success = await BundleService.delete_item(db, item_id, user_id=user_id)
     if not success:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -577,7 +577,7 @@ async def copy_zone_prices(
     if not bundle:
         raise HTTPException(status_code=404, detail="Bundle not found")
 
-    user_id = UUID(current_user["id"])
+    user_id = UUID(current_user.id)
     count = await BundleService.copy_zone_prices(
         db, bundle_id, data.source_zone_id, data.target_zone_id, data.multiplier,
         user_id=user_id,
@@ -682,7 +682,7 @@ async def bulk_import_items(
             "amount": item.amount,
             "fee_type": getattr(item, "fee_type", "tesoro"),
             "is_fixed_across_zones": item.is_fixed_across_zones,
-        }, user_id=UUID(current_user["id"]))
+        }, user_id=UUID(current_user.id))
         imported += 1
 
     return {"imported": imported, "skipped": skipped, "total": len(data.items)}

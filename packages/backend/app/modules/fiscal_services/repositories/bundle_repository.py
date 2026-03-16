@@ -153,6 +153,9 @@ class BundleRepository:
                    sbi.ministry_id, sbi.amount, sbi.fee_type,
                    sbi.is_fixed_across_zones,
                    sbi.display_order, sbi.notes, sbi.is_active,
+                   sbi.effective_penalty, sbi.effective_deadline,
+                   sbi.config_resolved_at, sbi.requires_document,
+                   sbi.document_template_id,
                    fs.service_code, fs.name_es as service_name,
                    m.name_es as ministry_name
             FROM service_bundle_items sbi
@@ -203,6 +206,9 @@ class BundleRepository:
                    sbi.ministry_id, sbi.amount, sbi.fee_type,
                    sbi.is_fixed_across_zones,
                    sbi.display_order, sbi.notes, sbi.is_active,
+                   sbi.effective_penalty, sbi.effective_deadline,
+                   sbi.config_resolved_at, sbi.requires_document,
+                   sbi.document_template_id,
                    fs.service_code, fs.name_es as service_name,
                    m.name_es as ministry_name
             FROM service_bundle_items sbi
@@ -260,12 +266,16 @@ class BundleRepository:
     @staticmethod
     async def create_bundle(conn, data: Dict, user_id: Optional[UUID] = None) -> Dict:
         """Create a new service bundle."""
+        processing_mode = data.get("processing_mode", "per_line")
+        if hasattr(processing_mode, "value"):
+            processing_mode = processing_mode.value
         row = await conn.fetchrow("""
             INSERT INTO service_bundles
                 (bundle_code, commerce_type, name_es, description_es, legal_reference,
                  is_active, installment_eligible, max_installments, installment_frequency,
-                 public_installment_visible, created_by, updated_by)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
+                 public_installment_visible, processing_mode, deadline_month, deadline_day,
+                 created_by, updated_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $14)
             RETURNING *
         """,
             data["bundle_code"], data["commerce_type"], data["name_es"],
@@ -275,6 +285,9 @@ class BundleRepository:
             data.get("max_installments", 1),
             data.get("installment_frequency", "monthly"),
             data.get("public_installment_visible", False),
+            processing_mode,
+            data.get("deadline_month", 4),
+            data.get("deadline_day", 30),
             user_id,
         )
         result = dict(row)
@@ -295,7 +308,8 @@ class BundleRepository:
             "bundle_code", "commerce_type", "name_es", "description_es",
             "legal_reference", "is_active", "installment_eligible",
             "max_installments", "installment_frequency",
-            "public_installment_visible",
+            "public_installment_visible", "processing_mode",
+            "deadline_month", "deadline_day",
         ]:
             if field in data and data[field] is not None:
                 sets.append(f"{field} = ${idx}")

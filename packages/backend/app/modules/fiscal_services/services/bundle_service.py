@@ -201,13 +201,39 @@ class BundleService:
                 "cumulative_paid": str(cumulative),
             })
 
+        # Resolve penalty config from fiscal_config_rules (specificity-based)
+        penalty_config = await conn.fetchrow("""
+            SELECT config FROM fiscal_config_rules
+            WHERE config_type = 'penalty'
+              AND is_enabled = true
+              AND (bundle_id = $1 OR bundle_id IS NULL)
+              AND effective_from <= CURRENT_DATE
+              AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
+            ORDER BY specificity DESC
+            LIMIT 1
+        """, bundle_id)
+        penalty_cfg = penalty_config["config"] if penalty_config else {}
+
+        # Resolve installment config from fiscal_config_rules
+        installment_config = await conn.fetchrow("""
+            SELECT config FROM fiscal_config_rules
+            WHERE config_type = 'installment'
+              AND is_enabled = true
+              AND (bundle_id = $1 OR bundle_id IS NULL)
+              AND effective_from <= CURRENT_DATE
+              AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
+            ORDER BY specificity DESC
+            LIMIT 1
+        """, bundle_id)
+        installment_cfg = installment_config["config"] if installment_config else {}
+
         return {
             "bundle_code": bundle["bundle_code"],
             "total_amount": str(total),
             "num_installments": num_installments,
             "frequency": frequency,
-            "grace_period_days": 7,
-            "late_fee_rate": "0.05",
+            "grace_period_days": penalty_cfg.get("grace_days", 0),
+            "late_fee_rate": str(penalty_cfg.get("rate", 0)),
             "installments": installments,
             "currency": "XAF",
         }

@@ -13,7 +13,7 @@ and wait for a Treasury agent to validate.
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 import json
 import asyncpg
 from loguru import logger
@@ -402,6 +402,20 @@ class ManualValidationProcessor(PaymentProcessorBase):
                 f"Manual payment {payment_id} validated by user {agent_user_id} "
                 f"(profile {agent_profile_id}). Receipt: {receipt_number}"
             )
+
+            # 8. OMS hook: if this payment has fee_type, route linked obligations
+            try:
+                from app.modules.fiscal_services.services.license_service import (
+                    LicenseService,
+                )
+                await LicenseService.on_payment_completed(
+                    db, payment_id, user_id=UUID(agent_user_id) if agent_user_id else None,
+                )
+            except Exception as e:
+                logger.error(
+                    f"OMS hook failed for payment {payment_id}: {e}",
+                    exc_info=True,
+                )
 
             return PaymentStatusResult(
                 payment_id=payment_id,

@@ -969,6 +969,36 @@ except Exception as e:
     logger.error(f"❌ Service bundles router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load config rules router (Module - Fiscal Config Rules Engine)
+try:
+    from app.modules.fiscal_services.api.config_rules_routes import router as config_rules_router
+    app.include_router(config_rules_router, prefix="/api/v1", tags=["config-rules"])
+    routers_loaded.append("config_rules")
+    logger.info("✅ Config rules router loaded (specificity-based config engine)")
+except Exception as e:
+    logger.error(f"❌ Config rules router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load commercial licenses router (Module - OMS)
+try:
+    from app.modules.fiscal_services.api.license_routes import router as license_router
+    app.include_router(license_router, prefix="/api/v1", tags=["commercial-licenses"])
+    routers_loaded.append("commercial_licenses")
+    logger.info("✅ Commercial licenses router loaded (OMS)")
+except Exception as e:
+    logger.error(f"❌ Commercial licenses router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load OMS agent processing router (Module - OMS Post-Payment)
+try:
+    from app.modules.fiscal_services.api.oms_agent_routes import router as oms_agent_router
+    app.include_router(oms_agent_router, prefix="/api/v1", tags=["oms-agent-processing"])
+    routers_loaded.append("oms_agent")
+    logger.info("✅ OMS agent processing router loaded (post-payment queue)")
+except Exception as e:
+    logger.error(f"❌ OMS agent processing router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load users router (Module - Users System)
 try:
     from app.modules.users.api import user_routes

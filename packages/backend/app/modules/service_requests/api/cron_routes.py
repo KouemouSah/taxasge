@@ -820,3 +820,192 @@ async def retrain_nlp_classifier(
     getattr(logger, level)(f"NLP retrain: {report.get('message', report['status'])}")
 
     return report
+
+
+# ============================================================================
+# INDEX HEALTH AUDIT (monthly, 1st of month 03:00 UTC)
+# ============================================================================
+
+
+def _format_bytes(n: int) -> str:
+    """Format bytes to human-readable string."""
+    for unit in ("B", "kB", "MB", "GB"):
+        if abs(n) < 1024:
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1024.0
+    return f"{n:.1f} TB"
+
+
+@router.post(
+    "/index-health-audit",
+    summary="Audit unused and redundant database indexes",
+    description="""
+    Called monthly by Cloud Scheduler (1st of month, 03:00 UTC).
+
+    Analyzes pg_stat_user_indexes on high-write tables for:
+    - Unused indexes (0 scans since last stats reset)
+    - Index/table size ratio (bloat detection)
+    - Duplicate/overlapping index candidates (same leading column)
+
+    Read-only — does NOT modify or drop any indexes.
+    Results are logged to Cloud Logging for admin review.
+
+    Reliability: stats counters are cumulative since last DB restart
+    or pg_stat_reset(). The 'stats_days_since_reset' field indicates
+    how long the data has been accumulating. Values > 90 days are
+    considered reliable for identifying truly unused indexes.
+    """,
+)
+async def index_health_audit(
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Audit database indexes for unused and redundant entries."""
+
+    MONITORED_TABLES = (
+        "service_requests", "service_payments", "service_bundle_items",
+        "agent_work_queue", "workflow_transitions", "uploaded_files",
+        "payment_validation_audit", "audit_logs",
+    )
+
+    # 1. Stats reset time — indicates reliability of 0-scan data
+    stats_info = await db.fetchrow("""
+        SELECT stats_reset,
+               EXTRACT(EPOCH FROM (NOW() - stats_reset)) / 86400.0 AS days_since_reset
+        FROM pg_stat_bgwriter
+    """)
+    days_since_reset = round(
+        float(stats_info["days_since_reset"] or 0), 1
+    ) if stats_info and stats_info["stats_reset"] else 0
+
+    # 2. Unused indexes (0 scans, excluding PKs and UNIQUE constraints)
+    unused_indexes = await db.fetch("""
+        SELECT
+            i.relname AS table_name,
+            i.indexrelname AS index_name,
+            pg_size_pretty(pg_relation_size(i.indexrelid)) AS index_size,
+            pg_relation_size(i.indexrelid) AS size_bytes,
+            LEFT(pg_get_indexdef(i.indexrelid), 250) AS definition
+        FROM pg_stat_user_indexes i
+        JOIN pg_index pi ON pi.indexrelid = i.indexrelid
+        WHERE i.relname = ANY($1::text[])
+          AND i.idx_scan = 0
+          AND NOT pi.indisunique
+          AND NOT pi.indisprimary
+        ORDER BY pg_relation_size(i.indexrelid) DESC
+    """, list(MONITORED_TABLES))
+
+    # 3. Duplicate candidates (same table + same leading column)
+    duplicate_candidates = await db.fetch("""
+        WITH idx_leading AS (
+            SELECT
+                i.relname AS table_name,
+                i.indexrelname AS index_name,
+                i.idx_scan,
+                (SELECT a.attname FROM pg_attribute a
+                 WHERE a.attrelid = ix.indrelid AND a.attnum = ix.indkey[0]
+                   AND a.attnum > 0) AS leading_col,
+                (SELECT string_agg(a.attname, ',' ORDER BY ord)
+                 FROM unnest(ix.indkey) WITH ORDINALITY AS u(attnum, ord)
+                 JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = u.attnum
+                 WHERE a.attnum > 0) AS all_cols
+            FROM pg_stat_user_indexes i
+            JOIN pg_index ix ON ix.indexrelid = i.indexrelid
+            WHERE i.relname = ANY($1::text[])
+        )
+        SELECT
+            a.table_name,
+            a.index_name AS idx_a, a.all_cols AS cols_a, a.idx_scan AS scans_a,
+            b.index_name AS idx_b, b.all_cols AS cols_b, b.idx_scan AS scans_b
+        FROM idx_leading a
+        JOIN idx_leading b
+          ON a.table_name = b.table_name
+         AND a.leading_col = b.leading_col
+         AND a.index_name < b.index_name
+        ORDER BY a.table_name, a.leading_col
+    """, list(MONITORED_TABLES))
+
+    # 4. Index-to-table size ratios
+    size_ratios = await db.fetch("""
+        SELECT
+            relname AS table_name,
+            pg_size_pretty(pg_relation_size(relid)) AS table_size,
+            pg_size_pretty(pg_indexes_size(relid)) AS indexes_size,
+            (SELECT count(*) FROM pg_index WHERE indrelid = c.relid) AS index_count,
+            CASE WHEN pg_relation_size(relid) > 0
+                 THEN ROUND(pg_indexes_size(relid)::numeric /
+                            pg_relation_size(relid)::numeric, 1)
+                 ELSE 0 END AS idx_table_ratio
+        FROM pg_stat_user_tables c
+        WHERE relname = ANY($1::text[])
+        ORDER BY pg_indexes_size(relid) DESC
+    """, list(MONITORED_TABLES))
+
+    # 5. Aggregate waste
+    total_waste = sum(r["size_bytes"] for r in unused_indexes)
+
+    # 6. Structured logging for Cloud Logging alerting
+    for idx in unused_indexes:
+        logger.warning(
+            f"INDEX_HEALTH_UNUSED: {idx['index_name']} on {idx['table_name']} "
+            f"({idx['index_size']}, 0 scans in {days_since_reset} days) "
+            f"— candidate for removal"
+        )
+
+    for dup in duplicate_candidates:
+        logger.info(
+            f"INDEX_HEALTH_OVERLAP: {dup['idx_a']}({dup['cols_a']}) "
+            f"vs {dup['idx_b']}({dup['cols_b']}) on {dup['table_name']} "
+            f"(scans: {dup['scans_a']} vs {dup['scans_b']})"
+        )
+
+    for ratio in size_ratios:
+        if float(ratio["idx_table_ratio"]) > 5:
+            logger.warning(
+                f"INDEX_HEALTH_BLOAT: {ratio['table_name']} index/table ratio = "
+                f"{ratio['idx_table_ratio']}x ({ratio['indexes_size']} indexes "
+                f"vs {ratio['table_size']} data, {ratio['index_count']} indexes)"
+            )
+
+    logger.info(
+        f"INDEX_HEALTH_AUDIT: {len(unused_indexes)} unused indexes "
+        f"({_format_bytes(total_waste)} waste), "
+        f"{len(duplicate_candidates)} overlap candidates, "
+        f"stats reliability: {days_since_reset} days"
+    )
+
+    return {
+        "message": "Index health audit completed",
+        "stats_days_since_reset": days_since_reset,
+        "reliable": days_since_reset >= 90,
+        "unused_indexes": [
+            {
+                "table": r["table_name"],
+                "index": r["index_name"],
+                "size": r["index_size"],
+                "definition": r["definition"],
+            }
+            for r in unused_indexes
+        ],
+        "unused_count": len(unused_indexes),
+        "total_waste": _format_bytes(total_waste),
+        "duplicate_candidates": [
+            {
+                "table": r["table_name"],
+                "idx_a": r["idx_a"], "cols_a": r["cols_a"], "scans_a": r["scans_a"],
+                "idx_b": r["idx_b"], "cols_b": r["cols_b"], "scans_b": r["scans_b"],
+            }
+            for r in duplicate_candidates
+        ],
+        "overlap_count": len(duplicate_candidates),
+        "size_ratios": [
+            {
+                "table": r["table_name"],
+                "table_size": r["table_size"],
+                "indexes_size": r["indexes_size"],
+                "index_count": r["index_count"],
+                "ratio": float(r["idx_table_ratio"]),
+            }
+            for r in size_ratios
+        ],
+    }
