@@ -27,6 +27,8 @@ export interface CommerceZone {
   displayOrder: number;
 }
 
+export type ProcessingMode = 'per_line' | 'consolidated';
+
 export interface ServiceBundle {
   id: string;
   bundleCode: string;
@@ -39,6 +41,10 @@ export interface ServiceBundle {
   maxInstallments: number;
   installmentFrequency: string;
   publicInstallmentVisible: boolean;
+  // OMS fields
+  processingMode: ProcessingMode;
+  deadlineMonth: number;
+  deadlineDay: number;
   createdBy?: string;
   updatedBy?: string;
   createdAt: string;
@@ -59,6 +65,12 @@ export interface BundleItem {
   displayOrder: number;
   notes?: string;
   isActive: boolean;
+  // OMS fields
+  effectivePenalty?: Record<string, unknown> | null;
+  effectiveDeadline?: Record<string, unknown> | null;
+  configResolvedAt?: string | null;
+  requiresDocument: boolean;
+  documentTemplateId?: number | null;
   // Enriched
   serviceCode?: string;
   serviceName?: string;
@@ -191,6 +203,9 @@ export interface BundleCreateInput {
   maxInstallments?: number;
   installmentFrequency?: string;
   publicInstallmentVisible?: boolean;
+  processingMode?: ProcessingMode;
+  deadlineMonth?: number;
+  deadlineDay?: number;
 }
 
 export interface BundleUpdateInput {
@@ -204,6 +219,9 @@ export interface BundleUpdateInput {
   maxInstallments?: number;
   installmentFrequency?: string;
   publicInstallmentVisible?: boolean;
+  processingMode?: ProcessingMode;
+  deadlineMonth?: number;
+  deadlineDay?: number;
 }
 
 export interface CopyZonePricesInput {

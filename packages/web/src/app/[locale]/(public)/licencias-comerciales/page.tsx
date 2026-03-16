@@ -16,6 +16,7 @@ import {
 import Breadcrumb from '@/components/ui/breadcrumb'
 import { bundleApi } from '@/modules/fiscal-services/services/bundle-api'
 import { formatXAF } from '@/core/utils/format'
+import QRCode from 'qrcode'
 import type {
   BundleItem,
   CommerceTypeOption,
@@ -52,10 +53,10 @@ const ZONE_TIER_COLORS: Record<string, string> = {
 }
 
 // Fee type section colors
-const FEE_TYPE_COLORS: Record<string, { bg: string; border: string; header: string }> = {
-  tesoro: { bg: 'bg-blue-50', border: 'border-blue-200', header: 'bg-blue-700 text-white' },
-  municipal: { bg: 'bg-emerald-50', border: 'border-emerald-200', header: 'bg-emerald-700 text-white' },
-  chamber: { bg: 'bg-purple-50', border: 'border-purple-200', header: 'bg-purple-700 text-white' },
+const FEE_TYPE_COLORS: Record<string, { bg: string; border: string; header: string; printHeader: string }> = {
+  tesoro: { bg: 'bg-blue-50', border: 'border-blue-200', header: 'bg-blue-700 text-white', printHeader: 'print:!bg-blue-700/50 print:!text-blue-950' },
+  municipal: { bg: 'bg-emerald-50', border: 'border-emerald-200', header: 'bg-emerald-700 text-white', printHeader: 'print:!bg-emerald-700/50 print:!text-emerald-950' },
+  chamber: { bg: 'bg-purple-50', border: 'border-purple-200', header: 'bg-purple-700 text-white', printHeader: 'print:!bg-purple-700/50 print:!text-purple-950' },
 }
 
 // ============================================================
@@ -287,24 +288,32 @@ function PricingResult({
     { year: 'numeric', month: 'long', day: 'numeric' },
   )
 
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const pageUrl = `${window.location.origin}/${locale}/licencias-comerciales?commerce=${commerceType.commerceType}&zone=${zone.zoneCode}`
+    QRCode.toDataURL(pageUrl, { width: 64, margin: 1, errorCorrectionLevel: 'M' })
+      .then(setQrDataUrl)
+      .catch(() => {})
+  }, [locale, commerceType.commerceType, zone.zoneCode])
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 print:space-y-2">
       {/* ---- PRINT HEADER (hidden on screen, visible on print) ---- */}
-      <div className="hidden print:block mb-6">
-        <div className="text-center border-b-2 border-black pb-3 mb-4">
-          <h1 className="text-xl font-bold tracking-wide">FACIL — {t('title')}</h1>
-          <p className="text-xs mt-1 text-gray-600">
-            {t('legalReference')}: {data.bundle.legalReference || 'Decreto Presidencial'}
-          </p>
+      <div className="hidden print:block mb-3">
+        <div className="flex items-center justify-between border-b-2 border-gray-800 pb-2 mb-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="FACIL" className="h-7" />
+          <div className="text-right">
+            <h1 className="text-[11pt] font-bold tracking-wide uppercase">Ficha Tarifaria</h1>
+            <p className="text-[7pt] text-gray-600">Licencias Comerciales — República de Guinea Ecuatorial</p>
+          </div>
         </div>
-        <div className="flex justify-between text-xs text-gray-700 mb-4">
-          <div>
-            <strong>{t('stepCommerce')}:</strong> {commerceType.nameEs}
-          </div>
-          <div>
-            <strong>{t('stepZone')}:</strong> {zone.zoneCode} — {zone.descriptionEs || zone.nameEs}
-          </div>
-          <div>{printDate}</div>
+        <div className="flex justify-between text-[7pt] text-gray-700">
+          <span><strong>Tipo:</strong> {commerceType.nameEs}</span>
+          <span><strong>Zona:</strong> {zone.zoneCode} — {zone.descriptionEs || zone.nameEs}</span>
+          <span><strong>Ref.:</strong> {data.bundle.legalReference || 'Decreto Presidencial'}</span>
+          <span>{printDate}</span>
         </div>
       </div>
 
@@ -334,7 +343,7 @@ function PricingResult({
       )}
 
       {/* Fee type sections — grouped by ministry */}
-      <div className="space-y-4 print:space-y-3">
+      <div className="space-y-4 print:space-y-1.5">
         {data.feeGroups.map((group) => {
           const colors = FEE_TYPE_COLORS[group.feeType] || FEE_TYPE_COLORS.tesoro
           const feeLabel = FEE_TYPE_LABELS[group.feeType as FeeType]?.[locale as 'es' | 'fr' | 'en'] || group.labelEs
@@ -344,23 +353,25 @@ function PricingResult({
           return (
             <Card key={group.feeType} className={`${colors.border} border print:border print:border-gray-400 print:shadow-none`}>
               {/* Section header */}
-              <div className={`${colors.header} px-4 py-2.5 rounded-t-lg print:bg-gray-800 print:text-white print:rounded-none`}>
-                <h3 className="font-semibold text-sm tracking-wide">
+              <div className={`${colors.header} ${colors.printHeader} px-4 py-2.5 rounded-t-lg print:rounded-none print:py-1.5`}>
+                <h3 className="font-semibold text-sm tracking-wide print:text-[8pt]">
                   {feeLabel}
                 </h3>
               </div>
               <div className="divide-y print:divide-gray-300">
                 {ministryGroups.map((mGroup, mIdx) => (
                   <div key={mGroup.ministryName}>
-                    {/* Ministry sub-header — always shown */}
-                    <div className="px-4 py-1.5 bg-muted/40 print:bg-gray-100">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground print:text-gray-700">
-                        {mGroup.ministryName}
-                      </span>
-                    </div>
+                    {/* Ministry sub-header — only when multiple ministries in section */}
+                    {ministryGroups.length > 1 && (
+                      <div className="px-4 py-1.5 bg-muted/40 print:bg-gray-200/60 print:py-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground print:text-gray-700 print:text-[7pt]">
+                          {mGroup.ministryName}
+                        </span>
+                      </div>
+                    )}
                     {/* Items */}
                     {mGroup.items.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between px-4 py-2.5 text-sm print:py-1.5 print:text-xs">
+                      <div key={item.id} className="flex items-center justify-between px-4 py-2.5 text-sm print:py-[3px] print:text-[8pt]">
                         <div className="flex-1 min-w-0">
                           <span className="font-medium">{item.serviceName}</span>
                         </div>
@@ -369,9 +380,9 @@ function PricingResult({
                         </span>
                       </div>
                     ))}
-                    {/* Ministry subtotal (only if multiple ministries) */}
-                    {hasMultipleMinistries && (
-                      <div className="flex items-center justify-between px-4 py-1.5 text-xs text-muted-foreground print:text-gray-600">
+                    {/* Ministry subtotal (only if multiple ministries AND ≥2 items) */}
+                    {hasMultipleMinistries && mGroup.items.length >= 2 && (
+                      <div className="flex items-center justify-between px-4 py-1.5 text-xs text-muted-foreground print:text-gray-600 print:py-1 print:text-[7pt]">
                         <span className="italic pl-2">
                           Subtotal {mGroup.ministryName}
                         </span>
@@ -387,8 +398,8 @@ function PricingResult({
                   </div>
                 ))}
                 {/* Section subtotal */}
-                <div className={`flex items-center justify-between px-4 py-2.5 ${colors.bg} print:bg-gray-100 print:font-bold`}>
-                  <span className="text-sm font-semibold">Sub-Total {feeLabel}</span>
+                <div className={`flex items-center justify-between px-4 py-2.5 ${colors.bg} print:bg-gray-100 print:font-bold print:py-1.5`}>
+                  <span className="text-sm font-semibold print:text-[8pt]">Sub-Total {feeLabel}</span>
                   <span className="font-bold tabular-nums">
                     {formatXAF(group.subtotal, locale)}
                   </span>
@@ -401,9 +412,9 @@ function PricingResult({
 
       {/* Grand total */}
       <Card className="border-2 border-amber-300 bg-amber-50 print:border-2 print:border-black print:bg-gray-50">
-        <div className="flex items-center justify-between px-5 py-4 print:py-3">
-          <span className="text-lg font-bold print:text-base">{t('totalGeneral')}</span>
-          <span className="text-2xl font-extrabold text-amber-900 tabular-nums print:text-black print:text-xl">
+        <div className="flex items-center justify-between px-5 py-4 print:py-2">
+          <span className="text-lg font-bold print:text-[9pt]">{t('totalGeneral')}</span>
+          <span className="text-2xl font-extrabold text-amber-900 tabular-nums print:text-black print:text-[11pt]">
             {formatXAF(data.grandTotal, locale)}
           </span>
         </div>
@@ -412,17 +423,17 @@ function PricingResult({
       {/* Installment preview */}
       {data.installmentPreview && (
         <Card className="print:border print:border-gray-400 print:shadow-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="pb-2 print:pb-1 print:pt-2">
+            <CardTitle className="text-base flex items-center gap-2 print:text-[8pt]">
               <CreditCard className="h-4 w-4 text-primary print:hidden" />
               {t('installmentTitle')}
             </CardTitle>
-            <p className="text-sm text-muted-foreground">{t('installmentDesc')}</p>
+            <p className="text-sm text-muted-foreground print:text-[7pt]">{t('installmentDesc')}</p>
           </CardHeader>
           <CardContent>
             <div className="divide-y print:divide-gray-300">
               {data.installmentPreview.installments.map((inst) => (
-                <div key={inst.installmentNumber} className="flex items-center justify-between py-2.5 text-sm print:py-1.5 print:text-xs">
+                <div key={inst.installmentNumber} className="flex items-center justify-between py-2.5 text-sm print:py-[3px] print:text-[8pt]">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground print:hidden" />
                     <span>
@@ -448,8 +459,8 @@ function PricingResult({
       {/* Documents */}
       {data.documents.length > 0 && (
         <Card className="print:border print:border-gray-400 print:shadow-none">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
+          <CardHeader className="pb-2 print:pb-1 print:pt-2">
+            <CardTitle className="text-base flex items-center gap-2 print:text-[8pt]">
               <FileText className="h-4 w-4 text-primary print:hidden" />
               {t('documentsRequired')}
             </CardTitle>
@@ -457,7 +468,7 @@ function PricingResult({
           <CardContent>
             <ul className="space-y-1.5 print:space-y-0.5">
               {data.documents.map((doc, i) => (
-                <li key={doc.documentTemplateId} className="flex items-start gap-2 text-sm print:text-xs">
+                <li key={doc.documentTemplateId} className="flex items-start gap-2 text-sm print:text-[7pt] print:gap-1">
                   <span className="flex-shrink-0 font-mono text-xs text-muted-foreground w-5 text-right">
                     {i + 1}.
                   </span>
@@ -473,9 +484,20 @@ function PricingResult({
       )}
 
       {/* Print footer (hidden on screen) */}
-      <div className="hidden print:block mt-6 pt-3 border-t border-gray-300 text-center text-[10px] text-gray-500">
-        <p>FACIL — Plataforma de Servicios Fiscales de Guinea Ecuatorial</p>
-        <p>Documento informativo generado el {printDate}. Los precios pueden estar sujetos a modificaciones.</p>
+      <div className="hidden print:flex mt-4 pt-2 border-t border-gray-400 items-end justify-between text-[7pt] text-gray-500">
+        <div>
+          <p className="font-semibold text-gray-700">FACIL — Plataforma de Servicios Fiscales</p>
+          <p>República de Guinea Ecuatorial</p>
+          <p className="mt-0.5 italic">Documento informativo. Precios sujetos a modificaciones.</p>
+          <p>{printDate}</p>
+        </div>
+        {qrDataUrl && (
+          <div className="flex flex-col items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrDataUrl} alt="QR" className="w-14 h-14" />
+            <span className="text-[6pt] mt-0.5">Verificar en línea</span>
+          </div>
+        )}
       </div>
 
       {/* Print action (hidden on print) */}

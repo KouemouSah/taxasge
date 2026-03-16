@@ -174,7 +174,13 @@ All colors MUST be HSL.
   /* Reset page */
   @page {
     size: A4;
-    margin: 15mm 12mm;
+    margin: 10mm 8mm;
+  }
+
+  /* Force background colors in print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Hide all non-content elements */
@@ -188,13 +194,18 @@ All colors MUST be HSL.
   body {
     background: white !important;
     color: black !important;
-    font-size: 11pt !important;
-    line-height: 1.4 !important;
+    font-size: 8pt !important;
+    line-height: 1.3 !important;
   }
 
   /* Cards: no shadows, minimal border */
   [class*="rounded"] {
     border-radius: 2px !important;
+  }
+
+  /* No shadows on print */
+  [class*="shadow"] {
+    box-shadow: none !important;
   }
 
   /* Ensure content doesn't break awkwardly */
@@ -205,5 +216,8 @@ All colors MUST be HSL.
   /* Show print-only elements */
   .print\\:block {
     display: block !important;
+  }
+  .print\\:flex {
+    display: flex !important;
   }
 }
