@@ -1,13 +1,21 @@
-"""Company Routes - Business Company Management API"""
+"""Company Routes - Business Company Management API
+
+Includes:
+- User-scoped CRUD (membership-based access)
+- Admin endpoints (permission-based access)
+"""
 
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from loguru import logger
 
 from app.modules.companies.models import (
     CompanyCreate, CompanyUpdate, CompanyResponse,
-    CompanyListResponse, CompanyMember, CompanyMemberRole
+    CompanyListResponse, CompanyMember, CompanyMemberRole,
+    AddMemberRequest, UpdateMemberRoleRequest,
+    CompanyAdminResponse, CompanyAdminListResponse,
+    CompanyStatsResponse, CompanySearchResult, CompanyVerifyRequest,
 )
 from app.modules.companies.repositories import CompanyRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -19,11 +27,106 @@ security = HTTPBearer()
 company_repository = CompanyRepository()
 
 
+# =============================================================================
+# IMPORTANT: Static/admin paths MUST be declared BEFORE /{company_id}
+# to avoid FastAPI matching "admin" as a UUID → 422 error.
+# =============================================================================
+
+
+# =============================================================================
+# ADMIN ENDPOINTS (permission-based)
+# =============================================================================
+
+@router.get("/admin/all", response_model=CompanyAdminListResponse)
+@permission_required("company.view_all")
+async def admin_list_all_companies(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: Optional[str] = Query(None, max_length=100),
+    is_active: Optional[bool] = Query(None),
+    is_verified: Optional[bool] = Query(None),
+    regimen_fiscal: Optional[str] = Query(None),
+    zone_id: Optional[str] = Query(None),
+    city_id: Optional[str] = Query(None),
+    sort_by: str = Query("created_at", regex="^(created_at|legal_name|is_active|is_verified|member_count|license_count)$"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """List all companies with filters — admin view."""
+    offset = (page - 1) * page_size
+
+    items = await company_repository.list_all(
+        db, limit=page_size, offset=offset,
+        search=search, is_active=is_active, is_verified=is_verified,
+        regimen_fiscal=regimen_fiscal, zone_id=zone_id, city_id=city_id,
+        sort_by=sort_by, sort_order=sort_order,
+    )
+    total = await company_repository.count_all(
+        db, search=search, is_active=is_active, is_verified=is_verified,
+        regimen_fiscal=regimen_fiscal, zone_id=zone_id, city_id=city_id,
+    )
+
+    return CompanyAdminListResponse(
+        items=[CompanyAdminResponse(**c) for c in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/admin/stats", response_model=CompanyStatsResponse)
+@permission_required("company.view_stats")
+async def admin_company_stats(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Aggregated company statistics for admin dashboard."""
+    stats = await company_repository.get_stats(db)
+    return CompanyStatsResponse(**stats)
+
+
+@router.get("/admin/search", response_model=List[CompanySearchResult])
+@permission_required("company.view")
+async def admin_search_companies(
+    q: str = Query(..., min_length=2, max_length=100),
+    limit: int = Query(10, ge=1, le=50),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Lightweight company search for autocomplete (admin/agent)."""
+    results = await company_repository.search(db, q, limit)
+    return [CompanySearchResult(**r) for r in results]
+
+
+@router.put("/admin/{company_id}/verify", response_model=CompanyResponse)
+@permission_required("company.verify")
+async def admin_verify_company(
+    company_id: str,
+    body: CompanyVerifyRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Toggle company verification status (admin only)."""
+    result = await company_repository.verify(db, company_id, body.is_verified)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+    action = "verified" if body.is_verified else "unverified"
+    logger.info(f"Admin {user_id} {action} company {company_id}")
+    return CompanyResponse(**result)
+
+
+# =============================================================================
+# USER-SCOPED ENDPOINTS (membership-based)
+# =============================================================================
+
 @router.post("", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
 async def create_company(
     company: CompanyCreate,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """Create new company"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
@@ -37,7 +140,7 @@ async def list_companies(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """List user's companies"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
@@ -55,15 +158,21 @@ async def list_companies(
 async def get_company(
     company_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """Get company by ID"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    # Check membership
-    role = await company_repository.check_membership(db, company_id, user_id)
-    if not role:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
+    # Admin with company.view can access any company
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_view_all = await perm_service.has_permission(user_id, "company.view_all")
+
+    if not has_view_all:
+        # Non-admins must be members
+        role = await company_repository.check_membership(db, company_id, user_id)
+        if not role:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
 
     company = await company_repository.get_by_id(db, company_id)
     if not company:
@@ -77,14 +186,20 @@ async def update_company(
     company_id: str,
     update_data: CompanyUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """Update company (owner/admin only)"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    role = await company_repository.check_membership(db, company_id, user_id)
-    if role not in ["company_owner", "company_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
+    # Admin with company.update can update any company
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_admin_perm = await perm_service.has_permission(user_id, "company.update")
+
+    if not has_admin_perm:
+        role = await company_repository.check_membership(db, company_id, user_id)
+        if role not in ["company_owner", "company_admin"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
 
     updated = await company_repository.update(db, company_id, update_data)
     if not updated:
@@ -98,27 +213,25 @@ async def update_company(
 async def delete_company(
     company_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """
     Delete company
 
     Requires either:
     - company_owner role in the company, OR
-    - companies.delete permission (admin override)
+    - company.delete permission (admin override)
     """
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    # Check if user has admin permission to delete any company
     from app.modules.permissions.services.permission_service import get_permission_service
     perm_service = get_permission_service()
-    has_admin_perm = await perm_service.has_permission(user_id, "companies.delete")
+    has_admin_perm = await perm_service.has_permission(user_id, "company.delete")
 
     if not has_admin_perm:
-        # Non-admins must be company owner
         role = await company_repository.check_membership(db, company_id, user_id)
         if role != "company_owner":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner role or companies.delete permission")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner role or company.delete permission")
 
     deleted = await company_repository.delete(db, company_id)
     if not deleted:
@@ -128,18 +241,28 @@ async def delete_company(
     return {"message": "Company deleted successfully"}
 
 
+# =============================================================================
+# MEMBER ENDPOINTS
+# =============================================================================
+
 @router.get("/{company_id}/members", response_model=List[CompanyMember])
 async def get_company_members(
     company_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """Get company members"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    role = await company_repository.check_membership(db, company_id, user_id)
-    if not role:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
+    # Admin with company.manage_members can view any company's members
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
+
+    if not has_admin_perm:
+        role = await company_repository.check_membership(db, company_id, user_id)
+        if not role:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
 
     members = await company_repository.get_members(db, company_id)
     return [CompanyMember(**m) for m in members]
@@ -148,33 +271,58 @@ async def get_company_members(
 @router.post("/{company_id}/members", response_model=CompanyMember)
 async def add_company_member(
     company_id: str,
-    member_user_id: str,
-    role: CompanyMemberRole,
+    body: AddMemberRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """
     Add member to company
 
     Requires either:
     - company_owner or company_admin role in the company, OR
-    - companies.manage_members permission (admin override)
+    - company.manage_members permission (admin override)
     """
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    # Check if user has admin permission to manage any company's members
     from app.modules.permissions.services.permission_service import get_permission_service
     perm_service = get_permission_service()
-    has_admin_perm = await perm_service.has_permission(user_id, "companies.manage_members")
+    has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
 
     if not has_admin_perm:
-        # Non-admins must be company owner or admin
         user_role = await company_repository.check_membership(db, company_id, user_id)
         if user_role not in ["company_owner", "company_admin"]:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner/company_admin role or companies.manage_members permission")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner/company_admin role or company.manage_members permission")
 
-    result = await company_repository.add_member(db, company_id, member_user_id, role)
-    logger.info(f"User {user_id} added member {member_user_id} to company {company_id}")
+    result = await company_repository.add_member(db, company_id, body.member_user_id, body.role)
+    logger.info(f"User {user_id} added member {body.member_user_id} to company {company_id}")
+    return CompanyMember(**result)
+
+
+@router.put("/{company_id}/members/{member_user_id}/role", response_model=CompanyMember)
+async def update_member_role(
+    company_id: str,
+    member_user_id: str,
+    body: UpdateMemberRoleRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db=Depends(get_database),
+):
+    """Update member role within a company."""
+    user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
+
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
+
+    if not has_admin_perm:
+        user_role = await company_repository.check_membership(db, company_id, user_id)
+        if user_role not in ["company_owner", "company_admin"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner/company_admin role or company.manage_members permission")
+
+    result = await company_repository.update_member_role(db, company_id, member_user_id, body.role.value)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+
+    logger.info(f"User {user_id} updated role of {member_user_id} in company {company_id} to {body.role.value}")
     return CompanyMember(**result)
 
 
@@ -183,17 +331,24 @@ async def remove_company_member(
     company_id: str,
     member_user_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
-    db = Depends(get_database),
+    db=Depends(get_database),
 ):
     """Remove member from company (owner/admin only)"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    user_role = await company_repository.check_membership(db, company_id, user_id)
-    if user_role not in ["company_owner", "company_admin"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
+    from app.modules.permissions.services.permission_service import get_permission_service
+    perm_service = get_permission_service()
+    has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
 
-    if member_user_id == user_id and user_role == "company_owner":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Owner cannot remove self")
+    if not has_admin_perm:
+        user_role = await company_repository.check_membership(db, company_id, user_id)
+        if user_role not in ["company_owner", "company_admin"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Requires company_owner or company_admin role")
+
+    if member_user_id == user_id:
+        user_role = await company_repository.check_membership(db, company_id, user_id)
+        if user_role == "company_owner":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Owner cannot remove self")
 
     removed = await company_repository.remove_member(db, company_id, member_user_id)
     if not removed:

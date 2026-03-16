@@ -8,6 +8,14 @@ from app.modules.companies.models.company import (
     CompanyListResponse,
     CompanyMemberRole,
     CompanyMember,
+    AddMemberRequest,
+    UpdateMemberRoleRequest,
+    RegimenFiscal,
+    CompanyAdminResponse,
+    CompanyAdminListResponse,
+    CompanyStatsResponse,
+    CompanySearchResult,
+    CompanyVerifyRequest,
 )
 
 __all__ = [
@@ -18,4 +26,12 @@ __all__ = [
     "CompanyListResponse",
     "CompanyMemberRole",
     "CompanyMember",
+    "AddMemberRequest",
+    "UpdateMemberRoleRequest",
+    "RegimenFiscal",
+    "CompanyAdminResponse",
+    "CompanyAdminListResponse",
+    "CompanyStatsResponse",
+    "CompanySearchResult",
+    "CompanyVerifyRequest",
 ]
