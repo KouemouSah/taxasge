@@ -4,6 +4,7 @@
  */
 
 import apiClient from '@/core/api/client'
+import { transformKeys, toSnakeCase } from '@/core/utils/api-transform'
 
 import type {
   CommerceZone,
@@ -29,38 +30,6 @@ import type {
 } from '@/types/service-bundle'
 
 const BASE = '/service-bundles'
-
-// ========== Key transformations ==========
-
-function snakeToCamel(str: string): string {
-  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-}
-
-function camelToSnake(str: string): string {
-  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
-}
-
-function transformKeys<T>(obj: unknown): T {
-  if (obj === null || obj === undefined) return obj as T
-  if (Array.isArray(obj)) return obj.map(item => transformKeys(item)) as T
-  if (typeof obj !== 'object') return obj as T
-  const transformed: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    transformed[snakeToCamel(key)] = transformKeys(value)
-  }
-  return transformed as T
-}
-
-function toSnakeCase<T>(obj: unknown): T {
-  if (obj === null || obj === undefined) return obj as T
-  if (Array.isArray(obj)) return obj.map(item => toSnakeCase(item)) as T
-  if (typeof obj !== 'object') return obj as T
-  const transformed: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-    transformed[camelToSnake(key)] = toSnakeCase(value)
-  }
-  return transformed as T
-}
 
 async function get<T>(path: string): Promise<T> {
   const { data } = await apiClient.get(`${BASE}${path}`)

@@ -57,6 +57,8 @@ import {
   CreditCard,
   Package,
   Sparkles,
+  FolderOpen,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData, getAuthData } from '@/core/auth/storage'
@@ -231,6 +233,16 @@ export default function AdminSidebar() {
           title: t('nav.serviceBundles'),
           href: `/${locale}/dashboard/admin/service-bundles`,
           icon: Package,
+        },
+        {
+          title: t('nav.licenses'),
+          href: `/${locale}/dashboard/admin/licenses`,
+          icon: FolderOpen,
+        },
+        {
+          title: t('nav.configRules'),
+          href: `/${locale}/dashboard/admin/config-rules`,
+          icon: SlidersHorizontal,
         },
         {
           title: t('nav.enrichment'),

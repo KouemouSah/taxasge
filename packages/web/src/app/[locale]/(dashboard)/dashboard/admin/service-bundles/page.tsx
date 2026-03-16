@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/select"
 import {
   Package, MapPin, Layers, Search, Eye, Download, ChevronLeft, ChevronRight,
-  Plus, Trash2, Pencil, FileText,
+  Plus, Trash2, Pencil,
 } from "lucide-react"
+import FiscalServicesTabNav from "@/modules/fiscal-services/components/FiscalServicesTabNav"
 import { bundleApi, bundleAdminApi } from "@/modules/fiscal-services/services/bundle-api"
 import type { BundleListResponse, BundleStats } from "@/types/service-bundle"
 
@@ -86,20 +87,7 @@ export default function ServiceBundlesPage() {
 
   return (
     <div className="space-y-4 p-4">
-      {/* Tab Navigation: Catalog | Bundles */}
-      <div className="flex gap-1 border-b">
-        <button
-          className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground border-b-2 border-transparent"
-          onClick={() => router.push(`/${locale}/dashboard/admin/fiscal-services`)}
-        >
-          <FileText className="h-3.5 w-3.5 inline mr-1" />
-          {t("services")}
-        </button>
-        <button className="px-4 py-2 text-sm font-medium border-b-2 border-primary text-primary">
-          <Package className="h-3.5 w-3.5 inline mr-1" />
-          {t("tabBundles")}
-        </button>
-      </div>
+      <FiscalServicesTabNav activeTab="bundles" />
 
       <div className="flex items-center justify-between">
         <div>
