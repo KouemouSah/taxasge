@@ -26,6 +26,7 @@ import FiscalServicesTabNav from "@/modules/fiscal-services/components/FiscalSer
 import { useToast } from "@/hooks/use-toast"
 import { formatXAF } from "@/core/utils/format"
 import { licenseApi, licenseAdminApi } from "@/modules/fiscal-services/services/license-api"
+import CompanySearchSelect from "@/modules/companies/components/CompanySearchSelect"
 import { bundleApi } from "@/modules/fiscal-services/services/bundle-api"
 import type { LicenseListResponse, LicenseStats, LicenseStatus } from "@/types/commercial-license"
 import type { ServiceBundle, CommerceZone } from "@/types/service-bundle"
@@ -195,10 +196,9 @@ export default function LicensesPage() {
               </div>
               <div className="space-y-2">
                 <Label>{t("companyId")}</Label>
-                <Input
-                  placeholder={t("companyIdHint")}
-                  value={createCompanyId}
-                  onChange={e => setCreateCompanyId(e.target.value)}
+                <CompanySearchSelect
+                  value={createCompanyId || null}
+                  onValueChange={setCreateCompanyId}
                 />
               </div>
               <div className="space-y-2">
