@@ -148,6 +148,14 @@ class EnrichmentRepository:
         )
 
     @staticmethod
+    async def count_pending(conn) -> int:
+        """Count total pending tasks (for progress tracking)."""
+        row = await conn.fetchrow(
+            "SELECT COUNT(*) as cnt FROM enrichment_queue WHERE status = 'pending'"
+        )
+        return row["cnt"] if row else 0
+
+    @staticmethod
     async def get_service_context(
         conn, fiscal_service_id: int
     ) -> Optional[Dict[str, Any]]:
@@ -355,6 +363,80 @@ class EnrichmentRepository:
             "translations": tr_count,
             "keywords": kw_count,
         }
+
+    @staticmethod
+    async def get_enriched_service_context(
+        conn, fiscal_service_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fetch enriched context for description generation (v2).
+        Includes category hierarchy, sector, procedure/document counts, bundle info.
+        Does NOT include price, documents list, or procedures list (not in descriptions).
+        """
+        row = await conn.fetchrow(
+            """
+            SELECT
+                fs.id,
+                fs.service_code,
+                fs.name_es,
+                fs.description_es,
+                fs.description_source,
+                fs.service_type::TEXT as service_type,
+                c.name_es as category_name,
+                s.name_es as sector_name,
+                m.name_es as ministry_name,
+                (
+                    SELECT COUNT(*)
+                    FROM service_procedure_assignments spa
+                    WHERE spa.fiscal_service_id = fs.id
+                ) as procedure_count,
+                (
+                    SELECT COUNT(*)
+                    FROM service_document_assignments sda
+                    WHERE sda.fiscal_service_id = fs.id
+                ) as document_count,
+                (
+                    SELECT sb.name_es
+                    FROM service_bundle_items sbi
+                    JOIN service_bundles sb ON sb.id = sbi.bundle_id
+                    WHERE sbi.fiscal_service_id = fs.id
+                    LIMIT 1
+                ) as bundle_name
+            FROM fiscal_services fs
+            LEFT JOIN categories c ON c.id = fs.category_id
+            LEFT JOIN sectors s ON s.id = c.sector_id
+            LEFT JOIN ministries m ON m.id = COALESCE(c.ministry_id, s.ministry_id)
+            WHERE fs.id = $1
+            """,
+            fiscal_service_id,
+        )
+        return dict(row) if row else None
+
+    @staticmethod
+    async def get_similar_services_fewshot(
+        conn, fiscal_service_id: int, limit: int = 3
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch similar services (via cosine distance on embeddings) that already
+        have descriptions, to use as few-shot examples for Gemini.
+        Uses <=> operator to match the vector_cosine_ops HNSW index.
+        """
+        rows = await conn.fetch(
+            """
+            SELECT fs2.name_es, fs2.description_es, c.name_es as category_name
+            FROM fiscal_services fs2
+            LEFT JOIN categories c ON c.id = fs2.category_id
+            WHERE fs2.id != $1
+              AND fs2.description_es IS NOT NULL AND fs2.description_es != ''
+              AND fs2.embedding IS NOT NULL
+              AND (SELECT embedding FROM fiscal_services WHERE id = $1) IS NOT NULL
+            ORDER BY fs2.embedding <=> (SELECT embedding FROM fiscal_services WHERE id = $1)
+            LIMIT $2
+            """,
+            fiscal_service_id,
+            limit,
+        )
+        return [dict(r) for r in rows]
 
     @staticmethod
     async def get_ministry_context(

@@ -1,8 +1,14 @@
 """
-Enrichment Service — Gemini-powered automatic enrichment for fiscal services.
+Enrichment Service — Production-grade Gemini-powered enrichment agent.
 
-Generates descriptions (ES), translates to FR/EN, and generates keywords.
-Pattern: Same as LLMBriefingService (lazy init, run_in_executor, timeout, graceful fallback).
+Architecture:
+- process_batch(conn, limit=20): Sequential processing for cron backward compat
+- process_all_pending(): Concurrent processing (Semaphore=10) with progress tracking
+  - Auto-triggered after seed (Option B — one-click flow)
+  - Also available via manual "Procesar Ahora" (Option A)
+
+Pattern: BatchDocumentClassifier semaphore + asyncio.gather (10 concurrent Gemini calls).
+Scale: 1000+ tasks in ~5 minutes (vs 4+ hours sequential).
 """
 
 import asyncio
@@ -10,7 +16,7 @@ import json
 import re
 import time
 from typing import Any, Dict, List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from loguru import logger
 
@@ -30,29 +36,66 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
+# Concurrency tuning (production-grade)
+# ---------------------------------------------------------------------------
+ENRICHMENT_CONCURRENCY = 10     # Max parallel Gemini calls (Flash handles 1000+ RPM)
+BATCH_CLAIM_SIZE = 50           # Tasks claimed per DB round-trip
+MAX_CONSECUTIVE_FAILURES = 5    # Circuit breaker threshold
+MAX_CIRCUIT_BREAKER_TRIPS = 3   # Stop after N circuit breaker resets
+CIRCUIT_BREAKER_PAUSE_S = 30    # Pause duration on circuit break
+
+# ---------------------------------------------------------------------------
 # Prompts
 # ---------------------------------------------------------------------------
 
 DESCRIPTION_PROMPT = """Eres un experto en servicios fiscales del Gobierno de Guinea Ecuatorial.
-Genera una descripción concisa (2-3 frases, máximo 250 caracteres) para el siguiente servicio fiscal.
-La descripción debe explicar: qué es el servicio, quién lo necesita, y su propósito.
+Genera una descripción estructurada en español para este servicio.
 
 DATOS DEL SERVICIO:
 - Nombre: {name_es}
+- Código: {service_code}
 - Categoría: {category}
+- Sector: {sector}
 - Ministerio: {ministry}
-- Tipo de servicio: {service_type}
-- Tarifa expedición: {price} XAF
-- Documentos requeridos: {documents}
-- Palabras clave: {keywords}
+- Tipo: {service_type}
+- Procedimientos asociados: {procedure_count}
+- Documentos requeridos: {document_count}
+{bundle_info}
+{similar_examples}
+
+FORMATO OBLIGATORIO (3 párrafos separados por línea en blanco, máximo 600 caracteres total):
+
+QUÉ ES: [Definición del servicio en 1-2 frases. Naturaleza jurídica/administrativa.]
+
+PARA QUIÉN: [Público objetivo y casos de uso en 1-2 frases. Sectores, perfiles de usuarios.]
+
+RESULTADO: [Qué obtiene el usuario en 1-2 frases. Documento/autorización, validez, efecto jurídico.]
 
 REGLAS CRÍTICAS:
-1. SOLO información derivable de los datos proporcionados — NO inventar
-2. Mencionar el precio si > 0
-3. Tono profesional y administrativo
-4. En español
+1. SOLO información derivable de los datos — NO inventar
+2. NO incluir precios, montos, ni tarifas (ya se muestran en la interfaz)
+3. NO listar documentos requeridos (ya se muestran en la interfaz)
+4. NO detallar procedimientos ni pasos (ya se muestran en la interfaz)
+5. Tono profesional e institucional, tercera persona, frases completas con puntuación
+6. Máximo 600 caracteres en TOTAL (aprox. 200 por sección)
+7. Cada sección en un párrafo separado (línea en blanco entre secciones)
+8. Respetar EXACTAMENTE el formato de 3 secciones con sus etiquetas
 
-Responde SOLO con el texto de la descripción, sin comillas ni prefijos."""
+Responde SOLO con las 3 secciones, sin comillas ni prefijos."""
+
+SELF_EVALUATION_PROMPT = """Evalúa la siguiente descripción de servicio fiscal.
+
+SERVICIO: {name_es}
+DESCRIPCIÓN GENERADA:
+{description}
+
+Criterios de evaluación (0-10 cada uno):
+1. FORMATO: ¿Tiene exactamente 3 secciones (QUÉ ES / PARA QUIÉN / RESULTADO)?
+2. PRECISION: ¿La información es derivable del nombre/categoría del servicio?
+3. PROFESIONALISMO: ¿Tono institucional sin informalidades?
+4. RESTRICCIONES: ¿NO contiene precios, documentos ni procedimientos?
+
+Responde SOLO con JSON: {{"format": N, "precision": N, "professionalism": N, "restrictions": N, "average": N.N}}"""
 
 TRANSLATION_PROMPT = """Traduce los siguientes textos del español al {target_language}.
 Contexto: servicio fiscal del gobierno de Guinea Ecuatorial.
@@ -98,7 +141,7 @@ Responde SOLO con JSON válido:
 {{"es": ["palabra1", "palabra2", ...], "fr": ["mot1", "mot2", ...], "en": ["word1", "word2", ...]}}"""
 
 # Max lengths — defense against unusually long LLM output
-_MAX_DESCRIPTION_LEN = 500
+_MAX_DESCRIPTION_LEN = 700  # 600 target + margin for section labels
 _MAX_NAME_LEN = 200
 _MAX_KEYWORD_LEN = 50
 
@@ -124,11 +167,12 @@ def _sanitize_llm_text(text: str, max_len: int = 500) -> str:
 
 
 class EnrichmentService:
-    """Gemini-powered enrichment for fiscal services."""
+    """Production-grade Gemini-powered enrichment agent for fiscal services."""
 
     def __init__(self):
         self._model: Optional[GenerativeModel] = None
         self._initialized = False
+        self._processing_lock = asyncio.Lock()
 
     def _ensure_initialized(self):
         """Lazy initialization of Gemini model."""
@@ -176,18 +220,13 @@ class EnrichmentService:
         )
 
         if not has_description:
-            # No description → enqueue generation (unless manually cleared)
             if description_source != "manual":
                 result = await EnrichmentRepository.enqueue(
                     conn, service_id, "generate_description", priority=1
                 )
                 if result:
                     enqueued += 1
-            # Do NOT enqueue translations — nothing to translate yet.
-            # Translations will be enqueued after description is generated
-            # (via seed-batch or next CRUD update).
         else:
-            # Has description → enqueue translations (idempotent)
             for lang in ("translate_fr", "translate_en"):
                 result = await EnrichmentRepository.enqueue(
                     conn, service_id, lang, priority=0
@@ -202,19 +241,19 @@ class EnrichmentService:
         return enqueued
 
     # ------------------------------------------------------------------
-    # Cron: process a batch of pending tasks
+    # Cron: process a batch of pending tasks (sequential, backward compat)
     # ------------------------------------------------------------------
 
     async def process_batch(
         self, conn, limit: int = 20
     ) -> Dict[str, Any]:
         """
-        Process a batch of pending enrichment tasks.
-        Called by cron endpoint every 5 minutes.
+        Process a batch of pending enrichment tasks — SEQUENTIAL.
+        Called by cron endpoint every 5 minutes as a safety net.
 
         Uses atomic claim pattern:
         1. Transaction: SELECT FOR UPDATE SKIP LOCKED + UPDATE status='processing'
-        2. Commit (releases locks, but tasks are now 'processing' = safe from other replicas)
+        2. Commit (releases locks, but tasks are now 'processing')
         3. Process tasks one by one (Gemini calls, outside transaction)
         """
         self._ensure_initialized()
@@ -223,101 +262,28 @@ class EnrichmentService:
             logger.warning("Gemini model not available — skipping enrichment batch")
             return {"processed": 0, "failed": 0, "skipped": 0, "tokens_total": 0}
 
-        # Phase 1: Atomically claim a batch (fetch + mark processing in 1 TX)
+        # Phase 1: Atomically claim a batch
         async with conn.transaction():
             tasks = await EnrichmentRepository.fetch_pending_batch(conn, limit)
             if not tasks:
                 return {"processed": 0, "failed": 0, "skipped": 0, "tokens_total": 0}
-            # Immediately mark ALL fetched tasks as 'processing' while lock is held
             task_ids = [t["id"] for t in tasks]
             await EnrichmentRepository.mark_processing_batch(conn, task_ids)
 
-        # Phase 2: Process tasks one by one (outside transaction — Gemini calls are slow)
+        # Phase 2: Process tasks one by one (sequential — cron safety net)
         processed = 0
         failed = 0
         skipped = 0
         tokens_total = 0
-        details: List[Dict[str, Any]] = []
 
         for task in tasks:
-            task_id = task["id"]
-            service_id = task["fiscal_service_id"]
-            task_type = task["task_type"]
-
-            try:
-                # Ministry tasks use a different context path
-                if task_type == "generate_ministry_description":
-                    context = None  # handled inside the handler
-                else:
-                    # Fetch service context
-                    context = await EnrichmentRepository.get_service_context(
-                        conn, service_id
-                    )
-                    if not context:
-                        await EnrichmentRepository.mark_failed(
-                            conn, task_id, f"Service {service_id} not found"
-                        )
-                        failed += 1
-                        continue
-
-                    # Defer translations if no description yet (don't waste attempts)
-                    if task_type in ("translate_fr", "translate_en"):
-                        if not context.get("description_es"):
-                            await EnrichmentRepository.mark_deferred(
-                                conn, task_id,
-                                "No description_es to translate — deferred until description is generated"
-                            )
-                            skipped += 1
-                            continue
-
-                # Dispatch to handler
-                start = time.monotonic()
-                tokens = 0
-
-                if task_type == "generate_description":
-                    tokens = await self._generate_description(conn, task_id, context)
-                elif task_type == "generate_keywords":
-                    tokens = await self._generate_keywords(conn, task_id, context)
-                elif task_type in ("translate_fr", "translate_en"):
-                    target = task_type.replace("translate_", "")
-                    tokens = await self._translate(conn, task_id, context, target)
-                elif task_type == "generate_ministry_description":
-                    tokens = await self._generate_ministry_description(conn, task_id, service_id)
-                else:
-                    await EnrichmentRepository.mark_failed(
-                        conn, task_id, f"Unknown task_type: {task_type}"
-                    )
-                    failed += 1
-                    continue
-
-                elapsed = round(time.monotonic() - start, 2)
-
-                # tokens == 0 means handler called mark_failed internally
-                if tokens == 0:
-                    failed += 1
-                    continue
-
-                tokens_total += tokens
+            status, tokens = await self._process_single_task(conn, task)
+            if status == "processed":
                 processed += 1
-                details.append({
-                    "service_id": service_id,
-                    "task_type": task_type,
-                    "tokens": tokens,
-                    "elapsed_s": elapsed,
-                })
-                logger.info(
-                    f"Enrichment OK: service={service_id} type={task_type} "
-                    f"tokens={tokens} elapsed={elapsed}s"
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Enrichment FAIL: service={service_id} type={task_type} error={e}"
-                )
-                try:
-                    await EnrichmentRepository.mark_failed(conn, task_id, str(e)[:500])
-                except Exception:
-                    pass
+                tokens_total += tokens
+            elif status == "skipped":
+                skipped += 1
+            else:
                 failed += 1
 
         return {
@@ -325,8 +291,289 @@ class EnrichmentService:
             "failed": failed,
             "skipped": skipped,
             "tokens_total": tokens_total,
-            "details": details,
         }
+
+    # ------------------------------------------------------------------
+    # Production agent: concurrent processing of ALL pending tasks
+    # ------------------------------------------------------------------
+
+    async def process_all_pending(self) -> Dict[str, Any]:
+        """
+        Process ALL pending enrichment tasks with concurrent Gemini calls.
+
+        Architecture (BatchDocumentClassifier pattern):
+        - asyncio.Semaphore(10) limits parallel Gemini calls
+        - asyncio.gather runs batch concurrently
+        - Circuit breaker stops after consecutive failures
+        - Redis progress tracking for admin UI polling
+
+        Scale: 1000 tasks × 10 concurrent × ~2s/call = ~3-5 minutes.
+        """
+        if self._processing_lock.locked():
+            logger.warning("Enrichment: process_all_pending already running — skipping")
+            return {"processed": 0, "failed": 0, "skipped": 0, "status": "already_running"}
+
+        async with self._processing_lock:
+            return await self._do_process_all()
+
+    async def _do_process_all(self) -> Dict[str, Any]:
+        """Core concurrent processing loop. Must be called under _processing_lock."""
+        from app.database.connection import db_manager
+        from app.core.cache import get_cache, invalidate_services_cache
+
+        self._ensure_initialized()
+        if not self._model:
+            logger.warning("Gemini model not available — skipping enrichment agent")
+            return {"processed": 0, "failed": 0, "skipped": 0, "status": "no_model"}
+
+        cache = get_cache()
+        job_id = str(uuid4())
+        semaphore = asyncio.Semaphore(ENRICHMENT_CONCURRENCY)
+
+        # Count total pending for progress tracking
+        async with db_manager.get_connection() as conn:
+            total = await EnrichmentRepository.count_pending(conn)
+
+        if total == 0:
+            logger.info("Enrichment agent: 0 pending tasks — nothing to do")
+            await cache.set("enrichment:progress", {
+                "job_id": job_id, "total": 0, "processed": 0,
+                "failed": 0, "skipped": 0, "tokens_total": 0,
+                "status": "completed",
+            }, ttl=300)
+            return {"processed": 0, "failed": 0, "skipped": 0, "total": 0, "status": "completed"}
+
+        logger.info(f"Enrichment agent starting: {total} pending tasks, concurrency={ENRICHMENT_CONCURRENCY}")
+
+        # Initial progress
+        progress = {
+            "job_id": job_id, "total": total,
+            "processed": 0, "failed": 0, "skipped": 0,
+            "tokens_total": 0, "status": "running",
+        }
+        await cache.set("enrichment:progress", progress, ttl=3600)
+
+        processed = 0
+        failed = 0
+        skipped = 0
+        tokens_total = 0
+        consecutive_failures = 0
+        circuit_breaker_trips = 0
+
+        try:
+            while True:
+                # ---- Claim batch atomically ----
+                async with db_manager.get_connection() as conn:
+                    async with conn.transaction():
+                        tasks = await EnrichmentRepository.fetch_pending_batch(
+                            conn, limit=BATCH_CLAIM_SIZE
+                        )
+                        if not tasks:
+                            break
+                        task_ids = [t["id"] for t in tasks]
+                        await EnrichmentRepository.mark_processing_batch(conn, task_ids)
+
+                # ---- Circuit breaker check ----
+                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                    circuit_breaker_trips += 1
+                    if circuit_breaker_trips >= MAX_CIRCUIT_BREAKER_TRIPS:
+                        logger.error(
+                            f"Enrichment circuit breaker: {MAX_CIRCUIT_BREAKER_TRIPS} trips — "
+                            f"stopping agent. {failed} failures total."
+                        )
+                        break
+                    logger.warning(
+                        f"Enrichment circuit breaker trip #{circuit_breaker_trips}: "
+                        f"{consecutive_failures} consecutive failures — "
+                        f"pausing {CIRCUIT_BREAKER_PAUSE_S}s"
+                    )
+                    await cache.set("enrichment:progress", {
+                        "job_id": job_id, "total": total,
+                        "processed": processed, "failed": failed,
+                        "skipped": skipped, "tokens_total": tokens_total,
+                        "status": "circuit_breaker_pause",
+                    }, ttl=3600)
+                    await asyncio.sleep(CIRCUIT_BREAKER_PAUSE_S)
+                    consecutive_failures = 0
+
+                # ---- Process batch concurrently (semaphore pattern) ----
+                async def _process_one(task_data: Dict[str, Any]) -> tuple:
+                    async with semaphore:
+                        async with db_manager.get_connection() as task_conn:
+                            return await self._process_single_task(task_conn, task_data)
+
+                coroutines = [_process_one(t) for t in tasks]
+                results = await asyncio.gather(*coroutines, return_exceptions=True)
+
+                # ---- Aggregate results ----
+                for i, result in enumerate(results):
+                    if isinstance(result, Exception):
+                        failed += 1
+                        consecutive_failures += 1
+                        logger.error(
+                            f"Enrichment gather exception: task={tasks[i]['id']} "
+                            f"error={result}"
+                        )
+                        try:
+                            async with db_manager.get_connection() as exc_conn:
+                                await EnrichmentRepository.mark_failed(
+                                    exc_conn, tasks[i]["id"], str(result)[:500]
+                                )
+                        except Exception:
+                            pass
+                    else:
+                        status, tokens = result
+                        if status == "processed":
+                            processed += 1
+                            tokens_total += tokens
+                            consecutive_failures = 0
+                        elif status == "skipped":
+                            skipped += 1
+                        elif status == "failed":
+                            failed += 1
+                            consecutive_failures += 1
+
+                # ---- Update progress in Redis ----
+                await cache.set("enrichment:progress", {
+                    "job_id": job_id, "total": total,
+                    "processed": processed, "failed": failed,
+                    "skipped": skipped, "tokens_total": tokens_total,
+                    "status": "running",
+                }, ttl=3600)
+
+                logger.info(
+                    f"Enrichment agent batch done: {processed}/{total} processed, "
+                    f"{failed} failed (batch of {len(tasks)})"
+                )
+
+        except Exception as e:
+            logger.error(f"Enrichment agent error: {e}")
+
+        # ---- Final progress ----
+        final_status = "completed"
+        await cache.set("enrichment:progress", {
+            "job_id": job_id, "total": total,
+            "processed": processed, "failed": failed,
+            "skipped": skipped, "tokens_total": tokens_total,
+            "status": final_status,
+        }, ttl=3600)
+
+        # ---- Refresh materialized view once at the end ----
+        if processed > 0:
+            try:
+                async with db_manager.get_connection() as conn:
+                    async with conn.transaction():
+                        await conn.execute("SET LOCAL statement_timeout = '120000'")
+                        await conn.execute(
+                            "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_services_translated"
+                        )
+                logger.info("mv_services_translated refreshed after enrichment agent")
+            except Exception as e:
+                logger.warning(f"MV refresh CONCURRENTLY failed: {e}")
+                try:
+                    async with db_manager.get_connection() as conn:
+                        await conn.execute(
+                            "REFRESH MATERIALIZED VIEW mv_services_translated"
+                        )
+                    logger.info("mv_services_translated refreshed (non-concurrent fallback)")
+                except Exception as e2:
+                    logger.error(f"MV refresh fallback also failed: {e2}")
+
+            await invalidate_services_cache()
+
+        logger.info(
+            f"Enrichment agent completed: {processed}/{total} processed, "
+            f"{failed} failed, {skipped} skipped, {tokens_total} tokens"
+        )
+
+        return {
+            "processed": processed,
+            "failed": failed,
+            "skipped": skipped,
+            "tokens_total": tokens_total,
+            "total": total,
+            "status": final_status,
+        }
+
+    # ------------------------------------------------------------------
+    # Single task processor (extracted from process_batch for loop)
+    # ------------------------------------------------------------------
+
+    async def _process_single_task(
+        self, conn, task: Dict[str, Any]
+    ) -> tuple:
+        """
+        Process a single enrichment task.
+
+        Returns: (status, tokens) where status is 'processed', 'failed', or 'skipped'.
+        """
+        task_id = task["id"]
+        service_id = task["fiscal_service_id"]
+        task_type = task["task_type"]
+
+        try:
+            # Ministry tasks use a different context path
+            if task_type == "generate_ministry_description":
+                context = None
+            else:
+                context = await EnrichmentRepository.get_service_context(
+                    conn, service_id
+                )
+                if not context:
+                    await EnrichmentRepository.mark_failed(
+                        conn, task_id, f"Service {service_id} not found"
+                    )
+                    return ("failed", 0)
+
+                # Defer translations if no description yet
+                if task_type in ("translate_fr", "translate_en"):
+                    if not context.get("description_es"):
+                        await EnrichmentRepository.mark_deferred(
+                            conn, task_id,
+                            "No description_es to translate — deferred until description is generated"
+                        )
+                        return ("skipped", 0)
+
+            # Dispatch to handler
+            start = time.monotonic()
+            tokens = 0
+
+            if task_type == "generate_description":
+                tokens = await self._generate_description(conn, task_id, context)
+            elif task_type == "generate_keywords":
+                tokens = await self._generate_keywords(conn, task_id, context)
+            elif task_type in ("translate_fr", "translate_en"):
+                target = task_type.replace("translate_", "")
+                tokens = await self._translate(conn, task_id, context, target)
+            elif task_type == "generate_ministry_description":
+                tokens = await self._generate_ministry_description(conn, task_id, service_id)
+            else:
+                await EnrichmentRepository.mark_failed(
+                    conn, task_id, f"Unknown task_type: {task_type}"
+                )
+                return ("failed", 0)
+
+            elapsed = round(time.monotonic() - start, 2)
+
+            # tokens == 0 means handler called mark_failed internally
+            if tokens == 0:
+                return ("failed", 0)
+
+            logger.info(
+                f"Enrichment OK: service={service_id} type={task_type} "
+                f"tokens={tokens} elapsed={elapsed}s"
+            )
+            return ("processed", tokens)
+
+        except Exception as e:
+            logger.error(
+                f"Enrichment FAIL: service={service_id} type={task_type} error={e}"
+            )
+            try:
+                await EnrichmentRepository.mark_failed(conn, task_id, str(e)[:500])
+            except Exception:
+                pass
+            return ("failed", 0)
 
     # ------------------------------------------------------------------
     # Handlers
@@ -335,61 +582,172 @@ class EnrichmentService:
     async def _generate_description(
         self, conn, task_id: UUID, context: Dict[str, Any]
     ) -> int:
-        """Generate Spanish description via Gemini Flash."""
-        raw_type = context.get("service_type", "")
+        """
+        Generate structured Spanish description via Gemini Flash (v2).
+
+        Flow: enriched context + few-shot → generate → self-evaluate → retry if low quality.
+        """
+        service_id = context["id"]
+
+        # 1. Fetch enriched context (category hierarchy, sector, bundle, counts)
+        enriched = await EnrichmentRepository.get_enriched_service_context(conn, service_id)
+        if not enriched:
+            await EnrichmentRepository.mark_failed(conn, task_id, f"Enriched context not found for {service_id}")
+            return 0
+
+        # 2. Fetch few-shot examples from similar services with descriptions
+        similar = await EnrichmentRepository.get_similar_services_fewshot(conn, service_id, limit=3)
+        similar_text = ""
+        if similar:
+            examples = []
+            for s in similar:
+                examples.append(f"  - {s['name_es']} ({s.get('category_name', '')}): {s['description_es']}")
+            similar_text = "- Ejemplos de descripciones similares:\n" + "\n".join(examples)
+            logger.info(f"Enrichment: {len(similar)} similar services found as few-shot examples for service {service_id}")
+
+        # 3. Build bundle info
+        bundle_info = ""
+        if enriched.get("bundle_name"):
+            bundle_info = f"- Paquete fiscal asociado: {enriched['bundle_name']}"
+
+        # 4. Format prompt
+        raw_type = enriched.get("service_type", "")
         prompt = DESCRIPTION_PROMPT.format(
-            name_es=context.get("name_es", ""),
-            category=context.get("category_name", "Sin categoría"),
-            ministry=context.get("ministry_name", "Sin ministerio"),
+            name_es=enriched.get("name_es", ""),
+            service_code=enriched.get("service_code", ""),
+            category=enriched.get("category_name", "Sin categoría"),
+            sector=enriched.get("sector_name", "Sin sector"),
+            ministry=enriched.get("ministry_name", "Sin ministerio"),
             service_type=_SERVICE_TYPE_LABELS.get(raw_type, raw_type),
-            price=context.get("tasa_expedicion", 0),
-            documents=context.get("documents_es", "No especificados"),
-            keywords=context.get("keywords_es", ""),
+            procedure_count=enriched.get("procedure_count", 0),
+            document_count=enriched.get("document_count", 0),
+            bundle_info=bundle_info,
+            similar_examples=similar_text,
         )
 
-        text = await self._call_gemini(prompt, max_tokens=300)
-        if not text:
-            await EnrichmentRepository.mark_failed(conn, task_id, "Empty Gemini response")
-            return 0
+        # 5. Generate description
+        description, quality_score = await self._generate_and_evaluate(
+            conn, task_id, prompt, enriched.get("name_es", "")
+        )
+        if not description:
+            return 0  # mark_failed already called inside
 
-        # Clean response — strip HTML tags (defense-in-depth) + quotes
-        description = _sanitize_llm_text(text.strip('"').strip("'"), _MAX_DESCRIPTION_LEN)
-        if len(description) < 10:
-            await EnrichmentRepository.mark_failed(
-                conn, task_id, f"Description too short: {description}"
+        # 6. Determine description_source based on quality
+        desc_source = "ai_draft"
+        if quality_score is not None and quality_score < 6.0:
+            desc_source = "ai_draft_low_quality"
+            logger.warning(
+                f"Enrichment: low quality score ({quality_score}) for service {service_id} — "
+                f"marked as ai_draft_low_quality"
             )
-            return 0
 
-        # Update fiscal_services — NEVER overwrite manual or approved descriptions
-        # AI descriptions start as 'ai_draft' with description_visible=false
-        # Admin must approve (→ 'ai_approved', visible=true) before public display
+        # 7. Save to DB
         await conn.execute(
             """
             UPDATE fiscal_services
-            SET description_es = $1, description_source = 'ai_draft',
+            SET description_es = $1, description_source = $2,
                 description_visible = false, updated_at = NOW()
-            WHERE id = $2
+            WHERE id = $3
               AND (description_source IS NULL
                    OR description_source NOT IN ('manual', 'ai_approved'))
             """,
             description,
-            context["id"],
+            desc_source,
+            service_id,
         )
 
-        tokens = len(prompt.split()) + len(description.split())  # approximate
+        tokens = len(prompt.split()) + len(description.split())
         await EnrichmentRepository.mark_completed(
             conn, task_id,
-            output_data={"description": description},
+            output_data={
+                "description": description,
+                "quality_score": quality_score,
+                "similar_count": len(similar),
+                "has_bundle": bool(enriched.get("bundle_name")),
+            },
             tokens_used=tokens,
         )
 
         # Auto-enqueue translations now that we have a description
         for lang_task in ("translate_fr", "translate_en"):
             await EnrichmentRepository.enqueue(
-                conn, context["id"], lang_task, priority=0
+                conn, service_id, lang_task, priority=0
             )
 
         return tokens
+
+    async def _generate_and_evaluate(
+        self, conn, task_id: UUID, prompt: str, service_name: str
+    ) -> tuple:
+        """
+        Generate description + self-evaluate. Retry once if quality < 6.0.
+        Returns (description, quality_score) or (None, None) on failure.
+        """
+        for attempt in range(2):
+            text = await self._call_gemini(prompt, max_tokens=500)
+            if not text:
+                if attempt == 0:
+                    continue  # retry once on empty
+                await EnrichmentRepository.mark_failed(conn, task_id, "Empty Gemini response after retry")
+                return None, None
+
+            description = _sanitize_llm_text(text.strip('"').strip("'"), _MAX_DESCRIPTION_LEN)
+            if len(description) < 20:
+                if attempt == 0:
+                    continue
+                await EnrichmentRepository.mark_failed(
+                    conn, task_id, f"Description too short after retry: {description}"
+                )
+                return None, None
+
+            # Self-evaluate
+            quality_score = await self._self_evaluate(description, service_name)
+
+            if quality_score is not None and quality_score >= 6.0:
+                return description, quality_score
+            elif attempt == 0 and quality_score is not None and quality_score < 6.0:
+                logger.info(
+                    f"Enrichment: quality {quality_score} < 6.0 for '{service_name}' — retrying"
+                )
+                continue  # retry with same prompt
+            else:
+                # Second attempt or eval failed — return what we have
+                return description, quality_score
+
+        # Should not reach here, but safety
+        return None, None
+
+    async def _self_evaluate(
+        self, description: str, service_name: str
+    ) -> Optional[float]:
+        """
+        Self-evaluate a generated description using Gemini.
+        Returns average score (0-10) or None on failure.
+        """
+        eval_prompt = SELF_EVALUATION_PROMPT.format(
+            name_es=service_name,
+            description=description,
+        )
+        text = await self._call_gemini(eval_prompt, max_tokens=150, json_mode=True, temperature=0.1)
+        if not text:
+            logger.warning("Self-evaluation: empty response — skipping evaluation")
+            return None
+
+        try:
+            data = json.loads(text)
+            avg = data.get("average")
+            if avg is not None:
+                return float(avg)
+            # Compute average from individual scores
+            scores = [
+                data.get("format", 0), data.get("precision", 0),
+                data.get("professionalism", 0), data.get("restrictions", 0),
+            ]
+            valid = [s for s in scores if isinstance(s, (int, float)) and s > 0]
+            return round(sum(valid) / len(valid), 1) if valid else None
+        except (json.JSONDecodeError, TypeError, ValueError) as e:
+            logger.warning(f"Self-evaluation parse error: {e} — raw: {text[:200]}")
+            return None
 
     async def _translate(
         self, conn, task_id: UUID, context: Dict[str, Any], target_lang: str
@@ -409,7 +767,6 @@ class EnrichmentService:
             await EnrichmentRepository.mark_failed(conn, task_id, "Empty Gemini response")
             return 0
 
-        # Parse JSON response + sanitize
         try:
             data = json.loads(text)
             translated_name = _sanitize_llm_text(data.get("name", ""), _MAX_NAME_LEN)
@@ -426,7 +783,6 @@ class EnrichmentService:
             )
             return 0
 
-        # UPSERT translations (2 fields: name + description)
         service_code = context["service_code"]
         for field_name, translation_text in [
             ("name", translated_name),
@@ -556,7 +912,6 @@ class EnrichmentService:
             )
             return 0
 
-        # Store as ai_draft — admin must approve before it becomes visible
         await conn.execute(
             """
             UPDATE ministries
@@ -585,6 +940,7 @@ class EnrichmentService:
         prompt: str,
         max_tokens: int = 300,
         json_mode: bool = False,
+        temperature: float = 0.2,
     ) -> Optional[str]:
         """
         Call Gemini Flash with timeout and error handling.
@@ -594,7 +950,7 @@ class EnrichmentService:
             return None
 
         gen_config_kwargs: Dict[str, Any] = {
-            "temperature": 0.2,
+            "temperature": temperature,
             "max_output_tokens": max_tokens,
         }
         if json_mode:
@@ -616,7 +972,6 @@ class EnrichmentService:
             )
 
             if not response.candidates:
-                # Log safety filter reason if available (helps debug false positives)
                 feedback = getattr(response, "prompt_feedback", None)
                 logger.warning(
                     f"Enrichment Gemini: empty candidates — "
