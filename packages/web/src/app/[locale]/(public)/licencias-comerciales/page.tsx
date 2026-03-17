@@ -13,6 +13,7 @@ import {
   Store, UtensilsCrossed, Coffee, Hammer, HeartPulse,
   Music, Wrench, Palette, Building, Film,
 } from 'lucide-react'
+import Image from 'next/image'
 import Breadcrumb from '@/components/ui/breadcrumb'
 import { bundleApi } from '@/modules/fiscal-services/services/bundle-api'
 import { formatXAF } from '@/core/utils/format'
@@ -302,8 +303,7 @@ function PricingResult({
       {/* ---- PRINT HEADER (hidden on screen, visible on print) ---- */}
       <div className="hidden print:block mb-3">
         <div className="flex items-center justify-between border-b-2 border-gray-800 pb-2 mb-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="FACIL" className="h-7" />
+          <Image src="/logo.png" alt="FACIL" width={80} height={28} className="h-7 w-auto" />
           <div className="text-right">
             <h1 className="text-[11pt] font-bold tracking-wide uppercase">Ficha Tarifaria</h1>
             <p className="text-[7pt] text-gray-600">Licencias Comerciales — República de Guinea Ecuatorial</p>
@@ -493,8 +493,7 @@ function PricingResult({
         </div>
         {qrDataUrl && (
           <div className="flex flex-col items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrDataUrl} alt="QR" className="w-14 h-14" />
+            <Image src={qrDataUrl} alt="QR" width={56} height={56} className="w-14 h-14" unoptimized />
             <span className="text-[6pt] mt-0.5">Verificar en línea</span>
           </div>
         )}
