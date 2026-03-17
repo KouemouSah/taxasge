@@ -237,7 +237,8 @@ class CompanyRepository:
 
         if search:
             conditions.append(f"(c.legal_name ILIKE ${idx} OR c.tax_id ILIKE ${idx} OR c.nif ILIKE ${idx})")
-            params.append(f"%{search}%")
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params.append(f"%{escaped}%")
             idx += 1
         if is_active is not None:
             conditions.append(f"c.is_active = ${idx}")
@@ -319,7 +320,8 @@ class CompanyRepository:
 
         if search:
             conditions.append(f"(legal_name ILIKE ${idx} OR tax_id ILIKE ${idx} OR nif ILIKE ${idx})")
-            params.append(f"%{search}%")
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params.append(f"%{escaped}%")
             idx += 1
         if is_active is not None:
             conditions.append(f"is_active = ${idx}")

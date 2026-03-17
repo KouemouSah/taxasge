@@ -6,11 +6,12 @@ Prefix: /api/v1/licenses
 from enum import Enum
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.fiscal_services.models.licenses import (
     LicenseCreate,
@@ -49,7 +50,7 @@ router = APIRouter(prefix="/licenses", tags=["Commercial Licenses"])
 @router.post("/cron/flag-overdue")
 async def cron_flag_overdue(
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Cron: flag overdue obligations past due_date. Run daily."""
@@ -61,7 +62,7 @@ async def cron_flag_overdue(
 @router.post("/cron/apply-penalties")
 async def cron_apply_penalties(
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Cron: calculate and apply penalties on overdue obligations. Run weekly/monthly."""
@@ -74,7 +75,7 @@ async def cron_apply_penalties(
 async def get_license_stats(
     fiscal_year: Optional[int] = Query(None, ge=2020, le=2100),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Dashboard stats: total licenses, amounts, compliance by fiscal year."""
@@ -92,7 +93,7 @@ async def list_licenses(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """List commercial licenses with filters and pagination.
@@ -116,7 +117,7 @@ async def list_licenses(
 async def open_license(
     data: LicenseCreate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Open a new commercial license dossier.
@@ -142,7 +143,7 @@ async def open_license(
 async def get_license(
     license_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Get a single license with enriched company/bundle/zone names."""
@@ -157,7 +158,7 @@ async def update_license(
     license_id: UUID,
     data: LicenseUpdate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Update license status (admin action: suspend, close)."""
@@ -186,7 +187,7 @@ async def list_obligations(
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """List obligations for a license, with optional fee_type/status filter."""
@@ -211,7 +212,7 @@ async def list_obligations(
 async def get_obligations_summary(
     license_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Get obligations grouped by fee_type with sub-totals."""
@@ -228,7 +229,7 @@ async def get_obligation(
     license_id: UUID,
     obligation_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Get a single obligation with enriched service/ministry names."""
@@ -245,7 +246,7 @@ async def batch_update_obligations(
     license_id: UUID,
     data: BatchObligationStatusUpdate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Batch update multiple obligations at once (e.g., grouped payment).
@@ -275,7 +276,7 @@ async def update_obligation_status(
     obligation_id: UUID,
     data: ObligationStatusUpdate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Update obligation status (payment validated, agent processed, etc.).
@@ -310,7 +311,7 @@ async def list_compliance_events(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """List compliance events for a license (audit timeline)."""
@@ -339,7 +340,7 @@ async def renew_license(
     license_id: UUID,
     data: LicenseRenewRequest,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Renew a license for a new fiscal year.
@@ -362,7 +363,7 @@ async def renew_license(
 async def check_previous_year(
     license_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Check previous year compliance for all obligations in this license.

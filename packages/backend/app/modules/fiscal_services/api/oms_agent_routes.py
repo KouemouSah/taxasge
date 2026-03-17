@@ -7,11 +7,12 @@ These endpoints handle post-TESORO obligation processing: agent queue, process, 
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Any, Dict, Optional
+from typing import Optional
 from uuid import UUID
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.fiscal_services.models.licenses import (
     AgentQueueItem,
@@ -42,7 +43,7 @@ async def get_agent_queue(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Get agent's obligation queue, auto-filtered by entity scope.
@@ -70,7 +71,7 @@ async def get_agent_queue(
 @router.get("/queue/stats", response_model=AgentQueueStats)
 async def get_agent_queue_stats(
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Agent OMS dashboard stats: pending count, completed today, amounts."""
@@ -93,7 +94,7 @@ async def get_agent_queue_stats(
 async def batch_process_obligations(
     data: BatchProcessRequest,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Batch process multiple obligations (processing -> completed).
@@ -122,7 +123,7 @@ async def batch_process_obligations(
 async def get_obligation_detail(
     obligation_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Get obligation detail — IDOR-protected by agent scope.
@@ -148,7 +149,7 @@ async def process_obligation(
     obligation_id: UUID,
     data: ProcessObligationRequest,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Process obligation: processing -> completed.
@@ -177,7 +178,7 @@ async def reject_obligation(
     obligation_id: UUID,
     data: RejectObligationRequest,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Reject obligation: processing -> paid (re-routable).
@@ -205,7 +206,7 @@ async def get_obligation_events(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
     """Get compliance events for a specific obligation — IDOR-protected."""

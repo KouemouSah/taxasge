@@ -16,6 +16,7 @@ from loguru import logger
 from app.core.cache import check_rate_limit, invalidate_services_cache
 from app.database.connection import get_database
 from app.modules.auth.dependencies import get_current_user, permission_required
+from app.modules.users.models.user import UserResponse
 from app.modules.enrichment.models.enrichment import (
     BulkVisibilityRequest,
     BulkVisibilityResponse,
@@ -91,7 +92,7 @@ async def process_enrichment_batch(
     summary="Seed enrichment queue for all services missing descriptions",
 )
 async def seed_enrichment_batch(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
@@ -133,7 +134,7 @@ async def seed_enrichment_batch(
     summary="Seed enrichment queue for ministries without descriptions",
 )
 async def seed_ministry_descriptions(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
@@ -166,7 +167,7 @@ async def seed_ministry_descriptions(
     summary="Get enrichment queue statistics and service coverage",
 )
 async def get_enrichment_stats(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.view")),
 ):
@@ -182,7 +183,7 @@ async def get_enrichment_stats(
 async def get_recent_enrichments(
     limit: int = Query(default=20, ge=1, le=100),
     status_filter: Literal["all", "completed", "failed", "pending"] = Query(default="all"),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.view")),
 ):
@@ -229,7 +230,7 @@ async def get_recent_enrichments(
     summary="List services with AI draft descriptions awaiting approval",
 )
 async def get_pending_drafts(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.view")),
 ):
@@ -255,7 +256,7 @@ async def get_pending_drafts(
     summary="List ministries with AI draft descriptions awaiting approval",
 )
 async def get_pending_ministry_drafts(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.view")),
 ):
@@ -278,7 +279,7 @@ async def get_pending_ministry_drafts(
 async def review_service_description(
     service_id: int,
     body: EnrichmentReviewRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
@@ -359,7 +360,7 @@ async def review_service_description(
 async def review_ministry_description(
     ministry_id: int,
     body: EnrichmentReviewRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
@@ -411,7 +412,7 @@ async def review_ministry_description(
     summary="Bulk approve all AI draft descriptions",
 )
 async def approve_all_drafts(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
@@ -475,7 +476,7 @@ async def approve_all_drafts(
 )
 async def bulk_toggle_visibility(
     body: BulkVisibilityRequest,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
@@ -559,7 +560,7 @@ async def bulk_toggle_visibility(
     summary="List ministries with service counts for bulk filters",
 )
 async def list_ministries_for_filter(
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.view")),
 ):
@@ -582,7 +583,7 @@ async def list_ministries_for_filter(
 )
 async def retry_failed_task(
     task_id: UUID,
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):

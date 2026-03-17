@@ -560,7 +560,8 @@ class FiscalServiceRepository:
                 f" OR fs.service_code ILIKE ${param_idx + 1})"
             )
             params.append(search)
-            params.append(f"%{search}%")
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params.append(f"%{escaped}%")
             param_idx += 2
 
         if category_id:

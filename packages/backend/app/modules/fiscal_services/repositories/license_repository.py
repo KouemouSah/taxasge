@@ -91,7 +91,8 @@ class LicenseRepository:
             conditions.append(
                 f"(co.legal_name ILIKE ${idx} OR sb.name_es ILIKE ${idx})"
             )
-            params.append(f"%{search}%")
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params.append(f"%{escaped}%")
             idx += 1
 
         where = "WHERE " + " AND ".join(conditions) if conditions else ""

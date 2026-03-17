@@ -13,11 +13,12 @@ Prefix: /api/v1/config-rules
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import Any, Dict, Optional
+from typing import Optional
 from uuid import UUID
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.fiscal_services.models.config_rules import (
     ConfigRuleCreate,
@@ -45,7 +46,7 @@ async def list_config_rules(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """List config rules with filters and pagination."""
@@ -72,7 +73,7 @@ async def resolve_effective_config(
     item_id: UUID = Query(...),
     ministry_id: Optional[int] = Query(None),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Preview which config rules win for a specific item.
@@ -90,7 +91,7 @@ async def resolve_effective_config(
 async def recompute_effective_configs(
     bundle_id: Optional[UUID] = Query(None),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Force recompute of materialized effective configs on items.
@@ -110,7 +111,7 @@ async def recompute_effective_configs(
 async def get_config_rule(
     rule_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Get a single config rule by ID."""
@@ -124,7 +125,7 @@ async def get_config_rule(
 async def create_config_rule(
     data: ConfigRuleCreate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Create a new config rule.
@@ -146,7 +147,7 @@ async def update_config_rule(
     rule_id: UUID,
     data: ConfigRuleUpdate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Update a config rule (partial update).
@@ -168,7 +169,7 @@ async def update_config_rule(
 async def delete_config_rule(
     rule_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Delete a config rule. Trigger auto-recomputes affected items."""

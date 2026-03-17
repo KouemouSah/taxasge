@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 from loguru import logger
 import csv
@@ -16,6 +16,7 @@ import re
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.modules.fiscal_services.models.bundles import (
     CommerceZoneResponse,
@@ -36,9 +37,15 @@ from app.modules.fiscal_services.models.bundles import (
     BulkImportRequest,
     ReorderItemRequest,
 )
+from app.modules.fiscal_services.repositories.bundle_repository import BundleRepository
 from app.modules.fiscal_services.services.bundle_service import BundleService
 
 router = APIRouter(prefix="/service-bundles", tags=["Service Bundles"])
+
+
+def _escape_ilike(value: str) -> str:
+    """Escape ILIKE wildcard characters in user input."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 # ============================================================
@@ -205,7 +212,7 @@ def _group_matrix_items(matrix_items: List, zones: List) -> Dict:
 async def export_bundle_csv(
     bundle_id: UUID = Query(...),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Export pricing matrix as CSV for a bundle."""
@@ -255,7 +262,7 @@ async def export_bundle_csv(
 async def export_bundle_xlsx(
     bundle_id: UUID = Query(...),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Export pricing matrix as professional Excel (.xlsx) with fee_type sections."""
@@ -424,7 +431,7 @@ async def search_fiscal_services(
     q: str = Query(..., min_length=1, max_length=100),
     limit: int = Query(15, ge=1, le=50),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Search fiscal services for bundle item picker (autocomplete).
@@ -443,7 +450,7 @@ async def search_fiscal_services(
           AND (fs.service_code ILIKE $1 OR fs.name_es ILIKE $1)
         ORDER BY fs.service_code
         LIMIT $2
-    """, f"%{q}%", limit)
+    """, f"%{_escape_ilike(q)}%", limit)
     return [
         {
             "id": r["id"],
@@ -459,7 +466,7 @@ async def search_fiscal_services(
 @router.get("/admin/stats")
 async def get_bundle_stats(
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.view_bundles")),
 ):
     """Get aggregate stats: total bundles, zones, items."""
@@ -476,7 +483,7 @@ async def get_bundle_stats(
 async def create_bundle(
     data: ServiceBundleCreate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Create a new service bundle."""
@@ -491,7 +498,7 @@ async def update_bundle(
     bundle_id: UUID,
     data: ServiceBundleUpdate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Update bundle metadata and installment config."""
@@ -508,7 +515,7 @@ async def update_bundle(
 async def delete_bundle(
     bundle_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Soft delete a bundle (set is_active=false)."""
@@ -522,7 +529,7 @@ async def upsert_bundle_item(
     bundle_id: UUID,
     data: BundleItemCreate,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Add or update a bundle item (upsert on bundle+service+zone).
@@ -554,7 +561,7 @@ async def upsert_bundle_item(
 async def delete_bundle_item(
     item_id: UUID,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Delete a bundle item."""
@@ -569,7 +576,7 @@ async def copy_zone_prices(
     bundle_id: UUID,
     data: CopyZonePricesRequest,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Copy all item prices from one zone to another with optional multiplier."""
@@ -591,7 +598,7 @@ async def reorder_bundle_items(
     bundle_id: UUID,
     data: ReorderItemRequest,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Update display_order for items based on provided order of IDs."""
@@ -619,7 +626,7 @@ async def bulk_import_items(
     bundle_id: UUID,
     data: BulkImportRequest,
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Bulk import items from parsed Excel/PDF data.
@@ -651,6 +658,9 @@ async def bulk_import_items(
 
     imported = 0
     skipped = []
+
+    # Pre-validate all items before touching the database
+    valid_items = []
     for item in data.items:
         fs_id = service_map.get(item.service_code)
         z_id = zone_map.get(item.zone_code)
@@ -675,15 +685,26 @@ async def bulk_import_items(
             })
             continue
 
-        await BundleService.upsert_item(db, bundle_id, {
+        valid_items.append({
             "fiscal_service_id": fs_id,
             "zone_id": z_id,
             "ministry_id": ministry_id,
             "amount": item.amount,
             "fee_type": getattr(item, "fee_type", "tesoro"),
             "is_fixed_across_zones": item.is_fixed_across_zones,
-        }, user_id=UUID(current_user.id))
-        imported += 1
+        })
+
+    # Atomic: all-or-nothing import in a single transaction
+    user_id = UUID(current_user.id)
+    if valid_items:
+        async with db.transaction():
+            await db.execute(
+                "SET LOCAL app.current_user_id = $1::text", str(user_id)
+            )
+            for item_data in valid_items:
+                await BundleRepository.upsert_item(db, bundle_id, item_data)
+                imported += 1
+        await BundleService._invalidate_cache(bundle_id)
 
     return {"imported": imported, "skipped": skipped, "total": len(data.items)}
 
@@ -693,7 +714,7 @@ async def parse_pdf_for_import(
     bundle_id: UUID = Query(...),
     file: UploadFile = File(...),
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
+    current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.manage_bundles")),
 ):
     """Parse an uploaded PDF to extract pricing tables using pdfplumber.
@@ -878,6 +899,9 @@ async def get_pricing_matrix(bundle_id: UUID, db=Depends(get_database)):
                 "zone": CommerceZoneResponse(**zt).model_dump(),
                 "total_amount": str(zt["total_amount"]),
                 "item_count": zt["item_count"],
+                "tesoro_total": str(zt.get("tesoro_total", 0)),
+                "municipal_total": str(zt.get("municipal_total", 0)),
+                "chamber_total": str(zt.get("chamber_total", 0)),
             }
             for zt in matrix["zone_totals"]
         ],

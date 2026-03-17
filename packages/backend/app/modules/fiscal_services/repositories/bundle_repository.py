@@ -83,7 +83,8 @@ class BundleRepository:
 
         if search:
             conditions.append(f"(sb.name_es ILIKE ${idx} OR sb.bundle_code ILIKE ${idx})")
-            params.append(f"%{search}%")
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params.append(f"%{escaped}%")
             idx += 1
 
         if commerce_type:
@@ -304,6 +305,9 @@ class BundleRepository:
         params = []
         idx = 1
 
+        # Fields that CAN be set to NULL in the database
+        nullable_fields = {"description_es", "legal_reference"}
+
         for field in [
             "bundle_code", "commerce_type", "name_es", "description_es",
             "legal_reference", "is_active", "installment_eligible",
@@ -311,10 +315,15 @@ class BundleRepository:
             "public_installment_visible", "processing_mode",
             "deadline_month", "deadline_day",
         ]:
-            if field in data and data[field] is not None:
-                sets.append(f"{field} = ${idx}")
-                params.append(data[field])
-                idx += 1
+            if field not in data:
+                continue
+            value = data[field]
+            # Skip None for non-nullable fields (avoid SQL errors)
+            if value is None and field not in nullable_fields:
+                continue
+            sets.append(f"{field} = ${idx}")
+            params.append(value)
+            idx += 1
 
         if not sets:
             return await BundleRepository.get_bundle(conn, bundle_id)
