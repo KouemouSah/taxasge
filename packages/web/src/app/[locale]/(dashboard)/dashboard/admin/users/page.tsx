@@ -100,18 +100,17 @@ export default function UsersPage() {
   const [deactivateReason, setDeactivateReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Fetch users - filter to only public roles
+  // Fetch users - server-side role filter for public roles only
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await usersApi.getAll({});
-      // Filter to only show public roles (exclude admin and agent)
-      const publicUsers = data.filter((user: User) =>
-        PUBLIC_ROLES.includes(user.role as PublicRole)
-      );
-      setUsers(publicUsers);
+      const data = await usersApi.getAll({
+        roles: PUBLIC_ROLES.join(','),
+        size: 100,
+      });
+      setUsers(data);
       setIsBackendUnavailable(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('errorLoading');
@@ -555,6 +554,7 @@ export default function UsersPage() {
             emptyMessage={t('noUsersFound')}
             emptyIcon={<Users className="h-12 w-12" />}
             defaultPageSize={10}
+            pageSizeOptions={[10, 20, 30]}
             onRefresh={fetchUsers}
           />
         </CardContent>

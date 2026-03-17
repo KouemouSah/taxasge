@@ -63,7 +63,8 @@ async def get_users_info():
 async def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(20, ge=1, le=100, description="Page size"),
-    role: Optional[UserRole] = Query(None, description="Filter by role"),
+    role: Optional[UserRole] = Query(None, description="Filter by single role"),
+    roles: Optional[str] = Query(None, description="Comma-separated role filter (e.g. citizen,business,accountant)"),
     status: Optional[UserStatus] = Query(None, description="Filter by status"),
     search: Optional[str] = Query(None, description="Search query"),
     admin_user: UserResponse = Depends(get_current_user),
@@ -73,7 +74,12 @@ async def list_users(
     try:
         # Build filters
         filters = {}
-        if role:
+        if roles:
+            # Multi-role filter takes precedence over single role
+            role_list = [r.strip() for r in roles.split(",") if r.strip()]
+            if role_list:
+                filters["roles"] = role_list
+        elif role:
             filters["role"] = role.value
         if status:
             filters["status"] = status.value

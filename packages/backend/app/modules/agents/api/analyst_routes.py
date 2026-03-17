@@ -431,3 +431,59 @@ async def analyst_briefing(
         "priority": "info",
         "agent_type": agent_type,
     }
+
+
+# ── Agent Inventory Endpoint ──────────────────────────────────────────────────
+
+@router.get(
+    "/analyst/agents",
+    summary="List all registered agent types",
+    description="Returns all agents registered in the ToolRegistry with their capabilities.",
+)
+async def list_registered_agents(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _=Depends(permission_required("admin.view_dashboard")),
+):
+    """List all registered agent types with capabilities (admin only)."""
+    from app.modules.shared.services.tool_registry import ToolRegistry
+
+    registry = ToolRegistry()
+    agents = []
+    for agent_type in registry.list_agent_types():
+        ts = registry.get(agent_type)
+        agents.append({
+            "agent_type": agent_type,
+            "label": ts.agent_type_label,
+            "has_functions": bool(ts.function_declarations),
+            "has_process_fn": ts.process_fn is not None,
+            "function_count": len(ts.function_declarations),
+            "sub_agents": list(ts.sub_agents.keys()),
+        })
+    return {"agents": agents, "total": len(agents)}
+
+
+# ── Token Usage Endpoint ──────────────────────────────────────────────────────
+
+@router.get(
+    "/analyst/token-usage",
+    summary="Get Vertex AI token usage stats",
+    description="Returns aggregated token usage and estimated cost from VertexAIManager.",
+)
+async def get_token_usage(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _=Depends(permission_required("admin.view_dashboard")),
+):
+    """Return aggregated token usage stats from VertexAIManager (admin only)."""
+    from app.modules.shared.services.vertex_ai_manager import VertexAIManager
+
+    manager = VertexAIManager()
+    stats = manager.get_stats()
+    # Estimate cost: Gemini 2.0 Flash pricing
+    # Input: $0.10/1M tokens, Output: $0.40/1M tokens
+    input_cost = stats["total_tokens_in"] * 0.0000001
+    output_cost = stats["total_tokens_out"] * 0.0000004
+    return {
+        **stats,
+        "estimated_cost_usd": round(input_cost + output_cost, 4),
+        "model": "gemini-2.0-flash",
+    }

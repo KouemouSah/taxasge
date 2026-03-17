@@ -45,6 +45,9 @@ class ToolSet:
     second_call_max_tokens: int = 2048
     agent_type_label: str = ""
     sub_agents: Dict[str, "SubAgentConfig"] = field(default_factory=dict)
+    process_fn: Optional[Callable] = None  # async(question, context) -> dict
+    # For agents without function-calling pattern (RAG, batch, briefing, routing).
+    # If present, DynamicAnalystService/orchestrator can delegate via process_fn.
 
 
 @dataclass
@@ -128,10 +131,19 @@ tool_registry = ToolRegistry()
 
 def _register_all_agents(registry: ToolRegistry) -> None:
     """Register all known agent types. Called once on first registry access."""
+    # Function-calling agents (BaseAnalystService pattern)
     _register_treasury(registry)
     _register_admin(registry)
     _register_supervisor(registry)
     _register_orchestrator(registry)
+    # Non-function-calling agents (process_fn pattern)
+    _register_chatbot_rag(registry)
+    _register_document_processor(registry)
+    _register_batch_classifier(registry)
+    _register_enrichment(registry)
+    _register_briefing(registry)
+    _register_routing(registry)
+    _register_company_classifier(registry)
 
 
 def _register_treasury(registry: ToolRegistry) -> None:
@@ -292,3 +304,138 @@ def _register_orchestrator(registry: ToolRegistry) -> None:
         second_call_max_tokens=4096,
         agent_type_label="Director General (Orchestrator)",
     ))
+
+
+# ── Non-function-calling agents (process_fn pattern) ─────────────────────
+
+
+def _register_chatbot_rag(registry: ToolRegistry) -> None:
+    """Register chatbot RAG agent (citizen-facing, legislation + services)."""
+    try:
+        from app.modules.chatbot.services.chatbot_service_rag import chatbot_service_rag
+
+        async def _process(question: str = "", context: dict = None, **kwargs) -> dict:
+            ctx = context or {}
+            language = ctx.get("language", "es")
+            conversation_id = ctx.get("conversation_id")
+            result = await chatbot_service_rag.chat(
+                message=question,
+                conversation_id=conversation_id,
+                language=language,
+            )
+            return {"answer": result.get("message", ""), "sources": result.get("sources", [])}
+
+        registry.register("chatbot_rag", ToolSet(
+            process_fn=_process,
+            agent_type_label="Chatbot RAG (Citizen)",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: chatbot_rag registration failed: {e}")
+
+
+def _register_document_processor(registry: ToolRegistry) -> None:
+    """Register Gemini document processor (OCR extraction + validation)."""
+    try:
+        from app.modules.service_requests.services.gemini_document_processor import (
+            gemini_document_processor,
+        )
+
+        async def _process(question: str = "", context: dict = None, **kwargs) -> dict:
+            return {"info": "Document processor requires file_id, use via batch_classifier or service_requests."}
+
+        registry.register("document_processor", ToolSet(
+            process_fn=_process,
+            agent_type_label="Gemini Document Processor",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: document_processor registration failed: {e}")
+
+
+def _register_batch_classifier(registry: ToolRegistry) -> None:
+    """Register batch document classifier (3-phase: classify → match → extract)."""
+    try:
+        from app.modules.batch_requests.services.document_classifier import (
+            batch_document_classifier,
+        )
+
+        async def _process(question: str = "", context: dict = None, **kwargs) -> dict:
+            return {"info": "Batch classifier requires session_id and files, use via batch_requests API."}
+
+        registry.register("batch_classifier", ToolSet(
+            process_fn=_process,
+            agent_type_label="Batch Document Classifier",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: batch_classifier registration failed: {e}")
+
+
+def _register_enrichment(registry: ToolRegistry) -> None:
+    """Register enrichment agent (service description generation)."""
+    try:
+        from app.modules.enrichment.services.enrichment_service import enrichment_service
+
+        async def _process(question: str = "", context: dict = None, **kwargs) -> dict:
+            return {"info": "Enrichment service processes batches via /enrichment/admin/ API."}
+
+        registry.register("enrichment", ToolSet(
+            process_fn=_process,
+            agent_type_label="Enrichment Agent (Service Descriptions)",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: enrichment registration failed: {e}")
+
+
+def _register_briefing(registry: ToolRegistry) -> None:
+    """Register LLM briefing agent (NL summaries of admin alerts)."""
+    try:
+        from app.modules.agents.services.llm_briefing_service import llm_briefing_service
+
+        async def _process(question: str = "", context: dict = None, **kwargs) -> dict:
+            ctx = context or {}
+            alerts_data = ctx.get("alerts_data")
+            if not alerts_data:
+                return {"info": "Briefing service requires alerts_data in context."}
+            result = await llm_briefing_service.generate_briefing(alerts_data)
+            return result or {"briefing": "No briefing generated."}
+
+        registry.register("briefing", ToolSet(
+            process_fn=_process,
+            agent_type_label="LLM Briefing Service",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: briefing registration failed: {e}")
+
+
+def _register_routing(registry: ToolRegistry) -> None:
+    """Register LLM routing agent (intelligent agent selection)."""
+    try:
+        from app.modules.assignment.services.llm_routing_service import llm_routing_service
+
+        async def _process(question: str = "", context: dict = None, **kwargs) -> dict:
+            return {"info": "Routing service requires LLMRoutingContext, use via assignment API."}
+
+        registry.register("routing", ToolSet(
+            process_fn=_process,
+            agent_type_label="LLM Routing Service",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: routing registration failed: {e}")
+
+
+def _register_company_classifier(registry: ToolRegistry) -> None:
+    """Register company classification agent (rules + LLM hybrid)."""
+    try:
+        from app.modules.companies.services.classification_agent import classification_agent
+
+        async def _process(question: str = "", context: dict = None, **kwargs) -> dict:
+            return {
+                "info": "Company classifier requires company_data dict. "
+                "Use via /companies/classification/ API endpoints."
+            }
+
+        registry.register("company_classifier", ToolSet(
+            process_fn=_process,
+            agent_type_label="Company Classification Agent",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: company_classifier registration failed: {e}")

@@ -64,6 +64,19 @@ class EnrichmentSeedResult(BaseModel):
     enqueued_descriptions: int = 0
     enqueued_translations: int = 0
     enqueued_keywords: int = 0
+    auto_processing: bool = False
+
+
+class EnrichmentProgressResponse(BaseModel):
+    """Progress of the background enrichment agent."""
+
+    job_id: Optional[str] = None
+    total: int = 0
+    processed: int = 0
+    failed: int = 0
+    skipped: int = 0
+    tokens_total: int = 0
+    status: str = "idle"  # idle, running, circuit_breaker_pause, completed, already_running
 
 
 class EnrichmentReviewRequest(BaseModel):

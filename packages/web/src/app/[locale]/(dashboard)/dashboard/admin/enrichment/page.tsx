@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,15 +19,126 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Progress } from '@/components/ui/progress'
 import {
   Sparkles, FileText, Languages, Search,
   CheckCircle, XCircle, Clock, AlertTriangle,
   RefreshCw, Loader2, ChevronRight, Pencil,
   RotateCcw, CheckCheck, Building2, Eye, EyeOff,
+  Play, Zap,
 } from 'lucide-react'
 import { enrichmentApi } from '@/modules/enrichment/services/enrichment-api'
-import type { EnrichmentStats, EnrichmentTask, PendingDraft, MinistryOption } from '@/modules/enrichment/types/enrichment'
+import type { EnrichmentStats, EnrichmentTask, EnrichmentProgress, PendingDraft, MinistryOption } from '@/modules/enrichment/types/enrichment'
 import { useToast } from '@/hooks/use-toast'
+
+// ============================================================
+// Progress Bar Component — Real-time polling during processing
+// ============================================================
+function ProcessingProgress({
+  onComplete,
+  t,
+}: {
+  onComplete: () => void
+  t: (key: string, values?: Record<string, string | number>) => string
+}) {
+  const [progress, setProgress] = useState<EnrichmentProgress | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const hasCompletedRef = useRef(false)
+
+  useEffect(() => {
+    // Poll every 2 seconds
+    const poll = async () => {
+      try {
+        const p = await enrichmentApi.getProgress()
+        setProgress(p)
+
+        if (p.status === 'completed' && !hasCompletedRef.current) {
+          hasCompletedRef.current = true
+          // Stop polling + notify parent
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
+          // Small delay to show 100% before callback
+          setTimeout(onComplete, 1500)
+        }
+      } catch {
+        // Silently ignore polling errors
+      }
+    }
+
+    poll() // Immediate first poll
+    intervalRef.current = setInterval(poll, 2000)
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [onComplete])
+
+  if (!progress || progress.status === 'idle') return null
+
+  const pct = progress.total > 0
+    ? Math.round((progress.processed / progress.total) * 100)
+    : 0
+
+  const isRunning = progress.status === 'running' || progress.status === 'circuit_breaker_pause'
+  const isComplete = progress.status === 'completed'
+
+  return (
+    <Card className={`border-2 ${isComplete ? 'border-emerald-300 bg-emerald-50/50' : 'border-blue-300 bg-blue-50/50'}`}>
+      <CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 mb-2">
+          {isRunning ? (
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+          ) : isComplete ? (
+            <CheckCircle className="h-4 w-4 text-emerald-600" />
+          ) : (
+            <Zap className="h-4 w-4 text-amber-600" />
+          )}
+          <span className="text-sm font-medium">
+            {isComplete
+              ? t('processingComplete')
+              : progress.status === 'circuit_breaker_pause'
+                ? t('circuitBreakerPause')
+                : t('processingProgress', {
+                    processed: progress.processed,
+                    total: progress.total,
+                    pct,
+                  })
+            }
+          </span>
+          {progress.failed > 0 && (
+            <Badge variant="destructive" className="text-[10px] ml-auto">
+              {t('processingFailed', { failed: progress.failed })}
+            </Badge>
+          )}
+        </div>
+
+        <Progress
+          value={isComplete ? 100 : pct}
+          className="h-2"
+        />
+
+        <div className="flex items-center justify-between mt-2 text-[11px] text-muted-foreground">
+          <span>{progress.processed}/{progress.total} {t('ok')}</span>
+          {progress.tokensTotal > 0 && (
+            <span>{t('processingTokens', { tokens: progress.tokensTotal })}</span>
+          )}
+        </div>
+
+        {isComplete && (
+          <p className="text-xs text-emerald-700 mt-1">
+            {t('processingCompleteDesc', {
+              processed: progress.processed,
+              failed: progress.failed,
+              tokens: progress.tokensTotal,
+            })}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 // ============================================================
 // Stats Cards
@@ -357,14 +468,22 @@ function QueueTable({
         <span>{t('action')}</span>
       </div>
       {tasks.map((task) => (
-        <div key={task.id} className="grid grid-cols-[1fr_100px_70px_60px_70px] gap-2 px-2 py-2 items-center text-sm hover:bg-muted/30">
-          <div className="truncate">
-            <span className="font-medium">{task.nameEs || task.ministryName || `ID ${task.fiscalServiceId}`}</span>
+        <div key={task.id} className="grid grid-cols-[1fr_100px_70px_60px_70px] gap-2 px-2 py-2 items-start text-sm hover:bg-muted/30">
+          <div className="min-w-0">
+            <span className="font-medium truncate block">{task.nameEs || task.ministryName || `ID ${task.fiscalServiceId}`}</span>
             {task.serviceCode && (
               <span className="text-[10px] text-muted-foreground ml-1">[{task.serviceCode}]</span>
             )}
             {task.status === 'failed' && task.errorMessage && (
               <p className="text-[10px] text-red-500 truncate" title={task.errorMessage}>{task.errorMessage}</p>
+            )}
+            {task.status === 'completed' && task.outputData && (
+              <p className="text-[11px] text-emerald-700 bg-emerald-50 rounded px-1.5 py-0.5 mt-1 line-clamp-2 border border-emerald-200">
+                {(() => {
+                  const od = task.outputData as Record<string, unknown>
+                  return (od.descriptionEs || od.description || od.translatedText || JSON.stringify(od).slice(0, 150)) as string
+                })()}
+              </p>
             )}
           </div>
           <span className="text-xs">{taskLabel(task.taskType)}</span>
@@ -421,6 +540,9 @@ export default function EnrichmentAdminPage() {
   const [bulkMinistry, setBulkMinistry] = useState<string>('all')
   const [bulkSource, setBulkSource] = useState<string>('all')
   const [bulkLoading, setBulkLoading] = useState(false)
+  // Processing state
+  const [processing, setProcessing] = useState(false)
+  const [showProgress, setShowProgress] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -446,7 +568,21 @@ export default function EnrichmentAdminPage() {
 
   useEffect(() => { loadAll() }, [loadAll])
 
-  // Reload queue when filter changes
+  // Check if processing is already running on page load
+  useEffect(() => {
+    const checkProgress = async () => {
+      try {
+        const p = await enrichmentApi.getProgress()
+        if (p.status === 'running' || p.status === 'circuit_breaker_pause') {
+          setShowProgress(true)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    checkProgress()
+  }, [])
+
   const handleFilterChange = useCallback(async (filter: 'all' | 'completed' | 'failed' | 'pending') => {
     setQueueFilter(filter)
   }, [])
@@ -458,7 +594,6 @@ export default function EnrichmentAdminPage() {
         title: action === 'approve' ? t('approved') : t('rejected'),
         description: `${t('service')} #${id} — ${action === 'approve' ? t('visibleOnSite') : t('deleted')}`,
       })
-      // Optimistic update — keep stats consistent
       setDrafts(prev => prev.filter(d => d.id !== id))
       setStats(prev => {
         if (!prev) return null
@@ -495,6 +630,42 @@ export default function EnrichmentAdminPage() {
     }
   }
 
+  const handleProcessingComplete = useCallback(() => {
+    setShowProgress(false)
+    setProcessing(false)
+    toast({
+      title: t('processingComplete'),
+      description: t('processingCompleteDesc', { processed: 0, failed: 0, tokens: 0 }),
+    })
+    loadAll()
+  }, [loadAll, toast, t])
+
+  const handleProcessNow = async () => {
+    setProcessing(true)
+    try {
+      const result = await enrichmentApi.processNow()
+      if (result.status === 'running' || result.status === 'already_running') {
+        setShowProgress(true)
+        setActiveTab('queue')
+        toast({
+          title: t('autoProcessingStarted'),
+          description: t('autoProcessingDesc', { total: result.total }),
+        })
+      } else if (result.status === 'idle') {
+        setProcessing(false)
+        toast({ title: t('processingIdle') })
+      }
+    } catch (e: unknown) {
+      setProcessing(false)
+      const msg = e instanceof Error ? e.message : t('error')
+      toast({
+        title: t('error'),
+        description: msg.includes('429') ? t('waitOneMinute') : msg,
+        variant: 'destructive',
+      })
+    }
+  }
+
   const handleRetry = async (taskId: string) => {
     try {
       await enrichmentApi.retryTask(taskId)
@@ -510,13 +681,17 @@ export default function EnrichmentAdminPage() {
     setSeedingServices(true)
     try {
       const result = await enrichmentApi.seedBatch()
+      const total = result.enqueuedDescriptions + result.enqueuedTranslations + (result.enqueuedKeywords || 0)
       toast({
-        title: t('seedLaunched'),
-        description: t('seedResult', {
-          descriptions: result.enqueuedDescriptions,
-          translations: result.enqueuedTranslations,
-        }),
+        title: result.autoProcessing ? t('autoProcessingStarted') : t('seedLaunched'),
+        description: result.autoProcessing
+          ? t('autoProcessingDesc', { total })
+          : t('seedResult', { descriptions: result.enqueuedDescriptions, translations: result.enqueuedTranslations }),
       })
+      if (result.autoProcessing) {
+        setShowProgress(true)
+        setActiveTab('queue')
+      }
       await loadAll()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : t('error')
@@ -535,9 +710,15 @@ export default function EnrichmentAdminPage() {
     try {
       const result = await enrichmentApi.seedMinistries()
       toast({
-        title: t('ministriesQueued'),
-        description: t('ministriesQueuedResult', { count: result.enqueuedMinistryDescriptions }),
+        title: result.autoProcessing ? t('autoProcessingStarted') : t('ministriesQueued'),
+        description: result.autoProcessing
+          ? t('autoProcessingDesc', { total: result.enqueuedMinistryDescriptions })
+          : t('ministriesQueuedResult', { count: result.enqueuedMinistryDescriptions }),
       })
+      if (result.autoProcessing) {
+        setShowProgress(true)
+        setActiveTab('queue')
+      }
       await loadAll()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : t('error')
@@ -615,6 +796,11 @@ export default function EnrichmentAdminPage() {
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
+
+      {/* Processing Progress Bar (visible when agent is running) */}
+      {showProgress && (
+        <ProcessingProgress onComplete={handleProcessingComplete} t={t} />
+      )}
 
       {/* Stats */}
       <StatsCards stats={stats} loading={loading} t={t} />
@@ -704,12 +890,28 @@ export default function EnrichmentAdminPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab: Queue Monitor */}
+        {/* Tab: Queue Monitor + Process Now button */}
         <TabsContent value="queue">
           <Card>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="text-base">{t('queueMonitor')}</CardTitle>
               <div className="flex items-center gap-2">
+                {/* Process Now button (Option A) */}
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                  onClick={handleProcessNow}
+                  disabled={processing || showProgress}
+                >
+                  {processing ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <Play className="h-3 w-3 mr-1" />
+                  )}
+                  {t('processNow')}
+                </Button>
+
                 {/* Status filter buttons */}
                 <div className="flex gap-1">
                   {(['all', 'completed', 'failed', 'pending'] as const).map((f) => (
@@ -763,7 +965,7 @@ export default function EnrichmentAdminPage() {
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button disabled={seedingServices} className="w-full">
+                    <Button disabled={seedingServices || showProgress} className="w-full">
                       {seedingServices ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
                       {t('generateServices')}
                     </Button>
@@ -772,7 +974,7 @@ export default function EnrichmentAdminPage() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>{t('seedConfirmTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        {t('seedConfirmDesc', { count: missingDescCount })}
+                        {t('seedConfirmDescAuto', { count: missingDescCount })}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -797,7 +999,7 @@ export default function EnrichmentAdminPage() {
                 </p>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" disabled={seedingMinistries} className="w-full">
+                    <Button variant="outline" disabled={seedingMinistries || showProgress} className="w-full">
                       {seedingMinistries ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Building2 className="h-4 w-4 mr-2" />}
                       {t('generateMinistries')}
                     </Button>

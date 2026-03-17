@@ -59,6 +59,8 @@ import {
   Sparkles,
   FolderOpen,
   SlidersHorizontal,
+  Cpu,
+  Brain,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { clearAuthData, getAuthData } from '@/core/auth/storage'
@@ -254,6 +256,11 @@ export default function AdminSidebar() {
           href: `/${locale}/dashboard/admin/enrichment`,
           icon: Sparkles,
         },
+        {
+          title: t('nav.companyClassification'),
+          href: `/${locale}/dashboard/admin/company-classification`,
+          icon: Brain,
+        },
       ],
     },
     // CONFIGURATION - with sub-categories
@@ -363,6 +370,11 @@ export default function AdminSidebar() {
               title: t('nav.monitoring'),
               href: `/${locale}/dashboard/admin/monitoring`,
               icon: Activity,
+            },
+            {
+              title: t('nav.aiAgents'),
+              href: `/${locale}/dashboard/admin/ai-agents`,
+              icon: Cpu,
             },
           ],
         },

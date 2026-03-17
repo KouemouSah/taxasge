@@ -70,6 +70,7 @@ export const usersApi = {
    */
   getAll: async (params?: {
     role?: UserRole;
+    roles?: string;
     status?: string;
     search?: string;
     page?: number;
@@ -79,6 +80,7 @@ export const usersApi = {
       page: params?.page,
       size: params?.size,
       role: params?.role,
+      roles: params?.roles,
       status: params?.status,
       search: params?.search,
     });

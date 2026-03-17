@@ -49,6 +49,7 @@ export interface EnrichmentSeedResult {
   enqueuedDescriptions: number
   enqueuedTranslations: number
   enqueuedKeywords: number
+  autoProcessing: boolean
 }
 
 export interface ReviewResponse {
@@ -68,4 +69,14 @@ export interface MinistryOption {
   id: number
   nameEs: string
   serviceCount: number
+}
+
+export interface EnrichmentProgress {
+  jobId: string | null
+  total: number
+  processed: number
+  failed: number
+  skipped: number
+  tokensTotal: number
+  status: 'idle' | 'running' | 'circuit_breaker_pause' | 'completed' | 'already_running'
 }

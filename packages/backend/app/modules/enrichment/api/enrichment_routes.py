@@ -4,8 +4,10 @@ Enrichment API routes — cron processing + admin management + approval workflow
 Cron: POST /enrichment/cron/process (X-Cron-Secret auth)
 Admin: POST /enrichment/admin/seed-batch, GET /enrichment/admin/stats
 Approval: GET /enrichment/admin/pending-drafts, PUT /enrichment/admin/review/{id}
+Progress: GET /enrichment/admin/progress (poll for background processing status)
 """
 
+import asyncio
 import json
 from typing import Any, Dict, List, Literal
 from uuid import UUID
@@ -13,7 +15,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from loguru import logger
 
-from app.core.cache import check_rate_limit, invalidate_services_cache
+from app.core.cache import check_rate_limit, get_cache, invalidate_services_cache
 from app.database.connection import get_database
 from app.modules.auth.dependencies import get_current_user, permission_required
 from app.modules.users.models.user import UserResponse
@@ -21,6 +23,7 @@ from app.modules.enrichment.models.enrichment import (
     BulkVisibilityRequest,
     BulkVisibilityResponse,
     EnrichmentProcessResult,
+    EnrichmentProgressResponse,
     EnrichmentReviewRequest,
     EnrichmentReviewResponse,
     EnrichmentSeedResult,
@@ -41,21 +44,21 @@ router = APIRouter(prefix="/enrichment", tags=["Enrichment"])
 
 
 # ============================================================================
-# CRON ENDPOINT — called by Cloud Scheduler every 5 minutes
+# CRON ENDPOINT — called by Cloud Scheduler every 5 minutes (safety net)
 # ============================================================================
 
 @router.post(
     "/cron/process",
     response_model=EnrichmentProcessResult,
-    summary="Process enrichment queue batch",
+    summary="Process enrichment queue batch (cron safety net)",
     description="Processes up to 20 pending enrichment tasks via Gemini Flash. "
-    "Called by Cloud Scheduler every 5 minutes.",
+    "Called by Cloud Scheduler every 5 minutes as a safety net.",
 )
 async def process_enrichment_batch(
     _auth: bool = Depends(verify_cron_auth),
     db=Depends(get_database),
 ):
-    """Process a batch of pending enrichment tasks."""
+    """Process a batch of pending enrichment tasks (sequential, backward compat)."""
     service = get_enrichment_service()
 
     result = await service.process_batch(db, limit=20)
@@ -83,13 +86,95 @@ async def process_enrichment_batch(
 
 
 # ============================================================================
-# ADMIN ENDPOINTS — Seed & Stats
+# ADMIN — Progress Monitoring (poll endpoint for background processing)
+# ============================================================================
+
+@router.get(
+    "/admin/progress",
+    response_model=EnrichmentProgressResponse,
+    summary="Get background enrichment processing progress",
+)
+async def get_enrichment_progress(
+    current_user: UserResponse = Depends(get_current_user),
+    _perm: None = Depends(permission_required("fiscal_service.view")),
+):
+    """Poll for enrichment agent progress. Frontend calls this every 2s during processing."""
+    cache = get_cache()
+    progress = await cache.get("enrichment:progress")
+    if not progress:
+        return EnrichmentProgressResponse(status="idle")
+    return EnrichmentProgressResponse(**progress)
+
+
+# ============================================================================
+# ADMIN — Manual Processing Trigger (Option A)
+# ============================================================================
+
+@router.post(
+    "/admin/process-now",
+    response_model=EnrichmentProgressResponse,
+    summary="Manually trigger full enrichment queue processing",
+    description="Starts background processing of ALL pending tasks with concurrent Gemini calls. "
+    "Poll GET /admin/progress for real-time updates.",
+)
+async def admin_process_now(
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_database),
+    _perm: None = Depends(permission_required("fiscal_service.create")),
+):
+    """Admin-triggered processing — fires concurrent agent in background."""
+    user_id = current_user.id
+
+    is_allowed, _ = await check_rate_limit(
+        identifier=str(user_id),
+        endpoint="/enrichment/admin/process-now",
+        max_requests=3,
+        window_seconds=60,
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=429,
+            detail="Process-now can only be called 3 times per minute. Wait for tasks to complete.",
+        )
+
+    service = get_enrichment_service()
+
+    # Check if already running
+    cache = get_cache()
+    progress = await cache.get("enrichment:progress")
+    if progress and progress.get("status") == "running":
+        logger.info(f"Admin {user_id} tried process-now but agent is already running")
+        return EnrichmentProgressResponse(**progress)
+
+    # Count pending for immediate feedback
+    total_pending = await EnrichmentRepository.count_pending(db)
+    if total_pending == 0:
+        return EnrichmentProgressResponse(status="idle", total=0)
+
+    # Fire-and-forget: start concurrent processing in background
+    asyncio.create_task(service.process_all_pending())
+
+    logger.info(
+        f"Admin {user_id} triggered process-now: {total_pending} pending tasks → "
+        f"background agent started"
+    )
+
+    return EnrichmentProgressResponse(
+        status="running",
+        total=total_pending,
+        processed=0,
+        failed=0,
+    )
+
+
+# ============================================================================
+# ADMIN ENDPOINTS — Seed (Option B: auto-triggers processing after seed)
 # ============================================================================
 
 @router.post(
     "/admin/seed-batch",
     response_model=EnrichmentSeedResult,
-    summary="Seed enrichment queue for all services missing descriptions",
+    summary="Seed enrichment queue + auto-process all (Option B)",
 )
 async def seed_enrichment_batch(
     current_user: UserResponse = Depends(get_current_user),
@@ -97,9 +182,9 @@ async def seed_enrichment_batch(
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
     """
-    Enqueue generate_description for all active services without descriptions.
-    Also enqueue translations for services with descriptions but no translations.
-    Idempotent — skips already pending/processing tasks.
+    Enqueue tasks for all active services + auto-trigger concurrent processing.
+    One-click flow: Seed → Processing starts automatically in background.
+    Poll GET /admin/progress for real-time updates.
     """
     user_id = current_user.id
 
@@ -116,22 +201,33 @@ async def seed_enrichment_batch(
         )
 
     counts = await EnrichmentRepository.seed_descriptions(db)
+    total_enqueued = counts["descriptions"] + counts["translations"] + counts.get("keywords", 0)
 
     logger.info(
         f"Admin {user_id} triggered enrichment seed: "
-        f"{counts['descriptions']} descriptions, {counts['translations']} translations"
+        f"{counts['descriptions']} descriptions, {counts['translations']} translations, "
+        f"{counts.get('keywords', 0)} keywords"
     )
+
+    # Option B: Auto-trigger concurrent processing in background
+    auto_processing = False
+    if total_enqueued > 0:
+        service = get_enrichment_service()
+        asyncio.create_task(service.process_all_pending())
+        auto_processing = True
+        logger.info(f"Enrichment agent auto-started: {total_enqueued} tasks enqueued")
 
     return EnrichmentSeedResult(
         enqueued_descriptions=counts["descriptions"],
         enqueued_translations=counts["translations"],
         enqueued_keywords=counts.get("keywords", 0),
+        auto_processing=auto_processing,
     )
 
 
 @router.post(
     "/admin/seed-ministries",
-    summary="Seed enrichment queue for ministries without descriptions",
+    summary="Seed ministry descriptions + auto-process (Option B)",
 )
 async def seed_ministry_descriptions(
     current_user: UserResponse = Depends(get_current_user),
@@ -139,8 +235,8 @@ async def seed_ministry_descriptions(
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
     """
-    Enqueue generate_ministry_description for all ministries without descriptions.
-    Generated descriptions are stored as 'ai_draft' — admin must approve.
+    Enqueue ministry descriptions + auto-trigger concurrent processing.
+    One-click flow: Seed → Processing starts automatically in background.
     """
     user_id = current_user.id
 
@@ -157,9 +253,26 @@ async def seed_ministry_descriptions(
         )
 
     count = await EnrichmentRepository.seed_ministry_descriptions(db)
-    logger.info(f"Admin {user_id} triggered ministry seed: {count} enqueued")
-    return {"enqueued_ministry_descriptions": count}
 
+    logger.info(f"Admin {user_id} triggered ministry seed: {count} enqueued")
+
+    # Option B: Auto-trigger concurrent processing
+    auto_processing = False
+    if count > 0:
+        service = get_enrichment_service()
+        asyncio.create_task(service.process_all_pending())
+        auto_processing = True
+        logger.info(f"Enrichment agent auto-started: {count} ministry tasks enqueued")
+
+    return {
+        "enqueued_ministry_descriptions": count,
+        "auto_processing": auto_processing,
+    }
+
+
+# ============================================================================
+# ADMIN — Stats
+# ============================================================================
 
 @router.get(
     "/admin/stats",
@@ -286,11 +399,9 @@ async def review_service_description(
     """
     Approve: description_source → 'ai_approved', description_visible → true.
     Reject: description_es → NULL, description_source → NULL.
-    Optionally edit the text on approve via edited_text field.
     """
     user_id = current_user.id
 
-    # Verify service exists and is in ai_draft state
     row = await db.fetchrow(
         "SELECT id, description_source FROM fiscal_services WHERE id = $1",
         service_id,
@@ -304,7 +415,6 @@ async def review_service_description(
         )
 
     if body.action == "approve":
-        # Use edited text if provided, otherwise keep existing AI text
         if body.edited_text:
             await db.execute(
                 """
@@ -328,7 +438,6 @@ async def review_service_description(
             )
         new_source = "ai_approved"
     else:
-        # Reject — clear the AI description, keep invisible
         await db.execute(
             """
             UPDATE fiscal_services
@@ -428,7 +537,6 @@ async def approve_all_drafts(
     if not is_allowed:
         raise HTTPException(status_code=429, detail="Approve-all limited to once per minute.")
 
-    # Atomic: approve services + ministries in 1 transaction
     async with db.transaction():
         svc_result = await db.execute(
             """UPDATE fiscal_services
@@ -444,7 +552,6 @@ async def approve_all_drafts(
         )
         min_count = int(min_result.split()[-1]) if min_result else 0
 
-        # Audit trail for government compliance
         if svc_count > 0 or min_count > 0:
             await db.execute(
                 """INSERT INTO audit_logs (user_id, entity_type, entity_id, action, new_values, created_at)
@@ -480,10 +587,7 @@ async def bulk_toggle_visibility(
     db=Depends(get_database),
     _perm: None = Depends(permission_required("fiscal_service.create")),
 ):
-    """
-    Bulk set description_visible = true/false for active fiscal services.
-    Optional filters: description_source, ministry_id.
-    """
+    """Bulk set description_visible = true/false for active fiscal services."""
     user_id = current_user.id
 
     is_allowed, _ = await check_rate_limit(
@@ -495,10 +599,9 @@ async def bulk_toggle_visibility(
     if not is_allowed:
         raise HTTPException(status_code=429, detail="Bulk visibility limited to 3 times per minute.")
 
-    # Build parameterized query with optional filters
     conditions = ["status = 'active'"]
     params: list = [body.visible]
-    idx = 2  # $1 is visible
+    idx = 2
 
     filters_applied: Dict[str, Any] = {"visible": body.visible}
 
@@ -509,7 +612,6 @@ async def bulk_toggle_visibility(
         idx += 1
 
     if body.ministry_id is not None:
-        # Ministry is linked via sectors → categories → fiscal_services
         conditions.append(f"""category_id IN (
             SELECT c.id FROM categories c
             JOIN sectors s ON s.id = c.sector_id
@@ -530,7 +632,6 @@ async def bulk_toggle_visibility(
         )
         affected = int(result.split()[-1]) if result else 0
 
-        # Audit trail
         if affected > 0:
             await db.execute(
                 """INSERT INTO audit_logs (user_id, entity_type, entity_id, action, new_values, created_at)

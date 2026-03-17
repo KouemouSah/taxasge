@@ -25,14 +25,13 @@ from app.modules.enrichment.repositories.enrichment_repository import (
     EnrichmentRepository,
 )
 
-try:
-    from vertexai.generative_models import GenerativeModel, GenerationConfig
-    import vertexai
+from app.modules.shared.services.vertex_ai_manager import (
+    VERTEX_AI_AVAILABLE,
+    VertexAIManager,
+)
 
-    VERTEX_AI_AVAILABLE = True
-except ImportError:
-    VERTEX_AI_AVAILABLE = False
-    logger.warning("Vertex AI SDK not available — enrichment LLM disabled")
+if VERTEX_AI_AVAILABLE:
+    from vertexai.generative_models import GenerationConfig
 
 
 # ---------------------------------------------------------------------------
@@ -175,24 +174,21 @@ class EnrichmentService:
         self._processing_lock = asyncio.Lock()
 
     def _ensure_initialized(self):
-        """Lazy initialization of Gemini model."""
+        """Lazy initialization of Gemini model via VertexAIManager singleton."""
         if self._initialized:
             return
 
-        if not VERTEX_AI_AVAILABLE:
+        manager = VertexAIManager()
+        if not manager.is_available:
             self._initialized = True
             return
 
         try:
             settings = get_settings()
-            vertexai.init(
-                project=settings.GOOGLE_CLOUD_PROJECT,
-                location=settings.GOOGLE_CLOUD_LOCATION,
-            )
             model_name = getattr(settings, "GEMINI_CHAT_MODEL", "gemini-2.0-flash")
-            self._model = GenerativeModel(model_name)
+            self._model = manager.create_model(model_name)
             self._initialized = True
-            logger.info(f"EnrichmentService initialized with model {model_name}")
+            logger.info(f"EnrichmentService initialized via VertexAIManager ({model_name})")
         except Exception as e:
             logger.error(f"Failed to initialize EnrichmentService: {e}")
             self._initialized = True
@@ -971,6 +967,10 @@ class EnrichmentService:
                 timeout=15.0,
             )
 
+            # Track token usage via centralized manager
+            VertexAIManager().track_usage(response, "EnrichmentService")
+            VertexAIManager().track_success()
+
             if not response.candidates:
                 feedback = getattr(response, "prompt_feedback", None)
                 logger.warning(
@@ -987,9 +987,11 @@ class EnrichmentService:
             return text.strip()
 
         except asyncio.TimeoutError:
+            VertexAIManager().track_failure()
             logger.error("Enrichment Gemini: timeout (15s)")
             return None
         except Exception as e:
+            VertexAIManager().track_failure()
             logger.error(f"Enrichment Gemini error: {e}")
             return None
 

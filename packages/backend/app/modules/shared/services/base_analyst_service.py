@@ -256,12 +256,10 @@ class BaseAnalystService(abc.ABC):
             return
 
         try:
-            config = self._get_vertex_config()
-            if config.get("project"):
-                vertexai.init(
-                    project=config["project"],
-                    location=config.get("location", "us-central1"),
-                )
+            # Use centralized VertexAIManager for SDK init (called once per process)
+            from app.modules.shared.services.vertex_ai_manager import VertexAIManager
+            manager = VertexAIManager()
+            manager.initialize()
 
             func_decls = self._get_function_declarations()
             tools = [Tool(function_declarations=func_decls)] if func_decls else None
@@ -461,6 +459,13 @@ class BaseAnalystService(abc.ABC):
                 timeout=GEMINI_TIMEOUT_FIRST_CALL,
             )
 
+            # Track token usage via centralized manager
+            try:
+                from app.modules.shared.services.vertex_ai_manager import VertexAIManager
+                VertexAIManager().track_usage(response, service_name)
+            except Exception:
+                pass
+
             if not response.candidates:
                 logger.warning(f"{service_name}: empty candidates from Gemini")
                 return {
@@ -534,6 +539,13 @@ class BaseAnalystService(abc.ABC):
                         else GEMINI_TIMEOUT_SECOND_CALL
                     ),
                 )
+
+                # Track multi-round token usage
+                try:
+                    from app.modules.shared.services.vertex_ai_manager import VertexAIManager
+                    VertexAIManager().track_usage(next_response, service_name)
+                except Exception:
+                    pass
 
                 if not next_response.candidates:
                     break

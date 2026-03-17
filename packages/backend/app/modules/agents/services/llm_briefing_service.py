@@ -18,14 +18,13 @@ from loguru import logger
 
 from app.config import get_settings
 
-try:
-    from vertexai.generative_models import GenerativeModel, GenerationConfig
-    import vertexai
+from app.modules.shared.services.vertex_ai_manager import (
+    VERTEX_AI_AVAILABLE,
+    VertexAIManager,
+)
 
-    VERTEX_AI_AVAILABLE = True
-except ImportError:
-    VERTEX_AI_AVAILABLE = False
-    logger.warning("Vertex AI SDK not available - LLM briefing disabled")
+if VERTEX_AI_AVAILABLE:
+    from vertexai.generative_models import GenerationConfig
 
 
 SYSTEM_PROMPT = """Eres un asistente de operaciones conciso para un administrador del sistema TaxasGE
@@ -60,24 +59,21 @@ class LLMBriefingService:
         self._initialized = False
 
     def _ensure_initialized(self):
-        """Lazy initialization of Gemini model."""
+        """Lazy initialization of Gemini model via VertexAIManager singleton."""
         if self._initialized:
             return
 
-        if not VERTEX_AI_AVAILABLE:
+        manager = VertexAIManager()
+        if not manager.is_available:
             self._initialized = True
             return
 
         try:
             settings = get_settings()
-            vertexai.init(
-                project=settings.GOOGLE_CLOUD_PROJECT,
-                location=settings.GOOGLE_CLOUD_LOCATION,
-            )
             model_name = getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash")
-            self._model = GenerativeModel(model_name)
+            self._model = manager.create_model(model_name)
             self._initialized = True
-            logger.info("LLM Briefing Service initialized")
+            logger.info(f"LLM Briefing Service initialized via VertexAIManager ({model_name})")
         except Exception as e:
             logger.error(f"Failed to initialize LLM Briefing Service: {e}")
             self._initialized = True
@@ -148,6 +144,10 @@ class LLMBriefingService:
                 timeout=10.0,
             )
 
+            # Track token usage via centralized manager
+            VertexAIManager().track_usage(response, "LLMBriefingService")
+            VertexAIManager().track_success()
+
             # Safely handle None/empty response
             if not response.candidates:
                 logger.warning("LLM briefing: empty candidates")
@@ -175,12 +175,14 @@ class LLMBriefingService:
             }
 
         except asyncio.TimeoutError:
+            VertexAIManager().track_failure()
             logger.warning("LLM briefing timed out")
             return None
         except json.JSONDecodeError as e:
             logger.warning(f"LLM briefing returned invalid JSON: {e}")
             return None
         except Exception as e:
+            VertexAIManager().track_failure()
             error_str = str(e)
             if "429" in error_str or "Resource exhausted" in error_str:
                 logger.warning(f"LLM briefing rate-limited (429): {e}")

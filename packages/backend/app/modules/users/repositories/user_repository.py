@@ -138,6 +138,9 @@ class UserRepository(BaseRepository[UserResponse]):
             param_count = 0
 
             if filters:
+                # Copy to avoid mutating original
+                filters = filters.copy()
+
                 # Handle 'search' filter specially with ILIKE on multiple columns
                 search_term = filters.pop('search', None)
                 if search_term:
@@ -149,6 +152,13 @@ class UserRepository(BaseRepository[UserResponse]):
                     )"""
                     conditions.append(search_condition)
                     params.append(f"%{search_term}%")
+
+                # Handle 'roles' filter (multiple roles via ANY)
+                roles_list = filters.pop('roles', None)
+                if roles_list and isinstance(roles_list, list):
+                    param_count += 1
+                    conditions.append(f"role = ANY(${param_count}::text[])")
+                    params.append(roles_list)
 
                 # Handle remaining filters as exact match
                 for key, value in filters.items():
@@ -222,6 +232,13 @@ class UserRepository(BaseRepository[UserResponse]):
                     )"""
                     conditions.append(search_condition)
                     params.append(f"%{search_term}%")
+
+                # Handle 'roles' filter (multiple roles via ANY)
+                roles_list = filters.pop('roles', None)
+                if roles_list and isinstance(roles_list, list):
+                    param_count += 1
+                    conditions.append(f"role = ANY(${param_count}::text[])")
+                    params.append(roles_list)
 
                 # Handle remaining filters as exact match
                 for key, value in filters.items():

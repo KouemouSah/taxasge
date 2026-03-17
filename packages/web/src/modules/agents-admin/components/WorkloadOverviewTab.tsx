@@ -7,15 +7,20 @@
  * @module agents-admin/components
  */
 
+import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Activity, Building2, Users } from 'lucide-react';
+import { Activity, Building2, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { AgentProfile, AdminAlertsDashboard } from '../types';
 import { AdminAlertsPanel } from './AdminAlertsPanel';
 
@@ -31,10 +36,20 @@ export function WorkloadOverviewTab({
   agents, agentsLoading, dashboard, dashboardLoading, onViewAgent,
 }: WorkloadOverviewTabProps) {
   const t = useTranslations('admin.agents');
+  const tCommon = useTranslations('common');
+
+  const [wlPage, setWlPage] = useState(1);
+  const [wlPageSize, setWlPageSize] = useState(10);
 
   const activeAgents = agents
     .filter(a => a.is_active)
     .sort((a, b) => (b.capacity_percentage ?? 0) - (a.capacity_percentage ?? 0));
+
+  const wlTotalPages = Math.max(1, Math.ceil(activeAgents.length / wlPageSize));
+  const paginatedWorkload = useMemo(() => {
+    const start = (wlPage - 1) * wlPageSize;
+    return activeAgents.slice(start, start + wlPageSize);
+  }, [activeAgents, wlPage, wlPageSize]);
 
   const getCapacityColor = (pct: number) => pct >= 80 ? 'text-red-600' : pct >= 60 ? 'text-yellow-600' : 'text-green-600';
   const getCapacityBg = (pct: number) => pct >= 80 ? 'bg-red-50' : pct >= 60 ? 'bg-yellow-50' : '';
@@ -130,7 +145,7 @@ export function WorkloadOverviewTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeAgents.map((agent) => {
+                  {paginatedWorkload.map((agent) => {
                     const capacity = agent.capacity_percentage ?? 0;
                     const availConfig = getAvailabilityLabel(agent.availability as string);
                     const statusKey = workloadStatusMap[agent.workload_status || 'available'] || 'status.available';
@@ -165,6 +180,40 @@ export function WorkloadOverviewTab({
                   })}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {/* Workload Pagination */}
+          {activeAgents.length > 0 && (
+            <div className="flex items-center justify-between pt-4">
+              <span className="text-sm text-muted-foreground">
+                {tCommon('showing')} {(wlPage - 1) * wlPageSize + 1}-{Math.min(wlPage * wlPageSize, activeAgents.length)} {tCommon('of')} {activeAgents.length}
+              </span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{tCommon('rowsPerPage')}</span>
+                  <Select value={String(wlPageSize)} onValueChange={(v) => { setWlPageSize(Number(v)); setWlPage(1); }}>
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent side="top">
+                      {[10, 20, 30].map((s) => (
+                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {tCommon('page')} {wlPage} {tCommon('of')} {wlTotalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWlPage(p => Math.max(1, p - 1))} disabled={wlPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setWlPage(p => Math.min(wlTotalPages, p + 1))} disabled={wlPage === wlTotalPages}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

@@ -6,6 +6,7 @@ import apiClient from '@/core/api/client'
 import type {
   EnrichmentStats,
   EnrichmentTask,
+  EnrichmentProgress,
   PendingDraft,
   EnrichmentSeedResult,
   ReviewResponse,
@@ -75,9 +76,9 @@ export const enrichmentApi = {
 
   approveAll: () => post<{ approvedServices: number; approvedMinistries: number }>('/admin/approve-all'),
 
-  // Seed operations
+  // Seed operations (Option B: auto-triggers concurrent processing)
   seedBatch: () => post<EnrichmentSeedResult>('/admin/seed-batch'),
-  seedMinistries: () => post<{ enqueuedMinistryDescriptions: number }>('/admin/seed-ministries'),
+  seedMinistries: () => post<{ enqueuedMinistryDescriptions: number; autoProcessing: boolean }>('/admin/seed-ministries'),
 
   // Bulk visibility
   bulkVisibility: (visible: boolean, descriptionSource?: string, ministryId?: number) =>
@@ -89,6 +90,12 @@ export const enrichmentApi = {
 
   // Ministries for filter dropdown
   getMinistries: () => get<MinistryOption[]>('/admin/ministries'),
+
+  // Manual processing trigger (Option A)
+  processNow: () => post<EnrichmentProgress>('/admin/process-now'),
+
+  // Progress polling (during background processing)
+  getProgress: () => get<EnrichmentProgress>('/admin/progress'),
 
   // Retry
   retryTask: (taskId: string) => post<{ taskId: string; newStatus: string }>(`/admin/retry/${taskId}`),
