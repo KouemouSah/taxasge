@@ -19,7 +19,7 @@ class SemanticSearchRepository:
     """
     Repository for semantic search using pgvector
 
-    Uses cosine distance (<-> operator) for similarity search.
+    Uses cosine distance (<=> operator) for similarity search.
     Leverages HNSW index for fast approximate nearest neighbor search.
 
     Query performance:
@@ -139,8 +139,8 @@ class SemanticSearchRepository:
                 m.id as ministry_id,
                 m.name_es as ministry_name,
 
-                -- Cosine similarity (1 - distance)
-                (1 - (fs.embedding <-> $1::vector))::FLOAT as similarity,
+                -- Cosine similarity (1 - cosine distance) — matches vector_cosine_ops HNSW index
+                (1 - (fs.embedding <=> $1::vector))::FLOAT as similarity,
 
                 -- Keywords aggregation (Spanish only)
                 COALESCE(
@@ -188,7 +188,11 @@ class SemanticSearchRepository:
                         )
                     ) FILTER (WHERE pt.id IS NOT NULL),
                     '[]'::jsonb
-                ) as procedures
+                ) as procedures,
+
+                -- Bundle context (for RAG enrichment)
+                sb.name_es as bundle_name,
+                cz.name_es as zone_name
 
             FROM fiscal_services fs
 
@@ -196,6 +200,16 @@ class SemanticSearchRepository:
             LEFT JOIN categories c ON fs.category_id = c.id
             LEFT JOIN sectors s ON c.sector_id = s.id
             LEFT JOIN ministries m ON c.ministry_id = m.id
+
+            -- Join bundle context (first bundle item + zone for RAG)
+            LEFT JOIN LATERAL (
+                SELECT sbi.bundle_id, sbi.zone_id
+                FROM service_bundle_items sbi
+                WHERE sbi.fiscal_service_id = fs.id
+                LIMIT 1
+            ) first_bundle ON true
+            LEFT JOIN service_bundles sb ON sb.id = first_bundle.bundle_id
+            LEFT JOIN commerce_zones cz ON cz.id = first_bundle.zone_id
 
             -- Join keywords
             LEFT JOIN service_keywords sk ON fs.id = sk.fiscal_service_id
@@ -222,17 +236,18 @@ class SemanticSearchRepository:
             WHERE {where_clause}
                 -- NOTE: Threshold filter removed to see all results and debug
                 -- Threshold will be applied in code if needed
-                -- AND (1 - (fs.embedding <-> $1::vector)) >= $2  -- similarity threshold
+                -- AND (1 - (fs.embedding <=> $1::vector)) >= $2  -- similarity threshold
 
             GROUP BY
                 fs.id, fs.service_code, fs.name_es, fs.description_es,
                 fs.service_type, fs.calculation_method, fs.tasa_expedicion,
                 fs.tasa_renovacion, fs.processing_time_days,
                 fs.validity_period_months, fs.legal_reference,
-                c.id, c.name_es, s.id, s.name_es, m.id, m.name_es
+                c.id, c.name_es, s.id, s.name_es, m.id, m.name_es,
+                sb.name_es, cz.name_es
 
-            -- Order by similarity (HNSW index accelerates this)
-            ORDER BY fs.embedding <-> $1::vector
+            -- Order by cosine distance (HNSW index accelerates this)
+            ORDER BY fs.embedding <=> $1::vector
             LIMIT $2
         """
 
@@ -338,13 +353,13 @@ class SemanticSearchRepository:
                 fs.description_es,
                 fs.category_id,
 
-                -- Individual scores
-                (1 - (fs.embedding <-> $1::vector))::FLOAT as semantic_score,
+                -- Individual scores (cosine — matches HNSW index)
+                (1 - (fs.embedding <=> $1::vector))::FLOAT as semantic_score,
                 ts_rank(fs.search_vector, plainto_tsquery('spanish', $2))::FLOAT as fulltext_score,
 
                 -- Combined score
                 (
-                    $3 * (1 - (fs.embedding <-> $1::vector)) +
+                    $3 * (1 - (fs.embedding <=> $1::vector)) +
                     $4 * ts_rank(fs.search_vector, plainto_tsquery('spanish', $2))
                 )::FLOAT as combined_score
 
@@ -410,14 +425,24 @@ class SemanticSearchRepository:
                 fs.name_es,
                 fs.description_es,
                 c.name_es as category_name,
-                (1 - (fs.embedding <-> ref.embedding))::FLOAT as similarity
+                sb.name_es as bundle_name,
+                cz.name_es as zone_name,
+                (1 - (fs.embedding <=> ref.embedding))::FLOAT as similarity
             FROM fiscal_services fs
             CROSS JOIN reference_service ref
             LEFT JOIN categories c ON fs.category_id = c.id
+            LEFT JOIN LATERAL (
+                SELECT sbi.bundle_id, sbi.zone_id
+                FROM service_bundle_items sbi
+                WHERE sbi.fiscal_service_id = fs.id
+                LIMIT 1
+            ) first_bundle ON true
+            LEFT JOIN service_bundles sb ON sb.id = first_bundle.bundle_id
+            LEFT JOIN commerce_zones cz ON cz.id = first_bundle.zone_id
             WHERE fs.id != $1
               AND fs.status = 'active'
               AND fs.embedding IS NOT NULL
-            ORDER BY fs.embedding <-> ref.embedding
+            ORDER BY fs.embedding <=> ref.embedding
             LIMIT $2
         """
 

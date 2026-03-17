@@ -12,6 +12,7 @@ Date: 2025-01-22
 
 from typing import Dict, Any, List, Optional, AsyncGenerator
 from loguru import logger
+import json
 import uuid
 import asyncpg
 from datetime import datetime
@@ -77,12 +78,20 @@ class ChatbotServiceRAG:
         """
         start_time = datetime.now()
         conversation_id = context.get("conversation_id") or str(uuid.uuid4())
+        user_id = context.get("user_id")
 
         # Fallback if AI disabled
         if not self.enabled or not db:
             return await self._fallback_response(message, conversation_id, language)
 
         try:
+            # Load persisted conversation history if available
+            if not conversation_history and db:
+                persisted = await self._load_conversation(db, conversation_id)
+                if persisted:
+                    conversation_history = persisted
+                    logger.info(f"Loaded {len(persisted)} persisted messages for {conversation_id}")
+
             # Step 1: Generate query embedding
             logger.info(f"Processing chat: '{message[:50]}...' (lang: {language})")
             query_embedding = await embedding_service.generate_query_embedding(message)
@@ -163,7 +172,8 @@ class ChatbotServiceRAG:
                         )
                     else:
                         # Catch-all if intent is very unusual or unhandled for now
-                        fallback_message = self._fallback_response(message, conversation_id, language).get("message", "")
+                        fallback_resp = await self._fallback_response(message, conversation_id, language)
+                        fallback_message = fallback_resp.get("message", "")
             
             # If a fallback message is generated, we return it directly without calling Gemini for content generation
             if fallback_message:
@@ -194,13 +204,21 @@ class ChatbotServiceRAG:
 
             # Step 4: Build structured response
             response_time = (datetime.now() - start_time).total_seconds()
+            response_message = ai_response.get("message", "")
+
+            # Persist conversation (non-blocking, non-fatal)
+            if db:
+                await self._save_conversation(
+                    db, conversation_id, message, response_message,
+                    user_id=user_id, language=language,
+                )
 
             return {
-                "message": ai_response.get("message", ""),
+                "message": response_message,
                 "conversation_id": conversation_id,
-                "suggestions": self._generate_suggestions(relevant_docs, relevant_services, language), # Modified to include relevant_docs
+                "suggestions": self._generate_suggestions(relevant_docs, relevant_services, language),
                 "related_services": self._format_related_services(relevant_services),
-                "related_documents": self._format_related_documents(relevant_docs), # New field
+                "related_documents": self._format_related_documents(relevant_docs),
                 "follow_up_actions": self._generate_follow_up_actions(relevant_services, language),
                 "confidence": ai_response.get("confidence", 0.5),
                 "response_time": response_time,
@@ -465,6 +483,67 @@ class ChatbotServiceRAG:
             return {"services": [], "error": str(e)}
 
     # ========================================================================
+    # CONTEXT CONSOLIDATION
+    # ========================================================================
+
+    def _consolidate_context(
+        self,
+        relevant_docs: List[Dict],
+        relevant_services: List[Dict]
+    ) -> tuple:
+        """
+        Build structured context string from legislative docs + fiscal services for LLM.
+        Priority: legislative documents first (official sources), then services.
+
+        Returns:
+            (context_text: str, source_codes: List[str])
+        """
+        parts = []
+        sources = []
+
+        # Priority 1: Legislative documents (official government sources)
+        if relevant_docs:
+            parts.append("=== DOCUMENTOS LEGISLATIVOS ===")
+            for doc in relevant_docs[:getattr(settings, 'RAG_MAX_CONTEXT_DOCUMENTS', 5)]:
+                doc_name = doc.get('document_name', 'Documento')
+                page = doc.get('page_number', '?')
+                content = doc.get('content', '')[:800]
+                parts.append(f"[{doc_name} - Pág. {page}]")
+                parts.append(content)
+                sources.append(f"DOC:{doc_name}:p{page}")
+
+        # Priority 2: Fiscal services (with bundle context if available)
+        if relevant_services:
+            parts.append("=== SERVICIOS FISCALES ===")
+            for svc in relevant_services[:getattr(settings, 'RAG_MAX_CONTEXT_SERVICES', 5)]:
+                code = svc.get('service_code', '')
+                name = svc.get('name_es', '')
+                desc = svc.get('description_es', '') or ''
+                price = svc.get('tasa_expedicion', 0)
+                cat = svc.get('category_name', '')
+                bundle = svc.get('bundle_name', '')
+                zone = svc.get('zone_name', '')
+                parts.append(f"[{code}] {name} ({cat})")
+                if desc:
+                    parts.append(f"  Descripción: {desc}")
+                if price and float(price) > 0:
+                    parts.append(f"  Tarifa: {price} XAF")
+                if bundle:
+                    parts.append(f"  Paquete fiscal: {bundle}")
+                if zone:
+                    parts.append(f"  Zona: {zone}")
+                sources.append(code)
+
+        context_text = "\n".join(parts)
+
+        # Truncate to MAX_CONTEXT_TOKENS (~4 chars/token)
+        max_chars = getattr(settings, 'MAX_CONTEXT_TOKENS', 3000) * 4
+        if len(context_text) > max_chars:
+            context_text = context_text[:max_chars]
+
+        return context_text, sources
+
+    # ========================================================================
     # HELPER METHODS
     # ========================================================================
 
@@ -716,6 +795,61 @@ Keep it helpful and concise."""
             return [did_you_mean_template.get(language, did_you_mean_template["es"]).format(suggestions_list=suggestions_list_str)]
         
         return []
+
+    # ========================================================================
+    # CONVERSATION PERSISTENCE
+    # ========================================================================
+
+    async def _load_conversation(
+        self, db: asyncpg.Connection, conversation_id: str
+    ) -> Optional[List[Dict[str, str]]]:
+        """Load conversation history from DB. Returns list of messages or None."""
+        try:
+            row = await db.fetchrow(
+                "SELECT messages FROM chatbot_conversations WHERE conversation_id = $1",
+                conversation_id,
+            )
+            if row and row["messages"]:
+                messages = json.loads(row["messages"]) if isinstance(row["messages"], str) else row["messages"]
+                return messages
+        except Exception as e:
+            logger.warning(f"Failed to load conversation {conversation_id}: {e}")
+        return None
+
+    async def _save_conversation(
+        self,
+        db: asyncpg.Connection,
+        conversation_id: str,
+        user_message: str,
+        assistant_message: str,
+        user_id: Optional[str] = None,
+        language: str = "es",
+    ) -> None:
+        """Append user+assistant messages to conversation and persist."""
+        try:
+            new_messages = [
+                {"role": "user", "content": user_message},
+                {"role": "assistant", "content": assistant_message},
+            ]
+            # Upsert: create or append
+            await db.execute(
+                """
+                INSERT INTO chatbot_conversations
+                    (conversation_id, user_id, messages, language, message_count, last_message_at)
+                VALUES ($1, $2::uuid, $3::jsonb, $4, 2, NOW())
+                ON CONFLICT (conversation_id) DO UPDATE SET
+                    messages = chatbot_conversations.messages || $3::jsonb,
+                    message_count = chatbot_conversations.message_count + 2,
+                    last_message_at = NOW()
+                """,
+                conversation_id,
+                user_id,
+                json.dumps(new_messages),
+                language,
+            )
+        except Exception as e:
+            # Non-fatal: log and continue
+            logger.warning(f"Failed to save conversation {conversation_id}: {e}")
 
 
 # ============================================================================

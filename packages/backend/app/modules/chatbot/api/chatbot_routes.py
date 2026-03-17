@@ -31,6 +31,7 @@ from app.modules.chatbot.services import chatbot_service
 from app.modules.auth.middleware.auth_middleware import get_current_user, get_current_user_optional
 from app.modules.users.models import UserResponse
 from app.database.connection import get_database as get_db
+from app.core.cache import check_rate_limit
 import asyncpg
 
 router = APIRouter(tags=["Chatbot"])
@@ -213,11 +214,11 @@ async def debug_semantic_search(
                 fs.id,
                 fs.service_code,
                 fs.name_es,
-                (1 - (fs.embedding <-> $1::vector))::FLOAT as similarity
+                (1 - (fs.embedding <=> $1::vector))::FLOAT as similarity
             FROM fiscal_services fs
             WHERE fs.status = 'active'
               AND fs.embedding IS NOT NULL
-            ORDER BY fs.embedding <-> $1::vector
+            ORDER BY fs.embedding <=> $1::vector
             LIMIT $2
         """
 
@@ -298,9 +299,17 @@ async def chat(
 ):
     """
     Interactive AI chat assistance for fiscal services
-
-    Status: Placeholder responses until AI integration
     """
+    # Rate limiting: 30/min authenticated, 10/min anonymous
+    rate_key = str(current_user.id) if current_user else "anon"
+    rate_limit = 30 if current_user else 10
+    is_allowed, remaining = await check_rate_limit(rate_key, "/chatbot/chat", rate_limit, 60)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in 60 seconds. (limit: {rate_limit}/min)"
+        )
+
     try:
         # Prepare chat context
         context = {
@@ -359,9 +368,17 @@ async def chat_stream(
 ):
     """
     Streaming AI chat for real-time responses
-
-    Status: Placeholder streaming until AI integration
     """
+    # Rate limiting: 30/min authenticated, 10/min anonymous
+    rate_key = str(current_user.id) if current_user else "anon"
+    rate_limit = 30 if current_user else 10
+    is_allowed, remaining = await check_rate_limit(rate_key, "/chatbot/chat/stream", rate_limit, 60)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Try again in 60 seconds. (limit: {rate_limit}/min)"
+        )
+
     try:
         # Prepare context
         context = {
@@ -750,4 +767,60 @@ async def submit_feedback(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error recording feedback"
+        )
+
+
+# ============================================================================
+# ADMIN ENDPOINTS
+# ============================================================================
+
+@router.get("/admin/legislacion-stats", response_model=Dict[str, Any])
+async def get_legislacion_stats(
+    current_user: UserResponse = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Get statistics about indexed legislative documents.
+    Requires authenticated user (admin).
+    """
+    if current_user.role.value not in ("admin", "supervisor"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        stats = await db.fetchrow("""
+            SELECT
+                COUNT(*) as total_chunks,
+                COUNT(embedding) as embedded_chunks,
+                COUNT(DISTINCT document_name) as distinct_documents,
+                MIN(created_at) as oldest_chunk,
+                MAX(embedding_generated_at) as latest_embedding
+            FROM legislacion_documents
+        """)
+
+        docs = await db.fetch("""
+            SELECT
+                document_name,
+                COUNT(*) as chunks,
+                COUNT(embedding) as embedded,
+                MIN(page_number) as min_page,
+                MAX(page_number) as max_page
+            FROM legislacion_documents
+            GROUP BY document_name
+            ORDER BY document_name
+        """)
+
+        return {
+            "total_chunks": stats["total_chunks"] if stats else 0,
+            "embedded_chunks": stats["embedded_chunks"] if stats else 0,
+            "distinct_documents": stats["distinct_documents"] if stats else 0,
+            "oldest_chunk": str(stats["oldest_chunk"]) if stats and stats["oldest_chunk"] else None,
+            "latest_embedding": str(stats["latest_embedding"]) if stats and stats["latest_embedding"] else None,
+            "documents": [dict(d) for d in docs],
+        }
+
+    except Exception as e:
+        logger.error(f"Legislacion stats error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error retrieving legislacion stats"
         )
