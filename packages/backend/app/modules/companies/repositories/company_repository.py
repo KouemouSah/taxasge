@@ -20,6 +20,11 @@ class CompanyRepository:
         # Cached flag: does search_vector column exist? (set on first query)
         self._has_search_vector: Optional[bool] = None
 
+    @staticmethod
+    def _uid(val) -> UUID:
+        """Convert str to UUID if needed. Pass-through if already UUID."""
+        return UUID(val) if isinstance(val, str) else val
+
     async def _check_fts_available(self, conn: asyncpg.Connection) -> bool:
         """Check if tsvector search_vector column exists (migration 234).
 
@@ -90,7 +95,7 @@ class CompanyRepository:
             WHERE c.id = $1
             GROUP BY c.id, ct.name, cz.zone_code
         """
-        result = await conn.fetchrow(query, company_id)
+        result = await conn.fetchrow(query, self._uid(company_id))
         return dict(result) if result else None
 
     async def get_by_nif(self, conn: asyncpg.Connection, nif: str) -> Optional[Dict[str, Any]]:
@@ -142,7 +147,7 @@ class CompanyRepository:
         'not sent' from 'explicitly sent as null').
         """
         updates = []
-        params = [company_id]
+        params = [self._uid(company_id)]
         param_idx = 2
 
         for field, value in update_data.model_dump(exclude_unset=True).items():
@@ -170,9 +175,10 @@ class CompanyRepository:
 
     async def delete(self, conn: asyncpg.Connection, company_id: str) -> bool:
         """Delete company and members (atomic transaction)."""
+        cid = self._uid(company_id)
         async with conn.transaction():
-            await conn.execute("DELETE FROM user_company_roles WHERE company_id = $1", company_id)
-            result = await conn.execute("DELETE FROM companies WHERE id = $1", company_id)
+            await conn.execute("DELETE FROM user_company_roles WHERE company_id = $1", cid)
+            result = await conn.execute("DELETE FROM companies WHERE id = $1", cid)
             return result == "DELETE 1"
 
     async def add_member(self, conn: asyncpg.Connection, company_id: str, user_id: str, role: CompanyMemberRole) -> Dict[str, Any]:
@@ -183,14 +189,14 @@ class CompanyRepository:
             ON CONFLICT (user_id, company_id) DO UPDATE SET role = $3, is_active = TRUE
             RETURNING *
         """
-        result = await conn.fetchrow(query, company_id, user_id, role.value)
+        result = await conn.fetchrow(query, self._uid(company_id), self._uid(user_id), role.value)
         return dict(result)
 
     async def remove_member(self, conn: asyncpg.Connection, company_id: str, user_id: str) -> bool:
         """Remove member from company."""
         result = await conn.execute(
             "DELETE FROM user_company_roles WHERE company_id = $1 AND user_id = $2",
-            company_id, user_id
+            self._uid(company_id), self._uid(user_id)
         )
         return result == "DELETE 1"
 
@@ -203,14 +209,14 @@ class CompanyRepository:
             WHERE ucr.company_id = $1
             ORDER BY ucr.assigned_at
         """
-        results = await conn.fetch(query, company_id)
+        results = await conn.fetch(query, self._uid(company_id))
         return [dict(r) for r in results]
 
     async def check_membership(self, conn: asyncpg.Connection, company_id: str, user_id: str) -> Optional[str]:
         """Check if user is member and return role."""
         return await conn.fetchval(
             "SELECT role FROM user_company_roles WHERE company_id = $1 AND user_id = $2",
-            company_id, user_id
+            self._uid(company_id), self._uid(user_id)
         )
 
     # =========================================================================
@@ -538,9 +544,10 @@ class CompanyRepository:
         is_verified: bool,
     ) -> Optional[Dict[str, Any]]:
         """Toggle company verification status."""
+        cid = self._uid(company_id)
         result = await conn.fetchrow(
             "UPDATE companies SET is_verified = $2, updated_at = NOW() WHERE id = $1 RETURNING id",
-            company_id, is_verified,
+            cid, is_verified,
         )
         if not result:
             return None
@@ -561,7 +568,7 @@ class CompanyRepository:
             WHERE company_id = $1 AND user_id = $2
             RETURNING *
             """,
-            company_id, user_id, role,
+            self._uid(company_id), self._uid(user_id), role,
         )
         if not result:
             return None
