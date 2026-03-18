@@ -17,6 +17,13 @@ import type {
   CompanyStats,
   CompanySearchResult,
   CompanyClassifyResult,
+  ZoneStats,
+  MinistryStatsResponse,
+  GlobalStats,
+  CompanyDebtResponse,
+  PublicDirectoryResponse,
+  PublicZone,
+  LookupResult,
 } from '../types'
 
 const BASE = '/companies'
@@ -154,6 +161,72 @@ export const companiesSupervisorApi = {
   },
 
   getStats: () => get<CompanyStats>('/supervisor/stats'),
+}
+
+// ========== Dashboard API ==========
+
+export const companyDashboardApi = {
+  /** All zones stats — admin choropleth map */
+  getZoneStats: () => get<{ zones: ZoneStats[] }>('/dashboard/zone-stats'),
+
+  /** My zone stats — supervisor site */
+  getMyZoneStats: () => get<{ zone: ZoneStats | null }>('/dashboard/zone-stats/mine'),
+
+  /** Ministry stats — supervisor ministry (all zones, their items) */
+  getMinistryStats: () => get<MinistryStatsResponse>('/dashboard/ministry-stats'),
+
+  /** Global stats — admin overview KPIs */
+  getGlobalStats: () => get<GlobalStats>('/dashboard/global-stats'),
+
+  /** Refresh materialized views (cron) */
+  refreshStats: () => post<{ refreshed: string[]; count: number }>('/dashboard/cron/refresh-company-stats'),
+}
+
+// ========== Ministry Debt API ==========
+
+export const companyMinistryApi = {
+  /** Company debt for agent's ministry — detail complet */
+  getCompanyDebt: (companyId: string) =>
+    get<CompanyDebtResponse>(`/ministry/company-debt/${companyId}`),
+
+  /** National company lookup — ONRC agents */
+  lookup: (q: string) =>
+    get<{ results: LookupResult[]; count: number; query: string }>(
+      `/ministry/lookup?q=${encodeURIComponent(q)}`
+    ),
+}
+
+// ========== Public Directory API (no auth) ==========
+
+const PUBLIC_BASE = '/public/companies'
+
+export const companyPublicApi = {
+  /** Public directory search */
+  search: (params: {
+    q?: string
+    zone_id?: string
+    sector?: string
+    page?: number
+    page_size?: number
+  }) => {
+    const sp = new URLSearchParams()
+    if (params.q) sp.set('q', params.q)
+    if (params.zone_id) sp.set('zone_id', params.zone_id)
+    if (params.sector) sp.set('sector', params.sector)
+    if (params.page) sp.set('page', String(params.page))
+    if (params.page_size) sp.set('page_size', String(params.page_size))
+    const q = sp.toString()
+    return apiClient.get<PublicDirectoryResponse>(`${PUBLIC_BASE}/search${q ? `?${q}` : ''}`)
+      .then(r => r.data)
+  },
+
+  /** List zones for filter */
+  getZones: () =>
+    apiClient.get<PublicZone[]>(`${PUBLIC_BASE}/zones`).then(r => r.data),
+
+  /** List sectors for filter */
+  getSectors: () =>
+    apiClient.get<string[]>(`${PUBLIC_BASE}/sectors`).then(r => r.data),
 }
 
 export default {

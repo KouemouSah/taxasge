@@ -1116,6 +1116,22 @@
       "yes": "Sí"
     },
     "inactive": "Inactivos",
+    "companyDashboard": {
+      "title": "Dashboard Empresas",
+      "refresh": "Actualizar",
+      "total": "Total Empresas",
+      "active": "activas",
+      "verified": "Verificadas",
+      "missingId": "Sin Identificador",
+      "regimeDistribution": "Distribución por Régimen",
+      "byZone": "Empresas por Zona",
+      "zoneDetails": "Detalle por Zona",
+      "companies": "Empresas",
+      "obligations": "Obligaciones",
+      "paid": "Pagado",
+      "debt": "Deuda",
+      "recovery": "Cobro"
+    },
     "companies": {
       "title": "Gestión de Empresas",
       "subtitle": "Administración de empresas registradas y sus cuentas",
@@ -7751,6 +7767,34 @@
     }
   },
   "agent": {
+    "companyLookup": {
+      "title": "Consulta de Empresas",
+      "subtitle": "Busque empresas por NIF, numero de registro o nombre",
+      "searchPlaceholder": "NIF, PE-XXXX, o nombre de empresa...",
+      "noResults": "No se encontro ninguna empresa"
+    },
+    "companyDebt": {
+      "title": "Deuda Empresarial",
+      "subtitle": "Consulte las obligaciones de una empresa para su ministerio",
+      "searchPlaceholder": "ID de la empresa...",
+      "search": "Buscar",
+      "searching": "Buscando...",
+      "notFound": "Empresa no encontrada",
+      "error": "Error al consultar la deuda",
+      "totalDue": "Total debido",
+      "totalPaid": "Total pagado",
+      "balance": "Saldo pendiente",
+      "recoveryRate": "Tasa de cobro",
+      "penalties": "Penalizaciones acumuladas",
+      "obligations": "Obligaciones",
+      "feeType": "Tipo de tasa",
+      "year": "Ano",
+      "amount": "Monto",
+      "penalty": "Penalidad",
+      "dueDate": "Vencimiento",
+      "status": "Estado",
+      "paidAt": "Fecha de pago"
+    },
     "dashboard": {
       "title": "Panel del Agente",
       "welcome": "Bienvenido al panel de {name}",
@@ -9617,5 +9661,17 @@
     "COMPLETED": "Completada",
     "CANCELLED": "Cancelada",
     "EXPIRED": "Expirada"
+  },
+  "public": {
+    "annuaire": {
+      "title": "Directorio de Empresas",
+      "subtitle": "Consulte las empresas registradas y verificadas en Guinea Ecuatorial",
+      "searchPlaceholder": "Buscar por nombre, NIF, o actividad...",
+      "allZones": "Todas las zonas",
+      "allSectors": "Todos los sectores",
+      "results": "resultados",
+      "loading": "Buscando...",
+      "noResults": "No se encontraron empresas con los criterios indicados"
+    }
   }
 }

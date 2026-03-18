@@ -1116,6 +1116,22 @@
       "yes": "Oui"
     },
     "inactive": "Inactifs",
+    "companyDashboard": {
+      "title": "Tableau de Bord Entreprises",
+      "refresh": "Actualiser",
+      "total": "Total Entreprises",
+      "active": "actives",
+      "verified": "Vérifiées",
+      "missingId": "Sans Identifiant",
+      "regimeDistribution": "Répartition par Régime",
+      "byZone": "Entreprises par Zone",
+      "zoneDetails": "Détail par Zone",
+      "companies": "Entreprises",
+      "obligations": "Obligations",
+      "paid": "Payé",
+      "debt": "Dette",
+      "recovery": "Recouvrement"
+    },
     "companies": {
       "title": "Gestion des Entreprises",
       "subtitle": "Administration des entreprises enregistrées et de leurs comptes",
@@ -7887,6 +7903,34 @@
     }
   },
   "agent": {
+    "companyLookup": {
+      "title": "Consultation Entreprises",
+      "subtitle": "Recherchez des entreprises par NIF, numéro d'enregistrement ou nom",
+      "searchPlaceholder": "NIF, PE-XXXX ou nom d'entreprise...",
+      "noResults": "Aucune entreprise trouvée"
+    },
+    "companyDebt": {
+      "title": "Dette Entreprise",
+      "subtitle": "Consultez les obligations d'une entreprise pour votre ministère",
+      "searchPlaceholder": "ID de l'entreprise...",
+      "search": "Rechercher",
+      "searching": "Recherche...",
+      "notFound": "Entreprise non trouvée",
+      "error": "Erreur lors de la consultation",
+      "totalDue": "Total dû",
+      "totalPaid": "Total payé",
+      "balance": "Solde restant",
+      "recoveryRate": "Taux de recouvrement",
+      "penalties": "Pénalités accumulées",
+      "obligations": "Obligations",
+      "feeType": "Type de taxe",
+      "year": "Année",
+      "amount": "Montant",
+      "penalty": "Pénalité",
+      "dueDate": "Échéance",
+      "status": "Statut",
+      "paidAt": "Date de paiement"
+    },
     "dashboard": {
       "title": "Tableau de Bord Agent",
       "welcome": "Bienvenue sur le tableau de bord de {name}",
@@ -9732,5 +9776,17 @@
     "COMPLETED": "Terminée",
     "CANCELLED": "Annulée",
     "EXPIRED": "Expirée"
+  },
+  "public": {
+    "annuaire": {
+      "title": "Annuaire des Entreprises",
+      "subtitle": "Consultez les entreprises enregistrées et vérifiées en Guinée Équatoriale",
+      "searchPlaceholder": "Rechercher par nom, NIF ou activité...",
+      "allZones": "Toutes les zones",
+      "allSectors": "Tous les secteurs",
+      "results": "résultats",
+      "loading": "Recherche en cours...",
+      "noResults": "Aucune entreprise trouvée avec les critères indiqués"
+    }
   }
 }

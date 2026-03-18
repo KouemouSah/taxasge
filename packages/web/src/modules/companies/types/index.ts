@@ -162,3 +162,164 @@ export interface CompanyClassifyResult {
   confidence: number
   reason: string
 }
+
+// =============================================================================
+// DASHBOARD TYPES
+// =============================================================================
+
+export interface ZoneStats {
+  zone_id: string
+  zone_code: string
+  zone_tier: string
+  zone_name: string
+  total_companies: number
+  active_companies: number
+  pending_verification: number
+  bundle_count: number
+  declarativo_count: number
+  mixto_count: number
+  exento_count: number
+  pendiente_count: number
+  active_licenses: number
+  total_obligations_amount: number
+  total_paid_amount: number
+  total_debt: number
+  recovery_rate_pct: number
+  refreshed_at?: string
+}
+
+export interface MinistryZoneStats {
+  ministry_id: number
+  fee_type: string
+  zone_id: string | null
+  zone_code: string | null
+  companies_count: number
+  obligations_count: number
+  paid_count: number
+  pending_count: number
+  overdue_count: number
+  total_amount: number
+  paid_amount: number
+  overdue_amount: number
+  total_penalties: number
+  recovery_rate_pct: number
+}
+
+export interface MinistryStatsResponse {
+  ministry_id: number
+  zones: MinistryZoneStats[]
+  totals: {
+    total_amount: number
+    paid_amount: number
+    overdue_amount: number
+    recovery_rate_pct: number
+  }
+}
+
+export interface GlobalStats {
+  total_companies: number
+  active_companies: number
+  verified_companies: number
+  inactive_companies: number
+  bundle_count: number
+  declarativo_count: number
+  mixto_count: number
+  exento_count: number
+  pendiente_count: number
+  with_nif: number
+  with_reg_number: number
+  with_zone: number
+  missing_identifier: number
+  refreshed_at?: string
+}
+
+// =============================================================================
+// MINISTRY DEBT TYPES
+// =============================================================================
+
+export interface CompanyObligation {
+  id: string
+  fee_type: string
+  amount: number
+  penalty_amount: number
+  due_date: string
+  status: string
+  paid_at: string | null
+  bundle_item_id: string
+  fiscal_year: number
+  license_status: string
+}
+
+export interface CompanyDebtResponse {
+  company: {
+    id: string
+    legal_name: string
+    nif: string | null
+    registration_number: string | null
+    regimen_fiscal: string
+    commerce_type: string | null
+    is_active: boolean
+    city_name: string | null
+    zone_code: string | null
+  }
+  ministry_id: number
+  obligations: CompanyObligation[]
+  totals: {
+    total_due: number
+    total_paid: number
+    total_overdue: number
+    total_penalties: number
+    balance: number
+    recovery_rate_pct: number
+    obligation_count: number
+  }
+}
+
+// =============================================================================
+// PUBLIC DIRECTORY TYPES
+// =============================================================================
+
+export interface PublicCompany {
+  id: string
+  legal_name: string
+  nif: string | null
+  registration_number: string | null
+  forma_juridica: string | null
+  sector_actividad: string | null
+  subsector_actividad: string | null
+  objeto_social: string | null
+  regimen_fiscal: string | null
+  address: string | null
+  city_name: string | null
+  provincia: string | null
+  zone_code: string | null
+  zone_tier: string | null
+}
+
+export interface PublicDirectoryResponse {
+  items: PublicCompany[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface PublicZone {
+  id: string
+  zone_code: string
+  zone_tier: string
+  name_es: string
+}
+
+export interface LookupResult {
+  id: string
+  legal_name: string
+  nif: string | null
+  registration_number: string | null
+  forma_juridica: string | null
+  regimen_fiscal: string | null
+  commerce_type: string | null
+  is_active: boolean
+  is_verified: boolean
+  city_name: string | null
+  zone_code: string | null
+}

@@ -1116,6 +1116,22 @@
       "yes": "Yes"
     },
     "inactive": "Inactive",
+    "companyDashboard": {
+      "title": "Companies Dashboard",
+      "refresh": "Refresh",
+      "total": "Total Companies",
+      "active": "active",
+      "verified": "Verified",
+      "missingId": "Missing Identifier",
+      "regimeDistribution": "Regime Distribution",
+      "byZone": "Companies by Zone",
+      "zoneDetails": "Zone Details",
+      "companies": "Companies",
+      "obligations": "Obligations",
+      "paid": "Paid",
+      "debt": "Debt",
+      "recovery": "Recovery"
+    },
     "companies": {
       "title": "Company Management",
       "subtitle": "Manage registered companies and their accounts",
@@ -7644,6 +7660,34 @@
     }
   },
   "agent": {
+    "companyLookup": {
+      "title": "Company Lookup",
+      "subtitle": "Search companies by NIF, registration number, or name",
+      "searchPlaceholder": "NIF, PE-XXXX, or company name...",
+      "noResults": "No company found"
+    },
+    "companyDebt": {
+      "title": "Company Debt",
+      "subtitle": "View company obligations for your ministry",
+      "searchPlaceholder": "Company ID...",
+      "search": "Search",
+      "searching": "Searching...",
+      "notFound": "Company not found",
+      "error": "Error loading debt",
+      "totalDue": "Total Due",
+      "totalPaid": "Total Paid",
+      "balance": "Outstanding Balance",
+      "recoveryRate": "Recovery Rate",
+      "penalties": "Accumulated Penalties",
+      "obligations": "Obligations",
+      "feeType": "Fee Type",
+      "year": "Year",
+      "amount": "Amount",
+      "penalty": "Penalty",
+      "dueDate": "Due Date",
+      "status": "Status",
+      "paidAt": "Paid Date"
+    },
     "dashboard": {
       "title": "Agent Dashboard",
       "welcome": "Welcome to {name} dashboard",
@@ -9489,5 +9533,17 @@
     "DOCUMENTS_VALIDATED": "Documents Validated",
     "READY_FOR_DELIVERY": "Ready for Delivery",
     "EXPIRED": "Expired"
+  },
+  "public": {
+    "annuaire": {
+      "title": "Company Directory",
+      "subtitle": "Search registered and verified companies in Equatorial Guinea",
+      "searchPlaceholder": "Search by name, NIF, or activity...",
+      "allZones": "All zones",
+      "allSectors": "All sectors",
+      "results": "results",
+      "loading": "Searching...",
+      "noResults": "No companies found matching the given criteria"
+    }
   }
 }
