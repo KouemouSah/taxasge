@@ -19,7 +19,6 @@ from app.modules.companies.models import (
     CompanyClassifyResponse,
 )
 from app.modules.companies.repositories import CompanyRepository
-from app.modules.companies.services.company_classifier import CompanyClassifier
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
 from app.database.connection import get_database
@@ -27,7 +26,6 @@ from app.database.connection import get_database
 router = APIRouter(tags=["Companies"])
 security = HTTPBearer()
 company_repository = CompanyRepository()
-company_classifier = CompanyClassifier()
 
 
 # =============================================================================
@@ -128,17 +126,30 @@ async def admin_classify_company(
     db=Depends(get_database),
     _=Depends(permission_required("company.update")),
 ):
-    """Classify company's fiscal regime using rules-based engine.
+    """Classify company's fiscal regime using the 3-layer classification agent.
 
-    Updates regimen_fiscal if classification differs from current value.
+    Uses the same engine as auto-classification (rules + LLM + validation).
+    Updates regimen_fiscal + commerce_type. Creates audit trail in
+    company_classification_history.
     """
-    result = await company_classifier.classify_and_update(db, company_id)
-    if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+    from app.modules.companies.services.classification_agent import classification_agent
 
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
-    logger.info(f"Admin {user_id} classified company {company_id}: {result['regimen_fiscal']} (confidence={result['confidence']:.0%})")
-    return CompanyClassifyResponse(**result)
+    result = await classification_agent.classify_and_update(
+        db, company_id, triggered_by="manual",
+        user_id=user_id,
+    )
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+    logger.info(
+        f"Admin {user_id} classified company {company_id}: "
+        f"{result.regimen_fiscal} (confidence={result.confidence:.0%})"
+    )
+    return CompanyClassifyResponse(
+        regimen_fiscal=result.regimen_fiscal,
+        confidence=result.confidence,
+        reason=result.reason,
+    )
 
 
 # =============================================================================
