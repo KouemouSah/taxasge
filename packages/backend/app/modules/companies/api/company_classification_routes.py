@@ -54,7 +54,7 @@ async def classify_single(
     request: ClassifySingleRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.classify")),
+    _=Depends(permission_required("company.classify")),
 ):
     """Classify a company's fiscal regime from provided data."""
     from app.modules.companies.services.classification_agent import classification_agent
@@ -75,7 +75,7 @@ async def classify_batch(
     request: ClassifyBatchRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.classify")),
+    _=Depends(permission_required("company.classify")),
 ):
     """Classify a batch of companies (max 1000)."""
     from app.modules.companies.services.classification_agent import classification_agent
@@ -94,7 +94,7 @@ async def import_csv(
     zone_id: Optional[str] = Query(None, description="Default zone for all companies"),
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.import_csv")),
+    _=Depends(permission_required("company.import_csv")),
 ):
     """Upload CSV → parse → validate → classify → create drafts."""
     from app.modules.companies.services.csv_import_service import csv_import_service
@@ -121,7 +121,7 @@ async def reclassify_company(
     request: ReclassifyRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.classify")),
+    _=Depends(permission_required("company.classify")),
 ):
     """Re-run classification on an existing company and update DB."""
     from app.modules.companies.services.classification_agent import classification_agent
@@ -151,7 +151,7 @@ async def list_drafts(
     page_size: int = Query(20, ge=1, le=100),
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.validate_draft")),
+    _=Depends(permission_required("company.validate_draft")),
 ):
     """List drafts for admin review (ordered by confidence ASC)."""
     from app.modules.companies.services.company_onboarding_service import (
@@ -173,7 +173,7 @@ async def get_draft(
     draft_id: str,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.validate_draft")),
+    _=Depends(permission_required("company.validate_draft")),
 ):
     """Get a single draft by ID."""
     from app.modules.companies.services.company_onboarding_service import (
@@ -195,7 +195,7 @@ async def approve_draft(
     request: DraftActionRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.validate_draft")),
+    _=Depends(permission_required("company.validate_draft")),
 ):
     """Admin approves draft → creates company + commercial license."""
     from app.modules.companies.services.company_onboarding_service import (
@@ -222,7 +222,7 @@ async def reject_draft(
     request: DraftActionRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.validate_draft")),
+    _=Depends(permission_required("company.validate_draft")),
 ):
     """Admin rejects a draft."""
     from app.modules.companies.services.company_onboarding_service import (
@@ -249,7 +249,7 @@ async def request_draft_info(
     request: DraftActionRequest,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.validate_draft")),
+    _=Depends(permission_required("company.validate_draft")),
 ):
     """Admin requests more information on a draft."""
     from app.modules.companies.services.company_onboarding_service import (
@@ -275,7 +275,7 @@ async def reclassify_draft(
     draft_id: str,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.classify")),
+    _=Depends(permission_required("company.classify")),
 ):
     """Re-run classification on a draft's company_data."""
     from app.modules.companies.services.classification_agent import classification_agent
@@ -340,7 +340,7 @@ async def get_classification_history(
     company_id: str,
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.view_classification")),
+    _=Depends(permission_required("company.view_classification")),
 ):
     """Get classification history for a company (audit trail)."""
     rows = await db.fetch(
@@ -384,7 +384,7 @@ async def get_classification_history(
 async def get_classification_stats(
     db: asyncpg.Connection = Depends(get_database),
     current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("companies.view_classification")),
+    _=Depends(permission_required("company.view_classification")),
 ):
     """Get classification statistics for the admin dashboard."""
     from app.modules.companies.services.company_onboarding_service import (

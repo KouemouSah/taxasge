@@ -2,6 +2,12 @@
 -- Phase 3 of Agent Unification Architecture plan
 -- Creates tables for company creation drafts (admin review workflow)
 -- and classification history (audit trail for reclassifications).
+--
+-- VERIFIED against actual DB schema:
+--   permissions: (id UUID, name, resource, action, description, is_critical, module_name)
+--   role_permissions: PK(role_id UUID, permission_id UUID)
+--   roles: code IN ('admin', 'super_admin', 'agent_onrc', 'supervisor_onrc') ✓
+--   uploaded_files: EXISTS ✓
 
 BEGIN;
 
@@ -18,7 +24,7 @@ CREATE TABLE IF NOT EXISTS company_creation_drafts (
     company_data JSONB NOT NULL DEFAULT '{}',
     -- Expected keys: nif, legal_name, forma_juridica, commerce_type, capital_social,
     --   employee_count, sector_actividad, subsector_actividad, objeto_social,
-    --   registration_number, domicilio_fiscal, representante_legal, phone, email, etc.
+    --   localidad, provincia, registration_number, domicilio_fiscal, phone, email
 
     -- Classification result
     regimen_fiscal VARCHAR(20) CHECK (regimen_fiscal IS NULL OR
@@ -26,7 +32,7 @@ CREATE TABLE IF NOT EXISTS company_creation_drafts (
     classification_confidence FLOAT DEFAULT 0,
     classification_reason TEXT,
     classification_details JSONB DEFAULT '{}',
-    -- Contains: rules_applied[], llm_validation (if used), threshold_details, flags[]
+    -- Contains: rules_applied[], flags[], zone_pricing{}, commerce_type, llm_validated
 
     -- LLM extraction metadata (for upload source_type)
     extraction_confidence FLOAT DEFAULT 0,
@@ -49,7 +55,7 @@ CREATE TABLE IF NOT EXISTS company_creation_drafts (
 
     -- Result: created company + license (after approval)
     created_company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
-    created_license_id UUID,  -- FK to commercial_licenses (no constraint — may not exist yet)
+    created_license_id UUID,  -- FK added in migration 231
 
     -- Audit
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -114,30 +120,38 @@ CREATE INDEX IF NOT EXISTS idx_class_history_trigger
 
 
 -- 3. Permissions for classification features
-INSERT INTO permissions (name, description, category)
+-- permissions table: (id UUID, name, resource, action, description, is_critical, module_name)
+INSERT INTO permissions (name, resource, action, description, is_critical, module_name)
 VALUES
-    ('companies.classify', 'Clasificar empresas (asignar régimen fiscal)', 'companies'),
-    ('companies.validate_draft', 'Validar borradores de creación de empresas', 'companies'),
-    ('companies.import_csv', 'Importar empresas desde CSV/Excel', 'companies'),
-    ('companies.view_classification', 'Ver detalles de clasificación', 'companies')
+    ('company.classify', 'company', 'classify', 'Clasificar empresas (asignar regimen fiscal)', true, 'company'),
+    ('company.validate_draft', 'company', 'validate_draft', 'Validar borradores de creacion de empresas', true, 'company'),
+    ('company.import_csv', 'company', 'import_csv', 'Importar empresas desde CSV/Excel', true, 'company'),
+    ('company.view_classification', 'company', 'view_classification', 'Ver detalles de clasificacion', false, 'company')
 ON CONFLICT (name) DO NOTHING;
 
 -- Assign permissions to relevant roles
+-- role_permissions: PK(role_id UUID, permission_id UUID)
 DO $$
 DECLARE
-    v_perm_classify_id INTEGER;
-    v_perm_validate_id INTEGER;
-    v_perm_import_id INTEGER;
-    v_perm_view_class_id INTEGER;
-    v_role_id INTEGER;
+    v_perm_classify_id UUID;
+    v_perm_validate_id UUID;
+    v_perm_import_id UUID;
+    v_perm_view_class_id UUID;
+    v_role_id UUID;
 BEGIN
     -- Get permission IDs
-    SELECT id INTO v_perm_classify_id FROM permissions WHERE name = 'companies.classify';
-    SELECT id INTO v_perm_validate_id FROM permissions WHERE name = 'companies.validate_draft';
-    SELECT id INTO v_perm_import_id FROM permissions WHERE name = 'companies.import_csv';
-    SELECT id INTO v_perm_view_class_id FROM permissions WHERE name = 'companies.view_classification';
+    SELECT id INTO v_perm_classify_id FROM permissions WHERE name = 'company.classify';
+    SELECT id INTO v_perm_validate_id FROM permissions WHERE name = 'company.validate_draft';
+    SELECT id INTO v_perm_import_id FROM permissions WHERE name = 'company.import_csv';
+    SELECT id INTO v_perm_view_class_id FROM permissions WHERE name = 'company.view_classification';
 
-    -- Assign to admin and super_admin
+    -- Skip if permissions not found (idempotent)
+    IF v_perm_classify_id IS NULL THEN
+        RAISE NOTICE 'Permissions not found, skipping role assignments';
+        RETURN;
+    END IF;
+
+    -- Assign all 4 to admin and super_admin
     FOR v_role_id IN (SELECT id FROM roles WHERE code IN ('admin', 'super_admin'))
     LOOP
         INSERT INTO role_permissions (role_id, permission_id)
@@ -149,7 +163,7 @@ BEGIN
         ON CONFLICT DO NOTHING;
     END LOOP;
 
-    -- Assign view_classification to ONRC agents (company registration entity)
+    -- Assign view + classify to ONRC agents
     FOR v_role_id IN (SELECT id FROM roles WHERE code IN ('agent_onrc', 'supervisor_onrc'))
     LOOP
         INSERT INTO role_permissions (role_id, permission_id)
@@ -159,7 +173,7 @@ BEGIN
         ON CONFLICT DO NOTHING;
     END LOOP;
 
-    -- Assign classify + validate to supervisor_onrc
+    -- Assign validate + import to supervisor_onrc
     FOR v_role_id IN (SELECT id FROM roles WHERE code = 'supervisor_onrc')
     LOOP
         INSERT INTO role_permissions (role_id, permission_id)

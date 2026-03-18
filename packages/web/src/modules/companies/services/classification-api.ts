@@ -33,6 +33,7 @@ export interface ClassificationResult {
   llmIssues: string[]
   flags: string[]
   suggestedActions: string[]
+  classificationDetails: Record<string, unknown>
 }
 
 export interface DraftItem {
@@ -151,12 +152,14 @@ export const classificationApi = {
   /** Get single draft */
   getDraft: (id: string) => get<DraftItem>(`/drafts/${id}`),
 
-  /** Approve draft */
+  /** Approve draft → creates company + license (if bundle/mixto with zone) */
   approveDraft: (id: string, notes?: string) =>
-    post<{ status: string; companyId: string; licenseId: string | null }>(
-      `/drafts/${id}/approve`,
-      { notes }
-    ),
+    post<{
+      status: string
+      companyId: string
+      licenseId: string | null
+      licenseWarning?: string
+    }>(`/drafts/${id}/approve`, { notes }),
 
   /** Reject draft */
   rejectDraft: (id: string, notes?: string) =>
@@ -178,6 +181,19 @@ export const classificationApi = {
 
   /** Get classification stats */
   getStats: () => get<ClassificationStats>('/stats'),
+
+  /** Download CSV template for import */
+  getCsvTemplateUrl: (): string => {
+    const headers = [
+      'legal_name', 'forma_juridica', 'nif', 'registration_number',
+      'sector_actividad', 'subsector_actividad', 'objeto_social',
+      'commerce_type', 'capital_social', 'employee_count',
+      'localidad', 'provincia', 'domicilio_fiscal',
+      'representante_legal', 'telefono', 'email',
+    ]
+    const csv = headers.join(',') + '\n'
+    return URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+  },
 }
 
 // ── AI Agents API ────────────────────────────────────────────────────────────

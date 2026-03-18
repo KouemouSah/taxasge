@@ -27,6 +27,12 @@ PERMISSIONS = [
 
     # --- Members ---
     ("company.manage_members", "company", "manage_members", "Gestionar miembros de empresa",         True),
+
+    # --- Classification Agent ---
+    ("company.classify",              "company", "classify",              "Clasificar empresas (asignar regimen fiscal)",  True),
+    ("company.validate_draft",        "company", "validate_draft",        "Validar borradores de creacion de empresas",    True),
+    ("company.import_csv",            "company", "import_csv",            "Importar empresas desde CSV/Excel",             True),
+    ("company.view_classification",   "company", "view_classification",   "Ver detalles de clasificacion",                 False),
 ]
 
 ROLE_PERMISSIONS = {
@@ -47,12 +53,14 @@ ROLE_PERMISSIONS = {
         "company.view",
     ],
 
-    # ONRC agents — company registration entity
+    # ONRC agents — company registration + classification entity
     "agent_onrc": [
         "company.view",
         "company.create",
         "company.update",
         "company.verify",
+        "company.view_classification",
+        "company.classify",
     ],
     "supervisor_onrc": [
         "company.view",
@@ -62,6 +70,10 @@ ROLE_PERMISSIONS = {
         "company.update",
         "company.verify",
         "company.manage_members",
+        "company.view_classification",
+        "company.classify",
+        "company.validate_draft",
+        "company.import_csv",
     ],
 
     # Commerce ministry — supervisors see entity-scoped companies

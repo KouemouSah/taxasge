@@ -53,6 +53,10 @@ class ClassificationResult(BaseModel):
     llm_issues: List[str] = []
     flags: List[str] = []
     suggested_actions: List[str] = []
+    classification_details: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Extra details: zone_pricing, bundle_id, etc.",
+    )
 
 
 class ExtractionResult(BaseModel):
@@ -89,6 +93,7 @@ class ClassifySingleRequest(BaseModel):
     employee_count: Optional[int] = None
     registration_number: Optional[str] = None
     zone_id: Optional[str] = None
+    city_id: Optional[str] = None
 
 
 class ClassifyBatchRequest(BaseModel):
@@ -115,16 +120,20 @@ class DraftResponse(BaseModel):
     """Response for a single draft."""
     id: UUID
     source_type: str
+    source_file_id: Optional[UUID] = None
+    batch_id: Optional[UUID] = None
     company_data: Dict[str, Any] = {}
     regimen_fiscal: Optional[str] = None
     classification_confidence: float = 0.0
     classification_reason: Optional[str] = None
     classification_details: Dict[str, Any] = {}
     extraction_confidence: float = 0.0
+    extraction_details: Dict[str, Any] = Field(default_factory=dict)
     status: str
     reviewer_notes: Optional[str] = None
     reviewed_at: Optional[datetime] = None
     created_company_id: Optional[UUID] = None
+    created_license_id: Optional[UUID] = None
     created_by: Optional[UUID] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -159,6 +168,8 @@ class ClassificationStatsResponse(BaseModel):
     total_drafts: int = 0
     drafts_pending: int = 0
     drafts_approved: int = 0
+    drafts_auto_approved: int = 0
     drafts_rejected: int = 0
+    drafts_needs_info: int = 0
     auto_approval_rate: float = 0.0
     avg_confidence: float = 0.0

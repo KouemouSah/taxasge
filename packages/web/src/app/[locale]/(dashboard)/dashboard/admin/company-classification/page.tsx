@@ -3,26 +3,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
-  Building2, Upload, BarChart3, RefreshCw,
+  Building2, Upload, BarChart3, RefreshCw, Download,
   CheckCircle2, XCircle, Clock, AlertTriangle, FileUp,
   ChevronLeft, ChevronRight, ThumbsUp, ThumbsDown,
-  MessageSquare, Bot,
+  MessageSquare, Bot, Eye, MapPin,
 } from 'lucide-react'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import {
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+} from '@/components/ui/sheet'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import {
   classificationApi,
@@ -39,6 +44,15 @@ const REGIME_COLORS: Record<string, string> = {
   mixto: 'bg-purple-100 text-purple-800',
   exento: 'bg-gray-100 text-gray-700',
   pendiente: 'bg-yellow-100 text-yellow-800',
+}
+
+const STATUS_KEYS: Record<string, string> = {
+  pending_review: 'pendingReview',
+  auto_approved: 'autoApproved',
+  approved: 'approved',
+  rejected: 'rejected',
+  needs_info: 'needsInfo',
+  error: 'error',
 }
 
 const STATUS_CONFIG: Record<string, { color: string; icon: typeof Clock }> = {
@@ -59,14 +73,280 @@ function ConfidenceBadge({ value }: { value: number }) {
   return <Badge className={`${color} text-xs`}>{pct}%</Badge>
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, t }: { status: string; t: ReturnType<typeof useTranslations> }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending_review
   const Icon = cfg.icon
+  const key = STATUS_KEYS[status]
+  const label = key ? t(`companyClassification.${key}`) : status.replace(/_/g, ' ')
   return (
     <Badge className={`${cfg.color} text-xs gap-1`}>
       <Icon className="h-3 w-3" />
-      {status.replace(/_/g, ' ')}
+      {label}
     </Badge>
+  )
+}
+
+/** Extract display fields from company_data JSONB */
+function getCompanyField(cd: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    if (cd[k]) return String(cd[k])
+  }
+  return '-'
+}
+
+// ── Draft Detail Sheet ──────────────────────────────────────────────────────
+
+function DraftDetailSheet({
+  draft, open, onClose, t, locale,
+}: {
+  draft: DraftItem | null
+  open: boolean
+  onClose: () => void
+  t: ReturnType<typeof useTranslations>
+  locale: string
+}) {
+  if (!draft) return null
+  const cd = draft.companyData || {}
+  const details = draft.classificationDetails || {}
+
+  const fields: [string, string][] = [
+    [t('companyClassification.detailNif'), getCompanyField(cd, 'nif')],
+    [t('companyClassification.detailName'), getCompanyField(cd, 'legalName', 'legal_name', 'nombre_empresa')],
+    [t('companyClassification.formaJuridica'), getCompanyField(cd, 'formaJuridica', 'forma_juridica')],
+    [t('companyClassification.detailSector'), getCompanyField(cd, 'sectorActividad', 'sector_actividad')],
+    [t('companyClassification.detailSubsector'), getCompanyField(cd, 'subsectorActividad', 'subsector_actividad')],
+    [t('companyClassification.detailActivity'), getCompanyField(cd, 'objetoSocial', 'objeto_social')],
+    [t('companyClassification.detailCapital'), getCompanyField(cd, 'capitalSocial', 'capital_social')],
+    [t('companyClassification.detailEmployees'), getCompanyField(cd, 'employeeCount', 'employee_count', 'numero_empleados')],
+    [t('companyClassification.detailCity'), getCompanyField(cd, 'localidad', 'city_name')],
+    [t('companyClassification.detailRepresentative'), getCompanyField(cd, 'representanteLegal', 'representante_legal')],
+  ]
+
+  const zonePricing = details.zonePricing as Record<string, unknown> | undefined
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose() }}>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            {t('companyClassification.draftDetail')}
+          </SheetTitle>
+          <SheetDescription>
+            {getCompanyField(cd, 'legalName', 'legal_name', 'nombre_empresa')}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-6 space-y-6">
+          {/* Classification result */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold">{t('companyClassification.classificationResult')}</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">{t('companyClassification.regime')}</p>
+                {draft.regimenFiscal ? (
+                  <Badge className={REGIME_COLORS[draft.regimenFiscal] || 'bg-gray-100'}>
+                    {draft.regimenFiscal}
+                  </Badge>
+                ) : <span className="text-sm">-</span>}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('companyClassification.confidence')}</p>
+                <ConfidenceBadge value={draft.classificationConfidence} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('companyClassification.status')}</p>
+                <StatusBadge status={draft.status} t={t} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('companyClassification.source')}</p>
+                <Badge variant="outline" className="text-xs">{draft.sourceType}</Badge>
+              </div>
+            </div>
+            {draft.classificationReason && (
+              <div>
+                <p className="text-xs text-muted-foreground">{t('companyClassification.detailReason')}</p>
+                <p className="text-sm">{draft.classificationReason}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Company data */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold">{t('companyClassification.companyData')}</h4>
+            <div className="space-y-1">
+              {fields.map(([label, value]) => (
+                <div key={label} className="flex justify-between text-sm py-1 border-b border-muted last:border-0">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium text-right max-w-[60%] truncate">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Zone pricing info */}
+          {zonePricing && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                {t('companyClassification.zonePricing')}
+              </h4>
+              <div className="text-sm space-y-1">
+                {zonePricing.zoneCode && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('companyClassification.zoneCode')}</span>
+                    <Badge variant="outline">{String(zonePricing.zoneCode)}</Badge>
+                  </div>
+                )}
+                {zonePricing.zoneTier && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('companyClassification.zoneTier')}</span>
+                    <span className="font-medium">{String(zonePricing.zoneTier)}</span>
+                  </div>
+                )}
+                {zonePricing.totalAmount != null && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('companyClassification.totalAmount')}</span>
+                    <span className="font-bold">
+                      {Number(zonePricing.totalAmount).toLocaleString(locale)} XAF
+                    </span>
+                  </div>
+                )}
+                {Array.isArray(zonePricing.feeTypesAvailable) && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('companyClassification.feeTypes')}</span>
+                    <span>{(zonePricing.feeTypesAvailable as string[]).join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Classification details - flags & rules */}
+          {(details.rulesApplied || details.flags) && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">{t('companyClassification.detailClassification')}</h4>
+              {Array.isArray(details.rulesApplied) && details.rulesApplied.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">{t('companyClassification.rulesApplied')}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(details.rulesApplied as string[]).map((r, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">{r}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {Array.isArray(details.flags) && details.flags.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">{t('companyClassification.flags')}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {(details.flags as string[]).map((f, i) => (
+                      <Badge key={i} variant="destructive" className="text-xs">{f}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {details.commerceType && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t('companyClassification.commerceType')}</span>
+                  <Badge className="bg-blue-100 text-blue-800">{String(details.commerceType)}</Badge>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reviewer notes */}
+          {draft.reviewerNotes && (
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold">{t('companyClassification.reviewerNotes')}</h4>
+              <p className="text-sm bg-muted p-2 rounded">{draft.reviewerNotes}</p>
+            </div>
+          )}
+
+          {/* Dates */}
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>{t('companyClassification.date')}: {draft.createdAt ? new Date(draft.createdAt).toLocaleString(locale) : '-'}</p>
+            {draft.reviewedAt && <p>{t('companyClassification.reviewedAt')}: {new Date(draft.reviewedAt).toLocaleString(locale)}</p>}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+// ── Confirmation Dialog ─────────────────────────────────────────────────────
+
+type ConfirmAction = 'approve' | 'reject' | 'request_info'
+
+function ConfirmActionDialog({
+  action, open, onConfirm, onCancel, t,
+}: {
+  action: ConfirmAction | null
+  open: boolean
+  onConfirm: (notes: string) => void
+  onCancel: () => void
+  t: ReturnType<typeof useTranslations>
+}) {
+  const [notes, setNotes] = useState('')
+
+  useEffect(() => { if (!open) setNotes('') }, [open])
+
+  const config: Record<ConfirmAction, { title: string; desc: string; confirmLabel: string; variant: string }> = {
+    approve: {
+      title: t('companyClassification.confirmApproveTitle'),
+      desc: t('companyClassification.confirmApproveDesc'),
+      confirmLabel: t('companyClassification.approve'),
+      variant: 'text-green-600',
+    },
+    reject: {
+      title: t('companyClassification.confirmRejectTitle'),
+      desc: t('companyClassification.confirmRejectDesc'),
+      confirmLabel: t('companyClassification.reject'),
+      variant: 'text-red-600',
+    },
+    request_info: {
+      title: t('companyClassification.confirmInfoTitle'),
+      desc: t('companyClassification.confirmInfoDesc'),
+      confirmLabel: t('companyClassification.requestInfo'),
+      variant: 'text-orange-600',
+    },
+  }
+
+  const cfg = action ? config[action] : config.approve
+
+  return (
+    <AlertDialog open={open} onOpenChange={(v) => { if (!v) onCancel() }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{cfg.title}</AlertDialogTitle>
+          <AlertDialogDescription>{cfg.desc}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="py-2">
+          <Label htmlFor="action-notes" className="text-sm">
+            {t('companyClassification.notesOptional')}
+          </Label>
+          <Textarea
+            id="action-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t('companyClassification.notesPlaceholder')}
+            className="mt-1"
+            rows={3}
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>
+            {t('companyClassification.cancel')}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className={cfg.variant}
+            onClick={() => onConfirm(notes)}
+          >
+            {cfg.confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -187,13 +467,25 @@ function ImportTab({ t }: { t: ReturnType<typeof useTranslations> }) {
   const [result, setResult] = useState<CsvImportResult | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const handleDownloadTemplate = () => {
+    const url = classificationApi.getCsvTemplateUrl()
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'company_import_template.csv'
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
   const handleUpload = async () => {
     const file = fileRef.current?.files?.[0]
     if (!file) return
 
-    // Client-side file size check (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: t('companyClassification.error'), description: 'File exceeds 10MB limit', variant: 'destructive' })
+      toast({
+        title: t('companyClassification.error'),
+        description: t('companyClassification.fileTooLarge'),
+        variant: 'destructive',
+      })
       return
     }
 
@@ -226,7 +518,19 @@ function ImportTab({ t }: { t: ReturnType<typeof useTranslations> }) {
           <p className="text-sm text-muted-foreground">
             {t('companyClassification.importDesc')}
           </p>
-          <div className="flex gap-3 items-center">
+          <div className="p-3 bg-muted/50 rounded text-xs text-muted-foreground space-y-1">
+            <p className="font-medium">{t('companyClassification.requiredColumns')}:</p>
+            <p><code>legal_name</code>, <code>forma_juridica</code></p>
+            <p className="font-medium mt-2">{t('companyClassification.optionalColumns')}:</p>
+            <p><code>nif</code>, <code>registration_number</code>, <code>sector_actividad</code>, <code>subsector_actividad</code>, <code>objeto_social</code>, <code>commerce_type</code>, <code>capital_social</code>, <code>employee_count</code>, <code>localidad</code>, <code>provincia</code>, <code>domicilio_fiscal</code>, <code>representante_legal</code>, <code>telefono</code>, <code>email</code></p>
+            <p className="mt-1 text-xs italic">{t('companyClassification.identifierHint')}</p>
+            <p className="mt-2">{t('companyClassification.maxFileSize')}: 10 MB | {t('companyClassification.encoding')}: UTF-8</p>
+          </div>
+          <div className="flex gap-3 items-center flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+              <Download className="h-4 w-4 mr-2" />
+              {t('companyClassification.downloadTemplate')}
+            </Button>
             <Input
               ref={fileRef}
               type="file"
@@ -309,6 +613,15 @@ export default function CompanyClassificationPage() {
   const [stats, setStats] = useState<ClassificationStats | null>(null)
   const [activeTab, setActiveTab] = useState('drafts')
 
+  // Detail sheet state
+  const [selectedDraft, setSelectedDraft] = useState<DraftItem | null>(null)
+
+  // Confirmation dialog state
+  const [confirmAction, setConfirmAction] = useState<{
+    action: ConfirmAction
+    draftId: string
+  } | null>(null)
+
   // Fetch drafts
   const fetchDrafts = useCallback(async () => {
     setDraftsLoading(true)
@@ -345,41 +658,38 @@ export default function CompanyClassificationPage() {
     if (activeTab === 'stats') fetchStats()
   }, [activeTab, fetchStats])
 
-  // Draft actions with loading state
-  const handleApprove = async (id: string) => {
-    setActionLoading(id)
-    try {
-      await classificationApi.approveDraft(id)
-      toast({ title: t('companyClassification.draftApproved'), description: t('companyClassification.companyCreated') })
-      fetchDrafts()
-    } catch {
-      toast({ title: t('companyClassification.error'), description: t('companyClassification.errorApproving'), variant: 'destructive' })
-    } finally {
-      setActionLoading(null)
-    }
-  }
+  // Confirmed action handler
+  const handleConfirmedAction = async (notes: string) => {
+    if (!confirmAction) return
+    const { action, draftId } = confirmAction
+    setConfirmAction(null)
+    setActionLoading(draftId)
 
-  const handleReject = async (id: string) => {
-    setActionLoading(id)
     try {
-      await classificationApi.rejectDraft(id)
-      toast({ title: t('companyClassification.draftRejected') })
+      if (action === 'approve') {
+        const result = await classificationApi.approveDraft(draftId, notes || undefined)
+        toast({
+          title: t('companyClassification.draftApproved'),
+          description: t('companyClassification.companyCreated'),
+        })
+        if (result.licenseWarning) {
+          toast({
+            title: t('companyClassification.licenseWarning'),
+            description: result.licenseWarning,
+            variant: 'destructive',
+          })
+        }
+      } else if (action === 'reject') {
+        await classificationApi.rejectDraft(draftId, notes || undefined)
+        toast({ title: t('companyClassification.draftRejected') })
+      } else if (action === 'request_info') {
+        await classificationApi.requestInfo(draftId, notes || t('companyClassification.moreInfoNeeded'))
+        toast({ title: t('companyClassification.infoRequested') })
+      }
       fetchDrafts()
     } catch {
-      toast({ title: t('companyClassification.error'), description: t('companyClassification.errorRejecting'), variant: 'destructive' })
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const handleRequestInfo = async (id: string) => {
-    setActionLoading(id)
-    try {
-      await classificationApi.requestInfo(id, t('companyClassification.moreInfoNeeded'))
-      toast({ title: t('companyClassification.infoRequested') })
-      fetchDrafts()
-    } catch {
-      toast({ title: t('companyClassification.error'), variant: 'destructive' })
+      const errKey = action === 'approve' ? 'errorApproving' : action === 'reject' ? 'errorRejecting' : 'errorLoading'
+      toast({ title: t('companyClassification.error'), description: t(`companyClassification.${errKey}`), variant: 'destructive' })
     } finally {
       setActionLoading(null)
     }
@@ -453,6 +763,7 @@ export default function CompanyClassificationPage() {
                     <TableHead>{t('companyClassification.formaJuridica')}</TableHead>
                     <TableHead>{t('companyClassification.regime')}</TableHead>
                     <TableHead>{t('companyClassification.confidence')}</TableHead>
+                    <TableHead>{t('companyClassification.zone')}</TableHead>
                     <TableHead>{t('companyClassification.source')}</TableHead>
                     <TableHead>{t('companyClassification.status')}</TableHead>
                     <TableHead>{t('companyClassification.date')}</TableHead>
@@ -462,28 +773,35 @@ export default function CompanyClassificationPage() {
                 <TableBody>
                   {draftsLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
                         {t('companyClassification.loading')}
                       </TableCell>
                     </TableRow>
                   ) : drafts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                         {t('companyClassification.noDrafts')}
                       </TableCell>
                     </TableRow>
                   ) : (
                     drafts.map((draft) => {
                       const cd = draft.companyData || {}
+                      const details = draft.classificationDetails || {}
+                      const zonePricing = details.zonePricing as Record<string, unknown> | undefined
                       const isActionPending = actionLoading === draft.id
+                      const canAct = draft.status === 'pending_review' || draft.status === 'auto_approved' || draft.status === 'needs_info'
                       return (
-                        <TableRow key={draft.id}>
+                        <TableRow
+                          key={draft.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setSelectedDraft(draft)}
+                        >
                           <TableCell className="font-medium max-w-[200px] truncate">
-                            {(cd.legalName || cd.legal_name || 'N/A') as string}
+                            {getCompanyField(cd, 'legalName', 'legal_name', 'nombre_empresa')}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {(cd.formaJuridica || cd.forma_juridica || '-') as string}
+                            {getCompanyField(cd, 'formaJuridica', 'forma_juridica')}
                           </TableCell>
                           <TableCell>
                             {draft.regimenFiscal ? (
@@ -496,53 +814,74 @@ export default function CompanyClassificationPage() {
                             <ConfidenceBadge value={draft.classificationConfidence} />
                           </TableCell>
                           <TableCell>
+                            {zonePricing?.zone_code ? (
+                              <Badge variant="outline" className="text-xs gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {String(zonePricing.zoneCode)}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <Badge variant="outline" className="text-xs">
                               {draft.sourceType}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <StatusBadge status={draft.status} />
+                            <StatusBadge status={draft.status} t={t} />
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {draft.createdAt
                               ? new Date(draft.createdAt).toLocaleDateString(locale)
                               : '-'}
                           </TableCell>
-                          <TableCell className="text-right">
-                            {(draft.status === 'pending_review' || draft.status === 'auto_approved' || draft.status === 'needs_info') && (
-                              <div className="flex gap-1 justify-end">
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-green-600"
-                                  title={t('companyClassification.approve')}
-                                  onClick={() => handleApprove(draft.id)}
-                                  disabled={isActionPending}
-                                >
-                                  <ThumbsUp className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-red-600"
-                                  title={t('companyClassification.reject')}
-                                  onClick={() => handleReject(draft.id)}
-                                  disabled={isActionPending}
-                                >
-                                  <ThumbsDown className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-orange-600"
-                                  title={t('companyClassification.requestInfo')}
-                                  onClick={() => handleRequestInfo(draft.id)}
-                                  disabled={isActionPending}
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            )}
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex gap-1 justify-end">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                title={t('companyClassification.draftDetail')}
+                                onClick={() => setSelectedDraft(draft)}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              {canAct && (
+                                <>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-green-600"
+                                    title={t('companyClassification.approve')}
+                                    onClick={() => setConfirmAction({ action: 'approve', draftId: draft.id })}
+                                    disabled={isActionPending}
+                                  >
+                                    <ThumbsUp className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-red-600"
+                                    title={t('companyClassification.reject')}
+                                    onClick={() => setConfirmAction({ action: 'reject', draftId: draft.id })}
+                                    disabled={isActionPending}
+                                  >
+                                    <ThumbsDown className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-orange-600"
+                                    title={t('companyClassification.requestInfo')}
+                                    onClick={() => setConfirmAction({ action: 'request_info', draftId: draft.id })}
+                                    disabled={isActionPending}
+                                  >
+                                    <MessageSquare className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -591,6 +930,24 @@ export default function CompanyClassificationPage() {
           <StatsTab stats={stats} t={t} />
         </TabsContent>
       </Tabs>
+
+      {/* Draft Detail Sheet */}
+      <DraftDetailSheet
+        draft={selectedDraft}
+        open={selectedDraft !== null}
+        onClose={() => setSelectedDraft(null)}
+        t={t}
+        locale={locale}
+      />
+
+      {/* Confirmation Dialog */}
+      <ConfirmActionDialog
+        action={confirmAction?.action ?? null}
+        open={confirmAction !== null}
+        onConfirm={handleConfirmedAction}
+        onCancel={() => setConfirmAction(null)}
+        t={t}
+      />
     </div>
   )
 }

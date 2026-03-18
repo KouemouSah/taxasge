@@ -21,6 +21,7 @@ import asyncio
 import json
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 
 import asyncpg
 from loguru import logger
@@ -141,7 +142,9 @@ CAMPOS A EXTRAER (JSON):
 - objeto_social: Descripción completa de la actividad comercial
 - capital_social: Capital social en XAF (solo número) o null
 - employee_count: Número de empleados (entero) o null
-- domicilio_fiscal: Dirección completa
+- localidad: Ciudad/localidad donde opera el negocio (campo LOCALIDAD del documento) o null
+- provincia: Provincia (BIOKO-NORTE, BIOKO-SUR, LITORAL, CENTRO-SUR, KIE-NTEM, WELE-NZAS, DJIBLOHO, ANNOBON) o null
+- domicilio_fiscal: Dirección completa (barrio/calle, sin incluir localidad ni provincia)
 - representante_legal: Nombre completo del representante
 - nacionalidad: Nacionalidad de la empresa
 - fecha_constitucion: Fecha de creación (YYYY-MM-DD) o null
@@ -153,7 +156,9 @@ REGLAS CRÍTICAS:
 3. Para forma_juridica: mapear al valor EXACTO de la lista
 4. CROSS-CHECK: Si doc_type=CERTIFICADO_ACTUALIZACION_PADRON → forma_juridica DEBE ser autonomo
 5. CROSS-CHECK: Si registration_number empieza por PE- → forma_juridica DEBE ser autonomo
-6. Responder SOLO con JSON válido
+6. Para localidad: extraer EXACTAMENTE el nombre de la ciudad del campo LOCALIDAD del certificado
+7. Para provincia: mapear al valor EXACTO de la lista (8 provincias de GE)
+8. Responder SOLO con JSON válido
 
 JSON:"""
 
@@ -190,11 +195,37 @@ class CompanyClassificationAgent(LLMAgentMixin):
         Args:
             conn: Database connection
             company_data: Company attributes (forma_juridica, sector, etc.)
-            zone_id: Commerce zone for bundle lookup (optional)
+            zone_id: Commerce zone for bundle lookup (optional).
+                     If not provided, resolved from company_data city_id.
 
         Returns:
             ClassificationResult with regime, confidence, and reasoning.
         """
+        # ── Location resolution chain ──
+        # Priority: explicit zone_id > city_id > localidad+provincia (OCR)
+        # Pipeline: localidad (string) → city_id (UUID) → zone_id (UUID)
+        if not zone_id:
+            zone_id = company_data.get("zone_id")
+
+        # Step 1: If no zone_id and no city_id, try localidad string → city lookup
+        if not zone_id and not company_data.get("city_id") and company_data.get("localidad"):
+            city_info = await self._resolve_city_from_localidad(
+                conn,
+                company_data["localidad"],
+                company_data.get("provincia"),
+            )
+            if city_info:
+                # Enrich company_data with resolved IDs for downstream use
+                company_data["city_id"] = city_info["city_id"]
+                company_data["zone_id"] = city_info["zone_id"]
+                zone_id = city_info["zone_id"]
+
+        # Step 2: If city_id exists but no zone_id, resolve via FK
+        if not zone_id and company_data.get("city_id"):
+            zone_id = await self._resolve_zone_from_city(
+                conn, company_data["city_id"]
+            )
+
         # Layer 1: Rules-based classification
         result = self._rules_classify(company_data)
 
@@ -295,8 +326,9 @@ class CompanyClassificationAgent(LLMAgentMixin):
         Creates a classification history entry if regime changes.
         Returns the classification result, or None if company not found.
         """
+        company_uuid = UUID(company_id)
         company = await conn.fetchrow(
-            "SELECT * FROM companies WHERE id = $1", company_id
+            "SELECT * FROM companies WHERE id = $1", company_uuid
         )
         if not company:
             return None
@@ -315,14 +347,14 @@ class CompanyClassificationAgent(LLMAgentMixin):
                         """UPDATE companies
                            SET regimen_fiscal = $2, commerce_type = $3, updated_at = NOW()
                            WHERE id = $1""",
-                        company_id, new_regimen, result.commerce_type,
+                        company_uuid, new_regimen, result.commerce_type,
                     )
                 else:
                     await conn.execute(
                         """UPDATE companies
                            SET regimen_fiscal = $2, updated_at = NOW()
                            WHERE id = $1""",
-                        company_id, new_regimen,
+                        company_uuid, new_regimen,
                     )
 
                 # Audit trail
@@ -331,7 +363,7 @@ class CompanyClassificationAgent(LLMAgentMixin):
                        (company_id, old_regimen, new_regimen, old_commerce_type, new_commerce_type,
                         reason, confidence, details, triggered_by, created_by)
                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)""",
-                    company_id,
+                    company_uuid,
                     current_regimen,
                     new_regimen,
                     company_data.get("commerce_type"),
@@ -344,7 +376,7 @@ class CompanyClassificationAgent(LLMAgentMixin):
                         "llm_validated": result.llm_validated,
                     }),
                     triggered_by,
-                    user_id,
+                    UUID(user_id) if user_id else None,
                 )
 
             logger.info(
@@ -391,6 +423,7 @@ class CompanyClassificationAgent(LLMAgentMixin):
         expected_fields = [
             "legal_name", "forma_juridica", "sector_actividad",
             "objeto_social", "nif", "registration_number",
+            "localidad",
         ]
         extracted = [f for f in expected_fields if parsed.get(f)]
         missing = [f for f in expected_fields if not parsed.get(f)]
@@ -452,8 +485,8 @@ class CompanyClassificationAgent(LLMAgentMixin):
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                RETURNING id""",
             source_type,
-            source_file_id,
-            batch_id,
+            UUID(source_file_id) if source_file_id else None,
+            UUID(batch_id) if batch_id else None,
             json.dumps(company_data, default=str),
             classification.regimen_fiscal,
             classification.confidence,
@@ -465,11 +498,12 @@ class CompanyClassificationAgent(LLMAgentMixin):
                 "llm_validated": classification.llm_validated,
                 "llm_issues": classification.llm_issues,
                 "suggested_actions": classification.suggested_actions,
+                "zone_pricing": classification.classification_details.get("zone_pricing"),
             }),
             extraction_confidence,
             json.dumps(extraction_details or {}),
             status,
-            created_by,
+            UUID(created_by) if created_by else None,
         )
 
         logger.info(
@@ -496,7 +530,7 @@ class CompanyClassificationAgent(LLMAgentMixin):
         """
         forma = (data.get("forma_juridica") or "").lower().strip()
         sector = (data.get("sector_actividad") or "").strip()
-        subsector = (data.get("subsector_actividad") or "").upper().strip()
+        subsector = (data.get("subsector_actividad") or "").lower().strip()
         commerce_type = data.get("commerce_type")
         capital = data.get("capital_social")
         employees = data.get("employee_count")
@@ -682,6 +716,88 @@ class CompanyClassificationAgent(LLMAgentMixin):
 
     # ── Layer 3: Post-classification Validation ──────────────────────────
 
+    async def _resolve_city_from_localidad(
+        self,
+        conn: asyncpg.Connection,
+        localidad: str,
+        provincia: Optional[str] = None,
+    ) -> Optional[Dict[str, str]]:
+        """Resolve localidad string → city_id + zone_id from cities table.
+
+        Uses case-insensitive exact match with provincia as disambiguation.
+        GE has 17 cities — no need for fuzzy matching.
+
+        Returns:
+            {"city_id": str, "zone_id": str, "zone_code": str, "zone_tier": str}
+            or None if no match.
+        """
+        localidad_clean = localidad.strip()
+
+        if provincia:
+            # Prefer match with provincia for disambiguation
+            row = await conn.fetchrow(
+                """SELECT c.id AS city_id, c.zone_id,
+                          cz.zone_code, cz.zone_tier
+                   FROM cities c
+                   JOIN commerce_zones cz ON c.zone_id = cz.id
+                   WHERE LOWER(c.name) = LOWER($1)
+                     AND LOWER(c.provincia) = LOWER($2)""",
+                localidad_clean, provincia.strip(),
+            )
+            if row:
+                logger.info(
+                    f"City resolved: '{localidad}' ({provincia}) → "
+                    f"{row['zone_code']} ({row['zone_tier']})"
+                )
+                return {
+                    "city_id": str(row["city_id"]),
+                    "zone_id": str(row["zone_id"]),
+                    "zone_code": row["zone_code"],
+                    "zone_tier": row["zone_tier"],
+                }
+
+        # Fallback: match by name only (17 cities, names unique in GE)
+        row = await conn.fetchrow(
+            """SELECT c.id AS city_id, c.zone_id,
+                      cz.zone_code, cz.zone_tier
+               FROM cities c
+               JOIN commerce_zones cz ON c.zone_id = cz.id
+               WHERE LOWER(c.name) = LOWER($1)""",
+            localidad_clean,
+        )
+        if row:
+            logger.info(
+                f"City resolved (no provincia): '{localidad}' → "
+                f"{row['zone_code']} ({row['zone_tier']})"
+            )
+            return {
+                "city_id": str(row["city_id"]),
+                "zone_id": str(row["zone_id"]),
+                "zone_code": row["zone_code"],
+                "zone_tier": row["zone_tier"],
+            }
+
+        logger.warning(f"City not found for localidad='{localidad}', provincia='{provincia}'")
+        return None
+
+    async def _resolve_zone_from_city(
+        self,
+        conn: asyncpg.Connection,
+        city_id: str,
+    ) -> Optional[str]:
+        """Resolve zone_id from a city_id UUID via cities.zone_id FK.
+
+        Returns zone UUID string or None if city not found / no zone assigned.
+        """
+        zone_id = await conn.fetchval(
+            "SELECT zone_id FROM cities WHERE id = $1", UUID(city_id)
+        )
+        if zone_id:
+            logger.debug(f"Zone resolved: city {city_id} → zone {zone_id}")
+        else:
+            logger.warning(f"No zone found for city {city_id}")
+        return str(zone_id) if zone_id else None
+
     async def _validate_post_classification(
         self,
         conn: asyncpg.Connection,
@@ -689,31 +805,32 @@ class CompanyClassificationAgent(LLMAgentMixin):
         company_data: Dict[str, Any],
         zone_id: Optional[str] = None,
     ) -> ClassificationResult:
-        """Post-classification validation: bundle existence, cross-checks.
+        """Post-classification validation: bundle existence, zone items, cross-checks.
 
-        Rule 6: If regime is 'bundle' or 'mixto' AND commerce_type is set,
-        verify that an active service_bundle exists for that commerce_type.
+        Rule 6: If regime is 'bundle' or 'mixto' AND commerce_type is set:
+          R6a: Verify active service_bundle exists for that commerce_type
+          R6a-zone: If zone_id provided, verify bundle has items for that zone
         A MISSING bundle = admin flag, NOT reclassification to 'pendiente'.
         """
         rules = list(result.rules_applied)
         flags = list(result.flags)
         actions = list(result.suggested_actions)
 
-        # ── R6a: Bundle existence check ──
+        # ── R6a: Bundle existence + zone-aware items check ──
         if result.regimen_fiscal in ("bundle", "mixto") and result.commerce_type:
-            bundle_exists = await conn.fetchval(
-                "SELECT EXISTS(SELECT 1 FROM service_bundles "
-                "WHERE commerce_type = $1 AND is_active = true)",
+            # Step 1: Check bundle exists globally
+            bundle_row = await conn.fetchrow(
+                "SELECT id FROM service_bundles "
+                "WHERE commerce_type = $1 AND is_active = true LIMIT 1",
                 result.commerce_type,
             )
             rules.append("R6a_bundle_existence_check")
 
-            if not bundle_exists:
+            if not bundle_row:
                 flags.append("bundle_missing")
                 actions.append(
                     f"admin_create_bundle_for_{result.commerce_type}"
                 )
-                # Lower confidence but DO NOT change regime
                 result = result.model_copy(update={
                     "confidence": min(result.confidence, 0.70),
                     "flags": flags,
@@ -725,6 +842,88 @@ class CompanyClassificationAgent(LLMAgentMixin):
                     f"— regime stays '{result.regimen_fiscal}', flagged for admin"
                 )
                 return result
+
+            # Step 2: Zone-aware items check (only if zone_id available)
+            if zone_id:
+                bundle_id = bundle_row["id"]
+                zone_uuid = UUID(zone_id)
+                zone_items_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM service_bundle_items "
+                    "WHERE bundle_id = $1 AND zone_id = $2",
+                    bundle_id, zone_uuid,
+                )
+                rules.append("R6a_zone_items_check")
+
+                if zone_items_count == 0:
+                    # Bundle exists but no pricing for this zone
+                    flags.append("zone_items_missing")
+                    actions.append(
+                        f"admin_add_zone_pricing_{result.commerce_type}"
+                    )
+                    # Get zone info for better logging
+                    zone_info = await conn.fetchrow(
+                        "SELECT zone_code, zone_tier, name_es FROM commerce_zones WHERE id = $1",
+                        zone_uuid,
+                    )
+                    zone_desc = (
+                        f"{zone_info['zone_code']} ({zone_info['name_es']})"
+                        if zone_info else zone_id
+                    )
+                    result = result.model_copy(update={
+                        "confidence": min(result.confidence, 0.65),
+                        "flags": flags,
+                        "suggested_actions": actions,
+                        "rules_applied": rules,
+                    })
+                    logger.warning(
+                        f"Bundle for '{result.commerce_type}' exists but "
+                        f"has NO items for zone {zone_desc} "
+                        f"— regime stays '{result.regimen_fiscal}', flagged for admin"
+                    )
+                    return result
+
+                # Step 3: Check which fee_types are available in this zone
+                zone_fee_types = await conn.fetch(
+                    "SELECT DISTINCT fee_type FROM service_bundle_items "
+                    "WHERE bundle_id = $1 AND zone_id = $2",
+                    bundle_id, zone_uuid,
+                )
+                available_fees = {r["fee_type"] for r in zone_fee_types}
+                rules.append("R6a_zone_fee_types_check")
+
+                # Enrich classification_details with zone pricing info
+                zone_info = await conn.fetchrow(
+                    "SELECT zone_code, zone_tier FROM commerce_zones WHERE id = $1",
+                    zone_uuid,
+                )
+                zone_pricing_info = {
+                    "zone_id": zone_id,
+                    "zone_code": zone_info["zone_code"] if zone_info else None,
+                    "zone_tier": zone_info["zone_tier"] if zone_info else None,
+                    "bundle_id": str(bundle_id),
+                    "items_count": zone_items_count,
+                    "fee_types_available": sorted(available_fees),
+                    "has_municipal": "municipal" in available_fees,
+                    "has_chamber": "chamber" in available_fees,
+                    "has_tesoro": "tesoro" in available_fees,
+                }
+                # Store zone pricing info in classification details for downstream use
+                current_details = result.classification_details or {}
+                current_details["zone_pricing"] = zone_pricing_info
+                result = result.model_copy(update={
+                    "classification_details": current_details,
+                })
+
+                logger.info(
+                    f"Zone items verified: {result.commerce_type} in "
+                    f"{zone_info['zone_code'] if zone_info else zone_id} → "
+                    f"{zone_items_count} items, fees={sorted(available_fees)}"
+                )
+            else:
+                # No zone_id — flag for admin to assign zone before license creation
+                flags.append("zone_not_assigned")
+                actions.append("admin_assign_company_zone")
+                rules.append("R6a_zone_missing")
 
         # ── R6b: NIF/PE cross-check ──
         forma = (company_data.get("forma_juridica") or "").lower()

@@ -7,11 +7,13 @@ Supports: approve, reject, request-info, get-drafts, stats.
 
 import json
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID, uuid4
 
 import asyncpg
 from loguru import logger
+
+from app.modules.fiscal_services.services.license_service import LicenseService
 
 
 class CompanyOnboardingService:
@@ -40,7 +42,7 @@ class CompanyOnboardingService:
 
         if batch_id:
             conditions.append(f"batch_id = ${idx}")
-            params.append(batch_id)
+            params.append(UUID(batch_id))
             idx += 1
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
@@ -103,7 +105,7 @@ class CompanyOnboardingService:
         """Get a single draft by ID."""
         row = await conn.fetchrow(
             """SELECT * FROM company_creation_drafts WHERE id = $1""",
-            draft_id,
+            UUID(draft_id),
         )
         if not row:
             return None
@@ -121,6 +123,63 @@ class CompanyOnboardingService:
                 item[uid_field] = str(item[uid_field])
         return item
 
+    async def _resolve_location(
+        self,
+        conn: asyncpg.Connection,
+        company_data: Dict[str, Any],
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Resolve zone_id and city_id from company data.
+
+        Priority chain:
+          1. Explicit zone_id → use as-is
+          2. city_id → lookup cities.zone_id
+          3. localidad string (OCR) → match cities.name → city_id + zone_id
+
+        Returns:
+            (zone_id, city_id) — either may be None.
+        """
+        zone_id = company_data.get("zone_id")
+        city_id = company_data.get("city_id")
+
+        if zone_id and city_id:
+            return str(zone_id), str(city_id)
+
+        # Step 1: If no city_id, try localidad string match
+        if not city_id and company_data.get("localidad"):
+            localidad = str(company_data["localidad"]).strip()
+            provincia = company_data.get("provincia")
+            if provincia:
+                row = await conn.fetchrow(
+                    """SELECT c.id AS city_id, c.zone_id
+                       FROM cities c
+                       WHERE LOWER(c.name) = LOWER($1)
+                         AND LOWER(c.provincia) = LOWER($2)""",
+                    localidad, str(provincia).strip(),
+                )
+            else:
+                row = await conn.fetchrow(
+                    """SELECT c.id AS city_id, c.zone_id
+                       FROM cities c WHERE LOWER(c.name) = LOWER($1)""",
+                    localidad,
+                )
+            if row:
+                city_id = str(row["city_id"])
+                zone_id = str(row["zone_id"])
+                logger.info(f"Location resolved from localidad='{localidad}': city={city_id}, zone={zone_id}")
+                return zone_id, city_id
+
+        # Step 2: If city_id but no zone_id, resolve FK
+        if city_id and not zone_id:
+            city_id_param = UUID(city_id) if isinstance(city_id, str) else city_id
+            resolved = await conn.fetchval(
+                "SELECT zone_id FROM cities WHERE id = $1", city_id_param
+            )
+            if resolved:
+                return str(resolved), str(city_id)
+            logger.warning(f"City {city_id} has no zone_id assigned")
+
+        return (str(zone_id) if zone_id else None, str(city_id) if city_id else None)
+
     async def approve_draft(
         self,
         conn: asyncpg.Connection,
@@ -128,9 +187,21 @@ class CompanyOnboardingService:
         reviewer_id: str,
         notes: str = "",
     ) -> Dict[str, Any]:
-        """Admin approves draft → create company + optional license.
+        """Admin approves draft → create company + license + obligations.
 
-        Transaction: draft update + company insert + license (if bundle regime).
+        Full pipeline for bundle/mixto regimes:
+          1. Create company (with zone_id + city_id)
+          2. Find active bundle for commerce_type
+          3. Call LicenseService.open_license() — creates license + obligations + events
+          4. Update draft with created_company_id + created_license_id
+          5. Record classification history
+
+        Uses LicenseService.open_license() which handles:
+          - Zone-specific pricing (service_bundle_items filtered by zone_id)
+          - Total amount computation from zone items
+          - Obligation generation (1 per bundle_item) with penalty/deadline configs
+          - Compliance event logging
+          - Previous year compliance check
         """
         draft = await self.get_draft(conn, draft_id)
         if not draft:
@@ -157,20 +228,64 @@ class CompanyOnboardingService:
             except (ValueError, TypeError):
                 reg_date_val = None
 
+        # Resolve location: localidad (OCR string) → city_id → zone_id
+        zone_id, city_id = await self._resolve_location(conn, company_data)
+
+        # Pre-INSERT validation: check NIF / registration_number uniqueness
+        nif = company_data.get("nif")
+        reg_num = company_data.get("registration_number")
+
+        if nif:
+            existing = await conn.fetchrow(
+                "SELECT id, legal_name FROM companies WHERE nif = $1", nif
+            )
+            if existing:
+                return {
+                    "error": (
+                        f"Una empresa con NIF '{nif}' ya existe: "
+                        f"{existing['legal_name']} (id={existing['id']})"
+                    )
+                }
+
+        if reg_num:
+            existing = await conn.fetchrow(
+                "SELECT id, legal_name FROM companies WHERE registration_number = $1",
+                reg_num,
+            )
+            if existing:
+                return {
+                    "error": (
+                        f"Una empresa con N° Registro '{reg_num}' ya existe: "
+                        f"{existing['legal_name']} (id={existing['id']})"
+                    )
+                }
+
+        # Cross-check: AUTONOMO must have registration_number (PE-XXXX), others must have NIF
+        forma = (company_data.get("forma_juridica") or "").lower()
+        if forma == "autonomo" and not reg_num:
+            logger.warning(
+                f"Draft {draft_id}: AUTONOMO without registration_number (PE-XXXX)"
+            )
+        elif forma not in ("autonomo", "") and not nif:
+            logger.warning(
+                f"Draft {draft_id}: {forma} without NIF"
+            )
+
         async with conn.transaction():
-            # 1. Create company
+            # 1. Create company (includes zone_id and city_id)
             company_id = await conn.fetchval(
                 """INSERT INTO companies
                    (legal_name, tax_id, nif, trade_name, forma_juridica, nacionalidad,
                     capital_social, registration_number, registration_date,
                     sector_actividad, subsector_actividad, objeto_social,
                     commerce_type, regimen_fiscal, employee_count,
-                    address, phone, email, is_active, is_verified)
+                    address, phone, email, zone_id, city_id,
+                    is_active, is_verified)
                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-                           $13, $14, $15, $16, $17, $18, true, true)
+                           $13, $14, $15, $16, $17, $18, $19, $20, true, true)
                    RETURNING id""",
                 company_data.get("legal_name", "Unknown"),
-                company_data.get("nif") or company_data.get("tax_id") or company_data.get("registration_number", "PENDING"),
+                company_data.get("nif") or company_data.get("tax_id") or company_data.get("registration_number") or f"PENDING-{uuid4()}",
                 company_data.get("nif"),
                 company_data.get("trade_name"),
                 company_data.get("forma_juridica"),
@@ -187,11 +302,15 @@ class CompanyOnboardingService:
                 company_data.get("domicilio_fiscal") or company_data.get("address"),
                 company_data.get("phone"),
                 company_data.get("email"),
+                UUID(zone_id) if zone_id else None,
+                UUID(city_id) if city_id else None,
             )
 
-            # 2. If bundle/mixto regime with commerce_type → create commercial license
+            # 2. If bundle/mixto regime with commerce_type → full license pipeline
             created_license_id = None
+            license_error = None
             commerce_type = company_data.get("commerce_type")
+
             if regimen in ("bundle", "mixto") and commerce_type:
                 # Find matching active bundle
                 bundle = await conn.fetchrow(
@@ -200,21 +319,46 @@ class CompanyOnboardingService:
                        LIMIT 1""",
                     commerce_type,
                 )
-                if bundle:
-                    from datetime import datetime
-                    fiscal_year = datetime.utcnow().year
-                    zone_id = company_data.get("zone_id")
 
-                    created_license_id = await conn.fetchval(
-                        """INSERT INTO commercial_licenses
-                           (company_id, bundle_id, zone_id, fiscal_year,
-                            total_amount, status, created_by)
-                           VALUES ($1, $2, $3, $4, 0, 'open', $5)
-                           RETURNING id""",
-                        str(company_id), bundle["id"],
-                        zone_id,
-                        fiscal_year,
-                        reviewer_id,
+                if bundle and zone_id:
+                    # Use LicenseService.open_license() for the FULL pipeline:
+                    # license + zone-specific obligations + events + compliance check
+                    fiscal_year = datetime.utcnow().year
+                    try:
+                        license_row = await LicenseService.open_license(
+                            conn,
+                            {
+                                "company_id": company_id,
+                                "bundle_id": bundle["id"],
+                                "zone_id": UUID(zone_id),
+                                "city_id": UUID(city_id) if city_id else None,
+                                "fiscal_year": fiscal_year,
+                            },
+                            user_id=UUID(reviewer_id),
+                        )
+                        created_license_id = license_row["id"]
+                        logger.info(
+                            f"License auto-created via open_license: {created_license_id} "
+                            f"(zone={zone_id}, bundle={bundle['id']}, year={fiscal_year})"
+                        )
+                    except ValueError as e:
+                        # open_license raises ValueError for missing items, inactive, duplicates
+                        license_error = str(e)
+                        logger.warning(
+                            f"License creation failed for draft {draft_id}: {e}"
+                        )
+                elif bundle and not zone_id:
+                    license_error = (
+                        "Cannot create license: company has no zone_id. "
+                        "Assign zone in company settings to generate license."
+                    )
+                    logger.warning(
+                        f"Draft {draft_id}: bundle found but no zone_id — "
+                        f"license creation skipped"
+                    )
+                elif not bundle:
+                    license_error = (
+                        f"No active bundle found for commerce_type='{commerce_type}'"
                     )
 
             # 3. Update draft
@@ -224,23 +368,25 @@ class CompanyOnboardingService:
                        reviewer_notes = $3, reviewed_at = NOW(),
                        created_company_id = $4, created_license_id = $5
                    WHERE id = $1""",
-                draft_id, reviewer_id, notes,
-                str(company_id),
-                str(created_license_id) if created_license_id else None,
+                UUID(draft_id), UUID(reviewer_id), notes,
+                company_id,  # already UUID from fetchval RETURNING
+                created_license_id,  # already UUID or None
             )
 
-            # 4. Classification history
+            # 4. Classification history (full audit trail)
             await conn.execute(
                 """INSERT INTO company_classification_history
-                   (company_id, old_regimen, new_regimen, reason, confidence,
-                    details, triggered_by, created_by)
-                   VALUES ($1, NULL, $2, $3, $4, $5, 'initial', $6)""",
-                str(company_id),
+                   (company_id, old_regimen, new_regimen,
+                    old_commerce_type, new_commerce_type,
+                    reason, confidence, details, triggered_by, created_by)
+                   VALUES ($1, NULL, $2, NULL, $3, $4, $5, $6, 'initial', $7)""",
+                company_id,  # already UUID from fetchval RETURNING
                 regimen,
+                commerce_type,
                 f"Draft approved: {draft.get('classification_reason', 'N/A')}",
                 draft.get("classification_confidence", 0),
                 json.dumps(draft.get("classification_details", {})),
-                reviewer_id,
+                UUID(reviewer_id),
             )
 
         logger.info(
@@ -248,11 +394,14 @@ class CompanyOnboardingService:
             f"(regime={regimen}, license={created_license_id})"
         )
 
-        return {
+        result = {
             "status": "approved",
             "company_id": str(company_id),
             "license_id": str(created_license_id) if created_license_id else None,
         }
+        if license_error:
+            result["license_warning"] = license_error
+        return result
 
     async def reject_draft(
         self,
@@ -268,7 +417,7 @@ class CompanyOnboardingService:
                    reviewer_notes = $3, reviewed_at = NOW()
                WHERE id = $1 AND status IN ('pending_review', 'auto_approved', 'needs_info')
                RETURNING id""",
-            draft_id, reviewer_id, notes,
+            UUID(draft_id), UUID(reviewer_id), notes,
         )
 
         if not row:
@@ -289,9 +438,9 @@ class CompanyOnboardingService:
             """UPDATE company_creation_drafts
                SET status = 'needs_info', reviewer_id = $2,
                    reviewer_notes = $3, reviewed_at = NOW()
-               WHERE id = $1 AND status IN ('pending_review', 'auto_approved')
+               WHERE id = $1 AND status IN ('pending_review', 'auto_approved', 'needs_info')
                RETURNING id""",
-            draft_id, reviewer_id, notes,
+            UUID(draft_id), UUID(reviewer_id), notes,
         )
 
         if not row:
