@@ -145,7 +145,7 @@ export default function ONRCLookupPage() {
                 )}
                 <div>
                   <Badge variant={c.is_active ? 'default' : 'destructive'} className="text-xs">
-                    {c.is_active ? 'Activa' : 'Inactiva'}
+                    {c.is_active ? t('companyLookup.active') : t('companyLookup.inactive')}
                   </Badge>
                 </div>
               </div>

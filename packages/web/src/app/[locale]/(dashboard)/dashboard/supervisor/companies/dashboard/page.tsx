@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   Building2, ShieldCheck, TrendingUp, AlertTriangle,
-  RefreshCw, CheckCircle2, Clock, Search,
+  RefreshCw, CheckCircle2, Clock, Search, Target,
   ChevronLeft, ChevronRight, Gauge, Zap, ShieldAlert, MapPin,
 } from 'lucide-react'
 import {
@@ -75,17 +75,24 @@ export default function SupervisorSiteDashboardPage() {
     } catch { /* silent */ }
   }, [])
 
+  // Initial load
   useEffect(() => {
     setLoading(true)
     Promise.all([fetchZone(), fetchCompanies(1, '')])
       .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Search debounced, pagination immediate
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchCompanies(page, search), 400)
+    // Only debounce search changes, not page changes
+    const isSearchChange = search !== ''
+    const delay = isSearchChange ? 400 : 0
+    debounceRef.current = setTimeout(() => fetchCompanies(page, search), delay)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [page, search, fetchCompanies])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, search])
 
   if (loading) {
     return (
@@ -136,8 +143,12 @@ export default function SupervisorSiteDashboardPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="piloting" className="space-y-3">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="strategic" className="space-y-3">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="strategic" className="text-xs gap-1">
+            <Target className="h-3.5 w-3.5" />
+            {t('companyDashboard.tabStrategic')}
+          </TabsTrigger>
           <TabsTrigger value="piloting" className="text-xs gap-1">
             <Gauge className="h-3.5 w-3.5" />
             {t('companyDashboard.tabPiloting')}
@@ -151,6 +162,55 @@ export default function SupervisorSiteDashboardPage() {
             {t('companyDashboard.tabControl')}
           </TabsTrigger>
         </TabsList>
+
+        {/* ═══ STRATÉGIQUE ═══ */}
+        <TabsContent value="strategic" className="space-y-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <Card>
+              <CardContent className="pt-3 pb-2 px-4">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Building2 className="h-3.5 w-3.5" />{t('companyDashboard.total')}</div>
+                <p className="text-2xl font-bold mt-1">{zone.total_companies}</p>
+                <p className="text-[11px] text-muted-foreground">{zone.active_companies} {t('companyDashboard.active')}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-2 px-4">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-blue-600" />{t('companyDashboard.recoveryRate')}</div>
+                <p className={`text-2xl font-bold mt-1 ${zone.recovery_rate_pct >= 60 ? 'text-green-700' : 'text-red-700'}`}>{zone.recovery_rate_pct}%</p>
+                <Progress value={zone.recovery_rate_pct} className="h-1.5 mt-1" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-2 px-4">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><AlertTriangle className="h-3.5 w-3.5 text-red-600" />{t('companyDashboard.debt')}</div>
+                <p className="text-2xl font-bold mt-1 text-red-700">{formatXAF(zone.total_debt)}</p>
+                <p className="text-[11px] text-muted-foreground">{t('companyDashboard.paid')}: {formatXAF(zone.total_paid_amount)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-2 px-4">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5 text-green-600" />{t('companyDashboard.licenses')}</div>
+                <p className="text-2xl font-bold mt-1">{zone.active_licenses || 0}</p>
+                <p className="text-[11px] text-muted-foreground">{t('companyDashboard.obligations')}: {formatXAF(zone.total_obligations_amount)}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Regime donut */}
+          <Card>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-sm">{t('companyDashboard.regimeDistribution')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[200px] flex items-center justify-center">
+                <Doughnut data={regimeDonut} options={{
+                  cutout: '60%', responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } },
+                }} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* ═══ PILOTAGE ═══ */}
         <TabsContent value="piloting" className="space-y-3">

@@ -7687,7 +7687,9 @@
       "title": "Company Lookup",
       "subtitle": "Search companies by NIF, registration number, or name",
       "searchPlaceholder": "NIF, PE-XXXX, or company name...",
-      "noResults": "No company found"
+      "noResults": "No company found",
+      "active": "Active",
+      "inactive": "Inactive"
     },
     "companyDebt": {
       "title": "Company Debt",
@@ -8780,6 +8782,7 @@
     "companyDashboard": {
       "title": "My Zone Companies",
       "noZoneAssigned": "No zone assigned to your profile",
+      "tabStrategic": "Strategic",
       "tabPiloting": "Piloting",
       "tabOperational": "Operational",
       "tabControl": "Control",
@@ -8799,7 +8802,9 @@
       "noCompanies": "No companies in this zone",
       "verificationRate": "Verification Rate",
       "bundleRate": "Bundle Rate",
-      "pendingShort": "pending"
+      "pendingShort": "pending",
+      "total": "Total",
+      "obligations": "Obligations"
     },
     "ministryDashboard": {
       "title": "My Ministry Obligations",

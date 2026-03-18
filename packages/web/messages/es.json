@@ -7794,7 +7794,9 @@
       "title": "Consulta de Empresas",
       "subtitle": "Busque empresas por NIF, numero de registro o nombre",
       "searchPlaceholder": "NIF, PE-XXXX, o nombre de empresa...",
-      "noResults": "No se encontro ninguna empresa"
+      "noResults": "No se encontro ninguna empresa",
+      "active": "Activa",
+      "inactive": "Inactiva"
     },
     "companyDebt": {
       "title": "Deuda Empresarial",
@@ -8887,6 +8889,7 @@
     "companyDashboard": {
       "title": "Empresas de mi Zona",
       "noZoneAssigned": "No tiene una zona asignada a su perfil",
+      "tabStrategic": "Estratégico",
       "tabPiloting": "Pilotaje",
       "tabOperational": "Operacional",
       "tabControl": "Control",
@@ -8906,7 +8909,9 @@
       "noCompanies": "Sin empresas en esta zona",
       "verificationRate": "Tasa Verificación",
       "bundleRate": "Tasa Bundle",
-      "pendingShort": "pendientes"
+      "pendingShort": "pendientes",
+      "total": "Total",
+      "obligations": "Obligaciones"
     },
     "ministryDashboard": {
       "title": "Obligaciones de mi Ministerio",

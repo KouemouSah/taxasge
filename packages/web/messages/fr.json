@@ -7930,7 +7930,9 @@
       "title": "Consultation Entreprises",
       "subtitle": "Recherchez des entreprises par NIF, numéro d'enregistrement ou nom",
       "searchPlaceholder": "NIF, PE-XXXX ou nom d'entreprise...",
-      "noResults": "Aucune entreprise trouvée"
+      "noResults": "Aucune entreprise trouvée",
+      "active": "Active",
+      "inactive": "Inactive"
     },
     "companyDebt": {
       "title": "Dette Entreprise",
@@ -9023,6 +9025,7 @@
     "companyDashboard": {
       "title": "Entreprises de ma Zone",
       "noZoneAssigned": "Aucune zone assignée à votre profil",
+      "tabStrategic": "Stratégique",
       "tabPiloting": "Pilotage",
       "tabOperational": "Opérationnel",
       "tabControl": "Contrôle",
@@ -9042,7 +9045,9 @@
       "noCompanies": "Aucune entreprise dans cette zone",
       "verificationRate": "Taux de Vérification",
       "bundleRate": "Taux Bundle",
-      "pendingShort": "en attente"
+      "pendingShort": "en attente",
+      "total": "Total",
+      "obligations": "Obligations"
     },
     "ministryDashboard": {
       "title": "Obligations de mon Ministère",

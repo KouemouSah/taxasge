@@ -103,8 +103,10 @@ export default function AdminCompaniesDashboardPage() {
   const verificationRate = global.total_companies > 0
     ? Math.round((global.verified_companies / global.total_companies) * 100)
     : 0
+  // Companies with at least one identifier (NIF OR registration_number)
+  // Use: total - missing_identifier to avoid double-counting companies with both
   const identifierCoverage = global.total_companies > 0
-    ? Math.round(((global.with_nif + global.with_reg_number) / global.total_companies) * 100)
+    ? Math.round(((global.total_companies - global.missing_identifier) / global.total_companies) * 100)
     : 0
   const totalDebt = zones.reduce((s, z) => s + z.total_debt, 0)
   const totalPaid = zones.reduce((s, z) => s + z.total_paid_amount, 0)

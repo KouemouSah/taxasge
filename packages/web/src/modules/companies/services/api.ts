@@ -192,13 +192,19 @@ export const companyMinistryApi = {
   /** National company lookup — ONRC agents */
   lookup: (q: string) =>
     get<{ results: LookupResult[]; count: number; query: string }>(
-      `/ministry/lookup?q=${encodeURIComponent(q)}`
+      `/lookup?q=${encodeURIComponent(q)}`
     ),
 }
 
-// ========== Public Directory API (no auth) ==========
+// ========== Public Directory API (no auth — uses plain axios, no interceptors) ==========
 
-const PUBLIC_BASE = '/public/companies'
+import axios from 'axios'
+import { appConfig } from '@/core/config'
+
+const publicClient = axios.create({
+  baseURL: `${appConfig.api.baseUrl}/api/${appConfig.api.version}/public/companies`,
+  timeout: 15000,
+})
 
 export const companyPublicApi = {
   /** Public directory search */
@@ -216,17 +222,17 @@ export const companyPublicApi = {
     if (params.page) sp.set('page', String(params.page))
     if (params.page_size) sp.set('page_size', String(params.page_size))
     const q = sp.toString()
-    return apiClient.get<PublicDirectoryResponse>(`${PUBLIC_BASE}/search${q ? `?${q}` : ''}`)
+    return publicClient.get<PublicDirectoryResponse>(`/search${q ? `?${q}` : ''}`)
       .then(r => r.data)
   },
 
   /** List zones for filter */
   getZones: () =>
-    apiClient.get<PublicZone[]>(`${PUBLIC_BASE}/zones`).then(r => r.data),
+    publicClient.get<PublicZone[]>('/zones').then(r => r.data),
 
   /** List sectors for filter */
   getSectors: () =>
-    apiClient.get<string[]>(`${PUBLIC_BASE}/sectors`).then(r => r.data),
+    publicClient.get<string[]>('/sectors').then(r => r.data),
 }
 
 export default {
