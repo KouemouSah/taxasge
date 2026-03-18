@@ -175,10 +175,10 @@ function DraftDetailSheet({
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">{t('companyClassification.companyData')}</h4>
             <div className="space-y-1">
-              {fields.map(([label, value]) => (
-                <div key={label} className="flex justify-between text-sm py-1 border-b border-muted last:border-0">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-right max-w-[60%] truncate">{value}</span>
+              {fields.map((field) => (
+                <div key={field[0]} className="flex justify-between text-sm py-1 border-b border-muted last:border-0">
+                  <span className="text-muted-foreground">{field[0]}</span>
+                  <span className="font-medium text-right max-w-[60%] truncate">{field[1]}</span>
                 </div>
               ))}
             </div>
