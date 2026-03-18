@@ -232,6 +232,11 @@ export default function AdminSidebar() {
           href: `/${locale}/dashboard/admin/procedure-templates`,
           icon: ListOrdered,
         },
+        {
+          title: t('nav.enrichment'),
+          href: `/${locale}/dashboard/admin/enrichment`,
+          icon: Sparkles,
+        },
       ],
     },
     // EMPRESAS — gestion des entreprises + OMS
@@ -269,11 +274,6 @@ export default function AdminSidebar() {
           title: t('nav.configRules'),
           href: `/${locale}/dashboard/admin/config-rules`,
           icon: SlidersHorizontal,
-        },
-        {
-          title: t('nav.enrichment'),
-          href: `/${locale}/dashboard/admin/enrichment`,
-          icon: Sparkles,
         },
       ],
     },
