@@ -76,6 +76,7 @@ const FULL_ACCESS_ROLES = ['admin', 'super_admin']
 const SECTION_ROLE_MAP: Record<string, string[]> = {
   access: ['admin_agents'],            // admin_security should NOT manage agents/users
   fiscal: ['admin_services'],
+  empresas: ['admin_services'],        // same role as fiscal — manages OMS companies
   config: ['admin_config'],
   support: ['admin_support'],
 }
@@ -195,7 +196,7 @@ export default function AdminSidebar() {
         },
       ],
     },
-    // SERVICES FISCAUX
+    // SERVICES FISCAUX (catalogue pur)
     {
       id: 'fiscal',
       title: t('nav.fiscalServices'),
@@ -231,10 +232,28 @@ export default function AdminSidebar() {
           href: `/${locale}/dashboard/admin/procedure-templates`,
           icon: ListOrdered,
         },
+      ],
+    },
+    // EMPRESAS — gestion des entreprises + OMS
+    {
+      id: 'empresas',
+      title: t('nav.empresas'),
+      icon: Building2,
+      items: [
+        {
+          title: t('nav.companyDashboard'),
+          href: `/${locale}/dashboard/admin/companies/dashboard`,
+          icon: LayoutDashboard,
+        },
         {
           title: t('nav.companies'),
           href: `/${locale}/dashboard/admin/companies`,
           icon: Building2,
+        },
+        {
+          title: t('nav.companyClassification'),
+          href: `/${locale}/dashboard/admin/company-classification`,
+          icon: Brain,
         },
         {
           title: t('nav.serviceBundles'),
@@ -255,11 +274,6 @@ export default function AdminSidebar() {
           title: t('nav.enrichment'),
           href: `/${locale}/dashboard/admin/enrichment`,
           icon: Sparkles,
-        },
-        {
-          title: t('nav.companyClassification'),
-          href: `/${locale}/dashboard/admin/company-classification`,
-          icon: Brain,
         },
       ],
     },
