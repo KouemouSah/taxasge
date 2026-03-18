@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   Building2, ShieldCheck, TrendingUp, BarChart3,
-  AlertTriangle, RefreshCw, FileWarning, Target,
+  AlertTriangle, RefreshCw, Target,
   Eye, Gauge, ShieldAlert, Zap,
   CheckCircle2, XCircle, MapPin,
 } from 'lucide-react'

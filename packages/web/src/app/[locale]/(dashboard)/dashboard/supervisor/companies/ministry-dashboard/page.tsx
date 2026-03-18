@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   DollarSign, TrendingUp, AlertTriangle, RefreshCw,
-  CheckCircle2, Target, Gauge, Zap, MapPin, BarChart3,
+  CheckCircle2, Target, Gauge, Zap, BarChart3,
 } from 'lucide-react'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -25,7 +25,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { companyDashboardApi } from '@/modules/companies/services/api'
-import type { MinistryStatsResponse, MinistryZoneStats } from '@/modules/companies/types'
+import type { MinistryStatsResponse } from '@/modules/companies/types'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
 
