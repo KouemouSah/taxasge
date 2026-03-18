@@ -265,6 +265,29 @@ export default function LicenseDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline" size="sm"
+            onClick={async () => {
+              try {
+                const { default: apiClient } = await import('@/core/api/client')
+                const response = await apiClient.get(
+                  `/licenses/${licenseId}/download-pdf?language=${locale}`,
+                  { responseType: 'blob' }
+                )
+                const blob = new Blob([response.data], { type: 'application/pdf' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `license-${licenseId}.pdf`
+                a.click()
+                setTimeout(() => URL.revokeObjectURL(url), 5000)
+              } catch {
+                toast({ title: 'Error', description: 'PDF generation failed', variant: 'destructive' })
+              }
+            }}
+          >
+            <FileCheck className="h-3.5 w-3.5 mr-1" /> PDF
+          </Button>
           <Button variant="outline" size="sm" onClick={handleCheckPreviousYear} disabled={actionLoading}>
             <History className="h-3.5 w-3.5 mr-1" /> {t("checkPreviousYear")}
           </Button>

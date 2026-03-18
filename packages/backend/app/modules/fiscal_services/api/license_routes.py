@@ -379,3 +379,38 @@ async def check_previous_year(
     async with db.transaction():
         count = await LicenseService.check_previous_year_compliance(db, license_id)
     return {"checked": count, "license_id": str(license_id)}
+
+
+# ── PDF Download ─────────────────────────────────────────────────────────────
+
+@router.get("/{license_id}/download-pdf")
+async def download_license_pdf(
+    license_id: UUID,
+    language: str = Query("es", regex="^(es|fr|en)$"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _=Depends(permission_required("fiscal_service.view_bundles")),
+):
+    """Download commercial license dossier as PDF.
+
+    Generates A4 PDF with company info, obligations table, totals, QR code.
+    """
+    from fastapi.responses import Response
+    from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
+
+    try:
+        pdf_bytes = await license_pdf_service.generate_license_pdf(
+            db, str(license_id), language
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="license-{license_id}.pdf"',
+        },
+    )

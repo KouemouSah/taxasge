@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="{{ language or 'es' }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.2cm 1.5cm;
+        }
+        * { margin: 0; padding: 0; }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9pt;
+            line-height: 1.3;
+            color: #1a1a1a;
+        }
+        .no-break { page-break-inside: avoid; }
+
+        /* Header */
+        .header-table { width: 100%; border-collapse: collapse; border-bottom: 1px solid #3a7104; padding-bottom: 8px; margin-bottom: 10px; }
+        .header-table td { vertical-align: middle; padding-bottom: 8px; }
+        .logo-cell { width: 130px; }
+        .logo-cell img { height: 45px; }
+        .ref-cell { text-align: right; }
+        .reference-number { font-size: 12pt; font-weight: bold; color: #2d5a03; }
+        .document-type { font-size: 8pt; color: #666; margin-top: 2px; }
+        .print-date { font-size: 7pt; color: #999; margin-top: 3px; }
+
+        /* Section */
+        .section { margin-bottom: 12px; }
+        .section-title {
+            font-size: 9pt; font-weight: bold; color: #fff;
+            background: #3a7104; padding: 4px 10px;
+            margin-bottom: 6px; letter-spacing: 0.5px;
+        }
+        .section-content { padding: 0 4px; }
+
+        /* Company info */
+        .info-grid { width: 100%; border-collapse: collapse; }
+        .info-grid td { padding: 3px 6px; vertical-align: top; font-size: 8.5pt; }
+        .info-label { color: #666; width: 35%; font-weight: bold; }
+        .info-value { color: #1a1a1a; }
+
+        /* Obligations table */
+        .obligations-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+        .obligations-table th {
+            background: #f0f0f0; padding: 4px 6px; text-align: left;
+            border-bottom: 1px solid #ccc; font-weight: bold; color: #333;
+        }
+        .obligations-table td {
+            padding: 3px 6px; border-bottom: 1px solid #e5e5e5;
+        }
+        .obligations-table .amount { text-align: right; font-family: monospace; }
+        .obligations-table .status-paid { color: #15803d; font-weight: bold; }
+        .obligations-table .status-pending { color: #ca8a04; }
+        .obligations-table .status-overdue { color: #dc2626; font-weight: bold; }
+
+        /* Totals */
+        .totals-table { width: 50%; margin-left: auto; border-collapse: collapse; margin-top: 8px; }
+        .totals-table td { padding: 3px 8px; font-size: 9pt; }
+        .totals-table .total-label { text-align: right; font-weight: bold; color: #333; }
+        .totals-table .total-value { text-align: right; font-family: monospace; font-weight: bold; }
+        .totals-table .grand-total td { border-top: 2px solid #3a7104; font-size: 10pt; color: #2d5a03; }
+
+        /* QR Code */
+        .qr-section { text-align: center; margin-top: 15px; }
+        .qr-section img { width: 90px; height: 90px; }
+        .qr-caption { font-size: 7pt; color: #999; margin-top: 3px; }
+
+        /* Footer */
+        .footer { margin-top: 15px; border-top: 1px solid #ccc; padding-top: 6px; text-align: center; font-size: 7pt; color: #999; }
+
+        /* Status badge */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 8pt; font-weight: bold; }
+        .badge-open { background: #dbeafe; color: #1e40af; }
+        .badge-complete { background: #dcfce7; color: #15803d; }
+        .badge-overdue { background: #fee2e2; color: #dc2626; }
+        .badge-suspended { background: #fef3c7; color: #92400e; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                {% if logo_base64 %}
+                <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo">
+                {% endif %}
+            </td>
+            <td>
+                <div style="font-size: 11pt; font-weight: bold; color: #2d5a03;">
+                    {{ texts.title }}
+                </div>
+                <div style="font-size: 8pt; color: #666;">
+                    {{ texts.subtitle }}
+                </div>
+            </td>
+            <td class="ref-cell">
+                <div class="reference-number">{{ license_ref }}</div>
+                <div class="document-type">{{ texts.fiscal_year }}: {{ fiscal_year }}</div>
+                <div class="print-date">{{ texts.printed }}: {{ print_date }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- License Status -->
+    <div style="text-align: right; margin-bottom: 8px;">
+        <span class="badge badge-{{ status_class }}">{{ status_label }}</span>
+    </div>
+
+    <!-- Company Info -->
+    <div class="section no-break">
+        <div class="section-title">{{ texts.company_info }}</div>
+        <div class="section-content">
+            <table class="info-grid">
+                <tr><td class="info-label">{{ texts.company_name }}</td><td class="info-value">{{ company.legal_name }}</td></tr>
+                {% if company.nif %}
+                <tr><td class="info-label">NIF</td><td class="info-value">{{ company.nif }}</td></tr>
+                {% endif %}
+                {% if company.registration_number %}
+                <tr><td class="info-label">{{ texts.reg_number }}</td><td class="info-value">{{ company.registration_number }}</td></tr>
+                {% endif %}
+                <tr><td class="info-label">{{ texts.forma_juridica }}</td><td class="info-value">{{ company.forma_juridica or '-' }}</td></tr>
+                <tr><td class="info-label">{{ texts.regime }}</td><td class="info-value">{{ company.regimen_fiscal or '-' }}</td></tr>
+                <tr><td class="info-label">{{ texts.zone }}</td><td class="info-value">{{ company.zone_code or '-' }} — {{ company.city_name or '-' }}</td></tr>
+                <tr><td class="info-label">{{ texts.activity }}</td><td class="info-value">{{ company.objeto_social or '-' }}</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- License Details -->
+    <div class="section no-break">
+        <div class="section-title">{{ texts.license_details }}</div>
+        <div class="section-content">
+            <table class="info-grid">
+                <tr><td class="info-label">{{ texts.bundle }}</td><td class="info-value">{{ bundle_name }}</td></tr>
+                <tr><td class="info-label">{{ texts.commerce_type }}</td><td class="info-value">{{ commerce_type or '-' }}</td></tr>
+                <tr><td class="info-label">{{ texts.deadline }}</td><td class="info-value">{{ deadline or '-' }}</td></tr>
+                <tr><td class="info-label">{{ texts.compliance_score }}</td><td class="info-value">{{ compliance_score }}%</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Obligations -->
+    <div class="section">
+        <div class="section-title">{{ texts.obligations }} ({{ obligations|length }})</div>
+        <div class="section-content">
+            <table class="obligations-table">
+                <thead>
+                    <tr>
+                        <th>{{ texts.fee_type }}</th>
+                        <th>{{ texts.ministry }}</th>
+                        <th>{{ texts.due_date }}</th>
+                        <th class="amount">{{ texts.amount }}</th>
+                        <th class="amount">{{ texts.penalty }}</th>
+                        <th>{{ texts.status }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ob in obligations %}
+                    <tr>
+                        <td>{{ ob.fee_type }}</td>
+                        <td>{{ ob.ministry_name or '-' }}</td>
+                        <td>{{ ob.due_date or '-' }}</td>
+                        <td class="amount">{{ ob.amount_formatted }}</td>
+                        <td class="amount">{{ ob.penalty_formatted }}</td>
+                        <td class="status-{{ ob.status_class }}">{{ ob.status_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Totals -->
+            <table class="totals-table">
+                <tr><td class="total-label">{{ texts.total_amount }}:</td><td class="total-value">{{ total_amount_formatted }}</td></tr>
+                {% if total_penalties > 0 %}
+                <tr><td class="total-label">{{ texts.penalties }}:</td><td class="total-value" style="color: #dc2626;">{{ total_penalties_formatted }}</td></tr>
+                {% endif %}
+                <tr><td class="total-label">{{ texts.paid }}:</td><td class="total-value" style="color: #15803d;">{{ paid_amount_formatted }}</td></tr>
+                <tr class="grand-total"><td class="total-label">{{ texts.balance }}:</td><td class="total-value">{{ balance_formatted }}</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- QR Code -->
+    {% if qr_base64 %}
+    <div class="qr-section no-break">
+        <img src="data:image/png;base64,{{ qr_base64 }}" alt="QR Verification">
+        <div class="qr-caption">{{ texts.qr_caption }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="footer">
+        {{ texts.footer_line1 }}<br>
+        {{ texts.footer_line2 }}
+    </div>
+</body>
+</html>
