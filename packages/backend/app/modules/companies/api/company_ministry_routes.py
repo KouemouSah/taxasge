@@ -44,7 +44,7 @@ async def get_company_debt_for_my_ministry(
     Agent of Tesoro sees ONLY fee_type='treasury_fee' obligations.
     Agent of Ayuntamiento sees ONLY fee_type='ayuntamiento_fee' obligations.
     """
-    ministry_id = await get_agent_ministry_id(db, current_user["user_id"])
+    ministry_id = await get_agent_ministry_id(db, current_user.id)
     if not ministry_id:
         raise HTTPException(status_code=403, detail="No ministry assigned to your profile")
 

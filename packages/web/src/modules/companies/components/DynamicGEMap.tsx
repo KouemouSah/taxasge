@@ -24,7 +24,8 @@ interface Props {
   zones: ZoneStats[]
   metric?: MapMetric
   height?: string
-  onZoneClick?: (zoneCode: string) => void
+  onZoneClick?: (zoneCode: string, zoneStats: ZoneStats | undefined) => void
+  selectedZone?: string | null
 }
 
 export default function DynamicGEMap(props: Props) {

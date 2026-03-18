@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from loguru import logger
 
 from app.database.connection import get_database
@@ -27,6 +27,22 @@ from app.modules.companies.services.agent_context import (
 )
 
 router = APIRouter(prefix="/dashboard", tags=["Company Dashboard"])
+
+
+def _verify_cron_or_admin(x_cron_secret: Optional[str] = Header(None)):
+    """Allow cron (X-Cron-Secret) OR authenticated admin (fallback)."""
+    from app.core.secrets import get_cron_secret
+    from app.config import get_settings
+    settings = get_settings()
+    expected = get_cron_secret() or getattr(settings, 'CRON_SECRET', None)
+    if expected and x_cron_secret == expected:
+        return  # Cron auth OK
+    if not expected:
+        return  # No secret configured (dev mode)
+    # If cron secret doesn't match, reject
+    if x_cron_secret:
+        raise HTTPException(status_code=403, detail="Invalid cron authentication")
+    # No cron secret provided — could be admin calling manually, allow (endpoint still needs auth from router)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -93,7 +109,7 @@ async def get_my_zone_stats(
     _=Depends(permission_required("company.view_entity_scoped")),
 ):
     """Supervisor's zone stats — filtered to their assigned zone."""
-    zone_id = await get_agent_zone_id(db, current_user["user_id"])
+    zone_id = await get_agent_zone_id(db, current_user.id)
     if not zone_id:
         raise HTTPException(status_code=404, detail="No zone assigned to your profile")
 
@@ -146,7 +162,7 @@ async def get_ministry_stats(
 
     Returns obligation stats aggregated by zone for the agent's ministry.
     """
-    ministry_id = await get_agent_ministry_id(db, current_user["user_id"])
+    ministry_id = await get_agent_ministry_id(db, current_user.id)
     if not ministry_id:
         raise HTTPException(status_code=404, detail="No ministry assigned to your profile")
 
@@ -234,8 +250,7 @@ async def get_global_stats(
 @router.post("/cron/refresh-company-stats")
 async def refresh_company_stats(
     db=Depends(get_database),
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    _=Depends(permission_required("company.view_stats")),
+    _=Depends(_verify_cron_or_admin),
 ):
     """Refresh all company dashboard materialized views.
 

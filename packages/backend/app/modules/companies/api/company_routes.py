@@ -158,9 +158,11 @@ async def admin_classify_company(
 
 async def _get_supervisor_entity_id(user_id: str, db) -> Optional[str]:
     """Get entity_id from agent_profiles for the current user."""
+    from uuid import UUID as _UUID
+    uid = _UUID(user_id) if isinstance(user_id, str) else user_id
     row = await db.fetchrow(
         "SELECT entity_id, is_supervisor FROM agent_profiles WHERE user_id = $1 AND is_active = true",
-        user_id,
+        uid,
     )
     if not row:
         return None

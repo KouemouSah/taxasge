@@ -283,11 +283,11 @@ class CompanyRepository:
             idx += 1
         if zone_id:
             conditions.append(f"c.zone_id = ${idx}")
-            params.append(zone_id)
+            params.append(self._uid(zone_id))
             idx += 1
         if city_id:
             conditions.append(f"c.city_id = ${idx}")
-            params.append(city_id)
+            params.append(self._uid(city_id))
             idx += 1
         if city_ids:
             conditions.append(f"""(
@@ -371,11 +371,11 @@ class CompanyRepository:
             idx += 1
         if zone_id:
             conditions.append(f"zone_id = ${idx}")
-            params.append(zone_id)
+            params.append(self._uid(zone_id))
             idx += 1
         if city_id:
             conditions.append(f"city_id = ${idx}")
-            params.append(city_id)
+            params.append(self._uid(city_id))
             idx += 1
         if city_ids:
             conditions.append(f"""(
@@ -489,7 +489,7 @@ class CompanyRepository:
               AND is_active = true
               AND city_id IS NOT NULL
         """
-        rows = await conn.fetch(query, entity_id)
+        rows = await conn.fetch(query, self._uid(entity_id))
         return [str(r["city_id"]) for r in rows]
 
     async def search(
@@ -580,6 +580,6 @@ class CompanyRepository:
             JOIN users u ON ucr.user_id = u.id
             WHERE ucr.company_id = $1 AND ucr.user_id = $2
             """,
-            company_id, user_id,
+            self._uid(company_id), self._uid(user_id),
         )
         return dict(member) if member else None
