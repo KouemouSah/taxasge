@@ -124,9 +124,9 @@ export default function SupervisorSiteDashboardPage() {
   const items = companies?.items || []
 
   return (
-    <div className="p-4 space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100vh-8rem)] min-h-0">
+      {/* Header — compact */}
+      <div className="flex items-center justify-between mb-2 shrink-0">
         <div>
           <h1 className="text-lg font-bold flex items-center gap-2">
             <Building2 className="h-5 w-5" />
@@ -143,7 +143,7 @@ export default function SupervisorSiteDashboardPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="strategic" className="space-y-3">
+      <Tabs defaultValue="strategic" className="flex flex-col flex-1 min-h-0">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="strategic" className="text-xs gap-1">
             <Target className="h-3.5 w-3.5" />
@@ -164,7 +164,7 @@ export default function SupervisorSiteDashboardPage() {
         </TabsList>
 
         {/* ═══ STRATÉGIQUE ═══ */}
-        <TabsContent value="strategic" className="space-y-3">
+        <TabsContent value="strategic" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card>
               <CardContent className="pt-3 pb-2 px-4">
@@ -213,7 +213,7 @@ export default function SupervisorSiteDashboardPage() {
         </TabsContent>
 
         {/* ═══ PILOTAGE ═══ */}
-        <TabsContent value="piloting" className="space-y-3">
+        <TabsContent value="piloting" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card>
               <CardContent className="pt-3 pb-2 px-4">
@@ -260,7 +260,7 @@ export default function SupervisorSiteDashboardPage() {
         </TabsContent>
 
         {/* ═══ OPERACIONAL ═══ */}
-        <TabsContent value="operational" className="space-y-3">
+        <TabsContent value="operational" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           {/* Alerts */}
           {zone.pending_verification > 0 && (
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded flex items-center gap-2">
@@ -340,7 +340,7 @@ export default function SupervisorSiteDashboardPage() {
         </TabsContent>
 
         {/* ═══ CONTROL ═══ */}
-        <TabsContent value="control" className="space-y-3">
+        <TabsContent value="control" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Card>
               <CardContent className="pt-4 pb-3 text-center">

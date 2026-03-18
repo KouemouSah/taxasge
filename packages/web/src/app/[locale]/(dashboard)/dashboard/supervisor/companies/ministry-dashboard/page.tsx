@@ -128,9 +128,9 @@ export default function SupervisorMinistryDashboardPage() {
   }
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="flex flex-col h-[calc(100vh-8rem)] min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2 shrink-0">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
           {t('ministryDashboard.title')}
@@ -140,7 +140,7 @@ export default function SupervisorMinistryDashboardPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="strategic" className="space-y-3">
+      <Tabs defaultValue="strategic" className="flex flex-col flex-1 min-h-0">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="strategic" className="text-xs gap-1">
             <Target className="h-3.5 w-3.5" />
@@ -157,7 +157,7 @@ export default function SupervisorMinistryDashboardPage() {
         </TabsList>
 
         {/* ═══ ESTRATÉGICO ═══ */}
-        <TabsContent value="strategic" className="space-y-3">
+        <TabsContent value="strategic" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Card>
               <CardContent className="pt-3 pb-2 px-4">
@@ -222,7 +222,7 @@ export default function SupervisorMinistryDashboardPage() {
         </TabsContent>
 
         {/* ═══ PILOTAJE ═══ */}
-        <TabsContent value="piloting" className="space-y-3">
+        <TabsContent value="piloting" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <Card>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm">{t('ministryDashboard.zoneBreakdown')}</CardTitle>
@@ -267,7 +267,7 @@ export default function SupervisorMinistryDashboardPage() {
         </TabsContent>
 
         {/* ═══ OPERACIONAL ═══ */}
-        <TabsContent value="operational" className="space-y-3">
+        <TabsContent value="operational" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <Card>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm flex items-center gap-2 text-red-700">

@@ -90,7 +90,7 @@ export default function MinistryDebtPage() {
   const totals = debt?.totals
 
   return (
-    <div className="p-4 max-w-5xl mx-auto space-y-4">
+    <div className="max-w-5xl mx-auto space-y-4 h-[calc(100vh-8rem)] overflow-y-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
         {debt && (

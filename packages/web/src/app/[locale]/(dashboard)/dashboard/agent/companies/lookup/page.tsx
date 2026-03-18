@@ -60,7 +60,7 @@ export default function ONRCLookupPage() {
   }
 
   return (
-    <div className="flex flex-col items-center px-4 py-8 max-w-3xl mx-auto">
+    <div className="flex flex-col items-center max-w-3xl mx-auto h-[calc(100vh-8rem)] overflow-y-auto">
       {/* Header */}
       <div className="text-center mb-8">
         <Building2 className="h-12 w-12 mx-auto mb-3 text-primary" />

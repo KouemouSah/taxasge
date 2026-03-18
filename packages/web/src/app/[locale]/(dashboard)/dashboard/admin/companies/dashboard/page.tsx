@@ -155,9 +155,9 @@ export default function AdminCompaniesDashboardPage() {
   const zonesHighDebt = [...zones].sort((a, b) => b.total_debt - a.total_debt).slice(0, 5)
 
   return (
-    <div className="p-4 space-y-3">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-[calc(100vh-8rem)] min-h-0">
+      {/* Header — compact, no extra padding */}
+      <div className="flex items-center justify-between mb-2 shrink-0">
         <h1 className="text-lg font-bold flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
           {t('companyDashboard.title')}
@@ -168,7 +168,7 @@ export default function AdminCompaniesDashboardPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="strategic" className="space-y-3">
+      <Tabs defaultValue="strategic" className="flex flex-col flex-1 min-h-0">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="strategic" className="text-xs gap-1">
             <Target className="h-3.5 w-3.5" />
@@ -189,7 +189,7 @@ export default function AdminCompaniesDashboardPage() {
         </TabsList>
 
         {/* ═══ TAB 1: ESTRATÉGICO ═══ */}
-        <TabsContent value="strategic" className="space-y-3">
+        <TabsContent value="strategic" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
             <KpiCard icon={Building2} label={t('companyDashboard.total')} value={global.total_companies.toLocaleString()} sub={`${global.active_companies} ${t('companyDashboard.active')}`} />
             <KpiCard icon={ShieldCheck} label={t('companyDashboard.verified')} value={`${verificationRate}%`} sub={`${global.verified_companies} / ${global.total_companies}`} color="text-green-600" />
@@ -231,7 +231,7 @@ export default function AdminCompaniesDashboardPage() {
         </TabsContent>
 
         {/* ═══ TAB 2: PILOTAJE ═══ */}
-        <TabsContent value="piloting" className="space-y-3">
+        <TabsContent value="piloting" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           {/* Choropleth Map */}
           <Card>
             <CardHeader className="pb-1">
@@ -310,7 +310,7 @@ export default function AdminCompaniesDashboardPage() {
         </TabsContent>
 
         {/* ═══ TAB 3: OPERACIONAL ═══ */}
-        <TabsContent value="operational" className="space-y-3">
+        <TabsContent value="operational" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           {/* Alerts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Zones with low recovery */}
@@ -406,7 +406,7 @@ export default function AdminCompaniesDashboardPage() {
         </TabsContent>
 
         {/* ═══ TAB 4: CONTROL ═══ */}
-        <TabsContent value="control" className="space-y-3">
+        <TabsContent value="control" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* NIF Coverage */}
             <Card>
