@@ -230,7 +230,7 @@ function DraftDetailSheet({
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">{t('companyClassification.rulesApplied')}</p>
                   <div className="flex flex-wrap gap-1">
-                    {(details.rulesApplied as string[]).map((r, i) => (
+                    {(details.rulesApplied as string[]).map((r: string, i: number) => (
                       <Badge key={i} variant="outline" className="text-xs">{r}</Badge>
                     ))}
                   </div>
@@ -240,7 +240,7 @@ function DraftDetailSheet({
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">{t('companyClassification.flags')}</p>
                   <div className="flex flex-wrap gap-1">
-                    {(details.flags as string[]).map((f, i) => (
+                    {(details.flags as string[]).map((f: string, i: number) => (
                       <Badge key={i} variant="destructive" className="text-xs">{f}</Badge>
                     ))}
                   </div>
@@ -814,7 +814,7 @@ export default function CompanyClassificationPage() {
                             <ConfidenceBadge value={draft.classificationConfidence} />
                           </TableCell>
                           <TableCell>
-                            {zonePricing?.zone_code ? (
+                            {zonePricing?.zoneCode ? (
                               <Badge variant="outline" className="text-xs gap-1">
                                 <MapPin className="h-3 w-3" />
                                 {String(zonePricing.zoneCode)}
