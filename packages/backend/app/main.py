@@ -1198,9 +1198,19 @@ try:
     from app.modules.companies.api import company_router
     app.include_router(company_router, prefix="/api/v1/companies", tags=["companies"])
     routers_loaded.append("companies")
-    logger.info("✅ Companies router loaded (business management)")
+    logger.info("✅ Companies router loaded (business management + classification + dashboard + ministry)")
 except Exception as e:
     logger.error(f"❌ Companies router failed: {e}")
+    logger.error(traceback.format_exc())
+
+# Try to load public companies directory (no auth required)
+try:
+    from app.modules.companies.api import public_router as company_public_router
+    app.include_router(company_public_router, prefix="/api/v1/public/companies", tags=["public-directory"])
+    routers_loaded.append("companies_public")
+    logger.info("✅ Public company directory router loaded (annuaire)")
+except Exception as e:
+    logger.error(f"❌ Public company directory router failed: {e}")
     logger.error(traceback.format_exc())
 
 # Try to load payments router (Module - Payments System - Phase 3 - BANGE Integration)
