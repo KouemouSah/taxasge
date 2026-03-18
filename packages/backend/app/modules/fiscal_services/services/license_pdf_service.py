@@ -284,7 +284,7 @@ class LicensePDFService:
 
         # Fetch obligations
         obligations_rows = await db.fetch("""
-            SELECT lo.*, m.name AS ministry_name
+            SELECT lo.*, m.name_es AS ministry_name
             FROM license_obligations lo
             LEFT JOIN ministries m ON lo.ministry_id = m.id
             WHERE lo.license_id = $1
