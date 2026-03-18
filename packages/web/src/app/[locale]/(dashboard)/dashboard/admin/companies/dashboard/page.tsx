@@ -29,6 +29,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { companyDashboardApi } from '@/modules/companies/services/api'
+import DynamicGEMap from '@/modules/companies/components/DynamicGEMap'
 import type { GlobalStats, ZoneStats } from '@/modules/companies/types'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
@@ -229,6 +230,19 @@ export default function AdminCompaniesDashboardPage() {
 
         {/* ═══ TAB 2: PILOTAJE ═══ */}
         <TabsContent value="piloting" className="space-y-3">
+          {/* Choropleth Map */}
+          <Card>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                {t('companyDashboard.mapTitle')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DynamicGEMap zones={zones} metric="recovery" height="350px" />
+            </CardContent>
+          </Card>
+
           {/* Recovery by zone */}
           <Card>
             <CardHeader className="pb-1">
