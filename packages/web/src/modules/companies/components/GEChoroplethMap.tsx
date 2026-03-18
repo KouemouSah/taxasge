@@ -16,7 +16,7 @@ import 'leaflet/dist/leaflet.css'
 
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet'
 import type { GeoJSON as LeafletGeoJSON, Layer, PathOptions } from 'leaflet'
-import type { Feature, Geometry } from 'geojson'
+import type { Feature, FeatureCollection, Geometry } from 'geojson'
 
 export type MapMetric = 'companies' | 'debt' | 'recovery'
 
@@ -62,7 +62,7 @@ function formatVal(value: number, metric: MapMetric): string {
 export default function GEChoroplethMap({
   zones, metric = 'companies', height = '400px', onZoneClick, selectedZone,
 }: Props) {
-  const [geoData, setGeoData] = useState<GeoJSON.FeatureCollection | null>(null)
+  const [geoData, setGeoData] = useState<FeatureCollection | null>(null)
   const geoRef = useRef<LeafletGeoJSON>(null)
 
   const zoneMap = useMemo(() => new Map(zones.map(z => [z.zone_code, z])), [zones])
