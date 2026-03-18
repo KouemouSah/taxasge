@@ -24,7 +24,11 @@ RATE_LIMIT_WINDOW = 60
 
 
 async def _check_public_rate_limit(request: Request) -> None:
-    """Enforce rate limiting on public endpoints by client IP."""
+    """Enforce rate limiting on public endpoints by client IP.
+
+    Graceful degradation: if Redis is down, allow the request
+    (prefer availability over strict rate limiting).
+    """
     client_ip = request.client.host if request.client else "unknown"
     try:
         allowed, remaining = await check_rate_limit(
@@ -36,8 +40,11 @@ async def _check_public_rate_limit(request: Request) -> None:
                 status_code=429,
                 detail=f"Rate limit exceeded. Try again in {RATE_LIMIT_WINDOW}s."
             )
-    except ImportError:
-        pass  # Redis unavailable — allow request (graceful degradation)
+    except Exception as e:
+        # Redis down, connection error, etc. — allow request (graceful degradation)
+        if "Rate limit" in str(e) or "429" in str(e):
+            raise  # Re-raise our own HTTPException
+        logger.debug(f"Rate limit check skipped (Redis unavailable): {e}")
 
 
 @router.get("/search")
@@ -126,8 +133,9 @@ async def search_public_directory(
 
 
 @router.get("/zones")
-async def list_public_zones():
+async def list_public_zones(request: Request):
     """List commerce zones for directory filter dropdown."""
+    await _check_public_rate_limit(request)
     db = await get_database()
     rows = await db.fetch(
         "SELECT id, zone_code, zone_tier, name_es "
@@ -137,8 +145,9 @@ async def list_public_zones():
 
 
 @router.get("/sectors")
-async def list_public_sectors():
+async def list_public_sectors(request: Request):
     """List distinct sectors for directory filter dropdown."""
+    await _check_public_rate_limit(request)
     db = await get_database()
     rows = await db.fetch(
         "SELECT DISTINCT sector_actividad AS sector "

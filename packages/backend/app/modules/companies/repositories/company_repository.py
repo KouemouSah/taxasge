@@ -16,6 +16,22 @@ from app.modules.companies.models import CompanyCreate, CompanyUpdate, CompanyMe
 class CompanyRepository:
     """Repository for companies and members."""
 
+    def __init__(self):
+        # Cached flag: does search_vector column exist? (set on first query)
+        self._has_search_vector: Optional[bool] = None
+
+    async def _check_fts_available(self, conn: asyncpg.Connection) -> bool:
+        """Check if tsvector search_vector column exists (migration 234).
+
+        Caches result in instance to avoid repeated schema queries.
+        """
+        if self._has_search_vector is None:
+            self._has_search_vector = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns "
+                "WHERE table_name = 'companies' AND column_name = 'search_vector')"
+            )
+        return self._has_search_vector
+
     async def create(self, conn: asyncpg.Connection, company: CompanyCreate, owner_id: str) -> Dict[str, Any]:
         """Create company with all OCR-aligned fields."""
         query = """
@@ -219,7 +235,9 @@ class CompanyRepository:
         """List all companies with filters — admin view.
 
         Includes license_count and total_obligations_amount via LEFT JOIN.
+        Uses tsvector FTS when available (migration 234), falls back to ILIKE.
         """
+        await self._check_fts_available(conn)
         allowed_sort = {
             "created_at": "c.created_at",
             "legal_name": "c.legal_name",
@@ -236,9 +254,14 @@ class CompanyRepository:
         idx = 1
 
         if search:
-            conditions.append(f"(c.legal_name ILIKE ${idx} OR c.tax_id ILIKE ${idx} OR c.nif ILIKE ${idx})")
-            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            params.append(f"%{escaped}%")
+            # Use tsvector FTS if available (O(log N) for 1M+), else ILIKE
+            if self._has_search_vector:
+                conditions.append(f"c.search_vector @@ company_search_query(${idx})")
+                params.append(search.strip())
+            else:
+                conditions.append(f"(c.legal_name ILIKE ${idx} OR c.tax_id ILIKE ${idx} OR c.nif ILIKE ${idx})")
+                escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                params.append(f"%{escaped}%")
             idx += 1
         if is_active is not None:
             conditions.append(f"c.is_active = ${idx}")
@@ -314,14 +337,19 @@ class CompanyRepository:
         city_ids: Optional[List[str]] = None,
     ) -> int:
         """Count companies matching filters."""
+        await self._check_fts_available(conn)
         conditions = []
         params: List[Any] = []
         idx = 1
 
         if search:
-            conditions.append(f"(legal_name ILIKE ${idx} OR tax_id ILIKE ${idx} OR nif ILIKE ${idx})")
-            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            params.append(f"%{escaped}%")
+            if self._has_search_vector:
+                conditions.append(f"search_vector @@ company_search_query(${idx})")
+                params.append(search.strip())
+            else:
+                conditions.append(f"(legal_name ILIKE ${idx} OR tax_id ILIKE ${idx} OR nif ILIKE ${idx})")
+                escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                params.append(f"%{escaped}%")
             idx += 1
         if is_active is not None:
             conditions.append(f"is_active = ${idx}")
@@ -466,20 +494,41 @@ class CompanyRepository:
     ) -> List[Dict[str, Any]]:
         """Lightweight company search for autocomplete.
 
-        Uses trigram ILIKE on legal_name, tax_id, and nif.
+        Uses tsvector full-text search if available (O(log N) for 1M+),
+        falls back to trigram ILIKE on legal_name, tax_id, and nif.
         """
-        query = """
-            SELECT c.id, c.legal_name, c.tax_id, c.nif, c.is_verified,
-                   ct.name as city_name
-            FROM companies c
-            LEFT JOIN cities ct ON c.city_id = ct.id
-            WHERE c.legal_name ILIKE $1
-               OR c.tax_id ILIKE $1
-               OR c.nif ILIKE $1
-            ORDER BY c.legal_name
-            LIMIT $2
-        """
-        results = await conn.fetch(query, f"%{query_str}%", limit)
+        has_fts = await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'companies' AND column_name = 'search_vector')"
+        )
+        if has_fts:
+            query = """
+                SELECT c.id, c.legal_name, c.tax_id, c.nif, c.registration_number,
+                       c.is_verified, ct.name as city_name, cz.zone_code
+                FROM companies c
+                LEFT JOIN cities ct ON c.city_id = ct.id
+                LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+                WHERE c.search_vector @@ company_search_query($1)
+                ORDER BY ts_rank(c.search_vector, company_search_query($1)) DESC
+                LIMIT $2
+            """
+            results = await conn.fetch(query, query_str.strip(), limit)
+        else:
+            escaped = query_str.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            query = """
+                SELECT c.id, c.legal_name, c.tax_id, c.nif, c.registration_number,
+                       c.is_verified, ct.name as city_name, cz.zone_code
+                FROM companies c
+                LEFT JOIN cities ct ON c.city_id = ct.id
+                LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+                WHERE c.legal_name ILIKE $1
+                   OR c.tax_id ILIKE $1
+                   OR c.nif ILIKE $1
+                   OR c.registration_number ILIKE $1
+                ORDER BY c.legal_name
+                LIMIT $2
+            """
+            results = await conn.fetch(query, f"%{escaped}%", limit)
         return [dict(r) for r in results]
 
     async def verify(

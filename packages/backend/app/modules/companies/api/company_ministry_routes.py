@@ -20,22 +20,9 @@ from loguru import logger
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.companies.services.agent_context import get_agent_ministry_id
 
 router = APIRouter(tags=["Company Ministry"])
-
-
-# ── Helpers ──────────────────────────────────────────────────────────────────
-
-async def _get_agent_ministry_id(db: asyncpg.Connection, user_id: str) -> Optional[int]:
-    """Resolve agent's ministry_id from agent_profiles → entities."""
-    return await db.fetchval(
-        """SELECT e.ministry_id
-           FROM agent_profiles ap
-           JOIN entities e ON ap.entity_id = e.id
-           WHERE ap.user_id = $1 AND ap.is_active = true
-           LIMIT 1""",
-        user_id,
-    )
 
 
 # ── Agent Ministry: Company Debt Detail ──────────────────────────────────────
@@ -57,7 +44,7 @@ async def get_company_debt_for_my_ministry(
     Agent of Tesoro sees ONLY fee_type='treasury_fee' obligations.
     Agent of Ayuntamiento sees ONLY fee_type='ayuntamiento_fee' obligations.
     """
-    ministry_id = await _get_agent_ministry_id(db, current_user["user_id"])
+    ministry_id = await get_agent_ministry_id(db, current_user["user_id"])
     if not ministry_id:
         raise HTTPException(status_code=403, detail="No ministry assigned to your profile")
 

@@ -41,7 +41,6 @@ company_classifier = CompanyClassifier()
 # =============================================================================
 
 @router.get("/admin/all", response_model=CompanyAdminListResponse)
-@permission_required("company.view_all")
 async def admin_list_all_companies(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -55,6 +54,7 @@ async def admin_list_all_companies(
     sort_order: str = Query("desc", regex="^(asc|desc)$"),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _=Depends(permission_required("company.view_all")),
 ):
     """List all companies with filters — admin view."""
     offset = (page - 1) * page_size
@@ -79,10 +79,10 @@ async def admin_list_all_companies(
 
 
 @router.get("/admin/stats", response_model=CompanyStatsResponse)
-@permission_required("company.view_stats")
 async def admin_company_stats(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _=Depends(permission_required("company.view_stats")),
 ):
     """Aggregated company statistics for admin dashboard."""
     stats = await company_repository.get_stats(db)
@@ -90,12 +90,12 @@ async def admin_company_stats(
 
 
 @router.get("/admin/search", response_model=List[CompanySearchResult])
-@permission_required("company.view")
 async def admin_search_companies(
     q: str = Query(..., min_length=2, max_length=100),
     limit: int = Query(10, ge=1, le=50),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _=Depends(permission_required("company.view")),
 ):
     """Lightweight company search for autocomplete (admin/agent)."""
     results = await company_repository.search(db, q, limit)
@@ -103,12 +103,12 @@ async def admin_search_companies(
 
 
 @router.put("/admin/{company_id}/verify", response_model=CompanyResponse)
-@permission_required("company.verify")
 async def admin_verify_company(
     company_id: str,
     body: CompanyVerifyRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _=Depends(permission_required("company.verify")),
 ):
     """Toggle company verification status (admin only)."""
     result = await company_repository.verify(db, company_id, body.is_verified)
@@ -122,11 +122,11 @@ async def admin_verify_company(
 
 
 @router.post("/admin/{company_id}/classify", response_model=CompanyClassifyResponse)
-@permission_required("company.update")
 async def admin_classify_company(
     company_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _=Depends(permission_required("company.update")),
 ):
     """Classify company's fiscal regime using rules-based engine.
 
@@ -157,7 +157,6 @@ async def _get_supervisor_entity_id(user_id: str, db) -> Optional[str]:
 
 
 @router.get("/supervisor/my-companies", response_model=CompanyAdminListResponse)
-@permission_required("company.view_entity_scoped")
 async def supervisor_list_companies(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -169,6 +168,7 @@ async def supervisor_list_companies(
     sort_order: str = Query("desc", regex="^(asc|desc)$"),
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _=Depends(permission_required("company.view_entity_scoped")),
 ):
     """List companies scoped to supervisor's entity cities.
 
@@ -205,10 +205,10 @@ async def supervisor_list_companies(
 
 
 @router.get("/supervisor/stats", response_model=CompanyStatsResponse)
-@permission_required("company.view_entity_scoped")
 async def supervisor_company_stats(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
+    _=Depends(permission_required("company.view_entity_scoped")),
 ):
     """Entity-scoped company statistics for supervisor dashboard."""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
@@ -235,10 +235,38 @@ async def create_company(
     current_user: Dict[str, Any] = Depends(get_current_user),
     db=Depends(get_database),
 ):
-    """Create new company"""
+    """Create new company with auto-classification.
+
+    After INSERT, automatically classifies the company's fiscal regime
+    using the 3-layer classification agent (rules + LLM + validation).
+    """
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
     result = await company_repository.create(db, company, user_id)
-    logger.info(f"User {user_id} created company {result['id']}")
+    company_id = result["id"]
+    logger.info(f"User {user_id} created company {company_id}")
+
+    # Auto-classify fiscal regime (non-blocking — failure doesn't break create)
+    try:
+        from app.modules.companies.services.classification_agent import classification_agent
+        classification = await classification_agent.classify_company(
+            db, result, result.get("zone_id")
+        )
+        if classification.regimen_fiscal != (result.get("regimen_fiscal") or "pendiente"):
+            await db.execute(
+                "UPDATE companies SET regimen_fiscal = $2, commerce_type = $3, updated_at = NOW() "
+                "WHERE id = $1",
+                company_id, classification.regimen_fiscal,
+                classification.commerce_type,
+            )
+            result["regimen_fiscal"] = classification.regimen_fiscal
+            result["commerce_type"] = classification.commerce_type
+            logger.info(
+                f"Auto-classified company {company_id}: {classification.regimen_fiscal} "
+                f"(confidence={classification.confidence:.0%})"
+            )
+    except Exception as e:
+        logger.warning(f"Auto-classification failed for company {company_id}: {e}")
+
     return CompanyResponse(**result)
 
 
@@ -313,6 +341,36 @@ async def update_company(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
     logger.info(f"User {user_id} updated company {company_id}")
+
+    # Auto-reclassify if classification-relevant fields changed
+    CLASSIFICATION_FIELDS = {
+        "forma_juridica", "sector_actividad", "subsector_actividad",
+        "capital_social", "employee_count", "commerce_type", "zone_id",
+    }
+    changed_fields = set(update_data.model_dump(exclude_unset=True).keys())
+    if changed_fields & CLASSIFICATION_FIELDS:
+        try:
+            from app.modules.companies.services.classification_agent import classification_agent
+            classification = await classification_agent.classify_company(
+                db, updated, updated.get("zone_id")
+            )
+            old_regimen = updated.get("regimen_fiscal", "pendiente")
+            if classification.regimen_fiscal != old_regimen:
+                await db.execute(
+                    "UPDATE companies SET regimen_fiscal = $2, commerce_type = $3, updated_at = NOW() "
+                    "WHERE id = $1",
+                    company_id, classification.regimen_fiscal,
+                    classification.commerce_type,
+                )
+                updated["regimen_fiscal"] = classification.regimen_fiscal
+                updated["commerce_type"] = classification.commerce_type
+                logger.info(
+                    f"Auto-reclassified company {company_id}: {old_regimen} → "
+                    f"{classification.regimen_fiscal} (confidence={classification.confidence:.0%})"
+                )
+        except Exception as e:
+            logger.warning(f"Auto-reclassification failed for company {company_id}: {e}")
+
     return CompanyResponse(**updated)
 
 

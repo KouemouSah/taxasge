@@ -21,6 +21,10 @@ from loguru import logger
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.companies.services.agent_context import (
+    get_agent_ministry_id,
+    get_agent_zone_id,
+)
 
 router = APIRouter(prefix="/dashboard", tags=["Company Dashboard"])
 
@@ -32,32 +36,6 @@ async def _mv_exists(db: asyncpg.Connection, view_name: str) -> bool:
     return await db.fetchval(
         "SELECT EXISTS(SELECT 1 FROM pg_matviews WHERE matviewname = $1)",
         view_name,
-    )
-
-
-async def _get_agent_zone_id(db: asyncpg.Connection, user_id: str) -> Optional[str]:
-    """Resolve supervisor's zone_id from agent_profiles → entity_locations → cities → zone_id."""
-    row = await db.fetchrow(
-        """SELECT DISTINCT c.zone_id
-           FROM agent_profiles ap
-           JOIN entity_locations el ON ap.entity_id = el.entity_id
-           JOIN cities c ON el.city_id = c.id
-           WHERE ap.user_id = $1 AND ap.is_active = true
-           LIMIT 1""",
-        user_id,
-    )
-    return str(row["zone_id"]) if row and row["zone_id"] else None
-
-
-async def _get_agent_ministry_id(db: asyncpg.Connection, user_id: str) -> Optional[int]:
-    """Resolve agent's ministry_id from agent_profiles → entities → ministry_id."""
-    return await db.fetchval(
-        """SELECT e.ministry_id
-           FROM agent_profiles ap
-           JOIN entities e ON ap.entity_id = e.id
-           WHERE ap.user_id = $1 AND ap.is_active = true
-           LIMIT 1""",
-        user_id,
     )
 
 
@@ -115,7 +93,7 @@ async def get_my_zone_stats(
     _=Depends(permission_required("company.view_entity_scoped")),
 ):
     """Supervisor's zone stats — filtered to their assigned zone."""
-    zone_id = await _get_agent_zone_id(db, current_user["user_id"])
+    zone_id = await get_agent_zone_id(db, current_user["user_id"])
     if not zone_id:
         raise HTTPException(status_code=404, detail="No zone assigned to your profile")
 
@@ -162,7 +140,7 @@ async def get_ministry_stats(
 
     Returns obligation stats aggregated by zone for the agent's ministry.
     """
-    ministry_id = await _get_agent_ministry_id(db, current_user["user_id"])
+    ministry_id = await get_agent_ministry_id(db, current_user["user_id"])
     if not ministry_id:
         raise HTTPException(status_code=404, detail="No ministry assigned to your profile")
 
@@ -258,13 +236,16 @@ async def refresh_company_stats(
     Called by Cloud Scheduler every 15 minutes.
     Uses CONCURRENTLY to avoid locking reads.
     """
-    refreshed = []
-    for view_name in [
+    # Hardcoded whitelist — NEVER accept dynamic view names
+    ALLOWED_VIEWS = frozenset({
         "mv_company_stats_by_zone",
         "mv_obligation_stats_by_ministry",
         "mv_company_global_stats",
-    ]:
+    })
+    refreshed = []
+    for view_name in ALLOWED_VIEWS:
         if await _mv_exists(db, view_name):
+            # Safe: view_name is from hardcoded whitelist, not user input
             await db.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view_name}")
             refreshed.append(view_name)
             logger.info(f"Refreshed materialized view: {view_name}")
