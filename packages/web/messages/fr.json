@@ -9112,7 +9112,12 @@
       "teamWorkload": "Répartition de la charge",
       "teamPerformance": "Performance de l'équipe",
       "workloadBalance": "Équilibre de charge",
-      "companies": "Entreprises"
+      "companies": "Entreprises",
+      "companyDashboard": "Tableau de Bord Entreprises",
+      "companiesList": "Liste des Entreprises",
+      "companyDebt": "Dette Entreprise",
+      "ministryDashboard": "Tableau de Bord Ministère",
+      "classification": "Classification"
     },
     "companies": {
       "title": "Entreprises de mon Entité",

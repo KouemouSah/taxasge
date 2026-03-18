@@ -559,8 +559,29 @@ class CompanyClassificationAgent(LLMAgentMixin):
                 commerce_type=None,
             )
 
+        # ── Rule 2b: Persona física (autonomo) + PE-XXXX = ALWAYS bundle ──
+        # In GE, an autonomo with registration_number (PE-XXXX) is registered at the
+        # Padrón Empresarial = proof of commercial activity = bundle regime.
+        # This is a hard rule that overrides all other checks.
+        reg_num_val = data.get("registration_number") or ""
+        if forma in PERSONA_FISICA_FORMAS and reg_num_val.upper().startswith("PE-"):
+            rules_applied.append("R2b_autonomo_pe_always_bundle")
+            return ClassificationResult(
+                regimen_fiscal="bundle",
+                confidence=0.95,
+                reason=f"Autónomo con registro PE ({reg_num_val}) = patente comercial (bundle)",
+                rules_applied=rules_applied,
+                commerce_type=commerce_type,
+                flags=flags,
+            )
+
+        # ── Rule 2c: Persona física without PE = presumed commercial ──
+        # Autonomos without PE-XXXX still presumed commercial but lower confidence
+        if forma in PERSONA_FISICA_FORMAS:
+            rules_applied.append("R2c_persona_fisica_presumed_commercial")
+
         # ── Rule 3: Commercial activity check ──
-        is_commercial = False
+        is_commercial = forma in PERSONA_FISICA_FORMAS  # Autonomos presumed commercial
         if sector.lower() == "terciario" and subsector in COMMERCIAL_SUBSECTORS:
             is_commercial = True
             rules_applied.append("R3_terciario_commercial")

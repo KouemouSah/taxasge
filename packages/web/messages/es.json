@@ -8407,6 +8407,10 @@
       "treasuryAudit": "Auditoría Tesorería",
       "declarationsAudit": "Auditoría Declaraciones",
       "requestsAudit": "Auditoría Solicitudes",
+      "companies": "Empresas",
+      "companyLookup": "Consultar Empresa",
+      "companyDebt": "Deuda Empresarial",
+      "companiesList": "Lista de Empresas",
       "myEscalations": "Mis Escalaciones",
       "escalate": "Escalar",
       "escalations": "Escalaciones",
@@ -8976,7 +8980,12 @@
       "teamWorkload": "Carga de Trabajo",
       "teamPerformance": "Rendimiento del Equipo",
       "workloadBalance": "Balance de Carga",
-      "companies": "Empresas"
+      "companies": "Empresas",
+      "companyDashboard": "Dashboard Empresas",
+      "companiesList": "Lista de Empresas",
+      "companyDebt": "Deuda Empresarial",
+      "ministryDashboard": "Panel del Ministerio",
+      "classification": "Clasificación"
     },
     "companies": {
       "title": "Empresas de mi Entidad",

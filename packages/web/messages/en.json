@@ -8869,7 +8869,12 @@
       "teamWorkload": "Workload Balance",
       "teamPerformance": "Team Performance",
       "workloadBalance": "Workload Balance",
-      "companies": "Companies"
+      "companies": "Companies",
+      "companyDashboard": "Companies Dashboard",
+      "companiesList": "Companies List",
+      "companyDebt": "Company Debt",
+      "ministryDashboard": "Ministry Dashboard",
+      "classification": "Classification"
     },
     "companies": {
       "title": "My Entity's Companies",
