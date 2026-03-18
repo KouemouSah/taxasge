@@ -356,106 +356,192 @@ function ConfirmActionDialog({
 function StatsTab({ stats, t }: { stats: ClassificationStats | null; t: ReturnType<typeof useTranslations> }) {
   if (!stats) return <div className="p-8 text-center text-muted-foreground">{t('companyClassification.loading')}</div>
 
+  // Lazy import chart.js (only for stats tab)
+  const [ChartReady, setChartReady] = useState(false)
+  useEffect(() => {
+    import('chart.js').then(({ Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement }) => {
+      Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
+      setChartReady(true)
+    })
+  }, [])
+
   const regimeEntries = Object.entries(stats.byRegimen || {})
+  const total = stats.totalCompanies || 1
+  const autoRate = (stats.autoApprovalRate * 100)
+  const avgConf = (stats.avgConfidence * 100)
+
+  // Regime colors for chart
+  const REGIME_CHART_COLORS: Record<string, string> = {
+    bundle: '#22c55e', declarativo: '#3b82f6', mixto: '#a855f7', exento: '#6b7280', pendiente: '#eab308',
+  }
+
+  // Gauge SVG
+  const GaugeSvg = ({ value, max, color, label }: { value: number; max: number; color: string; label: string }) => {
+    const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0
+    return (
+      <div className="text-center">
+        <div className="relative inline-flex items-center justify-center w-16 h-16">
+          <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="#e5e7eb" strokeWidth="6" />
+            <circle cx="32" cy="32" r="26" fill="none" stroke={color} strokeWidth="6"
+              strokeDasharray={`${pct * 1.634} 163.4`} strokeLinecap="round" />
+          </svg>
+          <span className="absolute text-xs font-bold">{Math.round(pct)}%</span>
+        </div>
+        <p className="text-[9px] text-muted-foreground mt-0.5">{label}</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{t('companyClassification.totalCompanies')}</p>
-            <p className="text-2xl font-bold">{stats.totalCompanies}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{t('companyClassification.drafts')}</p>
-            <p className="text-2xl font-bold">{stats.totalDrafts}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.draftsPending} {t('companyClassification.pending')}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{t('companyClassification.autoApprovalRate')}</p>
-            <p className="text-2xl font-bold">{(stats.autoApprovalRate * 100).toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{t('companyClassification.avgConfidence')}</p>
-            <p className="text-2xl font-bold">{(stats.avgConfidence * 100).toFixed(1)}%</p>
+    <div className="space-y-3">
+      {/* Row 1: KPIs + Gauges */}
+      <div className="grid grid-cols-12 gap-3">
+        {/* KPIs — 8 cols */}
+        <div className="col-span-8 grid grid-cols-4 gap-2">
+          <Card>
+            <CardContent className="pt-2 pb-1.5 px-3">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Building2 className="h-3 w-3 text-blue-600" /> {t('companyClassification.totalCompanies')}
+              </p>
+              <p className="text-xl font-bold">{stats.totalCompanies}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-2 pb-1.5 px-3">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <FileUp className="h-3 w-3 text-purple-600" /> {t('companyClassification.drafts')}
+              </p>
+              <p className="text-xl font-bold">{stats.totalDrafts}</p>
+              <p className="text-[9px] text-muted-foreground">{stats.draftsPending} {t('companyClassification.pending')}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-2 pb-1.5 px-3">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-green-600" /> {t('companyClassification.autoApprovalRate')}
+              </p>
+              <p className="text-xl font-bold">{autoRate.toFixed(1)}%</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-2 pb-1.5 px-3">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Bot className="h-3 w-3 text-cyan-600" /> {t('companyClassification.avgConfidence')}
+              </p>
+              <p className="text-xl font-bold">{avgConf.toFixed(1)}%</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Gauges — 4 cols */}
+        <Card className="col-span-4">
+          <CardContent className="pt-2 pb-1.5 px-2 flex items-center justify-around">
+            <GaugeSvg value={autoRate} max={100} color="#22c55e" label="Auto-Aprobación" />
+            <GaugeSvg value={avgConf} max={100} color="#0ea5e9" label="Confianza IA" />
+            <GaugeSvg value={stats.totalCompanies > 0 ? ((stats.totalCompanies - (stats.byRegimen?.pendiente || 0)) / stats.totalCompanies) * 100 : 0} max={100} color="#a855f7" label="Clasificadas" />
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t('companyClassification.regimeDistribution')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {regimeEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('companyClassification.noData')}</p>
-          ) : (
-            <div className="space-y-3">
-              {regimeEntries.map(([regime, count]) => {
-                const total = stats.totalCompanies || 1
-                const pct = ((count / total) * 100).toFixed(1)
+      {/* Row 2: Donut + Regime bars */}
+      <div className="grid grid-cols-12 gap-3">
+        {/* Donut */}
+        <Card className="col-span-4">
+          <CardHeader className="pb-0 pt-2 px-3">
+            <CardTitle className="text-xs">{t('companyClassification.regimeDistribution')}</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-2">
+            {ChartReady && regimeEntries.length > 0 ? (
+              <div className="h-[160px]">
+                {(() => {
+                  const { Doughnut } = require('react-chartjs-2')
+                  return (
+                    <Doughnut
+                      data={{
+                        labels: regimeEntries.map(([r]) => r.charAt(0).toUpperCase() + r.slice(1)),
+                        datasets: [{
+                          data: regimeEntries.map(([, c]) => c),
+                          backgroundColor: regimeEntries.map(([r]) => REGIME_CHART_COLORS[r] || '#6b7280'),
+                          borderWidth: 0, hoverOffset: 6,
+                        }],
+                      }}
+                      options={{
+                        cutout: '60%', responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: 'right', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } },
+                          tooltip: { callbacks: { label: (ctx: { label: string; parsed: number }) => `${ctx.label}: ${ctx.parsed} (${((ctx.parsed / total) * 100).toFixed(1)}%)` } },
+                        },
+                      }}
+                    />
+                  )
+                })()}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">{t('companyClassification.noData')}</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Regime bars with colors */}
+        <Card className="col-span-8">
+          <CardHeader className="pb-0 pt-2 px-3">
+            <CardTitle className="text-xs">Desglose por Régimen Fiscal</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-2">
+            <div className="space-y-2">
+              {regimeEntries.sort(([,a], [,b]) => (b as number) - (a as number)).map(([regime, count]) => {
+                const pct = ((count as number) / total) * 100
+                const color = REGIME_CHART_COLORS[regime] || '#6b7280'
                 return (
-                  <div key={regime} className="flex items-center gap-3">
-                    <Badge className={`${REGIME_COLORS[regime] || 'bg-gray-100'} min-w-[100px] justify-center`}>
-                      {regime}
-                    </Badge>
-                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
+                  <div key={regime} className="flex items-center gap-2">
+                    <div className="w-20 text-right">
+                      <Badge style={{ backgroundColor: `${color}20`, color, borderColor: color }} variant="outline" className="text-[10px] font-semibold border">
+                        {regime}
+                      </Badge>
                     </div>
-                    <span className="text-sm font-medium min-w-[80px] text-right">
-                      {count} ({pct}%)
-                    </span>
+                    <div className="flex-1 h-5 bg-muted/50 rounded overflow-hidden relative">
+                      <div className="h-full rounded transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                      <span className="absolute inset-0 flex items-center px-2 text-[10px] font-bold" style={{ color: pct > 30 ? '#fff' : '#333' }}>
+                        {count as number} empresas
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold w-12 text-right">{pct.toFixed(1)}%</span>
                   </div>
                 )
               })}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">{t('companyClassification.approvedCount')}</p>
-            <p className="text-lg font-bold text-green-600">{stats.draftsApproved}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">{t('companyClassification.autoApprovedLabel')}</p>
-            <p className="text-lg font-bold text-green-600">{stats.draftsAutoApproved}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">{t('companyClassification.pendingCount')}</p>
-            <p className="text-lg font-bold text-yellow-600">{stats.draftsPending}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">{t('companyClassification.rejectedCount')}</p>
-            <p className="text-lg font-bold text-red-600">{stats.draftsRejected}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">{t('companyClassification.needsInfoCount')}</p>
-            <p className="text-lg font-bold text-orange-600">{stats.draftsNeedsInfo}</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Row 3: Draft status pipeline */}
+      <Card>
+        <CardHeader className="pb-1 pt-2 px-3">
+          <CardTitle className="text-xs">Pipeline de Clasificación</CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 pb-2">
+          <div className="flex items-stretch gap-1">
+            {[
+              { label: t('companyClassification.approvedCount'), value: stats.draftsApproved, color: 'bg-green-500', textColor: 'text-green-700', bgLight: 'bg-green-50' },
+              { label: t('companyClassification.autoApprovedLabel'), value: stats.draftsAutoApproved, color: 'bg-emerald-500', textColor: 'text-emerald-700', bgLight: 'bg-emerald-50' },
+              { label: t('companyClassification.pendingCount'), value: stats.draftsPending, color: 'bg-yellow-500', textColor: 'text-yellow-700', bgLight: 'bg-yellow-50' },
+              { label: t('companyClassification.rejectedCount'), value: stats.draftsRejected, color: 'bg-red-500', textColor: 'text-red-700', bgLight: 'bg-red-50' },
+              { label: t('companyClassification.needsInfoCount'), value: stats.draftsNeedsInfo, color: 'bg-orange-500', textColor: 'text-orange-700', bgLight: 'bg-orange-50' },
+            ].map((item) => {
+              const totalDrafts = stats.totalDrafts || 1
+              const pct = totalDrafts > 0 ? (item.value / totalDrafts) * 100 : 0
+              return (
+                <div key={item.label} className={`flex-1 ${item.bgLight} rounded p-2 text-center border`}>
+                  <p className={`text-lg font-bold ${item.textColor}`}>{item.value}</p>
+                  <div className={`h-1 ${item.color} rounded-full mt-1 mx-auto`} style={{ width: `${Math.max(pct, 5)}%` }} />
+                  <p className="text-[9px] text-muted-foreground mt-1 leading-tight">{item.label}</p>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
