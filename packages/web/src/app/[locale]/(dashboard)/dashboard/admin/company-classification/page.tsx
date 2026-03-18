@@ -94,6 +94,16 @@ function getCompanyField(cd: Record<string, unknown>, ...keys: string[]): string
   return '-'
 }
 
+/** Simple label/value row — avoids unknown type issues with tuple arrays */
+function FieldRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-sm py-1 border-b border-muted last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-right max-w-[60%] truncate">{value}</span>
+    </div>
+  )
+}
+
 // ── Draft Detail Sheet ──────────────────────────────────────────────────────
 
 function DraftDetailSheet({
@@ -108,19 +118,6 @@ function DraftDetailSheet({
   if (!draft) return null
   const cd = draft.companyData || {}
   const details = draft.classificationDetails || {}
-
-  const fields: [string, string][] = [
-    [t('companyClassification.detailNif'), getCompanyField(cd, 'nif')],
-    [t('companyClassification.detailName'), getCompanyField(cd, 'legalName', 'legal_name', 'nombre_empresa')],
-    [t('companyClassification.formaJuridica'), getCompanyField(cd, 'formaJuridica', 'forma_juridica')],
-    [t('companyClassification.detailSector'), getCompanyField(cd, 'sectorActividad', 'sector_actividad')],
-    [t('companyClassification.detailSubsector'), getCompanyField(cd, 'subsectorActividad', 'subsector_actividad')],
-    [t('companyClassification.detailActivity'), getCompanyField(cd, 'objetoSocial', 'objeto_social')],
-    [t('companyClassification.detailCapital'), getCompanyField(cd, 'capitalSocial', 'capital_social')],
-    [t('companyClassification.detailEmployees'), getCompanyField(cd, 'employeeCount', 'employee_count', 'numero_empleados')],
-    [t('companyClassification.detailCity'), getCompanyField(cd, 'localidad', 'city_name')],
-    [t('companyClassification.detailRepresentative'), getCompanyField(cd, 'representanteLegal', 'representante_legal')],
-  ]
 
   const zonePricing = details.zonePricing as Record<string, unknown> | undefined
 
@@ -171,16 +168,20 @@ function DraftDetailSheet({
             )}
           </div>
 
-          {/* Company data */}
+          {/* Company data — inline rendering (no tuple array to avoid unknown inference) */}
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">{t('companyClassification.companyData')}</h4>
             <div className="space-y-1">
-              {fields.map((field) => (
-                <div key={field[0]} className="flex justify-between text-sm py-1 border-b border-muted last:border-0">
-                  <span className="text-muted-foreground">{field[0]}</span>
-                  <span className="font-medium text-right max-w-[60%] truncate">{field[1]}</span>
-                </div>
-              ))}
+              <FieldRow label={String(t('companyClassification.detailNif'))} value={getCompanyField(cd, 'nif')} />
+              <FieldRow label={String(t('companyClassification.detailName'))} value={getCompanyField(cd, 'legalName', 'legal_name', 'nombre_empresa')} />
+              <FieldRow label={String(t('companyClassification.formaJuridica'))} value={getCompanyField(cd, 'formaJuridica', 'forma_juridica')} />
+              <FieldRow label={String(t('companyClassification.detailSector'))} value={getCompanyField(cd, 'sectorActividad', 'sector_actividad')} />
+              <FieldRow label={String(t('companyClassification.detailSubsector'))} value={getCompanyField(cd, 'subsectorActividad', 'subsector_actividad')} />
+              <FieldRow label={String(t('companyClassification.detailActivity'))} value={getCompanyField(cd, 'objetoSocial', 'objeto_social')} />
+              <FieldRow label={String(t('companyClassification.detailCapital'))} value={getCompanyField(cd, 'capitalSocial', 'capital_social')} />
+              <FieldRow label={String(t('companyClassification.detailEmployees'))} value={getCompanyField(cd, 'employeeCount', 'employee_count', 'numero_empleados')} />
+              <FieldRow label={String(t('companyClassification.detailCity'))} value={getCompanyField(cd, 'localidad', 'city_name')} />
+              <FieldRow label={String(t('companyClassification.detailRepresentative'))} value={getCompanyField(cd, 'representanteLegal', 'representante_legal')} />
             </div>
           </div>
 
@@ -192,13 +193,13 @@ function DraftDetailSheet({
                 {t('companyClassification.zonePricing')}
               </h4>
               <div className="text-sm space-y-1">
-                {zonePricing.zoneCode && (
+                {!!zonePricing.zoneCode && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t('companyClassification.zoneCode')}</span>
                     <Badge variant="outline">{String(zonePricing.zoneCode)}</Badge>
                   </div>
                 )}
-                {zonePricing.zoneTier && (
+                {!!zonePricing.zoneTier && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t('companyClassification.zoneTier')}</span>
                     <span className="font-medium">{String(zonePricing.zoneTier)}</span>
@@ -223,7 +224,7 @@ function DraftDetailSheet({
           )}
 
           {/* Classification details - flags & rules */}
-          {(details.rulesApplied || details.flags) && (
+          {(!!details.rulesApplied || !!details.flags) && (
             <div className="space-y-2">
               <h4 className="text-sm font-semibold">{t('companyClassification.detailClassification')}</h4>
               {Array.isArray(details.rulesApplied) && details.rulesApplied.length > 0 && (
@@ -246,7 +247,7 @@ function DraftDetailSheet({
                   </div>
                 </div>
               )}
-              {details.commerceType && (
+              {!!details.commerceType && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('companyClassification.commerceType')}</span>
                   <Badge className="bg-blue-100 text-blue-800">{String(details.commerceType)}</Badge>
