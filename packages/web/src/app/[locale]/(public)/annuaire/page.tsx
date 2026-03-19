@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
-  Building2, Search, MapPin, ChevronLeft, ChevronRight, Filter,
+  Building2, Search, MapPin, ChevronLeft, ChevronRight,
+  Briefcase, FileText, Users, LayoutGrid, List,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -15,38 +14,46 @@ import {
 import { companyPublicApi } from '@/modules/companies/services/api'
 import type { PublicCompany, PublicZone } from '@/modules/companies/types'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 24
 
-const REGIME_COLORS: Record<string, string> = {
-  bundle: 'bg-green-100 text-green-800',
-  declarativo: 'bg-blue-100 text-blue-800',
-  exento: 'bg-gray-100 text-gray-700',
-  pendiente: 'bg-yellow-100 text-yellow-800',
+const FORMA_LABELS: Record<string, string> = {
+  autonomo: 'Autónomo',
+  sociedad_limitada: 'S.L.',
+  sociedad_anonima: 'S.A.',
+  ong: 'ONG',
+  cooperativa: 'Cooperativa',
+  sucursal: 'Sucursal',
+  empresa_individual: 'Emp. Individual',
 }
+
+const FORMA_OPTIONS = [
+  { value: 'autonomo', label: 'Autónomo' },
+  { value: 'sociedad_limitada', label: 'Sociedad Limitada' },
+  { value: 'sociedad_anonima', label: 'Sociedad Anónima' },
+  { value: 'ong', label: 'ONG / Asociación' },
+]
 
 export default function AnnuairePage() {
   const t = useTranslations('public')
 
-  // State
   const [query, setQuery] = useState('')
-  const [zoneId, setZoneId] = useState<string>('')
-  const [sector, setSector] = useState<string>('')
+  const [zoneId, setZoneId] = useState('')
+  const [sector, setSector] = useState('')
   const [page, setPage] = useState(1)
   const [items, setItems] = useState<PublicCompany[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [zones, setZones] = useState<PublicZone[]>([])
   const [sectors, setSectors] = useState<string[]>([])
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const debounceRef = useRef<NodeJS.Timeout>()
   const seqRef = useRef(0)
 
-  // Load filter options
   useEffect(() => {
     companyPublicApi.getZones().then(setZones).catch(() => {})
     companyPublicApi.getSectors().then(setSectors).catch(() => {})
   }, [])
 
-  // Search with debounce
   const doSearch = useCallback(async (q: string, z: string, s: string, p: number) => {
     const seq = ++seqRef.current
     setLoading(true)
@@ -63,10 +70,7 @@ export default function AnnuairePage() {
         setTotal(res.total)
       }
     } catch {
-      if (seq === seqRef.current) {
-        setItems([])
-        setTotal(0)
-      }
+      if (seq === seqRef.current) { setItems([]); setTotal(0) }
     } finally {
       if (seq === seqRef.current) setLoading(false)
     }
@@ -74,43 +78,108 @@ export default function AnnuairePage() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => doSearch(query, zoneId, sector, page), 400)
+    debounceRef.current = setTimeout(() => doSearch(query, zoneId, sector, page), 350)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [query, zoneId, sector, page, doSearch])
 
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1
 
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold flex items-center justify-center gap-3">
-          <Building2 className="h-8 w-8 text-primary" />
-          {t('annuaire.title')}
-        </h1>
-        <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-          {t('annuaire.subtitle')}
-        </p>
+  const getFormaLabel = (f?: string) => f ? (FORMA_LABELS[f] || f) : ''
+  const getId = (c: PublicCompany) => c.nif || c.registration_number || ''
+  const getIdLabel = (c: PublicCompany) => c.nif ? 'NIF' : c.registration_number ? 'Reg.' : ''
+
+  // ── Company card (shared between grid and list) ──
+  const CompanyCard = ({ c, compact }: { c: PublicCompany; compact?: boolean }) => (
+    <div className={`group border border-gray-200 rounded-lg bg-white hover:border-gray-300 hover:shadow-sm transition-all ${compact ? 'p-3' : 'p-4'}`}>
+      {/* Row 1: Name */}
+      <div className="flex items-start gap-2 mb-1.5">
+        <Building2 className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+        <h3 className={`font-semibold text-gray-900 leading-tight ${compact ? 'text-sm' : 'text-base'} line-clamp-1`}>
+          {c.legal_name}
+        </h3>
       </div>
 
-      {/* Search bar */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+      {/* Row 2: ID | Forma Juridica */}
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 ml-6 mb-1">
+        <FileText className="h-3 w-3 text-gray-400 shrink-0" />
+        <span className="font-mono">{getIdLabel(c)} {getId(c)}</span>
+        {getFormaLabel(c.forma_juridica) && (
+          <>
+            <span className="text-gray-300">|</span>
+            <span>{getFormaLabel(c.forma_juridica)}</span>
+          </>
+        )}
+      </div>
+
+      {/* Row 3: Sector/SubSector | Objeto Social */}
+      {(c.sector_actividad || c.objeto_social) && (
+        <div className="flex items-start gap-1.5 text-xs text-gray-500 ml-6 mb-1">
+          <Briefcase className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
+          <p className="line-clamp-1">
+            {c.sector_actividad && (
+              <span className="font-medium text-gray-600">
+                {c.sector_actividad}
+                {c.subsector_actividad && ` / ${c.subsector_actividad}`}
+              </span>
+            )}
+            {c.sector_actividad && c.objeto_social && (
+              <span className="text-gray-300"> | </span>
+            )}
+            {c.objeto_social && <span>{c.objeto_social}</span>}
+          </p>
+        </div>
+      )}
+
+      {/* Row 4: Ciudad, Provincia | Dirección */}
+      {(c.city_name || c.address) && (
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 ml-6">
+          <MapPin className="h-3 w-3 text-gray-400 shrink-0" />
+          {c.city_name && <span>{c.city_name}{c.provincia ? `, ${c.provincia}` : ''}</span>}
+          {c.city_name && c.address && <span className="text-gray-300">|</span>}
+          {c.address && <span className="truncate">{c.address}</span>}
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* Header */}
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-3">
+          <Users className="h-6 w-6 text-gray-600" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900">{t('annuaire.title')}</h1>
+        <p className="text-sm text-gray-500 mt-1">{t('annuaire.subtitle')}</p>
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
           value={query}
           onChange={(e) => { setQuery(e.target.value); setPage(1) }}
           placeholder={t('annuaire.searchPlaceholder')}
-          className="pl-10 h-12 text-lg"
+          className="pl-10 h-10 bg-white border-gray-200 focus:border-gray-400"
         />
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-        </div>
+      {/* Filters row */}
+      <div className="flex gap-2 mb-5 flex-wrap items-center">
+        <Select value={sector} onValueChange={(v) => { setSector(v === 'all' ? '' : v); setPage(1) }}>
+          <SelectTrigger className="w-[160px] h-9 text-sm bg-white">
+            <SelectValue placeholder={t('annuaire.allSectors')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('annuaire.allSectors')}</SelectItem>
+            {sectors.map(s => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={zoneId} onValueChange={(v) => { setZoneId(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[160px] h-9 text-sm bg-white">
             <SelectValue placeholder={t('annuaire.allZones')} />
           </SelectTrigger>
           <SelectContent>
@@ -122,112 +191,70 @@ export default function AnnuairePage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={sector} onValueChange={(v) => { setSector(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue placeholder={t('annuaire.allSectors')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('annuaire.allSectors')}</SelectItem>
-            {sectors.map(s => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-muted-foreground self-center ml-auto">
-          {total.toLocaleString()} {t('annuaire.results')}
-        </span>
+
+        {/* View toggle + count */}
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-xs text-gray-400">
+            {total.toLocaleString()} {t('annuaire.results')}
+          </span>
+          <div className="flex border border-gray-200 rounded-md overflow-hidden">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 ${viewMode === 'grid' ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 ${viewMode === 'list' ? 'bg-gray-100 text-gray-700' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Results */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">
-          {t('annuaire.loading')}
+        <div className="flex items-center justify-center py-16">
+          <div className="h-6 w-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p>{t('annuaire.noResults')}</p>
+        <div className="text-center py-16">
+          <Building2 className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+          <p className="text-gray-400 text-sm">{t('annuaire.noResults')}</p>
+        </div>
+      ) : viewMode === 'grid' ? (
+        /* Grid: 2 columns */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {items.map(c => <CompanyCard key={c.id} c={c} />)}
         </div>
       ) : (
-        <div className="space-y-3">
-          {items.map(c => (
-            <Card key={c.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="py-4 px-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-base truncate">{c.legal_name}</h3>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
-                      {c.nif && (
-                        <span className="font-mono">NIF: {c.nif}</span>
-                      )}
-                      {c.registration_number && (
-                        <span className="font-mono">{c.registration_number}</span>
-                      )}
-                      {c.city_name && (
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {c.city_name}{c.provincia ? `, ${c.provincia}` : ''}
-                        </span>
-                      )}
-                    </div>
-                    {c.sector_actividad && (
-                      <p className="text-sm mt-1">
-                        <span className="text-muted-foreground">{c.sector_actividad}</span>
-                        {c.subsector_actividad && (
-                          <span className="text-muted-foreground"> / {c.subsector_actividad}</span>
-                        )}
-                      </p>
-                    )}
-                    {c.objeto_social && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {c.objeto_social}
-                      </p>
-                    )}
-                    {c.address && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {c.address}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {c.regimen_fiscal && (
-                      <Badge className={REGIME_COLORS[c.regimen_fiscal] || 'bg-gray-100'}>
-                        {c.regimen_fiscal}
-                      </Badge>
-                    )}
-                    {c.zone_code && (
-                      <Badge variant="outline" className="text-xs">
-                        {c.zone_code}
-                      </Badge>
-                    )}
-                    {c.forma_juridica && (
-                      <span className="text-xs text-muted-foreground">{c.forma_juridica}</span>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        /* List: 2 columns compact */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {items.map(c => <CompanyCard key={c.id} c={c} compact />)}
         </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-4 mt-6">
+        <div className="flex items-center justify-center gap-3 mt-6">
           <Button
-            variant="outline" size="sm"
+            variant="ghost" size="sm"
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
+            className="text-gray-500"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm">
+          <span className="text-xs text-gray-500 tabular-nums">
             {page} / {totalPages}
           </span>
           <Button
-            variant="outline" size="sm"
+            variant="ghost" size="sm"
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
+            className="text-gray-500"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
