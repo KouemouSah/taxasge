@@ -8,13 +8,14 @@ Visible: legal_name, nif, registration_number, localidad, sector, objeto_social,
 Filtré: is_active=true AND is_verified=true uniquement.
 """
 
-from typing import Any, Dict, List, Optional
+import hashlib
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, Query, Request
 from loguru import logger
 import asyncpg
 
-from app.core.cache import check_rate_limit
+from app.core.cache import check_rate_limit, get_cache
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Public Directory"])
@@ -22,6 +23,10 @@ router = APIRouter(tags=["Public Directory"])
 # Rate limit: 100 requests per minute per IP
 RATE_LIMIT_MAX = 100
 RATE_LIMIT_WINDOW = 60
+
+# Search cache: 30s TTL for popular queries
+SEARCH_CACHE_TTL = 30
+FILTER_CACHE_TTL = 120  # 2 min for filter options (zones, sectors, etc.)
 
 
 async def _check_public_rate_limit(request: Request) -> None:
@@ -66,8 +71,21 @@ async def search_public_directory(
     """Public company directory search with advanced filters.
 
     Returns only verified active companies with public-safe fields.
+    Cached for 30s per unique query combination.
     """
     await _check_public_rate_limit(request)
+
+    # Build cache key from all query params
+    cache_key_raw = f"pub_dir:search:{q}:{zone_id}:{sector}:{forma_juridica}:{provincia}:{ciudad}:{sort_by}:{sort_order}:{page}:{page_size}"
+    cache_key = f"pub_dir:s:{hashlib.md5(cache_key_raw.encode()).hexdigest()}"
+
+    cache = get_cache()
+    try:
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        pass  # Redis down — continue without cache
 
     conditions = ["c.is_active = true", "c.is_verified = true"]
     params: List[Any] = []
@@ -144,12 +162,20 @@ async def search_public_directory(
     params.extend([page_size, offset])
     rows = await db.fetch(data_q, *params)
 
-    return {
+    result = {
         "items": [dict(r) for r in rows],
         "total": total,
         "page": page,
         "page_size": page_size,
     }
+
+    # Cache result (fire-and-forget)
+    try:
+        await cache.set(cache_key, result, ttl=SEARCH_CACHE_TTL)
+    except Exception:
+        pass
+
+    return result
 
 
 @router.get("/zones")
@@ -157,13 +183,28 @@ async def list_public_zones(
     request: Request,
     db: asyncpg.Connection = Depends(get_database),
 ):
-    """List commerce zones for directory filter dropdown."""
+    """List commerce zones for directory filter dropdown. Cached 2min."""
     await _check_public_rate_limit(request)
+
+    cache = get_cache()
+    cache_key = "pub_dir:zones"
+    try:
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        pass
+
     rows = await db.fetch(
         "SELECT id, zone_code, zone_tier, name_es "
         "FROM commerce_zones ORDER BY zone_code"
     )
-    return [dict(r) for r in rows]
+    result = [dict(r) for r in rows]
+    try:
+        await cache.set(cache_key, result, ttl=FILTER_CACHE_TTL)
+    except Exception:
+        pass
+    return result
 
 
 @router.get("/sectors")
@@ -171,15 +212,30 @@ async def list_public_sectors(
     request: Request,
     db: asyncpg.Connection = Depends(get_database),
 ):
-    """List distinct sectors for directory filter dropdown."""
+    """List distinct sectors for directory filter dropdown. Cached 2min."""
     await _check_public_rate_limit(request)
+
+    cache = get_cache()
+    cache_key = "pub_dir:sectors"
+    try:
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        pass
+
     rows = await db.fetch(
         "SELECT DISTINCT sector_actividad AS sector "
         "FROM companies "
         "WHERE sector_actividad IS NOT NULL AND is_active = true AND is_verified = true "
         "ORDER BY sector_actividad"
     )
-    return [r["sector"] for r in rows]
+    result = [r["sector"] for r in rows]
+    try:
+        await cache.set(cache_key, result, ttl=FILTER_CACHE_TTL)
+    except Exception:
+        pass
+    return result
 
 
 @router.get("/provincias")
@@ -232,8 +288,18 @@ async def list_public_formas_juridicas(
     request: Request,
     db: asyncpg.Connection = Depends(get_database),
 ):
-    """List distinct formas juridicas with counts for directory filter."""
+    """List distinct formas juridicas with counts for directory filter. Cached 2min."""
     await _check_public_rate_limit(request)
+
+    cache = get_cache()
+    cache_key = "pub_dir:formas"
+    try:
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        pass
+
     rows = await db.fetch(
         "SELECT forma_juridica, COUNT(*) as count "
         "FROM companies "
@@ -241,4 +307,9 @@ async def list_public_formas_juridicas(
         "GROUP BY forma_juridica "
         "ORDER BY count DESC"
     )
-    return [{"value": r["forma_juridica"], "count": r["count"]} for r in rows]
+    result = [{"value": r["forma_juridica"], "count": r["count"]} for r in rows]
+    try:
+        await cache.set(cache_key, result, ttl=FILTER_CACHE_TTL)
+    except Exception:
+        pass
+    return result

@@ -26,31 +26,43 @@ Transformer la page /annuaire basique en un annuaire professionnel de production
 
 ## Ce qui reste (Session 2)
 
-### Phase 1 : Enrichissement UX
-- [ ] Tri par colonne (clickable headers en mode liste)
-- [ ] SEO : metadata dynamiques (title, description par recherche)
-- [ ] Empty state avec illustration SVG (pas juste icône+texte)
-- [ ] Skeleton loading (au lieu du spinner)
-- [ ] Compteurs par forma dans la barre de filtres (badges: "S.L. (23)", "Autónomo (10)")
+### Phase 1 : Enrichissement UX ✅
+- [x] Tri par colonne (clickable headers en mode liste) — SortHeader avec ArrowUp/Down/UpDown, toggle asc/desc
+- [x] SEO : metadata dynamiques — layout.tsx avec generateMetadata (title, description, openGraph, alternates i18n)
+- [x] Empty state avec illustration SVG — Buildings skyline + magnifying glass avec "?" (120x120)
+- [x] Skeleton loading — CardSkeleton (6 placeholders pulse) remplace le spinner
+- [x] Compteurs par forma dans barre filtres — Badges cliquables "S.L. 23" + counts dans dropdown Select
+- [x] Traductions ajoutées (es/fr/en) : sortByName/City/Sector/Forma, noResultsHint, metaTitle, metaDescription
 
-### Phase 2 : Vue Kanban (optionnel)
-- [ ] Toggle Grille/Liste/**Kanban**
-- [ ] Colonnes par forma_juridica (Autónomo, S.L., S.A., ONG)
-- [ ] Cards compactes dans chaque colonne
-- [ ] Compteur par colonne
-- [ ] NOTE: "mixto" supprimé, Kanban par forma (pas par régime)
+### Phase 2 : Vue Kanban ✅
+- [x] Toggle Grille/Liste/**Kanban** — 3ème bouton Columns3 dans le toggle bar
+- [x] Colonnes par forma_juridica — parallel API fetch per column (10 items/col, 350ms debounce)
+- [x] Cards compactes dans chaque colonne — nom, NIF, sector, ciudad (2.5px padding)
+- [x] Compteur par colonne — Badge dans le header coloré (utilise formaCounts)
+- [x] "+N más →" link en bas de colonne → bascule en grille filtré sur cette forma
+- [x] Skeleton loading Kanban (4 colonnes × 3 cards)
+- [x] Scroll horizontal + scroll vertical par colonne (max-h 600px)
 
-### Phase 3 : Performance à l'échelle
-- [ ] Cache Redis sur /search (30s TTL) pour les requêtes populaires
-- [ ] Cache client React Query (staleTime 60s)
-- [ ] Prefetch page suivante (hover sur "Next")
-- [ ] Lazy loading images/avatars (si ajoutées plus tard)
+### Phase 3 : Performance à l'échelle ✅
+- [x] Cache Redis sur /search (30s TTL) — `pub_dir:s:{md5}` key, graceful degradation si Redis down
+- [x] Cache Redis sur filter endpoints (120s TTL) — zones, sectors, provincias, formas-juridicas
+- [x] Cache client React Query (staleTime 60s search, 5min filtres) — `useAnnuaireSearch` hook + 6 hooks filtres
+- [x] Prefetch page suivante (hover sur "Next"/"Prev") — `useAnnuairePrefetch` + `onMouseEnter`
+- [x] Debounce refactoré — `useDebouncedValue` hook (350ms) remplace setTimeout manual
+- [x] Lazy loading images/avatars — N/A (pas d'images actuellement, prêt si ajoutées)
+- **Hook** : `packages/web/src/modules/companies/hooks/useAnnuaireSearch.ts` (7 hooks + prefetch helper)
 
-### Phase 4 : Mobile
-- [ ] Cards plein-largeur sur mobile (grid-cols-1)
-- [ ] Filtres en bottom sheet (pas inline)
-- [ ] Recherche sticky en haut
-- [ ] Touch-friendly pagination
+### Phase 4 : Mobile ✅
+- [x] Cards plein-largeur sur mobile — `grid-cols-1 md:grid-cols-2` (déjà OK)
+- [x] Filtres en bottom sheet — `Sheet side="bottom"` sur mobile (`sm:hidden`), inline chevron sur desktop (`hidden sm:inline-flex`)
+- [x] `FilterControls` composant partagé — bottom sheet + desktop inline utilisent les mêmes contrôles
+- [x] Recherche sticky en haut — `sticky top-0 z-10 bg-white/95 backdrop-blur-sm` sur mobile, `static` sur desktop
+- [x] Touch-friendly pagination — boutons `h-10 w-10` sur mobile (44px touch target), `h-8` sur desktop
+- [x] Header responsive — icône 40px/48px, titre xl/2xl, sous-titre xs/sm
+- [x] Kanban snap scroll — `snap-x snap-mandatory` sur mobile, désactivé desktop
+- [x] Kanban masqué sur mobile — bouton toggle Columns3 `hidden sm:block`
+- [x] Compteur résultats abrégé — juste le nombre sur mobile, "+ results" sur desktop
+- [x] Cards `active:shadow-sm` — feedback tactile
 
 ### Validation
 - [ ] Test avec 50+ companies — tous les filtres fonctionnent

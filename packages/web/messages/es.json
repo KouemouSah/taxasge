@@ -9760,7 +9760,14 @@
       "allSectors": "Todos los sectores",
       "results": "resultados",
       "loading": "Buscando...",
-      "noResults": "No se encontraron empresas con los criterios indicados"
+      "noResults": "No se encontraron empresas con los criterios indicados",
+      "noResultsHint": "Pruebe con otros términos de búsqueda o ajuste los filtros",
+      "sortByName": "Nombre",
+      "sortByCity": "Ciudad",
+      "sortBySector": "Sector",
+      "sortByForma": "Forma jurídica",
+      "metaTitle": "Directorio de Empresas — Facil GE",
+      "metaDescription": "Directorio público de empresas registradas y verificadas en Guinea Ecuatorial. Consulte información fiscal, sector de actividad y localización."
     }
   },
   "legalPages": {

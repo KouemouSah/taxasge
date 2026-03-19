@@ -9628,7 +9628,14 @@
       "allSectors": "All sectors",
       "results": "results",
       "loading": "Searching...",
-      "noResults": "No companies found matching the given criteria"
+      "noResults": "No companies found matching the given criteria",
+      "noResultsHint": "Try different search terms or adjust the filters",
+      "sortByName": "Name",
+      "sortByCity": "City",
+      "sortBySector": "Sector",
+      "sortByForma": "Legal form",
+      "metaTitle": "Company Directory — Facil GE",
+      "metaDescription": "Public directory of registered and verified companies in Equatorial Guinea. Search fiscal information, activity sector, and location."
     }
   },
   "legalPages": {

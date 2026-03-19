@@ -9871,7 +9871,14 @@
       "allSectors": "Tous les secteurs",
       "results": "résultats",
       "loading": "Recherche en cours...",
-      "noResults": "Aucune entreprise trouvée avec les critères indiqués"
+      "noResults": "Aucune entreprise trouvée avec les critères indiqués",
+      "noResultsHint": "Essayez d'autres termes de recherche ou ajustez les filtres",
+      "sortByName": "Nom",
+      "sortByCity": "Ville",
+      "sortBySector": "Secteur",
+      "sortByForma": "Forme juridique",
+      "metaTitle": "Annuaire des Entreprises — Facil GE",
+      "metaDescription": "Annuaire public des entreprises enregistrées et vérifiées en Guinée Équatoriale. Consultez les informations fiscales, le secteur d'activité et la localisation."
     }
   },
   "legalPages": {
