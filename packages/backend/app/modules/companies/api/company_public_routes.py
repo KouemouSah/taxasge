@@ -10,8 +10,9 @@ Filtré: is_active=true AND is_verified=true uniquement.
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from loguru import logger
+import asyncpg
 
 from app.core.cache import check_rate_limit
 from app.database.connection import get_database
@@ -55,16 +56,14 @@ async def search_public_directory(
     sector: Optional[str] = Query(None, description="Filter by sector_actividad"),
     page: int = Query(1, ge=1, le=1000),
     page_size: int = Query(20, ge=1, le=50),
+    db: asyncpg.Connection = Depends(get_database),
 ):
     """Public company directory search.
 
     Returns only verified active companies with public-safe fields.
-    Uses tsvector full-text search (O(log N) for 1M+ companies).
-    Fallback to ILIKE if search_vector column not yet available.
+    Uses websearch_to_tsquery for proper stemming + ILIKE fallback.
     """
     await _check_public_rate_limit(request)
-
-    db = await get_database()
 
     conditions = ["c.is_active = true", "c.is_verified = true"]
     params: List[Any] = []
@@ -127,10 +126,12 @@ async def search_public_directory(
 
 
 @router.get("/zones")
-async def list_public_zones(request: Request):
+async def list_public_zones(
+    request: Request,
+    db: asyncpg.Connection = Depends(get_database),
+):
     """List commerce zones for directory filter dropdown."""
     await _check_public_rate_limit(request)
-    db = await get_database()
     rows = await db.fetch(
         "SELECT id, zone_code, zone_tier, name_es "
         "FROM commerce_zones ORDER BY zone_code"
@@ -139,10 +140,12 @@ async def list_public_zones(request: Request):
 
 
 @router.get("/sectors")
-async def list_public_sectors(request: Request):
+async def list_public_sectors(
+    request: Request,
+    db: asyncpg.Connection = Depends(get_database),
+):
     """List distinct sectors for directory filter dropdown."""
     await _check_public_rate_limit(request)
-    db = await get_database()
     rows = await db.fetch(
         "SELECT DISTINCT sector_actividad AS sector "
         "FROM companies "

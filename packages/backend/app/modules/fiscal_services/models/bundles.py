@@ -7,7 +7,9 @@ from uuid import UUID
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, ConfigDict
+import json as _json
+
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class FeeType(str, Enum):
@@ -143,25 +145,9 @@ class BundleItemResponse(BaseModel):
     notes: Optional[str] = None
     is_active: bool
     # OMS fields (Migration 218 Phase 1.5)
-    # asyncpg returns JSONB as str — parse if needed
+    # asyncpg returns JSONB as str — Pydantic v2 field_validator parses before validation
     effective_penalty: Optional[dict] = None
     effective_deadline: Optional[dict] = None
-
-    @classmethod
-    def _parse_jsonb(cls, v):
-        if isinstance(v, str):
-            import json
-            try:
-                return json.loads(v)
-            except (json.JSONDecodeError, TypeError):
-                return None
-        return v
-
-    def __init__(self, **data):
-        for field in ("effective_penalty", "effective_deadline"):
-            if field in data:
-                data[field] = self._parse_jsonb(data[field])
-        super().__init__(**data)
     config_resolved_at: Optional[datetime] = None
     requires_document: bool = False
     document_template_id: Optional[int] = None
@@ -169,6 +155,17 @@ class BundleItemResponse(BaseModel):
     service_code: Optional[str] = None
     service_name: Optional[str] = None
     ministry_name: Optional[str] = None
+
+    @field_validator('effective_penalty', 'effective_deadline', mode='before')
+    @classmethod
+    def parse_jsonb_str(cls, v):
+        """asyncpg returns JSONB as str without codec — parse to dict."""
+        if isinstance(v, str):
+            try:
+                return _json.loads(v)
+            except (ValueError, TypeError):
+                return None
+        return v
 
 
 # ============================================================

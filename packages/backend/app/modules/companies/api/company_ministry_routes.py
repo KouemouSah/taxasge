@@ -10,6 +10,7 @@ Security:
   - All queries use parameterized SQL ($1, $2)
 """
 
+import re
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -112,7 +113,6 @@ async def lookup_company(
     Returns basic info + existence status. Read-only — no modification possible.
     No zone filtering (ONRC = national scope).
     """
-    import re
     q_trimmed = q.strip()
     q_upper = q_trimmed.upper()
     params: List[Any] = []
