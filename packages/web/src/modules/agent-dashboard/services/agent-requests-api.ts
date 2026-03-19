@@ -112,6 +112,13 @@ export interface EscalationListItem {
   history: EscalationHistoryEntry[];
 }
 
+export interface PaginatedEscalationResponse {
+  items: EscalationListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 interface BackendEscalationItem {
   id: string;
   queue_id: string;
@@ -133,6 +140,13 @@ interface BackendEscalationItem {
     performed_by_name?: string | null;
     comment?: string | null;
   }>;
+}
+
+interface BackendPaginatedEscalation {
+  items: BackendEscalationItem[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 // Workflow schema types for agent detail view
@@ -596,7 +610,7 @@ class AgentRequestsApiClient {
     direction?: 'sent' | 'received';
     page?: number;
     pageSize?: number;
-  }): Promise<EscalationListItem[]> {
+  }): Promise<PaginatedEscalationResponse> {
     const params = new URLSearchParams();
     if (options?.includeResolved) params.set('include_resolved', 'true');
     if (options?.direction) params.set('direction', options.direction);
@@ -604,11 +618,11 @@ class AgentRequestsApiClient {
     if (options?.pageSize) params.set('page_size', String(options.pageSize));
     const qs = params.toString();
 
-    const rows = await this.request<BackendEscalationItem[]>(
+    const data = await this.request<BackendPaginatedEscalation>(
       `/my-escalations${qs ? `?${qs}` : ''}`
     );
 
-    return rows.map((r) => ({
+    const items = data.items.map((r) => ({
       id: r.id,
       queueId: r.queue_id,
       reason: r.reason,
@@ -630,6 +644,13 @@ class AgentRequestsApiClient {
         comment: h.comment || null,
       })),
     }));
+
+    return {
+      items,
+      total: data.total,
+      page: data.page,
+      pageSize: data.page_size,
+    };
   }
 
   /**

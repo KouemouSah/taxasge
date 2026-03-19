@@ -165,6 +165,7 @@ export const agentProfilesApi = {
       if (filters.agent_category) params.append('agent_category', filters.agent_category);
       if (filters.is_active !== undefined) params.append('is_active', String(filters.is_active));
       if (filters.availability) params.append('availability', filters.availability);
+      if (filters.search) params.append('search', filters.search);
       if (filters.page) params.append('page', String(filters.page));
       if (filters.page_size) params.append('page_size', String(filters.page_size));
     }
@@ -378,7 +379,7 @@ export const adminUsersApi = {
    * List users filtered by role (for getting admins)
    * BACKEND: GET /api/v1/admin/users?role=admin
    */
-  listAdmins: async (page = 1, pageSize = 50): Promise<{
+  listAdmins: async (page = 1, pageSize = 50, search?: string): Promise<{
     items: Array<{
       id: string;
       email: string;
@@ -395,7 +396,9 @@ export const adminUsersApi = {
     page_size: number;
     pages: number;
   }> => {
-    return fetchClient.get(`${ADMIN_USERS_BASE}?role=admin&page=${page}&size=${pageSize}`);
+    const params = new URLSearchParams({ role: 'admin', page: String(page), size: String(pageSize) });
+    if (search) params.append('search', search);
+    return fetchClient.get(`${ADMIN_USERS_BASE}?${params.toString()}`);
   },
 
   /**

@@ -7833,7 +7833,8 @@
         "pending": "Pending",
         "in_review": "In Review",
         "resolved": "Resolved"
-      }
+      },
+      "totalLabel": "total"
     },
     "filters": {
       "type": "Type",

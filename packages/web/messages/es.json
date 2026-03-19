@@ -7940,7 +7940,8 @@
         "pending": "Pendiente",
         "in_review": "En revision",
         "resolved": "Resuelta"
-      }
+      },
+      "totalLabel": "total"
     },
     "filters": {
       "type": "Tipo",

@@ -385,12 +385,23 @@ class AgentProfileRepository:
             params.append(filters.availability)
             param_idx += 1
 
+        if filters.search:
+            # Escape LIKE special characters to prevent pattern injection
+            escaped = filters.search.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+            search_pattern = f"%{escaped}%"
+            where_conditions.append(
+                f"(u.email ILIKE ${param_idx} OR u.full_name ILIKE ${param_idx})"
+            )
+            params.append(search_pattern)
+            param_idx += 1
+
         where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
 
-        # Count query - must include entities join for category filtering
+        # Count query - must include all joins referenced by WHERE conditions
         count_query = f"""
             SELECT COUNT(*)
             FROM agent_profiles ap
+            JOIN users u ON ap.user_id = u.id
             LEFT JOIN entities e ON ap.entity_id = e.id
             LEFT JOIN entity_locations el ON ap.entity_location_id = el.id
             LEFT JOIN agent_workloads aw ON ap.id = aw.agent_profile_id

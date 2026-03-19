@@ -9,7 +9,7 @@
  * @module dashboard/admin/agents
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +59,7 @@ export default function AgentsPage() {
 
   const [activeTab, setActiveTab] = useState('agents');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | AgentType>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [supervisorFilter, setSupervisorFilter] = useState<'all' | 'yes' | 'no'>('all');
@@ -74,7 +75,24 @@ export default function AgentsPage() {
   const [adminPage, setAdminPage] = useState(1);
   const adminPageSize = 20;
 
-  // Queries — server-side pagination (20 per page, supports 1M+ agents)
+  // Debounce search: 400ms delay before sending to server
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value.trim());
+      setAgentPage(1);
+      setAdminPage(1);
+    }, 400);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, []);
+
+  // Queries — server-side pagination + search (20 per page, supports 1M+ agents)
   const {
     data: agentsData, isLoading: agentsLoading, error: agentsError, refetch: refetchAgents,
   } = useAgentProfiles({
@@ -82,13 +100,14 @@ export default function AgentsPage() {
     is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
     is_supervisor: supervisorFilter === 'all' ? undefined : supervisorFilter === 'yes',
     availability: availabilityFilter !== 'all' ? availabilityFilter as AgentAvailability : undefined,
+    search: debouncedSearch || undefined,
     page: agentPage,
     page_size: agentPageSize,
   });
 
   const {
     data: adminsData, isLoading: adminsLoading, error: adminsError, refetch: refetchAdmins,
-  } = useAdminUsers(adminPage, adminPageSize);
+  } = useAdminUsers(adminPage, adminPageSize, debouncedSearch || undefined);
 
   const { data: alertsDashboard, isLoading: alertsLoading } = useAlertsDashboard();
 
@@ -113,24 +132,13 @@ export default function AgentsPage() {
     ).values()
   ).sort((a, b) => a.code.localeCompare(b.code));
 
-  // Server-side pagination — data is already filtered by page/type/status/availability
-  // Client-side search + entity filter on current page only
-  const filteredAgents = agents.filter((agent) => {
-    const matchesSearch =
-      !searchQuery ||
-      agent.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.user_full_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesEntity = entityFilter === 'all' || agent.entity_code === entityFilter;
-    return matchesSearch && matchesEntity;
-  });
+  // Server-side search + pagination — only entity filter remains client-side
+  const filteredAgents = entityFilter === 'all'
+    ? agents
+    : agents.filter((agent) => agent.entity_code === entityFilter);
 
-  const filteredAdmins = admins.filter((admin) => {
-    const matchesSearch =
-      !searchQuery ||
-      admin.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      `${admin.first_name} ${admin.last_name}`.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
+  // Admins are fully server-side filtered (search + pagination)
+  const filteredAdmins = admins;
 
   // Server-side pagination totals
   const agentTotalPages = Math.max(1, Math.ceil(agentTotal / agentPageSize));
@@ -214,6 +222,8 @@ export default function AgentsPage() {
   const resetFilters = () => {
     setTypeFilter('all'); setStatusFilter('all'); setSupervisorFilter('all');
     setEntityFilter('all'); setAvailabilityFilter('all'); setSearchQuery('');
+    setDebouncedSearch('');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     resetAgentPage(); resetAdminPage();
   };
 
@@ -351,7 +361,7 @@ export default function AgentsPage() {
                   <Input
                     placeholder={tAdmin('searchPlaceholder')}
                     value={searchQuery}
-                    onChange={(e) => { setSearchQuery(e.target.value); resetAgentPage(); resetAdminPage(); }}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     className="pl-9 h-9"
                   />
                 </div>
@@ -576,7 +586,7 @@ export default function AgentsPage() {
                 <div className="flex items-center gap-4">
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder={tAdmin('searchPlaceholder')} value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); resetAdminPage(); }} className="pl-9" />
+                    <Input placeholder={tAdmin('searchPlaceholder')} value={searchQuery} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9" />
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

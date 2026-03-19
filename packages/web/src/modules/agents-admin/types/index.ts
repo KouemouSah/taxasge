@@ -313,6 +313,7 @@ export interface AgentListFilters {
   agent_category?: 'dgi' | 'treasury' | 'entity' | 'ministry';
   is_active?: boolean;
   availability?: AgentAvailability;
+  search?: string;
   page?: number;
   page_size?: number;
 }

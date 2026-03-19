@@ -8076,7 +8076,8 @@
         "pending": "En attente",
         "in_review": "En cours de revision",
         "resolved": "Resolue"
-      }
+      },
+      "totalLabel": "total"
     },
     "filters": {
       "type": "Type",

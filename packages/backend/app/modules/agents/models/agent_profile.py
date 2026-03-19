@@ -171,6 +171,7 @@ class AgentListFilters(BaseModel):
     is_active: Optional[bool] = True
     agent_category: Optional[str] = None  # dgi, treasury, entity, ministry
     availability: Optional[str] = None
+    search: Optional[str] = None  # ILIKE search on user email / full_name
     limit: int = 50
     offset: int = 0
 

@@ -304,6 +304,7 @@ async def list_profiles(
     agent_category: Optional[str] = None,
     availability: Optional[str] = None,
     is_active: Optional[bool] = None,
+    search: Optional[str] = Query(None, max_length=100, description="Search by email or name (ILIKE)"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     current_user: Dict[str, Any] = Depends(get_current_user),
@@ -318,6 +319,7 @@ async def list_profiles(
         agent_category=agent_category,
         availability=availability,
         is_active=is_active,
+        search=search.strip() if search else None,
         limit=page_size,
         offset=(page - 1) * page_size,
     )

@@ -825,9 +825,17 @@ class EscalationItemResponse(BaseModel):
     history: List[EscalationHistoryEntry] = []
 
 
+class PaginatedEscalationResponse(BaseModel):
+    """Paginated escalation response"""
+    items: List[EscalationItemResponse]
+    total: int
+    page: int
+    page_size: int
+
+
 @router.get(
     "/my-escalations",
-    response_model=List[EscalationItemResponse],
+    response_model=PaginatedEscalationResponse,
     summary="Get agent escalations (sent + received)",
     description="""
     Returns two types of escalations for the current agent:
@@ -841,7 +849,7 @@ async def get_my_escalations(
     include_resolved: bool = Query(False, description="Include resolved escalations"),
     direction: Optional[str] = Query(None, description="Filter: sent | received | null (both)"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(50, ge=1, le=100, description="Items per page"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.escalate"))
@@ -860,7 +868,22 @@ async def get_my_escalations(
 
     status_filter = "AND sr.status::text != ALL($4::text[])" if not include_resolved else ""
 
-    params = [current_user.id, page_size, offset]
+    # Count total matching rows
+    count_params: list = [current_user.id]
+    if not include_resolved:
+        count_params.append(resolved_statuses)
+    count_status_filter = f"AND sr.status::text != ALL(${len(count_params)}::text[])" if not include_resolved else ""
+
+    total_row = await db.fetchrow(f"""
+        SELECT COUNT(*) as total
+        FROM service_requests sr
+        WHERE sr.escalated = true
+        {direction_filter}
+        {count_status_filter}
+    """, *count_params)
+    total = total_row['total'] if total_row else 0
+
+    params: list = [current_user.id, page_size, offset]
     if not include_resolved:
         params.append(resolved_statuses)
 
@@ -928,7 +951,7 @@ async def get_my_escalations(
                     comment=hr['comment'] if hr['comment'] not in ('escalation_assigned', 'escalation_resolved', 'supervisor_approve', 'supervisor_reject') else None,
                 ))
 
-    return [
+    items = [
         EscalationItemResponse(
             id=str(row['id']),
             queue_id=str(row['id']),
@@ -948,6 +971,13 @@ async def get_my_escalations(
         )
         for row in rows
     ]
+
+    return PaginatedEscalationResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

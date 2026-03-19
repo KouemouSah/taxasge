@@ -190,10 +190,10 @@ export function useAdminAssistant() {
 /**
  * Hook to list admin users
  */
-export function useAdminUsers(page = 1, pageSize = 50) {
+export function useAdminUsers(page = 1, pageSize = 50, search?: string) {
   return useQuery({
-    queryKey: agentQueryKeys.adminsList(page),
-    queryFn: () => adminUsersApi.listAdmins(page, pageSize),
+    queryKey: [...agentQueryKeys.adminsList(page), { search }],
+    queryFn: () => adminUsersApi.listAdmins(page, pageSize, search),
     staleTime: 30 * 1000,
   });
 }

@@ -51,8 +51,10 @@ import {
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { agentRequestsApi } from '../../services/agent-requests-api';
-import type { EscalationListItem, EscalationHistoryEntry } from '../../services/agent-requests-api';
+import type { EscalationListItem, EscalationHistoryEntry, PaginatedEscalationResponse } from '../../services/agent-requests-api';
 import type { EntityCode } from '../../types';
+
+const PAGE_SIZE = 20;
 
 // =============================================================================
 // PROPS
@@ -124,16 +126,29 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [includeResolved, setIncludeResolved] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const { data: items = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['my-escalations', includeResolved],
-    queryFn: () => agentRequestsApi.getMyEscalations({ includeResolved, pageSize: 100 }),
-    // TODO: backend returns flat array, not paginated response. Needs backend refactor
-    // to return {items, total, page} for proper server-side pagination.
+  const { data, isLoading, isError, refetch } = useQuery<PaginatedEscalationResponse>({
+    queryKey: ['my-escalations', includeResolved, page],
+    queryFn: () => agentRequestsApi.getMyEscalations({ includeResolved, page, pageSize: PAGE_SIZE }),
     staleTime: 30_000,
   });
 
-  // Split by direction
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Reset page when filters change
+  const handleTabChange = (v: string) => {
+    setActiveTab(v as 'sent' | 'received');
+    setStatusFilter('all');
+  };
+  const handleIncludeResolvedToggle = () => {
+    setIncludeResolved(!includeResolved);
+    setPage(1);
+  };
+
+  // Split by direction (client-side on current page)
   const sentItems = useMemo(() => items.filter((i) => i.direction === 'sent'), [items]);
   const receivedItems = useMemo(() => items.filter((i) => i.direction === 'received'), [items]);
   const currentItems = activeTab === 'sent' ? sentItems : receivedItems;
@@ -142,7 +157,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
   const sentPending = useMemo(() => sentItems.filter((i) => i.escalationStatus === 'pending').length, [sentItems]);
   const receivedCount = receivedItems.length;
 
-  // Filter
+  // Filter (client-side on current page)
   const filtered = useMemo(() => {
     let result = currentItems;
     if (statusFilter !== 'all') {
@@ -180,7 +195,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'sent' | 'received'); setStatusFilter('all'); }}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="h-8">
             <TabsTrigger value="sent" className="text-xs gap-1.5 px-3">
               <ArrowUpRight className="h-3.5 w-3.5" />
@@ -225,7 +240,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
             variant={includeResolved ? 'secondary' : 'ghost'}
             size="sm"
             className="h-8 text-xs"
-            onClick={() => setIncludeResolved(!includeResolved)}
+            onClick={handleIncludeResolvedToggle}
           >
             <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
             {t('escalations.showResolved')}
@@ -284,6 +299,35 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t pt-3 pb-1 shrink-0">
+          <p className="text-xs text-muted-foreground">
+            {tCommon('page')} {page} / {totalPages} &middot; {total} {t('escalations.totalLabel')}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={page <= 1 || isLoading}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              {tCommon('previous')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled={page >= totalPages || isLoading}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              {tCommon('next')}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
