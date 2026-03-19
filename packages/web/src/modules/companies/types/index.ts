@@ -310,6 +310,76 @@ export interface PublicZone {
   name_es: string
 }
 
+// =============================================================================
+// ANALYTICS TYPES (rich cross-tabulated data)
+// =============================================================================
+
+export interface ZoneRegimeData {
+  zone_code: string | null
+  zone_name: string | null
+  regime: string
+  count: number
+  total_amount: number
+  paid_amount: number
+  debt: number
+}
+
+export interface FormaJuridicaData {
+  forma_juridica: string
+  count: number
+  with_license: number
+  total_amount: number
+}
+
+export interface CityStatsData {
+  city_name: string
+  provincia: string
+  zone_code: string | null
+  companies: number
+  licenses: number
+  debt: number
+  recovery_pct: number
+}
+
+export interface FeeTypeDebtData {
+  fee_type: string
+  companies: number
+  obligations: number
+  total_amount: number
+  paid: number
+  overdue: number
+  penalties: number
+}
+
+export interface TopDebtorData {
+  id: string
+  legal_name: string
+  nif: string | null
+  registration_number: string | null
+  regimen_fiscal: string
+  zone_code: string | null
+  debt: number
+  total_amount: number
+  recovery_pct: number
+}
+
+export interface MonthlyTrendData {
+  month: string
+  created: number
+  bundle: number
+  declarativo: number
+  verified: number
+}
+
+export interface CompanyAnalytics {
+  by_zone_regime: ZoneRegimeData[]
+  by_forma_juridica: FormaJuridicaData[]
+  by_city: CityStatsData[]
+  debt_by_fee_type: FeeTypeDebtData[]
+  top_debtors: TopDebtorData[]
+  monthly_trend: MonthlyTrendData[]
+}
+
 export interface LookupResult {
   id: string
   legal_name: string

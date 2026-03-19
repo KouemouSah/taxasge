@@ -245,6 +245,140 @@ async def get_global_stats(
     return dict(row) if row else {}
 
 
+# ── Cross-tabulated analytics (rich JOINs for pro dashboards) ────────────────
+
+@router.get("/analytics")
+async def get_company_analytics(
+    db=Depends(get_database),
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    _=Depends(permission_required("company.view_stats")),
+):
+    """Rich cross-tabulated analytics for Sage ERP-quality dashboards.
+
+    Returns:
+      - by_zone_regime: companies grouped by zone × regime (stacked charts)
+      - by_forma_juridica: companies by legal form (pie chart)
+      - by_city: top cities by company count + debt (geographic)
+      - debt_by_fee_type: obligations grouped by fee_type (ministry breakdown)
+      - top_debtors: top 10 companies by outstanding debt
+      - monthly_trend: companies created per month (last 12 months)
+    """
+    import asyncio
+
+    async def fetch_zone_regime():
+        return await db.fetch("""
+            SELECT cz.zone_code, cz.name_es AS zone_name,
+                   c.regimen_fiscal AS regime,
+                   COUNT(*) AS count,
+                   COALESCE(SUM(cl.total_amount), 0) AS total_amount,
+                   COALESCE(SUM(cl.amount_paid), 0) AS paid_amount,
+                   COALESCE(SUM(cl.total_amount - cl.amount_paid), 0) AS debt
+            FROM companies c
+            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            LEFT JOIN commercial_licenses cl ON cl.company_id = c.id AND cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+            WHERE c.is_active = true
+            GROUP BY cz.zone_code, cz.name_es, c.regimen_fiscal
+            ORDER BY cz.zone_code, c.regimen_fiscal
+        """)
+
+    async def fetch_forma_juridica():
+        return await db.fetch("""
+            SELECT c.forma_juridica, COUNT(*) AS count,
+                   COUNT(cl.id) AS with_license,
+                   COALESCE(SUM(cl.total_amount), 0) AS total_amount
+            FROM companies c
+            LEFT JOIN commercial_licenses cl ON cl.company_id = c.id AND cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+            WHERE c.is_active = true AND c.forma_juridica IS NOT NULL
+            GROUP BY c.forma_juridica
+            ORDER BY count DESC
+        """)
+
+    async def fetch_city_stats():
+        return await db.fetch("""
+            SELECT ct.name AS city_name, ct.provincia, cz.zone_code,
+                   COUNT(c.id) AS companies,
+                   COUNT(cl.id) AS licenses,
+                   COALESCE(SUM(cl.total_amount - cl.amount_paid), 0) AS debt,
+                   CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
+                        THEN ROUND(SUM(cl.amount_paid) * 100.0 / SUM(cl.total_amount), 1)
+                        ELSE 0 END AS recovery_pct
+            FROM companies c
+            JOIN cities ct ON c.city_id = ct.id
+            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            LEFT JOIN commercial_licenses cl ON cl.company_id = c.id AND cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+            WHERE c.is_active = true
+            GROUP BY ct.name, ct.provincia, cz.zone_code
+            ORDER BY companies DESC
+        """)
+
+    async def fetch_debt_by_fee():
+        return await db.fetch("""
+            SELECT lo.fee_type,
+                   COUNT(DISTINCT cl.company_id) AS companies,
+                   COUNT(lo.id) AS obligations,
+                   COALESCE(SUM(lo.amount), 0) AS total_amount,
+                   COALESCE(SUM(lo.amount) FILTER (WHERE lo.status = 'paid'), 0) AS paid,
+                   COALESCE(SUM(lo.amount) FILTER (WHERE lo.status = 'overdue'), 0) AS overdue,
+                   COALESCE(SUM(lo.penalty_amount), 0) AS penalties
+            FROM license_obligations lo
+            JOIN commercial_licenses cl ON lo.license_id = cl.id
+            WHERE cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+            GROUP BY lo.fee_type
+            ORDER BY total_amount DESC
+        """)
+
+    async def fetch_top_debtors():
+        return await db.fetch("""
+            SELECT c.id, c.legal_name, c.nif, c.registration_number,
+                   c.regimen_fiscal, cz.zone_code,
+                   SUM(cl.total_amount - cl.amount_paid) AS debt,
+                   SUM(cl.total_amount) AS total_amount,
+                   CASE WHEN SUM(cl.total_amount) > 0
+                        THEN ROUND(SUM(cl.amount_paid) * 100.0 / SUM(cl.total_amount), 1)
+                        ELSE 0 END AS recovery_pct
+            FROM companies c
+            JOIN commercial_licenses cl ON cl.company_id = c.id
+            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            WHERE cl.fiscal_year = EXTRACT(YEAR FROM NOW())::int
+              AND (cl.total_amount - cl.amount_paid) > 0
+            GROUP BY c.id, c.legal_name, c.nif, c.registration_number, c.regimen_fiscal, cz.zone_code
+            ORDER BY debt DESC
+            LIMIT 10
+        """)
+
+    async def fetch_monthly_trend():
+        return await db.fetch("""
+            SELECT TO_CHAR(created_at, 'YYYY-MM') AS month,
+                   COUNT(*) AS created,
+                   COUNT(*) FILTER (WHERE regimen_fiscal = 'bundle') AS bundle,
+                   COUNT(*) FILTER (WHERE regimen_fiscal = 'declarativo') AS declarativo,
+                   COUNT(*) FILTER (WHERE is_verified) AS verified
+            FROM companies
+            WHERE created_at >= NOW() - INTERVAL '12 months'
+            GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+            ORDER BY month
+        """)
+
+    # Execute all queries in parallel
+    results = await asyncio.gather(
+        fetch_zone_regime(),
+        fetch_forma_juridica(),
+        fetch_city_stats(),
+        fetch_debt_by_fee(),
+        fetch_top_debtors(),
+        fetch_monthly_trend(),
+    )
+
+    return {
+        "by_zone_regime": [dict(r) for r in results[0]],
+        "by_forma_juridica": [dict(r) for r in results[1]],
+        "by_city": [dict(r) for r in results[2]],
+        "debt_by_fee_type": [dict(r) for r in results[3]],
+        "top_debtors": [dict(r) for r in results[4]],
+        "monthly_trend": [dict(r) for r in results[5]],
+    }
+
+
 # ── Cron: Refresh Materialized Views ────────────────────────────────────────
 
 @router.post("/cron/refresh-company-stats")

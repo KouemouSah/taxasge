@@ -24,6 +24,7 @@ import type {
   PublicDirectoryResponse,
   PublicZone,
   LookupResult,
+  CompanyAnalytics,
 } from '../types'
 
 const BASE = '/companies'
@@ -180,6 +181,9 @@ export const companyDashboardApi = {
 
   /** Refresh materialized views (cron) */
   refreshStats: () => post<{ refreshed: string[]; count: number }>('/dashboard/cron/refresh-company-stats'),
+
+  /** Rich cross-tabulated analytics for pro dashboards */
+  getAnalytics: () => get<CompanyAnalytics>('/dashboard/analytics'),
 }
 
 // ========== Ministry Debt API ==========

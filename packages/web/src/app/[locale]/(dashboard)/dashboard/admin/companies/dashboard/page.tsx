@@ -30,7 +30,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { companyDashboardApi } from '@/modules/companies/services/api'
-import type { GlobalStats, ZoneStats } from '@/modules/companies/types'
+import type { GlobalStats, ZoneStats, CompanyAnalytics } from '@/modules/companies/types'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler)
 
@@ -96,17 +96,20 @@ export default function AdminCompaniesDashboardPage() {
   const { toast } = useToast()
   const [global, setGlobal] = useState<GlobalStats | null>(null)
   const [zones, setZones] = useState<ZoneStats[]>([])
+  const [analytics, setAnalytics] = useState<CompanyAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [g, z] = await Promise.all([
+      const [g, z, a] = await Promise.all([
         companyDashboardApi.getGlobalStats(),
         companyDashboardApi.getZoneStats(),
+        companyDashboardApi.getAnalytics().catch(() => null),
       ])
       setGlobal(g)
       setZones(z.zones || [])
+      setAnalytics(a)
     } catch {
       toast({ title: 'Error', variant: 'destructive' })
     } finally {
@@ -378,6 +381,109 @@ export default function AdminCompaniesDashboardPage() {
               </table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+          {/* Analytics: Top debtors + Fee type debt + Monthly trend */}
+          {analytics && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              {/* Top 10 debtors */}
+              <Card>
+                <CardHeader className="pb-1 pt-3 px-3">
+                  <CardTitle className="text-xs text-red-700 flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Top 10 Empresas con Mayor Deuda
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 overflow-auto">
+                  <table className="w-full text-[10px]">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-1 pl-2">#</th>
+                        <th className="text-left p-1">Empresa</th>
+                        <th className="text-left p-1">NIF</th>
+                        <th className="p-1">Zona</th>
+                        <th className="text-right p-1">Deuda</th>
+                        <th className="text-right p-1 pr-2">Cobro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.top_debtors.map((d, i) => (
+                        <tr key={d.id} className="border-b hover:bg-muted/30">
+                          <td className="p-1 pl-2 text-muted-foreground font-bold">{i + 1}</td>
+                          <td className="p-1 font-medium max-w-[120px] truncate">{d.legal_name}</td>
+                          <td className="p-1 font-mono text-muted-foreground">{d.nif || d.registration_number || '-'}</td>
+                          <td className="p-1 text-center"><Badge variant="outline" className="text-[8px] font-mono">{d.zone_code || '-'}</Badge></td>
+                          <td className="p-1 text-right font-mono text-red-700 font-bold">{fmt(Number(d.debt))}</td>
+                          <td className="p-1 text-right pr-2">
+                            <span className={`font-bold ${Number(d.recovery_pct) >= 50 ? 'text-green-700' : 'text-red-700'}`}>{Number(d.recovery_pct)}%</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+
+              {/* Debt by fee type */}
+              <Card>
+                <CardHeader className="pb-1 pt-3 px-3">
+                  <CardTitle className="text-xs flex items-center gap-1">
+                    <DollarSign className="h-3.5 w-3.5 text-amber-600" /> Deuda por Tipo de Tasa
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-2">
+                  {analytics.debt_by_fee_type.length > 0 ? (
+                    <div className="h-[180px]">
+                      <Bar
+                        data={{
+                          labels: analytics.debt_by_fee_type.map(d => d.fee_type),
+                          datasets: [
+                            { label: 'Pagado', data: analytics.debt_by_fee_type.map(d => Number(d.paid)), backgroundColor: '#22c55e', borderRadius: 3 },
+                            { label: 'Vencido', data: analytics.debt_by_fee_type.map(d => Number(d.overdue)), backgroundColor: '#ef4444', borderRadius: 3 },
+                            { label: 'Penalidades', data: analytics.debt_by_fee_type.map(d => Number(d.penalties)), backgroundColor: '#f59e0b', borderRadius: 3 },
+                          ],
+                        }}
+                        options={{
+                          responsive: true, maintainAspectRatio: false,
+                          scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { callback: (v) => fmt(Number(v)) } } },
+                          plugins: { legend: { position: 'top', labels: { boxWidth: 8, font: { size: 9 } } } },
+                        }}
+                      />
+                    </div>
+                  ) : <p className="text-xs text-muted-foreground text-center py-4">Sin datos de obligaciones</p>}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Monthly trend */}
+          {analytics && analytics.monthly_trend.length > 0 && (
+            <Card>
+              <CardHeader className="pb-0 pt-3 px-3">
+                <CardTitle className="text-xs flex items-center gap-1">
+                  <Activity className="h-3.5 w-3.5" /> Tendencia Mensual de Registro de Empresas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2">
+                <div className="h-[160px]">
+                  <Line
+                    data={{
+                      labels: analytics.monthly_trend.map(m => m.month),
+                      datasets: [
+                        { label: 'Total', data: analytics.monthly_trend.map(m => m.created), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, pointRadius: 3 },
+                        { label: 'Bundle', data: analytics.monthly_trend.map(m => m.bundle), borderColor: '#22c55e', tension: 0.4, pointRadius: 2, borderDash: [3, 3] },
+                        { label: 'Verificadas', data: analytics.monthly_trend.map(m => m.verified), borderColor: '#a855f7', tension: 0.4, pointRadius: 2, borderDash: [5, 5] },
+                      ],
+                    }}
+                    options={{
+                      responsive: true, maintainAspectRatio: false,
+                      scales: { y: { beginAtZero: true, grid: { color: '#f0f0f0' } }, x: { grid: { display: false } } },
+                      plugins: { legend: { position: 'top', labels: { boxWidth: 8, font: { size: 9 } } } },
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ═══ OPERACIONAL ═══ */}
