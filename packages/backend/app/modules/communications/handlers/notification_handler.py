@@ -277,6 +277,15 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         priority="high",
         subject_key="notifications.batch.completed.subject"
     ),
+
+    # License Events
+    EventType.LICENSE_ISSUED: NotificationConfig(
+        template_code="LICENSE_GENERATED",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="normal",
+        subject_key="notifications.license.issued.subject",
+        sms_template_code="LICENSE_GENERATED",
+    ),
 }
 
 

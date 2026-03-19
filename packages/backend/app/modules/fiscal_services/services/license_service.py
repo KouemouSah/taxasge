@@ -208,6 +208,56 @@ class LicenseService:
             f"total={total_amount} XAF, deadline={deadline}"
         )
 
+        # 9. Emit LICENSE_ISSUED event for notification (email + SMS)
+        try:
+            from app.core.events import EventBus, EventType
+
+            # Get company owner contact for notification
+            owner = await conn.fetchrow(
+                """SELECT u.id, u.email, u.phone_number, u.first_name, u.last_name
+                   FROM users u
+                   JOIN user_company_roles ucr ON ucr.user_id = u.id
+                   WHERE ucr.company_id = $1
+                   ORDER BY ucr.created_at ASC LIMIT 1""",
+                company_id,
+            )
+
+            license_ref = f"LIC-{fiscal_year}-{str(license_id)[:8].upper()}"
+
+            if owner and owner["email"]:
+                # Generate PDF for attachment
+                pdf_bytes = None
+                try:
+                    from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
+                    pdf_bytes = await license_pdf_service.generate_license_pdf(
+                        conn, str(license_id), "es"
+                    )
+                except Exception as pdf_err:
+                    logger.warning(f"PDF generation for notification failed: {pdf_err}")
+
+                attachments = None
+                if pdf_bytes:
+                    attachments = [(f"{license_ref}.pdf", pdf_bytes, "application/pdf")]
+
+                EventBus.publish_nowait(EventType.LICENSE_ISSUED, {
+                    "license_id": str(license_id),
+                    "user_id": str(owner["id"]),
+                    "user_email": owner["email"],
+                    "user_phone": owner["phone_number"],
+                    "user_name": f"{owner['first_name'] or ''} {owner['last_name'] or ''}".strip(),
+                    "company_name": company["legal_name"],
+                    "license_ref": license_ref,
+                    "fiscal_year": str(fiscal_year),
+                    "nif": data.get("nif") or "",
+                    "total_amount": str(total_amount),
+                    "status": "Pendiente",
+                    "attachments": attachments,
+                })
+                logger.info(f"LICENSE_ISSUED event emitted for {license_ref}")
+        except Exception as evt_err:
+            # Non-blocking — license creation succeeds even if notification fails
+            logger.warning(f"LICENSE_ISSUED event emission failed: {evt_err}")
+
         return license_row
 
     # ==================================================================
