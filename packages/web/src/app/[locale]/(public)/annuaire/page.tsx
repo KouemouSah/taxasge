@@ -14,7 +14,7 @@ import {
 import { companyPublicApi } from '@/modules/companies/services/api'
 import type { PublicCompany, PublicZone } from '@/modules/companies/types'
 
-const PAGE_SIZE = 24
+const PAGE_SIZE = 20
 
 const FORMA_LABELS: Record<string, string> = {
   autonomo: 'Autónomo',
@@ -84,7 +84,7 @@ export default function AnnuairePage() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1
 
-  const getFormaLabel = (f?: string) => f ? (FORMA_LABELS[f] || f) : ''
+  const getFormaLabel = (f?: string | null) => f ? (FORMA_LABELS[f] || f) : ''
   const getId = (c: PublicCompany) => c.nif || c.registration_number || ''
   const getIdLabel = (c: PublicCompany) => c.nif ? 'NIF' : c.registration_number ? 'Reg.' : ''
 

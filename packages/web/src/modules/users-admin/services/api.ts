@@ -75,19 +75,23 @@ export const usersApi = {
     search?: string;
     page?: number;
     size?: number;
-  }): Promise<User[]> => {
+  }): Promise<{ items: User[]; total: number; page: number; page_size: number; pages: number }> => {
     const response = await fetchClient.get<PaginatedUsersResponse>(ADMIN_USERS_BASE, {
-      page: params?.page,
-      size: params?.size,
+      page: params?.page || 1,
+      size: params?.size || 20,
       role: params?.role,
       roles: params?.roles,
       status: params?.status,
       search: params?.search,
     });
 
-    // Backend returns: { items: User[], total: number, page: number, page_size: number, pages: number }
-    // Transform each user to convert status to is_active
-    return (response.items || []).map(transformUserResponse);
+    return {
+      items: (response.items || []).map(transformUserResponse),
+      total: response.total || 0,
+      page: response.page || 1,
+      page_size: response.page_size || 20,
+      pages: Math.ceil((response.total || 0) / (response.page_size || 20)) || 1,
+    };
   },
 
   /**

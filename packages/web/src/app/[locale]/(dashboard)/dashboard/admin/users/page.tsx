@@ -18,7 +18,7 @@
  * @date 2025-01-17
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,11 +87,15 @@ export default function UsersPage() {
   const { getRoleLabel } = useUserLabels();
 
   const [users, setUsers] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | PublicRole>('all');
   const [isBackendUnavailable, setIsBackendUnavailable] = useState(false);
+  const PAGE_SIZE = 20;
 
   // Dialog states
   const [activateDialogOpen, setActivateDialogOpen] = useState(false);
@@ -100,17 +104,22 @@ export default function UsersPage() {
   const [deactivateReason, setDeactivateReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Fetch users - server-side role filter for public roles only
+  // Fetch users with server-side pagination
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
+      const roleFilter = activeTab === 'all' ? PUBLIC_ROLES.join(',') : activeTab;
       const data = await usersApi.getAll({
-        roles: PUBLIC_ROLES.join(','),
-        size: 100,
+        roles: roleFilter,
+        search: searchQuery || undefined,
+        page,
+        size: PAGE_SIZE,
       });
-      setUsers(data);
+      setUsers(data.items);
+      setTotal(data.total);
+      setTotalPages(data.pages || Math.ceil(data.total / PAGE_SIZE) || 1);
       setIsBackendUnavailable(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('errorLoading');
@@ -128,28 +137,25 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t, toast]);
+  }, [t, toast, page, activeTab]);
 
+  // Debounce search (400ms) — avoid API call per keystroke
+  const debounceRef = useRef<NodeJS.Timeout>();
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchUsers(), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) };
+  }, [searchQuery, fetchUsers]);
+
+  // Immediate fetch on page/tab change
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, [page, activeTab]);
 
-  // Filter users based on search and tab
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const matchesSearch =
-        searchQuery === '' ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.last_name.toLowerCase().includes(searchQuery.toLowerCase());
+  // Server-side filtering — users is already filtered by page/tab/search
+  const filteredUsers = users;
 
-      const matchesTab = activeTab === 'all' || user.role === activeTab;
-
-      return matchesSearch && matchesTab;
-    });
-  }, [users, searchQuery, activeTab]);
-
-  // Statistics by role
+  // Statistics (from current page — approximate; total is server-side)
   const stats = useMemo(() => {
     const byRole = {
       citizen: users.filter((u) => u.role === UserRole.CITIZEN).length,
@@ -159,7 +165,7 @@ export default function UsersPage() {
     };
 
     return {
-      total: users.length,
+      total,
       active: users.filter((u) => u.is_active).length,
       inactive: users.filter((u) => !u.is_active).length,
       byRole,
@@ -479,7 +485,7 @@ export default function UsersPage() {
             <div>
               <CardTitle>{t('listTitle')}</CardTitle>
               <CardDescription>
-                {t('usersFound', { count: filteredUsers.length })}
+                {t('usersFound', { count: total })}
               </CardDescription>
             </div>
             <div className="flex items-center gap-4">
@@ -488,7 +494,7 @@ export default function UsersPage() {
                 <Input
                   placeholder={t('searchPlaceholder')}
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
                   className="pl-9"
                 />
               </div>
@@ -519,7 +525,7 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent>
           {/* Tabs for filtering by role */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mb-4">
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as typeof activeTab); setPage(1) }} className="mb-4">
             <TabsList>
               <TabsTrigger value="all">
                 {t('tabAll')} ({stats.total})
@@ -543,7 +549,7 @@ export default function UsersPage() {
             </TabsList>
           </Tabs>
 
-          {/* DataTable with row selection and pagination */}
+          {/* DataTable — server-side pagination */}
           <DataTable
             data={filteredUsers}
             columns={columns}
@@ -553,10 +559,35 @@ export default function UsersPage() {
             isLoading={isLoading}
             emptyMessage={t('noUsersFound')}
             emptyIcon={<Users className="h-12 w-12" />}
-            defaultPageSize={10}
-            pageSizeOptions={[10, 20, 30]}
+            defaultPageSize={PAGE_SIZE}
+            pageSizeOptions={[PAGE_SIZE]}
             onRefresh={fetchUsers}
           />
+
+          {/* Server-side pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 px-2">
+              <span className="text-sm text-muted-foreground">
+                {t('usersFound', { count: total })} — {tCommon('page')} {page}/{totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1 || isLoading}
+                >
+                  {tCommon('previous')}
+                </Button>
+                <Button
+                  variant="outline" size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || isLoading}
+                >
+                  {tCommon('next')}
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

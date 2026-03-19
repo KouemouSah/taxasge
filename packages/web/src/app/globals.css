@@ -171,10 +171,14 @@ All colors MUST be HSL.
    Print styles — clean A4 layout for licencias pricing sheet
    ============================================================ */
 @media print {
-  /* Reset page */
+  /* Reset page — margin 0 removes browser header/footer (URL, date, title) */
   @page {
     size: A4;
-    margin: 10mm 8mm;
+    margin: 0;
+  }
+
+  body {
+    padding: 8mm;
   }
 
   /* Force background colors in print */

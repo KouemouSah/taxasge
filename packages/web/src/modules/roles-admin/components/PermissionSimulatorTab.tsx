@@ -225,7 +225,7 @@ function UserRoleChangeSimulator() {
 
   // Load users list on mount
   useEffect(() => {
-    usersApi.getAll({}).then(setAllUsers).catch(() => {})
+    usersApi.getAll({ size: 100 }).then(res => setAllUsers(res.items)).catch(() => {})
   }, [])
 
   // Filter users based on search
