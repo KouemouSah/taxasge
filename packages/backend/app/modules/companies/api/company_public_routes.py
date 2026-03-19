@@ -70,24 +70,18 @@ async def search_public_directory(
     params: List[Any] = []
     idx = 1
 
-    # Full-text search via tsvector (with ILIKE fallback)
+    # Full-text search via websearch_to_tsquery (proper stemming) + ILIKE fallback
     if q and len(q) >= 2:
-        # Check if search_vector column exists (migration 234 may not be applied yet)
-        has_fts = await db.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM information_schema.columns "
-            "WHERE table_name = 'companies' AND column_name = 'search_vector')"
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        conditions.append(
+            f"(c.search_vector @@ websearch_to_tsquery('spanish', ${idx})"
+            f" OR c.legal_name ILIKE ${idx + 1}"
+            f" OR c.nif ILIKE ${idx + 1}"
+            f" OR c.registration_number ILIKE ${idx + 1})"
         )
-        if has_fts:
-            conditions.append(f"c.search_vector @@ company_search_query(${idx})")
-        else:
-            escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            conditions.append(
-                f"(c.legal_name ILIKE ${idx} OR c.nif ILIKE ${idx} "
-                f"OR c.registration_number ILIKE ${idx})"
-            )
-            q = f"%{escaped}%"
         params.append(q)
-        idx += 1
+        params.append(f"%{escaped}%")
+        idx += 2
 
     if zone_id:
         conditions.append(f"c.zone_id = ${idx}::uuid")

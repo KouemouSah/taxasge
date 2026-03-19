@@ -112,32 +112,35 @@ async def lookup_company(
     Returns basic info + existence status. Read-only — no modification possible.
     No zone filtering (ONRC = national scope).
     """
-    q_clean = q.strip().upper()
+    import re
+    q_trimmed = q.strip()
+    q_upper = q_trimmed.upper()
     params: List[Any] = []
     idx = 1
 
+    # NIF pattern: GE#####X or #####XX-## (e.g., GE97811B, 12345AB-01)
+    _NIF_RE = re.compile(r'^GE\d{4,6}[A-Z]$|^\d{5}[A-Z]{2}-\d{2}$', re.IGNORECASE)
+
     # Determine search strategy based on input pattern
-    if q_clean.startswith("PE-"):
-        # Exact PE lookup
+    if q_upper.startswith("PE-"):
+        # Exact Padrón Empresarial registration number
         where = f"c.registration_number = ${idx}"
-        params.append(q_clean)
-    elif q_clean.replace("-", "").isalnum() and len(q_clean) >= 5:
-        # Looks like a NIF — try exact match first, then partial
-        where = f"(c.nif = ${idx} OR c.registration_number = ${idx})"
-        params.append(q_clean)
+        params.append(q_upper)
+    elif _NIF_RE.match(q_upper):
+        # Matches NIF pattern — exact match
+        where = f"c.nif = ${idx}"
+        params.append(q_upper)
     else:
-        # Name search — use tsvector if available, else ILIKE
-        has_fts = await db.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM information_schema.columns "
-            "WHERE table_name = 'companies' AND column_name = 'search_vector')"
+        # Name search — use websearch_to_tsquery (proper stemming) + ILIKE fallback
+        escaped = q_trimmed.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        where = (
+            f"(c.search_vector @@ websearch_to_tsquery('spanish', ${idx})"
+            f" OR c.legal_name ILIKE ${idx + 1}"
+            f" OR c.nif ILIKE ${idx + 1}"
+            f" OR c.registration_number ILIKE ${idx + 1})"
         )
-        if has_fts:
-            where = f"c.search_vector @@ company_search_query(${idx})"
-            params.append(q.strip())
-        else:
-            escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            where = f"c.legal_name ILIKE ${idx}"
-            params.append(f"%{escaped}%")
+        params.append(q_trimmed)
+        params.append(f"%{escaped}%")
 
     idx = len(params) + 1
 
