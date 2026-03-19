@@ -209,10 +209,11 @@ class LicenseService:
         )
 
         # 9. Emit LICENSE_ISSUED event for notification (email + SMS)
+        # Pattern: generate PDF inline (same as REQUEST_SUBMITTED), pass in payload.
+        # PDF is lightweight (~50KB, <100ms). Non-blocking: wrapped in try/except.
         try:
             from app.core.events import EventBus, EventType
 
-            # Get company owner contact for notification
             owner = await conn.fetchrow(
                 """SELECT u.id, u.email, u.phone_number, u.first_name, u.last_name
                    FROM users u
@@ -225,19 +226,17 @@ class LicenseService:
             license_ref = f"LIC-{fiscal_year}-{str(license_id)[:8].upper()}"
 
             if owner and owner["email"]:
-                # Generate PDF for attachment
-                pdf_bytes = None
+                # Generate PDF attachment (same pattern as REQUEST_SUBMITTED)
+                pdf_attachment = None
                 try:
                     from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
                     pdf_bytes = await license_pdf_service.generate_license_pdf(
                         conn, str(license_id), "es"
                     )
+                    if pdf_bytes:
+                        pdf_attachment = [(f"{license_ref}.pdf", pdf_bytes, "application/pdf")]
                 except Exception as pdf_err:
-                    logger.warning(f"PDF generation for notification failed: {pdf_err}")
-
-                attachments = None
-                if pdf_bytes:
-                    attachments = [(f"{license_ref}.pdf", pdf_bytes, "application/pdf")]
+                    logger.warning(f"License PDF for notification failed: {pdf_err}")
 
                 EventBus.publish_nowait(EventType.LICENSE_ISSUED, {
                     "license_id": str(license_id),
@@ -251,11 +250,10 @@ class LicenseService:
                     "nif": data.get("nif") or "",
                     "total_amount": str(total_amount),
                     "status": "Pendiente",
-                    "attachments": attachments,
+                    "attachments": pdf_attachment,
                 })
                 logger.info(f"LICENSE_ISSUED event emitted for {license_ref}")
         except Exception as evt_err:
-            # Non-blocking — license creation succeeds even if notification fails
             logger.warning(f"LICENSE_ISSUED event emission failed: {evt_err}")
 
         return license_row

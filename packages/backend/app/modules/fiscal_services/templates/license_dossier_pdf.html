@@ -6,7 +6,14 @@
     <style>
         @page {
             size: A4;
-            margin: 1cm 1.2cm 1.5cm 1.2cm;
+            margin: 1cm 1.2cm 1.8cm 1.2cm;
+            @frame page-footer {
+                -pdf-frame-content: page-footer-content;
+                bottom: 0cm;
+                margin-left: 1.2cm;
+                margin-right: 1.2cm;
+                height: 1cm;
+            }
         }
         * { margin: 0; padding: 0; }
         body {
@@ -92,8 +99,7 @@
         .footer-text { font-size: 7.5pt; color: #6b7280; line-height: 1.5; }
         .footer-verify { font-size: 7pt; color: #3a7104; font-weight: 500; margin-top: 2px; }
         .footer-badge {
-            display: inline-block; padding: 2px 10px; border-radius: 3px;
-            font-size: 9pt; font-weight: bold; margin-bottom: 4px;
+            padding: 2px 10px; font-size: 9pt; font-weight: bold; margin-bottom: 4px;
         }
         .badge-pagado { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
         .badge-pendiente { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
@@ -101,8 +107,8 @@
         .qr-box { width: 70px; height: 70px; text-align: center; }
         .qr-box img { width: 70px; height: 70px; }
 
-        /* ── Page footer ── */
-        .page-number { text-align: center; font-size: 6.5pt; color: #aaa; margin-top: 4px; }
+        /* ── Page footer (xhtml2pdf @frame) ── */
+        .page-footer-text { text-align: center; font-size: 6.5pt; color: #aaa; }
     </style>
 </head>
 <body>
@@ -280,9 +286,11 @@
         </table>
     </div>
 
-    <!-- Page number -->
-    <div class="page-number">
-        <pdf:pagenumber> / <pdf:pagecount>
+    <!-- Page footer (rendered by xhtml2pdf @frame) -->
+    <div id="page-footer-content">
+        <div class="page-footer-text">
+            {{ texts.footer_line1 }} &mdash; <pdf:pagenumber> / <pdf:pagecount>
+        </div>
     </div>
 
 </body>
