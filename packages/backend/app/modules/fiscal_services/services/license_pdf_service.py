@@ -332,7 +332,7 @@ class LicensePDFService:
         is_fully_paid = balance <= 0 and total_amount > 0
 
         obligation_groups = [
-            {"ministry_name": name, "items": items}
+            {"ministry_name": name, "obligations": items}
             for name, items in ministry_map.items()
         ]
 

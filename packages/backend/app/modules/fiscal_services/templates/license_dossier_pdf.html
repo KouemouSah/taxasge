@@ -220,7 +220,7 @@
                             {{ group.ministry_name }}
                         </td>
                     </tr>
-                    {% for ob in group.items %}
+                    {% for ob in group.obligations %}
                     <tr>
                         <td>{{ ob.fee_type }}</td>
                         {% if not is_fully_paid %}

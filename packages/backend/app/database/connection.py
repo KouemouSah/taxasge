@@ -4,35 +4,12 @@ Supports both direct PostgreSQL and Supabase connections
 """
 
 import asyncio
-import json
 import asyncpg
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Optional
 from loguru import logger
 
 from app.config import settings
-
-
-async def _init_connection(conn: asyncpg.Connection) -> None:
-    """Initialize each new connection in the pool.
-
-    Registers JSON/JSONB codecs so that JSONB columns are automatically
-    decoded to Python dicts (and encoded from dicts on write).
-    Without this, asyncpg returns JSONB values as raw JSON strings,
-    which causes Pydantic validation errors for dict-typed fields.
-    """
-    await conn.set_type_codec(
-        'jsonb',
-        encoder=json.dumps,
-        decoder=json.loads,
-        schema='pg_catalog',
-    )
-    await conn.set_type_codec(
-        'json',
-        encoder=json.dumps,
-        decoder=json.loads,
-        schema='pg_catalog',
-    )
 
 
 class DatabaseManager:
@@ -78,7 +55,6 @@ class DatabaseManager:
                     command_timeout=60,
                     max_queries=50000,  # Recycle connections after 50k queries
                     max_inactive_connection_lifetime=300,  # Close idle connections after 5min
-                    init=_init_connection,  # Register JSON/JSONB codecs on each connection
                     server_settings={
                         'jit': 'off',  # Disable JIT for faster connection
                         'application_name': f'taxasge-{settings.ENVIRONMENT}',
