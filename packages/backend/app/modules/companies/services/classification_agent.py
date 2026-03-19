@@ -580,89 +580,56 @@ class CompanyClassificationAgent(LLMAgentMixin):
         if forma in PERSONA_FISICA_FORMAS:
             rules_applied.append("R2c_persona_fisica_presumed_commercial")
 
-        # ── Rule 3: Commercial activity check ──
+        # ── Rule 3: Persona moral = ALWAYS declarativo ──
+        # In GE fiscal law, SL/SA/sucursal/cooperativa are subject to Impuesto de
+        # Sociedades (corporate tax) via declarative regime. They NEVER use zone-based
+        # bundle pricing. If an SA owns a restaurant, the restaurant is registered
+        # separately at the Padrón Empresarial as an autonomo establishment.
+        # The "mixto" regime does not exist in GE fiscal law.
+        if forma in PERSONA_MORAL_FORMAS:
+            rules_applied.append("R3_persona_moral_always_declarativo")
+            return ClassificationResult(
+                regimen_fiscal="declarativo",
+                confidence=0.95,
+                reason=f"Persona moral ({forma}) → siempre régimen declarativo (IS, IVA)",
+                rules_applied=rules_applied,
+                commerce_type=None,  # SL/SA don't have bundle commerce_type
+                flags=flags,
+            )
+
+        # ── Rule 4: Commercial activity check (persona fisica only) ──
         is_commercial = forma in PERSONA_FISICA_FORMAS  # Autonomos presumed commercial
         if sector.lower() == "terciario" and subsector in COMMERCIAL_SUBSECTORS:
             is_commercial = True
-            rules_applied.append("R3_terciario_commercial")
+            rules_applied.append("R4_terciario_commercial")
         elif commerce_type:
-            # Explicit commerce_type provided → treat as commercial
             is_commercial = True
-            rules_applied.append("R3_explicit_commerce_type")
+            rules_applied.append("R4_explicit_commerce_type")
 
-        # ── Rule 4: Size check ──
-        is_large = False
-        large_reasons = []
-
-        if capital is not None:
-            try:
-                cap = Decimal(str(capital))
-                if cap >= DECLARATIVO_CAPITAL_THRESHOLD:
-                    is_large = True
-                    large_reasons.append(
-                        f"capital {cap:,.0f} XAF ≥ {DECLARATIVO_CAPITAL_THRESHOLD:,.0f}"
-                    )
-            except (InvalidOperation, ValueError):
-                flags.append("invalid_capital_social")
-
-        if employees is not None:
-            try:
-                emp = int(employees)
-                if emp >= DECLARATIVO_EMPLOYEE_THRESHOLD:
-                    is_large = True
-                    large_reasons.append(
-                        f"{emp} empleados ≥ {DECLARATIVO_EMPLOYEE_THRESHOLD}"
-                    )
-            except (ValueError, TypeError):
-                flags.append("invalid_employee_count")
-
-        rules_applied.append("R4_size_check")
-
-        # ── Rule 5: Regime determination ──
+        # ── Rule 5: Regime determination (persona fisica only) ──
         rules_applied.append("R5_regime_determination")
 
-        if is_commercial and not is_large:
+        if is_commercial:
+            # Autonomo/empresa_individual with commercial activity → bundle
             return ClassificationResult(
                 regimen_fiscal="bundle",
                 confidence=0.90,
-                reason=f"Empresa comercial (sector={sector}, subsector={subsector}) de tamaño estándar",
+                reason=f"Persona física comercial (sector={sector}, subsector={subsector})",
                 rules_applied=rules_applied,
                 commerce_type=commerce_type,
                 flags=flags,
             )
 
-        if is_commercial and is_large:
-            return ClassificationResult(
-                regimen_fiscal="mixto",
-                confidence=0.85,
-                reason=f"Empresa comercial grande ({', '.join(large_reasons)})",
-                rules_applied=rules_applied,
-                commerce_type=commerce_type,
-                flags=flags,
-            )
-
-        if not is_commercial and is_large:
-            return ClassificationResult(
-                regimen_fiscal="declarativo",
-                confidence=0.85,
-                reason=f"Empresa no-comercial grande ({', '.join(large_reasons)})",
-                rules_applied=rules_applied,
-                commerce_type=None,
-                flags=flags,
-            )
-
-        if not is_commercial and not is_large:
-            # Small non-commercial — still declarativo but lower confidence
-            # Could be reclassified if objeto_social reveals commercial activity
-            return ClassificationResult(
-                regimen_fiscal="declarativo",
-                confidence=0.75,
-                reason="Empresa no-comercial de tamaño estándar → declarativo",
-                rules_applied=rules_applied,
-                commerce_type=None,
-                flags=flags,
-                suggested_actions=["verify_objeto_social_for_commercial_activity"],
-            )
+        # Non-commercial persona fisica → declarativo (rare edge case)
+        return ClassificationResult(
+            regimen_fiscal="declarativo",
+            confidence=0.75,
+            reason="Persona física sin actividad comercial detectada → declarativo",
+            rules_applied=rules_applied,
+            commerce_type=None,
+            flags=flags,
+            suggested_actions=["verify_objeto_social_for_commercial_activity"],
+        )
 
         # Fallback: insufficient data
         missing = []

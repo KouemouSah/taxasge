@@ -108,104 +108,111 @@ class TestR2cAutonomoWithoutPE:
         assert result.regimen_fiscal == "mixto"
 
 
-class TestR3CommercialActivity:
-    """Rule 3: Sector terciario + commercial subsector."""
+class TestR3PersonaMoralAlwaysDeclarativo:
+    """Rule 3: Persona moral (SL/SA/sucursal/cooperativa) = ALWAYS declarativo.
 
-    def test_terciario_comercio_is_commercial(self):
+    In GE fiscal law, these entities use Impuesto de Sociedades (IS) and
+    declare via IVA/IRPF. They NEVER get zone-based bundle pricing.
+    If an SA owns a restaurant, the restaurant is registered separately
+    as an autonomo establishment at the Padrón Empresarial.
+    """
+
+    def test_sl_terciario_comercio_is_declarativo(self):
         result = agent._rules_classify({
             "forma_juridica": "sociedad_limitada",
             "sector_actividad": "terciario",
             "subsector_actividad": "comercio",
         })
-        assert result.regimen_fiscal == "bundle"
-        assert "R3_terciario_commercial" in result.rules_applied
+        assert result.regimen_fiscal == "declarativo"
+        assert "R3_persona_moral_always_declarativo" in result.rules_applied
 
-    def test_terciario_servicios_is_commercial(self):
+    def test_sa_terciario_servicios_is_declarativo(self):
         result = agent._rules_classify({
             "forma_juridica": "sociedad_anonima",
-            "sector_actividad": "TERCIARIO",  # Case insensitive
+            "sector_actividad": "TERCIARIO",
             "subsector_actividad": "SERVICIOS",
         })
-        assert result.regimen_fiscal == "bundle"
+        assert result.regimen_fiscal == "declarativo"
 
-    def test_explicit_commerce_type_is_commercial(self):
+    def test_sl_with_commerce_type_is_declarativo(self):
+        """SL with commerce_type should still be declarativo — commerce_type ignored."""
         result = agent._rules_classify({
             "forma_juridica": "sociedad_limitada",
             "commerce_type": "electronics_retail",
         })
-        assert result.regimen_fiscal == "bundle"
-        assert "R3_explicit_commerce_type" in result.rules_applied
+        assert result.regimen_fiscal == "declarativo"
+        assert result.commerce_type is None  # SL doesn't get commerce_type
 
-
-class TestR4SizeCheck:
-    """Rule 4: Capital/employee thresholds."""
-
-    def test_high_capital_is_large(self):
+    def test_sa_large_capital_is_declarativo(self):
+        """SA with high capital is still just declarativo — no mixto regime in GE."""
         result = agent._rules_classify({
             "forma_juridica": "sociedad_anonima",
             "sector_actividad": "terciario",
             "subsector_actividad": "comercio",
-            "capital_social": 60_000_000,  # > 50M
+            "capital_social": 60_000_000,
         })
-        assert result.regimen_fiscal == "mixto"  # commercial + large
+        assert result.regimen_fiscal == "declarativo"
 
-    def test_many_employees_is_large(self):
+    def test_cooperativa_is_declarativo(self):
         result = agent._rules_classify({
             "forma_juridica": "cooperativa",
             "sector_actividad": "terciario",
             "subsector_actividad": "servicios",
-            "employee_count": 100,  # > 50
+            "employee_count": 100,
         })
-        assert result.regimen_fiscal == "mixto"
+        assert result.regimen_fiscal == "declarativo"
 
-    def test_below_thresholds_is_small(self):
+    def test_sucursal_is_declarativo(self):
         result = agent._rules_classify({
-            "forma_juridica": "sociedad_limitada",
+            "forma_juridica": "sucursal",
             "sector_actividad": "terciario",
             "subsector_actividad": "comercio",
-            "capital_social": 10_000_000,
-            "employee_count": 10,
-        })
-        assert result.regimen_fiscal == "bundle"
-
-
-class TestR5RegimeMatrix:
-    """Rule 5: Decision matrix (is_commercial × is_large)."""
-
-    def test_commercial_small_is_bundle(self):
-        result = agent._rules_classify({
-            "forma_juridica": "sociedad_limitada",
-            "commerce_type": "retail",
-        })
-        assert result.regimen_fiscal == "bundle"
-
-    def test_commercial_large_is_mixto(self):
-        result = agent._rules_classify({
-            "forma_juridica": "sociedad_anonima",
-            "commerce_type": "retail",
-            "capital_social": 80_000_000,
-        })
-        assert result.regimen_fiscal == "mixto"
-
-    def test_non_commercial_large_is_declarativo(self):
-        result = agent._rules_classify({
-            "forma_juridica": "sociedad_anonima",
-            "sector_actividad": "primario",
-            "capital_social": 100_000_000,
         })
         assert result.regimen_fiscal == "declarativo"
 
-    def test_non_commercial_small_is_declarativo(self):
+
+class TestR4R5PersonaFisicaCommercial:
+    """Rules 4-5: Persona física (autonomo/empresa_individual) commercial classification."""
+
+    def test_autonomo_terciario_comercio_is_bundle(self):
+        result = agent._rules_classify({
+            "forma_juridica": "autonomo",
+            "sector_actividad": "terciario",
+            "subsector_actividad": "comercio",
+        })
+        assert result.regimen_fiscal == "bundle"
+
+    def test_autonomo_with_commerce_type_is_bundle(self):
+        result = agent._rules_classify({
+            "forma_juridica": "autonomo",
+            "commerce_type": "abaceria",
+        })
+        assert result.regimen_fiscal == "bundle"
+
+    def test_empresa_individual_commercial_is_bundle(self):
+        result = agent._rules_classify({
+            "forma_juridica": "empresa_individual",
+            "sector_actividad": "terciario",
+            "subsector_actividad": "comercio",
+        })
+        assert result.regimen_fiscal == "bundle"
+
+    def test_autonomo_non_commercial_is_declarativo(self):
+        result = agent._rules_classify({
+            "forma_juridica": "autonomo",
+            "sector_actividad": "primario",
+        })
+        assert result.regimen_fiscal == "declarativo"
+
+    def test_sl_non_commercial_is_declarativo(self):
         result = agent._rules_classify({
             "forma_juridica": "sociedad_limitada",
             "sector_actividad": "primario",
         })
         assert result.regimen_fiscal == "declarativo"
-        assert result.confidence <= 0.80
 
-    def test_empty_data_is_pendiente_or_declarativo(self):
+    def test_empty_data_is_declarativo(self):
         result = agent._rules_classify({})
-        # No forma, no sector → not commercial, not large → declarativo
         assert result.regimen_fiscal in ("declarativo", "pendiente")
 
 

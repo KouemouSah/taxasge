@@ -152,7 +152,7 @@ export const classificationApi = {
   /** Get single draft */
   getDraft: (id: string) => get<DraftItem>(`/drafts/${id}`),
 
-  /** Approve draft → creates company + license (if bundle/mixto with zone) */
+  /** Approve draft → creates company + license (if autonomo/bundle with zone) */
   approveDraft: (id: string, notes?: string) =>
     post<{
       status: string

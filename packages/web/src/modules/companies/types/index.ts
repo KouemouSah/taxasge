@@ -14,7 +14,7 @@ export type CompanyMemberRole =
   | 'company_accountant'
   | 'company_member'
 
-export type RegimenFiscal = 'bundle' | 'declarativo' | 'mixto' | 'exento' | 'pendiente'
+export type RegimenFiscal = 'bundle' | 'declarativo' | 'exento' | 'pendiente'
 
 // =============================================================================
 // COMPANY TYPES

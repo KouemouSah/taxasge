@@ -20,7 +20,7 @@ import {
 import { companiesSupervisorApi } from "@/modules/companies/services/api"
 import type { CompanyAdminListResponse, CompanyStats } from "@/modules/companies/types"
 
-const REGIMEN_OPTIONS = ["bundle", "declarativo", "mixto", "exento", "pendiente"] as const
+const REGIMEN_OPTIONS = ["bundle", "declarativo", "exento", "pendiente"] as const
 
 export default function SupervisorCompaniesPage() {
   const router = useRouter()

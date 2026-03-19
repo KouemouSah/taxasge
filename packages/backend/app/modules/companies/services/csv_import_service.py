@@ -57,8 +57,9 @@ COLUMN_ALIASES = {
 NIF_PATTERN = re.compile(r"^[A-Z0-9]{5,20}$", re.IGNORECASE)
 PE_PATTERN = re.compile(r"^PE-\d{3,10}$", re.IGNORECASE)
 
-# Forms that use registration_number (PE-XXXX) instead of NIF
-AUTONOMO_FORMS = {"autonomo", "empresario_individual"}
+# Persona física forms that use registration_number (PE-XXXX) instead of NIF
+# Aligned with classification_agent.PERSONA_FISICA_FORMAS
+AUTONOMO_FORMS = {"autonomo", "empresa_individual"}
 
 
 class CSVImportService:

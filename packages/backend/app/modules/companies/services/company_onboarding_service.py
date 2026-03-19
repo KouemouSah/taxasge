@@ -314,12 +314,16 @@ class CompanyOnboardingService:
                 UUID(city_id) if city_id else None,
             )
 
-            # 2. If bundle/mixto regime with commerce_type → full license pipeline
+            # 2. If autonomo/bundle regime with commerce_type → full license pipeline
+            # Only persona física (autonomo, empresa_individual) can have bundle licenses.
+            # SL/SA are always declarativo — no zone-based bundle pricing.
             created_license_id = None
             license_error = None
             commerce_type = company_data.get("commerce_type")
+            forma = company_data.get("forma_juridica", "")
+            is_persona_fisica = forma in ("autonomo", "empresa_individual")
 
-            if regimen in ("bundle", "mixto") and commerce_type:
+            if is_persona_fisica and regimen == "bundle" and commerce_type:
                 # Find matching active bundle
                 bundle = await conn.fetchrow(
                     """SELECT id FROM service_bundles
