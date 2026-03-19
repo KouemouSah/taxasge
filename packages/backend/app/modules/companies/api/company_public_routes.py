@@ -54,14 +54,18 @@ async def search_public_directory(
     q: str = Query("", max_length=100, description="Search term (legal_name, NIF, activity)"),
     zone_id: Optional[str] = Query(None, description="Filter by commerce zone"),
     sector: Optional[str] = Query(None, description="Filter by sector_actividad"),
+    forma_juridica: Optional[str] = Query(None, description="Filter by forma_juridica"),
+    provincia: Optional[str] = Query(None, description="Filter by provincia (via cities)"),
+    ciudad: Optional[str] = Query(None, description="Filter by city name"),
+    sort_by: str = Query("legal_name", description="Sort column"),
+    sort_order: str = Query("asc", description="Sort direction"),
     page: int = Query(1, ge=1, le=1000),
     page_size: int = Query(20, ge=1, le=50),
     db: asyncpg.Connection = Depends(get_database),
 ):
-    """Public company directory search.
+    """Public company directory search with advanced filters.
 
     Returns only verified active companies with public-safe fields.
-    Uses websearch_to_tsquery for proper stemming + ILIKE fallback.
     """
     await _check_public_rate_limit(request)
 
@@ -69,7 +73,7 @@ async def search_public_directory(
     params: List[Any] = []
     idx = 1
 
-    # Full-text search via websearch_to_tsquery (proper stemming) + ILIKE fallback
+    # Full-text search via websearch_to_tsquery + ILIKE fallback
     if q and len(q) >= 2:
         escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         conditions.append(
@@ -92,11 +96,34 @@ async def search_public_directory(
         params.append(sector)
         idx += 1
 
+    if forma_juridica:
+        conditions.append(f"c.forma_juridica = ${idx}")
+        params.append(forma_juridica)
+        idx += 1
+
+    if provincia:
+        conditions.append(f"ct.provincia = ${idx}")
+        params.append(provincia)
+        idx += 1
+
+    if ciudad:
+        conditions.append(f"ct.name = ${idx}")
+        params.append(ciudad)
+        idx += 1
+
+    # Sort — whitelist
+    allowed_sort = {"legal_name": "c.legal_name", "city": "ct.name", "sector": "c.sector_actividad", "forma": "c.forma_juridica"}
+    sort_col = allowed_sort.get(sort_by, "c.legal_name")
+    sort_dir = "ASC" if sort_order.lower() == "asc" else "DESC"
+
     where = " AND ".join(conditions)
     offset = (page - 1) * page_size
 
-    # Count
-    count_q = f"SELECT COUNT(*) FROM companies c WHERE {where}"
+    # Count (needs JOINs for provincia/ciudad filters)
+    count_q = f"""SELECT COUNT(*) FROM companies c
+        LEFT JOIN cities ct ON c.city_id = ct.id
+        LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+        WHERE {where}"""
     total = await db.fetchval(count_q, *params)
 
     # Data — public-safe fields only (NO email, NO phone, NO capital)
@@ -104,14 +131,14 @@ async def search_public_directory(
         SELECT
             c.id, c.legal_name, c.nif, c.registration_number,
             c.forma_juridica, c.sector_actividad, c.subsector_actividad,
-            c.objeto_social, c.regimen_fiscal, c.address,
+            c.objeto_social, c.address,
             ct.name AS city_name, ct.provincia,
             cz.zone_code, cz.zone_tier
         FROM companies c
         LEFT JOIN cities ct ON c.city_id = ct.id
         LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
         WHERE {where}
-        ORDER BY c.legal_name ASC
+        ORDER BY {sort_col} {sort_dir}
         LIMIT ${idx} OFFSET ${idx + 1}
     """
     params.extend([page_size, offset])
@@ -153,3 +180,65 @@ async def list_public_sectors(
         "ORDER BY sector_actividad"
     )
     return [r["sector"] for r in rows]
+
+
+@router.get("/provincias")
+async def list_public_provincias(
+    request: Request,
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """List distinct provincias for directory filter dropdown."""
+    await _check_public_rate_limit(request)
+    rows = await db.fetch(
+        "SELECT DISTINCT ct.provincia "
+        "FROM companies c "
+        "JOIN cities ct ON c.city_id = ct.id "
+        "WHERE c.is_active = true AND c.is_verified = true AND ct.provincia IS NOT NULL "
+        "ORDER BY ct.provincia"
+    )
+    return [r["provincia"] for r in rows]
+
+
+@router.get("/ciudades")
+async def list_public_ciudades(
+    request: Request,
+    provincia: Optional[str] = Query(None, description="Filter cities by provincia"),
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """List distinct cities for directory filter dropdown. Optionally filtered by provincia."""
+    await _check_public_rate_limit(request)
+    if provincia:
+        rows = await db.fetch(
+            "SELECT DISTINCT ct.name "
+            "FROM companies c "
+            "JOIN cities ct ON c.city_id = ct.id "
+            "WHERE c.is_active AND c.is_verified AND ct.provincia = $1 "
+            "ORDER BY ct.name",
+            provincia,
+        )
+    else:
+        rows = await db.fetch(
+            "SELECT DISTINCT ct.name "
+            "FROM companies c "
+            "JOIN cities ct ON c.city_id = ct.id "
+            "WHERE c.is_active AND c.is_verified AND ct.name IS NOT NULL "
+            "ORDER BY ct.name"
+        )
+    return [r["name"] for r in rows]
+
+
+@router.get("/formas-juridicas")
+async def list_public_formas_juridicas(
+    request: Request,
+    db: asyncpg.Connection = Depends(get_database),
+):
+    """List distinct formas juridicas with counts for directory filter."""
+    await _check_public_rate_limit(request)
+    rows = await db.fetch(
+        "SELECT forma_juridica, COUNT(*) as count "
+        "FROM companies "
+        "WHERE is_active AND is_verified AND forma_juridica IS NOT NULL "
+        "GROUP BY forma_juridica "
+        "ORDER BY count DESC"
+    )
+    return [{"value": r["forma_juridica"], "count": r["count"]} for r in rows]

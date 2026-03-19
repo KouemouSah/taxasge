@@ -211,11 +211,16 @@ const publicClient = axios.create({
 })
 
 export const companyPublicApi = {
-  /** Public directory search */
+  /** Public directory search with advanced filters */
   search: (params: {
     q?: string
     zone_id?: string
     sector?: string
+    forma_juridica?: string
+    provincia?: string
+    ciudad?: string
+    sort_by?: string
+    sort_order?: string
     page?: number
     page_size?: number
   }) => {
@@ -223,6 +228,11 @@ export const companyPublicApi = {
     if (params.q) sp.set('q', params.q)
     if (params.zone_id) sp.set('zone_id', params.zone_id)
     if (params.sector) sp.set('sector', params.sector)
+    if (params.forma_juridica) sp.set('forma_juridica', params.forma_juridica)
+    if (params.provincia) sp.set('provincia', params.provincia)
+    if (params.ciudad) sp.set('ciudad', params.ciudad)
+    if (params.sort_by) sp.set('sort_by', params.sort_by)
+    if (params.sort_order) sp.set('sort_order', params.sort_order)
     if (params.page) sp.set('page', String(params.page))
     if (params.page_size) sp.set('page_size', String(params.page_size))
     const q = sp.toString()
@@ -230,13 +240,18 @@ export const companyPublicApi = {
       .then(r => r.data)
   },
 
-  /** List zones for filter */
   getZones: () =>
     publicClient.get<PublicZone[]>('/zones').then(r => r.data),
-
-  /** List sectors for filter */
   getSectors: () =>
     publicClient.get<string[]>('/sectors').then(r => r.data),
+  getProvincias: () =>
+    publicClient.get<string[]>('/provincias').then(r => r.data),
+  getCiudades: (provincia?: string) => {
+    const q = provincia ? `?provincia=${encodeURIComponent(provincia)}` : ''
+    return publicClient.get<string[]>(`/ciudades${q}`).then(r => r.data)
+  },
+  getFormasJuridicas: () =>
+    publicClient.get<{ value: string; count: number }[]>('/formas-juridicas').then(r => r.data),
 }
 
 export default {
