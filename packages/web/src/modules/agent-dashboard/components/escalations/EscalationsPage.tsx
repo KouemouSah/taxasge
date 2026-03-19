@@ -129,8 +129,8 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isError, refetch } = useQuery<PaginatedEscalationResponse>({
-    queryKey: ['my-escalations', includeResolved, page],
-    queryFn: () => agentRequestsApi.getMyEscalations({ includeResolved, page, pageSize: PAGE_SIZE }),
+    queryKey: ['my-escalations', activeTab, includeResolved, page],
+    queryFn: () => agentRequestsApi.getMyEscalations({ includeResolved, direction: activeTab, page, pageSize: PAGE_SIZE }),
     staleTime: 30_000,
   });
 
@@ -142,24 +142,19 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
   const handleTabChange = (v: string) => {
     setActiveTab(v as 'sent' | 'received');
     setStatusFilter('all');
+    setPage(1);
   };
   const handleIncludeResolvedToggle = () => {
     setIncludeResolved(!includeResolved);
     setPage(1);
   };
 
-  // Split by direction (client-side on current page)
-  const sentItems = useMemo(() => items.filter((i) => i.direction === 'sent'), [items]);
-  const receivedItems = useMemo(() => items.filter((i) => i.direction === 'received'), [items]);
-  const currentItems = activeTab === 'sent' ? sentItems : receivedItems;
+  // Counts (from server-filtered items on current page)
+  const pendingCount = useMemo(() => items.filter((i) => i.escalationStatus === 'pending').length, [items]);
 
-  // Counts
-  const sentPending = useMemo(() => sentItems.filter((i) => i.escalationStatus === 'pending').length, [sentItems]);
-  const receivedCount = receivedItems.length;
-
-  // Filter (client-side on current page)
+  // Filter (client-side search + status on server-filtered items)
   const filtered = useMemo(() => {
-    let result = currentItems;
+    let result = items;
     if (statusFilter !== 'all') {
       result = result.filter((i) => i.escalationStatus === statusFilter);
     }
@@ -174,7 +169,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
       );
     }
     return result;
-  }, [currentItems, statusFilter, search]);
+  }, [items, statusFilter, search]);
 
   const backHref = basePath
     ? `/${locale}${basePath}`
@@ -200,15 +195,15 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
             <TabsTrigger value="sent" className="text-xs gap-1.5 px-3">
               <ArrowUpRight className="h-3.5 w-3.5" />
               {t('escalations.tabSent')}
-              {sentPending > 0 && (
-                <Badge className="bg-orange-100 text-orange-800 text-[10px] px-1 py-0 ml-1">{sentPending}</Badge>
+              {activeTab === 'sent' && pendingCount > 0 && (
+                <Badge className="bg-orange-100 text-orange-800 text-[10px] px-1 py-0 ml-1">{pendingCount}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="received" className="text-xs gap-1.5 px-3">
               <ArrowDownLeft className="h-3.5 w-3.5" />
               {t('escalations.tabReceived')}
-              {receivedCount > 0 && (
-                <Badge className="bg-blue-100 text-blue-800 text-[10px] px-1 py-0 ml-1">{receivedCount}</Badge>
+              {activeTab === 'received' && total > 0 && (
+                <Badge className="bg-blue-100 text-blue-800 text-[10px] px-1 py-0 ml-1">{total}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -278,7 +273,7 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
           <div className="flex flex-col items-center justify-center py-16">
             <ShieldAlert className="h-10 w-10 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground">
-              {currentItems.length === 0
+              {items.length === 0
                 ? (activeTab === 'sent' ? t('escalations.emptySent') : t('escalations.emptyReceived'))
                 : t('escalations.noResults')}
             </p>

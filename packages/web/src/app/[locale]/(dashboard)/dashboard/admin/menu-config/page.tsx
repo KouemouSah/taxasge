@@ -228,7 +228,7 @@ function WorkflowMappingsTab() {
   // Fetch ALL active mappings for preview (not limited by pagination)
   const { data: allActiveData } = useQuery({
     queryKey: ['workflow-mappings', 'all-active'],
-    queryFn: () => fetchWorkflowMappings(1, true, 999),
+    queryFn: () => fetchWorkflowMappings(1, true, 100),
     staleTime: 60000,
   });
 
