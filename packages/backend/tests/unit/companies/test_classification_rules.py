@@ -99,13 +99,13 @@ class TestR2cAutonomoWithoutPE:
         assert result.regimen_fiscal == "bundle"
         assert "R2c_persona_fisica_presumed_commercial" in result.rules_applied
 
-    def test_autonomo_large_no_pe_is_mixto(self):
-        """Large autonomo without PE → commercial + large → mixto."""
+    def test_autonomo_large_no_pe_still_bundle(self):
+        """Large autonomo without PE → still bundle (size doesn't change regime for persona física)."""
         result = agent._rules_classify({
             "forma_juridica": "autonomo",
             "capital_social": 60_000_000,
         })
-        assert result.regimen_fiscal == "mixto"
+        assert result.regimen_fiscal == "bundle"
 
 
 class TestR3PersonaMoralAlwaysDeclarativo:

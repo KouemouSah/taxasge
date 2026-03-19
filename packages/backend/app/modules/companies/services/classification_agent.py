@@ -231,7 +231,7 @@ class CompanyClassificationAgent(LLMAgentMixin):
 
         # Layer 2: LLM commerce_type inference (if commercial but no commerce_type)
         if (
-            result.regimen_fiscal in ("bundle", "mixto")
+            result.regimen_fiscal == "bundle"
             and not company_data.get("commerce_type")
             and company_data.get("objeto_social")
         ):
@@ -795,7 +795,7 @@ class CompanyClassificationAgent(LLMAgentMixin):
     ) -> ClassificationResult:
         """Post-classification validation: bundle existence, zone items, cross-checks.
 
-        Rule 6: If regime is 'bundle' or 'mixto' AND commerce_type is set:
+        Rule 6: If regime is 'bundle' AND commerce_type is set:
           R6a: Verify active service_bundle exists for that commerce_type
           R6a-zone: If zone_id provided, verify bundle has items for that zone
         A MISSING bundle = admin flag, NOT reclassification to 'pendiente'.
@@ -805,7 +805,7 @@ class CompanyClassificationAgent(LLMAgentMixin):
         actions = list(result.suggested_actions)
 
         # ── R6a: Bundle existence + zone-aware items check ──
-        if result.regimen_fiscal in ("bundle", "mixto") and result.commerce_type:
+        if result.regimen_fiscal == "bundle" and result.commerce_type:
             # Step 1: Check bundle exists globally
             bundle_row = await conn.fetchrow(
                 "SELECT id FROM service_bundles "

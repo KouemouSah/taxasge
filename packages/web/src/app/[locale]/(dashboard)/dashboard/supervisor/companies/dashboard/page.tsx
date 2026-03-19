@@ -34,7 +34,7 @@ import type { ZoneStats, CompanyAdminListResponse } from '@/modules/companies/ty
 ChartJS.register(ArcElement, Tooltip, Legend)
 
 const REGIME_COLORS: Record<string, string> = {
-  bundle: '#22c55e', declarativo: '#3b82f6', mixto: '#a855f7',
+  bundle: '#22c55e', declarativo: '#3b82f6',
   exento: '#6b7280', pendiente: '#eab308',
 }
 
@@ -112,9 +112,9 @@ export default function SupervisorSiteDashboardPage() {
   }
 
   const regimeDonut = {
-    labels: ['Bundle', 'Declarativo', 'Mixto', 'Exento', 'Pendiente'],
+    labels: ['Bundle', 'Declarativo', 'Exento', 'Pendiente'],
     datasets: [{
-      data: [zone.bundle_count, zone.declarativo_count, zone.mixto_count, zone.exento_count, zone.pendiente_count],
+      data: [zone.bundle_count, zone.declarativo_count, zone.exento_count, zone.pendiente_count],
       backgroundColor: Object.values(REGIME_COLORS),
       borderWidth: 0,
     }],

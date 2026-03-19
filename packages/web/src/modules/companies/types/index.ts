@@ -177,7 +177,6 @@ export interface ZoneStats {
   pending_verification: number
   bundle_count: number
   declarativo_count: number
-  mixto_count: number
   exento_count: number
   pendiente_count: number
   active_licenses: number
@@ -223,7 +222,6 @@ export interface GlobalStats {
   inactive_companies: number
   bundle_count: number
   declarativo_count: number
-  mixto_count: number
   exento_count: number
   pendiente_count: number
   with_nif: number

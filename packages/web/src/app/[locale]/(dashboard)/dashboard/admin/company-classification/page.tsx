@@ -42,7 +42,6 @@ import {
 const REGIME_COLORS: Record<string, string> = {
   bundle: 'bg-green-100 text-green-800',
   declarativo: 'bg-blue-100 text-blue-800',
-  mixto: 'bg-purple-100 text-purple-800',
   exento: 'bg-gray-100 text-gray-700',
   pendiente: 'bg-yellow-100 text-yellow-800',
 }
@@ -373,7 +372,7 @@ function StatsTab({ stats, t }: { stats: ClassificationStats | null; t: ReturnTy
 
   // Regime colors for chart
   const REGIME_CHART_COLORS: Record<string, string> = {
-    bundle: '#22c55e', declarativo: '#3b82f6', mixto: '#a855f7', exento: '#6b7280', pendiente: '#eab308',
+    bundle: '#22c55e', declarativo: '#3b82f6', exento: '#6b7280', pendiente: '#eab308',
   }
 
   // Gauge SVG

@@ -197,7 +197,7 @@ class CompanyOnboardingService:
     ) -> Dict[str, Any]:
         """Admin approves draft → create company + license + obligations.
 
-        Full pipeline for bundle/mixto regimes:
+        Full pipeline for bundle regimes:
           1. Create company (with zone_id + city_id)
           2. Find active bundle for commerce_type
           3. Call LicenseService.open_license() — creates license + obligations + events

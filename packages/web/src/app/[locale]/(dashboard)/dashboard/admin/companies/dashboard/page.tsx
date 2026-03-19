@@ -149,10 +149,10 @@ export default function AdminCompaniesDashboardPage() {
 
   // Chart data
   const regimeDonut = {
-    labels: ['Bundle', 'Declarativo', 'Mixto', 'Exento', 'Pendiente'],
+    labels: ['Bundle', 'Declarativo', 'Exento', 'Pendiente'],
     datasets: [{
-      data: [global.bundle_count, global.declarativo_count, global.mixto_count, global.exento_count, global.pendiente_count],
-      backgroundColor: ['#22c55e', '#3b82f6', '#a855f7', '#6b7280', '#eab308'],
+      data: [global.bundle_count, global.declarativo_count, global.exento_count, global.pendiente_count],
+      backgroundColor: ['#22c55e', '#3b82f6', '#6b7280', '#eab308'],
       borderWidth: 0, hoverOffset: 6,
     }],
   }
@@ -167,10 +167,6 @@ export default function AdminCompaniesDashboardPage() {
       label: 'Declarativo',
       data: stats.sortedByCompanies.map(z => z.declarativo_count),
       backgroundColor: '#3b82f6', borderRadius: 3,
-    }, {
-      label: 'Mixto',
-      data: stats.sortedByCompanies.map(z => z.mixto_count),
-      backgroundColor: '#a855f7', borderRadius: 3,
     }, {
       label: 'Exento',
       data: stats.sortedByCompanies.map(z => z.exento_count),

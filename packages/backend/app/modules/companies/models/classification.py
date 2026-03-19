@@ -43,7 +43,7 @@ class ClassificationTrigger(str, Enum):
 class ClassificationResult(BaseModel):
     """Result of classifying a company's fiscal regime."""
     regimen_fiscal: str = Field(
-        ..., description="bundle | declarativo | mixto | exento | pendiente"
+        ..., description="bundle | declarativo | exento | pendiente"
     )
     confidence: float = Field(..., ge=0.0, le=1.0)
     reason: str

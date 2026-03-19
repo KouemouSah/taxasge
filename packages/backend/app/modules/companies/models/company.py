@@ -25,7 +25,6 @@ class RegimenFiscal(str, Enum):
     """Fiscal regime classification result."""
     BUNDLE = "bundle"
     DECLARATIVO = "declarativo"
-    MIXTO = "mixto"
     EXENTO = "exento"
     PENDIENTE = "pendiente"
 

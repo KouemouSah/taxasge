@@ -20,7 +20,6 @@ const PAGE_SIZE = 20
 const REGIME_COLORS: Record<string, string> = {
   bundle: 'bg-green-100 text-green-800',
   declarativo: 'bg-blue-100 text-blue-800',
-  mixto: 'bg-purple-100 text-purple-800',
   exento: 'bg-gray-100 text-gray-700',
   pendiente: 'bg-yellow-100 text-yellow-800',
 }
