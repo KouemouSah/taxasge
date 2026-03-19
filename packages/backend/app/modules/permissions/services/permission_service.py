@@ -240,6 +240,9 @@ class PermissionService:
         """
         Get all permission names for a user
 
+        Uses get_all_permission_names() which resolves role hierarchy + user
+        overrides in a single optimized CTE query instead of N+1 queries.
+
         Args:
             user_id: User UUID
             include_role_permissions: Include permissions from role
@@ -247,24 +250,9 @@ class PermissionService:
         Returns:
             List of permission names
         """
-        permission_names = set()
-
-        # Get user-specific permissions (overrides)
-        user_perms = await self.user_permission_repo.get_by_user(user_id)
-        for perm in user_perms:
-            if perm['granted']:
-                # Get permission name
-                permission = await self.permission_repo.get_by_id(perm['permission_id'])
-                if permission:
-                    permission_names.add(permission['name'])
-
-        if include_role_permissions:
-            # Get role permissions
-            # First, get user's role
-            # (This would need access to user repository - simplified here)
-            pass
-
-        return list(permission_names)
+        # Single optimized query: role chain (recursive CTE) + user grants - user denies
+        # This replaces the previous N+1 loop (1 query per permission)
+        return await self.user_permission_repo.get_all_permission_names(user_id)
 
     async def get_permission_by_id(self, permission_id: str) -> Optional[Dict[str, Any]]:
         """

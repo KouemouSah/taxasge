@@ -546,10 +546,18 @@ async def root():
         "platform": "FastAPI + Cloud Run"
     }
 
-# Debug endpoint to check loaded routers (helps diagnose 404 issues)
+# Debug endpoints — hidden in production, require auth header in staging
+def _check_debug_access(request: Request):
+    """Guard: 404 in production, 401 without auth in staging."""
+    if settings.environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+    if not request.headers.get("authorization"):
+        raise HTTPException(status_code=401, detail="Authentication required")
+
 @app.get("/api/v1/debug/routers")
-async def debug_routers():
+async def debug_routers(request: Request):
     """Debug endpoint to check which routers are loaded"""
+    _check_debug_access(request)
     return {
         "status": "diagnostic",
         "routers_loaded": routers_loaded,
@@ -561,8 +569,9 @@ async def debug_routers():
 
 
 @app.get("/api/v1/debug/communications-import")
-async def debug_communications_import():
+async def debug_communications_import(request: Request):
     """Debug endpoint to diagnose communications router import errors"""
+    _check_debug_access(request)
     import_errors = []
     import_success = []
 
@@ -613,8 +622,9 @@ async def debug_communications_import():
 
 
 @app.get("/api/v1/debug/enum-import")
-async def debug_enum_import():
+async def debug_enum_import(request: Request):
     """Debug endpoint to diagnose enum router import errors"""
+    _check_debug_access(request)
     import_errors = []
     import_success = []
 
@@ -661,8 +671,9 @@ async def debug_enum_import():
 
 
 @app.get("/api/v1/debug/support-import")
-async def debug_support_import():
+async def debug_support_import(request: Request):
     """Debug endpoint to diagnose support router import errors"""
+    _check_debug_access(request)
     import_errors = []
     import_success = []
 
@@ -707,8 +718,9 @@ async def debug_support_import():
 
 
 @app.get("/api/v1/debug/service-requests-import")
-async def debug_service_requests_import():
+async def debug_service_requests_import(request: Request):
     """Debug endpoint to diagnose service_requests router import errors"""
+    _check_debug_access(request)
     import_errors = []
     import_success = []
 
@@ -773,8 +785,9 @@ async def debug_service_requests_import():
 
 
 @app.get("/api/v1/debug/entity-locations-import")
-async def debug_entity_locations_import():
+async def debug_entity_locations_import(request: Request):
     """Debug endpoint to diagnose entity_locations router import errors"""
+    _check_debug_access(request)
     import_errors = []
     import_success = []
 
@@ -829,8 +842,9 @@ async def debug_entity_locations_import():
 
 
 @app.get("/api/v1/debug/funcionario-import")
-async def debug_funcionario_import():
+async def debug_funcionario_import(request: Request):
     """Debug endpoint to diagnose funcionario router import errors"""
+    _check_debug_access(request)
     import_errors = []
     import_success = []
 

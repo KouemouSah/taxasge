@@ -257,7 +257,7 @@ class QueueStatsResponse(BaseModel):
 async def get_queue(
     entity_code: Optional[str] = Query(None, description="Filter by entity code"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(1000, ge=1, description="Items per page (default: all)"),
+    page_size: int = Query(100, ge=1, le=200, description="Items per page (max 200)"),
     db: asyncpg.Connection = Depends(get_database),
     agent_ctx: AgentContext = Depends(get_agent_context),
     _=Depends(permission_required("service_request.view_queue"))
@@ -413,7 +413,7 @@ async def get_queue_stats(
 async def get_my_queue(
     include_completed: bool = Query(False, description="Include completed items"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(1000, ge=1, description="Items per page (default: all)"),
+    page_size: int = Query(100, ge=1, le=200, description="Items per page (max 200)"),
     db: asyncpg.Connection = Depends(get_database),
     current_user=Depends(get_current_user),
     _=Depends(permission_required("service_request.process"))

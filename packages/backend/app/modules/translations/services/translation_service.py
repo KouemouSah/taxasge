@@ -26,6 +26,7 @@ from app.modules.translations.models.translation import (
     TranslationBatchCreate,
     TranslationSearchParams,
 )
+from app.core.cache import get_translations_cache, CacheKeys, invalidate_translations_cache
 
 
 class TranslationService:
@@ -53,7 +54,7 @@ class TranslationService:
         Returns:
             Created translation
         """
-        return await self.repo.create(
+        result = await self.repo.create(
             conn,
             translation.category,
             translation.key_code,
@@ -65,6 +66,8 @@ class TranslationService:
             translation.translation_source or "manual",
             user_id,
         )
+        await invalidate_translations_cache()
+        return result
 
     async def upsert_translation(
         self,
@@ -83,7 +86,7 @@ class TranslationService:
         Returns:
             Translation
         """
-        return await self.repo.upsert(
+        result = await self.repo.upsert(
             conn,
             translation.category,
             translation.key_code,
@@ -95,6 +98,8 @@ class TranslationService:
             translation.translation_source or "manual",
             user_id,
         )
+        await invalidate_translations_cache()
+        return result
 
     async def batch_create(
         self,
@@ -283,7 +288,7 @@ class TranslationService:
         Returns:
             Updated translation or None
         """
-        return await self.repo.update(
+        result = await self.repo.update(
             conn,
             translation_id,
             update_data.es,
@@ -293,6 +298,9 @@ class TranslationService:
             update_data.translation_source,
             user_id,
         )
+        if result:
+            await invalidate_translations_cache()
+        return result
 
     async def delete_translation(
         self,
@@ -309,7 +317,10 @@ class TranslationService:
         Returns:
             True if deleted
         """
-        return await self.repo.delete(conn, translation_id)
+        deleted = await self.repo.delete(conn, translation_id)
+        if deleted:
+            await invalidate_translations_cache()
+        return deleted
 
     async def get_all_categories(
         self,
@@ -376,6 +387,8 @@ class TranslationService:
         """
         Export category translations in JSON format for frontend
 
+        Uses translations cache (1h TTL) since translation data rarely changes.
+
         Args:
             conn: Database connection
             category: Category to export
@@ -383,6 +396,17 @@ class TranslationService:
         Returns:
             Dict structure: {key_code: {es: "...", fr: "...", en: "..."}}
         """
+        # Check cache first (keyed by category, all languages)
+        cache = get_translations_cache()
+        cache_key = CacheKeys.translations("all", category)
+
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            logger.debug(f"Translation cache HIT for category {category}")
+            return cached
+
+        # Cache miss - query DB
+        logger.debug(f"Translation cache MISS for category {category}")
         query = """
             SELECT key_code, es, fr, en
             FROM translations
@@ -391,7 +415,7 @@ class TranslationService:
         """
         results = await conn.fetch(query, category)
 
-        return {
+        data = {
             row["key_code"]: {
                 "es": row["es"],
                 "fr": row["fr"],
@@ -399,3 +423,8 @@ class TranslationService:
             }
             for row in results
         }
+
+        # Store in cache (1h TTL from get_translations_cache default)
+        await cache.set(cache_key, data)
+
+        return data

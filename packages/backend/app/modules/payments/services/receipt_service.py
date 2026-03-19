@@ -302,15 +302,26 @@ class ReceiptService:
         return f"REC-{date_str}-{suffix}"
 
     async def generate_receipt_number_from_db(self, db: asyncpg.Connection) -> str:
-        """Generate unique receipt number using database sequence."""
+        """Generate unique receipt number using database sequence.
+
+        Uses pg_advisory_xact_lock to prevent race conditions where two
+        concurrent calls could generate the same receipt number.
+        """
         year = datetime.utcnow().year
-        query = """
-            SELECT COUNT(*) + 1 as next_num
+        # Acquire advisory lock to serialize receipt number generation
+        await db.execute("SELECT pg_advisory_xact_lock(hashtext('receipt_seq'))")
+        result = await db.fetchrow(
+            """
+            SELECT COALESCE(
+                MAX(CAST(SUBSTRING(receipt_number FROM 'REC-\\d{4}-(\\d+)') AS INTEGER)),
+                0
+            ) + 1 AS next_num
             FROM service_payments
             WHERE receipt_number IS NOT NULL
             AND EXTRACT(YEAR FROM paid_at) = $1
-        """
-        result = await db.fetchrow(query, year)
+            """,
+            year,
+        )
         next_num = result["next_num"] if result else 1
         return f"REC-{year}-{next_num:06d}"
 

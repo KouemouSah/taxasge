@@ -460,32 +460,36 @@ class AuthService:
             now = datetime.utcnow()
             new_expires_at = now + timedelta(days=7)
 
-            # Create new session (revoke old one)
-            await self.session_repo.revoke_session(session.id)
-            await self.token_repo.revoke_by_session(session.id)
+            # Wrap revoke + create in a transaction to prevent user lockout
+            # if a crash occurs between revoking the old session and creating the new one.
+            async with db_manager.get_connection() as conn:
+                async with conn.transaction():
+                    # Revoke old session and tokens
+                    await self.session_repo.revoke_session(session.id, conn=conn)
+                    await self.token_repo.revoke_by_session(session.id, conn=conn)
 
-            # Create new session with new tokens
-            session_data = SessionCreate(
-                user_id=user_id,
-                access_token=new_tokens["access_token"],
-                refresh_token=new_tokens["refresh_token"],
-                ip_address=ip_address or session.ip_address,
-                user_agent=user_agent or session.user_agent,
-                device_info=session.device_info,
-                expires_at=new_expires_at,
-            )
+                    # Create new session with new tokens
+                    session_data = SessionCreate(
+                        user_id=user_id,
+                        access_token=new_tokens["access_token"],
+                        refresh_token=new_tokens["refresh_token"],
+                        ip_address=ip_address or session.ip_address,
+                        user_agent=user_agent or session.user_agent,
+                        device_info=session.device_info,
+                        expires_at=new_expires_at,
+                    )
 
-            new_session = await self.session_repo.create_session(session_data)
+                    new_session = await self.session_repo.create_session(session_data, conn=conn)
 
-            # Create new refresh token record
-            token_data = RefreshTokenCreate(
-                token=new_tokens["refresh_token"],
-                user_id=user_id,
-                session_id=new_session.id,
-                expires_at=new_expires_at,
-            )
+                    # Create new refresh token record
+                    token_data = RefreshTokenCreate(
+                        token=new_tokens["refresh_token"],
+                        user_id=user_id,
+                        session_id=new_session.id,
+                        expires_at=new_expires_at,
+                    )
 
-            await self.token_repo.create_token(token_data)
+                    await self.token_repo.create_token(token_data, conn=conn)
 
             logger.info(f"Tokens refreshed for user: {user_id}")
 

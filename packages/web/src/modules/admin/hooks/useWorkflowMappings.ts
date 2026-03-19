@@ -210,7 +210,7 @@ export function useWorkflowMappingIds() {
     queryKey: [...workflowMappingKeys.all, 'ids'] as const,
     queryFn: async () => {
       // Fetch all items (with a high page_size) to get all IDs
-      const response = await menuConfigApi.listWorkflowMappings({ page: 1, page_size: 1000 });
+      const response = await menuConfigApi.listWorkflowMappings({ page: 1, page_size: 100 });
       return response.items.map((m) => m.id);
     },
     staleTime: 5 * 60 * 1000,

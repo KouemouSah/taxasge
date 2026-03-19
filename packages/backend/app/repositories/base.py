@@ -98,9 +98,14 @@ class BaseRepository(ABC, Generic[T]):
                     params.append(value)
                 query_parts.append(f"WHERE {' AND '.join(conditions)}")
 
-            # Add ORDER BY
+            # Add ORDER BY (sanitized — only allow column-like patterns)
             if order_by:
-                query_parts.append(f"ORDER BY {order_by}")
+                import re
+                # Validate: only alphanumeric, underscores, dots, spaces, ASC/DESC
+                if re.match(r'^[a-zA-Z_][a-zA-Z0-9_.\s,]*(?: (?:ASC|DESC))?$', order_by.strip(), re.IGNORECASE):
+                    query_parts.append(f"ORDER BY {order_by}")
+                else:
+                    query_parts.append("ORDER BY created_at DESC")
 
             # Add LIMIT and OFFSET
             if limit:

@@ -34,6 +34,7 @@ from ..services.translation_service import TranslationService
 from ..repositories.translation_repository import TranslationRepository
 from app.database.connection import get_database as get_db
 from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.core.cache import get_translations_cache, CacheKeys, invalidate_translations_cache
 
 
 router = APIRouter(prefix="/translations/frontend", tags=["Frontend Translations"])
@@ -174,6 +175,8 @@ async def export_namespace_json(
     """
     Export a namespace as nested JSON for frontend
 
+    Uses translations cache (1h TTL) since translation data rarely changes.
+
     Args:
         namespace: Namespace to export (e.g., 'common', 'admin')
         language: Language code (es, fr, en)
@@ -183,6 +186,14 @@ async def export_namespace_json(
     """
     if language not in ["es", "fr", "en"]:
         raise HTTPException(status_code=400, detail="Invalid language code. Use es, fr, or en.")
+
+    # Check cache first
+    cache = get_translations_cache()
+    cache_key = CacheKeys.translations(language, f"frontend.{namespace}")
+
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     category = f"{FRONTEND_CATEGORY_PREFIX}{namespace}"
 
@@ -200,6 +211,9 @@ async def export_namespace_json(
     # Unflatten to nested JSON
     nested = unflatten_json(flat_translations)
 
+    # Store in cache (1h TTL from get_translations_cache default)
+    await cache.set(cache_key, nested)
+
     return nested
 
 
@@ -212,6 +226,7 @@ async def export_all_frontend_json(
     Export ALL frontend translations as nested JSON
 
     This generates a complete messages/{lang}.json file content.
+    Uses translations cache (1h TTL) since translation data rarely changes.
 
     Args:
         language: Language code (es, fr, en)
@@ -221,6 +236,14 @@ async def export_all_frontend_json(
     """
     if language not in ["es", "fr", "en"]:
         raise HTTPException(status_code=400, detail="Invalid language code. Use es, fr, or en.")
+
+    # Check cache first
+    cache = get_translations_cache()
+    cache_key = CacheKeys.translations(language, "frontend._all")
+
+    cached = await cache.get(cache_key)
+    if cached is not None:
+        return cached
 
     query = f"""
         SELECT
@@ -244,6 +267,9 @@ async def export_all_frontend_json(
 
     # Unflatten to nested JSON
     nested = unflatten_json(flat_translations)
+
+    # Store in cache (1h TTL from get_translations_cache default)
+    await cache.set(cache_key, nested)
 
     return nested
 
@@ -317,6 +343,10 @@ async def import_frontend_json(
         except Exception as e:
             errors.append(f"Error importing {key_code}: {str(e)}")
             logger.error(f"Import error for {key_code}: {e}")
+
+    # Invalidate translations cache after import
+    if created_count > 0 or updated_count > 0:
+        await invalidate_translations_cache()
 
     return {
         "namespace": namespace,
@@ -495,6 +525,10 @@ async def sync_frontend_from_json_files(
                 stats["errors"] += 1
 
         logger.info(f"Sync complete: {stats}")
+
+        # Invalidate translations cache after sync
+        if stats["created"] > 0 or stats["updated"] > 0:
+            await invalidate_translations_cache()
 
         return {
             "message": "Sync completed",

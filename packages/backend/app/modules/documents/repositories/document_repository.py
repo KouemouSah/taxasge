@@ -496,19 +496,27 @@ class DocumentRepository(BaseRepository[Document]):
                 use_supabase=False
             )
 
-            # Averages (using raw SQL)
-            where_clause = f"WHERE user_id = '{user_id}'" if user_id else ""
-
-            avg_query = f"""
-                SELECT
-                    AVG(processing_duration_ms) as avg_processing_time_ms,
-                    AVG(ocr_confidence) as avg_ocr_confidence,
-                    AVG(extraction_confidence) as avg_extraction_confidence
-                FROM {self.table_name}
-                {where_clause}
-                AND ocr_status = 'completed'
-            """
-            avg_result = await self.db_manager.execute_single(avg_query)
+            # Averages (parameterized)
+            if user_id:
+                avg_query = f"""
+                    SELECT
+                        AVG(processing_duration_ms) as avg_processing_time_ms,
+                        AVG(ocr_confidence) as avg_ocr_confidence,
+                        AVG(extraction_confidence) as avg_extraction_confidence
+                    FROM {self.table_name}
+                    WHERE user_id = $1 AND ocr_status = 'completed'
+                """
+                avg_result = await self.db_manager.execute_single(avg_query, user_id)
+            else:
+                avg_query = f"""
+                    SELECT
+                        AVG(processing_duration_ms) as avg_processing_time_ms,
+                        AVG(ocr_confidence) as avg_ocr_confidence,
+                        AVG(extraction_confidence) as avg_extraction_confidence
+                    FROM {self.table_name}
+                    WHERE ocr_status = 'completed'
+                """
+                avg_result = await self.db_manager.execute_single(avg_query)
 
             # Documents by type
             type_query = f"""

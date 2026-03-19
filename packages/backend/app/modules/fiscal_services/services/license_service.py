@@ -208,12 +208,11 @@ class LicenseService:
             f"total={total_amount} XAF, deadline={deadline}"
         )
 
-        # 9. Emit LICENSE_ISSUED event for notification (email + SMS)
-        # Pattern: generate PDF inline (same as REQUEST_SUBMITTED), pass in payload.
-        # PDF is lightweight (~50KB, <100ms). Non-blocking: wrapped in try/except.
+        # 9. Collect notification data for caller to emit AFTER transaction commits.
+        # IMPORTANT: PDF generation involves sync I/O and must NOT run inside the
+        # transaction scope (holds the DB connection open). The caller emits the
+        # event after `async with db.transaction()` exits.
         try:
-            from app.core.events import EventBus, EventType
-
             owner = await conn.fetchrow(
                 """SELECT u.id, u.email, u.phone_number, u.first_name, u.last_name
                    FROM users u
@@ -226,19 +225,7 @@ class LicenseService:
             license_ref = f"LIC-{fiscal_year}-{str(license_id)[:8].upper()}"
 
             if owner and owner["email"]:
-                # Generate PDF attachment (same pattern as REQUEST_SUBMITTED)
-                pdf_attachment = None
-                try:
-                    from app.modules.fiscal_services.services.license_pdf_service import license_pdf_service
-                    pdf_bytes = await license_pdf_service.generate_license_pdf(
-                        conn, str(license_id), "es"
-                    )
-                    if pdf_bytes:
-                        pdf_attachment = [(f"{license_ref}.pdf", pdf_bytes, "application/pdf")]
-                except Exception as pdf_err:
-                    logger.warning(f"License PDF for notification failed: {pdf_err}")
-
-                EventBus.publish_nowait(EventType.LICENSE_ISSUED, {
+                license_row["_notification"] = {
                     "license_id": str(license_id),
                     "user_id": str(owner["id"]),
                     "user_email": owner["email"],
@@ -250,11 +237,9 @@ class LicenseService:
                     "nif": data.get("nif") or "",
                     "total_amount": str(total_amount),
                     "status": "Pendiente",
-                    "attachments": pdf_attachment,
-                })
-                logger.info(f"LICENSE_ISSUED event emitted for {license_ref}")
+                }
         except Exception as evt_err:
-            logger.warning(f"LICENSE_ISSUED event emission failed: {evt_err}")
+            logger.warning(f"Failed to collect notification data: {evt_err}")
 
         return license_row
 
