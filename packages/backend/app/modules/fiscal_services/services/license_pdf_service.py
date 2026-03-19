@@ -395,25 +395,31 @@ class LicensePDFService:
         balance = total_amount - total_paid
 
         # ── Conditional display logic per company type ──
+        # Real GE fiscal system:
+        #   AUTONOMO → Padrón Empresarial (DGPE) → PE-XXXX → zone-based bundle → fixed annual fees
+        #   SL/SA    → Registro Empresarial (VUE) → NIF → declarative/mixed regime → revenue-based
+        #   ONG      → NIF → exento
         regimen = lic.get("regimen_fiscal", "")
         forma = lic.get("forma_juridica", "")
         commerce_type = lic.get("commerce_type")
         nif = lic.get("nif")
         registration_number = lic.get("registration_number")
+        is_autonomo = forma == "autonomo"
 
-        # Bundle details: shown if regime is bundle/mixto AND commerce_type exists
-        show_bundle_details = regimen in ("bundle", "mixto") and commerce_type
+        # Bundle details (paquete + tipo de comercio): ONLY for autonomo with bundle
+        show_bundle_details = is_autonomo and regimen == "bundle" and commerce_type
 
-        # Zone: shown for all bundle regime companies (autonomo AND SL)
-        show_zone = regimen in ("bundle", "mixto") and lic.get("zone_code")
+        # Zone comercial: ONLY for autonomo (Padrón Empresarial zone system)
+        # SL/SA are NOT subject to zone-based pricing — they use declarative regime
+        show_zone = is_autonomo and lic.get("zone_code")
 
         # Capital social: shown for SL/SA/ONG (non-autonomo with NIF)
         capital = lic.get("capital_social")
-        show_capital = nif and capital and forma != "autonomo"
+        show_capital = not is_autonomo and nif and capital
         capital_formatted = _format_amount(capital) if capital else "-"
 
-        # Identification: NIF for SL/SA/ONG, N° Registro (PE-XXXX) for autonomo
-        if registration_number and forma == "autonomo":
+        # Identification: N° Registro (PE-XXXX) for autonomo, NIF for others
+        if is_autonomo and registration_number:
             id_label = texts["reg_number"]
             id_value = registration_number
         elif nif:
