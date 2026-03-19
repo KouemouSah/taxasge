@@ -24,36 +24,24 @@ const Header = () => {
             <Image src="/logo.png" alt="Facil Logo" width={114} height={48} className="h-12 w-auto" />
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation — order: Servicios, Licencias, Empresas, Ministerios, Calculadora, Guía */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link
-              href={`/${locale}/services`}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
+            <Link href={`/${locale}/services`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               {t('services')}
             </Link>
-            <Link
-              href={`/${locale}/licencias-comerciales`}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
+            <Link href={`/${locale}/licencias-comerciales`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               {t('licenses')}
             </Link>
-            <Link
-              href={`/${locale}/ministere`}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
+            <Link href={`/${locale}/annuaire`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              {t('directory')}
+            </Link>
+            <Link href={`/${locale}/ministere`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               {t('ministries')}
             </Link>
-            <Link
-              href={`/${locale}/calculateur`}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
+            <Link href={`/${locale}/calculateur`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               {t('calculator')}
             </Link>
-            <Link
-              href={`/${locale}/guide`}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
+            <Link href={`/${locale}/guide`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               {t('guide')}
             </Link>
           </nav>
@@ -106,25 +94,16 @@ const Header = () => {
               >
                 {t('licenses')}
               </Link>
-              <Link
-                href={`/${locale}/ministere`}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+              <Link href={`/${locale}/annuaire`} className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1" onClick={() => setMobileMenuOpen(false)}>
+                {t('directory')}
+              </Link>
+              <Link href={`/${locale}/ministere`} className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1" onClick={() => setMobileMenuOpen(false)}>
                 {t('ministries')}
               </Link>
-              <Link
-                href={`/${locale}/calculateur`}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+              <Link href={`/${locale}/calculateur`} className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1" onClick={() => setMobileMenuOpen(false)}>
                 {t('calculator')}
               </Link>
-              <Link
-                href={`/${locale}/guide`}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+              <Link href={`/${locale}/guide`} className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1" onClick={() => setMobileMenuOpen(false)}>
                 {t('guide')}
               </Link>
               <div className="pt-2">
