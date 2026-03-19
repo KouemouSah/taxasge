@@ -222,9 +222,9 @@ export function canSoftDelete(role: UserRole): boolean {
 export function getRoleCategory(
   role: UserRole
 ): 'citizens' | 'professionals' | 'agents' | 'admins' {
-  if (ROLE_CATEGORIES.citizens.includes(role as any)) return 'citizens'
-  if (ROLE_CATEGORIES.admins.includes(role as any)) return 'admins'
-  if (ROLE_CATEGORIES.agents.includes(role as any)) return 'agents'
+  if ((ROLE_CATEGORIES.citizens as readonly string[]).includes(role)) return 'citizens'
+  if ((ROLE_CATEGORIES.admins as readonly string[]).includes(role)) return 'admins'
+  if ((ROLE_CATEGORIES.agents as readonly string[]).includes(role)) return 'agents'
   return 'professionals'
 }
 
