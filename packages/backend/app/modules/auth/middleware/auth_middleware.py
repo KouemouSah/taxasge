@@ -47,15 +47,14 @@ async def _check_funcionario_status(matricula: str) -> dict:
     Returns:
         Dict with funcionario status fields
     """
-    from app.database.connection import get_database
+    from app.database.connection import db_manager
     from app.modules.verified_identifiers.services.verification_service import VerificationService
     from app.modules.verified_identifiers.services.crypto_service import get_crypto_service
 
-    db = await get_database()
-    crypto = get_crypto_service()
-    verification_service = VerificationService(pool=db, crypto=crypto)
-
-    return await verification_service.check_funcionario_status(matricula)
+    async with db_manager.get_connection() as db:
+        crypto = get_crypto_service()
+        verification_service = VerificationService(pool=db, crypto=crypto)
+        return await verification_service.check_funcionario_status(matricula)
 
 
 async def get_current_user(

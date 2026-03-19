@@ -1562,29 +1562,29 @@ class VerificacionService:
             return False
 
         try:
-            from app.database.connection import get_database
+            from app.database.connection import db_manager
             from app.modules.verified_identifiers.services.crypto_service import get_crypto_service
             from app.modules.verified_identifiers.repositories.verified_identifiers_repository import VerifiedIdentifiersRepository
 
-            db = await get_database()
-            crypto = get_crypto_service()
-            repo = VerifiedIdentifiersRepository(pool=db, crypto=crypto)
+            async with db_manager.get_connection() as db:
+                crypto = get_crypto_service()
+                repo = VerifiedIdentifiersRepository(pool=db, crypto=crypto)
 
-            # Upsert the matricula into verified_identifiers
-            identifier_id = await repo.upsert(
-                value=matricula.upper().strip(),
-                identifier_type="matricula_funcionario",
-                source="ministerio_funcion_publica",
-                expires_at=None,  # Matriculas don't expire
-                metadata={
-                    "verificacion_id": str(verificacion_id),
-                    "approved_at": datetime.utcnow().isoformat(),
-                    "verification_type": "agent_manual",
-                },
-                verified_by=str(agent_id),
-                user_id=user_id,
-                verification_request_id=str(verificacion_id),
-            )
+                # Upsert the matricula into verified_identifiers
+                identifier_id = await repo.upsert(
+                    value=matricula.upper().strip(),
+                    identifier_type="matricula_funcionario",
+                    source="ministerio_funcion_publica",
+                    expires_at=None,  # Matriculas don't expire
+                    metadata={
+                        "verificacion_id": str(verificacion_id),
+                        "approved_at": datetime.utcnow().isoformat(),
+                        "verification_type": "agent_manual",
+                    },
+                    verified_by=str(agent_id),
+                    user_id=user_id,
+                    verification_request_id=str(verificacion_id),
+                )
 
             logger.info(
                 f"[VerificacionService] Matricula {matricula} added to verified_identifiers: "

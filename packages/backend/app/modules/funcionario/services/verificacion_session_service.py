@@ -998,18 +998,19 @@ class VerificacionSessionService:
             from app.modules.verified_identifiers.services.verification_service import VerificationService
             from app.modules.verified_identifiers.services.crypto_service import get_crypto_service
 
-            db = await get_database()
-            crypto = get_crypto_service()
-            verification_svc = VerificationService(pool=db, crypto=crypto)
+            from app.database.connection import db_manager
+            async with db_manager.get_connection() as db:
+                crypto = get_crypto_service()
+                verification_svc = VerificationService(pool=db, crypto=crypto)
 
-            # Verify against verified_identifiers table
-            result = await verification_svc.verify_identifier(
-                value=matricula.upper().strip(),
-                identifier_type="matricula_funcionario",
-                request_id=str(verificacion_id),
-                performed_by=str(user_id),
-                ip_address=ip_address,
-            )
+                # Verify against verified_identifiers table
+                result = await verification_svc.verify_identifier(
+                    value=matricula.upper().strip(),
+                    identifier_type="matricula_funcionario",
+                    request_id=str(verificacion_id),
+                    performed_by=str(user_id),
+                    ip_address=ip_address,
+                )
 
             auto_verification_data = {
                 "checked_at": datetime.utcnow().isoformat(),
