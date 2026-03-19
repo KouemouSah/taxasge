@@ -58,11 +58,14 @@ class CompanyOnboardingService:
         limit_idx = idx
         offset_idx = idx + 1
         rows = await conn.fetch(
-            f"""SELECT id, source_type, company_data, regimen_fiscal,
+            f"""SELECT id, source_type, source_file_id, batch_id,
+                       company_data, regimen_fiscal,
                        classification_confidence, classification_reason,
                        classification_details, extraction_confidence,
+                       extraction_details,
                        status, reviewer_notes, reviewed_at,
-                       created_company_id, created_by, created_at, updated_at
+                       created_company_id, created_license_id,
+                       created_by, created_at, updated_at
                 FROM company_creation_drafts {where}
                 ORDER BY
                     CASE WHEN status = 'pending_review' THEN 0
@@ -70,7 +73,7 @@ class CompanyOnboardingService:
                          WHEN status = 'auto_approved' THEN 2
                          WHEN status = 'error' THEN 3
                          ELSE 4 END,
-                    classification_confidence ASC,
+                    COALESCE(classification_confidence, 0) ASC,
                     created_at DESC
                 LIMIT ${limit_idx} OFFSET ${offset_idx}""",
             *params, page_size, offset,
@@ -79,15 +82,20 @@ class CompanyOnboardingService:
         items = []
         for r in rows:
             item = dict(r)
-            # Parse JSONB fields
-            if isinstance(item.get("company_data"), str):
-                item["company_data"] = json.loads(item["company_data"])
-            if isinstance(item.get("classification_details"), str):
-                item["classification_details"] = json.loads(item["classification_details"])
+            # Parse JSONB fields (asyncpg auto-parses JSONB, but guard against str)
+            for jsonb_field in ("company_data", "classification_details", "extraction_details"):
+                if isinstance(item.get(jsonb_field), str):
+                    item[jsonb_field] = json.loads(item[jsonb_field])
             # Ensure UUID serializable
-            for uid_field in ("id", "created_company_id", "created_by"):
+            for uid_field in ("id", "source_file_id", "batch_id",
+                              "created_company_id", "created_license_id", "created_by"):
                 if item.get(uid_field):
                     item[uid_field] = str(item[uid_field])
+            # Ensure nullable floats default to 0.0 for Pydantic
+            if item.get("classification_confidence") is None:
+                item["classification_confidence"] = 0.0
+            if item.get("extraction_confidence") is None:
+                item["extraction_confidence"] = 0.0
             items.append(item)
 
         return {

@@ -303,13 +303,14 @@ async def reclassify_draft(
         new_status = "auto_approved"
 
     # Update draft
+    from uuid import UUID as _UUID
     await db.execute(
         """UPDATE company_creation_drafts
            SET regimen_fiscal = $2, classification_confidence = $3,
                classification_reason = $4, classification_details = $5,
                status = $6
            WHERE id = $1""",
-        draft_id,
+        _UUID(draft_id),
         result.regimen_fiscal,
         result.confidence,
         result.reason,
@@ -343,6 +344,12 @@ async def get_classification_history(
     _=Depends(permission_required("company.view_classification")),
 ):
     """Get classification history for a company (audit trail)."""
+    from uuid import UUID as _UUID
+    try:
+        company_uuid = _UUID(company_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail="Invalid company_id format")
+
     rows = await db.fetch(
         """SELECT id, company_id, old_regimen, new_regimen,
                   old_commerce_type, new_commerce_type,
@@ -351,7 +358,7 @@ async def get_classification_history(
            WHERE company_id = $1
            ORDER BY created_at DESC
            LIMIT 50""",
-        company_id,
+        company_uuid,
     )
 
     return {
@@ -365,7 +372,7 @@ async def get_classification_history(
                 "old_commerce_type": r["old_commerce_type"],
                 "new_commerce_type": r["new_commerce_type"],
                 "reason": r["reason"],
-                "confidence": r["confidence"],
+                "confidence": r["confidence"] or 0.0,
                 "triggered_by": r["triggered_by"],
                 "created_at": r["created_at"].isoformat() if r["created_at"] else None,
             }

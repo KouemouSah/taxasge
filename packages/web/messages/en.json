@@ -9629,5 +9629,66 @@
       "loading": "Searching...",
       "noResults": "No companies found matching the given criteria"
     }
+  },
+  "legalPages": {
+    "privacy": {
+      "title": "Privacy Policy",
+      "lastUpdated": "Last updated: March 2026",
+      "intro": "The Facil platform, operated by the General Directorate of Taxes of Equatorial Guinea, is committed to protecting the personal data of its users in accordance with applicable legislation.",
+      "dataCollectedTitle": "Data collected",
+      "dataCollectedContent": "We collect the data necessary for the provision of fiscal and administrative services: full name, identity document (DIP/passport), tax identification number (NIF), address, email, phone number, and fiscal and business information as required by the requested procedure.",
+      "purposeTitle": "Purpose of processing",
+      "purposeContent": "Data is used exclusively for:\n- Management of fiscal and administrative procedures\n- Processing of tax declarations\n- Issuance of licenses and certificates\n- Official communications regarding your procedures\n- Identity verification and fraud prevention\n- Improvement of platform services",
+      "legalBasisTitle": "Legal basis",
+      "legalBasisContent": "Data processing is based on compliance with tax obligations established by the legislation of Equatorial Guinea, the public interest in efficient fiscal administration, and user consent upon registering on the platform.",
+      "retentionTitle": "Data retention",
+      "retentionContent": "Personal data is retained for the legally established period for tax obligations (minimum 5 years), or as long as necessary for the purpose for which it was collected. Account data is maintained while the user has an active account.",
+      "sharingTitle": "Data sharing",
+      "sharingContent": "Data may be shared with:\n- Competent government ministries and agencies for processing your requests\n- Banking entities for payment processing (BANGE)\n- Technology providers under confidentiality agreements\n\nNo data is shared with third parties for commercial purposes.",
+      "rightsTitle": "User rights",
+      "rightsContent": "You have the right to access, rectify, and request deletion of your personal data, as well as to restrict or object to its processing. To exercise these rights, contact support through the platform or at the address indicated below.",
+      "securityTitle": "Security measures",
+      "securityContent": "We implement technical and organizational measures to protect your data: encrypted communications (TLS), secure storage with encryption at rest, two-factor authentication (2FA), role-based access control (RBAC), and access auditing.",
+      "contactTitle": "Contact",
+      "contactContent": "For inquiries about data protection, you can contact us through the platform's support module or at the General Directorate of Taxes, Malabo, Equatorial Guinea."
+    },
+    "terms": {
+      "title": "Terms of Use",
+      "lastUpdated": "Last updated: March 2026",
+      "intro": "By using the Facil platform, you accept the following terms and conditions governing access to and use of the digital fiscal administration services of Equatorial Guinea.",
+      "acceptanceTitle": "Acceptance of terms",
+      "acceptanceContent": "Registration and use of the Facil platform implies full acceptance of these terms. If you disagree, you must not use the services. Continued use after modifications constitutes acceptance of the new terms.",
+      "servicesTitle": "Services offered",
+      "servicesContent": "Facil provides digital fiscal administration services including:\n- Tax declaration and payment (VAT, income tax, corporate tax, etc.)\n- Administrative procedure requests (passports, driver's licenses, residence permits, etc.)\n- Commercial license and fiscal obligation management\n- Tracking procedure and payment status\n- Appointment scheduling at government offices",
+      "accountTitle": "User account",
+      "accountContent": "The user is responsible for maintaining the confidentiality of their access credentials. All activity performed with your account will be considered as done by you. In case of unauthorized access, you must notify us immediately through the support module.",
+      "obligationsTitle": "User obligations",
+      "obligationsContent": "The user agrees to:\n- Provide truthful, accurate, and up-to-date information\n- Not use the platform for fraudulent or illegal purposes\n- Comply with tax obligations established by law\n- Not attempt to access unauthorized data or functionalities\n- Respect legal deadlines for declarations and payments",
+      "intellectualPropertyTitle": "Intellectual property",
+      "intellectualPropertyContent": "All platform content (software, design, texts, logos) is the property of the Republic of Equatorial Guinea or its licensors. Its reproduction, distribution, or modification without express authorization is prohibited.",
+      "limitationsTitle": "Limitations of liability",
+      "limitationsContent": "The platform is provided with the greatest possible diligence. However, uninterrupted service availability is not guaranteed. The administration shall not be liable for damages resulting from technical interruptions, transmission errors, or force majeure. Tax calculations are indicative until official validation.",
+      "modificationsTitle": "Modifications",
+      "modificationsContent": "We reserve the right to modify these terms. Modifications will be published on this page with the update date. Substantial changes will be notified to registered users by email.",
+      "jurisdictionTitle": "Applicable law",
+      "jurisdictionContent": "These terms are governed by the legislation of the Republic of Equatorial Guinea. The courts of Malabo shall have jurisdiction for dispute resolution."
+    },
+    "cookies": {
+      "title": "Cookie Policy",
+      "lastUpdated": "Last updated: March 2026",
+      "intro": "This policy explains how the Facil platform uses cookies and similar technologies to ensure proper service operation.",
+      "whatAreTitle": "What are cookies?",
+      "whatAreContent": "Cookies are small text files stored in your browser when you visit a website. They allow us to remember your preferences and improve your browsing experience.",
+      "typesTitle": "Types of cookies used",
+      "typesContent": "Essential cookies: necessary for platform operation (authentication, session, CSRF security). They cannot be disabled.\n\nPreference cookies: store your preferred language (Spanish, French, or English) and display settings.\n\nPerformance cookies: help us understand how the platform is used to improve its operation. They do not collect personally identifiable information.",
+      "purposeTitle": "Purpose of cookies",
+      "purposeContent": "Cookies are used to:\n- Keep your session securely logged in\n- Remember your preferred language\n- Protect against CSRF attacks\n- Improve performance and user experience\n- Remember the state of your in-progress forms",
+      "thirdPartyTitle": "Third-party cookies",
+      "thirdPartyContent": "The platform may include cookies from third-party services for payment processing (BANGE) and performance analytics. These services have their own privacy policies.",
+      "managementTitle": "Cookie management",
+      "managementContent": "You can manage cookies through your browser settings. Please note that disabling essential cookies will prevent normal use of the platform, including logging in and completing procedures.",
+      "contactTitle": "Contact",
+      "contactContent": "For inquiries about cookie usage, you can contact us through the platform's support module."
+    }
   }
 }

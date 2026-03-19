@@ -120,7 +120,7 @@ class CompanyRepository:
             JOIN user_company_roles ucr ON c.id = ucr.company_id
             WHERE ucr.user_id = $1
         """
-        total = await conn.fetchval(count_query, user_id)
+        total = await conn.fetchval(count_query, self._uid(user_id))
 
         data_query = """
             SELECT c.*,
@@ -137,7 +137,7 @@ class CompanyRepository:
             ORDER BY c.created_at DESC
             LIMIT $2 OFFSET $3
         """
-        results = await conn.fetch(data_query, user_id, limit, offset)
+        results = await conn.fetch(data_query, self._uid(user_id), limit, offset)
         return [dict(r) for r in results], total
 
     async def update(self, conn: asyncpg.Connection, company_id: str, update_data: CompanyUpdate) -> Optional[Dict[str, Any]]:

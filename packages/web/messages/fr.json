@@ -9872,5 +9872,66 @@
       "loading": "Recherche en cours...",
       "noResults": "Aucune entreprise trouvée avec les critères indiqués"
     }
+  },
+  "legalPages": {
+    "privacy": {
+      "title": "Politique de Confidentialité",
+      "lastUpdated": "Dernière mise à jour : mars 2026",
+      "intro": "La plateforme Facil, opérée par la Direction Générale des Impôts de Guinée Équatoriale, s'engage à protéger les données personnelles de ses utilisateurs conformément à la législation en vigueur.",
+      "dataCollectedTitle": "Données collectées",
+      "dataCollectedContent": "Nous collectons les données nécessaires à la prestation des services fiscaux et administratifs : nom complet, pièce d'identité (DIP/passeport), numéro d'identification fiscale (NIF), adresse, courriel, numéro de téléphone, et informations fiscales et commerciales selon la démarche demandée.",
+      "purposeTitle": "Finalité du traitement",
+      "purposeContent": "Les données sont utilisées exclusivement pour :\n- Gestion des démarches fiscales et administratives\n- Traitement des déclarations d'impôts\n- Émission de licences et certificats\n- Communications officielles relatives à vos démarches\n- Vérification d'identité et prévention de la fraude\n- Amélioration des services de la plateforme",
+      "legalBasisTitle": "Base juridique",
+      "legalBasisContent": "Le traitement des données repose sur le respect des obligations fiscales légales établies par la législation de Guinée Équatoriale, l'intérêt public dans l'administration fiscale efficace, et le consentement de l'utilisateur lors de son inscription sur la plateforme.",
+      "retentionTitle": "Conservation des données",
+      "retentionContent": "Les données personnelles sont conservées pendant la période légalement établie pour les obligations fiscales (minimum 5 ans), ou tant que nécessaire pour la finalité pour laquelle elles ont été collectées. Les données de compte sont maintenues tant que l'utilisateur dispose d'un compte actif.",
+      "sharingTitle": "Partage des données",
+      "sharingContent": "Les données peuvent être partagées avec :\n- Les ministères et organismes gouvernementaux compétents pour le traitement de vos demandes\n- Les établissements bancaires pour le traitement des paiements (BANGE)\n- Les prestataires technologiques sous accords de confidentialité\n\nAucune donnée n'est cédée à des tiers à des fins commerciales.",
+      "rightsTitle": "Droits de l'utilisateur",
+      "rightsContent": "Vous avez le droit d'accéder, de rectifier et de demander la suppression de vos données personnelles, ainsi que de limiter ou de vous opposer à leur traitement. Pour exercer ces droits, contactez le support via la plateforme ou à l'adresse indiquée ci-dessous.",
+      "securityTitle": "Mesures de sécurité",
+      "securityContent": "Nous mettons en œuvre des mesures techniques et organisationnelles pour protéger vos données : chiffrement des communications (TLS), stockage sécurisé avec chiffrement au repos, authentification à deux facteurs (2FA), contrôle d'accès basé sur les rôles (RBAC), et audit des accès.",
+      "contactTitle": "Contact",
+      "contactContent": "Pour toute question relative à la protection des données, vous pouvez nous contacter via le module de support de la plateforme ou à la Direction Générale des Impôts, Malabo, Guinée Équatoriale."
+    },
+    "terms": {
+      "title": "Conditions d'Utilisation",
+      "lastUpdated": "Dernière mise à jour : mars 2026",
+      "intro": "En utilisant la plateforme Facil, vous acceptez les conditions suivantes qui régissent l'accès et l'utilisation des services numériques de l'administration fiscale de Guinée Équatoriale.",
+      "acceptanceTitle": "Acceptation des conditions",
+      "acceptanceContent": "L'inscription et l'utilisation de la plateforme Facil impliquent l'acceptation intégrale de ces conditions. Si vous n'êtes pas d'accord, vous ne devez pas utiliser les services. L'utilisation continue après des modifications constitue l'acceptation des nouvelles conditions.",
+      "servicesTitle": "Services proposés",
+      "servicesContent": "Facil fournit des services numériques d'administration fiscale incluant :\n- Déclaration et paiement d'impôts (TVA, IRPF, Impôt sur les Sociétés, etc.)\n- Demande de démarches administratives (passeports, permis de conduire, titres de séjour, etc.)\n- Gestion des licences commerciales et obligations fiscales\n- Consultation de l'état des démarches et paiements\n- Prise de rendez-vous dans les bureaux gouvernementaux",
+      "accountTitle": "Compte utilisateur",
+      "accountContent": "L'utilisateur est responsable de la confidentialité de ses identifiants d'accès. Toute activité effectuée avec votre compte sera considérée comme réalisée par vous. En cas d'accès non autorisé, vous devez le signaler immédiatement via le module de support.",
+      "obligationsTitle": "Obligations de l'utilisateur",
+      "obligationsContent": "L'utilisateur s'engage à :\n- Fournir des informations véridiques, exactes et à jour\n- Ne pas utiliser la plateforme à des fins frauduleuses ou illégales\n- Respecter les obligations fiscales établies par la loi\n- Ne pas tenter d'accéder à des données ou fonctionnalités non autorisées\n- Respecter les délais légaux de déclaration et de paiement",
+      "intellectualPropertyTitle": "Propriété intellectuelle",
+      "intellectualPropertyContent": "Tout le contenu de la plateforme (logiciel, design, textes, logos) est la propriété de la République de Guinée Équatoriale ou de ses concédants. Sa reproduction, distribution ou modification sans autorisation expresse est interdite.",
+      "limitationsTitle": "Limitations de responsabilité",
+      "limitationsContent": "La plateforme est fournie avec la plus grande diligence possible. Toutefois, la disponibilité ininterrompue du service n'est pas garantie. L'administration ne sera pas responsable des dommages résultant d'interruptions techniques, d'erreurs de transmission ou de cas de force majeure. Les calculs fiscaux ont un caractère indicatif jusqu'à leur validation officielle.",
+      "modificationsTitle": "Modifications",
+      "modificationsContent": "Nous nous réservons le droit de modifier ces conditions. Les modifications seront publiées sur cette page avec la date de mise à jour. Les changements substantiels seront notifiés aux utilisateurs inscrits par courriel.",
+      "jurisdictionTitle": "Législation applicable",
+      "jurisdictionContent": "Ces conditions sont régies par la législation de la République de Guinée Équatoriale. Pour la résolution des litiges, les tribunaux de Malabo seront compétents."
+    },
+    "cookies": {
+      "title": "Politique de Cookies",
+      "lastUpdated": "Dernière mise à jour : mars 2026",
+      "intro": "Cette politique explique comment la plateforme Facil utilise les cookies et technologies similaires pour garantir le bon fonctionnement du service.",
+      "whatAreTitle": "Qu'est-ce que les cookies ?",
+      "whatAreContent": "Les cookies sont de petits fichiers texte stockés dans votre navigateur lorsque vous visitez un site web. Ils permettent de mémoriser vos préférences et d'améliorer votre expérience de navigation.",
+      "typesTitle": "Types de cookies utilisés",
+      "typesContent": "Cookies essentiels : nécessaires au fonctionnement de la plateforme (authentification, session, sécurité CSRF). Ils ne peuvent pas être désactivés.\n\nCookies de préférences : stockent votre langue préférée (espagnol, français ou anglais) et vos paramètres d'affichage.\n\nCookies de performance : nous aident à comprendre comment la plateforme est utilisée pour améliorer son fonctionnement. Ils ne collectent pas d'informations personnelles identifiables.",
+      "purposeTitle": "Finalité des cookies",
+      "purposeContent": "Les cookies sont utilisés pour :\n- Maintenir votre session connectée de manière sécurisée\n- Mémoriser votre langue préférée\n- Protéger contre les attaques CSRF\n- Améliorer les performances et l'expérience utilisateur\n- Mémoriser l'état de vos formulaires en cours",
+      "thirdPartyTitle": "Cookies tiers",
+      "thirdPartyContent": "La plateforme peut inclure des cookies de services tiers pour le traitement des paiements (BANGE) et l'analyse des performances. Ces services ont leurs propres politiques de confidentialité.",
+      "managementTitle": "Gestion des cookies",
+      "managementContent": "Vous pouvez gérer les cookies via les paramètres de votre navigateur. Notez que la désactivation des cookies essentiels empêchera l'utilisation normale de la plateforme, y compris la connexion et la réalisation de démarches.",
+      "contactTitle": "Contact",
+      "contactContent": "Pour toute question sur l'utilisation des cookies, vous pouvez nous contacter via le module de support de la plateforme."
+    }
   }
 }

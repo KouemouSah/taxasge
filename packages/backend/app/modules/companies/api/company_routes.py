@@ -369,10 +369,11 @@ async def update_company(
             )
             old_regimen = updated.get("regimen_fiscal", "pendiente")
             if classification.regimen_fiscal != old_regimen:
+                from uuid import UUID as _UUID
                 await db.execute(
                     "UPDATE companies SET regimen_fiscal = $2, commerce_type = $3, updated_at = NOW() "
                     "WHERE id = $1",
-                    company_id, classification.regimen_fiscal,
+                    _UUID(company_id), classification.regimen_fiscal,
                     classification.commerce_type,
                 )
                 updated["regimen_fiscal"] = classification.regimen_fiscal

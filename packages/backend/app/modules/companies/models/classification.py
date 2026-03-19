@@ -124,10 +124,10 @@ class DraftResponse(BaseModel):
     batch_id: Optional[UUID] = None
     company_data: Dict[str, Any] = {}
     regimen_fiscal: Optional[str] = None
-    classification_confidence: float = 0.0
+    classification_confidence: Optional[float] = 0.0
     classification_reason: Optional[str] = None
     classification_details: Dict[str, Any] = {}
-    extraction_confidence: float = 0.0
+    extraction_confidence: Optional[float] = 0.0
     extraction_details: Dict[str, Any] = Field(default_factory=dict)
     status: str
     reviewer_notes: Optional[str] = None
@@ -156,7 +156,7 @@ class ClassificationHistoryEntry(BaseModel):
     old_commerce_type: Optional[str] = None
     new_commerce_type: Optional[str] = None
     reason: str
-    confidence: float = 0.0
+    confidence: Optional[float] = 0.0
     triggered_by: str
     created_at: Optional[datetime] = None
 

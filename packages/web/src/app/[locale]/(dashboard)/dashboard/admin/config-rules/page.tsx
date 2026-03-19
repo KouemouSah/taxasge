@@ -201,8 +201,8 @@ export default function ConfigRulesPage() {
     switch (rule.configType) {
       case "penalty":
         setPenaltyRate(String(cfg.rate ?? 0))
-        setPenaltyGraceDays(String(cfg.grace_days ?? 0))
-        setPenaltyMaxRate(String(cfg.max_rate ?? 0))
+        setPenaltyGraceDays(String(cfg.graceDays ?? 0))
+        setPenaltyMaxRate(String(cfg.maxRate ?? 0))
         setPenaltyType(String(cfg.type ?? "percentage"))
         break
       case "deadline":
@@ -210,9 +210,9 @@ export default function ConfigRulesPage() {
         setDeadlineDay(String(cfg.day ?? 30))
         break
       case "installment":
-        setInstallmentMax(String(cfg.max_installments ?? 1))
+        setInstallmentMax(String(cfg.maxInstallments ?? 1))
         setInstallmentFrequency(String(cfg.frequency ?? "monthly"))
-        setInstallmentMinAmount(String(cfg.min_amount ?? 10000))
+        setInstallmentMinAmount(String(cfg.minAmount ?? 10000))
         break
       case "processing_mode":
         setProcessingMode(String(cfg.mode ?? "per_line"))
