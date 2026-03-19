@@ -252,6 +252,9 @@ async def get_company_analytics(
 ):
     """Rich cross-tabulated analytics for Sage ERP-quality dashboards.
 
+    Reads from mv_company_analytics (single-row JSONB MV) if available,
+    else falls back to 6 live queries in parallel.
+
     Returns:
       - by_zone_regime: companies grouped by zone × regime (stacked charts)
       - by_forma_juridica: companies by legal form (pie chart)
@@ -260,6 +263,20 @@ async def get_company_analytics(
       - top_debtors: top 10 companies by outstanding debt
       - monthly_trend: companies created per month (last 12 months)
     """
+    # ── Fast path: read from materialized view ──────────────────────
+    if await _mv_exists(db, "mv_company_analytics"):
+        row = await db.fetchrow("SELECT * FROM mv_company_analytics")
+        if row:
+            return {
+                "by_zone_regime": row["by_zone_regime"] or [],
+                "by_forma_juridica": row["by_forma_juridica"] or [],
+                "by_city": row["by_city"] or [],
+                "debt_by_fee_type": row["debt_by_fee_type"] or [],
+                "top_debtors": row["top_debtors"] or [],
+                "monthly_trend": row["monthly_trend"] or [],
+            }
+
+    # ── Fallback: 6 live queries in parallel ────────────────────────
     import asyncio
 
     async def fetch_zone_regime():
@@ -393,6 +410,7 @@ async def refresh_company_stats(
         "mv_company_stats_by_zone",
         "mv_obligation_stats_by_ministry",
         "mv_company_global_stats",
+        "mv_company_analytics",
     })
     refreshed = []
     for view_name in ALLOWED_VIEWS:

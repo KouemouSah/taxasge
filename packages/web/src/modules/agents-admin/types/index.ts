@@ -310,6 +310,7 @@ export interface AgentListFilters {
   is_supervisor?: boolean;
   ministry_id?: number;
   entity_id?: string;
+  entity_code?: string;
   agent_category?: 'dgi' | 'treasury' | 'entity' | 'ministry';
   is_active?: boolean;
   availability?: AgentAvailability;

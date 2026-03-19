@@ -162,6 +162,7 @@ export const agentProfilesApi = {
       if (filters.is_supervisor !== undefined) params.append('is_supervisor', String(filters.is_supervisor));
       if (filters.ministry_id) params.append('ministry_id', String(filters.ministry_id));
       if (filters.entity_id) params.append('entity_id', filters.entity_id);
+      if (filters.entity_code) params.append('entity_code', filters.entity_code);
       if (filters.agent_category) params.append('agent_category', filters.agent_category);
       if (filters.is_active !== undefined) params.append('is_active', String(filters.is_active));
       if (filters.availability) params.append('availability', filters.availability);

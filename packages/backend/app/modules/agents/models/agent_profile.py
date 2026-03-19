@@ -168,6 +168,7 @@ class AgentListFilters(BaseModel):
     is_supervisor: Optional[bool] = None
     ministry_id: Optional[int] = None
     entity_id: Optional[UUID] = None
+    entity_code: Optional[str] = None  # Filter by entity code (e.g. CNEDOGE, DGT)
     is_active: Optional[bool] = True
     agent_category: Optional[str] = None  # dgi, treasury, entity, ministry
     availability: Optional[str] = None

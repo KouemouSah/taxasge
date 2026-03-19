@@ -26,7 +26,8 @@ const FORMA_LABELS: Record<string, string> = {
   empresa_individual: 'Emp. Individual',
 }
 
-const FORMA_OPTIONS = [
+// Forma juridica filter options — reserved for future forma_juridica filter dropdown
+const _FORMA_OPTIONS = [
   { value: 'autonomo', label: 'Autónomo' },
   { value: 'sociedad_limitada', label: 'Sociedad Limitada' },
   { value: 'sociedad_anonima', label: 'Sociedad Anónima' },

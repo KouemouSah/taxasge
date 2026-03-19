@@ -100,6 +100,7 @@ export default function AgentsPage() {
     is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
     is_supervisor: supervisorFilter === 'all' ? undefined : supervisorFilter === 'yes',
     availability: availabilityFilter !== 'all' ? availabilityFilter as AgentAvailability : undefined,
+    entity_code: entityFilter !== 'all' ? entityFilter : undefined,
     search: debouncedSearch || undefined,
     page: agentPage,
     page_size: agentPageSize,
@@ -132,10 +133,8 @@ export default function AgentsPage() {
     ).values()
   ).sort((a, b) => a.code.localeCompare(b.code));
 
-  // Server-side search + pagination — only entity filter remains client-side
-  const filteredAgents = entityFilter === 'all'
-    ? agents
-    : agents.filter((agent) => agent.entity_code === entityFilter);
+  // All filters are now server-side (entity_code included)
+  const filteredAgents = agents;
 
   // Admins are fully server-side filtered (search + pagination)
   const filteredAdmins = admins;

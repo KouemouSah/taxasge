@@ -996,10 +996,9 @@ class FiscalServiceRepository:
         self, conn: asyncpg.Connection, services: List[Any], created_by: str
     ) -> Dict[str, Any]:
         """
-        Bulk create fiscal services
+        Bulk create fiscal services (batch approach — no N+1)
 
-        Migrated from legacy /api/v1/taxes/bulk/import
-        Aligned with DATABASE_SCHEMA_REFERENCE.md
+        Fetches all existing codes in one query, then inserts only new ones.
 
         Args:
             conn: Database connection
@@ -1009,36 +1008,44 @@ class FiscalServiceRepository:
         Returns:
             Dict with successful and failed counts
         """
-        successful = 0
-        failed = 0
+        if not services:
+            return {"successful": 0, "failed": 0, "errors": []}
+
+        # 1. Fetch ALL existing codes in one query
+        all_codes = [s.service_code for s in services]
+        existing_rows = await conn.fetch(
+            "SELECT service_code FROM fiscal_services WHERE service_code = ANY($1)",
+            all_codes,
+        )
+        existing_codes = {row["service_code"] for row in existing_rows}
+
+        # 2. Separate existing (skip) from new (insert)
         errors = []
-
+        to_create = []
         for service in services:
-            try:
-                # Check if code already exists
-                existing = await self.get_by_code(conn, service.service_code)
-                if existing:
-                    failed += 1
-                    errors.append({
-                        "code": service.service_code,
-                        "error": "Service code already exists"
-                    })
-                    continue
+            if service.service_code in existing_codes:
+                errors.append({
+                    "code": service.service_code,
+                    "error": "Service code already exists"
+                })
+            else:
+                to_create.append(service)
 
-                # Create service
+        # 3. Insert new items individually (create() has complex field mapping)
+        successful = 0
+        for service in to_create:
+            try:
                 await self.create(conn, service)
                 successful += 1
-
             except Exception as e:
-                failed += 1
                 errors.append({
-                    "code": service.code if hasattr(service, 'code') else "unknown",
+                    "code": service.service_code if hasattr(service, 'service_code') else "unknown",
                     "error": str(e)
                 })
 
         return {
             "successful": successful,
-            "failed": failed,
+            "failed": len(errors),
             "errors": errors
         }
 
@@ -1050,10 +1057,7 @@ class FiscalServiceRepository:
         updated_by: str
     ) -> Dict[str, int]:
         """
-        Bulk update service status
-
-        Migrated from legacy /api/v1/taxes/bulk/update-status
-        Aligned with DATABASE_SCHEMA_REFERENCE.md
+        Bulk update service status (single query — no N+1)
 
         Args:
             conn: Database connection
@@ -1064,28 +1068,30 @@ class FiscalServiceRepository:
         Returns:
             Dict with updated and failed counts
         """
-        updated = 0
-        failed = 0
+        if not service_ids:
+            return {"updated": 0, "failed": 0}
 
-        for service_id in service_ids:
-            try:
-                result = await conn.execute("""
-                    UPDATE fiscal_services
-                    SET status = $1, updated_at = NOW(), updated_by = $2
-                    WHERE id = $3
-                """, new_status.value, updated_by, service_id)
+        # Convert to int list for ANY($1::int[])
+        int_ids = [int(sid) for sid in service_ids]
 
-                if result == "UPDATE 1":
-                    updated += 1
-                else:
-                    failed += 1
+        result = await conn.execute(
+            """
+            UPDATE fiscal_services
+            SET status = $1, updated_at = NOW(), updated_by = $2
+            WHERE id = ANY($3::int[])
+            """,
+            new_status.value,
+            updated_by,
+            int_ids,
+        )
 
-            except Exception:
-                failed += 1
+        # result is like "UPDATE N"
+        updated_count = int(result.split(" ")[1]) if result else 0
+        failed_count = len(int_ids) - updated_count
 
         return {
-            "updated": updated,
-            "failed": failed
+            "updated": updated_count,
+            "failed": failed_count
         }
 
     # ========== DOCUMENT ASSIGNMENTS ==========
