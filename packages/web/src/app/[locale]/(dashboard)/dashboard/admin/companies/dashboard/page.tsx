@@ -381,7 +381,6 @@ export default function AdminCompaniesDashboardPage() {
               </table>
             </CardContent>
           </Card>
-        </TabsContent>
 
           {/* Analytics: Top debtors + Fee type debt + Monthly trend */}
           {analytics && (

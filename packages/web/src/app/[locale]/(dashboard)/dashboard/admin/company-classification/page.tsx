@@ -8,6 +8,7 @@ import {
   ChevronLeft, ChevronRight, ThumbsUp, ThumbsDown,
   MessageSquare, Bot, Eye, MapPin,
 } from 'lucide-react'
+import { Doughnut as DoughnutChart } from 'react-chartjs-2'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -354,16 +355,16 @@ function ConfirmActionDialog({
 // ── Stats Tab ────────────────────────────────────────────────────────────────
 
 function StatsTab({ stats, t }: { stats: ClassificationStats | null; t: ReturnType<typeof useTranslations> }) {
-  if (!stats) return <div className="p-8 text-center text-muted-foreground">{t('companyClassification.loading')}</div>
-
-  // Lazy import chart.js (only for stats tab)
-  const [ChartReady, setChartReady] = useState(false)
+  // Hooks MUST be called before any conditional return
+  const [chartReady, setChartReady] = useState(false)
   useEffect(() => {
     import('chart.js').then(({ Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement }) => {
       Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement)
       setChartReady(true)
     })
   }, [])
+
+  if (!stats) return <div className="p-8 text-center text-muted-foreground">{t('companyClassification.loading')}</div>
 
   const regimeEntries = Object.entries(stats.byRegimen || {})
   const total = stats.totalCompanies || 1
@@ -452,30 +453,24 @@ function StatsTab({ stats, t }: { stats: ClassificationStats | null; t: ReturnTy
             <CardTitle className="text-xs">{t('companyClassification.regimeDistribution')}</CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-2">
-            {ChartReady && regimeEntries.length > 0 ? (
+            {chartReady && regimeEntries.length > 0 ? (
               <div className="h-[160px]">
-                {(() => {
-                  const { Doughnut } = require('react-chartjs-2')
-                  return (
-                    <Doughnut
-                      data={{
-                        labels: regimeEntries.map(([r]) => r.charAt(0).toUpperCase() + r.slice(1)),
-                        datasets: [{
-                          data: regimeEntries.map(([, c]) => c),
-                          backgroundColor: regimeEntries.map(([r]) => REGIME_CHART_COLORS[r] || '#6b7280'),
-                          borderWidth: 0, hoverOffset: 6,
-                        }],
-                      }}
-                      options={{
-                        cutout: '60%', responsive: true, maintainAspectRatio: false,
-                        plugins: {
-                          legend: { position: 'right', labels: { boxWidth: 8, padding: 4, font: { size: 9 } } },
-                          tooltip: { callbacks: { label: (ctx: { label: string; parsed: number }) => `${ctx.label}: ${ctx.parsed} (${((ctx.parsed / total) * 100).toFixed(1)}%)` } },
-                        },
-                      }}
-                    />
-                  )
-                })()}
+                <DoughnutChart
+                  data={{
+                    labels: regimeEntries.map(([r]) => r.charAt(0).toUpperCase() + r.slice(1)),
+                    datasets: [{
+                      data: regimeEntries.map(([, c]) => c),
+                      backgroundColor: regimeEntries.map(([r]) => REGIME_CHART_COLORS[r] || '#6b7280'),
+                      borderWidth: 0, hoverOffset: 6,
+                    }],
+                  }}
+                  options={{
+                    cutout: '60%', responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: 'right' as const, labels: { boxWidth: 8, padding: 4, font: { size: 9 } } },
+                    },
+                  }}
+                />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground py-8 text-center">{t('companyClassification.noData')}</p>
