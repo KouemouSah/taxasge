@@ -68,13 +68,13 @@ export default function AgentsPage() {
   const [selectedAgent, setSelectedAgent] = useState<AgentProfile | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  // Pagination state
+  // Pagination state — server-side
   const [agentPage, setAgentPage] = useState(1);
-  const [agentPageSize, setAgentPageSize] = useState(10);
+  const agentPageSize = 20;
   const [adminPage, setAdminPage] = useState(1);
-  const [adminPageSize, setAdminPageSize] = useState(10);
+  const adminPageSize = 20;
 
-  // Queries
+  // Queries — server-side pagination (20 per page, supports 1M+ agents)
   const {
     data: agentsData, isLoading: agentsLoading, error: agentsError, refetch: refetchAgents,
   } = useAgentProfiles({
@@ -82,13 +82,13 @@ export default function AgentsPage() {
     is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
     is_supervisor: supervisorFilter === 'all' ? undefined : supervisorFilter === 'yes',
     availability: availabilityFilter !== 'all' ? availabilityFilter as AgentAvailability : undefined,
-    page: 1,
-    page_size: 100,
+    page: agentPage,
+    page_size: agentPageSize,
   });
 
   const {
     data: adminsData, isLoading: adminsLoading, error: adminsError, refetch: refetchAdmins,
-  } = useAdminUsers(1, 100);
+  } = useAdminUsers(adminPage, adminPageSize);
 
   const { data: alertsDashboard, isLoading: alertsLoading } = useAlertsDashboard();
 
@@ -101,8 +101,10 @@ export default function AgentsPage() {
 
   const agents = agentsData?.items || [];
   const admins = adminsData?.items || [];
+  const agentTotal = agentsData?.total || 0;
+  const adminTotal = adminsData?.total || 0;
 
-  // Unique entities for filter dropdown (derived from loaded agents)
+  // Unique entities for filter dropdown (derived from current page — approximate)
   const uniqueEntities = Array.from(
     new Map(
       agents
@@ -111,6 +113,8 @@ export default function AgentsPage() {
     ).values()
   ).sort((a, b) => a.code.localeCompare(b.code));
 
+  // Server-side pagination — data is already filtered by page/type/status/availability
+  // Client-side search + entity filter on current page only
   const filteredAgents = agents.filter((agent) => {
     const matchesSearch =
       !searchQuery ||
@@ -128,18 +132,12 @@ export default function AgentsPage() {
     return matchesSearch;
   });
 
-  // Paginated slicing
-  const agentTotalPages = Math.max(1, Math.ceil(filteredAgents.length / agentPageSize));
-  const paginatedAgents = useMemo(() => {
-    const start = (agentPage - 1) * agentPageSize;
-    return filteredAgents.slice(start, start + agentPageSize);
-  }, [filteredAgents, agentPage, agentPageSize]);
+  // Server-side pagination totals
+  const agentTotalPages = Math.max(1, Math.ceil(agentTotal / agentPageSize));
+  const paginatedAgents = filteredAgents; // Already paginated by server
 
-  const adminTotalPages = Math.max(1, Math.ceil(filteredAdmins.length / adminPageSize));
-  const paginatedAdmins = useMemo(() => {
-    const start = (adminPage - 1) * adminPageSize;
-    return filteredAdmins.slice(start, start + adminPageSize);
-  }, [filteredAdmins, adminPage, adminPageSize]);
+  const adminTotalPages = Math.max(1, Math.ceil(adminTotal / adminPageSize));
+  const paginatedAdmins = filteredAdmins; // Already paginated by server
 
   // Reset page when filters change
   const resetAgentPage = () => setAgentPage(1);
@@ -534,30 +532,17 @@ export default function AgentsPage() {
               {filteredAgents.length > 0 && (
                 <div className="flex items-center justify-between pt-4">
                   <span className="text-sm text-muted-foreground">
-                    {tCommon('showing')} {(agentPage - 1) * agentPageSize + 1}-{Math.min(agentPage * agentPageSize, filteredAgents.length)} {tCommon('of')} {filteredAgents.length}
+                    {tCommon('showing')} {(agentPage - 1) * agentPageSize + 1}-{Math.min(agentPage * agentPageSize, agentTotal)} {tCommon('of')} {agentTotal}
                   </span>
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{tCommon('rowsPerPage')}</span>
-                      <Select value={String(agentPageSize)} onValueChange={(v) => { setAgentPageSize(Number(v)); setAgentPage(1); }}>
-                        <SelectTrigger className="h-8 w-[70px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent side="top">
-                          {[10, 20, 30].map((s) => (
-                            <SelectItem key={s} value={String(s)}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <span className="text-sm text-muted-foreground">
                       {tCommon('page')} {agentPage} {tCommon('of')} {agentTotalPages}
                     </span>
                     <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgentPage(p => Math.max(1, p - 1))} disabled={agentPage === 1}>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgentPage(p => Math.max(1, p - 1))} disabled={agentPage === 1 || agentsLoading}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgentPage(p => Math.min(agentTotalPages, p + 1))} disabled={agentPage === agentTotalPages}>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAgentPage(p => Math.min(agentTotalPages, p + 1))} disabled={agentPage === agentTotalPages || agentsLoading}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -681,30 +666,17 @@ export default function AgentsPage() {
               {filteredAdmins.length > 0 && (
                 <div className="flex items-center justify-between pt-4">
                   <span className="text-sm text-muted-foreground">
-                    {tCommon('showing')} {(adminPage - 1) * adminPageSize + 1}-{Math.min(adminPage * adminPageSize, filteredAdmins.length)} {tCommon('of')} {filteredAdmins.length}
+                    {tCommon('showing')} {(adminPage - 1) * adminPageSize + 1}-{Math.min(adminPage * adminPageSize, adminTotal)} {tCommon('of')} {adminTotal}
                   </span>
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{tCommon('rowsPerPage')}</span>
-                      <Select value={String(adminPageSize)} onValueChange={(v) => { setAdminPageSize(Number(v)); setAdminPage(1); }}>
-                        <SelectTrigger className="h-8 w-[70px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent side="top">
-                          {[10, 20, 30].map((s) => (
-                            <SelectItem key={s} value={String(s)}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <span className="text-sm text-muted-foreground">
                       {tCommon('page')} {adminPage} {tCommon('of')} {adminTotalPages}
                     </span>
                     <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAdminPage(p => Math.max(1, p - 1))} disabled={adminPage === 1}>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAdminPage(p => Math.max(1, p - 1))} disabled={adminPage === 1 || adminsLoading}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAdminPage(p => Math.min(adminTotalPages, p + 1))} disabled={adminPage === adminTotalPages}>
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setAdminPage(p => Math.min(adminTotalPages, p + 1))} disabled={adminPage === adminTotalPages || adminsLoading}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>

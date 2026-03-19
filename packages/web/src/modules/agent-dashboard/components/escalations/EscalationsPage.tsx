@@ -128,6 +128,8 @@ export function EscalationsPage({ entityCode, basePath }: EscalationsPageProps) 
   const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['my-escalations', includeResolved],
     queryFn: () => agentRequestsApi.getMyEscalations({ includeResolved, pageSize: 100 }),
+    // TODO: backend returns flat array, not paginated response. Needs backend refactor
+    // to return {items, total, page} for proper server-side pagination.
     staleTime: 30_000,
   });
 
