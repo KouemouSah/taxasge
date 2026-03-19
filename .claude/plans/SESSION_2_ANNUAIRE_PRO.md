@@ -65,9 +65,51 @@ Transformer la page /annuaire basique en un annuaire professionnel de production
 - [x] Cards `active:shadow-sm` — feedback tactile
 
 ### Validation
+- [x] ESLint : 0 erreurs (annuaire + hook)
+- [x] TypeScript : 0 erreurs
+- [x] Python syntax : OK
 - [ ] Test avec 50+ companies — tous les filtres fonctionnent
 - [ ] Test cascade Provincia → Ciudad
 - [ ] Test performance : debounce < 400ms, réponse < 200ms
 - [ ] Test mobile responsive
-- [ ] ESLint : 0 erreurs
-- [ ] TypeScript : 0 erreurs
+
+## Audit post-implémentation (2026-03-20)
+
+### Bugs trouvés et corrigés
+
+| Bug | Sévérité | Correction |
+|-----|----------|------------|
+| **Flash résultats incohérents** — `setPage(1)` sur keystroke déclenchait une requête intermédiaire avec page=1 + ancien query pendant le debounce (350ms) | CRITIQUE | Page reset déplacé dans `useEffect` sur `debouncedQuery` (pas sur keystroke) |
+| **`Dict` import inutilisé** (Python backend) — risque lint CI | Modéré | Supprimé de `company_public_routes.py` |
+| **Forma labels incomplètes** — formas inconnues (ex: `asociacion`, `empresa_publica`) → badge invisible | Modéré | Fallback ajouté : `{ label: f, color: 'bg-gray-50 text-gray-600 border-gray-200' }` |
+| **Sheet ARIA manquant** — Radix Dialog warning console en dev (missing Description) | Modéré | `SheetDescription` sr-only ajouté au bottom sheet mobile |
+
+### Faux positifs identifiés (pas de bug)
+
+| Point soulevé | Pourquoi c'est un faux positif |
+|---------------|-------------------------------|
+| UUID serialization Redis crash | `json.dumps(value, default=str)` convertit UUIDs en strings. FastAPI fait pareil. Frontend type `string`. Résultat identique |
+| Provincia stale data flash | React Query ne retourne PAS les données d'un ancien queryKey pour un nouveau key. Quand queryKey change, `isLoading` repasse à `true` |
+| Prefetch error handling manquant | `prefetchQuery` de React Query gère ses erreurs en interne (silencieux par design) |
+| SQL injection sort_by | Whitelist `allowed_sort.get()` avec fallback — déjà sécurisé |
+
+### Points acceptés (dette technique mineure)
+
+| Point | Impact | Justification |
+|-------|--------|---------------|
+| Kanban requêtes dupliquées sur toggle rapide | Réseau gaspillé (pas de crash) | `seqRef` empêche les updates stale. Cache Redis 30s absorbe les doublons. Kanban masqué sur mobile |
+| Filtres dropdowns désormais instantanés (vs 350ms debounced avant) | Changement comportemental | Intentionnel : sélection dropdown = action délibérée, pas besoin de debounce |
+| Translation key `loading` inutilisée | Code mort | Skeleton loaders remplacent le texte loading. Clé conservée pour compatibilité |
+
+### Fichiers modifiés (Session 2 complète)
+
+| Fichier | Type | Lignes |
+|---------|------|--------|
+| `packages/web/src/app/[locale]/(public)/annuaire/page.tsx` | Refonte complète | ~740 |
+| `packages/web/src/app/[locale]/(public)/annuaire/layout.tsx` | **Nouveau** (SEO) | ~35 |
+| `packages/web/src/modules/companies/hooks/useAnnuaireSearch.ts` | **Nouveau** (React Query) | ~110 |
+| `packages/backend/app/modules/companies/api/company_public_routes.py` | Cache Redis | +90 |
+| `packages/web/messages/es.json` | +7 clés annuaire | — |
+| `packages/web/messages/fr.json` | +7 clés annuaire | — |
+| `packages/web/messages/en.json` | +7 clés annuaire | — |
+| `.claude/plans/SESSION_2_ANNUAIRE_PRO.md` | Plan mis à jour | — |
