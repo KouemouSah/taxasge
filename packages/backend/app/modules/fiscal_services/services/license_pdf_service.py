@@ -1,12 +1,13 @@
 """
 License PDF Service — Generate commercial license dossier PDFs.
 
-Generates A4 PDFs for commercial licenses with:
-- Company details (legal_name, NIF/PE, zone, activity)
-- License details (bundle, commerce_type, compliance score)
-- Obligations table (fee_type, ministry, amount, penalty, status)
-- Totals (amount, penalties, paid, balance)
-- QR code with HMAC verification
+Generates compact A4 PDFs (target: 1 page) for commercial licenses with:
+- Company details (2-column layout)
+- Obligations grouped by ministry (sub-lines instead of repeating)
+- Conditional fields: bundle/commerce_type only for bundle regime
+- Hidden deadline if fully paid, penalty column always visible
+- Validation seal: QR code + PAGADO badge + compliance progress bar
+- Page numbering for multi-page documents
 
 Reuses the existing PDF infrastructure (xhtml2pdf + Jinja2 + qrcode).
 """
@@ -16,6 +17,7 @@ import hashlib
 import hmac
 import io
 import os
+from collections import OrderedDict
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -48,7 +50,7 @@ except ImportError:
 
 TRANSLATIONS = {
     "es": {
-        "title": "Dossier de Licencia Comercial",
+        "title": "Licencia Comercial",
         "subtitle": "República de Guinea Ecuatorial — Sistema Facil",
         "fiscal_year": "Año Fiscal",
         "printed": "Impreso",
@@ -59,14 +61,10 @@ TRANSLATIONS = {
         "regime": "Régimen Fiscal",
         "zone": "Zona Comercial",
         "activity": "Actividad",
-        "license_details": "DETALLES DE LA LICENCIA",
         "bundle": "Paquete",
         "commerce_type": "Tipo de Comercio",
-        "deadline": "Fecha Límite",
-        "compliance_score": "Score de Cumplimiento",
         "obligations": "OBLIGACIONES FISCALES",
-        "fee_type": "Tipo de Tasa",
-        "ministry": "Ministerio",
+        "fee_type": "Servicio / Tasa",
         "due_date": "Vencimiento",
         "amount": "Monto",
         "penalty": "Penalidad",
@@ -75,9 +73,13 @@ TRANSLATIONS = {
         "penalties": "Penalidades",
         "paid": "Pagado",
         "balance": "Saldo Pendiente",
-        "qr_caption": "Escanee para verificar la autenticidad de este documento",
+        "compliance_score": "Cumplimiento",
+        "badge_paid": "PAGADO",
+        "badge_pending": "PENDIENTE",
+        "badge_overdue": "VENCIDO",
+        "qr_caption": "Escanee para verificar",
         "footer_line1": "Documento generado por el sistema Facil — Gobierno de Guinea Ecuatorial",
-        "footer_line2": "Este documento tiene carácter informativo. Para trámites oficiales, acuda a la oficina correspondiente.",
+        "footer_line2": "Documento informativo. Para trámites oficiales, acuda a la oficina correspondiente.",
         "status_paid": "Pagado",
         "status_pending": "Pendiente",
         "status_overdue": "Vencido",
@@ -87,7 +89,7 @@ TRANSLATIONS = {
         "status_cancelled": "Cancelado",
     },
     "fr": {
-        "title": "Dossier de Licence Commerciale",
+        "title": "Licence Commerciale",
         "subtitle": "République de Guinée Équatoriale — Système Facil",
         "fiscal_year": "Année Fiscale",
         "printed": "Imprimé",
@@ -98,14 +100,10 @@ TRANSLATIONS = {
         "regime": "Régime Fiscal",
         "zone": "Zone Commerciale",
         "activity": "Activité",
-        "license_details": "DÉTAILS DE LA LICENCE",
         "bundle": "Forfait",
         "commerce_type": "Type de Commerce",
-        "deadline": "Date Limite",
-        "compliance_score": "Score de Conformité",
         "obligations": "OBLIGATIONS FISCALES",
-        "fee_type": "Type de Taxe",
-        "ministry": "Ministère",
+        "fee_type": "Service / Taxe",
         "due_date": "Échéance",
         "amount": "Montant",
         "penalty": "Pénalité",
@@ -114,9 +112,13 @@ TRANSLATIONS = {
         "penalties": "Pénalités",
         "paid": "Payé",
         "balance": "Solde Restant",
-        "qr_caption": "Scannez pour vérifier l'authenticité de ce document",
+        "compliance_score": "Conformité",
+        "badge_paid": "PAYÉ",
+        "badge_pending": "EN ATTENTE",
+        "badge_overdue": "EN RETARD",
+        "qr_caption": "Scannez pour vérifier",
         "footer_line1": "Document généré par le système Facil — Gouvernement de Guinée Équatoriale",
-        "footer_line2": "Ce document est à titre informatif. Pour les démarches officielles, rendez-vous au bureau compétent.",
+        "footer_line2": "Document informatif. Pour les démarches officielles, rendez-vous au bureau compétent.",
         "status_paid": "Payé",
         "status_pending": "En attente",
         "status_overdue": "En retard",
@@ -126,7 +128,7 @@ TRANSLATIONS = {
         "status_cancelled": "Annulé",
     },
     "en": {
-        "title": "Commercial License Dossier",
+        "title": "Commercial License",
         "subtitle": "Republic of Equatorial Guinea — Facil System",
         "fiscal_year": "Fiscal Year",
         "printed": "Printed",
@@ -137,14 +139,10 @@ TRANSLATIONS = {
         "regime": "Tax Regime",
         "zone": "Commerce Zone",
         "activity": "Activity",
-        "license_details": "LICENSE DETAILS",
         "bundle": "Bundle",
         "commerce_type": "Commerce Type",
-        "deadline": "Deadline",
-        "compliance_score": "Compliance Score",
         "obligations": "TAX OBLIGATIONS",
-        "fee_type": "Fee Type",
-        "ministry": "Ministry",
+        "fee_type": "Service / Fee",
         "due_date": "Due Date",
         "amount": "Amount",
         "penalty": "Penalty",
@@ -153,9 +151,13 @@ TRANSLATIONS = {
         "penalties": "Penalties",
         "paid": "Paid",
         "balance": "Outstanding Balance",
-        "qr_caption": "Scan to verify the authenticity of this document",
+        "compliance_score": "Compliance",
+        "badge_paid": "PAID",
+        "badge_pending": "PENDING",
+        "badge_overdue": "OVERDUE",
+        "qr_caption": "Scan to verify",
         "footer_line1": "Document generated by the Facil system — Government of Equatorial Guinea",
-        "footer_line2": "This document is for informational purposes. For official procedures, visit the corresponding office.",
+        "footer_line2": "Informational document. For official procedures, visit the corresponding office.",
         "status_paid": "Paid",
         "status_pending": "Pending",
         "status_overdue": "Overdue",
@@ -164,15 +166,6 @@ TRANSLATIONS = {
         "status_waived": "Waived",
         "status_cancelled": "Cancelled",
     },
-}
-
-STATUS_CLASS_MAP = {
-    "open": "open",
-    "partial": "open",
-    "complete": "complete",
-    "overdue": "overdue",
-    "suspended": "suspended",
-    "closed": "complete",
 }
 
 
@@ -184,6 +177,27 @@ def _format_amount(amount) -> str:
         return f"{formatted} XAF"
     except Exception:
         return "0 XAF"
+
+
+def _get_verification_secret() -> str:
+    """
+    Return the permanent HMAC secret for license verification tokens.
+
+    Priority:
+      1. RECEIPT_VERIFICATION_SECRET (dedicated, permanent)
+      2. JWT_SECRET_KEY (permanent in .env)
+
+    NEVER fall back to SECRET_KEY: it regenerates on every Cloud Run startup
+    and would invalidate all existing QR codes after each deployment.
+    """
+    from app.config import settings
+    secret = getattr(settings, 'RECEIPT_VERIFICATION_SECRET', None)
+    if secret:
+        return secret
+    jwt_key = getattr(settings, 'JWT_SECRET_KEY', None)
+    if jwt_key:
+        return jwt_key
+    return 'taxasge-verify-fallback-key'
 
 
 class LicensePDFService:
@@ -205,7 +219,6 @@ class LicensePDFService:
 
     def _get_logo_base64(self) -> str:
         if self._logo_base64 is None:
-            # Try multiple logo paths
             for logo_path in [
                 Path(__file__).parent.parent.parent / "service_requests" / "templates" / "logo.png",
                 Path(__file__).parent.parent.parent.parent.parent.parent / "packages" / "web" / "public" / "logo.png",
@@ -224,7 +237,7 @@ class LicensePDFService:
         try:
             qr = qrcode.QRCode(
                 version=1, error_correction=ERROR_CORRECT_H,
-                box_size=6, border=2,
+                box_size=5, border=2,
             )
             qr.add_data(verification_url)
             qr.make(fit=True)
@@ -236,15 +249,82 @@ class LicensePDFService:
             logger.warning(f"QR generation failed: {e}")
             return ""
 
-    def _generate_verification_token(self, license_id: str, amount: str) -> str:
-        """HMAC-SHA256 verification token."""
-        from app.config import get_settings
-        settings = get_settings()
-        secret = getattr(settings, 'secret_key', 'facil-default')
+    @staticmethod
+    def generate_verification_token(license_id: str, amount: str) -> str:
+        """HMAC-SHA256 verification token using permanent secret."""
+        secret = _get_verification_secret()
         message = f"license-verify|{license_id}|{amount}"
         return hmac.new(
             secret.encode(), message.encode(), hashlib.sha256
         ).hexdigest()[:16]
+
+    @staticmethod
+    def verify_license_token(license_id: str, amount: str, provided_token: str) -> bool:
+        """Verify HMAC token for license verification."""
+        expected = LicensePDFService.generate_verification_token(license_id, amount)
+        return hmac.compare_digest(expected, provided_token)
+
+    def _group_obligations_by_ministry(
+        self, obligations_rows: list, texts: dict
+    ) -> tuple:
+        """Group obligations by ministry, compute totals and flags.
+
+        Returns (obligation_groups, total_amount, total_penalties, total_paid,
+                 has_any_penalty, is_fully_paid, is_overdue, obligation_count).
+        """
+        total_amount = Decimal("0")
+        total_penalties = Decimal("0")
+        total_paid = Decimal("0")
+        has_any_penalty = False
+        is_overdue = False
+        obligation_count = len(obligations_rows)
+
+        # Group by ministry (preserve insertion order)
+        ministry_map: Dict[str, List[Dict[str, Any]]] = OrderedDict()
+
+        for ob in obligations_rows:
+            amt = Decimal(str(ob["amount"] or 0))
+            pen = Decimal(str(ob["penalty_amount"] or 0))
+            total_amount += amt
+            total_penalties += pen
+            if ob["status"] in ("paid", "completed"):
+                total_paid += amt
+            if ob["status"] == "overdue":
+                is_overdue = True
+            if pen > 0:
+                has_any_penalty = True
+
+            status_key = f"status_{ob['status']}" if f"status_{ob['status']}" in texts else "status_pending"
+            status_class = "paid" if ob["status"] in ("paid", "completed") else (
+                "overdue" if ob["status"] == "overdue" else "pending"
+            )
+
+            ministry_name = ob["ministry_name"] or "Otros"
+            if ministry_name not in ministry_map:
+                ministry_map[ministry_name] = []
+
+            ministry_map[ministry_name].append({
+                "fee_type": ob["fee_type"] or "-",
+                "due_date": str(ob["due_date"]) if ob["due_date"] else "-",
+                "amount_formatted": _format_amount(amt),
+                "penalty_formatted": _format_amount(pen) if pen > 0 else "--",
+                "has_penalty": pen > 0,
+                "status_label": texts.get(status_key, ob["status"]),
+                "status_class": status_class,
+            })
+
+        balance = total_amount - total_paid
+        is_fully_paid = balance <= 0 and total_amount > 0
+
+        obligation_groups = [
+            {"ministry_name": name, "items": items}
+            for name, items in ministry_map.items()
+        ]
+
+        return (
+            obligation_groups, total_amount, total_penalties, total_paid,
+            has_any_penalty, is_fully_paid, is_overdue, obligation_count,
+        )
 
     async def generate_license_pdf(
         self,
@@ -252,7 +332,7 @@ class LicensePDFService:
         license_id: str,
         language: str = "es",
     ) -> bytes:
-        """Generate a complete license dossier PDF.
+        """Generate a compact license dossier PDF (target: 1 page A4).
 
         Fetches all data from DB and renders the HTML template → PDF.
         """
@@ -288,59 +368,30 @@ class LicensePDFService:
             FROM license_obligations lo
             LEFT JOIN ministries m ON lo.ministry_id = m.id
             WHERE lo.license_id = $1
-            ORDER BY lo.fee_type, lo.due_date
+            ORDER BY m.name_es NULLS LAST, lo.fee_type, lo.due_date
         """, UUID(license_id))
 
-        # Prepare obligations data
-        obligations = []
-        total_amount = Decimal("0")
-        total_penalties = Decimal("0")
-        total_paid = Decimal("0")
-
-        for ob in obligations_rows:
-            amt = Decimal(str(ob["amount"] or 0))
-            pen = Decimal(str(ob["penalty_amount"] or 0))
-            total_amount += amt
-            total_penalties += pen
-            if ob["status"] in ("paid", "completed"):
-                total_paid += amt
-
-            status_key = f"status_{ob['status']}" if f"status_{ob['status']}" in texts else "status_pending"
-            status_class = "paid" if ob["status"] in ("paid", "completed") else (
-                "overdue" if ob["status"] == "overdue" else "pending"
-            )
-
-            obligations.append({
-                "fee_type": ob["fee_type"] or "-",
-                "ministry_name": ob["ministry_name"] or "-",
-                "due_date": str(ob["due_date"]) if ob["due_date"] else "-",
-                "amount_formatted": _format_amount(amt),
-                "penalty_formatted": _format_amount(pen) if pen > 0 else "-",
-                "status_label": texts.get(status_key, ob["status"]),
-                "status_class": status_class,
-            })
+        # Group obligations by ministry + compute totals
+        (
+            obligation_groups, total_amount, total_penalties, total_paid,
+            has_any_penalty, is_fully_paid, is_overdue, obligation_count,
+        ) = self._group_obligations_by_ministry(obligations_rows, texts)
 
         balance = total_amount - total_paid
 
-        # QR code
-        from app.config import get_settings
-        settings = get_settings()
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://facil.gq')
-        token = self._generate_verification_token(license_id, str(total_amount))
-        verification_url = f"{frontend_url}/verify/license?id={license_id}&token={token}"
-        qr_base64 = self._generate_qr(verification_url)
+        # Conditional: bundle regime
+        regimen = lic.get("regimen_fiscal", "")
+        commerce_type = lic.get("commerce_type")
+        is_bundle_regime = regimen == "bundle" and commerce_type
 
-        # Status
-        status = lic.get("status", "open")
-        status_class = STATUS_CLASS_MAP.get(status, "open")
-        status_labels = {
-            "open": texts.get("status_pending", "Open"),
-            "partial": texts.get("status_processing", "Partial"),
-            "complete": texts.get("status_paid", "Complete"),
-            "overdue": texts.get("status_overdue", "Overdue"),
-            "suspended": texts.get("status_cancelled", "Suspended"),
-            "closed": texts.get("status_completed", "Closed"),
-        }
+        # QR code with permanent verification secret
+        from app.config import get_settings
+        app_settings = get_settings()
+        frontend_url = getattr(app_settings, 'FRONTEND_URL', 'https://facil.gq')
+        license_ref = f"LIC-{lic.get('fiscal_year', '')}-{str(license_id)[:8].upper()}"
+        token = self.generate_verification_token(license_id, str(total_amount))
+        verification_url = f"{frontend_url}/verify/{license_ref}?t={token}&lid={license_id}"
+        qr_base64 = self._generate_qr(verification_url)
 
         # Render template
         template = self._get_template()
@@ -352,11 +403,9 @@ class LicensePDFService:
             texts=texts,
             language=language,
             logo_base64=self._get_logo_base64(),
-            license_ref=f"LIC-{lic.get('fiscal_year', '')}-{str(license_id)[:8].upper()}",
+            license_ref=license_ref,
             fiscal_year=lic.get("fiscal_year", ""),
             print_date=datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
-            status_label=status_labels.get(status, status),
-            status_class=status_class,
             company={
                 "legal_name": lic.get("legal_name", ""),
                 "nif": lic.get("nif"),
@@ -365,16 +414,18 @@ class LicensePDFService:
                 "regimen_fiscal": lic.get("regimen_fiscal"),
                 "zone_code": lic.get("zone_code"),
                 "city_name": lic.get("city_name"),
-                "objeto_social": lic.get("objeto_social"),
             },
+            is_bundle_regime=is_bundle_regime,
             bundle_name=lic.get("bundle_name", "-"),
-            commerce_type=lic.get("commerce_type", "-"),
-            deadline=str(lic.get("deadline", "-")) if lic.get("deadline") else "-",
+            commerce_type=commerce_type or "-",
             compliance_score=lic.get("compliance_score", 0),
-            obligations=obligations,
+            obligation_groups=obligation_groups,
+            obligation_count=obligation_count,
+            is_fully_paid=is_fully_paid,
+            is_overdue=is_overdue,
+            has_any_penalty=has_any_penalty,
             total_amount_formatted=_format_amount(total_amount),
             total_penalties_formatted=_format_amount(total_penalties),
-            total_penalties=total_penalties,
             paid_amount_formatted=_format_amount(total_paid),
             balance_formatted=_format_amount(balance),
             qr_base64=qr_base64,

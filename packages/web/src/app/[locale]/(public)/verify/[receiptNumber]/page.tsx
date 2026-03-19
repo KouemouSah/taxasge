@@ -63,7 +63,27 @@ interface ServiceRequestResult {
   currency?: string;
 }
 
-type VerificationResult = ReceiptResult | ServiceRequestResult;
+interface LicenseResult {
+  verification_type: 'license';
+  valid: boolean;
+  license_ref: string;
+  message: string;
+  company_name?: string;
+  nif?: string;
+  regimen_fiscal?: string;
+  bundle_name?: string;
+  commerce_type?: string;
+  fiscal_year?: number;
+  status?: string;
+  total_amount?: number;
+  amount_paid?: number;
+  obligations_total?: number;
+  obligations_paid?: number;
+  compliance_score?: number;
+  currency?: string;
+}
+
+type VerificationResult = ReceiptResult | ServiceRequestResult | LicenseResult;
 
 // ================================================================
 // Translations
@@ -116,6 +136,22 @@ const translations = {
     payment_completed: 'Pagado',
     payment_processing: 'En proceso',
     no_appointment: 'Sin cita programada',
+    // License
+    lic_title: 'Verificacion de Licencia Comercial',
+    lic_subtitle: 'Sistema de Verificacion de Licencias — Facil',
+    valid_license: 'Licencia Verificada',
+    invalid_license: 'Licencia No Valida',
+    lic_company: 'Empresa',
+    lic_nif: 'NIF',
+    lic_regime: 'Regimen Fiscal',
+    lic_bundle: 'Paquete',
+    lic_commerce: 'Tipo de Comercio',
+    lic_fiscal_year: 'Año Fiscal',
+    lic_status: 'Estado',
+    lic_total: 'Total Obligaciones',
+    lic_paid: 'Pagado',
+    lic_obligations: 'Obligaciones',
+    lic_compliance: 'Cumplimiento',
   },
   fr: {
     verifying: 'Verification en cours...',
@@ -160,6 +196,21 @@ const translations = {
     payment_completed: 'Paye',
     payment_processing: 'En cours',
     no_appointment: 'Sans rendez-vous programme',
+    lic_title: 'Verification de Licence Commerciale',
+    lic_subtitle: 'Systeme de Verification des Licences — Facil',
+    valid_license: 'Licence Verifiee',
+    invalid_license: 'Licence Non Valide',
+    lic_company: 'Entreprise',
+    lic_nif: 'NIF',
+    lic_regime: 'Regime Fiscal',
+    lic_bundle: 'Forfait',
+    lic_commerce: 'Type de Commerce',
+    lic_fiscal_year: 'Annee Fiscale',
+    lic_status: 'Statut',
+    lic_total: 'Total Obligations',
+    lic_paid: 'Paye',
+    lic_obligations: 'Obligations',
+    lic_compliance: 'Conformite',
   },
   en: {
     verifying: 'Verifying...',
@@ -204,6 +255,21 @@ const translations = {
     payment_completed: 'Paid',
     payment_processing: 'Processing',
     no_appointment: 'No appointment scheduled',
+    lic_title: 'Commercial License Verification',
+    lic_subtitle: 'License Verification System — Facil',
+    valid_license: 'License Verified',
+    invalid_license: 'Invalid License',
+    lic_company: 'Company',
+    lic_nif: 'NIF',
+    lic_regime: 'Tax Regime',
+    lic_bundle: 'Bundle',
+    lic_commerce: 'Commerce Type',
+    lic_fiscal_year: 'Fiscal Year',
+    lic_status: 'Status',
+    lic_total: 'Total Obligations',
+    lic_paid: 'Paid',
+    lic_obligations: 'Obligations',
+    lic_compliance: 'Compliance',
   },
 };
 
@@ -215,12 +281,20 @@ function isServiceRequest(ref: string): boolean {
   return ref.startsWith('SRV-');
 }
 
+function isLicense(ref: string): boolean {
+  return ref.startsWith('LIC-');
+}
+
 function isReceiptResult(result: VerificationResult): result is ReceiptResult {
   return result.verification_type === 'receipt';
 }
 
 function isServiceRequestResult(result: VerificationResult): result is ServiceRequestResult {
   return result.verification_type === 'service_request';
+}
+
+function isLicenseResult(result: VerificationResult): result is LicenseResult {
+  return result.verification_type === 'license';
 }
 
 // ================================================================
@@ -235,7 +309,9 @@ export default function VerifyPage() {
 
   const reference = params.receiptNumber as string;
   const token = searchParams.get('t');
+  const licenseId = searchParams.get('lid');
   const isSR = isServiceRequest(reference);
+  const isLIC = isLicense(reference);
 
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -243,7 +319,7 @@ export default function VerifyPage() {
 
   useEffect(() => {
     const verify = async () => {
-      // Both receipt and service request verification require a token
+      // All verification types require a token
       if (!token) {
         setError(t.missing_token);
         setLoading(false);
@@ -255,10 +331,10 @@ export default function VerifyPage() {
         let url: string;
 
         if (isSR) {
-          // Service request: GET /api/v1/verify/request/{reference}?t={token}
           url = `${apiUrl}/api/v1/verify/request/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
+        } else if (isLIC) {
+          url = `${apiUrl}/api/v1/verify/license/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}&lid=${encodeURIComponent(licenseId || '')}`;
         } else {
-          // Receipt: GET /api/v1/verify/{receipt_number}?t={token}
           url = `${apiUrl}/api/v1/verify/${encodeURIComponent(reference)}?t=${encodeURIComponent(token)}`;
         }
 
@@ -278,7 +354,7 @@ export default function VerifyPage() {
     };
 
     verify();
-  }, [reference, token, isSR, t]);
+  }, [reference, token, isSR, isLIC, licenseId, t]);
 
   const getPaymentMethodLabel = (method?: string): string => {
     if (!method) return '-';
@@ -312,8 +388,8 @@ export default function VerifyPage() {
   };
 
   // Title/subtitle based on type
-  const title = isSR ? t.sr_title : t.receipt_title;
-  const subtitle = isSR ? t.sr_subtitle : t.receipt_subtitle;
+  const title = isLIC ? t.lic_title : isSR ? t.sr_title : t.receipt_title;
+  const subtitle = isLIC ? t.lic_subtitle : isSR ? t.sr_subtitle : t.receipt_subtitle;
 
   // ================================================================
   // Loading
@@ -513,6 +589,151 @@ export default function VerifyPage() {
                       )}
                     </div>
                   </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <p className="mt-6 text-xs text-center text-gray-400 px-4">
+            {t.official_notice}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ================================================================
+  // License Result
+  // ================================================================
+  if (isLicenseResult(result)) {
+    const statusColors: Record<string, string> = {
+      open: 'bg-blue-100 text-blue-800',
+      partial: 'bg-yellow-100 text-yellow-800',
+      complete: 'bg-green-100 text-green-800',
+      overdue: 'bg-red-100 text-red-800',
+      closed: 'bg-gray-100 text-gray-800',
+    };
+    return (
+      <div className={`min-h-screen py-8 px-4 ${result.valid ? 'bg-gradient-to-b from-green-50 to-white' : 'bg-gradient-to-b from-orange-50 to-white'}`}>
+        <div className="max-w-lg mx-auto">
+          <div className="text-center mb-6">
+            <div className="flex justify-center mb-4">
+              <Shield className="h-12 w-12 text-green-700" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          </div>
+
+          <Card className={`mb-6 ${result.valid ? 'border-green-200' : 'border-orange-200'}`}>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center space-y-4">
+                {result.valid ? (
+                  <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle className="h-12 w-12 text-green-600" />
+                  </div>
+                ) : (
+                  <div className="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center">
+                    <XCircle className="h-12 w-12 text-orange-600" />
+                  </div>
+                )}
+                <Badge
+                  variant={result.valid ? 'default' : 'destructive'}
+                  className={`text-lg px-4 py-2 ${result.valid ? 'bg-green-600' : 'bg-orange-600'}`}
+                >
+                  {result.valid ? t.valid_license : t.invalid_license}
+                </Badge>
+                <p className="font-mono text-sm text-gray-500">{result.license_ref}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {result.valid && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Building2 className="h-5 w-5" />
+                  {result.company_name}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {result.nif && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">{t.lic_nif}</p>
+                      <p className="font-mono font-medium">{result.nif}</p>
+                    </div>
+                  )}
+                  {result.fiscal_year && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">{t.lic_fiscal_year}</p>
+                      <p className="font-medium">{result.fiscal_year}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {result.regimen_fiscal && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">{t.lic_regime}</p>
+                      <Badge variant="outline" className="mt-1 capitalize">{result.regimen_fiscal}</Badge>
+                    </div>
+                  )}
+                  {result.status && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">{t.lic_status}</p>
+                      <Badge className={`mt-1 ${statusColors[result.status] || 'bg-gray-100 text-gray-800'}`}>
+                        {result.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
+                {result.bundle_name && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">{t.lic_bundle}</p>
+                      <p className="font-medium">{result.bundle_name}</p>
+                    </div>
+                    {result.commerce_type && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">{t.lic_commerce}</p>
+                        <p className="font-medium capitalize">{result.commerce_type}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <Separator />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase">{t.lic_total}</p>
+                    <p className="font-bold text-lg">{formatAmount(result.total_amount, result.currency)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase">{t.lic_paid}</p>
+                    <p className="font-bold text-lg text-green-700">{formatAmount(result.amount_paid, result.currency)}</p>
+                  </div>
+                </div>
+
+                {(result.obligations_total !== undefined) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">{t.lic_obligations}</p>
+                      <p className="font-medium">{result.obligations_paid}/{result.obligations_total}</p>
+                    </div>
+                    {result.compliance_score !== undefined && result.compliance_score !== null && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">{t.lic_compliance}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500 rounded-full" style={{ width: `${result.compliance_score}%` }} />
+                          </div>
+                          <span className="text-sm font-medium">{result.compliance_score}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>

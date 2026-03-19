@@ -375,3 +375,114 @@ async def verify_receipt(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error de verificacion / Verification error"
             )
+
+
+# ================================================================
+# LICENSE VERIFICATION (by LIC-... with HMAC token)
+# ================================================================
+
+class LicenseVerificationResponse(BaseModel):
+    """Response model for license verification"""
+    valid: bool
+    license_ref: str
+    message: str
+    verification_type: Literal["license"] = "license"
+    # Only included if valid
+    company_name: Optional[str] = None
+    nif: Optional[str] = None
+    regimen_fiscal: Optional[str] = None
+    bundle_name: Optional[str] = None
+    commerce_type: Optional[str] = None
+    fiscal_year: Optional[int] = None
+    status: Optional[str] = None
+    total_amount: Optional[float] = None
+    amount_paid: Optional[float] = None
+    obligations_total: Optional[int] = None
+    obligations_paid: Optional[int] = None
+    compliance_score: Optional[float] = None
+    currency: str = "XAF"
+
+
+@router.get(
+    "/license/{license_ref}",
+    response_model=LicenseVerificationResponse,
+    summary="Verify commercial license (PUBLIC)",
+)
+async def verify_license(
+    license_ref: str = Path(..., description="License reference (e.g., LIC-2026-A1B2C3D4)"),
+    t: str = Query(..., description="HMAC verification token"),
+    lid: str = Query(..., description="License UUID"),
+):
+    """
+    Verify commercial license authenticity (PUBLIC - no authentication).
+    Validates HMAC token from QR code on printed license PDF.
+    """
+    from uuid import UUID
+    from app.modules.fiscal_services.services.license_pdf_service import LicensePDFService
+
+    # Validate UUID format
+    try:
+        license_uuid = UUID(lid)
+    except (ValueError, AttributeError):
+        return LicenseVerificationResponse(
+            valid=False, license_ref=license_ref,
+            message="Formato de licencia invalido / Invalid license format",
+        )
+
+    async with db_manager.get_connection() as db:
+        try:
+            # Fetch license + company
+            row = await db.fetchrow("""
+                SELECT cl.id, cl.fiscal_year, cl.status,
+                       cl.total_amount, cl.amount_paid,
+                       cl.obligations_total, cl.obligations_paid,
+                       cl.compliance_score,
+                       c.legal_name, c.nif, c.regimen_fiscal,
+                       sb.name_es AS bundle_name, sb.commerce_type
+                FROM commercial_licenses cl
+                JOIN companies c ON cl.company_id = c.id
+                LEFT JOIN service_bundles sb ON cl.bundle_id = sb.id
+                WHERE cl.id = $1
+            """, license_uuid)
+
+            if not row:
+                return LicenseVerificationResponse(
+                    valid=False, license_ref=license_ref,
+                    message="Licencia no encontrada / License not found",
+                )
+
+            # Verify HMAC token
+            total_str = str(row["total_amount"] or 0)
+            if not LicensePDFService.verify_license_token(lid, total_str, t):
+                logger.warning(f"License verification failed: invalid token for {license_ref}")
+                return LicenseVerificationResponse(
+                    valid=False, license_ref=license_ref,
+                    message="Token de verificacion invalido / Invalid verification token",
+                )
+
+            logger.info(f"License {license_ref} verified successfully")
+
+            return LicenseVerificationResponse(
+                valid=True,
+                license_ref=license_ref,
+                message="Licencia verificada / License verified",
+                company_name=row["legal_name"],
+                nif=row["nif"],
+                regimen_fiscal=row["regimen_fiscal"],
+                bundle_name=row["bundle_name"],
+                commerce_type=row["commerce_type"],
+                fiscal_year=row["fiscal_year"],
+                status=row["status"],
+                total_amount=float(row["total_amount"]) if row["total_amount"] else None,
+                amount_paid=float(row["amount_paid"]) if row["amount_paid"] else None,
+                obligations_total=row["obligations_total"],
+                obligations_paid=row["obligations_paid"],
+                compliance_score=float(row["compliance_score"]) if row["compliance_score"] else None,
+            )
+
+        except Exception as e:
+            logger.error(f"License verification error for {license_ref}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error de verificacion / Verification error"
+            )
