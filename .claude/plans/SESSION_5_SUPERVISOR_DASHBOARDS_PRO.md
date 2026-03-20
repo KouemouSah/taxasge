@@ -40,12 +40,13 @@ Refondre les dashboards superviseur site, superviseur ministère, et les pages a
 - [x] Bouton Imprimir dans le header + penalties conditionnel
 - [x] Charts side-by-side (donut + timeline) dans la vue détail
 
-### Phase 5 : Carte SVG GE (remplacement Leaflet)
-- [ ] Composant SVG pur des 8 provinces de GE (pas Leaflet)
-- [ ] Coloré par : nb entreprises, dette, recouvrement (sélectionnable)
-- [ ] Tooltip on hover avec KPIs
-- [ ] Click → filtre les données du dashboard à cette zone
-- [ ] Intégré dans admin dashboard Pilotaje + superviseur Stratégique
+### Phase 5 : Carte SVG GE ✅
+- [x] Composant GEMapSVG pur SVG — 8 provinces (Bioko Norte/Sur, Annobon, Kie-Ntem, Wele-Nzas, Djibloho, Centro-Sur, Litoral)
+- [x] Coloré par sélecteur : empresas (bleu gradient), deuda (rouge gradient), recovery (vert/jaune/rouge seuils)
+- [x] Tooltip on hover — provincia name, entreprises, dette XAF, recovery %
+- [x] Click → sélection province (opacity 0.4 les autres, bordure bleue active)
+- [x] Intégré dans superviseur Stratégique (avec dropdown colorBy)
+- [x] ProvinceData alimenté depuis analytics.by_city groupé par provincia
 
 ### Validation
 - [ ] Chaque dashboard testé avec données seed

@@ -38,6 +38,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { companyDashboardApi, companiesSupervisorApi } from '@/modules/companies/services/api'
 import type { ZoneStats, CompanyAdminListResponse, CompanyAnalytics } from '@/modules/companies/types'
+import { GEMapSVG, type ProvinceData } from '@/components/shared/GEMapSVG'
 import {
   projectTrend, classifyDebtors, concentrationRisk, zoneHealthScore,
 } from '@/modules/companies/utils/analytics-engine'
@@ -190,6 +191,28 @@ export default function SupervisorSiteDashboardPage() {
   const concentration = useMemo(() => {
     const totalDebt = analytics?.top_debtors?.reduce((s, d) => s + d.debt, 0) ?? 0
     return concentrationRisk(analytics?.top_debtors ?? [], totalDebt)
+  }, [analytics])
+
+  // Province data for SVG map (from analytics.by_city grouped by provincia)
+  const [mapColorBy, setMapColorBy] = useState<'companies' | 'debt' | 'recovery'>('companies')
+  const [mapSelected, setMapSelected] = useState<string | null>(null)
+  const provinceData = useMemo((): ProvinceData[] => {
+    if (!analytics?.by_city?.length) return []
+    const m = new Map<string, ProvinceData>()
+    for (const c of analytics.by_city) {
+      const p = c.provincia || 'UNKNOWN'
+      const ex = m.get(p) || { provincia: p, companies: 0, debt: 0, recovery: 0 }
+      ex.companies += c.companies
+      ex.debt += c.debt
+      m.set(p, ex)
+    }
+    // Compute recovery from debt ratio
+    Array.from(m.entries()).forEach(([, v]) => {
+      const cityData = analytics.by_city.filter(c => c.provincia === v.provincia)
+      const totalLicenses = cityData.reduce((s, c) => s + c.licenses, 0)
+      v.recovery = totalLicenses > 0 ? Math.round(cityData.reduce((s, c) => s + c.recovery_pct * c.licenses, 0) / totalLicenses) : 0
+    })
+    return Array.from(m.values())
   }, [analytics])
 
   // Zone health score
@@ -348,6 +371,28 @@ export default function SupervisorSiteDashboardPage() {
               </Card>
             )}
           </div>
+
+          {/* SVG Map */}
+          {provinceData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-1">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Mapa por provincia</CardTitle>
+                  <Select value={mapColorBy} onValueChange={v => setMapColorBy(v as 'companies' | 'debt' | 'recovery')}>
+                    <SelectTrigger className="w-[120px] h-7 text-[10px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="companies">Empresas</SelectItem>
+                      <SelectItem value="debt">Deuda</SelectItem>
+                      <SelectItem value="recovery">Recovery</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <GEMapSVG data={provinceData} colorBy={mapColorBy} selected={mapSelected} onSelect={setMapSelected} />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ═══ PILOTAGE ═══ */}
