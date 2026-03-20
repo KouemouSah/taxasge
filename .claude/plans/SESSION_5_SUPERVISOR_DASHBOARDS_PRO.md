@@ -33,11 +33,12 @@ Refondre les dashboards superviseur site, superviseur ministère, et les pages a
 - [x] Icônes par champ — FileText (NIF/Reg), Tag (forma), Briefcase (commerce_type), MapPin (city)
 - [x] Compteur résultats affiché ("N resultado(s) para...")
 
-### Phase 4 : Agent Ministry Debt enrichi
-- [ ] Graphe donut répartition paid/pending/overdue pour l'entreprise
-- [ ] Timeline paiements (line chart montant cumulé vs dû)
-- [ ] Bouton "Envoyer relance" (lié au système de notifications)
-- [ ] Print-friendly layout pour impression du détail obligation
+### Phase 4 : Agent Ministry Debt enrichi ✅
+- [x] Donut répartition paid/pending/overdue (chart.js Doughnut, cutout 55%)
+- [x] Timeline cumulatif (Line chart: acumulado debido vs pagado, pointRadius 3)
+- [x] Print-friendly layout — @media print, table complète obligations, KPIs, header ONRC
+- [x] Bouton Imprimir dans le header + penalties conditionnel
+- [x] Charts side-by-side (donut + timeline) dans la vue détail
 
 ### Phase 5 : Carte SVG GE (remplacement Leaflet)
 - [ ] Composant SVG pur des 8 provinces de GE (pas Leaflet)
