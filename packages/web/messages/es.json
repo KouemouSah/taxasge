@@ -5558,6 +5558,18 @@
     "register": "Registrarse",
     "services": "Servicios"
   },
+  "oms": {
+    "nav": {
+      "dashboard": "Panel OMS",
+      "licenses": "Licencias",
+      "licensesOverview": "Vista General",
+      "compliance": "Cumplimiento",
+      "config": "Configuración",
+      "pendingProcessing": "En Proceso",
+      "stats": "Estadísticas",
+      "obligations": "Obligaciones"
+    }
+  },
   "enrichment": {
     "title": "Enriquecimiento IA",
     "pending": "pendientes",
@@ -8990,6 +9002,7 @@
       "companiesList": "Lista de Empresas",
       "companyDebt": "Deuda Empresarial",
       "ministryDashboard": "Panel del Ministerio",
+      "siteDashboard": "Dashboard de Zona",
       "classification": "Clasificación"
     },
     "companies": {

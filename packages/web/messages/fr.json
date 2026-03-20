@@ -5577,6 +5577,18 @@
     "register": "S'inscrire",
     "services": "Services"
   },
+  "oms": {
+    "nav": {
+      "dashboard": "Tableau de Bord OMS",
+      "licenses": "Licences",
+      "licensesOverview": "Vue d'Ensemble",
+      "compliance": "Conformité",
+      "config": "Configuration",
+      "pendingProcessing": "En Cours",
+      "stats": "Statistiques",
+      "obligations": "Obligations"
+    }
+  },
   "enrichment": {
     "title": "Enrichissement IA",
     "pending": "en attente",
@@ -9122,6 +9134,7 @@
       "companiesList": "Liste des Entreprises",
       "companyDebt": "Dette Entreprise",
       "ministryDashboard": "Tableau de Bord Ministère",
+      "siteDashboard": "Dashboard de Zone",
       "classification": "Classification"
     },
     "companies": {

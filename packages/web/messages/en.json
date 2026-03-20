@@ -5334,6 +5334,18 @@
     "register": "Register",
     "services": "Services"
   },
+  "oms": {
+    "nav": {
+      "dashboard": "OMS Dashboard",
+      "licenses": "Licenses",
+      "licensesOverview": "Overview",
+      "compliance": "Compliance",
+      "config": "Configuration",
+      "pendingProcessing": "Processing",
+      "stats": "Statistics",
+      "obligations": "Obligations"
+    }
+  },
   "enrichment": {
     "title": "AI Enrichment",
     "pending": "pending",
@@ -8879,6 +8891,7 @@
       "companiesList": "Companies List",
       "companyDebt": "Company Debt",
       "ministryDashboard": "Ministry Dashboard",
+      "siteDashboard": "Zone Dashboard",
       "classification": "Classification"
     },
     "companies": {

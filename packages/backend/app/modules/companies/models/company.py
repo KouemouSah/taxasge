@@ -5,7 +5,7 @@ ALIGNED WITH DB (Migration 218 Phase 1.3)
 Tables: companies, user_company_roles
 """
 
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import Optional, List, Dict
 from datetime import date, datetime
 from decimal import Decimal
@@ -115,6 +115,14 @@ class CompanyResponse(CompanyBase):
 
     class Config:
         from_attributes = True
+
+    @field_validator('id', 'owner_user_id', mode='before')
+    @classmethod
+    def coerce_uuid_to_str(cls, v):
+        """Convert UUID objects to strings for Pydantic v2 strict mode."""
+        if v is not None and not isinstance(v, str):
+            return str(v)
+        return v
 
 
 class CompanyMember(BaseModel):
