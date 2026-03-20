@@ -454,6 +454,82 @@ class CompanyClassificationAgent(LLMAgentMixin):
             warnings=warnings,
         )
 
+    @staticmethod
+    def map_gemini_extraction_to_company_data(
+        extraction: Dict[str, Any],
+        doc_type: str = "",
+    ) -> Dict[str, Any]:
+        """Map GeminiDocumentProcessor structured extraction to flat company_data.
+
+        GeminiDocumentProcessor returns nested structure matching the JSON schema:
+            extraction.empresa.denominacion_social
+            extraction.ubicacion.localidad
+            extraction.ubicacion.provincia
+            extraction.actividad.sector
+            ...
+
+        classify_company() expects flat structure:
+            company_data["legal_name"]
+            company_data["localidad"]
+            company_data["provincia"]
+            company_data["sector_actividad"]
+            ...
+
+        This mapper bridges the two formats. It handles BOTH:
+        - CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL (DGPE — autonomo)
+        - CERTIFICADO_REGISTRO_EMPRESARIAL (VUE — SL/SA)
+        """
+        empresa = extraction.get("empresa", {})
+        ubicacion = extraction.get("ubicacion", {})
+        actividad = extraction.get("actividad", {})
+        datos_op = extraction.get("datos_operativos", {})
+        certificacion = extraction.get("certificacion", {})
+        documento = extraction.get("documento", {})
+
+        # Determine if this is a Padrón (DGPE) or VUE document
+        is_padron = (
+            "PADRON" in doc_type.upper()
+            or empresa.get("forma_juridica", "").upper() == "AUTONOMO"
+            or (empresa.get("numero_registro") or "").upper().startswith("PE-")
+        )
+
+        company_data: Dict[str, Any] = {
+            # Identity — different field names between DGPE and VUE
+            "legal_name": empresa.get("denominacion_social") or empresa.get("denominacion_comercial") or "",
+            "registration_number": empresa.get("numero_registro"),  # PE-XXXX (Padrón)
+            "nif": empresa.get("nif"),  # NIF (VUE only)
+            "forma_juridica": (empresa.get("forma_juridica") or ("autonomo" if is_padron else "")).lower(),
+            "representante_legal": empresa.get("representante_legal"),
+            "nacionalidad": empresa.get("nacionalidad"),
+            "capital_social": empresa.get("capital_social"),
+
+            # Location — CRITICAL for zone resolution
+            # The localidad field maps directly to cities.name for city_id → zone_id resolution
+            "localidad": ubicacion.get("localidad"),
+            "provincia": ubicacion.get("provincia"),
+            "domicilio_fiscal": empresa.get("domicilio_social"),
+
+            # Activity — drives classification
+            "sector_actividad": actividad.get("sector"),
+            "subsector_actividad": actividad.get("subsector"),
+            "objeto_social": actividad.get("objeto_social"),
+
+            # Operational
+            "employee_count": datos_op.get("numero_empleados"),
+            "establishment_count": datos_op.get("numero_establecimientos"),
+
+            # Status
+            "estado_empresa": certificacion.get("estado_negocio") or certificacion.get("estado_empresa"),
+
+            # Metadata (for audit)
+            "doc_type": doc_type,
+            "ano_certificado": documento.get("ano_actualizacion") or documento.get("ano_certificado"),
+            "timbre_fiscal_code": documento.get("codigo_timbre"),
+        }
+
+        # Clean: remove None values to avoid overwriting existing data
+        return {k: v for k, v in company_data.items() if v is not None}
+
     async def create_draft(
         self,
         conn: asyncpg.Connection,

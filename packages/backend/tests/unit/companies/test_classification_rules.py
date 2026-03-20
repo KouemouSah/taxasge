@@ -236,3 +236,109 @@ class TestNIFNormalization:
         # pe- doesn't match PE- (uppercase check)
         # This tests the actual behavior
         assert result.regimen_fiscal in ("bundle", "declarativo")
+
+
+class TestGeminiExtractionMapper:
+    """Test map_gemini_extraction_to_company_data() — bridges GeminiDocumentProcessor to classify_company."""
+
+    def test_padron_extraction_maps_localidad(self):
+        """CRITICAL: localidad must be mapped for zone resolution."""
+        extraction = {
+            "empresa": {
+                "denominacion_social": "Tienda El Sol",
+                "numero_registro": "PE-001234",
+                "forma_juridica": "AUTONOMO",
+                "representante_legal": "Juan Garcia",
+                "nacionalidad": "ECUATOGUINEANA",
+            },
+            "ubicacion": {
+                "localidad": "Malabo",
+                "provincia": "BIOKO-NORTE",
+            },
+            "actividad": {
+                "sector": "Terciario",
+                "subsector": "COMERCIO",
+                "objeto_social": "Venta de productos alimenticios",
+            },
+            "datos_operativos": {
+                "numero_empleados": 3,
+                "numero_establecimientos": 1,
+            },
+            "certificacion": {
+                "estado_negocio": "Negocio Activo",
+            },
+            "documento": {
+                "ano_actualizacion": 2026,
+                "codigo_timbre": "F12345678",
+            },
+        }
+        result = agent.map_gemini_extraction_to_company_data(
+            extraction, doc_type="CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL"
+        )
+
+        # CRITICAL: localidad and provincia must be present for zone resolution
+        assert result["localidad"] == "Malabo"
+        assert result["provincia"] == "BIOKO-NORTE"
+
+        # Identity
+        assert result["legal_name"] == "Tienda El Sol"
+        assert result["registration_number"] == "PE-001234"
+        assert result["forma_juridica"] == "autonomo"
+
+        # Activity
+        assert result["sector_actividad"] == "Terciario"
+        assert result["subsector_actividad"] == "COMERCIO"
+        assert result["objeto_social"] == "Venta de productos alimenticios"
+
+        # Operational
+        assert result["employee_count"] == 3
+
+        # Metadata
+        assert result["ano_certificado"] == 2026
+        assert result["timbre_fiscal_code"] == "F12345678"
+
+    def test_padron_auto_detects_autonomo(self):
+        """If PE-XXXX present, forma_juridica should be autonomo even if missing."""
+        extraction = {
+            "empresa": {
+                "denominacion_social": "Bar Tropical",
+                "numero_registro": "PE-5678",
+            },
+            "ubicacion": {"localidad": "Bata", "provincia": "LITORAL"},
+            "actividad": {"sector": "Terciario", "objeto_social": "Bar"},
+        }
+        result = agent.map_gemini_extraction_to_company_data(extraction, "PADRON")
+        assert result["forma_juridica"] == "autonomo"
+        assert result["localidad"] == "Bata"
+
+    def test_vue_extraction_maps_nif(self):
+        """VUE certificate should map nif, not registration_number."""
+        extraction = {
+            "empresa": {
+                "denominacion_social": "Empresa ABC S.L.",
+                "nif": "01234AB-56",
+                "forma_juridica": "SOCIEDAD LIMITADA",
+                "capital_social": 50000000,
+            },
+            "ubicacion": {"localidad": "Malabo", "provincia": "BIOKO-NORTE"},
+            "actividad": {"sector": "Terciario", "objeto_social": "Comercio general"},
+        }
+        result = agent.map_gemini_extraction_to_company_data(
+            extraction, "CERTIFICADO_REGISTRO_EMPRESARIAL"
+        )
+        assert result["nif"] == "01234AB-56"
+        assert result.get("registration_number") is None
+        assert result["forma_juridica"] == "sociedad limitada"
+        assert result["localidad"] == "Malabo"
+
+    def test_none_values_excluded(self):
+        """None values should be excluded to avoid overwriting existing data."""
+        extraction = {
+            "empresa": {"denominacion_social": "Test", "nif": None},
+            "ubicacion": {"localidad": "Bata"},
+            "actividad": {},
+        }
+        result = agent.map_gemini_extraction_to_company_data(extraction)
+        assert "nif" not in result
+        assert result["localidad"] == "Bata"
+        assert "sector_actividad" not in result
