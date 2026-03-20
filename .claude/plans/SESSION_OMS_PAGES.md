@@ -107,19 +107,14 @@ Les menus pointaient vers des URLs mortes — corrigé en supprimant les liens, 
 - [x] Skeleton loading + empty state
 - [x] Module OMS créé: types/index.ts + services/api.ts (omsQueueApi + omsLicensesApi)
 
-### Phase 2 : Licences Overview (`/dashboard/agent/oms/licenses`)
-Vue des licences commerciales scopée au ministry_id de l'agent.
-
-- [ ] **Stats cards** : total licences, active, overdue, recovery %
-  - Source: `GET /licenses/stats`
-- [ ] **Table licences** :
-  - Source: `GET /licenses/?status=open`
-  - Colonnes: empresa, NIF, zone, total_amount, amount_paid, balance, status
-  - Badge coloré par status (open=blue, partial=amber, overdue=red, complete=green)
-  - Click → détail licence
-- [ ] **Filtres** : status, fiscal_year, search
-- [ ] **Export PDF** par licence: `GET /licenses/{id}/download-pdf`
-- [ ] Réutiliser le design des dashboards Session 5 (Card/Table pattern)
+### Phase 2 : Licences Overview (`/dashboard/agent/oms/licenses`) ✅
+- [x] 4 KPI cards: total (active), vencidas, deuda XAF, recovery % (progress bar tricolore)
+- [x] Table 9 colonnes: empresa, NIF, zona, año, total, pagado, balance, status (badge+icône), acciones
+- [x] Badge status avec icône: open=Play, partial=Clock, overdue=AlertTriangle, complete=CheckCircle, cancelled=XCircle
+- [x] Click row → détail licence (`/agent/oms/licenses/[id]`)
+- [x] Download PDF par licence (`/licenses/{id}/download-pdf`)
+- [x] Filtres: status dropdown + search debounce (empresa, NIF, zona)
+- [x] Pagination + compteur total
 
 ### Phase 3 : Détail Licence (`/dashboard/agent/oms/licenses/[id]`)
 Vue détaillée d'une licence avec ses obligations.
@@ -187,10 +182,10 @@ Statistiques détaillées avec graphes.
 
 | Composant | Source | Usage OMS |
 |-----------|--------|-----------|
-| GaugeRing SVG | Session 5 — Site Dashboard | KPI recovery % |
+| GaugeRing GeoJSON | Session 5 — Site Dashboard | KPI recovery % |
 | Sparkline chart.js | Session 3 — Admin Companies | Trend mini |
 | PrintHeader/PrintFooter | Shared component | PDF licence, impression |
-| GEMapSVG | Session 5 — SVG map | Carte par province (si pertinent) |
+| GEMapSVG | Session 5 — GeoJSON map | Carte par province (si pertinent) |
 | analytics-engine.ts | Session 5 | Risk scoring, projections |
 | CompanyCard pattern | Session 2 — Annuaire | Card entreprise compact |
 
