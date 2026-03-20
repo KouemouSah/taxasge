@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { companyMinistryApi } from '@/modules/companies/services/api'
 import type { LookupResult } from '@/modules/companies/types'
+import { PrintHeader, PrintFooter } from '@/components/shared/PrintHeader'
 
 const REGIME_COLORS: Record<string, string> = {
   bundle: 'bg-green-100 text-green-800',
@@ -114,28 +115,27 @@ export default function ONRCLookupPage() {
     <>
       {/* Print-only company card */}
       {selected && (
-        <div className="hidden print:block p-8">
-          <div className="border-2 border-gray-300 rounded-lg p-6 max-w-lg mx-auto">
-            <div className="text-center mb-4">
-              <h1 className="text-xl font-bold">Ficha Empresa — ONRC</h1>
-              <p className="text-sm text-gray-500">República de Guinea Ecuatorial</p>
-            </div>
-            <hr className="mb-4" />
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="font-medium">Razón Social:</span><span>{selected.legal_name}</span></div>
-              {selected.nif && <div className="flex justify-between"><span className="font-medium">NIF:</span><span className="font-mono">{selected.nif}</span></div>}
-              {selected.registration_number && <div className="flex justify-between"><span className="font-medium">N° Registro:</span><span className="font-mono">{selected.registration_number}</span></div>}
-              {selected.forma_juridica && <div className="flex justify-between"><span className="font-medium">Forma Jurídica:</span><span>{selected.forma_juridica}</span></div>}
-              {selected.regimen_fiscal && <div className="flex justify-between"><span className="font-medium">Régimen Fiscal:</span><span>{selected.regimen_fiscal}</span></div>}
-              {selected.commerce_type && <div className="flex justify-between"><span className="font-medium">Tipo Comercio:</span><span>{selected.commerce_type}</span></div>}
-              {selected.city_name && <div className="flex justify-between"><span className="font-medium">Ciudad:</span><span>{selected.city_name}</span></div>}
-              {selected.zone_code && <div className="flex justify-between"><span className="font-medium">Zona:</span><span>{selected.zone_code}</span></div>}
-              <div className="flex justify-between"><span className="font-medium">Estado:</span><span>{selected.is_active ? 'Activa' : 'Inactiva'}</span></div>
-              <div className="flex justify-between"><span className="font-medium">Verificada:</span><span>{selected.is_verified ? 'Sí' : 'No'}</span></div>
-            </div>
-            <hr className="my-4" />
-            <p className="text-[10px] text-gray-400 text-center">Generado el {new Date().toLocaleDateString('es-GQ')} — Plataforma Facil</p>
+        <div className="hidden print:block p-4 max-w-lg mx-auto">
+          <PrintHeader
+            title="Ficha Empresa"
+            subtitle="ONRC"
+            meta={[
+              ...(selected.nif ? [{ label: 'NIF', value: selected.nif }] : []),
+              ...(selected.zone_code ? [{ label: 'Zona', value: selected.zone_code }] : []),
+            ]}
+          />
+          <div className="space-y-1.5 text-[9pt] mt-3">
+            <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">Razón Social:</span><span>{selected.legal_name}</span></div>
+            {selected.nif && <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">NIF:</span><span className="font-mono">{selected.nif}</span></div>}
+            {selected.registration_number && <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">N° Registro:</span><span className="font-mono">{selected.registration_number}</span></div>}
+            {selected.forma_juridica && <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">Forma Jurídica:</span><span>{selected.forma_juridica}</span></div>}
+            {selected.regimen_fiscal && <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">Régimen Fiscal:</span><span>{selected.regimen_fiscal}</span></div>}
+            {selected.commerce_type && <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">Tipo Comercio:</span><span>{selected.commerce_type}</span></div>}
+            {selected.city_name && <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">Ciudad:</span><span>{selected.city_name}</span></div>}
+            <div className="flex justify-between border-b border-gray-100 pb-1"><span className="font-medium">Estado:</span><span>{selected.is_active ? 'Activa' : 'Inactiva'}</span></div>
+            <div className="flex justify-between"><span className="font-medium">Verificada:</span><span>{selected.is_verified ? 'Sí' : 'No'}</span></div>
           </div>
+          <PrintFooter />
         </div>
       )}
 

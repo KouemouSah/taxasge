@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/table'
 import { companyMinistryApi } from '@/modules/companies/services/api'
 import type { CompanyDebtResponse, LookupResult } from '@/modules/companies/types'
+import { PrintHeader, PrintFooter } from '@/components/shared/PrintHeader'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, Filler)
 
@@ -150,44 +151,41 @@ export default function MinistryDebtPage() {
     <>
       {/* Print layout */}
       {debt && totals && (
-        <div className="hidden print:block p-6">
-          <div className="border-2 border-gray-300 rounded-lg p-6 max-w-2xl mx-auto">
-            <div className="text-center mb-4">
-              <h1 className="text-lg font-bold">Detalle de Deuda — Ministerio</h1>
-              <p className="text-sm text-gray-500">República de Guinea Ecuatorial · Plataforma Facil</p>
-            </div>
-            <hr className="mb-3" />
-            <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-              <div><span className="font-medium">Empresa:</span> {debt.company.legal_name}</div>
-              <div><span className="font-medium">NIF:</span> {debt.company.nif || '—'}</div>
-              <div><span className="font-medium">Zona:</span> {debt.company.zone_code || '—'}</div>
-              <div><span className="font-medium">Régimen:</span> {debt.company.regimen_fiscal}</div>
-            </div>
-            <div className="grid grid-cols-4 gap-2 text-sm mb-4 bg-gray-50 p-3 rounded">
-              <div><span className="font-medium">Total debido:</span><br/>{formatXAF(totals.total_due)}</div>
-              <div><span className="font-medium">Pagado:</span><br/>{formatXAF(totals.total_paid)}</div>
-              <div><span className="font-medium">Balance:</span><br/>{formatXAF(totals.balance)}</div>
-              <div><span className="font-medium">Recovery:</span><br/>{totals.recovery_rate_pct}%</div>
-            </div>
-            <table className="w-full text-xs border-collapse">
-              <thead><tr className="border-b">
-                <th className="text-left p-1">Tipo</th><th className="text-left p-1">Año</th>
-                <th className="text-right p-1">Monto</th><th className="text-right p-1">Penalidad</th>
-                <th className="text-left p-1">Vence</th><th className="text-left p-1">Estado</th>
-              </tr></thead>
-              <tbody>
-                {debt.obligations.map(ob => (
-                  <tr key={ob.id} className="border-b">
-                    <td className="p-1">{ob.fee_type}</td><td className="p-1">{ob.fiscal_year}</td>
-                    <td className="text-right p-1 font-mono">{formatXAF(ob.amount)}</td>
-                    <td className="text-right p-1 font-mono">{ob.penalty_amount > 0 ? formatXAF(ob.penalty_amount) : '—'}</td>
-                    <td className="p-1">{ob.due_date}</td><td className="p-1">{STATUS_CONFIG[ob.status]?.label || ob.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-[9px] text-gray-400 text-center mt-4">Generado el {new Date().toLocaleDateString('es-GQ')}</p>
+        <div className="hidden print:block p-4 max-w-2xl mx-auto">
+          <PrintHeader
+            title="Detalle de Deuda"
+            subtitle="Ministerio"
+            meta={[
+              { label: 'Empresa', value: debt.company.legal_name },
+              ...(debt.company.nif ? [{ label: 'NIF', value: debt.company.nif }] : []),
+              ...(debt.company.zone_code ? [{ label: 'Zona', value: debt.company.zone_code }] : []),
+            ]}
+          />
+          <div className="grid grid-cols-4 gap-2 text-[9pt] my-3 bg-gray-50 p-2 rounded">
+            <div><span className="font-medium">Total debido:</span><br/>{formatXAF(totals.total_due)}</div>
+            <div><span className="font-medium">Pagado:</span><br/>{formatXAF(totals.total_paid)}</div>
+            <div><span className="font-medium">Balance:</span><br/>{formatXAF(totals.balance)}</div>
+            <div><span className="font-medium">Recovery:</span><br/>{totals.recovery_rate_pct}%</div>
           </div>
+          <table className="w-full text-[8pt] border-collapse">
+            <thead><tr className="border-b">
+              <th className="text-left p-1">Tipo</th><th className="text-left p-1">Año</th>
+              <th className="text-right p-1">Monto</th>
+              {totals.total_penalties > 0 && <th className="text-right p-1">Penalidad</th>}
+              <th className="text-left p-1">Vence</th><th className="text-left p-1">Estado</th>
+            </tr></thead>
+            <tbody>
+              {debt.obligations.map(ob => (
+                <tr key={ob.id} className="border-b">
+                  <td className="p-1">{ob.fee_type}</td><td className="p-1">{ob.fiscal_year}</td>
+                  <td className="text-right p-1 font-mono">{formatXAF(ob.amount)}</td>
+                  {totals.total_penalties > 0 && <td className="text-right p-1 font-mono">{ob.penalty_amount > 0 ? formatXAF(ob.penalty_amount) : '—'}</td>}
+                  <td className="p-1">{ob.due_date}</td><td className="p-1">{STATUS_CONFIG[ob.status]?.label || ob.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <PrintFooter />
         </div>
       )}
 
@@ -349,7 +347,7 @@ export default function MinistryDebtPage() {
                         <TableHead>{t('companyDebt.feeType')}</TableHead>
                         <TableHead>{t('companyDebt.year')}</TableHead>
                         <TableHead className="text-right">{t('companyDebt.amount')}</TableHead>
-                        <TableHead className="text-right">{t('companyDebt.penalty')}</TableHead>
+                        {totals.total_penalties > 0 && <TableHead className="text-right">{t('companyDebt.penalty')}</TableHead>}
                         <TableHead>{t('companyDebt.dueDate')}</TableHead>
                         <TableHead>{t('companyDebt.status')}</TableHead>
                         <TableHead>{t('companyDebt.paidAt')}</TableHead>
@@ -364,7 +362,7 @@ export default function MinistryDebtPage() {
                             <TableCell className="font-medium">{ob.fee_type}</TableCell>
                             <TableCell>{ob.fiscal_year}</TableCell>
                             <TableCell className="text-right font-mono">{formatXAF(ob.amount)}</TableCell>
-                            <TableCell className="text-right font-mono">{ob.penalty_amount > 0 ? formatXAF(ob.penalty_amount) : '-'}</TableCell>
+                            {totals.total_penalties > 0 && <TableCell className="text-right font-mono">{ob.penalty_amount > 0 ? formatXAF(ob.penalty_amount) : '-'}</TableCell>}
                             <TableCell>{ob.due_date}</TableCell>
                             <TableCell>
                               <Badge className={`${cfg.color} text-xs gap-1`}><Icon className="h-3 w-3" />{cfg.label}</Badge>
