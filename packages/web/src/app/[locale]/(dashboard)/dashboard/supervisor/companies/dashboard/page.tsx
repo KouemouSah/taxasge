@@ -278,9 +278,9 @@ export default function SupervisorSiteDashboardPage() {
     }],
   }
 
-  const verifiedPct = zone.total_companies > 0 ? Math.round((zone.verified_companies / zone.total_companies) * 100) : 0
-  const nifCoverage = zone.total_companies > 0 ? Math.round((zone.with_nif / zone.total_companies) * 100) : 0
-  const identifierCoverage = zone.total_companies > 0 ? Math.round(((zone.total_companies - zone.missing_identifier) / zone.total_companies) * 100) : 0
+  const verifiedPct = zone.total_companies > 0 ? Math.round(((zone.verified_companies ?? 0) / zone.total_companies) * 100) : 0
+  const nifCoverage = zone.total_companies > 0 ? Math.round(((zone.with_nif ?? 0) / zone.total_companies) * 100) : 0
+  const identifierCoverage = zone.total_companies > 0 ? Math.round(((zone.total_companies - (zone.missing_identifier ?? 0)) / zone.total_companies) * 100) : 0
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] min-h-0">
