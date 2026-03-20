@@ -14,6 +14,7 @@ import {
   FileCheck, Search, ChevronLeft, ChevronRight, RefreshCw,
   TrendingUp, AlertTriangle, DollarSign, Download, Eye,
   Building2, CheckCircle2, Clock, Play, XCircle,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -58,6 +59,9 @@ export default function OMSLicensesPage() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [yearFilter, setYearFilter] = useState<number>(new Date().getFullYear())
+  const [sortCol, setSortCol] = useState<'balance' | 'total_amount' | 'company_name' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const seqRef = useRef(0)
@@ -69,9 +73,10 @@ export default function OMSLicensesPage() {
     setLoading(true)
     try {
       const [s, l] = await Promise.all([
-        omsLicensesApi.getStats(),
+        omsLicensesApi.getStats(yearFilter),
         omsLicensesApi.list({
           status: statusFilter === 'all' ? undefined : statusFilter,
+          fiscal_year: yearFilter,
           page,
           page_size: PAGE_SIZE,
         }),
@@ -85,7 +90,7 @@ export default function OMSLicensesPage() {
     } finally {
       if (seq === seqRef.current) setLoading(false)
     }
-  }, [page, statusFilter, toast])
+  }, [page, statusFilter, yearFilter, toast])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -95,18 +100,54 @@ export default function OMSLicensesPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchInput])
 
-  // Client-side search filter
-  const filteredItems = (licenses?.items ?? []).filter(lic => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (lic.company_name?.toLowerCase().includes(q)) ||
-           (lic.company_nif?.toLowerCase().includes(q)) ||
-           (lic.zone_code?.toLowerCase().includes(q))
-  })
+  // Client-side search filter + sort
+  const filteredItems = (() => {
+    let items = (licenses?.items ?? []).filter(lic => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return (lic.company_name?.toLowerCase().includes(q)) ||
+             (lic.company_nif?.toLowerCase().includes(q)) ||
+             (lic.zone_code?.toLowerCase().includes(q))
+    })
+    if (sortCol) {
+      items = [...items].sort((a, b) => {
+        let va: number | string = 0, vb: number | string = 0
+        if (sortCol === 'balance') { va = a.total_amount - a.amount_paid; vb = b.total_amount - b.amount_paid }
+        else if (sortCol === 'total_amount') { va = a.total_amount; vb = b.total_amount }
+        else if (sortCol === 'company_name') { va = a.company_name || ''; vb = b.company_name || '' }
+        if (typeof va === 'string') return sortDir === 'asc' ? va.localeCompare(vb as string) : (vb as string).localeCompare(va)
+        return sortDir === 'asc' ? va - (vb as number) : (vb as number) - va
+      })
+    }
+    return items
+  })()
 
   const totalPages = licenses ? Math.ceil(licenses.total / PAGE_SIZE) : 0
   const recoveryPct = stats && stats.total_amount > 0
     ? Math.round((stats.total_paid / stats.total_amount) * 100) : 0
+
+  const toggleSort = (col: 'balance' | 'total_amount' | 'company_name') => {
+    if (sortCol === col) setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('desc') }
+  }
+
+  const handleExportCSV = () => {
+    if (!filteredItems.length) return
+    const headers = ['empresa', 'nif', 'zona', 'año', 'total', 'pagado', 'balance', 'estado']
+    const rows = filteredItems.map(l => [
+      l.company_name || '', l.company_nif || '', l.zone_code || '',
+      String(l.fiscal_year), String(l.total_amount), String(l.amount_paid),
+      String(l.total_amount - l.amount_paid), l.status,
+    ])
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `licencias_${yearFilter}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const handleDownloadPDF = async (licenseId: string) => {
     try {
@@ -194,13 +235,13 @@ export default function OMSLicensesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[180px]">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={searchInput} onChange={e => setSearchInput(e.target.value)}
             placeholder="Buscar empresa, NIF, zona..." className="pl-8 h-8 text-xs" />
         </div>
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
+          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
             <SelectItem value="open">Abiertas</SelectItem>
@@ -209,7 +250,16 @@ export default function OMSLicensesPage() {
             <SelectItem value="complete">Completas</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-xs text-muted-foreground self-center">{licenses?.total ?? 0} licencias</span>
+        <Select value={String(yearFilter)} onValueChange={v => { setYearFilter(Number(v)); setPage(1) }}>
+          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue placeholder="Año" /></SelectTrigger>
+          <SelectContent>
+            {[2026, 2025, 2024].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleExportCSV}>
+          <Download className="h-3.5 w-3.5" /> CSV
+        </Button>
+        <span className="text-xs text-muted-foreground self-center">{filteredItems.length}/{licenses?.total ?? 0} licencias</span>
       </div>
 
       {/* Table */}
@@ -218,13 +268,28 @@ export default function OMSLicensesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Empresa</TableHead>
+                <TableHead className="text-xs">
+                  <button onClick={() => toggleSort('company_name')} className="flex items-center gap-1 hover:text-foreground">
+                    Empresa
+                    {sortCol === 'company_name' ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                  </button>
+                </TableHead>
                 <TableHead className="text-xs w-[80px]">NIF</TableHead>
                 <TableHead className="text-xs w-[60px]">Zona</TableHead>
                 <TableHead className="text-xs w-[70px]">Año</TableHead>
-                <TableHead className="text-xs w-[90px] text-right">Total</TableHead>
+                <TableHead className="text-xs w-[90px] text-right">
+                  <button onClick={() => toggleSort('total_amount')} className="flex items-center gap-1 ml-auto hover:text-foreground">
+                    Total
+                    {sortCol === 'total_amount' ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                  </button>
+                </TableHead>
                 <TableHead className="text-xs w-[90px] text-right">Pagado</TableHead>
-                <TableHead className="text-xs w-[90px] text-right">Balance</TableHead>
+                <TableHead className="text-xs w-[90px] text-right">
+                  <button onClick={() => toggleSort('balance')} className="flex items-center gap-1 ml-auto hover:text-foreground">
+                    Balance
+                    {sortCol === 'balance' ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                  </button>
+                </TableHead>
                 <TableHead className="text-xs w-[80px]">Estado</TableHead>
                 <TableHead className="text-xs w-[80px]">Acciones</TableHead>
               </TableRow>
