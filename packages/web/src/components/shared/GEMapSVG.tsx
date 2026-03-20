@@ -68,8 +68,22 @@ const LEGEND: Record<string, { label: string; colors: string[] }> = {
   recovery: { label: 'Recovery %', colors: ['#ef4444', '#eab308', '#22c55e'] },
 }
 
+// Compute bounding box from SVG path d string
+function pathBBox(d: string): { x: number; y: number; w: number; h: number } {
+  const nums = d.match(/[\d.]+/g)?.map(Number) ?? []
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (let i = 0; i < nums.length - 1; i += 2) {
+    if (nums[i] < minX) minX = nums[i]
+    if (nums[i] > maxX) maxX = nums[i]
+    if (nums[i + 1] < minY) minY = nums[i + 1]
+    if (nums[i + 1] > maxY) maxY = nums[i + 1]
+  }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
 export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
   const [hovered, setHovered] = useState<string | null>(null)
+  const [zoomedKey, setZoomedKey] = useState<string | null>(null)
 
   // Map DB provincia name → data
   const dataMap = useMemo(() => {
@@ -89,6 +103,30 @@ export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
   const selectedKey = selected ? PROVINCIA_KEY_MAP[selected] : null
   const legend = LEGEND[colorBy]
 
+  // Dynamic viewBox for zoom
+  const DEFAULT_VIEWBOX = `350 0 ${GNQ_SVG_WIDTH - 300} ${GNQ_SVG_HEIGHT - 280}`
+  const viewBox = useMemo(() => {
+    if (!zoomedKey || zoomedKey === 'annobon') return DEFAULT_VIEWBOX
+    const prov = RAW_PROVINCES[zoomedKey]
+    if (!prov) return DEFAULT_VIEWBOX
+    const bb = pathBBox(prov.path)
+    // Add 20% padding
+    const pad = Math.max(bb.w, bb.h) * 0.2
+    return `${bb.x - pad} ${bb.y - pad} ${bb.w + pad * 2} ${bb.h + pad * 2}`
+  }, [zoomedKey])
+
+  const handleProvinceClick = (key: string, dbName: string | undefined) => {
+    if (zoomedKey === key) {
+      // Already zoomed → zoom out + deselect
+      setZoomedKey(null)
+      onSelect?.(null)
+    } else {
+      // Zoom in + select
+      setZoomedKey(key)
+      onSelect?.(dbName || key)
+    }
+  }
+
   // Annobón inset: scale up and reposition (original ~5x9px at [15,711])
   const ANNOBON_SCALE = 5
   const ANNOBON_INSET_X = 20
@@ -96,9 +134,18 @@ export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
 
   return (
     <div className="relative">
+      {/* Zoom out button */}
+      {zoomedKey && (
+        <button
+          onClick={() => { setZoomedKey(null); onSelect?.(null) }}
+          className="absolute top-2 left-2 z-10 bg-white/90 border shadow-sm rounded-md px-2 py-1 text-[10px] font-medium text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          ← Vista completa
+        </button>
+      )}
       <svg
-        viewBox={`350 0 ${GNQ_SVG_WIDTH - 300} ${GNQ_SVG_HEIGHT - 280}`}
-        className="w-full h-auto"
+        viewBox={viewBox}
+        className="w-full h-auto transition-all duration-500 ease-in-out"
         role="img"
         aria-label="Mapa de Guinea Ecuatorial — Datos GADM 4.1"
       >
@@ -142,7 +189,7 @@ export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
             <g key={key}
               onMouseEnter={() => setHovered(key)}
               onMouseLeave={() => setHovered(null)}
-              onClick={() => onSelect?.(isSel ? null : dbName || key)}
+              onClick={() => handleProvinceClick(key, dbName)}
               className="cursor-pointer"
             >
               <path d={prov.path} fill={fill}
