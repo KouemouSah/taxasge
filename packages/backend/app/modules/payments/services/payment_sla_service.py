@@ -411,8 +411,8 @@ class PaymentSLAService:
         failed_count = 0
 
         try:
-            from app.modules.documents.services.storage_service import StorageService
-            storage = StorageService()
+            from app.modules.documents.services.storage_service import FirebaseStorageService
+            storage = FirebaseStorageService()
             await storage.initialize()
 
             for row in file_rows:

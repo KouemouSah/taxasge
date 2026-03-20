@@ -17,7 +17,7 @@ from datetime import datetime
 import uuid
 
 from app.modules.documents.services.ocr_service import OCRService
-from app.modules.documents.services.storage_service import StorageService
+from app.modules.documents.services.storage_service import FirebaseStorageService
 
 
 class DocumentService:
@@ -32,7 +32,7 @@ class DocumentService:
         """
         self.project_id = project_id
         self.ocr_service = OCRService(project_id=project_id)
-        self.storage_service = StorageService(project_id=project_id)
+        self.storage_service = FirebaseStorageService()
 
     async def process_uploaded_document(
         self,
