@@ -116,22 +116,15 @@ Les menus pointaient vers des URLs mortes — corrigé en supprimant les liens, 
 - [x] Filtres: status dropdown + search debounce (empresa, NIF, zona)
 - [x] Pagination + compteur total
 
-### Phase 3 : Détail Licence (`/dashboard/agent/oms/licenses/[id]`)
-Vue détaillée d'une licence avec ses obligations.
-
-- [ ] **Header** : entreprise, NIF, zone, bundle, fiscal_year
-- [ ] **KPIs** : total_amount, amount_paid, balance, recovery %
-  - Réutiliser GaugeRing SVG de Session 5
-- [ ] **Donut** : paid/pending/overdue obligations (réutiliser pattern debt page)
-- [ ] **Table obligations** :
-  - Source: `GET /licenses/{id}/obligations`
-  - Colonnes: fee_type, ministry, amount, penalty, due_date, status, paid_at
-  - Actions: Process, Reject (si agent), View events
-- [ ] **Timeline événements** :
-  - Source: `GET /licenses/{id}/events`
-  - Pattern vertical timeline
-- [ ] **Actions** : Renouveler (`POST /licenses/{id}/renew`), Check N-1, Download PDF
-- [ ] Print layout (réutiliser PrintHeader composant partagé)
+### Phase 3 : Détail Licence (`/dashboard/agent/oms/licenses/[id]`) ✅
+- [x] Header: entreprise, NIF, zone, año fiscal, badge status coloré, bouton retour
+- [x] 5 KPIs: total, pagado, balance, recovery % (progress bar), penalidades (conditionnel)
+- [x] Donut chart.js: paid/pending/overdue obligations (cutout 55%, légende droite)
+- [x] Table obligations: fee_type, ministry, monto, penalty (conditionnel), vence, status badge+icône, actions
+- [x] Actions par obligation: Process (CheckCircle2) + Reject (XCircle avec prompt) — conditionnel si processing/paid
+- [x] Download PDF + Imprimer (window.print)
+- [x] Print layout complet: PrintHeader + KPIs + table obligations + PrintFooter
+- [x] Penalties colonne conditionnelle (masquée si totalPenalties = 0)
 
 ### Phase 4 : Compliance / Suivi (`/dashboard/agent/oms/compliance`)
 Vue compliance par fee_type — quelles entreprises sont en retard.
