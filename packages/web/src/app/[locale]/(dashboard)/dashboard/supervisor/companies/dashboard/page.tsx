@@ -184,14 +184,20 @@ export default function SupervisorSiteDashboardPage() {
     }
   }, [projection, projectionMonths])
 
-  // Classified debtors
-  const classifiedDebtors = useMemo(() => classifyDebtors(analytics?.top_debtors ?? []), [analytics])
+  // Classified debtors — filtered to supervisor's zone only
+  const classifiedDebtors = useMemo(() => {
+    if (!analytics?.top_debtors?.length || !zone) return []
+    // SECURITY: filter to supervisor's zone only (analytics is global)
+    const zoneFiltered = analytics.top_debtors.filter(d => d.zone_code === zone.zone_code)
+    return classifyDebtors(zoneFiltered)
+  }, [analytics, zone])
 
-  // Concentration risk
+  // Concentration risk — zone-scoped
   const concentration = useMemo(() => {
-    const totalDebt = analytics?.top_debtors?.reduce((s, d) => s + d.debt, 0) ?? 0
-    return concentrationRisk(analytics?.top_debtors ?? [], totalDebt)
-  }, [analytics])
+    if (!classifiedDebtors.length) return concentrationRisk([], 0)
+    const totalDebt = classifiedDebtors.reduce((s, d) => s + d.debt, 0)
+    return concentrationRisk(classifiedDebtors, totalDebt)
+  }, [classifiedDebtors])
 
   // Province data for SVG map (from analytics.by_city grouped by provincia)
   const [mapColorBy, setMapColorBy] = useState<'companies' | 'debt' | 'recovery'>('companies')
@@ -338,7 +344,7 @@ export default function SupervisorSiteDashboardPage() {
               <Card>
                 <CardHeader className="pb-1">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Tendencia + Proyección</CardTitle>
+                    <CardTitle className="text-sm">Tendencia nacional + Proyección</CardTitle>
                     <Select value={String(projectionMonths)} onValueChange={v => setProjectionMonths(Number(v))}>
                       <SelectTrigger className="w-[100px] h-7 text-[10px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -377,7 +383,7 @@ export default function SupervisorSiteDashboardPage() {
             <Card>
               <CardHeader className="pb-1">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Mapa por provincia</CardTitle>
+                  <CardTitle className="text-sm">Mapa nacional por provincia</CardTitle>
                   <Select value={mapColorBy} onValueChange={v => setMapColorBy(v as 'companies' | 'debt' | 'recovery')}>
                     <SelectTrigger className="w-[120px] h-7 text-[10px]"><SelectValue /></SelectTrigger>
                     <SelectContent>

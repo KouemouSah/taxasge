@@ -10,8 +10,6 @@
  *   <PrintHeader title="Ficha Empresa" subtitle="ONRC" meta={[{label: 'NIF', value: 'GE123'}]} />
  */
 
-import Image from 'next/image'
-
 interface PrintHeaderProps {
   title: string
   subtitle: string
@@ -26,7 +24,7 @@ export function PrintHeader({ title, subtitle, meta }: PrintHeaderProps) {
   return (
     <div className="hidden print:block mb-3">
       <div className="flex items-center justify-between border-b-2 border-gray-800 pb-2 mb-2">
-        <Image src="/logo.png" alt="FACIL" width={80} height={28} className="h-7 w-auto" />
+        <img src="/logo.png" alt="FACIL" width={80} height={28} className="h-7 w-auto" />
         <div className="text-right">
           <h1 className="text-[11pt] font-bold tracking-wide uppercase">{title}</h1>
           <p className="text-[7pt] text-gray-600">{subtitle} — República de Guinea Ecuatorial</p>

@@ -85,33 +85,6 @@ export function projectTrend(
 }
 
 // =============================================================================
-// MOVING AVERAGE (3 months)
-// =============================================================================
-
-export function movingAverage(values: number[], window = 3): number[] {
-  return values.map((_, i) => {
-    const start = Math.max(0, i - window + 1)
-    const slice = values.slice(start, i + 1)
-    return Math.round(slice.reduce((a, b) => a + b, 0) / slice.length)
-  })
-}
-
-// =============================================================================
-// GROWTH RATE
-// =============================================================================
-
-export function monthlyGrowthRate(trend: MonthData[]): number {
-  if (trend.length < 2) return 0
-  const rates: number[] = []
-  for (let i = 1; i < trend.length; i++) {
-    if (trend[i - 1].created > 0) {
-      rates.push((trend[i].created - trend[i - 1].created) / trend[i - 1].created)
-    }
-  }
-  return rates.length > 0 ? rates.reduce((a, b) => a + b, 0) / rates.length : 0
-}
-
-// =============================================================================
 // RISK CLASSIFICATION
 // =============================================================================
 
@@ -120,7 +93,6 @@ export type RiskLevel = 'critical' | 'high' | 'medium' | 'low'
 export interface ClassifiedDebtor extends DebtorData {
   risk: RiskLevel
   riskScore: number       // 0-100 (higher = worse)
-  isRecidivist: boolean   // overdue pattern indicator
   neverPaid: boolean      // 0% recovery with debt
 }
 
@@ -148,7 +120,6 @@ export function classifyDebtors(debtors: DebtorData[]): ClassifiedDebtor[] {
       risk,
       riskScore,
       neverPaid: d.recovery_pct === 0 && d.debt > 0,
-      isRecidivist: false, // Would need historical data to determine
     }
   }).sort((a, b) => b.riskScore - a.riskScore)
 }
