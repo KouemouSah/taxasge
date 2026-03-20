@@ -1,0 +1,483 @@
+# Spécification Technique — BundleWorkflow (Paiement Obligations Entreprises Autonomes)
+
+## Date : 2026-03-20
+## Statut : SPEC pour implémentation
+## Auteur : Claude Code (expert critique)
+
+---
+
+## 1. CONTEXTE ET OBJECTIF
+
+### Qu'est-ce que le BundleWorkflow ?
+Un workflow déclenché par un citoyen/utilisateur depuis son dashboard pour **payer les obligations fiscales annuelles** d'une entreprise autonome enregistrée au Padrón Empresarial de Guinée Équatoriale.
+
+### Qui peut le déclencher ?
+- Le propriétaire de l'entreprise (user role: business/citizen)
+- Un comptable mandaté (user role: accountant)
+- Un tiers qui paie pour le compte d'un autre (cas GE fréquent : famille/associé)
+- Un admin (pour tests ou cas spéciaux)
+
+### Pourquoi un workflow et pas un simple bouton "payer" ?
+Parce que le processus implique :
+1. Identification certaine de l'entreprise (NIF/PE)
+2. Vérification de l'existence de la licence annuelle
+3. Création automatique si première année
+4. Choix du mode de paiement (per_line vs consolidé)
+5. Routage vers les bonnes entités (Tesoro, Ayuntamiento, Cámara)
+6. Validation post-paiement par agents
+7. Émission de documents officiels
+
+C'est un **cycle de vie complet**, pas une transaction simple.
+
+---
+
+## 2. INTÉGRATION DANS L'ARCHITECTURE EXISTANTE
+
+### Pattern à suivre : PredefinedWorkflow
+Le BundleWorkflow DOIT être un `PredefinedWorkflow` comme les autres (Pasaporte, Residencia, etc.) car :
+- Il utilise le même moteur (WorkflowEngine)
+- Il utilise les mêmes schemas OCR (GeminiDocumentProcessor)
+- Il utilise le même système de paiement (service_payments)
+- Il s'intègre dans les menus dynamiques (workflow_menu_mapping)
+- Il bénéficie du même audit trail (service_request_documents, compliance_events)
+
+### Différences clés avec les workflows existants
+
+| Aspect | Workflows actuels (Pasaporte, etc.) | BundleWorkflow |
+|--------|--------------------------------------|----------------|
+| **Résultat** | Document officiel (passeport, licence) | Paiement d'obligations fiscales |
+| **Nombre de paiements** | 1 paiement fixe | N paiements (1 par obligation ou 1 consolidé) |
+| **Post-paiement** | Agent review → émission document | Routing → multi-entités → émission licence |
+| **Récurrence** | Ponctuel | Annuel (renouvellement chaque année) |
+| **Documents requis** | Identité + spécifiques | Certificado Padrón (PE) obligatoire |
+| **Classification** | N/A | Classification fiscale automatique |
+| **Licence commerciale** | N/A | Création commercial_license + obligations |
+
+### Tables impliquées (EXISTANTES, pas à créer)
+
+```
+service_requests          ← Dossier principal (wizard session → persist)
+service_request_documents ← Documents uploadés (certificado padrón)
+service_payments          ← Paiement(s) avec fee_type discriminant
+companies                 ← Entreprise identifiée/créée
+commercial_licenses       ← Licence annuelle (1 par entreprise × bundle × année)
+license_obligations       ← Obligations individuelles (tesoro, municipal, chamber)
+license_compliance_events ← Audit trail complet
+company_classification_history ← Historique des classifications
+```
+
+### Schemas OCR à intégrer dans GeminiDocumentProcessor
+
+| Schema | Fichier | Usage |
+|--------|---------|-------|
+| `CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL_GQ_V1` | `certificado_actualizacion_padron_empresarial_gq.json` | **OBLIGATOIRE** — Preuve d'inscription au Padrón (autonomo). Champs clés : numero_registro (PE-XXXX), localidad, provincia, estado_negocio, timbre_fiscal |
+| `CERTIFICADO_REGISTRO_EMPRESARIAL_GQ_V1` | `certificado_registro_empresarial_gq.json` | Optionnel — Pour les SL/SA (hors scope bundle mais utile pour la création d'entreprise). Champs clés : nif, forma_juridica, capital_social |
+| `CERTIFICADO_REGISTRO_COMERCIO_GQ_V1` | `certificado_registro_comercio_gq.json` | Optionnel — Registre du commerce annuel |
+
+### Comment les schémas s'intègrent dans GeminiDocumentProcessor
+
+Le processeur utilise le `extraction_schema_key` pour sélectionner le bon schéma :
+
+```python
+# Dans la définition du BundleWorkflow :
+DocumentRequirement(
+    document_code="certificado_padron",
+    document_name_es="Certificado de Actualización del Padrón Empresarial",
+    schema_key="CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL_GQ_V1",
+    is_required=True,
+    faces_required=["recto"],
+    accepted_formats=["pdf", "jpg", "png"],
+    max_size_mb=10,
+)
+
+# Le GeminiDocumentProcessor.process() reçoit :
+#   extraction_schema_key = "CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL_GQ_V1"
+#   → SchemaLoader résout → certificado_actualizacion_padron_empresarial_gq.json
+#   → Extraction guidée par les hints + champs du schéma
+#   → Validation par les 15+ rules du schéma
+```
+
+### Extraction → Classification → Licence (pipeline automatique)
+
+```
+Document uploadé (certificado_padron.pdf)
+  ↓
+GeminiDocumentProcessor.process(
+    content=bytes,
+    document_code="certificado_padron",
+    extraction_schema_key="CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL_GQ_V1"
+)
+  ↓ Extraction
+{
+    "empresa.numero_registro": "PE-001234",
+    "empresa.denominacion_comercial": "Tienda El Sol",
+    "ubicacion.localidad": "Malabo",
+    "ubicacion.provincia": "BIOKO-NORTE",
+    "actividad.sector": "Terciario",
+    "actividad.objeto_social": "Venta de productos alimenticios",
+    "certificacion.estado_negocio": "Negocio Activo"
+}
+  ↓ Mapping vers company_data
+{
+    "legal_name": "Tienda El Sol",
+    "registration_number": "PE-001234",
+    "forma_juridica": "autonomo",
+    "sector_actividad": "terciario",
+    "objeto_social": "Venta de productos alimenticios",
+    "localidad": "Malabo",
+    "provincia": "BIOKO-NORTE"
+}
+  ↓ ClassificationAgent.classify_company()
+  R2b: autonomo + PE-XXXX → ALWAYS bundle (conf 0.95)
+  ↓ LLM commerce_type inference
+  objeto_social "Venta de productos alimenticios" → commerce_type="abaceria"
+  ↓ Zone resolution
+  localidad="Malabo" → city_id → zone_id=A1
+  ↓ Post-validation
+  Bundle "Abacerias" existe pour zone A1 → OK
+  ↓
+ClassificationResult {
+    regimen_fiscal: "bundle",
+    commerce_type: "abaceria",
+    confidence: 0.95,
+    zone_id: "A1"
+}
+  ↓ Décision
+  confidence ≥ 0.90 + pas de flags → auto_approved
+  ↓
+  CREATE company (si nouvelle)
+  → LicenseService.open_license(company_id, bundle_id, zone_id, fiscal_year)
+  → Obligations générées automatiquement
+  → Workflow continue vers le paiement
+```
+
+---
+
+## 3. PARCOURS UTILISATEUR — CRITIQUE DES SUGGESTIONS
+
+### Ta proposition : "Page avec 2 choix (recherche + upload)"
+**Mon analyse critique :**
+
+**POUR la recherche en premier :**
+✅ Le cas dominant (80%+) est une entreprise EXISTANTE qui renouvelle ses obligations annuelles
+✅ Le comptable qui paie pour un client doit pouvoir chercher sans être le propriétaire
+✅ Le NIF/PE est l'identifiant unique — la recherche est le moyen le plus fiable
+
+**CONTRE les 2 options au même niveau :**
+❌ L'upload déclenche un pipeline asynchrone (extraction LLM 3-5s + classification + draft review possible) pendant lequel l'utilisateur ne peut PAS continuer
+❌ Si l'entreprise existe déjà et que l'utilisateur uploade quand même → conflit (doublons NIF/PE détectés → erreur confuse)
+❌ L'UX est confuse : "chercher OU uploader" implique que ce sont des alternatives équivalentes, mais elles ont des durées et outcomes très différents
+
+**MA CONTRE-PROPOSITION :**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ ÉTAPE 0 : IDENTIFICATION DE L'ENTREPRISE                     │
+│                                                              │
+│ [Barre de recherche proéminente]                             │
+│ 🔍 Buscar empresa por NIF, PE-XXXX o nombre...              │
+│                                                              │
+│ Résultats en temps réel (debounce 300ms) :                   │
+│ ┌──────────────────────────────────────────────┐             │
+│ │ 🏢 Tienda El Sol — PE-001234 — Malabo (A1)  │ [Seleccionar]│
+│ │    ⚠ Registrada por otro usuario            │             │
+│ └──────────────────────────────────────────────┘             │
+│                                                              │
+│ Si AUCUN résultat :                                          │
+│ ┌──────────────────────────────────────────────┐             │
+│ │ No se encontró la empresa.                    │             │
+│ │ ¿Es una nueva empresa? Suba el certificado    │             │
+│ │ del Padrón Empresarial para registrarla.       │             │
+│ │ [📄 Subir certificado]                         │             │
+│ └──────────────────────────────────────────────┘             │
+│                                                              │
+│ La zone d'upload N'APPARAÎT QUE si la recherche             │
+│ ne trouve rien. C'est SÉQUENTIEL, pas parallèle.            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Pourquoi c'est mieux :**
+1. 80% des utilisateurs trouvent leur entreprise en 1 recherche → flux rapide
+2. Pas de confusion entre 2 options parallèles
+3. L'upload est un fallback naturel, pas une alternative
+4. L'avertissement "registrada por otro usuario" informe sans bloquer (ton point ✅)
+
+### La mention "Registrada por otro usuario"
+
+Quand un utilisateur cherche et trouve une entreprise qu'il n'a pas créée :
+- **Afficher** : "⚠ Esta empresa fue registrada por otro usuario. Puede continuar el pago como representante o tercero."
+- **Ne PAS bloquer** : L'utilisateur peut sélectionner et continuer
+- **Logger** : audit_log avec user_id + company_id + "third_party_payment_initiated"
+- **Notification** : Email au propriétaire original ("Alguien inició un pago para su empresa")
+
+---
+
+## 4. DÉFINITION TECHNIQUE DU WORKFLOW
+
+### WorkflowCode
+```python
+# Ajouter dans WorkflowCode enum :
+BUNDLE_PAYMENT = "BUNDLE_PAYMENT"
+
+# Catégorie :
+WorkflowCategory.FISCAL  # Nouvelle catégorie (ou COMMERCIAL)
+```
+
+### Classe BundlePaymentWorkflow
+
+```python
+class BundlePaymentWorkflow(PredefinedWorkflow):
+    """Bundle payment workflow for autonomo companies.
+
+    Steps:
+      0. company_identification → SELECTION (search or upload)
+      1. license_verification   → SYSTEM (auto-create license if needed)
+      2. obligations_review     → FORM_REVIEW (show obligations, select mode)
+      3. payment               → PAYMENT (BANGE or cash)
+      4. confirmation          → CONFIRMATION (receipt + next steps)
+    """
+
+    @property
+    def workflow_code(self) -> WorkflowCode:
+        return WorkflowCode.BUNDLE_PAYMENT
+
+    @property
+    def category(self) -> WorkflowCategory:
+        return WorkflowCategory.FISCAL
+
+    @property
+    def entity_code(self) -> EntityCode:
+        return EntityCode.TESORO  # Primary routing
+
+    @property
+    def requires_appointment(self) -> bool:
+        return False  # No appointment needed
+
+    @property
+    def requires_agent_review(self) -> bool:
+        return True  # Tesoro agent validates cash payments
+
+    def _setup_workflow(self):
+        # Step 0: Company identification
+        self.add_step(WorkflowStep(
+            step_number=0,
+            step_type=StepType.SELECTION,
+            title_es="Identificación de la Empresa",
+            description_es="Busque su empresa o registre una nueva",
+            is_required=True,
+        ))
+
+        # Step 1: Document upload (conditional: only if new company)
+        self.add_step(WorkflowStep(
+            step_number=1,
+            step_type=StepType.DOCUMENT_UPLOAD,
+            title_es="Documentos de la Empresa",
+            description_es="Suba el certificado del Padrón Empresarial",
+            is_required=False,  # Conditional: only for new companies
+            condition={"company_exists": "false"},
+        ))
+
+        # Step 2: License & obligations review
+        self.add_step(WorkflowStep(
+            step_number=2,
+            step_type=StepType.FORM_REVIEW,
+            title_es="Revisión de Obligaciones",
+            description_es="Revise las obligaciones fiscales y seleccione el modo de pago",
+            is_required=True,
+        ))
+
+        # Step 3: Payment
+        self.add_step(WorkflowStep(
+            step_number=3,
+            step_type=StepType.PAYMENT,
+            title_es="Pago",
+            description_es="Realice el pago de las obligaciones seleccionadas",
+            is_required=True,
+        ))
+
+        # Step 4: Confirmation
+        self.add_step(WorkflowStep(
+            step_number=4,
+            step_type=StepType.CONFIRMATION,
+            title_es="Confirmación",
+            description_es="Resumen del pago y próximos pasos",
+            is_required=True,
+        ))
+
+    def get_document_requirements(self, context):
+        """Documents required only for NEW companies."""
+        if context.form_data.get("company_exists") == "false":
+            return [
+                DocumentRequirement(
+                    document_code="certificado_padron",
+                    document_name_es="Certificado de Actualización del Padrón Empresarial",
+                    schema_key="CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL_GQ_V1",
+                    is_required=True,
+                    faces_required=["recto"],
+                    accepted_formats=["pdf", "jpg", "png"],
+                    max_size_mb=10,
+                ),
+            ]
+        return []  # Existing company: no upload needed
+
+    def get_tariff_breakdown(self, context):
+        """Tariff comes from license obligations, not from a fixed schedule."""
+        # The tariff is dynamic — computed from bundle_items × zone pricing
+        license_data = context.form_data.get("license_data", {})
+        obligations = license_data.get("obligations", [])
+
+        items = []
+        for ob in obligations:
+            if ob.get("selected", True):  # Mode A: only selected; Mode B: all
+                items.append({
+                    "label": f"{ob['fee_type']} — {ob.get('ministry_name', '')}",
+                    "amount": ob["amount"],
+                })
+
+        total = sum(i["amount"] for i in items)
+        return {
+            "items": items,
+            "subtotal": total,
+            "total": total,
+            "currency": "XAF",
+        }
+```
+
+### Document Requirements
+
+| Document | Schema Key | Requis | Condition |
+|----------|-----------|--------|-----------|
+| Certificado Padrón | `CERTIFICADO_ACTUALIZACION_PADRON_EMPRESARIAL_GQ_V1` | OUI (si nouvelle) | `company_exists == false` |
+| DIP du représentant | `DIP_GQ_V2` | NON | Optionnel pour vérification identité |
+
+---
+
+## 5. RISQUES ET MITIGATIONS
+
+### R1 : Doublons d'entreprise lors de l'upload
+**Risque** : Utilisateur uploade un document pour une entreprise qui existe déjà (PE-001234 déjà en BD)
+**Mitigation** :
+- Après extraction, vérifier immédiatement `registration_number` en BD
+- Si trouvée → ne PAS créer de doublon, afficher l'entreprise existante et continuer
+- Le trigger `normalize_identifier` + UNIQUE index empêche les doublons même en race condition
+
+### R2 : Classification incorrecte bloque le paiement
+**Risque** : L'agent de classification retourne `declarativo` au lieu de `bundle` pour un autonomo
+**Mitigation** :
+- Rule R2b : autonomo + PE → ALWAYS bundle (confidence 0.95) — hard rule, pas de LLM
+- Si malgré tout → admin peut reclassifier manuellement
+
+### R3 : Bundle/zone sans pricing
+**Risque** : Le bundle "abaceria" n'a pas d'items pour la zone D3
+**Mitigation** :
+- Post-validation Layer 3 détecte et flag `zone_items_missing`
+- Message utilisateur : "Pas de tarif configuré pour cette zone. Contactez l'administration."
+- Ne PAS bloquer : créer la licence avec total_amount=0, admin complète plus tard
+
+### R4 : Paiement partiel en Mode A (pas toutes les obligations payées)
+**Risque** : Utilisateur paie Tesoro mais pas Ayuntamiento → licence reste `partial`
+**Mitigation** :
+- licence.status = `partial` (pas `complete`)
+- Cron reminder J-30, J-15, J-0 pour les obligations restantes
+- L'utilisateur peut revenir et payer les obligations manquantes (même workflow, même licence)
+
+### R5 : Race condition — 2 utilisateurs paient la même obligation
+**Risque** : Le comptable et le propriétaire paient simultanément
+**Mitigation** :
+- UPDATE obligation SET status='payment_pending' WHERE status='pending' RETURNING id
+- Le premier UPDATE gagne (row lock), le second retourne 0 rows → "obligation déjà en cours de paiement"
+- Idempotent : pas de double paiement
+
+### R6 : Millions de workflows simultanés
+**Risque** : Performance dégradée sous charge
+**Mitigation** :
+- open_license() = 1 transaction atomique (30 INSERTs max) → OK
+- Bundle pricing cached 1h → pas de recalcul par request
+- Connection pooling asyncpg (min=5, max=20) → 20 transactions simultanées
+- MV refresh toutes les 15min (pas en temps réel)
+- PDF generation en background task (pas bloquant)
+
+### R7 : L'utilisateur ne termine pas le workflow
+**Risque** : Session abandonnée après sélection d'entreprise, avant paiement
+**Mitigation** :
+- Wizard session en cache Redis (TTL 30min)
+- Si licence créée mais pas payée → status reste `open` (pas de cleanup)
+- L'utilisateur peut revenir et reprendre (même licence)
+
+### R8 : Schéma OCR non reconnu par Gemini
+**Risque** : Le document uploadé n'est pas un certificado padrón valide
+**Mitigation** :
+- GeminiDocumentProcessor vérifie `document_type` dans l'extraction
+- Si mismatch → `DOC_TYPE_MISMATCH` risk factor → blocking
+- Message utilisateur : "El documento no corresponde al certificado del Padrón Empresarial"
+
+---
+
+## 6. INTÉGRATION AVEC GeminiDocumentProcessor
+
+### Ajouts nécessaires dans le processeur
+
+Le GeminiDocumentProcessor supporte DÉJÀ les schémas d'entreprise. Les ajouts sont minimaux :
+
+1. **WorkflowIdentityConfig pour BUNDLE_PAYMENT** :
+```python
+"BUNDLE_PAYMENT": WorkflowIdentityConfig(
+    reference_document="certificado_padron",
+    compare_documents=[],  # Pas de cross-check (1 seul document)
+    critical_fields=[
+        IdentityFieldConfig("numero_registro", ["empresa.numero_registro"], is_blocking=True),
+        IdentityFieldConfig("denominacion_comercial", ["empresa.denominacion_comercial"], is_blocking=False),
+        IdentityFieldConfig("localidad", ["ubicacion.localidad"], is_blocking=False),
+    ],
+    is_blocking=True,
+),
+```
+
+2. **Mapping extraction → company_data** :
+```python
+def map_padron_to_company(extraction: Dict) -> Dict:
+    """Map certificado_padron extraction to company_data format."""
+    return {
+        "legal_name": extraction.get("empresa.denominacion_comercial", ""),
+        "registration_number": extraction.get("empresa.numero_registro", ""),
+        "forma_juridica": "autonomo",  # ALWAYS for Padrón
+        "sector_actividad": extraction.get("actividad.sector", "terciario"),
+        "objeto_social": extraction.get("actividad.objeto_social", ""),
+        "localidad": extraction.get("ubicacion.localidad", ""),
+        "provincia": extraction.get("ubicacion.provincia", ""),
+        # Le timbre fiscal confirme l'authenticité
+        "timbre_fiscal_code": extraction.get("documento.codigo_timbre", ""),
+    }
+```
+
+---
+
+## 7. SESSIONS D'IMPLÉMENTATION
+
+### Session 7A : Backend BundleWorkflow class + endpoints
+- [ ] Créer `BundlePaymentWorkflow(PredefinedWorkflow)` dans workflows/
+- [ ] Enregistrer dans WorkflowEngine
+- [ ] Endpoint `POST /bundle-workflow/search-company` (search par NIF/PE/nom)
+- [ ] Endpoint `POST /bundle-workflow/initiate` (avec company_id ou document upload)
+- [ ] Endpoint `POST /bundle-workflow/{license_id}/select-obligations` (mode A/B)
+- [ ] Endpoint `POST /bundle-workflow/{license_id}/initiate-payment`
+- [ ] Intégration GeminiDocumentProcessor (identity config + mapping)
+
+### Session 7B : Frontend Wizard BundleWorkflow
+- [ ] Page `/dashboard/bundle-payment` — wizard 5 étapes
+- [ ] Step 0 : Recherche entreprise (CompanySearchSelect enrichi)
+- [ ] Step 0b : Upload certificado (conditionnel si pas trouvée)
+- [ ] Step 2 : Revue obligations (table avec checkboxes Mode A)
+- [ ] Step 3 : Paiement (BANGE redirect ou cash)
+- [ ] Step 4 : Confirmation (résumé + PDF)
+
+### Session 7C : Agent + Notifications
+- [ ] Queue OMS pour agents Tesoro
+- [ ] Validation/rejet par agent
+- [ ] Émission document (licence commerciale)
+- [ ] Email templates : initiation, reminder, completion
+
+### Session 7D : Tests E2E
+- [ ] Flux complet : recherche → licence → paiement → validation → complete
+- [ ] Flux nouvelle entreprise : upload → extraction → classification → licence → paiement
+- [ ] Race conditions (double paiement, double création)
