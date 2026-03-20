@@ -17,7 +17,7 @@ import {
   Building2, ShieldCheck, TrendingUp, AlertTriangle,
   RefreshCw, CheckCircle2, Clock, Search, Target,
   ChevronLeft, ChevronRight, Gauge, Zap, ShieldAlert, MapPin,
-  FileText, Eye, XCircle,
+  FileText, Eye, XCircle, Maximize2,
 } from 'lucide-react'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -39,6 +39,9 @@ import { useToast } from '@/hooks/use-toast'
 import { companyDashboardApi, companiesSupervisorApi } from '@/modules/companies/services/api'
 import type { ZoneStats, CompanyAdminListResponse, CompanyAnalytics } from '@/modules/companies/types'
 import { GEMapSVG, type ProvinceData } from '@/components/shared/GEMapSVG'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog'
 import {
   projectTrend, classifyDebtors, concentrationRisk, zoneHealthScore,
 } from '@/modules/companies/utils/analytics-engine'
@@ -202,6 +205,7 @@ export default function SupervisorSiteDashboardPage() {
   // Province data for SVG map (from analytics.by_city grouped by provincia)
   const [mapColorBy, setMapColorBy] = useState<'companies' | 'debt' | 'recovery'>('companies')
   const [mapSelected, setMapSelected] = useState<string | null>(null)
+  const [mapFullscreen, setMapFullscreen] = useState(false)
   const provinceData = useMemo((): ProvinceData[] => {
     if (!analytics?.by_city?.length) return []
     const m = new Map<string, ProvinceData>()
@@ -398,26 +402,59 @@ export default function SupervisorSiteDashboardPage() {
           </div>
 
           {/* SVG Map */}
-          {provinceData.length > 0 && (
+          {provinceData.length > 0 && (<>
             <Card>
               <CardHeader className="pb-1">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Mapa nacional por provincia</CardTitle>
-                  <Select value={mapColorBy} onValueChange={v => setMapColorBy(v as 'companies' | 'debt' | 'recovery')}>
-                    <SelectTrigger className="w-[120px] h-7 text-[10px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="companies">Empresas</SelectItem>
-                      <SelectItem value="debt">Deuda</SelectItem>
-                      <SelectItem value="recovery">Recovery</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-1.5">
+                    <Select value={mapColorBy} onValueChange={v => setMapColorBy(v as 'companies' | 'debt' | 'recovery')}>
+                      <SelectTrigger className="w-[110px] h-7 text-[10px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="companies">Empresas</SelectItem>
+                        <SelectItem value="debt">Deuda</SelectItem>
+                        <SelectItem value="recovery">Recovery</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMapFullscreen(true)} title="Pantalla completa">
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <GEMapSVG data={provinceData} colorBy={mapColorBy} selected={mapSelected} onSelect={setMapSelected} />
               </CardContent>
             </Card>
-          )}
+
+            {/* Fullscreen map dialog */}
+            <Dialog open={mapFullscreen} onOpenChange={setMapFullscreen}>
+              <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] flex flex-col p-0">
+                <DialogHeader className="px-4 pt-4 pb-2 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <DialogTitle className="text-base">Mapa de Guinea Ecuatorial — Provincias</DialogTitle>
+                      <DialogDescription className="text-xs">
+                        Datos GADM 4.1. Clic en una provincia para filtrar.
+                        {mapSelected && <span className="ml-2 font-medium text-blue-600">Selección: {mapSelected}</span>}
+                      </DialogDescription>
+                    </div>
+                    <Select value={mapColorBy} onValueChange={v => setMapColorBy(v as 'companies' | 'debt' | 'recovery')}>
+                      <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="companies">Empresas</SelectItem>
+                        <SelectItem value="debt">Deuda</SelectItem>
+                        <SelectItem value="recovery">Recovery</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </DialogHeader>
+                <div className="flex-1 min-h-0 px-4 pb-4">
+                  <GEMapSVG data={provinceData} colorBy={mapColorBy} selected={mapSelected} onSelect={setMapSelected} />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>)}
         </TabsContent>
 
         {/* ═══ PILOTAGE ═══ */}
