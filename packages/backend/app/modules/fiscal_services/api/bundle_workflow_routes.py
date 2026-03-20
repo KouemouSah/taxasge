@@ -61,6 +61,9 @@ class BundleInitiatePaymentRequest(BaseModel):
     phone_number: Optional[str] = Field(
         None, description="Required for mobile_money"
     )
+    wizard_session_id: Optional[str] = Field(
+        None, description="Wizard session ID for document persistence (Firebase)"
+    )
 
 
 # ================================================================
@@ -221,6 +224,7 @@ async def initiate_bundle_payment(
                 selected_obligation_ids=obligation_uuids,
                 user_id=user_id,
                 phone_number=body.phone_number,
+                wizard_session_id=body.wizard_session_id,
             )
 
         return result

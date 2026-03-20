@@ -597,6 +597,7 @@ class BundleWorkflowService:
         selected_obligation_ids: List[UUID],
         user_id: UUID,
         phone_number: Optional[str] = None,
+        wizard_session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create service_request + service_payment + link obligations.
 
@@ -605,6 +606,7 @@ class BundleWorkflowService:
         Flow:
           1. Validate (re-check obligations are still payable — race protection)
           2. Create service_request
+          2b. Persist documents from wizard session to Firebase (if session_id provided)
           3. Update license.processing_mode + service_request_id
           4. Create service_payment
           5. Link obligations to payment (UPDATE ... WHERE status IN (...) RETURNING)
@@ -684,6 +686,25 @@ class BundleWorkflowService:
             entity_code="TESORO",
         )
         service_request_id = sr["id"]
+
+        # 2b. Persist documents from wizard session cache to Firebase (if provided)
+        # Same process as PredefinedWorkflow: base64 from Redis → Firebase Storage → uploaded_files
+        if wizard_session_id:
+            try:
+                doc_count = await BundleWorkflowService._persist_session_documents(
+                    conn, wizard_session_id, user_id, service_request_id,
+                )
+                if doc_count > 0:
+                    logger.info(
+                        "Persisted %d document(s) from wizard session %s to SR %s",
+                        doc_count, wizard_session_id, service_request_id,
+                    )
+            except Exception as e:
+                # Document persistence failure should NOT block payment
+                logger.warning(
+                    "Failed to persist documents from session %s: %s",
+                    wizard_session_id, e,
+                )
 
         # 3. Update license with service_request_id + processing_mode
         await conn.execute("""
@@ -888,6 +909,104 @@ class BundleWorkflowService:
             "message_fr": msg_fr,
             "message_en": msg_en,
         }
+
+    # ================================================================
+    # Document Persistence (Firebase)
+    # ================================================================
+
+    @staticmethod
+    async def _persist_session_documents(
+        conn, session_id: str, user_id: UUID, service_request_id: UUID,
+    ) -> int:
+        """Persist documents from wizard session cache (Redis) to Firebase Storage.
+
+        Same process as PredefinedWorkflow's persist_to_db():
+          1. Load session from Redis cache
+          2. For each document: decode base64 → upload to Firebase Storage
+          3. Create uploaded_files + service_request_documents records in DB
+
+        Args:
+            conn: Database connection (inside transaction)
+            session_id: Wizard session ID
+            user_id: User who uploaded the documents
+            service_request_id: Service request to link documents to
+
+        Returns:
+            Number of documents persisted
+        """
+        import base64
+        from app.core.cache import get_cache
+
+        cache = get_cache()
+        cache_key = f"wizard_session:{session_id}"
+        session_data = await cache.get(cache_key)
+
+        if not session_data or not isinstance(session_data, dict):
+            logger.warning("Session %s not found in cache — no documents to persist", session_id)
+            return 0
+
+        documents = session_data.get("documents", {})
+        if not documents:
+            return 0
+
+        from app.modules.documents.services.storage_service import firebase_storage_service
+        from app.modules.documents.repositories.document_repository import (
+            document_repository,
+        )
+
+        persisted = 0
+        for doc_code, doc_data in documents.items():
+            if not doc_data.get("content_b64"):
+                continue
+
+            try:
+                file_content = base64.b64decode(doc_data["content_b64"])
+
+                upload_result = await firebase_storage_service.upload_user_document(
+                    user_id=str(user_id),
+                    application_id=str(service_request_id),
+                    file=file_content,
+                    metadata={
+                        "filename": doc_data.get("file_name", f"{doc_code}.pdf"),
+                        "mime_type": doc_data.get("mime_type", "application/pdf"),
+                        "document_code": doc_code,
+                        "document_name": doc_data.get("document_name") or doc_code,
+                    },
+                )
+
+                await document_repository.add_document(
+                    db=conn,
+                    service_request_id=service_request_id,
+                    document_code=doc_code,
+                    document_name=doc_data.get("document_name") or doc_code,
+                    file_path=upload_result.file_path,
+                    file_name=doc_data.get("file_name", f"{doc_code}.pdf"),
+                    file_size=doc_data.get("file_size", len(file_content)),
+                    mime_type=doc_data.get("mime_type", "application/pdf"),
+                    uploaded_by=user_id,
+                    source="bundle_workflow",
+                    file_hash=doc_data.get("doc_hash"),
+                )
+
+                persisted += 1
+                logger.info(
+                    "Document %s persisted to Firebase for SR %s",
+                    doc_code, service_request_id,
+                )
+
+            except Exception as e:
+                logger.error(
+                    "Failed to persist document %s for SR %s: %s",
+                    doc_code, service_request_id, e,
+                )
+
+        # Clean up session from cache after documents are persisted
+        try:
+            await cache.delete(cache_key)
+        except Exception:
+            pass
+
+        return persisted
 
     # ================================================================
     # Helpers
