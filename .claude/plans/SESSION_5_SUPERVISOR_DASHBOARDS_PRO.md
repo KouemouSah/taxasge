@@ -10,12 +10,14 @@ Refondre les dashboards superviseur site, superviseur ministère, et les pages a
 
 ## Phases
 
-### Phase 1 : Superviseur Site Dashboard (4 onglets)
-- [ ] STRATÉGIQUE : KPIs zone avec gauges + tendance mensuelle (line chart)
-- [ ] PILOTAJE : Liste entreprises avec filtres avancés + graphe compliance par mois
-- [ ] OPÉRATIONNEL : Alertes overdue, entreprises non vérifiées, actions prioritaires
-- [ ] CONTRÔLE : Taux vérification, couverture identifiants, anomalies zone
-- [ ] Intégrer carte SVG zone (highlight de SA zone uniquement)
+### Phase 1 : Superviseur Site Dashboard (4 onglets) ✅
+- [x] STRATÉGIQUE : 4 KPIs avec GaugeRing SVG (total, recovery, dette, licences) + donut régimes + line chart tendance 6 mois (creadas/verificadas)
+- [x] PILOTAJE : Table entreprises avec 3 filtres avancés (search debounce, régimen, vérification) + colonnes clickables → détail + pagination + compteur
+- [x] OPÉRATIONNEL : 3 cartes alertes colorées (non-vérifié jaune, dette rouge, sans identifiant orange) + actions prioritaires contextuelles (recovery <40%, pendiente, non-vérifié) + état vert si tout OK
+- [x] CONTRÔLE : 5 gauges SVG (vérification, recovery, NIF, identifiants, bundles) + section anomalies zone avec XCircle/CheckCircle conditionnels
+- [ ] Carte SVG zone → Phase 5 (séparée)
+- **Fix prérequis** : Migration 242 — MV mv_company_stats_by_zone restaurée (zone_name, verified_companies, dette, licences, identifiants — 25 colonnes)
+- **Type** : ZoneStats enrichi (+verified_companies, +inactive_companies, +with_nif, +with_reg_number, +with_zone, +missing_identifier)
 
 ### Phase 2 : Superviseur Ministère Dashboard (4 onglets)
 - [ ] STRATÉGIQUE : KPIs obligations + gauges recouvrement + donut fee_type

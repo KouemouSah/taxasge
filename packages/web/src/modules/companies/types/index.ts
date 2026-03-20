@@ -174,11 +174,17 @@ export interface ZoneStats {
   zone_name: string
   total_companies: number
   active_companies: number
+  verified_companies: number
+  inactive_companies: number
   pending_verification: number
   bundle_count: number
   declarativo_count: number
   exento_count: number
   pendiente_count: number
+  with_nif: number
+  with_reg_number: number
+  with_zone: number
+  missing_identifier: number
   active_licenses: number
   total_obligations_amount: number
   total_paid_amount: number
