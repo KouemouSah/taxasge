@@ -8,7 +8,7 @@
  * Color-coded by metric, interactive tooltip, click-to-filter.
  */
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import {
   GNQ_PROVINCES as RAW_PROVINCES,
@@ -69,21 +69,52 @@ const LEGEND: Record<string, { label: string; colors: string[] }> = {
 }
 
 // Compute bounding box from SVG path d string
+// Extracts explicit coordinate pairs after M/L commands and Bézier endpoints
 function pathBBox(d: string): { x: number; y: number; w: number; h: number } {
-  const nums = d.match(/[\d.]+/g)?.map(Number) ?? []
+  // Match all coordinate pairs (x y) after path commands
+  const pairs: [number, number][] = []
+  const re = /([MLCHVSQTAZ])\s*([\d.e+-]+[\s,][\d.e+-]+(?:[\s,][\d.e+-]+[\s,][\d.e+-]+)*)/gi
+  let match
+  while ((match = re.exec(d)) !== null) {
+    const nums = match[2].match(/[\d.e+-]+/g)?.map(Number) ?? []
+    for (let i = 0; i < nums.length - 1; i += 2) {
+      pairs.push([nums[i], nums[i + 1]])
+    }
+  }
+  if (pairs.length === 0) return { x: 0, y: 0, w: 100, h: 100 }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-  for (let i = 0; i < nums.length - 1; i += 2) {
-    if (nums[i] < minX) minX = nums[i]
-    if (nums[i] > maxX) maxX = nums[i]
-    if (nums[i + 1] < minY) minY = nums[i + 1]
-    if (nums[i + 1] > maxY) maxY = nums[i + 1]
+  for (const [x, y] of pairs) {
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
   }
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+// Parse "x y w h" viewBox string to numbers
+function parseVB(vb: string): [number, number, number, number] {
+  const p = vb.split(' ').map(Number)
+  return [p[0], p[1], p[2], p[3]]
+}
+
+// Lerp between two viewBox values
+function lerpVB(a: [number, number, number, number], b: [number, number, number, number], t: number): string {
+  return `${a[0] + (b[0] - a[0]) * t} ${a[1] + (b[1] - a[1]) * t} ${a[2] + (b[2] - a[2]) * t} ${a[3] + (b[3] - a[3]) * t}`
+}
+
+// Ease-in-out cubic
+function ease(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 }
 
 export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
   const [hovered, setHovered] = useState<string | null>(null)
   const [zoomedKey, setZoomedKey] = useState<string | null>(null)
+
+  const DEFAULT_VB = `350 0 ${GNQ_SVG_WIDTH - 300} ${GNQ_SVG_HEIGHT - 280}`
+  const [animatedVB, setAnimatedVB] = useState(DEFAULT_VB)
+  const animRef = useRef<number>()
 
   // Map DB provincia name → data
   const dataMap = useMemo(() => {
@@ -103,25 +134,48 @@ export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
   const selectedKey = selected ? PROVINCIA_KEY_MAP[selected] : null
   const legend = LEGEND[colorBy]
 
-  // Dynamic viewBox for zoom
-  const DEFAULT_VIEWBOX = `350 0 ${GNQ_SVG_WIDTH - 300} ${GNQ_SVG_HEIGHT - 280}`
-  const viewBox = useMemo(() => {
-    if (!zoomedKey || zoomedKey === 'annobon') return DEFAULT_VIEWBOX
+  // Compute target viewBox for zoom
+  const targetVB = useMemo(() => {
+    if (!zoomedKey || zoomedKey === 'annobon') return DEFAULT_VB
     const prov = RAW_PROVINCES[zoomedKey]
-    if (!prov) return DEFAULT_VIEWBOX
+    if (!prov) return DEFAULT_VB
     const bb = pathBBox(prov.path)
-    // Add 20% padding
-    const pad = Math.max(bb.w, bb.h) * 0.2
+    const pad = Math.max(bb.w, bb.h) * 0.25
     return `${bb.x - pad} ${bb.y - pad} ${bb.w + pad * 2} ${bb.h + pad * 2}`
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoomedKey])
+
+  // Animate viewBox transition (400ms ease-in-out)
+  const animateVB = useCallback((from: string, to: string) => {
+    if (animRef.current) cancelAnimationFrame(animRef.current)
+    const fromVB = parseVB(from)
+    const toVB = parseVB(to)
+    const duration = 400
+    const start = performance.now()
+    const step = (now: number) => {
+      const t = Math.min((now - start) / duration, 1)
+      setAnimatedVB(lerpVB(fromVB, toVB, ease(t)))
+      if (t < 1) animRef.current = requestAnimationFrame(step)
+    }
+    animRef.current = requestAnimationFrame(step)
+  }, [])
+
+  useEffect(() => {
+    animateVB(animatedVB, targetVB)
+    // Only animate when target changes, not when animatedVB updates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetVB, animateVB])
+
+  // Sync zoom with parent selection
+  useEffect(() => {
+    if (!selected && zoomedKey) setZoomedKey(null)
+  }, [selected, zoomedKey])
 
   const handleProvinceClick = (key: string, dbName: string | undefined) => {
     if (zoomedKey === key) {
-      // Already zoomed → zoom out + deselect
       setZoomedKey(null)
       onSelect?.(null)
     } else {
-      // Zoom in + select
       setZoomedKey(key)
       onSelect?.(dbName || key)
     }
@@ -144,8 +198,8 @@ export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
         </button>
       )}
       <svg
-        viewBox={viewBox}
-        className="w-full h-auto transition-all duration-500 ease-in-out"
+        viewBox={animatedVB}
+        className="w-full h-auto"
         role="img"
         aria-label="Mapa de Guinea Ecuatorial — Datos GADM 4.1"
       >
@@ -242,7 +296,7 @@ export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
             <g
               onMouseEnter={() => setHovered('annobon')}
               onMouseLeave={() => setHovered(null)}
-              onClick={() => onSelect?.(isSel ? null : 'ANNOBON')}
+              onClick={() => handleProvinceClick('annobon', 'ANNOBON')}
               className="cursor-pointer"
               clipPath="url(#annobon-clip)"
               transform={`translate(${tx},${ty}) scale(${ANNOBON_SCALE})`}
