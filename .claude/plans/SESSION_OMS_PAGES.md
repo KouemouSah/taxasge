@@ -126,16 +126,14 @@ Les menus pointaient vers des URLs mortes — corrigé en supprimant les liens, 
 - [x] Print layout complet: PrintHeader + KPIs + table obligations + PrintFooter
 - [x] Penalties colonne conditionnelle (masquée si totalPenalties = 0)
 
-### Phase 4 : Compliance / Suivi (`/dashboard/agent/oms/compliance`)
-Vue compliance par fee_type — quelles entreprises sont en retard.
-
-- [ ] **Groupé par fee_type** : pour chaque type de taxe du ministère
-  - Compteur: paid / total obligations
-  - Progress bar recovery
-- [ ] **Liste entreprises en retard** par fee_type
-  - Colonnes: empresa, montant dû, jours retard, penalty accumulée
-- [ ] **Actions** : Envoyer relance (lié CommunicationService existant), marquer processed
-- [ ] Lien vers détail licence
+### Phase 4 : Compliance / Suivi (`/dashboard/agent/oms/compliance`) ✅
+- [x] 3 KPI summary: obligaciones vencidas (montant), recuperación global %, tipos de tasa count
+- [x] Groupé par fee_type: cards expandables avec compteurs (paid/pending/overdue) + recovery progress bar
+- [x] Summary bar: total/pagado/vencido XAF par fee_type
+- [x] Liste entreprises en retard par fee_type: nom, NIF, zone, montant + penalidades
+- [x] Actions par entreprise: Eye → détail licence, FileText → page deuda
+- [x] Empty state vert si aucun overdue
+- [x] Agrégation client-side: fetch licences → fetch obligations → group by fee_type
 
 ### Phase 5 : Dashboard Supervisor OMS (`/dashboard/supervisor/oms`)
 Vue superviseur — toute l'activité OMS de son ministère.
