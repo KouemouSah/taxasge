@@ -26,11 +26,12 @@ Refondre les dashboards superviseur site, superviseur ministère, et les pages a
 - [x] CONTRÔLE : Grille gauges SVG recovery par zone (9 gauges) + bar chart pénalités par zone + anomalies (recovery <40%, zones <20%, pénalités élevées)
 - [x] 4 tabs (était 3) — ajout onglet Control avec ShieldAlert icon
 
-### Phase 3 : Agent ONRC Lookup enrichi
-- [ ] Résultats avec plus de détails (licence status, dernière classification, date création)
-- [ ] Historique des recherches récentes (localStorage)
-- [ ] Export résultat en PDF (fiche entreprise rapide)
-- [ ] Badge "À jour" / "En retard" basé sur les obligations
+### Phase 3 : Agent ONRC Lookup enrichi ✅
+- [x] Résultats enrichis — forma_juridica, commerce_type, zone, active/inactive + verified badges dans chaque card
+- [x] Historique recherches (localStorage) — 10 dernières, tags cliquables avec compteur résultats, bouton clear
+- [x] Export ficha empresa (print) — Layout print-friendly avec @media print, card formatée ONRC officielle
+- [x] Icônes par champ — FileText (NIF/Reg), Tag (forma), Briefcase (commerce_type), MapPin (city)
+- [x] Compteur résultats affiché ("N resultado(s) para...")
 
 ### Phase 4 : Agent Ministry Debt enrichi
 - [ ] Graphe donut répartition paid/pending/overdue pour l'entreprise
