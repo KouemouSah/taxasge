@@ -38,6 +38,9 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { companyDashboardApi, companiesSupervisorApi } from '@/modules/companies/services/api'
 import type { ZoneStats, CompanyAdminListResponse, CompanyAnalytics } from '@/modules/companies/types'
+import {
+  projectTrend, classifyDebtors, concentrationRisk, zoneHealthScore,
+} from '@/modules/companies/utils/analytics-engine'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler)
 
@@ -84,6 +87,7 @@ export default function SupervisorSiteDashboardPage() {
   const [search, setSearch] = useState('')
   const [filterRegimen, setFilterRegimen] = useState('all')
   const [filterVerified, setFilterVerified] = useState('all')
+  const [projectionMonths, setProjectionMonths] = useState(3)
   const debounceRef = useRef<NodeJS.Timeout>()
   const seqRef = useRef(0)
 
@@ -150,17 +154,6 @@ export default function SupervisorSiteDashboardPage() {
     scales: { x: { ticks: { font: { size: 10 } } }, y: { beginAtZero: true, ticks: { font: { size: 10 } } } },
   }), [])
 
-  // Top debtors with risk scoring (from global analytics — filtered display)
-  const topDebtors = useMemo(() => {
-    if (!analytics?.top_debtors?.length) return []
-    return analytics.top_debtors.map(d => ({
-      ...d,
-      risk: d.recovery_pct < 20 && d.debt > 100_000 ? 'critical' as const
-        : d.recovery_pct < 40 ? 'high' as const
-        : d.recovery_pct < 70 ? 'medium' as const : 'low' as const,
-    }))
-  }, [analytics])
-
   // Trend direction
   const trendDirection = useMemo(() => {
     if (!analytics?.monthly_trend || analytics.monthly_trend.length < 2) return null
@@ -168,6 +161,42 @@ export default function SupervisorSiteDashboardPage() {
     const prev = analytics.monthly_trend[analytics.monthly_trend.length - 2]
     return { created: last.created - prev.created, verified: last.verified - prev.verified }
   }, [analytics])
+
+  // Projection (linear regression + future months)
+  const projection = useMemo(() => {
+    if (!analytics?.monthly_trend?.length) return null
+    return projectTrend(analytics.monthly_trend, 'created', projectionMonths)
+  }, [analytics, projectionMonths])
+
+  // Projection chart data (historical + dotted forecast)
+  const projectionChart = useMemo(() => {
+    if (!projection) return null
+    const allLabels = [...projection.historical.map(h => h.label.slice(5)), ...projection.projected.map(p => p.label.slice(5))]
+    const histValues = projection.historical.map(h => h.value)
+    const projValues = [...new Array(histValues.length - 1).fill(null), histValues[histValues.length - 1], ...projection.projected.map(p => p.value)]
+    return {
+      labels: allLabels,
+      datasets: [
+        { label: 'Historique', data: [...histValues, ...new Array(projection.projected.length).fill(null)], borderColor: '#3b82f6', backgroundColor: '#3b82f615', fill: true, tension: 0.4, pointRadius: 2 },
+        { label: `Projection +${projectionMonths}m`, data: projValues, borderColor: '#3b82f6', borderDash: [5, 5], backgroundColor: 'transparent', tension: 0.4, pointRadius: 2, pointStyle: 'triangle' as const },
+      ],
+    }
+  }, [projection, projectionMonths])
+
+  // Classified debtors
+  const classifiedDebtors = useMemo(() => classifyDebtors(analytics?.top_debtors ?? []), [analytics])
+
+  // Concentration risk
+  const concentration = useMemo(() => {
+    const totalDebt = analytics?.top_debtors?.reduce((s, d) => s + d.debt, 0) ?? 0
+    return concentrationRisk(analytics?.top_debtors ?? [], totalDebt)
+  }, [analytics])
+
+  // Zone health score
+  const healthScore = useMemo(() => {
+    if (!zone) return null
+    return zoneHealthScore(zone)
+  }, [zone])
 
   if (loading) {
     return (
@@ -282,7 +311,33 @@ export default function SupervisorSiteDashboardPage() {
                 </div>
               </CardContent>
             </Card>
-            {monthlyTrend && (
+            {projectionChart ? (
+              <Card>
+                <CardHeader className="pb-1">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">Tendencia + Proyección</CardTitle>
+                    <Select value={String(projectionMonths)} onValueChange={v => setProjectionMonths(Number(v))}>
+                      <SelectTrigger className="w-[100px] h-7 text-[10px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">+3 meses</SelectItem>
+                        <SelectItem value="6">+6 meses</SelectItem>
+                        <SelectItem value="12">+12 meses</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {projection && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Tendencia: {projection.slope >= 0 ? '+' : ''}{projection.slope.toFixed(1)}/mes · R² = {projection.r2.toFixed(2)}
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[180px]">
+                    <Line data={projectionChart} options={trendOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : monthlyTrend && (
               <Card>
                 <CardHeader className="pb-1"><CardTitle className="text-sm">Tendencia mensual</CardTitle></CardHeader>
                 <CardContent>
@@ -480,20 +535,31 @@ export default function SupervisorSiteDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Top debtors with risk scoring */}
-          {topDebtors.length > 0 && (
+          {/* Classified debtors with composite risk score */}
+          {classifiedDebtors.length > 0 && (
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Top empresas deudoras — Scoring de riesgo</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Empresas deudoras — Score de riesgo compuesto</CardTitle>
+                <p className="text-[10px] text-muted-foreground">Score: 40% recovery + 40% montant dette + 20% jamais payé</p>
+              </CardHeader>
               <CardContent className="space-y-1.5">
-                {topDebtors.slice(0, 5).map((d, i) => (
+                {classifiedDebtors.slice(0, 7).map((d, i) => (
                   <div key={d.id} className="flex items-center gap-2 p-2 rounded border text-xs">
                     <span className="font-bold text-muted-foreground w-4">#{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{d.legal_name}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{d.nif || d.registration_number || '—'} · {d.zone_code}</p>
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <span className="font-mono">{d.nif || d.registration_number || '—'}</span>
+                        <span>·</span>
+                        <span>{d.zone_code}</span>
+                        {d.neverPaid && <Badge variant="destructive" className="text-[8px] px-1 py-0">Jamais payé</Badge>}
+                      </div>
                     </div>
-                    <span className="font-mono text-red-700 shrink-0">{fmtXAF(d.debt)}</span>
-                    <Badge className={`text-[8px] shrink-0 ${
+                    <div className="text-right shrink-0">
+                      <span className="font-mono text-red-700 text-xs">{fmtXAF(d.debt)}</span>
+                      <div className="text-[9px] text-muted-foreground">Score: {d.riskScore}/100</div>
+                    </div>
+                    <Badge className={`text-[8px] shrink-0 w-14 justify-center ${
                       d.risk === 'critical' ? 'bg-red-600 text-white' :
                       d.risk === 'high' ? 'bg-red-100 text-red-800' :
                       d.risk === 'medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -549,6 +615,48 @@ export default function SupervisorSiteDashboardPage() {
             </Card>
           </div>
 
+          {/* Health Score + Concentration Risk */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {healthScore && (
+              <Card>
+                <CardContent className="pt-4 pb-3 text-center">
+                  <p className="text-[11px] text-muted-foreground mb-2">Score santé zone</p>
+                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold border-4 ${
+                    healthScore.grade === 'A' ? 'border-green-500 text-green-700' :
+                    healthScore.grade === 'B' ? 'border-blue-500 text-blue-700' :
+                    healthScore.grade === 'C' ? 'border-yellow-500 text-yellow-700' :
+                    'border-red-500 text-red-700'
+                  }`}>
+                    {healthScore.grade}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">{healthScore.score}/100</p>
+                  <p className="text-[10px] text-muted-foreground">40% recovery · 30% vérification · 20% identifiants · 10% NIF</p>
+                </CardContent>
+              </Card>
+            )}
+            <Card>
+              <CardContent className="pt-4 pb-3">
+                <p className="text-[11px] text-muted-foreground mb-2 text-center">Concentration du risque</p>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span>Top 1 débiteur</span>
+                    <Badge className={concentration.top1Pct > 50 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}>{concentration.top1Pct}% de la dette</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Top 3 débiteurs</span>
+                    <Badge className={concentration.top3Pct > 80 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}>{concentration.top3Pct}% de la dette</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Indice Herfindahl</span>
+                    <Badge className={concentration.herfindahl > 0.25 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}>
+                      {concentration.herfindahl} {concentration.herfindahl > 0.25 ? '(concentré)' : '(diversifié)'}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Anomalies */}
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Anomalías zona {zone.zone_code}</CardTitle></CardHeader>
@@ -562,10 +670,13 @@ export default function SupervisorSiteDashboardPage() {
               {nifCoverage < 60 && (
                 <div className="flex items-center gap-2 text-xs"><XCircle className="h-3.5 w-3.5 text-orange-500" /><span>Cobertura NIF insuficiente — <strong className="text-orange-600">{nifCoverage}%</strong></span></div>
               )}
+              {concentration.herfindahl > 0.25 && (
+                <div className="flex items-center gap-2 text-xs"><XCircle className="h-3.5 w-3.5 text-purple-500" /><span>Risque concentré — <strong className="text-purple-600">Herfindahl {concentration.herfindahl}</strong> (&gt;0.25)</span></div>
+              )}
               {zone.pendiente_count > 2 && (
                 <div className="flex items-center gap-2 text-xs"><XCircle className="h-3.5 w-3.5 text-amber-500" /><span>{zone.pendiente_count} empresas sin clasificar</span></div>
               )}
-              {zone.recovery_rate_pct >= 40 && verifiedPct >= 70 && nifCoverage >= 60 && zone.pendiente_count <= 2 && (
+              {zone.recovery_rate_pct >= 40 && verifiedPct >= 70 && nifCoverage >= 60 && concentration.herfindahl <= 0.25 && zone.pendiente_count <= 2 && (
                 <div className="flex items-center gap-2 text-xs"><CheckCircle2 className="h-3.5 w-3.5 text-green-500" /><span className="text-green-700">Sin anomalías detectadas</span></div>
               )}
             </CardContent>
