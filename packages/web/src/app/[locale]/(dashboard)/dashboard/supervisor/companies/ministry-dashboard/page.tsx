@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { companyDashboardApi } from '@/modules/companies/services/api'
-import type { MinistryStatsResponse, MinistryZoneStats } from '@/modules/companies/types'
+import type { MinistryStatsResponse, MinistryZoneStats, CompanyAnalytics } from '@/modules/companies/types'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler)
 
@@ -62,14 +62,16 @@ export default function SupervisorMinistryDashboardPage() {
   const { toast } = useToast()
 
   const [data, setData] = useState<MinistryStatsResponse | null>(null)
+  const [analytics, setAnalytics] = useState<CompanyAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setLoading(true)
-    companyDashboardApi.getMinistryStats()
-      .then(setData)
-      .catch(() => toast({ title: 'Error', variant: 'destructive' }))
+    Promise.all([
+      companyDashboardApi.getMinistryStats().then(setData),
+      companyDashboardApi.getAnalytics().then(setAnalytics),
+    ]).catch(() => toast({ title: 'Error', variant: 'destructive' }))
       .finally(() => setLoading(false))
   }, [])
 
@@ -95,6 +97,29 @@ export default function SupervisorMinistryDashboardPage() {
     }
     return { byZone: zones, byFee: Array.from(feeMap.values()), overdue: data.zones.filter(z => z.overdue_count > 0).sort((a, b) => b.overdue_amount - a.overdue_amount), totalPenalties: penalties }
   }, [data])
+
+  // Top debtors with risk scoring
+  const topDebtors = useMemo(() => {
+    if (!analytics?.top_debtors?.length) return []
+    return analytics.top_debtors.map(d => ({
+      ...d,
+      risk: d.recovery_pct < 20 && d.debt > 100_000 ? 'critical'
+        : d.recovery_pct < 40 ? 'high'
+        : d.recovery_pct < 70 ? 'medium' : 'low',
+    }))
+  }, [analytics])
+
+  // Monthly trend direction (last 2 months)
+  const trendDirection = useMemo(() => {
+    if (!analytics?.monthly_trend || analytics.monthly_trend.length < 2) return null
+    const last = analytics.monthly_trend[analytics.monthly_trend.length - 1]
+    const prev = analytics.monthly_trend[analytics.monthly_trend.length - 2]
+    return {
+      created: last.created - prev.created,
+      verified: last.verified - prev.verified,
+      bundle: last.bundle - prev.bundle,
+    }
+  }, [analytics])
 
   const barOptions = useMemo(() => ({
     responsive: true, maintainAspectRatio: false,
@@ -187,13 +212,15 @@ export default function SupervisorMinistryDashboardPage() {
                 <p className={`text-2xl font-bold mt-1 ${totals.recovery_rate_pct >= 60 ? 'text-green-700' : 'text-red-700'}`}>{totals.recovery_rate_pct}%</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-3 pb-2 px-4">
-                <div className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5 text-amber-500" />Pénalités</div>
-                <p className="text-2xl font-bold mt-1 text-amber-700">{fmtXAF(totalPenalties)}</p>
-                <p className="text-[10px] text-muted-foreground">XAF en pénalités</p>
-              </CardContent>
-            </Card>
+            {totalPenalties > 0 && (
+              <Card>
+                <CardContent className="pt-3 pb-2 px-4">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5 text-amber-500" />Pénalités</div>
+                  <p className="text-2xl font-bold mt-1 text-amber-700">{fmtXAF(totalPenalties)}</p>
+                  <p className="text-[10px] text-muted-foreground">XAF en pénalités</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
@@ -259,6 +286,63 @@ export default function SupervisorMinistryDashboardPage() {
 
         {/* ═══ OPERACIONAL ═══ */}
         <TabsContent value="operational" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
+          {/* Trend direction banner */}
+          {trendDirection && (
+            <div className="flex items-center gap-4 p-2.5 bg-muted/30 rounded-lg border text-xs">
+              <span className="text-muted-foreground font-medium">Tendencia mes:</span>
+              <span className={trendDirection.created >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                {trendDirection.created >= 0 ? '↑' : '↓'} {Math.abs(trendDirection.created)} creadas
+              </span>
+              <span className={trendDirection.verified >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {trendDirection.verified >= 0 ? '↑' : '↓'} {Math.abs(trendDirection.verified)} verificadas
+              </span>
+            </div>
+          )}
+
+          {/* Top debtor COMPANIES with risk scoring */}
+          {topDebtors.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Top empresas deudoras — Scoring de riesgo</CardTitle></CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-2 pl-3">#</th>
+                      <th className="text-left p-2">Empresa</th>
+                      <th className="text-left p-2">NIF</th>
+                      <th className="text-left p-2">Zona</th>
+                      <th className="text-right p-2">Deuda</th>
+                      <th className="text-right p-2">Recovery</th>
+                      <th className="text-center p-2 pr-3">Riesgo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topDebtors.map((d, i) => (
+                      <tr key={d.id} className="border-b hover:bg-muted/30">
+                        <td className="p-2 pl-3 font-bold text-muted-foreground">{i + 1}</td>
+                        <td className="p-2 font-medium max-w-[180px] truncate">{d.legal_name}</td>
+                        <td className="p-2 font-mono">{d.nif || d.registration_number || '—'}</td>
+                        <td className="p-2"><Badge variant="outline" className="font-mono text-[10px]">{d.zone_code || '—'}</Badge></td>
+                        <td className="p-2 text-right font-mono text-red-700">{fmtXAF(d.debt)}</td>
+                        <td className="p-2 text-right">{d.recovery_pct}%</td>
+                        <td className="p-2 text-center pr-3">
+                          <Badge className={`text-[9px] ${
+                            d.risk === 'critical' ? 'bg-red-600 text-white' :
+                            d.risk === 'high' ? 'bg-red-100 text-red-800' :
+                            d.risk === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {d.risk === 'critical' ? 'CRÍTICO' : d.risk === 'high' ? 'ALTO' : d.risk === 'medium' ? 'MEDIO' : 'BAJO'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Top debtor zones */}
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Top zones endeudadas</CardTitle></CardHeader>

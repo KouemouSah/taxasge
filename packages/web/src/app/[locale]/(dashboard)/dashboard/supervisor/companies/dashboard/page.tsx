@@ -150,6 +150,25 @@ export default function SupervisorSiteDashboardPage() {
     scales: { x: { ticks: { font: { size: 10 } } }, y: { beginAtZero: true, ticks: { font: { size: 10 } } } },
   }), [])
 
+  // Top debtors with risk scoring (from global analytics — filtered display)
+  const topDebtors = useMemo(() => {
+    if (!analytics?.top_debtors?.length) return []
+    return analytics.top_debtors.map(d => ({
+      ...d,
+      risk: d.recovery_pct < 20 && d.debt > 100_000 ? 'critical' as const
+        : d.recovery_pct < 40 ? 'high' as const
+        : d.recovery_pct < 70 ? 'medium' as const : 'low' as const,
+    }))
+  }, [analytics])
+
+  // Trend direction
+  const trendDirection = useMemo(() => {
+    if (!analytics?.monthly_trend || analytics.monthly_trend.length < 2) return null
+    const last = analytics.monthly_trend[analytics.monthly_trend.length - 1]
+    const prev = analytics.monthly_trend[analytics.monthly_trend.length - 2]
+    return { created: last.created - prev.created, verified: last.verified - prev.verified }
+  }, [analytics])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -363,6 +382,21 @@ export default function SupervisorSiteDashboardPage() {
 
         {/* ═══ OPERACIONAL ═══ */}
         <TabsContent value="operational" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
+          {/* Trend direction banner */}
+          {trendDirection && (
+            <div className="flex items-center gap-4 p-2.5 bg-muted/30 rounded-lg border text-xs">
+              <span className="text-muted-foreground font-medium">Tendencia mes:</span>
+              <span className={trendDirection.created >= 0 ? 'text-blue-600' : 'text-red-600'}>
+                {trendDirection.created >= 0 ? '↑' : '↓'} {Math.abs(trendDirection.created)} creadas
+              </span>
+              <span className={trendDirection.verified >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {trendDirection.verified >= 0 ? '↑' : '↓'} {Math.abs(trendDirection.verified)} verificadas
+              </span>
+              <span className="text-muted-foreground">|</span>
+              <span className="text-muted-foreground">Bundle: {zone.bundle_count}/{zone.total_companies} ({zone.total_companies > 0 ? Math.round((zone.bundle_count / zone.total_companies) * 100) : 0}%)</span>
+            </div>
+          )}
+
           {/* Alert cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {zone.pending_verification > 0 && (
@@ -445,6 +479,33 @@ export default function SupervisorSiteDashboardPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Top debtors with risk scoring */}
+          {topDebtors.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Top empresas deudoras — Scoring de riesgo</CardTitle></CardHeader>
+              <CardContent className="space-y-1.5">
+                {topDebtors.slice(0, 5).map((d, i) => (
+                  <div key={d.id} className="flex items-center gap-2 p-2 rounded border text-xs">
+                    <span className="font-bold text-muted-foreground w-4">#{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{d.legal_name}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">{d.nif || d.registration_number || '—'} · {d.zone_code}</p>
+                    </div>
+                    <span className="font-mono text-red-700 shrink-0">{fmtXAF(d.debt)}</span>
+                    <Badge className={`text-[8px] shrink-0 ${
+                      d.risk === 'critical' ? 'bg-red-600 text-white' :
+                      d.risk === 'high' ? 'bg-red-100 text-red-800' :
+                      d.risk === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {d.risk === 'critical' ? 'CRÍTICO' : d.risk === 'high' ? 'ALTO' : d.risk === 'medium' ? 'MEDIO' : 'BAJO'}
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ═══ CONTROL ═══ */}
