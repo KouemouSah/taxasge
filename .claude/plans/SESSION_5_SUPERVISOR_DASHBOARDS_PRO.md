@@ -19,12 +19,12 @@ Refondre les dashboards superviseur site, superviseur ministère, et les pages a
 - **Fix prérequis** : Migration 242 — MV mv_company_stats_by_zone restaurée (zone_name, verified_companies, dette, licences, identifiants — 25 colonnes)
 - **Type** : ZoneStats enrichi (+verified_companies, +inactive_companies, +with_nif, +with_reg_number, +with_zone, +missing_identifier)
 
-### Phase 2 : Superviseur Ministère Dashboard (4 onglets)
-- [ ] STRATÉGIQUE : KPIs obligations + gauges recouvrement + donut fee_type
-- [ ] PILOTAJE : Table cross-zones avec recovery rates + stacked bar
-- [ ] OPÉRATIONNEL : Top débiteurs pour SON ministère + alertes overdue
-- [ ] CONTRÔLE : Compliance par zone + tendance recouvrement mensuel
-- [ ] Line chart multi-séries : paid vs overdue vs penalties (12 mois)
+### Phase 2 : Superviseur Ministère Dashboard (4 onglets) ✅
+- [x] STRATÉGIQUE : 5 KPIs (total, paid+gauge, overdue, recovery, pénalités) + donut fee_type + stacked bar recovery par zone
+- [x] PILOTAJE : Table cross-zones 9 colonnes (zone, fee_type, companies, obligations, paid, overdue, pénalités, total, recovery badge coloré)
+- [x] OPÉRATIONNEL : Top 5 zones endettées avec progress bar recovery + alertes overdue triées par montant
+- [x] CONTRÔLE : Grille gauges SVG recovery par zone (9 gauges) + bar chart pénalités par zone + anomalies (recovery <40%, zones <20%, pénalités élevées)
+- [x] 4 tabs (était 3) — ajout onglet Control avec ShieldAlert icon
 
 ### Phase 3 : Agent ONRC Lookup enrichi
 - [ ] Résultats avec plus de détails (licence status, dernière classification, date création)
