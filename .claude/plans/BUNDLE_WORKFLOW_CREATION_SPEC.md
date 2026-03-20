@@ -540,3 +540,51 @@ on_payment_completed(payment_id)
 6. Le workflow ne BLOQUE PAS — le paiement peut être initié même si la validation admin est en cours
 
 C'est un pattern "optimistic workflow" — on continue tant que les données sont cohérentes, la validation formelle suit en async.
+
+---
+
+## ADDENDUM 2 : CORRECTION ARCHITECTURE PAIEMENT + ROUTING (2026-03-20)
+
+### Correction critique : municipal/chamber NE SONT PAS auto-complétés
+
+L'implémentation actuelle (ObligationRoutingService ligne 36-37) fait :
+```python
+if fee_type in ("municipal", "chamber"):
+    return "completed"  # INCORRECT — doit passer par les agents
+```
+
+CORRIGÉ : Ayuntamiento et Cámara ont leur propre chaîne agent → superviseur → édition.
+
+### Architecture DÉFINITIVE des 2 modes
+
+**MODE A (Per Line) :**
+1. Utilisateur sélectionne N obligations (checkboxes)
+2. N service_payments créés (1 par obligation sélectionnée)
+3. Agent Tesoro valide le PAIEMENT (pas l'édition)
+4. Après validation paiement, ROUTAGE vers les ministères :
+   - Obligation tesoro/Min. Hacienda → Agent Min. Hacienda → édite licence Hacienda
+   - Obligation tesoro/Min. Comercio → Agent Min. Comercio → édite licence Comercio
+   - Obligation municipal → Agent Ayuntamiento → édite licence municipale
+   - Obligation chamber → Agent Cámara → édite licence Cámara
+5. Tesoro NE FAIT PAS l'édition — il valide uniquement le paiement
+6. Chaque ministère édite SA partie indépendamment
+
+**MODE B (Consolidated) :**
+1. Utilisateur paie le TOTAL en 1 seul paiement
+2. Agent polyvalent Tesoro traite LE DOSSIER ENTIER (validation + édition)
+3. PAS de routing vers les ministères — le polyvalent fait tout
+4. 1 seul certificat/licence consolidé émis par le Tesoro
+
+**Résumé :**
+- Mode A : Tesoro = valideur paiement. Ministères = éditeurs (chacun sa licence)
+- Mode B : Tesoro polyvalent = valideur + éditeur (tout le dossier)
+- Municipal/Chamber : même chaîne que tesoro (agent → superviseur → édition), PAS auto-complété
+
+### Corrections Session 7A
+- [ ] resolve_target_status() : TOUS retournent "processing" (plus de "completed" auto)
+- [ ] resolve_target_entity() Mode A :
+  - fee_type=tesoro → route par ministry_id vers MIN_HACIENDA, MIN_COMERCIO, etc.
+  - fee_type=municipal → route vers AYUNTAMIENTO
+  - fee_type=chamber → route vers CAMARA_COMERCIO
+- [ ] resolve_target_entity() Mode B : TOUT vers TESORO (polyvalent)
+- [ ] Chaque entité (AYUNTAMIENTO, CAMARA, MIN_*) a ses agents + superviseurs
