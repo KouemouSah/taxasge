@@ -90,24 +90,22 @@ Les menus pointaient vers des URLs mortes — corrigé en supprimant les liens, 
 
 ## Phases d'implémentation
 
-### Phase 0 : Prérequis (permissions + menus)
-- [ ] Migration: Ajouter permissions fiscal_service.* aux 4 agents + 4 superviseurs manquants
-- [ ] Migration: Ajouter bloc menu OMS aux 10 agents et 10 superviseurs concernés
-- [ ] Traductions déjà créées: `oms.nav.*` (es/fr/en) ✅
+### Phase 0 : Prérequis (permissions + menus) ✅
+- [x] Migration 245: 8 permissions agent + 12 permissions supervisor ajoutées (4 rôles chacun)
+- [x] Menus OMS ajoutés à 9 agents + 9 superviseurs (18 total)
+- [x] Agent menu: Dashboard + Licenses (2 items)
+- [x] Supervisor menu: Dashboard + Licenses + Compliance (3 items)
+- [x] Traductions `oms.nav.*` (es/fr/en) ✅
 
-### Phase 1 : Dashboard OMS Agent (`/dashboard/agent/oms`)
-Page d'accueil OMS pour l'agent — vue d'ensemble de SA queue.
-
-- [ ] **4 KPI cards** : pending, processing, completed today, overdue
-  - Source: `GET /oms/queue/stats`
-- [ ] **Queue table** : obligations à traiter
-  - Source: `GET /oms/queue?status=processing&page=1`
-  - Colonnes: entreprise, fee_type, montant, due_date, status, actions
-  - Actions: Process, Reject, View detail
-- [ ] **Filtres** : status (pending/processing/completed), fee_type, search
-- [ ] **Lien** vers Company Debt existant (`/agent/companies/debt?company={id}`)
-- [ ] Responsive mobile
-- [ ] Skeleton loading
+### Phase 1 : Dashboard OMS Agent (`/dashboard/agent/oms`) ✅
+- [x] 4 KPI cards: Pendientes, Completados hoy, Monto pendiente, Procesado hoy
+- [x] Queue table: entreprise, fee_type, servicio, monto+penalty, vence, status, actions
+- [x] Filtres: status dropdown + search debounce (company, fee_type, service)
+- [x] Checkbox selection + batch process (Promise.all)
+- [x] Actions: Process (CheckCircle) + Reject (XCircle avec prompt motivo)
+- [x] Pagination + compteur total
+- [x] Skeleton loading + empty state
+- [x] Module OMS créé: types/index.ts + services/api.ts (omsQueueApi + omsLicensesApi)
 
 ### Phase 2 : Licences Overview (`/dashboard/agent/oms/licenses`)
 Vue des licences commerciales scopée au ministry_id de l'agent.
