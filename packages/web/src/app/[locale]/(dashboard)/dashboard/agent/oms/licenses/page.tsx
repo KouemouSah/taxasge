@@ -253,7 +253,9 @@ export default function OMSLicensesPage() {
         <Select value={String(yearFilter)} onValueChange={v => { setYearFilter(Number(v)); setPage(1) }}>
           <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue placeholder="Año" /></SelectTrigger>
           <SelectContent>
-            {[2026, 2025, 2024].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleExportCSV}>
