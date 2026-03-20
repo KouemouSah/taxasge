@@ -481,3 +481,62 @@ def map_padron_to_company(extraction: Dict) -> Dict:
 - [ ] Flux complet : recherche → licence → paiement → validation → complete
 - [ ] Flux nouvelle entreprise : upload → extraction → classification → licence → paiement
 - [ ] Race conditions (double paiement, double création)
+
+---
+
+## ADDENDUM : RÉPONSES AUX QUESTIONS CRITIQUES (2026-03-20)
+
+### Q1 : GeminiDocumentProcessor traite-t-il le schéma padrón ?
+**OUI** — Le schéma `certificado_actualizacion_padron_empresarial_gq.json` est complet (381 lignes) :
+- 30+ champs d'extraction organisés en 6 sections (documento, empresa, ubicacion, actividad, datos_operativos, certificacion, autenticacion)
+- 7 validations critiques (negocio_activo, forma_juridica=AUTONOMO, PE-XXXX format, photo, firma, sello, timbre)
+- gemini_hints détaillés avec différences visuelles DGPE vs VUE
+- tesseract_patterns de fallback pour 19 champs
+
+**MAIS** — Le `WORKFLOW_IDENTITY_CONFIGS` dans GeminiDocumentProcessor n'a PAS de configuration BUNDLE_PAYMENT. Il faut ajouter :
+```python
+"BUNDLE_PAYMENT": WorkflowIdentityConfig(
+    reference_document="certificado_padron",
+    compare_documents=[],
+    critical_fields=[
+        IdentityFieldConfig("numero_registro", ["empresa.numero_registro"], is_blocking=True),
+        IdentityFieldConfig("denominacion_social", ["empresa.denominacion_social"], is_blocking=False),
+    ],
+    is_blocking=True,
+    workflow_patterns=["BUNDLE_PAYMENT*"]
+),
+```
+
+### Q2 : LicenseService.open_license() est-il automatisé comme n8n ?
+**OUI, niveau n8n** — La chaîne est 100% automatisée :
+
+```
+Paiement validé (BANGE callback ou agent Tesoro)
+  ↓ bange_processor.py / manual_processor.py / gateway_processor.py
+on_payment_completed(payment_id)
+  ↓ 1. Vérifie fee_type IS NOT NULL (discrimine OMS vs service normal)
+  ↓ 2. UPDATE obligations status='payment_pending' → 'paid' (atomique, idempotent)
+  ↓ 3. Batch-fetch licences concernées (1 query, pas N+1)
+  ↓ 4. ObligationRoutingService.route_paid_obligations()
+       ├── tesoro → status='processing' → agent Tesoro queue
+       ├── municipal → status='completed' (auto, pas d'agent)
+       └── chamber → status='completed' (auto, pas d'agent)
+  ↓ 5. update_license_counters() → recalcule paid/overdue/compliance_score
+  ↓ 6. Si toutes completed → license.status='complete'
+```
+
+4 points d'appel automatiques (webhook BANGE, manual processor, gateway, BANGE processor). Idempotent via WHERE status='payment_pending' RETURNING.
+
+### Q3 : ObligationRoutingService est-il câblé au paiement ?
+**OUI** — Déjà câblé via `on_payment_completed()`. Le maillon MANQUANT est l'**initiation** (créer les service_payments avec le bon fee_type). C'est le travail de la Session 7A.
+
+### Q4 : Correction de ma position sur l'upload
+**Ta proposition est MEILLEURE.** L'upload doit :
+1. Extraire les données via GeminiDocumentProcessor
+2. Vérifier si `numero_registro` (PE-XXXX) existe déjà en BD
+3. Si OUI → utiliser l'entreprise existante et continuer le workflow (pas de recréation)
+4. Si NON → créer l'entreprise en parallèle + continuer le workflow
+5. L'admin valide la création en arrière-plan (si confidence < 0.90)
+6. Le workflow ne BLOQUE PAS — le paiement peut être initié même si la validation admin est en cours
+
+C'est un pattern "optimistic workflow" — on continue tant que les données sont cohérentes, la validation formelle suit en async.
