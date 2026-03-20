@@ -248,6 +248,12 @@ class EventType(str, Enum):
     LICENSE_ISSUED = "license.issued"
     """Commercial license issued (PDF generated, ready for notification)"""
 
+    LICENSE_CREATED = "license.created"
+    """Commercial license created (obligations generated, ready for payment)"""
+
+    LICENSE_COMPLETED = "license.completed"
+    """All obligations completed — trigger PDF generation + email to citizen"""
+
     # ==========================================================================
     # SYSTEM EVENTS
     # ==========================================================================

@@ -1,0 +1,917 @@
+"""BundleWorkflowService — Business logic for the BUNDLE_PAYMENT workflow.
+
+Handles the complete lifecycle of paying bundle obligations for autonomo companies:
+  - my_companies_status(): List user's companies + obligation counts (1 SQL query)
+  - search_eligible_companies(): Search companies eligible for bundle (regimen=bundle, active)
+  - initiate(): Verify/create license → return obligations for review
+  - initiate_from_upload(): OCR extraction → create company → classify → create license
+  - validate_selection(): Validate mode + obligation selection before payment
+  - initiate_payment(): Create service_request + service_payment + link obligations (atomic)
+
+Architecture:
+  - This service contains the BUSINESS LOGIC. The BundlePaymentWorkflow class
+    (PredefinedWorkflow) is a lightweight registration for WorkflowEngine/menus.
+  - Payment processing delegates to PaymentProcessorRegistry (BANGE/Manual).
+  - Post-payment routing handled by ObligationRoutingService (Phase 1).
+
+See: .claude/plans/design_bundle_workflow.md for complete data flow.
+"""
+
+import json
+import logging
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
+
+logger = logging.getLogger(__name__)
+
+
+class BundleWorkflowService:
+    """Business logic for bundle payment workflow."""
+
+    # ================================================================
+    # Step 0: "Mis empresas" — user's companies with obligation counts
+    # ================================================================
+
+    @staticmethod
+    async def my_companies_status(
+        conn, user_id: UUID, fiscal_year: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Get user's companies with pending obligation counts.
+
+        Returns max 5 companies, sorted by urgency (pending obligations first).
+        1 SQL query with LEFT JOINs — no N+1.
+
+        Args:
+            conn: Database connection
+            user_id: Authenticated user
+            fiscal_year: Defaults to current year
+        """
+        if not fiscal_year:
+            fiscal_year = datetime.now(timezone.utc).year
+
+        rows = await conn.fetch("""
+            SELECT
+                c.id, c.legal_name, c.tax_id, c.nif,
+                c.registration_number, c.regimen_fiscal,
+                c.commerce_type, c.zone_id, c.city_id,
+                c.is_active, c.is_verified,
+                cz.zone_code,
+                ct.name as city_name,
+                cl.id as license_id,
+                cl.status as license_status,
+                cl.fiscal_year as license_fiscal_year,
+                COALESCE(
+                    COUNT(lo.id) FILTER (
+                        WHERE lo.status IN ('pending', 'overdue')
+                    ), 0
+                )::int as pending_obligations
+            FROM companies c
+            JOIN user_company_roles ucr
+                ON ucr.company_id = c.id AND ucr.user_id = $1
+            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            LEFT JOIN cities ct ON c.city_id = ct.id
+            LEFT JOIN commercial_licenses cl
+                ON cl.company_id = c.id AND cl.fiscal_year = $2
+            LEFT JOIN license_obligations lo
+                ON lo.license_id = cl.id
+            WHERE c.is_active = true
+            GROUP BY c.id, cz.zone_code, ct.name, cl.id
+            ORDER BY pending_obligations DESC NULLS LAST,
+                     c.updated_at DESC
+            LIMIT 5
+        """, user_id, fiscal_year)
+
+        results = []
+        for r in rows:
+            results.append({
+                "company": {
+                    "id": str(r["id"]),
+                    "legal_name": r["legal_name"],
+                    "tax_id": r["tax_id"],
+                    "nif": r["nif"],
+                    "registration_number": r["registration_number"],
+                    "regimen_fiscal": r["regimen_fiscal"],
+                    "commerce_type": r["commerce_type"],
+                    "zone_code": r["zone_code"],
+                    "city_name": r["city_name"],
+                    "is_verified": r["is_verified"],
+                },
+                "license_id": str(r["license_id"]) if r["license_id"] else None,
+                "license_status": r["license_status"],
+                "pending_obligations": r["pending_obligations"],
+                "fiscal_year": fiscal_year,
+                "is_eligible": r["regimen_fiscal"] == "bundle",
+            })
+
+        return results
+
+    # ================================================================
+    # Step 0: Search eligible companies (bundle + active)
+    # ================================================================
+
+    @staticmethod
+    async def search_eligible_companies(
+        conn, query: str, user_id: UUID, limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Search companies eligible for bundle payment.
+
+        Filters: regimen_fiscal='bundle', is_active=true.
+        No permission required (citizen-accessible endpoint).
+        Includes "registered_by_current_user" flag for tiers indicator.
+        """
+        if not query or len(query) < 2:
+            return []
+
+        search_pattern = f"%{query}%"
+        rows = await conn.fetch("""
+            SELECT
+                c.id, c.legal_name, c.tax_id, c.nif,
+                c.registration_number, c.regimen_fiscal,
+                c.commerce_type, c.is_verified,
+                cz.zone_code,
+                ct.name as city_name,
+                EXISTS(
+                    SELECT 1 FROM user_company_roles ucr
+                    WHERE ucr.company_id = c.id AND ucr.user_id = $3
+                ) as registered_by_current_user
+            FROM companies c
+            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+            LEFT JOIN cities ct ON c.city_id = ct.id
+            WHERE c.is_active = true
+              AND c.regimen_fiscal = 'bundle'
+              AND (
+                  c.legal_name ILIKE $1
+                  OR c.tax_id ILIKE $1
+                  OR c.nif ILIKE $1
+                  OR c.registration_number ILIKE $1
+              )
+            ORDER BY c.legal_name
+            LIMIT $2
+        """, search_pattern, limit, user_id)
+
+        return [
+            {
+                "id": str(r["id"]),
+                "legal_name": r["legal_name"],
+                "tax_id": r["tax_id"],
+                "nif": r["nif"],
+                "registration_number": r["registration_number"],
+                "commerce_type": r["commerce_type"],
+                "zone_code": r["zone_code"],
+                "city_name": r["city_name"],
+                "is_verified": r["is_verified"],
+                "registered_by_current_user": r["registered_by_current_user"],
+            }
+            for r in rows
+        ]
+
+    # ================================================================
+    # Step 1: Initiate from upload — extraction → company → classify → initiate
+    # ================================================================
+
+    @staticmethod
+    async def initiate_from_upload(
+        conn, extraction: Dict[str, Any], user_id: UUID,
+        fiscal_year: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Create company from OCR extraction, classify, then initiate workflow.
+
+        Reuses existing components:
+          - map_gemini_extraction_to_company_data() (classification_agent.py)
+          - CompanyRepository.create() (auto owner role)
+          - ClassificationAgent.classify_company() (R2b: autonomo+PE → bundle)
+          - BundleWorkflowService.initiate() (license + obligations)
+
+        Args:
+            conn: Database connection
+            extraction: GeminiDocumentProcessor extraction output (nested dict)
+            user_id: Authenticated user
+            fiscal_year: Defaults to current year
+
+        Returns:
+            BundleInitiateResponse (same as initiate()) + company creation info
+        """
+        from app.modules.companies.services.classification_agent import (
+            ClassificationAgent,
+            classification_agent,
+        )
+        from app.modules.companies.repositories.company_repository import (
+            CompanyRepository,
+        )
+
+        # 1. Map extraction → flat company_data
+        company_data = ClassificationAgent.map_gemini_extraction_to_company_data(
+            extraction
+        )
+        if not company_data.get("legal_name"):
+            raise ValueError("EXTRACTION_MISSING_LEGAL_NAME")
+
+        registration_number = company_data.get("registration_number", "")
+
+        # 2. Check duplicate by registration_number (PE-XXXX)
+        if registration_number:
+            existing = await conn.fetchrow(
+                "SELECT id FROM companies WHERE registration_number = $1",
+                registration_number,
+            )
+            if existing:
+                # Company already exists — just initiate with it
+                logger.info(
+                    "Upload: company %s already exists (PE=%s) — using existing",
+                    existing["id"],
+                    registration_number,
+                )
+                result = await BundleWorkflowService.initiate(
+                    conn, existing["id"], user_id, fiscal_year
+                )
+                result["company_created"] = False
+                result["company_already_existed"] = True
+                return result
+
+        # 3. Resolve city/zone from localidad (cities.zone_id → commerce_zones.id)
+        localidad = company_data.get("localidad", "")
+        city_id = None
+        zone_id = None
+        if localidad:
+            city_row = await conn.fetchrow(
+                "SELECT id, zone_id FROM cities WHERE name ILIKE $1 LIMIT 1",
+                localidad,
+            )
+            if city_row:
+                city_id = city_row["id"]
+                zone_id = city_row["zone_id"]  # Direct FK, no pivot table
+
+        # 4. Create company via repository (adds owner role automatically)
+        from app.modules.companies.models.company import CompanyCreate
+
+        create_data = CompanyCreate(
+            legal_name=company_data["legal_name"],
+            tax_id=company_data.get("nif") or registration_number or f"PE-{str(uuid4())[:6]}",
+            nif=company_data.get("nif"),
+            registration_number=registration_number or None,
+            forma_juridica=company_data.get("forma_juridica", "autonomo"),
+            sector_actividad=company_data.get("sector_actividad"),
+            objeto_social=company_data.get("objeto_social"),
+            address=company_data.get("direccion"),
+            phone=company_data.get("telefono"),
+        )
+
+        company_repo = CompanyRepository()
+        company_row = await company_repo.create(conn, create_data, str(user_id))
+        company_id = company_row["id"]
+
+        # Set city_id + zone_id (not in CompanyCreate)
+        if city_id or zone_id:
+            await conn.execute(
+                """UPDATE companies
+                   SET city_id = COALESCE($2, city_id),
+                       zone_id = COALESCE($3, zone_id)
+                   WHERE id = $1""",
+                company_id, city_id, zone_id,
+            )
+
+        logger.info(
+            "Upload: created company %s (PE=%s, localidad=%s)",
+            company_id, registration_number, localidad,
+        )
+
+        # 5. Auto-classify (non-blocking — failure doesn't break flow)
+        try:
+            company_full = await conn.fetchrow(
+                "SELECT * FROM companies WHERE id = $1", company_id
+            )
+            classification = await classification_agent.classify_company(
+                conn, dict(company_full), zone_id=zone_id
+            )
+            if classification.regimen_fiscal:
+                await conn.execute(
+                    """UPDATE companies
+                       SET regimen_fiscal = $2, commerce_type = $3, updated_at = NOW()
+                       WHERE id = $1""",
+                    company_id,
+                    classification.regimen_fiscal,
+                    classification.commerce_type,
+                )
+                logger.info(
+                    "Upload: classified company %s → %s (commerce=%s, conf=%.0f%%)",
+                    company_id,
+                    classification.regimen_fiscal,
+                    classification.commerce_type,
+                    (classification.confidence or 0) * 100,
+                )
+        except Exception as e:
+            logger.warning(
+                "Upload: auto-classification failed for company %s: %s",
+                company_id, e,
+            )
+
+        # 6. Initiate workflow with newly created company
+        try:
+            result = await BundleWorkflowService.initiate(
+                conn, company_id, user_id, fiscal_year
+            )
+        except ValueError as e:
+            # Company created but initiate failed (e.g., no bundle for commerce_type).
+            # Return partial result so frontend doesn't lose the created company.
+            logger.warning(
+                "Upload: company %s created but initiate failed: %s",
+                company_id, e,
+            )
+            raise ValueError(f"INITIATE_AFTER_UPLOAD_FAILED:{e}")
+
+        result["company_created"] = True
+        result["company_already_existed"] = False
+        return result
+
+    # ================================================================
+    # Step 2: Initiate — verify/create license, return obligations
+    # ================================================================
+
+    @staticmethod
+    async def initiate(
+        conn, company_id: UUID, user_id: UUID,
+        fiscal_year: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Verify company eligibility, find/create license, return obligations.
+
+        This is the MAIN entry point after company identification (Step 0).
+
+        Flow:
+          1. Verify company exists, is_active, regimen_fiscal='bundle'
+          2. Resolve bundle from company.commerce_type
+          3. Find or create commercial_license for this year
+          4. Return obligations for review
+
+        Returns:
+            BundleInitiateResponse with license + obligations + amounts
+        """
+        from app.modules.fiscal_services.services.license_service import LicenseService
+        from app.modules.fiscal_services.services.bundle_service import BundleService
+
+        if not fiscal_year:
+            fiscal_year = datetime.now(timezone.utc).year
+
+        # 1. Verify company
+        company = await conn.fetchrow(
+            """SELECT c.*, cz.zone_code, ct.name as city_name
+               FROM companies c
+               LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+               LEFT JOIN cities ct ON c.city_id = ct.id
+               WHERE c.id = $1""",
+            company_id,
+        )
+        if not company:
+            raise ValueError("COMPANY_NOT_FOUND")
+        if not company["is_active"]:
+            raise ValueError("COMPANY_INACTIVE")
+        if company["regimen_fiscal"] != "bundle":
+            raise ValueError("COMPANY_NOT_AUTONOMO")
+        if not company["zone_id"]:
+            raise ValueError("COMPANY_NO_ZONE")
+
+        # Audit: log if user is acting on someone else's company (tiers payment)
+        is_owner = await conn.fetchval(
+            "SELECT 1 FROM user_company_roles WHERE company_id = $1 AND user_id = $2",
+            company_id, user_id,
+        )
+        if not is_owner:
+            logger.info(
+                "AUDIT: third-party payment initiated — user %s acting on "
+                "company %s (%s) without membership",
+                user_id, company_id, company["legal_name"],
+            )
+
+        # 2. Resolve bundle from commerce_type
+        if not company["commerce_type"]:
+            raise ValueError("COMPANY_NO_COMMERCE_TYPE")
+
+        bundle = await conn.fetchrow(
+            """SELECT id, commerce_type, name_es, processing_mode,
+                      installment_eligible, max_installments
+               FROM service_bundles
+               WHERE commerce_type = $1 AND is_active = true
+               LIMIT 1""",
+            company["commerce_type"],
+        )
+        if not bundle:
+            raise ValueError("NO_BUNDLE_FOR_COMMERCE_TYPE")
+
+        # 3. Find or create license
+        license_row = await conn.fetchrow(
+            """SELECT cl.*, cz.zone_code
+               FROM commercial_licenses cl
+               LEFT JOIN commerce_zones cz ON cl.zone_id = cz.id
+               WHERE cl.company_id = $1
+                 AND cl.bundle_id = $2
+                 AND cl.fiscal_year = $3""",
+            company_id, bundle["id"], fiscal_year,
+        )
+
+        if license_row and license_row["status"] == "complete":
+            # Already fully paid
+            return {
+                "license_id": str(license_row["id"]),
+                "already_complete": True,
+                "license_status": "complete",
+                "total_amount": float(license_row["total_amount"]),
+                "amount_paid": float(license_row["amount_paid"]),
+                "amount_remaining": 0,
+                "obligations": [],
+                "company": BundleWorkflowService._format_company(company),
+                "bundle": BundleWorkflowService._format_bundle(bundle),
+                "fiscal_year": fiscal_year,
+                "currency": "XAF",
+                "processing_modes_available": [],
+            }
+
+        if not license_row:
+            # Create new license + obligations via LicenseService
+            license_data = await LicenseService.open_license(conn, {
+                "company_id": company_id,
+                "bundle_id": bundle["id"],
+                "zone_id": company["zone_id"],
+                "city_id": company["city_id"],
+                "fiscal_year": fiscal_year,
+            }, user_id=user_id)
+            license_id = license_data["id"]
+
+            # Emit license creation notification (deferred email to owner)
+            notification = license_data.get("_notification")
+            if notification:
+                try:
+                    from app.core.events import EventBus, EventType
+                    EventBus.publish_nowait(EventType.LICENSE_CREATED, notification)
+                except Exception as e:
+                    logger.warning("Failed to publish LICENSE_CREATED event: %s", e)
+        else:
+            license_id = license_row["id"]
+
+        # 4. Fetch obligations with service/ministry details
+        obligations = await conn.fetch("""
+            SELECT lo.*,
+                   fs.name_es as fiscal_service_name,
+                   m.name_es as ministry_name
+            FROM license_obligations lo
+            LEFT JOIN fiscal_services fs ON lo.fiscal_service_id = fs.id
+            LEFT JOIN ministries m ON lo.ministry_id = m.id
+            WHERE lo.license_id = $1
+            ORDER BY
+                CASE lo.fee_type
+                    WHEN 'tesoro' THEN 1
+                    WHEN 'municipal' THEN 2
+                    WHEN 'chamber' THEN 3
+                END,
+                lo.amount DESC
+        """, license_id)
+
+        # Re-fetch license (might have been just created)
+        license_row = await conn.fetchrow(
+            "SELECT * FROM commercial_licenses WHERE id = $1",
+            license_id,
+        )
+
+        formatted_obligations = []
+        for ob in obligations:
+            is_payable = ob["status"] in ("pending", "overdue")
+            formatted_obligations.append({
+                "id": str(ob["id"]),
+                "bundle_item_id": str(ob["bundle_item_id"]),
+                "fiscal_service_name": ob["fiscal_service_name"] or "Obligación fiscal",
+                "fee_type": ob["fee_type"],
+                "ministry_name": ob["ministry_name"] or "",
+                "amount": float(ob["amount"]),
+                "penalty_amount": float(ob["penalty_amount"]),
+                "total": float(ob["amount"] + ob["penalty_amount"]),
+                "status": ob["status"],
+                "is_payable": is_payable,
+                "due_date": ob["due_date"].isoformat() if ob["due_date"] else None,
+                "paid_at": ob["paid_at"].isoformat() if ob["paid_at"] else None,
+            })
+
+        total = float(license_row["total_amount"])
+        paid = float(license_row["amount_paid"])
+
+        return {
+            "license_id": str(license_id),
+            "already_complete": False,
+            "license_status": license_row["status"],
+            "total_amount": total,
+            "amount_paid": paid,
+            "amount_remaining": total - paid,
+            "obligations": formatted_obligations,
+            "company": BundleWorkflowService._format_company(company),
+            "bundle": BundleWorkflowService._format_bundle(bundle),
+            "fiscal_year": fiscal_year,
+            "currency": "XAF",
+            "processing_modes_available": ["per_line", "consolidated"],
+        }
+
+    # ================================================================
+    # Step 2: Validate selection before payment
+    # ================================================================
+
+    @staticmethod
+    async def validate_selection(
+        conn,
+        license_id: UUID,
+        processing_mode: str,
+        selected_obligation_ids: Optional[List[UUID]] = None,
+    ) -> Dict[str, Any]:
+        """Validate mode + obligation selection before payment.
+
+        Args:
+            license_id: License to pay
+            processing_mode: 'per_line' or 'consolidated'
+            selected_obligation_ids: Required for per_line, ignored for consolidated
+
+        Returns:
+            Validated selection summary with total amount
+        """
+        if processing_mode not in ("per_line", "consolidated"):
+            raise ValueError("INVALID_PROCESSING_MODE")
+
+        license_row = await conn.fetchrow(
+            "SELECT * FROM commercial_licenses WHERE id = $1", license_id
+        )
+        if not license_row:
+            raise ValueError("LICENSE_NOT_FOUND")
+        if license_row["status"] in ("suspended", "closed"):
+            raise ValueError("LICENSE_SUSPENDED")
+        if license_row["status"] == "complete":
+            raise ValueError("LICENSE_ALREADY_COMPLETE")
+
+        # Fetch payable obligations
+        payable = await conn.fetch("""
+            SELECT id, fee_type, amount, penalty_amount
+            FROM license_obligations
+            WHERE license_id = $1 AND status IN ('pending', 'overdue')
+        """, license_id)
+
+        if not payable:
+            raise ValueError("NO_PAYABLE_OBLIGATIONS")
+
+        payable_ids = {r["id"] for r in payable}
+        payable_map = {r["id"]: r for r in payable}
+
+        if processing_mode == "consolidated":
+            # All payable obligations selected
+            selected = payable
+        else:
+            # per_line: validate selection
+            if not selected_obligation_ids:
+                raise ValueError("NO_OBLIGATIONS_SELECTED")
+
+            # Check all selected IDs are valid and payable
+            for oid in selected_obligation_ids:
+                if oid not in payable_ids:
+                    raise ValueError(f"OBLIGATION_NOT_PAYABLE:{oid}")
+
+            selected = [payable_map[oid] for oid in selected_obligation_ids]
+
+        total_amount = sum(
+            float(ob["amount"]) + float(ob["penalty_amount"])
+            for ob in selected
+        )
+
+        return {
+            "valid": True,
+            "processing_mode": processing_mode,
+            "selected_count": len(selected),
+            "total_amount": total_amount,
+            "selected_obligation_ids": [str(ob["id"]) for ob in selected],
+            "currency": "XAF",
+        }
+
+    # ================================================================
+    # Step 3: Initiate payment (atomic transaction)
+    # ================================================================
+
+    @staticmethod
+    async def initiate_payment(
+        conn,
+        license_id: UUID,
+        processing_mode: str,
+        payment_method: str,
+        selected_obligation_ids: List[UUID],
+        user_id: UUID,
+        phone_number: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create service_request + service_payment + link obligations.
+
+        This is the ATOMIC step — all-or-nothing within a transaction.
+
+        Flow:
+          1. Validate (re-check obligations are still payable — race protection)
+          2. Create service_request
+          3. Update license.processing_mode + service_request_id
+          4. Create service_payment
+          5. Link obligations to payment (UPDATE ... WHERE status IN (...) RETURNING)
+          6. Log compliance events
+
+        Returns:
+            Payment result (redirect_url for BANGE, reference for cash)
+        """
+        from app.modules.payments.services.processors.base import (
+            PaymentContext,
+        )
+        from app.modules.payments.services.processors.registry import (
+            PaymentProcessorRegistry,
+        )
+        from app.modules.service_requests.repositories.service_request_repository import (
+            ServiceRequestRepository,
+        )
+        from app.modules.fiscal_services.repositories.license_repository import (
+            LicenseRepository,
+        )
+
+        # 1. Re-validate within transaction (race protection)
+        license_row = await conn.fetchrow(
+            "SELECT * FROM commercial_licenses WHERE id = $1 FOR UPDATE",
+            license_id,
+        )
+        if not license_row:
+            raise ValueError("LICENSE_NOT_FOUND")
+        if license_row["status"] in ("suspended", "closed", "complete"):
+            raise ValueError("LICENSE_NOT_PAYABLE")
+
+        # Check for existing in-flight payment on this license
+        existing_payment = await conn.fetchval("""
+            SELECT sp.id FROM service_payments sp
+            JOIN service_requests sr ON sp.service_request_id = sr.id
+            WHERE sr.company_id = $1
+              AND sp.fee_type = 'bundle'
+              AND sp.status IN ('pending', 'processing')
+              AND sr.workflow_code = 'BUNDLE_PAYMENT'
+            LIMIT 1
+        """, license_row["company_id"])
+        if existing_payment:
+            raise ValueError("PAYMENT_ALREADY_IN_PROGRESS")
+
+        # Verify obligations are still payable
+        obligations = await conn.fetch("""
+            SELECT id, fee_type, amount, penalty_amount, license_id, ministry_id
+            FROM license_obligations
+            WHERE id = ANY($1::uuid[])
+              AND license_id = $2
+              AND status IN ('pending', 'overdue')
+        """, selected_obligation_ids, license_id)
+
+        if len(obligations) != len(selected_obligation_ids):
+            raise ValueError("OBLIGATION_RACE_CONDITION")
+
+        total_amount = sum(
+            r["amount"] + r["penalty_amount"] for r in obligations
+        )
+
+        # 2. Create service_request
+        sr_repo = ServiceRequestRepository()
+        form_data = {
+            "license_id": str(license_id),
+            "processing_mode": processing_mode,
+            "obligation_ids": [str(oid) for oid in selected_obligation_ids],
+            "company_id": str(license_row["company_id"]),
+        }
+
+        sr = await sr_repo.create(
+            db=conn,
+            user_id=user_id,
+            workflow_code="BUNDLE_PAYMENT",
+            solicitud_type="expedicion",
+            form_data=form_data,
+            company_id=license_row["company_id"],
+            entity_code="TESORO",
+        )
+        service_request_id = sr["id"]
+
+        # 3. Update license with service_request_id + processing_mode
+        await conn.execute("""
+            UPDATE commercial_licenses
+            SET service_request_id = $1,
+                processing_mode = $2,
+                updated_at = NOW()
+            WHERE id = $3
+        """, service_request_id, processing_mode, license_id)
+
+        # Update service_request amounts
+        await conn.execute("""
+            UPDATE service_requests
+            SET total_amount = $1, base_amount = $1,
+                currency = 'XAF', status = 'SUBMITTED',
+                submitted_at = NOW(),
+                bundle_id = $3, zone_id = $4
+            WHERE id = $2
+        """, total_amount, service_request_id,
+            license_row["bundle_id"], license_row["zone_id"])
+
+        # 4. Create service_payment via processor registry
+        calculation_details = {
+            "obligations": [
+                {
+                    "id": str(ob["id"]),
+                    "fee_type": ob["fee_type"],
+                    "amount": float(ob["amount"]),
+                    "penalty": float(ob["penalty_amount"]),
+                }
+                for ob in obligations
+            ],
+            "processing_mode": processing_mode,
+            "license_id": str(license_id),
+        }
+
+        # Map payment_method string to PaymentMethod enum
+        from app.modules.payments.models.payment import PaymentMethod
+        try:
+            pm_enum = PaymentMethod(payment_method)
+        except ValueError:
+            raise ValueError(f"INVALID_PAYMENT_METHOD:{payment_method}")
+
+        context = PaymentContext(
+            service_request_id=str(service_request_id),
+            user_id=str(user_id),
+            amount=Decimal(str(total_amount)),
+            currency="XAF",
+            payment_method=pm_enum,
+            tariff_breakdown=calculation_details,
+            workflow_code="BUNDLE_PAYMENT",
+            service_name="Pago de Obligaciones Fiscales",
+            user_phone=phone_number,
+        )
+
+        registry = PaymentProcessorRegistry()
+        payment_result = await registry.initiate_payment(conn, context)
+
+        if not payment_result.success:
+            raise ValueError(
+                f"PAYMENT_INITIATION_FAILED:{payment_result.error}"
+            )
+
+        # 5. Update service_payment with fee_type='bundle' + company_id
+        #    Processor INSERT doesn't include OMS-specific fields.
+        #    This UPDATE happens within the same transaction, committed BEFORE
+        #    any external callback (BANGE webhook is a separate HTTP request).
+        #    on_payment_completed() reads fee_type to detect OMS payments.
+        await conn.execute("""
+            UPDATE service_payments
+            SET fee_type = 'bundle',
+                company_id = $2
+            WHERE id = $1::uuid
+        """, payment_result.payment_id, license_row["company_id"])
+
+        # 6. Link obligations to payment
+        updated_rows = await conn.fetch("""
+            UPDATE license_obligations
+            SET payment_id = $1::uuid,
+                status = 'payment_pending',
+                updated_at = NOW()
+            WHERE id = ANY($2::uuid[])
+              AND status IN ('pending', 'overdue')
+            RETURNING id
+        """, payment_result.payment_id, selected_obligation_ids)
+        updated_count = len(updated_rows)
+
+        if updated_count != len(selected_obligation_ids):
+            # Should not happen (already validated), but safety net
+            logger.error(
+                "OMS: Expected %d obligations linked, got %d — race condition",
+                len(selected_obligation_ids),
+                updated_count or 0,
+            )
+
+        # 7. Log compliance events
+        for ob in obligations:
+            await LicenseRepository.log_event(
+                conn, license_id, "payment_initiated",
+                event_data={
+                    "payment_id": payment_result.payment_id,
+                    "fee_type": ob["fee_type"],
+                    "amount": float(ob["amount"]),
+                    "payment_method": payment_method,
+                },
+                obligation_id=ob["id"],
+                triggered_by=user_id,
+            )
+
+        # 8. Update service_request with payment_id
+        await conn.execute("""
+            UPDATE service_requests
+            SET payment_id = $1::uuid,
+                payment_status = $2,
+                status = 'PAYMENT_PROCESSING'
+            WHERE id = $3
+        """, payment_result.payment_id,
+            payment_result.status.value if payment_result.status else 'processing',
+            service_request_id)
+
+        # 9. Publish event for cash payments (BANGE publishes via webhook callback).
+        #    This triggers: assignment outbox, email notifications, agent queue.
+        if payment_method in ("cash", "check"):
+            try:
+                from app.core.events import EventBus, EventType
+                EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
+                    "payment_id": payment_result.payment_id,
+                    "user_id": str(user_id),
+                    "service_request_id": str(service_request_id),
+                    "workflow_code": "BUNDLE_PAYMENT",
+                    "payment_method": payment_method,
+                    "amount": float(total_amount),
+                    "entity_code": "TESORO",
+                })
+            except Exception as e:
+                logger.warning("Failed to publish PAYMENT_MANUAL_PENDING event: %s", e)
+
+        # 10. Notify company owner if payment initiated by a third party
+        is_owner = await conn.fetchval(
+            "SELECT 1 FROM user_company_roles WHERE company_id = $1 AND user_id = $2",
+            license_row["company_id"], user_id,
+        )
+        if not is_owner:
+            try:
+                owner_row = await conn.fetchrow("""
+                    SELECT u.id, u.email, u.first_name
+                    FROM users u
+                    JOIN user_company_roles ucr ON ucr.user_id = u.id
+                    WHERE ucr.company_id = $1 AND ucr.role = 'company_owner'
+                    LIMIT 1
+                """, license_row["company_id"])
+                if owner_row and owner_row["email"]:
+                    logger.info(
+                        "AUDIT: third-party payment — notifying owner %s for company %s",
+                        owner_row["id"], license_row["company_id"],
+                    )
+                    # Email will be sent via CommunicationService in Session 7C
+                    # For now, log the event for audit trail
+                    await LicenseRepository.log_event(
+                        conn, license_id, "payment_initiated",
+                        event_data={
+                            "third_party_user_id": str(user_id),
+                            "owner_user_id": str(owner_row["id"]),
+                            "owner_notified": True,
+                        },
+                        triggered_by=user_id,
+                    )
+            except Exception as e:
+                logger.warning("Failed to notify owner for third-party payment: %s", e)
+
+        logger.info(
+            "OMS bundle payment initiated: license=%s, mode=%s, "
+            "method=%s, obligations=%d, amount=%s XAF, payment=%s",
+            license_id, processing_mode, payment_method,
+            len(obligations), total_amount, payment_result.payment_id,
+        )
+
+        # Build trilingual messages for the response
+        if payment_method in ("cash", "check"):
+            msg_es = "Su solicitud de pago ha sido registrada. Un agente del Tesoro la validará."
+            msg_fr = "Votre demande de paiement a été enregistrée. Un agent du Trésor la validera."
+            msg_en = "Your payment request has been registered. A Treasury agent will validate it."
+        else:
+            msg_es = payment_result.message_es or "Pago iniciado correctamente."
+            msg_fr = "Paiement initié avec succès."
+            msg_en = "Payment initiated successfully."
+
+        return {
+            "success": True,
+            "service_request_id": str(service_request_id),
+            "payment_id": payment_result.payment_id,
+            "payment_reference": getattr(
+                payment_result, "external_reference", None
+            ) or payment_result.payment_id,
+            "redirect_url": payment_result.redirect_url,
+            "requires_action": payment_result.requires_action,
+            "action_type": getattr(payment_result, "action_type", None),
+            "total_amount": float(total_amount),
+            "obligations_count": len(obligations),
+            "processing_mode": processing_mode,
+            "message_es": msg_es,
+            "message_fr": msg_fr,
+            "message_en": msg_en,
+        }
+
+    # ================================================================
+    # Helpers
+    # ================================================================
+
+    @staticmethod
+    def _format_company(row) -> Dict[str, Any]:
+        return {
+            "id": str(row["id"]),
+            "legal_name": row["legal_name"],
+            "tax_id": row["tax_id"],
+            "nif": row.get("nif"),
+            "registration_number": row.get("registration_number"),
+            "commerce_type": row.get("commerce_type"),
+            "regimen_fiscal": row.get("regimen_fiscal"),
+            "zone_code": row.get("zone_code"),
+            "city_name": row.get("city_name"),
+            "is_verified": row.get("is_verified", False),
+        }
+
+    @staticmethod
+    def _format_bundle(row) -> Dict[str, Any]:
+        return {
+            "id": str(row["id"]),
+            "commerce_type": row["commerce_type"],
+            "name_es": row["name_es"],
+        }

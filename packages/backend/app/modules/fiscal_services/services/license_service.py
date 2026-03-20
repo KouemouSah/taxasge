@@ -394,6 +394,62 @@ class LicenseService:
                 triggered_by=user_id,
             )
 
+            # When license completes, also complete the linked service_request
+            if new_status == "complete" and license_row.get("service_request_id"):
+                sr_id = license_row["service_request_id"]
+                await conn.execute(
+                    """UPDATE service_requests
+                       SET status = 'COMPLETED', updated_at = NOW(),
+                           completed_at = NOW()
+                       WHERE id = $1
+                         AND status != 'COMPLETED'""",
+                    sr_id,
+                )
+                logger.info(
+                    "License %s completed → service_request %s → COMPLETED",
+                    license_id,
+                    sr_id,
+                )
+
+            # When license completes, trigger PDF generation + email notification
+            # Runs AFTER the transaction commits (deferred via event).
+            if new_status == "complete":
+                try:
+                    from app.core.events import EventBus, EventType
+                    company_id = license_row.get("company_id")
+                    owner = await conn.fetchrow("""
+                        SELECT u.id, u.email, u.first_name, u.last_name
+                        FROM users u
+                        JOIN user_company_roles ucr ON ucr.user_id = u.id
+                        WHERE ucr.company_id = $1
+                        ORDER BY ucr.created_at ASC LIMIT 1
+                    """, company_id) if company_id else None
+
+                    EventBus.publish_nowait(EventType.LICENSE_COMPLETED, {
+                        "license_id": str(license_id),
+                        "company_id": str(company_id) if company_id else None,
+                        "service_request_id": str(
+                            license_row.get("service_request_id") or ""
+                        ),
+                        "owner_email": owner["email"] if owner else None,
+                        "owner_name": (
+                            f"{owner['first_name'] or ''} "
+                            f"{owner['last_name'] or ''}".strip()
+                        ) if owner else None,
+                        "total_amount": float(amount_paid),
+                        "fiscal_year": license_row.get("fiscal_year"),
+                    })
+                    logger.info(
+                        "LICENSE_COMPLETED event published for license %s "
+                        "(PDF + email deferred)",
+                        license_id,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to publish LICENSE_COMPLETED event for %s: %s",
+                        license_id, e,
+                    )
+
         return updated
 
     # ==================================================================
@@ -909,7 +965,8 @@ class LicenseService:
         license_rows = await conn.fetch("""
             SELECT cl.id, cl.processing_mode, cl.status,
                    cl.company_id, cl.bundle_id, cl.zone_id,
-                   cl.fiscal_year, cl.obligations_total
+                   cl.city_id, cl.fiscal_year, cl.obligations_total,
+                   cl.service_request_id
             FROM commercial_licenses cl
             WHERE cl.id = ANY($1::uuid[])
         """, license_ids)
@@ -917,21 +974,28 @@ class LicenseService:
             r["id"]: dict(r) for r in license_rows
         }
 
-        # 4. Route paid obligations grouped by license
-        all_updated = []
+        # 4. Route paid obligations grouped by license (batch per license,
+        #    not per obligation — avoids N re-instantiations of pre-cache + assignment service)
+        from collections import defaultdict
+        obls_by_license: defaultdict = defaultdict(list)
         for obl in obligations:
             obl["status"] = "paid"
-            lic_id = obl["license_id"]
+            obls_by_license[obl["license_id"]].append(obl)
+
+        all_updated = []
+        for lic_id, lic_obls in obls_by_license.items():
             license_row = licenses_map.get(lic_id)
             if not license_row:
                 logger.error(
-                    f"OMS: License {lic_id} not found for obligation "
-                    f"{obl['id']} — data integrity issue"
+                    "OMS: License %s not found for %d obligation(s) "
+                    "— data integrity issue",
+                    lic_id,
+                    len(lic_obls),
                 )
                 continue
 
             routed = await ObligationRoutingService.route_paid_obligations(
-                conn, [obl], license_row, user_id=user_id,
+                conn, lic_obls, license_row, user_id=user_id,
             )
             all_updated.extend(routed)
 

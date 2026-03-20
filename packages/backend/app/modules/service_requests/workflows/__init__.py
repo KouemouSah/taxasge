@@ -94,6 +94,12 @@ from .extranjeria import (
     get_prorroga_visado_workflow,
 )
 
+# BundlePayment workflow (OMS — autonomo fiscal obligations) - 2026-03-20
+from .bundle_payment_workflow import (
+    BundlePaymentWorkflow,
+    get_bundle_payment_workflow,
+)
+
 # Generic workflows (data-driven from database, now v2)
 from .generic_workflow import (
     GenericWorkflowStandard,
@@ -161,6 +167,10 @@ __all__ = [
     "get_tramites_visado_workflow",
     "ProrrogaVisadoWorkflow",       # backward compat alias
     "get_prorroga_visado_workflow",  # backward compat alias
+
+    # BundlePayment (OMS)
+    "BundlePaymentWorkflow",
+    "get_bundle_payment_workflow",
 
     # Generic workflows (data-driven, now v2)
     "GenericWorkflowStandard",

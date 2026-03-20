@@ -1013,6 +1013,16 @@ except Exception as e:
     logger.error(f"❌ OMS agent processing router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Bundle workflow routes (OMS citizen-facing — BUNDLE_PAYMENT)
+try:
+    from app.modules.fiscal_services.api.bundle_workflow_routes import router as bundle_workflow_router
+    app.include_router(bundle_workflow_router, prefix="/api/v1", tags=["bundle-workflow"])
+    routers_loaded.append("bundle_workflow")
+    logger.info("✅ Bundle workflow router loaded (OMS citizen payments)")
+except Exception as e:
+    logger.error(f"❌ Bundle workflow router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load users router (Module - Users System)
 try:
     from app.modules.users.api import user_routes

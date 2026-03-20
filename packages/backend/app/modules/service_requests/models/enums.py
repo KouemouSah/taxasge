@@ -120,6 +120,9 @@ class WorkflowCode(str, Enum):
     FP_PERMISO_EXTRAORDINARIO = "FP_PERMISO_EXTRAORDINARIO"
     FP_CERTIFICADO_ADMINISTRATIVO = "FP_CERTIFICADO_ADMINISTRATIVO"
 
+    # === BUNDLE / OMS (1 type) - Entité: TESORO ===
+    BUNDLE_PAYMENT = "BUNDLE_PAYMENT"
+
 
 class DocumentConditionType(str, Enum):
     """
@@ -166,15 +169,19 @@ class EntityCode(str, Enum):
     """
     Entity codes responsible for processing workflows.
     APPLICATION-LEVEL: DB stores as varchar(50), enum for validation.
+    Must stay aligned with `entities` table codes in database.
     """
-    CNEDOGE = "CNEDOGE"          # Centro Nacional de Expedición de Documentos
-    EXTRANJERIA = "EXTRANJERIA"  # Dirección General de Extranjería
-    DGT = "DGT"                  # Dirección General de Tráfico
-    OFIVE = "OFIVE"              # Oficina de Vehículos
-    ITVE = "ITVE"                # Inspección Técnica de Vehículos
-    ONRC = "ONRC"                # Oficina Nacional de Registro de Contratos
-    MINFP = "MINFP"              # Ministerio de Función Pública
-    GENERAL = "GENERAL"          # Generic/unassigned entity for generic workflows
+    CNEDOGE = "CNEDOGE"                    # Centro Nacional de Expedición de Documentos
+    EXTRANJERIA = "EXTRANJERIA"            # Dirección General de Extranjería
+    DGT = "DGT"                            # Dirección General de Tráfico
+    OFIVE = "OFIVE"                        # Oficina de Vehículos
+    ITVE = "ITVE"                          # Inspección Técnica de Vehículos
+    ONRC = "ONRC"                          # Oficina Nacional de Registro de Contratos
+    MINFP = "MINFP"                        # Ministerio de Función Pública
+    TESORO = "TESORO"                      # Tesoro Público (OMS bundle payments)
+    AYUNTAMIENTO = "AYUNTAMIENTO"          # Ayuntamiento (municipal obligations)
+    CAMARA_COMERCIO = "CAMARA_COMERCIO"    # Cámara de Comercio (chamber obligations)
+    GENERAL = "GENERAL"                    # Generic/unassigned entity for generic workflows
 
 
 class TariffType(str, Enum):
