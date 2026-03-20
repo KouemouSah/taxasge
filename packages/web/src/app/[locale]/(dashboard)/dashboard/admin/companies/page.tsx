@@ -36,6 +36,7 @@ import {
 import { Doughnut, Line } from 'react-chartjs-2'
 import { companiesAdminApi, companyDashboardApi } from "@/modules/companies/services/api"
 import { companyPublicApi } from "@/modules/companies/services/api"
+import apiClient from '@/core/api/client'
 import type {
   Company, CompanyAdminListResponse, GlobalStats, CompanyAnalytics, PublicZone,
 } from "@/modules/companies/types"
@@ -296,18 +297,25 @@ export default function AdminCompaniesPage() {
       setCityId('all')
       return
     }
-    // Fetch cities for this zone via DB query — use the analytics city data as proxy
-    // Since backend doesn't have a direct zone→cities endpoint, filter from analytics
-    if (analytics?.by_city?.length) {
-      const zoneCities = analytics.by_city
-        .filter(c => {
-          const z = zones.find(zn => zn.zone_code === c.zone_code)
-          return z && z.id === zoneId
-        })
-        .map(c => ({ id: c.city_name, name: c.city_name }))
-      setCities(zoneCities)
-    }
-  }, [zoneId, analytics, zones])
+    // Fetch all cities from /cities/simple, then filter client-side by zone
+    // Cities table has region (Insular/Continental), zones have zone_tier
+    // We use companies data to find cities that have companies in this zone
+    apiClient.get<{ id: string; name: string; region: string }[]>('/cities/simple')
+      .then(res => {
+        // Filter cities that belong to companies in this zone by cross-referencing
+        // Since cities don't have zone_id directly, use analytics.by_city which has zone_code
+        const zoneObj = zones.find(z => z.id === zoneId)
+        if (zoneObj && analytics?.by_city?.length) {
+          const cityNames = new Set(
+            analytics.by_city.filter(c => c.zone_code === zoneObj.zone_code).map(c => c.city_name)
+          )
+          setCities(res.data.filter(c => cityNames.has(c.name)))
+        } else {
+          setCities(res.data)
+        }
+      })
+      .catch(() => setCities([]))
+  }, [zoneId, zones, analytics])
 
   // --- Search debounce ---
   const [searchInput, setSearchInput] = useState("")
@@ -461,7 +469,10 @@ export default function AdminCompaniesPage() {
     const z = zones.find(z => z.id === zoneId)
     activeFilters.push({ key: 'zone', label: z ? z.zone_code : 'Zona', onClear: () => { setZoneId('all'); setCityId('all'); setPage(1) } })
   }
-  if (cityId !== 'all') activeFilters.push({ key: 'city', label: cityId, onClear: () => { setCityId('all'); setPage(1) } })
+  if (cityId !== 'all') {
+    const cityObj = cities.find(c => c.id === cityId)
+    activeFilters.push({ key: 'city', label: cityObj?.name || 'Ciudad', onClear: () => { setCityId('all'); setPage(1) } })
+  }
   if (search) activeFilters.push({ key: 'search', label: `"${search}"`, onClear: () => { setSearchInput(''); setSearch(''); setPage(1) } })
 
   const basePath = `/${locale}/dashboard/admin/companies`
@@ -530,7 +541,7 @@ export default function AdminCompaniesPage() {
     if (company.regimen_fiscal === targetCol) return
 
     const confirmed = window.confirm(
-      `Cambiar régimen de "${company.legal_name}" de ${company.regimen_fiscal || 'pendiente'} a ${targetCol}?`
+      `Reclasificar "${company.legal_name}" con IA?\n\nEl agente de clasificación evaluará la empresa y asignará el régimen apropiado (puede diferir de la columna destino).`
     )
     if (!confirmed) return
 
@@ -887,7 +898,7 @@ export default function AdminCompaniesPage() {
               <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Ciudad" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las ciudades</SelectItem>
-                {cities.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                {cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           )}

@@ -249,6 +249,8 @@ class CompanyRepository:
             "legal_name": "c.legal_name",
             "is_active": "c.is_active",
             "is_verified": "c.is_verified",
+            "member_count": "mem.cnt",
+            "license_count": "lic.cnt",
         }
         sort_col = allowed_sort.get(sort_by, "c.created_at")
         sort_dir = "ASC" if sort_order.lower() == "asc" else "DESC"
