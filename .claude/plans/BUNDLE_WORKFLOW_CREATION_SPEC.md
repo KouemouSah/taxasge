@@ -588,3 +588,53 @@ CORRIGÉ : Ayuntamiento et Cámara ont leur propre chaîne agent → superviseur
   - fee_type=chamber → route vers CAMARA_COMERCIO
 - [ ] resolve_target_entity() Mode B : TOUT vers TESORO (polyvalent)
 - [ ] Chaque entité (AYUNTAMIENTO, CAMARA, MIN_*) a ses agents + superviseurs
+
+---
+
+## ADDENDUM 3 : PRÉCISION MODE B — Ayuntamiento/Cámara TOUJOURS indépendants (2026-03-20)
+
+### Règle fondamentale
+**Ayuntamiento et Cámara de Comercio gardent TOUJOURS leur workflow indépendant, QUEL QUE SOIT le mode (A ou B).**
+
+Le mode A/B ne change QUE le comportement du TESORO.
+
+### Architecture DÉFINITIVE CORRIGÉE
+
+```
+MODE A :
+  Tesoro:
+    1. Agent Tesoro valide le paiement
+    2. Routing vers CHAQUE ministère concerné (Min. Hacienda, Min. Comercio, etc.)
+    3. Agent de chaque ministère édite SA licence séparément
+
+  Ayuntamiento : (TOUJOURS PAREIL)
+    1. Agent Ayuntamiento valide le paiement
+    2. Superviseur Ayuntamiento traite et édite la licence municipale
+
+  Cámara : (TOUJOURS PAREIL)
+    1. Agent Cámara valide le paiement
+    2. Superviseur Cámara traite et édite la licence Cámara
+
+MODE B :
+  Tesoro : (SEUL CHANGEMENT)
+    1. Agent Tesoro valide le paiement
+    2. Agent POLYVALENT (≠ agent qui valide) traite et édite UNE SEULE licence
+       commune pour TOUTES les obligations tesoro (pas de routing multi-ministères)
+
+  Ayuntamiento : (IDENTIQUE au Mode A)
+    1. Agent Ayuntamiento valide le paiement
+    2. Superviseur Ayuntamiento traite et édite la licence municipale
+
+  Cámara : (IDENTIQUE au Mode A)
+    1. Agent Cámara valide le paiement
+    2. Superviseur Cámara traite et édite la licence Cámara
+```
+
+### Résumé en 1 phrase
+Le mode A/B contrôle UNIQUEMENT si les obligations tesoro sont routées vers chaque ministère séparément (A) ou traitées par un agent polyvalent en 1 licence commune (B). Ayuntamiento et Cámara sont TOUJOURS indépendants.
+
+### Impact Session 7A
+- [ ] resolve_target_entity() : municipal→AYUNTAMIENTO et chamber→CAMARA_COMERCIO dans TOUS les modes
+- [ ] Mode A tesoro : route par ministry_id vers MIN_HACIENDA, MIN_COMERCIO, etc.
+- [ ] Mode B tesoro : route vers TESORO polyvalent (agent différent du valideur)
+- [ ] JAMAIS de "completed" auto — les 3 entités ont toujours agent→superviseur→édition
