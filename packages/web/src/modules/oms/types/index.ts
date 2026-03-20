@@ -123,3 +123,24 @@ export interface ObligationListResponse {
   page: number
   page_size: number
 }
+
+// =============================================================================
+// COMPLIANCE EVENTS
+// =============================================================================
+
+export interface ComplianceEvent {
+  id: string
+  license_id: string
+  obligation_id: string | null
+  event_type: string
+  event_data: Record<string, unknown> | null
+  triggered_by: string | null
+  created_at: string
+}
+
+export interface ComplianceEventListResponse {
+  items: ComplianceEvent[]
+  total: number
+  page: number
+  page_size: number
+}

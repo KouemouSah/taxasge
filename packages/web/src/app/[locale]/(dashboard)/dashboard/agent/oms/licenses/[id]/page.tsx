@@ -13,7 +13,7 @@ import { useLocale } from 'next-intl'
 import {
   ArrowLeft, Building2, FileCheck, DollarSign,
   AlertTriangle, CheckCircle2, Clock, Download, RefreshCw,
-  Play, XCircle, MapPin, Calendar,
+  Play, XCircle, MapPin, Calendar, History, RotateCcw, Search,
 } from 'lucide-react'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -27,8 +27,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
+import apiClient from '@/core/api/client'
 import { omsLicensesApi, omsQueueApi } from '@/modules/oms/services/api'
-import type { LicenseResponse, ObligationResponse } from '@/modules/oms/types'
+import type { LicenseResponse, ObligationResponse, ComplianceEvent } from '@/modules/oms/types'
 import { PrintHeader, PrintFooter } from '@/components/shared/PrintHeader'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
@@ -63,17 +64,21 @@ export default function LicenseDetailPage() {
 
   const [license, setLicense] = useState<LicenseResponse | null>(null)
   const [obligations, setObligations] = useState<ObligationResponse[]>([])
+  const [events, setEvents] = useState<ComplianceEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [showTimeline, setShowTimeline] = useState(false)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [lic, obs] = await Promise.all([
+      const [lic, obs, evts] = await Promise.all([
         omsLicensesApi.get(licenseId),
         omsLicensesApi.getObligations(licenseId, { page: 1 }),
+        omsLicensesApi.getEvents(licenseId).catch(() => ({ items: [] })),
       ])
       setLicense(lic)
       setObligations(obs.items)
+      setEvents(evts.items ?? [])
     } catch {
       toast({ title: 'Error al cargar la licencia', variant: 'destructive' })
     } finally {
@@ -140,6 +145,28 @@ export default function LicenseDetailPage() {
       URL.revokeObjectURL(url)
     } catch {
       toast({ title: 'Error al descargar PDF', variant: 'destructive' })
+    }
+  }
+
+  const handleRenew = async () => {
+    const nextYear = (license?.fiscal_year ?? new Date().getFullYear()) + 1
+    if (!window.confirm(`Renovar licencia para el año fiscal ${nextYear}?`)) return
+    try {
+      const newLicense = await omsLicensesApi.renew(licenseId, { fiscal_year: nextYear })
+      toast({ title: `Licencia renovada para ${nextYear}` })
+      router.push(`/${locale}/dashboard/agent/oms/licenses/${newLicense.id}`)
+    } catch {
+      toast({ title: 'Error al renovar', variant: 'destructive' })
+    }
+  }
+
+  const handleCheckPreviousYear = async () => {
+    try {
+      const res = await apiClient.post(`/licenses/${licenseId}/check-previous-year`).then(r => r.data)
+      toast({ title: `Verificación N-1: ${res.checked} obligaciones comprobadas` })
+      fetchAll()
+    } catch {
+      toast({ title: 'Error al verificar año anterior', variant: 'destructive' })
     }
   }
 
@@ -223,12 +250,18 @@ export default function LicenseDetailPage() {
               <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Año {license.fiscal_year}</span>
             </div>
           </div>
-          <div className="flex gap-1 shrink-0">
+          <div className="flex gap-1 shrink-0 flex-wrap">
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleRenew}>
+              <RotateCcw className="h-3.5 w-3.5" /> Renovar
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleCheckPreviousYear}>
+              <Search className="h-3.5 w-3.5" /> Verificar N-1
+            </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleDownloadPDF}>
               <Download className="h-3.5 w-3.5" /> PDF
             </Button>
-            <Button variant="outline" size="sm" className="h-8" onClick={() => window.print()}>
-              Imprimir
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setShowTimeline(!showTimeline)}>
+              <History className="h-3.5 w-3.5" /> {showTimeline ? 'Ocultar' : 'Historial'}
             </Button>
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={fetchAll}>
               <RefreshCw className="h-3.5 w-3.5" />
@@ -349,6 +382,54 @@ export default function LicenseDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Timeline événements */}
+        {showTimeline && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Historial de eventos ({events.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {events.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Sin eventos registrados</p>
+              ) : (
+                <div className="relative pl-6 space-y-3">
+                  {/* Vertical line */}
+                  <div className="absolute left-[9px] top-2 bottom-2 w-px bg-gray-200" />
+                  {events.map((evt) => (
+                    <div key={evt.id} className="relative">
+                      {/* Dot */}
+                      <div className={`absolute -left-6 top-1 h-[14px] w-[14px] rounded-full border-2 ${
+                        evt.event_type.includes('PAID') || evt.event_type.includes('COMPLETED') ? 'border-green-500 bg-green-100' :
+                        evt.event_type.includes('OVERDUE') || evt.event_type.includes('PENALTY') ? 'border-red-500 bg-red-100' :
+                        evt.event_type.includes('CREATED') || evt.event_type.includes('ISSUED') ? 'border-blue-500 bg-blue-100' :
+                        'border-gray-400 bg-gray-100'
+                      }`} />
+                      <div className="text-xs">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] font-mono">{evt.event_type}</Badge>
+                          <span className="text-muted-foreground">
+                            {new Date(evt.created_at).toLocaleDateString('es-GQ', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        {evt.event_data && Object.keys(evt.event_data).length > 0 && (
+                          <div className="mt-0.5 text-[10px] text-muted-foreground">
+                            {Object.entries(evt.event_data).slice(0, 3).map(([k, v]) => (
+                              <span key={k} className="mr-2">{k}: <strong>{String(v)}</strong></span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </>
   )
