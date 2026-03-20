@@ -229,17 +229,27 @@ export function GEMapSVG({ data, colorBy, selected, onSelect }: GEMapProps) {
                 className="transition-all duration-200"
               />
               {/* Province label */}
-              <text x={prov.labelX} y={prov.labelY - 5} textAnchor="middle" fontSize="7.5" fontWeight="600"
+              <text x={prov.labelX} y={prov.labelY - 8} textAnchor="middle" fontSize="7" fontWeight="600"
                 className="fill-gray-700 pointer-events-none select-none" opacity={dimmed ? 0.3 : 1}>
                 {key.length > 10 ? key.replace('-', '-\n').split('\n').map((l, i) => (
                   <tspan key={i} x={prov.labelX} dy={i === 0 ? 0 : 9}>{l}</tspan>
                 )) : key}
               </text>
+              {/* Inline metric counter (always visible) */}
+              {d && !dimmed && (
+                <text x={prov.labelX} y={prov.labelY + (key.length > 10 ? 14 : 5)} textAnchor="middle"
+                  fontSize="9" fontWeight="700" className="pointer-events-none select-none"
+                  fill={colorBy === 'debt' ? '#991b1b' : colorBy === 'recovery' ? '#166534' : '#1e3a8a'}>
+                  {colorBy === 'companies' ? d.companies :
+                   colorBy === 'debt' ? fmtK(d.debt) :
+                   `${d.recovery}%`}
+                </text>
+              )}
               {/* Capital marker */}
               {prov.capital && prov.capitalX && prov.capitalY && !dimmed && (
                 <>
                   <circle cx={prov.capitalX} cy={prov.capitalY} r="2" fill="#1e293b" opacity={0.7} className="pointer-events-none" />
-                  <text x={prov.capitalX + 5} y={prov.capitalY + 3} fontSize="6" className="fill-gray-500 pointer-events-none" fontStyle="italic">
+                  <text x={prov.capitalX + 5} y={prov.capitalY + 3} fontSize="5.5" className="fill-gray-500 pointer-events-none" fontStyle="italic">
                     {prov.capital}
                   </text>
                 </>

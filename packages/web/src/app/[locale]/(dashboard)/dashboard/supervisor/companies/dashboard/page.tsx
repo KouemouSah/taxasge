@@ -227,6 +227,27 @@ export default function SupervisorSiteDashboardPage() {
     return zoneHealthScore(zone)
   }, [zone])
 
+  // City → Provincia mapping (for map → list filter)
+  const cityToProvinciaMap = useMemo(() => {
+    if (!analytics?.by_city?.length) return new Map<string, string>()
+    const m = new Map<string, string>()
+    for (const c of analytics.by_city) m.set(c.city_name, c.provincia)
+    return m
+  }, [analytics])
+
+  const totalPages = companies ? Math.ceil(companies.total / companies.page_size) || 1 : 1
+  const items = companies?.items || []
+
+  // Items filtered by map province selection
+  const filteredItems = useMemo(() => {
+    if (!mapSelected) return items
+    return items.filter(c => {
+      const provincia = c.city_name ? cityToProvinciaMap.get(c.city_name) : null
+      return provincia === mapSelected
+    })
+  }, [items, mapSelected, cityToProvinciaMap])
+
+  // ── Early returns (AFTER all hooks) ──
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -253,8 +274,6 @@ export default function SupervisorSiteDashboardPage() {
     }],
   }
 
-  const totalPages = companies ? Math.ceil(companies.total / companies.page_size) || 1 : 1
-  const items = companies?.items || []
   const verifiedPct = zone.total_companies > 0 ? Math.round((zone.verified_companies / zone.total_companies) * 100) : 0
   const nifCoverage = zone.total_companies > 0 ? Math.round((zone.with_nif / zone.total_companies) * 100) : 0
   const identifierCoverage = zone.total_companies > 0 ? Math.round(((zone.total_companies - zone.missing_identifier) / zone.total_companies) * 100) : 0
@@ -403,6 +422,17 @@ export default function SupervisorSiteDashboardPage() {
 
         {/* ═══ PILOTAGE ═══ */}
         <TabsContent value="piloting" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
+          {/* Province filter from map selection */}
+          {mapSelected && (
+            <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+              <MapPin className="h-3.5 w-3.5 text-blue-600" />
+              <span className="text-xs font-medium text-blue-700">Filtro mapa: {mapSelected}</span>
+              <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto" onClick={() => setMapSelected(null)}>
+                Quitar filtro
+              </Button>
+            </div>
+          )}
+
           {/* Filters */}
           <div className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-[180px]">
@@ -428,7 +458,7 @@ export default function SupervisorSiteDashboardPage() {
                 <SelectItem value="false">Pendientes</SelectItem>
               </SelectContent>
             </Select>
-            <span className="text-xs text-muted-foreground self-center">{companies?.total ?? 0} empresas</span>
+            <span className="text-xs text-muted-foreground self-center">{filteredItems.length}/{companies?.total ?? 0} empresas</span>
           </div>
 
           {/* Company table */}
@@ -446,11 +476,13 @@ export default function SupervisorSiteDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.length === 0 ? (
+                  {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground text-sm py-6">{t('companyDashboard.noCompanies')}</TableCell>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground text-sm py-6">
+                        {mapSelected ? `No hay empresas en ${mapSelected}` : t('companyDashboard.noCompanies')}
+                      </TableCell>
                     </TableRow>
-                  ) : items.map((c) => (
+                  ) : filteredItems.map((c) => (
                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50"
                       onClick={() => router.push(`/${locale}/dashboard/admin/companies/${c.id}`)}>
                       <TableCell className="text-xs font-medium max-w-[200px] truncate">{c.legal_name}</TableCell>
