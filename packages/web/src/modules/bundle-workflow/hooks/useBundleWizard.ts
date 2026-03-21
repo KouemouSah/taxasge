@@ -12,7 +12,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWizardSession } from '@/modules/service-requests/hooks'
 import { bundleWorkflowApi } from '../services/bundle-workflow-api'
 import type {
-  BundleStep,
   CompanySummary,
   CompanySearchResult,
   MyCompanyWithStatus,
@@ -20,7 +19,7 @@ import type {
   BundlePaymentResult,
   ObligationItem,
 } from '../types'
-import { BundleStep as Step } from '../types'
+import { BundleStep } from '../types'
 import type { ProcessingMode } from '@/types/service-bundle'
 import type { DocumentPreview } from '@/modules/service-requests/types/wizard-session'
 
@@ -96,7 +95,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
   const wizardSession = useWizardSession()
 
   // -- Step state --
-  const [currentStep, setCurrentStep] = useState(Step.COMPANY_IDENTIFICATION)
+  const [currentStep, setCurrentStep] = useState(BundleStep.COMPANY_IDENTIFICATION)
 
   // -- Step 0: Company --
   const [myCompanies, setMyCompanies] = useState<MyCompanyWithStatus[]>([])
@@ -222,7 +221,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
   const requestNewCompany = useCallback(() => {
     setCompanyExists(false)
     setSelectedCompany(null)
-    setCurrentStep(Step.DOCUMENT_UPLOAD)
+    setCurrentStep(BundleStep.DOCUMENT_UPLOAD)
   }, [])
 
   // ── Step 1: Document upload ─────────────────────────────────
@@ -353,7 +352,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
       }
 
       // Cash/check → advance to confirmation
-      setCurrentStep(Step.CONFIRMATION)
+      setCurrentStep(BundleStep.CONFIRMATION)
       return result
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error initiating payment'
@@ -372,15 +371,15 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
   const canGoNext = (() => {
     switch (currentStep) {
-      case Step.COMPANY_IDENTIFICATION:
+      case BundleStep.COMPANY_IDENTIFICATION:
         return selectedCompany !== null
-      case Step.DOCUMENT_UPLOAD:
+      case BundleStep.DOCUMENT_UPLOAD:
         return documentPreview !== null || companyExists
-      case Step.OBLIGATIONS_REVIEW:
+      case BundleStep.OBLIGATIONS_REVIEW:
         return licenseData !== null &&
           !licenseData.alreadyComplete &&
           selectedObligationIds.size > 0
-      case Step.PAYMENT:
+      case BundleStep.PAYMENT:
         return paymentMethod !== null &&
           (paymentMethod !== 'mobile_money' || phoneNumber.length >= 9)
       default:
@@ -388,27 +387,27 @@ export function useBundleWizard(): UseBundleWizardReturn {
     }
   })()
 
-  const canGoBack = currentStep > Step.COMPANY_IDENTIFICATION &&
-    currentStep < Step.CONFIRMATION
+  const canGoBack = currentStep > BundleStep.COMPANY_IDENTIFICATION &&
+    currentStep < BundleStep.CONFIRMATION
 
   const goNext = useCallback(() => {
-    if (currentStep === Step.COMPANY_IDENTIFICATION && companyExists) {
+    if (currentStep === BundleStep.COMPANY_IDENTIFICATION && companyExists) {
       // Skip document upload for existing companies
-      setCurrentStep(Step.OBLIGATIONS_REVIEW)
-    } else if (currentStep === Step.PAYMENT) {
+      setCurrentStep(BundleStep.OBLIGATIONS_REVIEW)
+    } else if (currentStep === BundleStep.PAYMENT) {
       // Payment handles its own navigation via submitPayment
       return
     } else {
-      setCurrentStep(prev => Math.min(prev + 1, Step.CONFIRMATION))
+      setCurrentStep(prev => Math.min(prev + 1, BundleStep.CONFIRMATION))
     }
   }, [currentStep, companyExists])
 
   const goBack = useCallback(() => {
-    if (currentStep === Step.OBLIGATIONS_REVIEW && companyExists) {
+    if (currentStep === BundleStep.OBLIGATIONS_REVIEW && companyExists) {
       // Skip document upload going back for existing companies
-      setCurrentStep(Step.COMPANY_IDENTIFICATION)
+      setCurrentStep(BundleStep.COMPANY_IDENTIFICATION)
     } else {
-      setCurrentStep(prev => Math.max(prev - 1, Step.COMPANY_IDENTIFICATION))
+      setCurrentStep(prev => Math.max(prev - 1, BundleStep.COMPANY_IDENTIFICATION))
     }
   }, [currentStep, companyExists])
 

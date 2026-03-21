@@ -2,7 +2,6 @@
 
 import { Building2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { MyCompanyWithStatus } from '../types'
 
