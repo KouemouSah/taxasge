@@ -47,11 +47,15 @@ class InspectionRepository:
 
     @staticmethod
     async def get_by_id(conn, inspection_id: UUID) -> Optional[Dict]:
-        """Get inspection with enriched company/agent data."""
+        """Get inspection with enriched company/agent data.
+
+        company_nif returns COALESCE(nif, registration_number) since
+        autonomes have PE-xxxxxx (registration_number) instead of GE NIF.
+        """
         row = await conn.fetchrow("""
             SELECT fi.*,
-                   c.name AS company_name,
-                   c.nif AS company_nif,
+                   c.legal_name AS company_name,
+                   COALESCE(c.nif, c.registration_number) AS company_nif,
                    u.full_name AS agent_name,
                    e.code AS entity_code
             FROM field_inspections fi
@@ -93,7 +97,7 @@ class InspectionRepository:
 
         rows = await conn.fetch(f"""
             SELECT fi.id, fi.inspection_date, fi.status, fi.result,
-                   c.name AS company_name, c.nif AS company_nif,
+                   c.legal_name AS company_name, COALESCE(c.nif, c.registration_number) AS company_nif,
                    fi.unpaid_obligations_count, fi.unpaid_obligations_amount,
                    fi.seal_applied, fi.mise_en_demeure_issued,
                    fi.payment_collected,
@@ -148,7 +152,7 @@ class InspectionRepository:
 
         rows = await conn.fetch(f"""
             SELECT fi.id, fi.inspection_date, fi.status, fi.result,
-                   c.name AS company_name, c.nif AS company_nif,
+                   c.legal_name AS company_name, COALESCE(c.nif, c.registration_number) AS company_nif,
                    fi.unpaid_obligations_count, fi.unpaid_obligations_amount,
                    fi.seal_applied, fi.mise_en_demeure_issued,
                    fi.payment_collected,
@@ -289,7 +293,7 @@ class InspectionRepository:
         """Get seal proposals pending supervisor approval."""
         rows = await conn.fetch("""
             SELECT fi.id, fi.inspection_date,
-                   c.name AS company_name, c.nif AS company_nif,
+                   c.legal_name AS company_name, COALESCE(c.nif, c.registration_number) AS company_nif,
                    fi.seal_reason, fi.seal_notes, fi.seal_photo,
                    fi.seal_proposed_at,
                    u.full_name AS agent_name,
@@ -381,7 +385,7 @@ class InspectionRepository:
 
         rows = await conn.fetch("""
             SELECT fi.id, fi.inspection_date,
-                   c.name AS company_name, c.nif AS company_nif,
+                   c.legal_name AS company_name, COALESCE(c.nif, c.registration_number) AS company_nif,
                    fi.payment_amount, fi.payment_receipt_number,
                    fi.created_at
             FROM field_inspections fi
@@ -424,7 +428,7 @@ class InspectionRepository:
         """Get enriched license data for agent verification."""
         row = await conn.fetchrow("""
             SELECT cl.id AS license_id, cl.company_id,
-                   c.name AS company_name, c.nif AS company_nif,
+                   c.legal_name AS company_name, COALESCE(c.nif, c.registration_number) AS company_nif,
                    c.registration_number AS company_registration_number,
                    c.forma_juridica, c.commerce_type,
                    cz.zone_code,
@@ -522,16 +526,21 @@ class InspectionRepository:
         return result
 
     @staticmethod
-    async def find_license_by_company_nif(conn, nif: str) -> Optional[Dict]:
-        """Find the current year license for a company by NIF."""
+    async def find_license_by_identifier(conn, identifier: str) -> Optional[Dict]:
+        """Find the current year license by NIF (GE-format) OR registration_number (PE-format).
+
+        Companies have EITHER nif OR registration_number, never both:
+        - Sociétés (SA, SL, ONG): nif = GExxxxxX
+        - Autonomes (bundle): registration_number = PE-xxxxxx
+        """
         row = await conn.fetchrow("""
             SELECT cl.id AS license_id, cl.company_id
             FROM commercial_licenses cl
             JOIN companies c ON c.id = cl.company_id
-            WHERE c.nif = $1
+            WHERE (c.nif = $1 OR c.registration_number = $1)
               AND cl.fiscal_year = EXTRACT(YEAR FROM CURRENT_DATE)::int
               AND cl.status NOT IN ('closed', 'cancelled')
             ORDER BY cl.created_at DESC
             LIMIT 1
-        """, nif)
+        """, identifier)
         return dict(row) if row else None

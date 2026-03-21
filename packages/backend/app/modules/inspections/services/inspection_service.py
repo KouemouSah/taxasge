@@ -661,15 +661,19 @@ class InspectionService:
         ctx = await InspectionService.resolve_inspector_context(conn, user_id)
 
         if not license_id and nif:
-            found = await InspectionRepository.find_license_by_company_nif(
+            # Search by NIF (GE-format) or registration_number (PE-format)
+            found = await InspectionRepository.find_license_by_identifier(
                 conn, nif
             )
             if not found:
-                raise ValueError(f"No current license found for NIF: {nif}")
+                raise ValueError(
+                    f"No current license found for identifier: {nif}. "
+                    f"Search covers both NIF (GExxxxx) and N° Registro (PE-xxxxxx)."
+                )
             license_id = found["license_id"]
 
         if not license_id:
-            raise ValueError("Either license_id or nif is required")
+            raise ValueError("Either license_id or nif/registration_number is required")
 
         result = await InspectionRepository.get_license_for_verification(
             conn, license_id, ctx["entity_id"]

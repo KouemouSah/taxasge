@@ -220,7 +220,7 @@ export default function ScanPage() {
 
           <div className="flex gap-2">
             <Input
-              placeholder="NIF o N° Registro"
+              placeholder="NIF (GExxxxx) o N° Registro (PE-xxxxxx)"
               value={nifInput}
               onChange={e => setNifInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
