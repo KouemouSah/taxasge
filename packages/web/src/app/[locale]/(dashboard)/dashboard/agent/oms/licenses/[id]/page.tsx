@@ -393,7 +393,7 @@ export default function LicenseDetailPage() {
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-[10px] font-mono">{evt.event_type}</Badge>
                           <span className="text-muted-foreground">
-                            {new Date(evt.created_at).toLocaleDateString('es-GQ', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {new Date(evt.created_at).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         {evt.event_data && Object.keys(evt.event_data).length > 0 && (

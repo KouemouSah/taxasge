@@ -111,8 +111,10 @@ export default function OMSAgentDashboardPage() {
   // ========== ACTIONS ==========
 
   const handleProcess = async (id: string, notes?: string) => {
+    // If called from table row (no notes), prompt for optional notes
+    const finalNotes = notes ?? window.prompt(t('queue.notesPlaceholder')) ?? undefined
     try {
-      await omsQueueApi.processObligation(id, { notes: notes || undefined })
+      await omsQueueApi.processObligation(id, { notes: finalNotes || undefined })
       toast({ title: t('queue.processed') })
       setDetailItem(null)
       setProcessNotes('')
@@ -151,12 +153,20 @@ export default function OMSAgentDashboardPage() {
     }
   }
 
-  // Open detail panel
+  // Open detail panel — fetch obligation detail + all events
   const openDetail = async (item: AgentQueueItem) => {
     setDetailItem(item)
     setProcessNotes('')
     try {
-      const evts = await omsQueueApi.getObligationEvents(item.id)
+      // Fetch full obligation detail (enriched with all fields from backend)
+      const [detail, evts] = await Promise.all([
+        omsQueueApi.getObligation(item.id).catch(() => null),
+        omsQueueApi.getObligationEvents(item.id),
+      ])
+      // Merge detail fields into item if available
+      if (detail) {
+        setDetailItem({ ...item, ...detail })
+      }
       setDetailEvents(evts.items ?? [])
     } catch {
       setDetailEvents([])
@@ -330,7 +340,7 @@ export default function OMSAgentDashboardPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver detalle"
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.viewDetail')}
                           onClick={() => openDetail(item)}>
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
@@ -338,11 +348,11 @@ export default function OMSAgentDashboardPage() {
                           onClick={() => { setDetailItem(item); setProcessNotes('') }}>
                           <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Procesar"
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.process')}
                           onClick={() => handleProcess(item.id)}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Rechazar"
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.reject')}
                           onClick={() => handleReject(item.id)}>
                           <XCircle className="h-3.5 w-3.5 text-red-500" />
                         </Button>
@@ -359,7 +369,7 @@ export default function OMSAgentDashboardPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground text-xs">Página {page}/{totalPages}</span>
+          <span className="text-muted-foreground text-xs">{page}/{totalPages}</span>
           <div className="flex gap-1">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-4 w-4" />
@@ -391,14 +401,14 @@ export default function OMSAgentDashboardPage() {
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div><span className="text-muted-foreground">{t('queue.amount')}:</span><br/><strong className="text-base">{fmtXAF(detailItem.amount, locale)}</strong></div>
                   <div><span className="text-muted-foreground">{t('queue.penalty')}:</span><br/><strong className={`text-base ${detailItem.penalty_amount > 0 ? 'text-red-700' : ''}`}>{fmtXAF(detailItem.penalty_amount, locale)}</strong></div>
-                  <div><span className="text-muted-foreground">Vencimiento:</span><br/><strong>{detailItem.due_date || 'N/A'}</strong></div>
-                  <div><span className="text-muted-foreground">Estado:</span><br/>
+                  <div><span className="text-muted-foreground">{t('queue.dueDate')}:</span><br/><strong>{detailItem.due_date || 'N/A'}</strong></div>
+                  <div><span className="text-muted-foreground">{t('queue.status')}:</span><br/>
                     <Badge className={`text-xs ${(STATUS_CONFIG[detailItem.status] || STATUS_CONFIG.pending).color}`}>
                       {(STATUS_CONFIG[detailItem.status] || STATUS_CONFIG.pending).label}
                     </Badge>
                   </div>
-                  <div><span className="text-muted-foreground">Año fiscal:</span><br/><strong>{detailItem.fiscal_year || 'N/A'}</strong></div>
-                  <div><span className="text-muted-foreground">Ministerio:</span><br/><strong className="text-[11px]">{detailItem.ministry_name || 'N/A'}</strong></div>
+                  <div><span className="text-muted-foreground">{t('queue.feeType')}:</span><br/><strong>{detailItem.fiscal_year || 'N/A'}</strong></div>
+                  <div><span className="text-muted-foreground">{t('queue.company')}:</span><br/><strong className="text-[11px]">{detailItem.ministry_name || 'N/A'}</strong></div>
                 </div>
 
                 {/* Notes + Process */}
@@ -407,17 +417,17 @@ export default function OMSAgentDashboardPage() {
                   <Textarea
                     value={processNotes}
                     onChange={e => setProcessNotes(e.target.value)}
-                    placeholder="Notas de procesamiento (documento emitido, observaciones...)"
+                    placeholder={t('queue.notesPlaceholder')}
                     className="text-xs h-20 resize-none"
                   />
                   <div className="flex gap-2">
                     <Button size="sm" className="flex-1 h-8 text-xs gap-1"
                       onClick={() => handleProcess(detailItem.id, processNotes)}>
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Procesar
+                      <CheckCircle2 className="h-3.5 w-3.5" /> {t('queue.process')}
                     </Button>
                     <Button size="sm" variant="destructive" className="h-8 text-xs gap-1"
                       onClick={() => handleReject(detailItem.id)}>
-                      <XCircle className="h-3.5 w-3.5" /> Rechazar
+                      <XCircle className="h-3.5 w-3.5" /> {t('queue.reject')}
                     </Button>
                   </div>
                 </div>
@@ -432,7 +442,7 @@ export default function OMSAgentDashboardPage() {
                   ) : (
                     <div className="relative pl-5 space-y-2">
                       <div className="absolute left-[7px] top-1 bottom-1 w-px bg-gray-200" />
-                      {detailEvents.slice(0, 10).map(evt => (
+                      {detailEvents.map(evt => (
                         <div key={evt.id} className="relative">
                           <div className={`absolute -left-5 top-1 h-3 w-3 rounded-full border-2 ${
                             evt.event_type.includes('PAID') || evt.event_type.includes('COMPLETED') ? 'border-green-500 bg-green-100' :
@@ -442,7 +452,7 @@ export default function OMSAgentDashboardPage() {
                           <div className="text-[10px]">
                             <Badge variant="outline" className="text-[9px] font-mono">{evt.event_type}</Badge>
                             <span className="text-muted-foreground ml-1">
-                              {new Date(evt.created_at).toLocaleDateString('es-GQ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {new Date(evt.created_at).toLocaleDateString(locale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                         </div>
