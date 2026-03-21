@@ -170,6 +170,149 @@ async def get_reconciliation(
     )
 
 
+@router.get("/reconcile/supervisor")
+async def get_supervisor_reconciliation(
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.reconcile_validate")),
+):
+    """Supervisor: list field collections pending reconciliation.
+
+    Returns all service_payments with workflow_status='field_collected'
+    scoped to the supervisor's entity.
+    """
+    try:
+        ctx = await InspectionService.resolve_inspector_context(
+            db, UUID(current_user.id)
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not ctx["is_supervisor"]:
+        raise HTTPException(status_code=403, detail="Supervisor only")
+
+    # CTE: pending field collections + agent info + company info
+    rows = await db.fetch("""
+        WITH pending_field AS (
+            SELECT sp.id, sp.payment_reference, sp.total_amount,
+                   sp.collected_by, sp.field_inspection_id,
+                   sp.entity_code, sp.fee_type,
+                   sp.created_at,
+                   u.full_name AS agent_name,
+                   fi.company_id, fi.inspection_date
+            FROM service_payments sp
+            JOIN users u ON u.id = sp.collected_by
+            LEFT JOIN field_inspections fi ON fi.id = sp.field_inspection_id
+            WHERE sp.collection_type = 'field'
+              AND sp.workflow_status = 'field_collected'
+              AND sp.entity_code = $1
+        )
+        SELECT pf.*,
+               c.legal_name AS company_name,
+               COALESCE(c.nif, c.registration_number) AS company_nif
+        FROM pending_field pf
+        LEFT JOIN companies c ON c.id = pf.company_id
+        ORDER BY pf.created_at ASC
+    """, ctx["entity_code"])
+
+    items = [dict(r) for r in rows]
+    total = sum(r.get("total_amount") or 0 for r in items)
+
+    return {
+        "items": items,
+        "total_amount": float(total),
+        "total_count": len(items),
+        "entity_code": ctx["entity_code"],
+    }
+
+
+@router.post("/reconcile/supervisor/{payment_id}/validate")
+async def validate_field_reconciliation(
+    payment_id: UUID,
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.reconcile_validate")),
+):
+    """Supervisor validates a field cash collection (double validation).
+
+    Confirms the agent has reversed the cash to the treasury.
+    Transitions: field_collected → completed → on_payment_completed → routing.
+    """
+    try:
+        ctx = await InspectionService.resolve_inspector_context(
+            db, UUID(current_user.id)
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not ctx["is_supervisor"]:
+        raise HTTPException(status_code=403, detail="Supervisor only")
+
+    # Verify payment exists, is field_collected, and belongs to supervisor's entity
+    payment = await db.fetchrow("""
+        SELECT id, workflow_status, entity_code, collection_type
+        FROM service_payments
+        WHERE id = $1
+    """, payment_id)
+
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if payment["workflow_status"] != "field_collected":
+        raise HTTPException(
+            status_code=422,
+            detail=f"Payment is not in 'field_collected' status (current: {payment['workflow_status']})"
+        )
+    if payment["entity_code"] != ctx["entity_code"]:
+        raise HTTPException(status_code=403, detail="Payment belongs to another entity")
+
+    # Double validation: field_collected → completed
+    # Then trigger the SAME post-payment pipeline as normal
+    try:
+        async with db.transaction():
+            # 1. Update payment to completed
+            await db.execute("""
+                UPDATE service_payments
+                SET workflow_status = 'completed',
+                    status = 'completed',
+                    validated_by_agent_id = $1,
+                    validated_at = NOW(),
+                    paid_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $2
+            """, UUID(current_user.id), payment_id)
+
+            # 2. Trigger obligation routing (SAME as treasury validation)
+            from app.modules.fiscal_services.services.license_service import (
+                LicenseService,
+            )
+            routed = await LicenseService.on_payment_completed(db, str(payment_id))
+
+            # 3. Audit trail
+            from app.modules.inspections.services.inspection_service import _log_audit
+            await _log_audit(
+                db, UUID(current_user.id),
+                "FIELD_RECONCILIATION_VALIDATED",
+                "service_payment", str(payment_id),
+                {"entity_code": ctx["entity_code"], "routed_obligations": routed},
+            )
+
+            logger.info(
+                f"Field reconciliation validated: payment {payment_id} "
+                f"by supervisor {current_user.id}, {routed} obligations routed"
+            )
+
+    except Exception as e:
+        logger.error(f"Field reconciliation failed: {e}")
+        raise HTTPException(status_code=500, detail="Reconciliation validation failed")
+
+    return {
+        "payment_id": str(payment_id),
+        "status": "completed",
+        "routed_obligations": routed,
+        "validated_by": current_user.id,
+    }
+
+
 @router.get("/verify")
 async def verify_license(
     license_id: Optional[UUID] = Query(None),

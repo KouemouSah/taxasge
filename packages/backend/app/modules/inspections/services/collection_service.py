@@ -127,11 +127,21 @@ class CollectionService:
             wizard_session_id=None,  # No wizard — inspection IS the document
         )
 
-        # Enrich service_payment with field collection metadata
+        # DOUBLE VALIDATION: Set to 'field_collected' instead of 'pending_agent_review'
+        # The agent has collected the cash, but the supervisor must confirm
+        # the cash reversal to treasury before the payment is completed.
+        #
+        # Flow:
+        #   field_collected (agent took cash)
+        #     → supervisor validates reconciliation
+        #       → completed (on_payment_completed → obligation routing)
+        #
+        # This prevents document issuance before cash reaches the treasury.
         if payment_result.get("payment_id"):
             await conn.execute("""
                 UPDATE service_payments
-                SET collection_type = 'field',
+                SET workflow_status = 'field_collected',
+                    collection_type = 'field',
                     collected_by = $1,
                     field_inspection_id = $2
                 WHERE id = $3::uuid
