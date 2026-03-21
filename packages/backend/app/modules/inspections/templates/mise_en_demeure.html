@@ -52,7 +52,7 @@ th { background: #fce4e4; font-weight: bold; }
     <div class="dest-grid">
         <div class="dest-row">
             <div class="dest-cell"><strong>{{ company_name }}</strong></div>
-            <div class="dest-cell">NIF: <strong>{{ company_nif }}</strong></div>
+            <div class="dest-cell">{% if company_nif and company_nif[:2] == 'PE' %}N° Reg:{% else %}NIF:{% endif %} <strong>{{ company_nif }}</strong></div>
         </div>
         {% if zone_code or city_name %}
         <div class="dest-row">

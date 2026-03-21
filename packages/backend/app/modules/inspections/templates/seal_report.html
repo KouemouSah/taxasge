@@ -57,7 +57,7 @@ th { background: #f8d7da; }
     <div class="grid">
         <div class="grid-row">
             <div class="grid-cell"><span class="label">{{ texts.company_name }}:</span> <span class="value">{{ company_name }}</span></div>
-            <div class="grid-cell"><span class="label">NIF:</span> <span class="value">{{ company_nif }}</span></div>
+            <div class="grid-cell"><span class="label">{% if company_nif and company_nif[:2] == 'PE' %}N° Reg:{% else %}NIF:{% endif %}</span> <span class="value">{{ company_nif }}</span></div>
         </div>
         {% if zone_code %}
         <div class="grid-row">

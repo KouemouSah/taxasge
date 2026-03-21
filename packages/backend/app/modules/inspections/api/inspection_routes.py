@@ -173,12 +173,12 @@ async def get_reconciliation(
 @router.get("/verify")
 async def verify_license(
     license_id: Optional[UUID] = Query(None),
-    nif: Optional[str] = Query(None, max_length=20),
+    nif: Optional[str] = Query(None, max_length=20, description="NIF (GExxxxx) or registration number (PE-xxxxxx)"),
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("inspection.create")),
 ):
-    """Verify a license for field inspection (by license_id or NIF)."""
+    """Verify a license for field inspection (by license_id, NIF, or registration number)."""
     try:
         result = await InspectionService.verify_license_for_agent(
             db, UUID(current_user.id),
