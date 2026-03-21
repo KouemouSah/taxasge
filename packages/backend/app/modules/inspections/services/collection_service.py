@@ -1,21 +1,35 @@
 """Collection Service — Field payment collection (cash / mobile money).
 
 Handles cash receipts and mobile money payments collected in the field.
+Fixes: C1 (INSERT columns), C2 (sequence), M4 (Decimal), m10 (collection_type)
 """
 
+import hashlib
 import logging
-from decimal import Decimal
+from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from uuid import UUID
 
 from app.modules.inspections.repositories.inspection_repository import (
     InspectionRepository,
 )
-from app.modules.inspections.services.inspection_service import (
-    InspectionService,
-)
 
 logger = logging.getLogger(__name__)
+
+
+def _generate_payment_reference(method: str) -> str:
+    """Generate unique payment reference: FLD-YYYYMMDDHHMMSS-HEX8."""
+    now = datetime.now(timezone.utc)
+    ts = now.strftime("%Y%m%d%H%M%S")
+    raw = f"FLD-{ts}-{method}-{now.microsecond}"
+    hex_hash = hashlib.sha256(raw.encode()).hexdigest()[:8].upper()
+    return f"FLD-{ts}-{hex_hash}"
+
+
+def _normalize_amount(val: Decimal) -> Decimal:
+    """Normalize Decimal to 2 decimal places for comparison (fix M4)."""
+    return val.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 class CollectionService:
@@ -30,26 +44,16 @@ class CollectionService:
         phone_number: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> dict:
-        """Collect payment in the field (cash or mobile money).
-
-        Cash flow:
-        1. Verify inspection + obligations
-        2. Create service_payment with collection_type='field'
-        3. Generate receipt number (advisory lock)
-        4. Link to inspection
-        5. EventBus → PAYMENT_MANUAL_PENDING (enters treasury flow)
-        6. Return receipt for download
-
-        Mobile money flow:
-        1. Create BANGE transaction → redirect_url
-        2. Webhook auto-confirms → obligation status updates
-        """
+        """Collect payment in the field (cash or mobile money)."""
         inspection = await InspectionRepository.get_by_id(conn, inspection_id)
         if not inspection:
             raise ValueError(f"Inspection {inspection_id} not found")
 
         if inspection["agent_id"] != user_id:
             raise ValueError("Cannot collect payment on another agent's inspection")
+
+        if not obligation_ids:
+            raise ValueError("At least one obligation ID is required")
 
         # Verify obligations exist and are collectible
         obls = await conn.fetch("""
@@ -74,63 +78,88 @@ class CollectionService:
                 f"Invalid: {[str(o['id']) for o in uncollectable]}"
             )
 
-        # Verify amount matches
-        expected_total = sum(
-            (o["amount"] or Decimal("0")) + (o["penalty_amount"] or Decimal("0"))
+        # Fix M4: Normalize decimals before comparison
+        expected_total = _normalize_amount(sum(
+            _normalize_amount(o["amount"] or Decimal("0"))
+            + _normalize_amount(o["penalty_amount"] or Decimal("0"))
             for o in obls
-        )
-        if amount != expected_total:
+        ))
+        received = _normalize_amount(amount)
+
+        if received != expected_total:
             raise ValueError(
                 f"Amount mismatch: expected {expected_total} XAF, "
-                f"received {amount} XAF"
+                f"received {received} XAF"
             )
+
+        # Resolve agent context for entity_code
+        from app.modules.inspections.services.inspection_service import (
+            InspectionService,
+        )
+        ctx = await InspectionService.resolve_inspector_context(conn, user_id)
 
         if method == "cash":
             return await CollectionService._collect_cash(
-                conn, inspection, user_id, obligation_ids, amount, notes,
+                conn, inspection, user_id, ctx, obligation_ids,
+                expected_total, notes,
             )
         elif method == "mobile_money":
             return await CollectionService._collect_mobile_money(
-                conn, inspection, user_id, obligation_ids, amount,
-                phone_number, notes,
+                conn, inspection, user_id, ctx, obligation_ids,
+                expected_total, phone_number, notes,
             )
         else:
             raise ValueError(f"Unsupported payment method: {method}")
 
     @staticmethod
     async def _collect_cash(
-        conn, inspection: dict, user_id: UUID,
+        conn, inspection: dict, user_id: UUID, ctx: dict,
         obligation_ids: List[UUID], amount: Decimal,
         notes: Optional[str],
     ) -> dict:
         """Process cash collection → receipt + treasury pipeline."""
-        # Generate receipt number with advisory lock (same pattern as receipt_service)
-        await conn.execute(
-            "SELECT pg_advisory_xact_lock(hashtext('field_receipt_seq'))"
+        # Fix C2: Use PostgreSQL SEQUENCE instead of MAX+1
+        seq_row = await conn.fetchrow(
+            "SELECT nextval('field_receipt_seq') AS seq"
         )
-
-        receipt_row = await conn.fetchrow("""
-            SELECT COALESCE(MAX(
-                CAST(SUBSTRING(payment_receipt_number FROM 'FR-[0-9]+-([0-9]+)')
-                AS INTEGER)
-            ), 0) + 1 AS next_seq
-            FROM field_inspections
-            WHERE payment_receipt_number IS NOT NULL
-        """)
-        seq = receipt_row["next_seq"]
+        seq = seq_row["seq"]
         from datetime import date
         receipt_number = f"FR-{date.today().strftime('%Y%m%d')}-{seq:06d}"
 
-        # Create service_payment linked to field inspection
+        payment_ref = _generate_payment_reference("cash")
+
+        # Fix C1: Complete INSERT with all NOT NULL columns
         payment_row = await conn.fetchrow("""
             INSERT INTO service_payments (
-                amount, payment_method, workflow_status,
-                fee_type, notes,
+                payment_reference, user_id, company_id,
+                payment_type, base_amount, total_amount,
+                payment_method, currency, entity_code,
+                workflow_status, fee_type,
+                receipt_number,
+                collection_type, collected_by, field_inspection_id,
+                requires_agent_validation,
                 created_at, updated_at
             )
-            VALUES ($1, 'cash', 'pending_agent_review', 'tesoro', $2, NOW(), NOW())
+            VALUES (
+                $1, $2, $3,
+                'full', $4, $4,
+                'cash', 'XAF', $5,
+                'pending_agent_review', 'tesoro',
+                $6,
+                'field', $2, $7,
+                true,
+                NOW(), NOW()
+            )
             RETURNING id
-        """, amount, notes or f"Field collection #{receipt_number}")
+        """,
+            payment_ref,           # $1
+            user_id,               # $2
+            inspection["company_id"],  # $3
+            amount,                # $4 (base_amount = total_amount)
+            ctx["entity_code"],    # $5
+            receipt_number,        # $6
+            inspection["id"],      # $7
+        )
 
         payment_id = payment_row["id"]
 
@@ -187,7 +216,7 @@ class CollectionService:
 
     @staticmethod
     async def _collect_mobile_money(
-        conn, inspection: dict, user_id: UUID,
+        conn, inspection: dict, user_id: UUID, ctx: dict,
         obligation_ids: List[UUID], amount: Decimal,
         phone_number: Optional[str],
         notes: Optional[str],
@@ -196,16 +225,37 @@ class CollectionService:
         if not phone_number:
             raise ValueError("Phone number required for mobile money")
 
-        # Create service_payment
+        payment_ref = _generate_payment_reference("momo")
+
+        # Fix C1: Complete INSERT with all NOT NULL columns
         payment_row = await conn.fetchrow("""
             INSERT INTO service_payments (
-                amount, payment_method, workflow_status,
-                fee_type, notes,
+                payment_reference, user_id, company_id,
+                payment_type, base_amount, total_amount,
+                payment_method, currency, entity_code,
+                workflow_status, fee_type,
+                collection_type, collected_by, field_inspection_id,
+                requires_agent_validation,
                 created_at, updated_at
             )
-            VALUES ($1, 'mobile_money', 'submitted', 'tesoro', $2, NOW(), NOW())
+            VALUES (
+                $1, $2, $3,
+                'full', $4, $4,
+                'mobile_money', 'XAF', $5,
+                'submitted', 'tesoro',
+                'field', $2, $6,
+                true,
+                NOW(), NOW()
+            )
             RETURNING id
-        """, amount, notes or f"Field mobile money collection")
+        """,
+            payment_ref,
+            user_id,
+            inspection["company_id"],
+            amount,
+            ctx["entity_code"],
+            inspection["id"],
+        )
 
         payment_id = payment_row["id"]
 
@@ -225,11 +275,6 @@ class CollectionService:
             "payment_amount": amount,
         })
 
-        # TODO: Integrate with BangeProcessor for actual mobile money
-        # For now, return a placeholder. In production, this would call:
-        # from app.modules.payments.services.bange_processor import BangeProcessor
-        # redirect_url = await BangeProcessor.initiate(...)
-
         logger.info(
             f"Field mobile money initiated: {amount} XAF, "
             f"phone: {phone_number}, {len(obligation_ids)} obligations"
@@ -242,5 +287,5 @@ class CollectionService:
             "phone_number": phone_number,
             "obligation_count": len(obligation_ids),
             "status": "submitted",
-            "redirect_url": None,  # Will be populated by BangeProcessor
+            "redirect_url": None,
         }

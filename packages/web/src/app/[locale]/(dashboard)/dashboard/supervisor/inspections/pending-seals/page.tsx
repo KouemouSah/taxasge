@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, ShieldAlert, CheckCircle2, XCircle, MapPin, Camera, Clock } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowLeft, ShieldAlert, CheckCircle2, XCircle, MapPin, Camera, Clock, AlertTriangle } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,6 +27,9 @@ export default function PendingSealsPage() {
   const [actionSeal, setActionSeal] = useState<PendingSeal | null>(null)
   const [rejectNotes, setRejectNotes] = useState('')
   const [processing, setProcessing] = useState(false)
+  // Fix m5: Separate dialogs for approve/reject
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
 
   const fetchSeals = useCallback(async () => {
     try {
@@ -163,19 +166,25 @@ export default function PendingSealsPage() {
                   </div>
                 )}
 
-                {/* Actions */}
+                {/* Fix m5: Actions with proper confirmation */}
                 <div className="flex gap-2 pt-2">
                   <Button
-                    className="flex-1 gap-1"
-                    onClick={() => { setActionSeal(seal); handleAction(true) }}
+                    className="flex-1 gap-1 min-h-[44px]"
+                    onClick={() => {
+                      setActionSeal(seal)
+                      setShowApproveConfirm(true)
+                    }}
                     disabled={processing}
                   >
                     <CheckCircle2 className="h-4 w-4" /> Aprobar
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex-1 gap-1"
-                    onClick={() => setActionSeal(seal)}
+                    className="flex-1 gap-1 min-h-[44px]"
+                    onClick={() => {
+                      setActionSeal(seal)
+                      setShowRejectDialog(true)
+                    }}
                     disabled={processing}
                   >
                     <XCircle className="h-4 w-4" /> Rechazar
@@ -187,8 +196,43 @@ export default function PendingSealsPage() {
         </div>
       )}
 
+      {/* Fix m5: Approve confirmation dialog */}
+      <Dialog open={showApproveConfirm} onOpenChange={setShowApproveConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Confirmar scellé — {actionSeal?.company_name}
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción desactivará la empresa y suspenderá su licencia comercial.
+              El propietario será notificado por email y SMS.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-red-50 p-3 rounded text-sm space-y-1">
+            <p><strong>Empresa:</strong> {actionSeal?.company_name} ({actionSeal?.company_nif})</p>
+            <p><strong>Motivo:</strong> {actionSeal?.seal_reason && SEAL_REASON_LABELS[actionSeal.seal_reason as keyof typeof SEAL_REASON_LABELS]}</p>
+            <p><strong>Impago:</strong> {fmtXAF(actionSeal?.unpaid_obligations_amount ?? 0, locale)}</p>
+            <p><strong>Agente:</strong> {actionSeal?.agent_name}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApproveConfirm(false)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                setShowApproveConfirm(false)
+                await handleAction(true)
+              }}
+              disabled={processing}
+            >
+              Confirmar aprobación del scellé
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Reject dialog */}
-      <Dialog open={!!actionSeal && !processing} onOpenChange={() => setActionSeal(null)}>
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rechazar scellé — {actionSeal?.company_name}</DialogTitle>
@@ -206,11 +250,15 @@ export default function PendingSealsPage() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActionSeal(null)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setShowRejectDialog(false); setRejectNotes('') }}>Cancelar</Button>
             <Button
               variant="destructive"
-              onClick={() => handleAction(false)}
-              disabled={!rejectNotes.trim()}
+              onClick={async () => {
+                setShowRejectDialog(false)
+                await handleAction(false)
+                setRejectNotes('')
+              }}
+              disabled={!rejectNotes.trim() || processing}
             >
               Confirmar rechazo
             </Button>

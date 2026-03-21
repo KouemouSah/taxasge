@@ -6,25 +6,30 @@ import { useLocale } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import {
   ArrowLeft, Camera, MapPin, CheckCircle2, AlertTriangle,
-  Lock, DollarSign, Save, FileText, Upload,
+  Lock, DollarSign, Save, FileText, Upload, XCircle,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { inspectionApi } from '@/modules/inspections/services/api'
 import { INSPECTION_STATUS_CONFIG, SEAL_REASON_LABELS, fmtXAF } from '@/modules/inspections/utils/formatters'
-import type { Inspection, SealReason } from '@/modules/inspections/types'
+import type { Inspection, SealReason, LicenseObligation } from '@/modules/inspections/types'
 
 export default function InspectPage() {
   const locale = useLocale()
@@ -37,16 +42,24 @@ export default function InspectPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // Fix C3/C4: Store obligations fetched from verify API
+  const [obligations, setObligations] = useState<LicenseObligation[]>([])
+  const [selectedOblIds, setSelectedOblIds] = useState<string[]>([])
+
   // Form state
   const [activityConforme, setActivityConforme] = useState<boolean | null>(null)
   const [activityObserved, setActivityObserved] = useState('')
   const [notes, setNotes] = useState('')
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null)
+  // Fix M5: Track uploaded photo URLs
+  const [photoUrls, setPhotoUrls] = useState<string[]>([])
 
   // Dialogs
   const [showMedDialog, setShowMedDialog] = useState(false)
   const [showSealDialog, setShowSealDialog] = useState(false)
   const [showCollectDialog, setShowCollectDialog] = useState(false)
+  // Fix m5: Confirmation dialog for complete
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
   const [medDeadline, setMedDeadline] = useState(72)
   const [sealReason, setSealReason] = useState<SealReason | ''>('')
   const [sealNotes, setSealNotes] = useState('')
@@ -62,6 +75,17 @@ export default function InspectPage() {
       setActivityConforme(data.activity_conforme ?? null)
       setActivityObserved(data.activity_observed ?? '')
       setNotes(data.notes ?? '')
+      setPhotoUrls(data.photos || [])
+
+      // Fix C3/C4: Fetch obligations from verify API using license_id
+      if (data.license_id) {
+        try {
+          const verif = await inspectionApi.verifyLicense({ license_id: data.license_id })
+          setObligations(verif.obligations || [])
+        } catch {
+          // Obligations fetch failed — non-blocking
+        }
+      }
     } catch {
       toast({ title: 'Error', description: 'Inspección no encontrada', variant: 'destructive' })
     } finally {
@@ -81,6 +105,17 @@ export default function InspectPage() {
     )
   }, [])
 
+  // Computed: unpaid obligations
+  const unpaidObligations = obligations.filter(o => o.status === 'pending' || o.status === 'overdue')
+  const unpaidTotal = unpaidObligations.reduce((s, o) => s + o.amount + (o.penalty_amount || 0), 0)
+
+  // Auto-select all unpaid when MED/Collect dialog opens
+  useEffect(() => {
+    if (showMedDialog || showCollectDialog) {
+      setSelectedOblIds(unpaidObligations.map(o => o.id))
+    }
+  }, [showMedDialog, showCollectDialog]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSave = useCallback(async () => {
     if (!inspection) return
     try {
@@ -92,6 +127,7 @@ export default function InspectPage() {
         gps_latitude: gps?.lat,
         gps_longitude: gps?.lng,
         gps_accuracy: gps?.accuracy,
+        photos: photoUrls.length > 0 ? photoUrls : undefined,
       })
       setInspection(data)
       toast({ title: 'Guardado', description: 'Inspección actualizada' })
@@ -100,7 +136,7 @@ export default function InspectPage() {
     } finally {
       setSaving(false)
     }
-  }, [inspection, activityConforme, activityObserved, notes, gps, toast])
+  }, [inspection, activityConforme, activityObserved, notes, gps, photoUrls, toast])
 
   const handleComplete = useCallback(async () => {
     if (!inspection) return
@@ -114,9 +150,11 @@ export default function InspectPage() {
         gps_latitude: gps?.lat,
         gps_longitude: gps?.lng,
         gps_accuracy: gps?.accuracy,
+        photos: photoUrls.length > 0 ? photoUrls : undefined,
       })
       const data = await inspectionApi.complete(inspection.id, { notes })
       setInspection(data)
+      setShowCompleteConfirm(false)
       toast({ title: 'Inspección completada', description: `Resultado: ${data.result}` })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error'
@@ -124,20 +162,15 @@ export default function InspectPage() {
     } finally {
       setSaving(false)
     }
-  }, [inspection, activityConforme, activityObserved, notes, gps, toast])
+  }, [inspection, activityConforme, activityObserved, notes, gps, photoUrls, toast])
 
+  // Fix C3: MED with real obligation IDs
   const handleMED = useCallback(async () => {
-    if (!inspection) return
-    // All unpaid obligation IDs
-    const unpaidIds = (inspection as Inspection & { obligations?: Array<{ id: string; status: string }> })
-      .obligations?.filter(o => o.status === 'pending' || o.status === 'overdue')
-      .map(o => o.id) ?? []
-
-    // If no obligations on inspection, we need to fetch them
-    // For now, use the mise_en_demeure_obligations if available
+    if (!inspection || selectedOblIds.length === 0) return
     try {
+      setSaving(true)
       const data = await inspectionApi.miseEnDemeure(inspection.id, {
-        obligation_ids: unpaidIds.length > 0 ? unpaidIds : [],
+        obligation_ids: selectedOblIds,
         deadline_hours: medDeadline,
         notes: notes || undefined,
       })
@@ -147,12 +180,15 @@ export default function InspectPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error'
       toast({ title: 'Error', description: msg, variant: 'destructive' })
+    } finally {
+      setSaving(false)
     }
-  }, [inspection, medDeadline, notes, toast])
+  }, [inspection, selectedOblIds, medDeadline, notes, toast])
 
   const handleSeal = useCallback(async () => {
     if (!inspection || !sealReason) return
     try {
+      setSaving(true)
       const data = await inspectionApi.proposeSeal(inspection.id, {
         reason: sealReason,
         notes: sealNotes || undefined,
@@ -163,16 +199,23 @@ export default function InspectPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error'
       toast({ title: 'Error', description: msg, variant: 'destructive' })
+    } finally {
+      setSaving(false)
     }
   }, [inspection, sealReason, sealNotes, toast])
 
+  // Fix C4: Collect with real obligation IDs and computed amount
   const handleCollect = useCallback(async () => {
-    if (!inspection) return
+    if (!inspection || selectedOblIds.length === 0) return
+    const selectedTotal = unpaidObligations
+      .filter(o => selectedOblIds.includes(o.id))
+      .reduce((s, o) => s + o.amount + (o.penalty_amount || 0), 0)
     try {
+      setSaving(true)
       const result = await inspectionApi.collectPayment(inspection.id, {
-        obligation_ids: [],  // Will be populated from license verification
+        obligation_ids: selectedOblIds,
         method: collectMethod,
-        amount: inspection.unpaid_obligations_amount,
+        amount: selectedTotal,
         phone_number: collectMethod === 'mobile_money' ? collectPhone : undefined,
       })
       setShowCollectDialog(false)
@@ -184,8 +227,47 @@ export default function InspectPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error'
       toast({ title: 'Error', description: msg, variant: 'destructive' })
+    } finally {
+      setSaving(false)
     }
-  }, [inspection, collectMethod, collectPhone, toast, fetchInspection])
+  }, [inspection, selectedOblIds, unpaidObligations, collectMethod, collectPhone, toast, fetchInspection])
+
+  // Fix M5: Handle photo capture and upload placeholder
+  const handlePhotoCapture = useCallback(async (file: File) => {
+    // Compress image if needed (< 500KB target)
+    const maxSize = 500 * 1024
+    let imageFile = file
+
+    if (file.size > maxSize) {
+      // Basic compression via canvas
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      await new Promise<void>((resolve) => {
+        img.onload = () => {
+          const scale = Math.min(1, Math.sqrt(maxSize / file.size))
+          canvas.width = img.width * scale
+          canvas.height = img.height * scale
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height)
+          URL.revokeObjectURL(url)
+          resolve()
+        }
+        img.src = url
+      })
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', 0.7)
+      )
+      if (blob) {
+        imageFile = new File([blob], file.name, { type: 'image/jpeg' })
+      }
+    }
+
+    // Create a local preview URL (in production, upload to Supabase Storage)
+    const previewUrl = URL.createObjectURL(imageFile)
+    setPhotoUrls(prev => [...prev, previewUrl])
+    toast({ title: 'Foto capturada', description: `${(imageFile.size / 1024).toFixed(0)} KB` })
+  }, [toast])
 
   if (loading || !inspection) {
     return (
@@ -266,30 +348,48 @@ export default function InspectPage() {
         </Card>
       )}
 
-      {/* 3. Payment status */}
+      {/* 3. Obligations detail (from verify API) */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center justify-between">
-            <span>Estado de pago</span>
-            <span className={inspection.unpaid_obligations_count > 0 ? 'text-red-600' : 'text-green-600'}>
-              {inspection.unpaid_obligations_count > 0
-                ? `${inspection.unpaid_obligations_count} impago(s) — ${fmtXAF(inspection.unpaid_obligations_amount, locale)}`
-                : 'Todo al día'}
-            </span>
+            <span>Obligaciones ({obligations.length})</span>
+            {unpaidObligations.length > 0 && (
+              <span className="text-red-600 font-medium">
+                {unpaidObligations.length} impago(s) — {fmtXAF(unpaidTotal, locale)}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-sm">
-            <span>Total obligaciones: {inspection.total_obligations_count}</span>
-            <Separator orientation="vertical" className="h-4" />
-            <span className="text-green-600">
-              Pagadas: {inspection.total_obligations_count - inspection.unpaid_obligations_count}
-            </span>
-            <Separator orientation="vertical" className="h-4" />
-            <span className="text-red-600">
-              Impagadas: {inspection.unpaid_obligations_count}
-            </span>
-          </div>
+        <CardContent className="space-y-1.5">
+          {obligations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Cargando obligaciones...</p>
+          ) : (
+            obligations.map(obl => {
+              const isPaid = obl.status === 'paid' || obl.status === 'completed'
+              return (
+                <div
+                  key={obl.id}
+                  className={`flex items-center justify-between p-2 rounded text-sm ${
+                    isPaid ? 'bg-green-50' : 'bg-red-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {isPaid ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    )}
+                    <span className="truncate max-w-[200px]">
+                      {obl.service_name || obl.fee_type}
+                    </span>
+                  </div>
+                  <span className={`font-medium ${isPaid ? 'text-green-700' : 'text-red-700'}`}>
+                    {fmtXAF(obl.amount + (obl.penalty_amount || 0), locale)}
+                  </span>
+                </div>
+              )
+            })
+          )}
         </CardContent>
       </Card>
 
@@ -303,12 +403,18 @@ export default function InspectPage() {
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 flex-wrap">
-              {inspection.photos.map((url, i) => (
-                <div key={i} className="w-20 h-20 rounded border overflow-hidden">
+              {photoUrls.map((url, i) => (
+                <div key={i} className="w-20 h-20 rounded border overflow-hidden relative">
                   <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-bl p-0.5"
+                    onClick={() => setPhotoUrls(prev => prev.filter((_, idx) => idx !== i))}
+                  >
+                    <XCircle className="h-3 w-3" />
+                  </button>
                 </div>
               ))}
-              <label className="w-20 h-20 rounded border border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50">
+              <label className="w-20 h-20 rounded border border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 min-h-[44px] min-w-[44px]">
                 <Upload className="h-5 w-5 text-muted-foreground" />
                 <input
                   type="file"
@@ -316,11 +422,9 @@ export default function InspectPage() {
                   capture="environment"
                   className="hidden"
                   onChange={async (e) => {
-                    // TODO: Upload to Supabase Storage
                     const file = e.target.files?.[0]
-                    if (file) {
-                      toast({ title: 'Foto capturada', description: file.name })
-                    }
+                    if (file) await handlePhotoCapture(file)
+                    e.target.value = ''
                   }}
                 />
               </label>
@@ -339,7 +443,7 @@ export default function InspectPage() {
         <CardContent className="text-sm">
           {gps ? (
             <span className="text-green-600">
-              {gps.lat.toFixed(6)}, {gps.lng.toFixed(6)} (±{gps.accuracy.toFixed(0)}m)
+              {gps.lat.toFixed(6)}, {gps.lng.toFixed(6)} (&#177;{gps.accuracy.toFixed(0)}m)
             </span>
           ) : (
             <span className="text-muted-foreground">Obteniendo ubicación...</span>
@@ -366,26 +470,27 @@ export default function InspectPage() {
         </Card>
       )}
 
-      {/* 7. Actions (sticky bottom) */}
+      {/* 7. Actions (sticky bottom) — Fix m3: z-40 to avoid dialog conflict */}
       {isEditable && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex gap-2 z-50">
-          <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1">
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex gap-2 z-40">
+          <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1 min-h-[44px]">
             <Save className="h-4 w-4" /> Guardar
           </Button>
           <Button
             size="sm"
-            onClick={handleComplete}
-            disabled={saving}
-            className="gap-1 flex-1"
+            onClick={() => setShowCompleteConfirm(true)}
+            disabled={saving || activityConforme === null}
+            className="gap-1 flex-1 min-h-[44px]"
+            title={activityConforme === null ? 'Primero marque la conformidad de actividad' : undefined}
           >
             <CheckCircle2 className="h-4 w-4" /> Validar
           </Button>
-          {inspection.unpaid_obligations_count > 0 && (
+          {unpaidObligations.length > 0 && (
             <>
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1 text-orange-600 border-orange-300"
+                className="gap-1 text-orange-600 border-orange-300 min-h-[44px]"
                 onClick={() => setShowMedDialog(true)}
               >
                 <AlertTriangle className="h-4 w-4" /> MED
@@ -393,7 +498,7 @@ export default function InspectPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1 text-green-600 border-green-300"
+                className="gap-1 text-green-600 border-green-300 min-h-[44px]"
                 onClick={() => setShowCollectDialog(true)}
               >
                 <DollarSign className="h-4 w-4" /> Cobrar
@@ -401,7 +506,7 @@ export default function InspectPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1 text-red-600 border-red-300"
+                className="gap-1 text-red-600 border-red-300 min-h-[44px]"
                 onClick={() => setShowSealDialog(true)}
               >
                 <Lock className="h-4 w-4" /> Sellar
@@ -411,7 +516,29 @@ export default function InspectPage() {
         </div>
       )}
 
-      {/* MED Dialog */}
+      {/* Fix m5: Complete confirmation dialog */}
+      <AlertDialog open={showCompleteConfirm} onOpenChange={setShowCompleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Completar inspección</AlertDialogTitle>
+            <AlertDialogDescription>
+              Actividad: {activityConforme ? 'Conforme' : 'No conforme'}
+              {' | '}
+              Impagos: {unpaidObligations.length}
+              {' | '}
+              Resultado previsto: {activityConforme === false || unpaidObligations.length > 0 ? 'No conforme' : 'Conforme'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleComplete} disabled={saving}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* MED Dialog — Fix C3: real obligation selection */}
       <Dialog open={showMedDialog} onOpenChange={setShowMedDialog}>
         <DialogContent>
           <DialogHeader>
@@ -433,14 +560,35 @@ export default function InspectPage() {
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Impago: {fmtXAF(inspection.unpaid_obligations_amount, locale)}
-              {' '}({inspection.unpaid_obligations_count} obligacion(es))
-            </p>
+            <div>
+              <Label className="text-sm mb-1 block">Obligaciones impagadas ({unpaidObligations.length})</Label>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {unpaidObligations.map(obl => (
+                  <label key={obl.id} className="flex items-center gap-2 p-1.5 rounded bg-red-50 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={selectedOblIds.includes(obl.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedOblIds(prev =>
+                          checked ? [...prev, obl.id] : prev.filter(id => id !== obl.id)
+                        )
+                      }}
+                    />
+                    <span className="flex-1 truncate">{obl.service_name || obl.fee_type}</span>
+                    <span className="text-red-700 font-medium">
+                      {fmtXAF(obl.amount + (obl.penalty_amount || 0), locale)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMedDialog(false)}>Cancelar</Button>
-            <Button className="bg-orange-600 hover:bg-orange-700" onClick={handleMED}>
+            <Button
+              className="bg-orange-600 hover:bg-orange-700"
+              onClick={handleMED}
+              disabled={selectedOblIds.length === 0 || saving}
+            >
               Emitir mise en demeure
             </Button>
           </DialogFooter>
@@ -479,23 +627,53 @@ export default function InspectPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSealDialog(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleSeal} disabled={!sealReason}>
+            <Button variant="destructive" onClick={handleSeal} disabled={!sealReason || saving}>
               Proponer scellé
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Collect Dialog */}
+      {/* Collect Dialog — Fix C4: real obligation selection + computed amount */}
       <Dialog open={showCollectDialog} onOpenChange={setShowCollectDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cobrar en terreno</DialogTitle>
             <DialogDescription>
-              Cobrar {fmtXAF(inspection.unpaid_obligations_amount, locale)} por {inspection.unpaid_obligations_count} obligación(es).
+              Seleccione las obligaciones a cobrar.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            <div>
+              <Label className="text-sm mb-1 block">Obligaciones a cobrar</Label>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {unpaidObligations.map(obl => (
+                  <label key={obl.id} className="flex items-center gap-2 p-1.5 rounded bg-muted/50 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={selectedOblIds.includes(obl.id)}
+                      onCheckedChange={(checked) => {
+                        setSelectedOblIds(prev =>
+                          checked ? [...prev, obl.id] : prev.filter(id => id !== obl.id)
+                        )
+                      }}
+                    />
+                    <span className="flex-1 truncate">{obl.service_name || obl.fee_type}</span>
+                    <span className="font-medium">
+                      {fmtXAF(obl.amount + (obl.penalty_amount || 0), locale)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-sm font-medium mt-2">
+                Total:{' '}
+                {fmtXAF(
+                  unpaidObligations
+                    .filter(o => selectedOblIds.includes(o.id))
+                    .reduce((s, o) => s + o.amount + (o.penalty_amount || 0), 0),
+                  locale,
+                )}
+              </p>
+            </div>
             <div>
               <Label>Método</Label>
               <Select value={collectMethod} onValueChange={v => setCollectMethod(v as 'cash' | 'mobile_money')}>
@@ -519,7 +697,11 @@ export default function InspectPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCollectDialog(false)}>Cancelar</Button>
-            <Button onClick={handleCollect} className="bg-green-600 hover:bg-green-700">
+            <Button
+              onClick={handleCollect}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={selectedOblIds.length === 0 || saving}
+            >
               Confirmar cobro
             </Button>
           </DialogFooter>

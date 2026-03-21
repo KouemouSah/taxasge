@@ -170,11 +170,35 @@ class InspectionRepository:
     # UPDATE
     # ============================================================
 
+    # Fix C5: Whitelist of allowed columns to prevent SQL injection
+    UPDATABLE_COLUMNS = frozenset({
+        "status", "result",
+        "activity_conforme", "activity_declared", "activity_observed",
+        "photos", "gps_latitude", "gps_longitude", "gps_accuracy", "notes",
+        "mise_en_demeure_issued", "mise_en_demeure_deadline",
+        "mise_en_demeure_obligations",
+        "seal_applied", "seal_reason", "seal_notes", "seal_photo",
+        "seal_proposed_at", "seal_approved_by", "seal_approved_at",
+        "seal_rejection_reason",
+        "payment_collected", "payment_id", "payment_receipt_number",
+        "payment_amount",
+        "unpaid_obligations_count", "unpaid_obligations_amount",
+        "total_obligations_count",
+    })
+
     @staticmethod
     async def update(conn, inspection_id: UUID, data: Dict) -> Optional[Dict]:
-        """Update inspection fields."""
+        """Update inspection fields (whitelist-protected against injection)."""
         if not data:
             return await InspectionRepository.get_by_id(conn, inspection_id)
+
+        # Fix C5: Reject any key not in the whitelist
+        invalid_keys = set(data.keys()) - InspectionRepository.UPDATABLE_COLUMNS
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid update columns: {invalid_keys}. "
+                f"Allowed: {InspectionRepository.UPDATABLE_COLUMNS}"
+            )
 
         set_clauses = []
         params = []
@@ -185,7 +209,7 @@ class InspectionRepository:
             params.append(value)
             idx += 1
 
-        set_clauses.append(f"updated_at = NOW()")
+        set_clauses.append("updated_at = NOW()")
         params.append(inspection_id)
 
         row = await conn.fetchrow(f"""
@@ -306,6 +330,42 @@ class InspectionRepository:
         """, timedelta(hours=hours))
         return [dict(r) for r in rows]
 
+    @staticmethod
+    async def batch_auto_approve_seals(conn, hours: int = 24) -> int:
+        """Fix m8: Batch auto-approve all expired seals in O(1) queries."""
+        # 1. Batch update inspections
+        result = await conn.fetch("""
+            UPDATE field_inspections
+            SET status = 'seal_approved',
+                seal_approved_at = NOW(),
+                seal_notes = COALESCE(seal_notes, '') ||
+                    E'\n[AUTO] Aprobado automáticamente tras 24h sin respuesta',
+                updated_at = NOW()
+            WHERE status = 'seal_proposed'
+              AND seal_proposed_at < NOW() - $1::interval
+            RETURNING id, company_id, license_id
+        """, timedelta(hours=hours))
+
+        if not result:
+            return 0
+
+        # 2. Batch deactivate companies
+        company_ids = list({r["company_id"] for r in result})
+        await conn.execute("""
+            UPDATE companies SET is_active = false, updated_at = NOW()
+            WHERE id = ANY($1::uuid[])
+        """, company_ids)
+
+        # 3. Batch suspend licenses
+        license_ids = list({r["license_id"] for r in result})
+        await conn.execute("""
+            UPDATE commercial_licenses
+            SET status = 'suspended', updated_at = NOW()
+            WHERE id = ANY($1::uuid[]) AND status != 'closed'
+        """, license_ids)
+
+        return len(result)
+
     # ============================================================
     # RECONCILIATION
     # ============================================================
@@ -381,64 +441,82 @@ class InspectionRepository:
             return None
 
         result = dict(row)
+        company_id = result["company_id"]
 
-        # Get obligations filtered by entity's fee_type scope
-        obligations = await conn.fetch("""
-            SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
-                   lo.due_date, lo.status,
-                   fs.name_es AS service_name,
-                   m.name_es AS ministry_name
-            FROM license_obligations lo
-            LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
-            LEFT JOIN ministries m ON m.id = lo.ministry_id
-            WHERE lo.license_id = $1
-            ORDER BY lo.fee_type, lo.due_date
-        """, license_id)
-        result["obligations"] = [dict(o) for o in obligations]
+        # Fix m9: Run 4 sub-queries in parallel with asyncio.gather
+        import asyncio
 
-        # Previous inspections
-        prev_inspections = await conn.fetch("""
-            SELECT fi.id, fi.inspection_date, fi.status, fi.result,
-                   fi.unpaid_obligations_count, fi.unpaid_obligations_amount,
-                   fi.seal_applied, fi.mise_en_demeure_issued,
-                   fi.payment_collected,
-                   u.full_name AS agent_name,
-                   e.code AS entity_code,
-                   fi.created_at
-            FROM field_inspections fi
-            JOIN users u ON u.id = fi.agent_id
-            JOIN entities e ON e.id = fi.entity_id
-            WHERE fi.company_id = $1
-            ORDER BY fi.inspection_date DESC
-            LIMIT 10
-        """, result["company_id"])
-        result["previous_inspections"] = [dict(p) for p in prev_inspections]
+        async def _get_obligations():
+            rows = await conn.fetch("""
+                SELECT lo.id, lo.fee_type, lo.amount, lo.penalty_amount,
+                       lo.due_date, lo.status,
+                       fs.name_es AS service_name,
+                       m.name_es AS ministry_name
+                FROM license_obligations lo
+                LEFT JOIN fiscal_services fs ON fs.id = lo.fiscal_service_id
+                LEFT JOIN ministries m ON m.id = lo.ministry_id
+                WHERE lo.license_id = $1
+                ORDER BY lo.fee_type, lo.due_date
+            """, license_id)
+            return [dict(o) for o in rows]
 
-        # Active MED
-        med = await conn.fetchrow("""
-            SELECT id, mise_en_demeure_deadline, mise_en_demeure_obligations,
-                   inspection_date, agent_id
-            FROM field_inspections
-            WHERE company_id = $1
-              AND mise_en_demeure_issued = true
-              AND status = 'mise_en_demeure'
-              AND mise_en_demeure_deadline > NOW()
-            ORDER BY mise_en_demeure_deadline DESC
-            LIMIT 1
-        """, result["company_id"])
-        result["active_mise_en_demeure"] = dict(med) if med else None
+        async def _get_prev_inspections():
+            rows = await conn.fetch("""
+                SELECT fi.id, fi.inspection_date, fi.status, fi.result,
+                       fi.unpaid_obligations_count, fi.unpaid_obligations_amount,
+                       fi.seal_applied, fi.mise_en_demeure_issued,
+                       fi.payment_collected,
+                       u.full_name AS agent_name,
+                       e.code AS entity_code,
+                       fi.created_at
+                FROM field_inspections fi
+                JOIN users u ON u.id = fi.agent_id
+                JOIN entities e ON e.id = fi.entity_id
+                WHERE fi.company_id = $1
+                ORDER BY fi.inspection_date DESC
+                LIMIT 10
+            """, company_id)
+            return [dict(p) for p in rows]
 
-        # Seal history
-        seals = await conn.fetch("""
-            SELECT id, inspection_date, seal_reason, status,
-                   seal_approved_at, seal_approved_by
-            FROM field_inspections
-            WHERE company_id = $1
-              AND seal_applied = true
-            ORDER BY seal_proposed_at DESC
-            LIMIT 5
-        """, result["company_id"])
-        result["seal_history"] = [dict(s) for s in seals]
+        async def _get_active_med():
+            med = await conn.fetchrow("""
+                SELECT id, mise_en_demeure_deadline, mise_en_demeure_obligations,
+                       inspection_date, agent_id
+                FROM field_inspections
+                WHERE company_id = $1
+                  AND mise_en_demeure_issued = true
+                  AND status = 'mise_en_demeure'
+                  AND mise_en_demeure_deadline > NOW()
+                ORDER BY mise_en_demeure_deadline DESC
+                LIMIT 1
+            """, company_id)
+            return dict(med) if med else None
+
+        async def _get_seal_history():
+            rows = await conn.fetch("""
+                SELECT id, inspection_date, seal_reason, status,
+                       seal_approved_at, seal_approved_by
+                FROM field_inspections
+                WHERE company_id = $1
+                  AND seal_applied = true
+                ORDER BY seal_proposed_at DESC
+                LIMIT 5
+            """, company_id)
+            return [dict(s) for s in rows]
+
+        obligations, prev_inspections, active_med, seal_history = (
+            await asyncio.gather(
+                _get_obligations(),
+                _get_prev_inspections(),
+                _get_active_med(),
+                _get_seal_history(),
+            )
+        )
+
+        result["obligations"] = obligations
+        result["previous_inspections"] = prev_inspections
+        result["active_mise_en_demeure"] = active_med
+        result["seal_history"] = seal_history
 
         return result
 

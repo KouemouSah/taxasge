@@ -1,5 +1,6 @@
 """Inspection Service — Business logic for field inspections."""
 
+import asyncio
 import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -11,6 +12,9 @@ from app.modules.inspections.repositories.inspection_repository import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Fix m6: Maximum length for seal_notes to prevent unbounded growth
+MAX_SEAL_NOTES_LENGTH = 2000
 
 # Roles allowed to create inspections (field-facing only, NOT tesoro)
 INSPECTION_AGENT_ROLES = {
@@ -175,9 +179,16 @@ class InspectionService:
                 f"Cannot complete inspection in status '{inspection['status']}'"
             )
 
+        # Fix M2: Require activity_conforme to be set before completing
+        if inspection.get("activity_conforme") is None:
+            raise ValueError(
+                "Cannot complete inspection: activity conformity check "
+                "has not been performed. Set activity_conforme first."
+            )
+
         # Determine result based on activity + payment
         result = "conforme"
-        if inspection.get("activity_conforme") is False:
+        if inspection["activity_conforme"] is False:
             result = "non_conforme"
         elif inspection["unpaid_obligations_count"] > 0:
             result = "non_conforme"
@@ -275,12 +286,15 @@ class InspectionService:
             conn, inspection_id, update_data
         )
 
-        # Get company owner for notification
+        # Fix M6: Get company owner via user_company_roles (no owner_id column)
         owner = await conn.fetchrow("""
             SELECT u.email, u.full_name, u.phone_number, u.preferred_language
-            FROM companies c
-            JOIN users u ON u.id = c.owner_id
-            WHERE c.id = $1
+            FROM user_company_roles ucr
+            JOIN users u ON u.id = ucr.user_id
+            WHERE ucr.company_id = $1
+              AND ucr.role = 'company_owner'
+              AND ucr.is_active = true
+            LIMIT 1
         """, inspection["company_id"])
 
         total_unpaid = sum(
@@ -467,9 +481,11 @@ class InspectionService:
             )
 
         if notes:
-            update_data["seal_notes"] = (
-                (inspection.get("seal_notes") or "") + f"\n[Supervisor] {notes}"
-            ).strip()
+            # Fix m6: Truncate seal_notes to prevent unbounded growth
+            existing = (inspection.get("seal_notes") or "").strip()
+            new_note = f"\n[Supervisor] {notes}"
+            combined = (existing + new_note).strip()
+            update_data["seal_notes"] = combined[:MAX_SEAL_NOTES_LENGTH]
 
         return await InspectionRepository.update(
             conn, inspection_id, update_data
@@ -533,47 +549,12 @@ class InspectionService:
 
     @staticmethod
     async def auto_approve_expired_seals(conn) -> int:
-        """Auto-approve seals that exceeded 24h deadline."""
-        expired = await InspectionRepository.get_auto_approve_seals(
+        """Fix m8: Batch auto-approve seals in O(1) queries instead of O(N)."""
+        count = await InspectionRepository.batch_auto_approve_seals(
             conn, hours=24
         )
-
-        count = 0
-        for seal in expired:
-            try:
-                await conn.execute("""
-                    UPDATE field_inspections
-                    SET status = 'seal_approved',
-                        seal_approved_at = NOW(),
-                        seal_notes = COALESCE(seal_notes, '') ||
-                            E'\n[AUTO] Aprobado automáticamente tras 24h sin respuesta',
-                        updated_at = NOW()
-                    WHERE id = $1 AND status = 'seal_proposed'
-                """, seal["id"])
-
-                # Deactivate company + suspend license
-                await conn.execute("""
-                    UPDATE companies SET is_active = false, updated_at = NOW()
-                    WHERE id = $1
-                """, seal["company_id"])
-
-                await conn.execute("""
-                    UPDATE commercial_licenses
-                    SET status = 'suspended', updated_at = NOW()
-                    WHERE id = $1 AND status != 'closed'
-                """, seal["license_id"])
-
-                count += 1
-                logger.info(
-                    f"Auto-approved seal on inspection {seal['id']}"
-                )
-            except Exception as e:
-                logger.error(
-                    f"Failed to auto-approve seal {seal['id']}: {e}"
-                )
-
         if count > 0:
-            logger.info(f"Auto-approved {count} expired seals")
+            logger.info(f"Auto-approved {count} expired seals (batch)")
         return count
 
     # ============================================================

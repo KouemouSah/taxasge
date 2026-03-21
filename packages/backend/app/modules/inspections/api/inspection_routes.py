@@ -38,6 +38,9 @@ from app.modules.inspections.models.inspection import (
 from app.modules.inspections.services.inspection_service import (
     InspectionService,
 )
+from app.modules.inspections.repositories.inspection_repository import (
+    InspectionRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,14 +102,14 @@ async def list_inspections(
         raise HTTPException(status_code=403, detail=str(e))
 
     if ctx["is_supervisor"]:
-        items, total = await InspectionService._get_repo().list_by_entity(
+        items, total = await InspectionRepository.list_by_entity(
             db, ctx["entity_id"],
             inspection_date=inspection_date,
             status=status,
             page=page, page_size=page_size,
         )
     else:
-        items, total = await InspectionService._get_repo().list_by_agent(
+        items, total = await InspectionRepository.list_by_agent(
             db, UUID(current_user.id),
             inspection_date=inspection_date,
             status=status,
@@ -135,10 +138,6 @@ async def get_inspection_stats(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
-    from app.modules.inspections.repositories.inspection_repository import (
-        InspectionRepository,
-    )
-
     if ctx["is_supervisor"]:
         stats = await InspectionRepository.get_stats(
             db, entity_id=ctx["entity_id"],
@@ -161,10 +160,6 @@ async def get_reconciliation(
     _: None = Depends(permission_required("inspection.collect_payment")),
 ):
     """Get agent's cash collections for reconciliation."""
-    from app.modules.inspections.repositories.inspection_repository import (
-        InspectionRepository,
-    )
-
     items, total_amount = await InspectionRepository.get_unreconciled_cash(
         db, UUID(current_user.id), target_date=target_date,
     )
@@ -237,10 +232,6 @@ async def get_inspection(
     _: None = Depends(permission_required("inspection.view_own")),
 ):
     """Get inspection detail — IDOR-protected (agent sees own, supervisor sees entity)."""
-    from app.modules.inspections.repositories.inspection_repository import (
-        InspectionRepository,
-    )
-
     inspection = await InspectionRepository.get_by_id(db, inspection_id)
     if not inspection:
         raise HTTPException(status_code=404, detail="Inspection not found")
@@ -392,14 +383,3 @@ async def collect_payment(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return result
-
-
-# ============================================================
-# Helper: attach repo reference to service for list endpoints
-# ============================================================
-InspectionService._get_repo = staticmethod(
-    lambda: __import__(
-        "app.modules.inspections.repositories.inspection_repository",
-        fromlist=["InspectionRepository"],
-    ).InspectionRepository
-)

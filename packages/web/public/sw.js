@@ -244,17 +244,44 @@ async function syncOfflineRequests() {
   const requests = await getOfflineRequests()
   let synced = 0
 
+  // Fix m1: Get fresh auth token from the active client before syncing
+  let freshToken = null
+  try {
+    const clients = await self.clients.matchAll({ type: 'window' })
+    if (clients.length > 0) {
+      // Request fresh token from client
+      const messageChannel = new MessageChannel()
+      const tokenPromise = new Promise((resolve) => {
+        messageChannel.port1.onmessage = (event) => resolve(event.data?.token)
+        setTimeout(() => resolve(null), 3000) // 3s timeout
+      })
+      clients[0].postMessage({ type: 'REQUEST_AUTH_TOKEN' }, [messageChannel.port2])
+      freshToken = await tokenPromise
+    }
+  } catch {
+    // Token refresh failed, try with stored headers
+  }
+
   for (const req of requests) {
     try {
+      const headers = { ...req.headers }
+      // Fix m1: Use fresh token if available, replacing potentially expired one
+      if (freshToken) {
+        headers['Authorization'] = 'Bearer ' + freshToken
+      }
+
       const response = await fetch(req.url, {
         method: req.method,
-        headers: req.headers,
+        headers,
         body: req.body,
       })
 
       if (response.ok) {
         await clearOfflineRequest(req.id)
         synced++
+      } else if (response.status === 401) {
+        // Token expired and no fresh token available — skip, retry later
+        break
       }
     } catch {
       // Still offline, will retry on next sync

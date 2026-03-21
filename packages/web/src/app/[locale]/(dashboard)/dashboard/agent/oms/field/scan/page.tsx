@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
@@ -22,15 +22,15 @@ export default function ScanPage() {
   const [searching, setSearching] = useState(false)
   const [result, setResult] = useState<LicenseVerification | null>(null)
   const [creating, setCreating] = useState(false)
+  // Fix m2: Debounce ref for search
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const handleSearch = useCallback(async (nif?: string) => {
-    const searchNif = nif || nifInput.trim()
+  const doSearch = useCallback(async (searchNif: string) => {
     if (!searchNif) return
-
     try {
       setSearching(true)
       setResult(null)
@@ -42,7 +42,25 @@ export default function ScanPage() {
     } finally {
       setSearching(false)
     }
-  }, [nifInput, toast])
+  }, [toast])
+
+  // Fix m2: Debounced search on input change
+  useEffect(() => {
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current) }
+  }, [])
+
+  const handleSearch = useCallback((nif?: string) => {
+    const searchNif = nif || nifInput.trim()
+    if (!searchNif) return
+    // If called directly (from QR or Enter), execute immediately
+    if (nif) {
+      doSearch(searchNif)
+      return
+    }
+    // Debounce button clicks (400ms)
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(() => doSearch(searchNif), 400)
+  }, [nifInput, doSearch])
 
   const startCamera = useCallback(async () => {
     try {
@@ -104,7 +122,7 @@ export default function ScanPage() {
     } catch {
       setCameraError('No se pudo acceder a la cámara. Verifique los permisos.')
     }
-  }, [handleSearch])
+  }, [handleSearch, stopCamera])
 
   const stopCamera = useCallback(() => {
     if (scanIntervalRef.current) {
@@ -138,9 +156,6 @@ export default function ScanPage() {
 
   const unpaidObligations = result?.obligations.filter(
     o => o.status === 'pending' || o.status === 'overdue'
-  ) ?? []
-  const paidObligations = result?.obligations.filter(
-    o => o.status === 'paid' || o.status === 'completed'
   ) ?? []
 
   return (
