@@ -1,5 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { NetworkStatus } from '@/modules/inspections/components/NetworkStatus';
 
 export default async function DashboardRouteLayout({
   children,
@@ -11,5 +12,10 @@ export default async function DashboardRouteLayout({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout>
+      <NetworkStatus />
+      {children}
+    </DashboardLayout>
+  );
 }

@@ -1411,6 +1411,16 @@ except Exception as e:
     logger.error(f"❌ Funcionario verification router failed: {e}")
     logger.error(traceback.format_exc())
 
+# Try to load field inspections router (Module - Field Inspections)
+try:
+    from app.modules.inspections.api import router as inspections_router
+    app.include_router(inspections_router, prefix="/api/v1", tags=["field-inspections"])
+    routers_loaded.append("field_inspections")
+    logger.info("✅ Field inspections router loaded (11 endpoints)")
+except Exception as e:
+    logger.error(f"❌ Field inspections router failed: {e}")
+    logger.error(traceback.format_exc())
+
 # Try to load menu config router (Module - Dynamic Menu Configuration)
 try:
     from app.modules.menu_config.api import router as menu_config_router

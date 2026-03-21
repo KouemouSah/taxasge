@@ -277,6 +277,22 @@ class EventType(str, Enum):
     """Automated reminder sent (email/SMS) for upcoming or overdue obligation"""
 
     # ==========================================================================
+    # FIELD INSPECTION EVENTS
+    # ==========================================================================
+
+    INSPECTION_COMPLETED = "inspection.completed"
+    """Field inspection completed (conforme or non_conforme)"""
+
+    MISE_EN_DEMEURE_ISSUED = "inspection.mise_en_demeure"
+    """Formal notice (mise en demeure) issued to business"""
+
+    SEAL_PROPOSED = "inspection.seal.proposed"
+    """Agent proposed sealing a business (pending supervisor approval)"""
+
+    SEAL_APPROVED = "inspection.seal.approved"
+    """Supervisor approved sealing — company deactivated, license suspended"""
+
+    # ==========================================================================
     # SYSTEM EVENTS
     # ==========================================================================
 
