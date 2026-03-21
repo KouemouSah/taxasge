@@ -178,7 +178,25 @@ async def verify_license(
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("inspection.create")),
 ):
-    """Verify a license for field inspection (by license_id, NIF, or registration number)."""
+    """Verify a license for field inspection (by license_id, NIF, or registration number).
+
+    OWASP A04: Rate-limited to 30 requests/minute per agent to prevent NIF enumeration.
+    """
+    # Rate limit: 30 req/min per user
+    try:
+        from app.core.cache import check_rate_limit
+        allowed, remaining = await check_rate_limit(
+            current_user.id, "/inspections/verify", limit=30, window_seconds=60
+        )
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. Try again in 1 minute.",
+                headers={"Retry-After": "60"},
+            )
+    except ImportError:
+        pass  # Cache not available — skip rate limit (dev mode)
+
     try:
         result = await InspectionService.verify_license_for_agent(
             db, UUID(current_user.id),
@@ -416,6 +434,15 @@ async def upload_inspection_photo(
     if inspection["status"] != "in_progress":
         raise HTTPException(status_code=422, detail="Cannot upload photos to completed inspection")
 
+    # Limit number of photos per inspection
+    MAX_PHOTOS = 10
+    current_photos = inspection.get("photos") or []
+    if len(current_photos) >= MAX_PHOTOS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Maximum {MAX_PHOTOS} photos per inspection"
+        )
+
     if not file.content_type or file.content_type not in ("image/jpeg", "image/png", "image/webp"):
         raise HTTPException(status_code=422, detail="Only JPEG, PNG, WebP images allowed")
 
@@ -475,6 +502,47 @@ async def upload_inspection_photo(
     except Exception as e:
         logger.error(f"Photo upload failed: {e}")
         raise HTTPException(status_code=500, detail="Photo upload failed")
+
+
+@router.delete("/{inspection_id}/photos/{photo_index}")
+async def delete_inspection_photo(
+    inspection_id: UUID,
+    photo_index: int,
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.create")),
+):
+    """Delete a photo from an inspection by index (0-based)."""
+    inspection = await InspectionRepository.get_by_id(db, inspection_id)
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+    if inspection["agent_id"] != UUID(current_user.id):
+        raise HTTPException(status_code=403, detail="Not your inspection")
+    if inspection["status"] != "in_progress":
+        raise HTTPException(status_code=422, detail="Cannot modify completed inspection")
+
+    photos = list(inspection.get("photos") or [])
+    if photo_index < 0 or photo_index >= len(photos):
+        raise HTTPException(status_code=404, detail="Photo index out of range")
+
+    removed_url = photos.pop(photo_index)
+
+    # Remove from Firebase Storage
+    try:
+        from app.modules.documents.services.storage_service import (
+            firebase_storage_service, ensure_storage_initialized,
+        )
+        await ensure_storage_initialized()
+        # Extract file_path from URL and delete
+        await db.execute(
+            "DELETE FROM uploaded_files WHERE file_url = $1 AND user_id = $2",
+            removed_url, UUID(current_user.id),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to cleanup photo from storage: {e}")
+
+    await InspectionRepository.update(db, inspection_id, {"photos": photos})
+    return {"removed": removed_url, "remaining": len(photos)}
 
 
 # ============================================================
