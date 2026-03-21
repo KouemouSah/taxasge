@@ -124,32 +124,48 @@ class BundleWorkflowService:
         if not query or len(query) < 2:
             return []
 
-        search_pattern = f"%{query}%"
-        rows = await conn.fetch("""
-            SELECT
-                c.id, c.legal_name, c.tax_id, c.nif,
-                c.registration_number, c.regimen_fiscal,
-                c.commerce_type, c.is_verified,
-                cz.zone_code,
-                ct.name as city_name,
-                EXISTS(
-                    SELECT 1 FROM user_company_roles ucr
-                    WHERE ucr.company_id = c.id AND ucr.user_id = $3
-                ) as registered_by_current_user
-            FROM companies c
-            LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
-            LEFT JOIN cities ct ON c.city_id = ct.id
-            WHERE c.is_active = true
-              AND c.regimen_fiscal = 'bundle'
-              AND (
-                  c.legal_name ILIKE $1
-                  OR c.tax_id ILIKE $1
-                  OR c.nif ILIKE $1
-                  OR c.registration_number ILIKE $1
-              )
-            ORDER BY c.legal_name
-            LIMIT $2
-        """, search_pattern, limit, user_id)
+        # Use FTS (search_vector GIN index) for scalability (800K+ companies).
+        # Falls back to ILIKE if search_vector is empty (pre-migration data).
+        # Exact PE-XXXX/NIF match uses btree index directly (no FTS needed).
+        is_exact_match = query.upper().startswith("PE-") or query.upper().startswith("NIF")
+        if is_exact_match:
+            rows = await conn.fetch("""
+                SELECT c.id, c.legal_name, c.tax_id, c.nif,
+                       c.registration_number, c.regimen_fiscal,
+                       c.commerce_type, c.is_verified,
+                       cz.zone_code, ct.name as city_name,
+                       EXISTS(SELECT 1 FROM user_company_roles ucr
+                              WHERE ucr.company_id = c.id AND ucr.user_id = $3
+                       ) as registered_by_current_user
+                FROM companies c
+                LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+                LEFT JOIN cities ct ON c.city_id = ct.id
+                WHERE c.is_active = true AND c.regimen_fiscal = 'bundle'
+                  AND (c.registration_number ILIKE $1 OR c.nif ILIKE $1
+                       OR c.tax_id ILIKE $1)
+                ORDER BY c.legal_name LIMIT $2
+            """, f"{query}%", limit, user_id)
+        else:
+            # FTS via search_vector (GIN index) — O(log n) at scale
+            import re
+            safe_terms = re.sub(r"[^\w\s-]", "", query.strip())  # Remove special chars
+            ts_query = " & ".join(safe_terms.split()[:5]) or query[:20]  # Max 5 terms
+            rows = await conn.fetch("""
+                SELECT c.id, c.legal_name, c.tax_id, c.nif,
+                       c.registration_number, c.regimen_fiscal,
+                       c.commerce_type, c.is_verified,
+                       cz.zone_code, ct.name as city_name,
+                       EXISTS(SELECT 1 FROM user_company_roles ucr
+                              WHERE ucr.company_id = c.id AND ucr.user_id = $3
+                       ) as registered_by_current_user
+                FROM companies c
+                LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
+                LEFT JOIN cities ct ON c.city_id = ct.id
+                WHERE c.is_active = true AND c.regimen_fiscal = 'bundle'
+                  AND (c.search_vector @@ to_tsquery('spanish', $1)
+                       OR c.legal_name ILIKE $4)
+                ORDER BY c.legal_name LIMIT $2
+            """, ts_query, limit, user_id, f"%{query}%")
 
         return [
             {
@@ -629,10 +645,17 @@ class BundleWorkflowService:
         )
 
         # 1. Re-validate within transaction (race protection)
-        license_row = await conn.fetchrow(
-            "SELECT * FROM commercial_licenses WHERE id = $1 FOR UPDATE",
-            license_id,
-        )
+        # NOWAIT: fail immediately if another transaction is locking this license
+        # (prevents blocking during BANGE API call which holds the lock 2-5s)
+        try:
+            license_row = await conn.fetchrow(
+                "SELECT * FROM commercial_licenses WHERE id = $1 FOR UPDATE NOWAIT",
+                license_id,
+            )
+        except Exception as lock_err:
+            if "could not obtain lock" in str(lock_err).lower():
+                raise ValueError("PAYMENT_ALREADY_IN_PROGRESS")
+            raise
         if not license_row:
             raise ValueError("LICENSE_NOT_FOUND")
         if license_row["status"] in ("suspended", "closed", "complete"):

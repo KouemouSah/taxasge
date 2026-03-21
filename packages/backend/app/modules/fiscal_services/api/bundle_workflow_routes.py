@@ -206,11 +206,16 @@ async def initiate_bundle_payment(
     user_id = UUID(current_user["id"])
 
     # Validate phone for mobile_money
-    if body.payment_method == "mobile_money" and not body.phone_number:
-        raise HTTPException(
-            status_code=422,
-            detail=_error_detail("PHONE_REQUIRED"),
-        )
+    if body.payment_method == "mobile_money":
+        if not body.phone_number:
+            raise HTTPException(status_code=422, detail=_error_detail("PHONE_REQUIRED"))
+        import re
+        phone_clean = re.sub(r"[\s\-\(\)]", "", body.phone_number)
+        if not re.match(r"^\+?240?\d{9}$", phone_clean):
+            raise HTTPException(
+                status_code=422,
+                detail=_error_detail("PHONE_REQUIRED"),
+            )
 
     try:
         obligation_uuids = [UUID(oid) for oid in body.selected_obligation_ids]

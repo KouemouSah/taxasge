@@ -107,11 +107,21 @@ class ObligationRoutingService:
                 "routing_mode": "per_line_fallback",
             }
 
-        # Resolve entity_code from ministry_id
+        # Resolve entity_code from ministry_id.
+        # Exclude TESORO (polyvalent, Mode B only) — prefer MIN_* entity for per_line.
+        # Example: ministry_id=91 has both TESORO and MIN_HACIENDA → prefer MIN_HACIENDA.
         entity_row = await conn.fetchrow(
-            "SELECT code FROM entities WHERE ministry_id = $1 LIMIT 1",
+            """SELECT code FROM entities
+               WHERE ministry_id = $1 AND code != 'TESORO'
+               LIMIT 1""",
             ministry_id,
         )
+        if not entity_row:
+            # Fallback: try without TESORO exclusion (edge case)
+            entity_row = await conn.fetchrow(
+                "SELECT code FROM entities WHERE ministry_id = $1 LIMIT 1",
+                ministry_id,
+            )
         entity_code = entity_row["code"] if entity_row else "TESORO"
         if not entity_row:
             logger.warning(

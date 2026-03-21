@@ -106,6 +106,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
   const [isSearching, setIsSearching] = useState(false)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchSeqRef = useRef(0)
+  const paymentLockRef = useRef(false) // Prevents double-click on payment
 
   // -- Step 1: Document --
   const [documentPreview, setDocumentPreview] = useState<DocumentPreview | null>(null)
@@ -158,6 +159,10 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
   useEffect(() => {
     loadMyCompanies()
+    // Cleanup debounce timer on unmount
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
   }, [loadMyCompanies])
 
   // ── Step 0: Search ──────────────────────────────────────────
@@ -311,6 +316,9 @@ export function useBundleWizard(): UseBundleWizardReturn {
 
   const submitPayment = useCallback(async (): Promise<BundlePaymentResult | null> => {
     if (!licenseData || !paymentMethod) return null
+    // Prevent double-click (useState is async, ref is sync)
+    if (paymentLockRef.current) return null
+    paymentLockRef.current = true
 
     setIsPaymentProcessing(true)
     setError(null)
@@ -342,6 +350,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
       return null
     } finally {
       setIsPaymentProcessing(false)
+      paymentLockRef.current = false
     }
   }, [
     licenseData, paymentMethod, selectedMode,
