@@ -82,6 +82,7 @@ class OmsAgentService:
                 ap.is_supervisor,
                 e.code AS entity_code,
                 el.region,
+                el.city_id,
                 r.code AS role_code
             FROM agent_profiles ap
             JOIN entities e ON e.id = ap.entity_id
@@ -122,12 +123,17 @@ class OmsAgentService:
             queue_ministry = row["ministry_id"]
             queue_fee_type = None
 
+        # City scope: agents/supervisors only see obligations from their city.
+        # Polyvalent (TESORO) sees all cities (national scope).
+        queue_city_id = None if is_polyvalent else row["city_id"]
+
         return {
             "agent_profile_id": row["agent_profile_id"],
             "entity_id": row["entity_id"],
             "entity_code": row["entity_code"],
             "entity_location_id": row["entity_location_id"],
             "region": row["region"],
+            "city_id": row["city_id"],
             "role_code": role_code,
             "ministry_id": row["ministry_id"],
             "is_supervisor": is_supervisor,
@@ -136,6 +142,7 @@ class OmsAgentService:
             "queue_processing_mode": queue_mode,
             "queue_ministry_id": queue_ministry,
             "queue_fee_type": queue_fee_type,
+            "queue_city_id": queue_city_id,
         }
 
     # ==================================================================
@@ -175,6 +182,7 @@ class OmsAgentService:
             fee_type=effective_fee_type,
             search=search,
             agent_profile_id=agent_profile_id,
+            city_id=ctx["queue_city_id"],
             page=page, page_size=page_size,
         )
 
@@ -191,6 +199,7 @@ class OmsAgentService:
             processing_mode=ctx["queue_processing_mode"],
             fee_type=ctx["queue_fee_type"],
             agent_profile_id=agent_profile_id,
+            city_id=ctx["queue_city_id"],
         )
 
     # ==================================================================
@@ -213,6 +222,7 @@ class OmsAgentService:
             ministry_id=supervisor_context["queue_ministry_id"],
             processing_mode=supervisor_context["queue_processing_mode"],
             fee_type=supervisor_context["queue_fee_type"],
+            city_id=supervisor_context["queue_city_id"],
             period_days=period_days,
             fiscal_year=fiscal_year,
         )

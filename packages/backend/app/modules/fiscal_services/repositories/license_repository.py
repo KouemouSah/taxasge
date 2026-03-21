@@ -510,6 +510,7 @@ class LicenseRepository:
         fee_type: Optional[str] = None,
         search: Optional[str] = None,
         agent_profile_id: Optional[UUID] = None,
+        city_id: Optional[UUID] = None,
         page: int = 1,
         page_size: int = 50,
     ) -> Tuple[List[Dict], int]:
@@ -563,6 +564,12 @@ class LicenseRepository:
                 OR fs.name_es ILIKE ${idx}
             )""")
             params.append(f"%{search}%")
+            idx += 1
+
+        # City filter (entity_location scope — non-polyvalent agents/supervisors)
+        if city_id is not None:
+            conditions.append(f"cl.city_id = ${idx}")
+            params.append(city_id)
             idx += 1
 
         # Assignment filter (non-supervisors only see their assigned obligations)
@@ -622,6 +629,7 @@ class LicenseRepository:
         processing_mode: Optional[str] = None,
         fee_type: Optional[str] = None,
         agent_profile_id: Optional[UUID] = None,
+        city_id: Optional[UUID] = None,
     ) -> Dict:
         """Aggregated stats for agent OMS dashboard.
 
@@ -646,6 +654,11 @@ class LicenseRepository:
         if fee_type:
             conditions.append(f"lo.fee_type = ${idx}")
             params.append(fee_type)
+            idx += 1
+
+        if city_id is not None:
+            conditions.append(f"cl.city_id = ${idx}")
+            params.append(city_id)
             idx += 1
 
         if agent_profile_id is not None:
@@ -862,6 +875,7 @@ class LicenseRepository:
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
         fee_type: Optional[str] = None,
+        city_id: Optional[UUID] = None,
         period_days: int = 30,
         fiscal_year: int = 2026,
     ) -> Dict:
@@ -901,6 +915,11 @@ class LicenseRepository:
         if fee_type:
             conditions.append(f"lo.fee_type = ${idx}")
             params.append(fee_type)
+            idx += 1
+
+        if city_id is not None:
+            conditions.append(f"cl.city_id = ${idx}")
+            params.append(city_id)
             idx += 1
 
         where = "WHERE " + " AND ".join(conditions)
