@@ -153,7 +153,10 @@ export default function InspectPage() {
     if (!inspection) return
     try {
       setSaving(true)
-      // Save first, then complete
+      // 1. Upload pending photos to Firebase first
+      const finalPhotoUrls = await uploadPendingPhotos()
+
+      // 2. Save all data (photos + signature + GPS + activity)
       await inspectionApi.update(inspection.id, {
         activity_conforme: activityConforme ?? undefined,
         activity_observed: activityObserved || undefined,
@@ -161,13 +164,15 @@ export default function InspectPage() {
         gps_latitude: gps?.lat,
         gps_longitude: gps?.lng,
         gps_accuracy: gps?.accuracy,
-        photos: photoUrls.length > 0 ? photoUrls : undefined,
+        photos: finalPhotoUrls.length > 0 ? finalPhotoUrls : undefined,
         agent_signature: signatureDataUrl || undefined,
       })
+
+      // 3. Complete inspection
       const data = await inspectionApi.complete(inspection.id, { notes })
       setInspection(data)
       setShowCompleteConfirm(false)
-      toast({ title: 'Inspección completada', description: `Resultado: ${data.result}` })
+      toast({ title: t('inspect.completed'), description: `${t('inspect.result')}: ${data.result}` })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error'
       toast({ title: 'Error', description: msg, variant: 'destructive' })
@@ -244,13 +249,18 @@ export default function InspectPage() {
     }
   }, [inspection, selectedOblIds, unpaidObligations, collectMethod, collectPhone, toast, fetchInspection])
 
-  // Photo upload via Firebase Storage (backend endpoint)
+  // Photos: kept locally as File objects during capture, uploaded at validation
+  const [pendingPhotos, setPendingPhotos] = useState<File[]>([])
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
 
   const handlePhotoCapture = useCallback(async (file: File) => {
-    if (!inspection) return
+    if (pendingPhotos.length + photoUrls.length >= 10) {
+      toast({ title: t('common.error'), description: 'Max 10 photos', variant: 'destructive' })
+      return
+    }
 
-    // Compress image client-side if > 2MB
+    // Compress if > 2MB
     let imageFile = file
     if (file.size > 2 * 1024 * 1024) {
       const canvas = document.createElement('canvas')
@@ -276,30 +286,38 @@ export default function InspectPage() {
       }
     }
 
+    setPendingPhotos(prev => [...prev, imageFile])
+    setPhotoPreviewUrls(prev => [...prev, URL.createObjectURL(imageFile)])
+    toast({ title: t('inspect.photoCaptured'), description: `${(imageFile.size / 1024).toFixed(0)} KB` })
+  }, [pendingPhotos, photoUrls, toast, t])
+
+  const handleDeletePendingPhoto = useCallback((index: number) => {
+    URL.revokeObjectURL(photoPreviewUrls[index])
+    setPendingPhotos(prev => prev.filter((_, i) => i !== index))
+    setPhotoPreviewUrls(prev => prev.filter((_, i) => i !== index))
+  }, [photoPreviewUrls])
+
+  // Upload all pending photos to Firebase (called during validation)
+  const uploadPendingPhotos = useCallback(async (): Promise<string[]> => {
+    if (!inspection || pendingPhotos.length === 0) return photoUrls
+    setUploading(true)
+    const uploadedUrls = [...photoUrls]
     try {
-      setUploading(true)
-      const result = await inspectionApi.uploadPhoto(inspection.id, imageFile)
-      setPhotoUrls(prev => [...prev, result.url])
-      toast({
-        title: t('inspect.photoCaptured'),
-        description: `${(result.file_size / 1024).toFixed(0)} KB`,
-      })
+      for (const file of pendingPhotos) {
+        const result = await inspectionApi.uploadPhoto(inspection.id, file)
+        uploadedUrls.push(result.url)
+      }
+      setPendingPhotos([])
+      setPhotoPreviewUrls([])
+      setPhotoUrls(uploadedUrls)
+      return uploadedUrls
     } catch {
-      toast({ title: t('common.error'), description: 'Upload failed', variant: 'destructive' })
+      toast({ title: t('common.error'), description: 'Photo upload failed', variant: 'destructive' })
+      throw new Error('Photo upload failed')
     } finally {
       setUploading(false)
     }
-  }, [inspection, toast, t])
-
-  const handleDeletePhoto = useCallback(async (index: number) => {
-    if (!inspection) return
-    try {
-      await inspectionApi.deletePhoto(inspection.id, index)
-      setPhotoUrls(prev => prev.filter((_, i) => i !== index))
-    } catch {
-      toast({ title: t('common.error'), variant: 'destructive' })
-    }
-  }, [inspection, toast, t])
+  }, [inspection, pendingPhotos, photoUrls, toast, t])
 
   if (loading || !inspection) {
     return (
@@ -435,15 +453,25 @@ export default function InspectPage() {
           </CardHeader>
           <CardContent>
             <div className="flex gap-2 flex-wrap">
+              {/* Already uploaded (Firebase URLs) */}
               {photoUrls.map((url, i) => (
-                <div key={i} className="w-20 h-20 rounded border overflow-hidden relative">
+                <div key={`uploaded-${i}`} className="w-20 h-20 rounded border overflow-hidden relative">
                   <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+              {/* Pending upload (local previews — uploaded at validation) */}
+              {photoPreviewUrls.map((url, i) => (
+                <div key={`pending-${i}`} className="w-20 h-20 rounded border-2 border-dashed border-amber-400 overflow-hidden relative">
+                  <img src={url} alt={`Pending ${i + 1}`} className="w-full h-full object-cover opacity-80" />
                   <button
                     className="absolute top-0 right-0 bg-red-500 text-white rounded-bl p-0.5"
-                    onClick={() => handleDeletePhoto(i)}
+                    onClick={() => handleDeletePendingPhoto(i)}
                   >
                     <XCircle className="h-3 w-3" />
                   </button>
+                  <span className="absolute bottom-0 left-0 right-0 bg-amber-400 text-[8px] text-center">
+                    pendiente
+                  </span>
                 </div>
               ))}
               <label className={`w-20 h-20 rounded border border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 min-h-[44px] min-w-[44px] ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>

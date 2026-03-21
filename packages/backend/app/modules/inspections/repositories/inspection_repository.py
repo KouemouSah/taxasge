@@ -417,6 +417,77 @@ class InspectionRepository:
             "amount": row["total"] if row else Decimal("0"),
         }
 
+    @staticmethod
+    async def get_supervisor_dashboard_cte(conn, entity_id: UUID) -> Dict:
+        """CTE-based supervisor dashboard — single query instead of 5.
+
+        Returns today_stats, week_stats, pending_seals_count, overdue_med,
+        unreconciled_cash in one round-trip.
+        """
+        row = await conn.fetchrow("""
+            WITH today_stats AS (
+                SELECT
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE result = 'conforme') AS conforme,
+                    COUNT(*) FILTER (WHERE result = 'non_conforme') AS non_conforme,
+                    COUNT(*) FILTER (WHERE mise_en_demeure_issued) AS mise_en_demeure,
+                    COUNT(*) FILTER (WHERE status = 'seal_proposed') AS seals_proposed,
+                    COUNT(*) FILTER (WHERE status = 'seal_approved') AS seals_approved,
+                    COUNT(*) FILTER (WHERE payment_collected) AS payments_collected,
+                    COALESCE(SUM(payment_amount) FILTER (WHERE payment_collected), 0) AS total_collected
+                FROM field_inspections
+                WHERE entity_id = $1 AND inspection_date = CURRENT_DATE
+            ),
+            week_stats AS (
+                SELECT
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE result = 'conforme') AS conforme,
+                    COUNT(*) FILTER (WHERE result = 'non_conforme') AS non_conforme,
+                    COUNT(*) FILTER (WHERE mise_en_demeure_issued) AS mise_en_demeure,
+                    COUNT(*) FILTER (WHERE status = 'seal_proposed') AS seals_proposed,
+                    COUNT(*) FILTER (WHERE status = 'seal_approved') AS seals_approved,
+                    COUNT(*) FILTER (WHERE payment_collected) AS payments_collected,
+                    COALESCE(SUM(payment_amount) FILTER (WHERE payment_collected), 0) AS total_collected
+                FROM field_inspections
+                WHERE entity_id = $1 AND inspection_date >= CURRENT_DATE - 7
+            ),
+            pending AS (
+                SELECT COUNT(*) AS cnt FROM field_inspections
+                WHERE entity_id = $1 AND status = 'seal_proposed'
+            ),
+            overdue AS (
+                SELECT COUNT(*) AS cnt FROM field_inspections
+                WHERE entity_id = $1 AND mise_en_demeure_issued
+                  AND mise_en_demeure_deadline < NOW() AND status = 'mise_en_demeure'
+            ),
+            cash AS (
+                SELECT COUNT(*) AS cnt, COALESCE(SUM(payment_amount), 0) AS total
+                FROM field_inspections
+                WHERE entity_id = $1 AND payment_collected
+                  AND inspection_date >= CURRENT_DATE - 7
+            )
+            SELECT
+                (SELECT row_to_json(today_stats) FROM today_stats) AS today,
+                (SELECT row_to_json(week_stats) FROM week_stats) AS week,
+                (SELECT cnt FROM pending) AS pending_seals_count,
+                (SELECT cnt FROM overdue) AS overdue_med,
+                (SELECT cnt FROM cash) AS cash_count,
+                (SELECT total FROM cash) AS cash_amount
+        """, entity_id)
+
+        if not row:
+            return {}
+
+        import json
+        return {
+            "today": json.loads(row["today"]) if row["today"] else {},
+            "week": json.loads(row["week"]) if row["week"] else {},
+            "pending_seals_count": row["pending_seals_count"] or 0,
+            "overdue_med": row["overdue_med"] or 0,
+            "cash_count": row["cash_count"] or 0,
+            "cash_amount": row["cash_amount"] or Decimal("0"),
+        }
+
     # ============================================================
     # LICENSE VERIFICATION (Agent Mode)
     # ============================================================

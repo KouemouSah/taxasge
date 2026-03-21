@@ -676,41 +676,29 @@ class InspectionService:
             raise ValueError("Dashboard is supervisor-only")
 
         entity_id = ctx["entity_id"]
-        today = date.today()
-        week_start = today - timedelta(days=7)
 
-        today_stats = await InspectionRepository.get_stats(
-            conn, entity_id=entity_id,
-            date_from=today, date_to=today,
-        )
-        week_stats = await InspectionRepository.get_stats(
-            conn, entity_id=entity_id,
-            date_from=week_start, date_to=today,
-        )
-
-        pending_seals = await InspectionRepository.get_pending_seals(
-            conn, entity_id
-        )
-        overdue_med = await InspectionRepository.get_overdue_med_count(
-            conn, entity_id
-        )
-        unreconciled = await InspectionRepository.get_unreconciled_cash_by_entity(
+        # CTE-based dashboard: 1 query for all stats
+        cte_data = await InspectionRepository.get_supervisor_dashboard_cte(
             conn, entity_id
         )
 
-        # Recent inspections
-        recent, _ = await InspectionRepository.list_by_entity(
-            conn, entity_id, page=1, page_size=10,
+        # These still need separate queries (JOIN-heavy, list data)
+        pending_seals, recent = await asyncio.gather(
+            InspectionRepository.get_pending_seals(conn, entity_id),
+            InspectionRepository.list_by_entity(
+                conn, entity_id, page=1, page_size=10,
+            ),
         )
+        recent_items = recent[0] if isinstance(recent, tuple) else recent
 
         return {
-            "today": today_stats,
-            "week": week_stats,
+            "today": cte_data.get("today", {}),
+            "week": cte_data.get("week", {}),
             "pending_seals": pending_seals,
-            "overdue_med": overdue_med,
-            "unreconciled_cash_amount": unreconciled["amount"],
-            "unreconciled_cash_count": unreconciled["count"],
-            "recent_inspections": recent,
+            "overdue_med": cte_data.get("overdue_med", 0),
+            "unreconciled_cash_amount": cte_data.get("cash_amount", Decimal("0")),
+            "unreconciled_cash_count": cte_data.get("cash_count", 0),
+            "recent_inspections": recent_items,
         }
 
     # ============================================================
