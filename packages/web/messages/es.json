@@ -5567,7 +5567,10 @@
       "config": "Configuración",
       "pendingProcessing": "En Proceso",
       "stats": "Estadísticas",
-      "obligations": "Obligaciones"
+      "obligations": "Obligaciones",
+      "queue": "Cola de trabajo",
+      "team": "Equipo",
+      "escalations": "Escalaciones"
     },
     "queue": {
       "title": "Cola de Obligaciones",

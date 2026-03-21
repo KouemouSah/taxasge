@@ -5343,7 +5343,10 @@
       "config": "Configuration",
       "pendingProcessing": "Processing",
       "stats": "Statistics",
-      "obligations": "Obligations"
+      "obligations": "Obligations",
+      "queue": "Work queue",
+      "team": "Team",
+      "escalations": "Escalations"
     },
     "queue": {
       "title": "Obligations Queue",
