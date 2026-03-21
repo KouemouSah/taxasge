@@ -5676,6 +5676,26 @@
       "rejectReason": "Motif du rejet (min 5 caractères) :",
       "history": "Historique"
     },
+    "team": {
+      "title": "Performance de l'Équipe OMS",
+      "subtitle": "Métriques de traitement des obligations par agent",
+      "loadError": "Erreur lors du chargement des performances",
+      "days": "jours",
+      "activeAgents": "Agents actifs",
+      "totalCompleted": "Complétées",
+      "totalPending": "En attente",
+      "amountProcessed": "Montant traité",
+      "avgCompletionRate": "Taux moyen",
+      "agent": "Agent",
+      "role": "Rôle",
+      "status": "Statut",
+      "assigned": "assignées",
+      "amount": "Montant",
+      "avgTime": "T. moy.",
+      "rate": "Taux",
+      "rejections": "rejets",
+      "noAgents": "Aucun agent dans l'équipe OMS"
+    },
     "compliance": {
       "title": "Conformité par Type de Taxe",
       "subtitle": "Suivi des obligations",

@@ -5433,6 +5433,26 @@
       "rejectReason": "Rejection reason (min 5 characters):",
       "history": "History"
     },
+    "team": {
+      "title": "OMS Team Performance",
+      "subtitle": "Per-agent obligation processing metrics",
+      "loadError": "Error loading team performance",
+      "days": "days",
+      "activeAgents": "Active agents",
+      "totalCompleted": "Completed",
+      "totalPending": "Pending",
+      "amountProcessed": "Amount processed",
+      "avgCompletionRate": "Avg completion rate",
+      "agent": "Agent",
+      "role": "Role",
+      "status": "Status",
+      "assigned": "assigned",
+      "amount": "Amount",
+      "avgTime": "Avg time",
+      "rate": "Rate",
+      "rejections": "rejections",
+      "noAgents": "No agents in OMS team"
+    },
     "compliance": {
       "title": "Compliance by Fee Type",
       "subtitle": "Obligation tracking",

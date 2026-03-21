@@ -237,3 +237,44 @@ async def get_obligation_events(
         page=page,
         page_size=page_size,
     )
+
+
+# ============================================================
+# Supervisor — Team performance
+# ============================================================
+
+
+@router.get("/team/performance")
+async def get_team_performance(
+    period_days: int = Query(30, ge=1, le=365),
+    fiscal_year: Optional[int] = Query(None, ge=2020, le=2100),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("fiscal_service.process_obligations")),
+):
+    """Per-agent OMS performance stats for supervisors.
+
+    Returns obligation processing metrics grouped by agent:
+    completed, pending, rejected counts + amounts + avg processing time.
+    Supervisors only — agents get 403.
+    """
+    try:
+        ctx = await OmsAgentService.resolve_agent_context(
+            db, UUID(current_user.id),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if not ctx["is_supervisor"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Team performance is supervisor-only",
+        )
+
+    result = await OmsAgentService.get_team_performance(
+        db,
+        supervisor_context=ctx,
+        period_days=period_days,
+        fiscal_year=fiscal_year or __import__("datetime").date.today().year,
+    )
+    return result

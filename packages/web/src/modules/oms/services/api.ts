@@ -13,6 +13,7 @@ import type {
   LicenseListResponse, LicenseResponse, LicenseStats,
   ObligationResponse, ObligationListResponse,
   ComplianceSummaryResponse,
+  TeamPerformanceResponse,
 } from '../types'
 
 // ========== Queue API (agent processing) ==========
@@ -46,6 +47,14 @@ export const omsQueueApi = {
 
   getObligationEvents: (id: string, page = 1) =>
     apiClient.get(`/oms/obligations/${id}/events?page=${page}`).then(r => r.data),
+
+  getTeamPerformance: (params?: { period_days?: number; fiscal_year?: number }) => {
+    const sp = new URLSearchParams()
+    if (params?.period_days) sp.set('period_days', String(params.period_days))
+    if (params?.fiscal_year) sp.set('fiscal_year', String(params.fiscal_year))
+    const q = sp.toString()
+    return apiClient.get<TeamPerformanceResponse>(`/oms/team/performance${q ? `?${q}` : ''}`).then(r => r.data)
+  },
 }
 
 // ========== Licenses API ==========

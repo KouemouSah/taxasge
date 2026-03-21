@@ -194,6 +194,30 @@ class OmsAgentService:
         )
 
     # ==================================================================
+    # Supervisor — Team performance
+    # ==================================================================
+
+    @staticmethod
+    async def get_team_performance(
+        conn, supervisor_context: Dict,
+        period_days: int = 30,
+        fiscal_year: int = 2026,
+    ) -> Dict:
+        """Per-agent OMS performance for supervisor's team.
+
+        Returns obligation processing metrics grouped by agent within
+        the supervisor's scope (ministry/mode/fee_type).
+        """
+        return await LicenseRepository.get_team_performance(
+            conn,
+            ministry_id=supervisor_context["queue_ministry_id"],
+            processing_mode=supervisor_context["queue_processing_mode"],
+            fee_type=supervisor_context["queue_fee_type"],
+            period_days=period_days,
+            fiscal_year=fiscal_year,
+        )
+
+    # ==================================================================
     # Queue — Processing
     # ==================================================================
 

@@ -851,3 +851,161 @@ class LicenseRepository:
             {year_filter}
         """, *params)
         return dict(row)
+
+    # ==================================================================
+    # Supervisor — Team performance
+    # ==================================================================
+
+    @staticmethod
+    async def get_team_performance(
+        conn,
+        ministry_id: Optional[int] = None,
+        processing_mode: Optional[str] = None,
+        fee_type: Optional[str] = None,
+        period_days: int = 30,
+        fiscal_year: int = 2026,
+    ) -> Dict:
+        """Per-agent OMS obligation processing metrics.
+
+        Single query joining assignments + obligations + events + agent profiles.
+        Scoped by supervisor's ministry/mode/fee_type.
+        """
+        from datetime import datetime, timedelta, timezone
+
+        conditions = ["a.item_type = 'obligation_processing'"]
+        params: list = []
+        idx = 1
+
+        # Period filter
+        cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
+        conditions.append(f"a.created_at >= ${idx}")
+        params.append(cutoff)
+        idx += 1
+
+        # Fiscal year filter
+        conditions.append(f"cl.fiscal_year = ${idx}")
+        params.append(fiscal_year)
+        idx += 1
+
+        # Scope filters (same as queue)
+        if ministry_id is not None:
+            conditions.append(f"lo.ministry_id = ${idx}")
+            params.append(ministry_id)
+            idx += 1
+
+        if processing_mode:
+            conditions.append(f"cl.processing_mode = ${idx}")
+            params.append(processing_mode)
+            idx += 1
+
+        if fee_type:
+            conditions.append(f"lo.fee_type = ${idx}")
+            params.append(fee_type)
+            idx += 1
+
+        where = "WHERE " + " AND ".join(conditions)
+
+        rows = await conn.fetch(f"""
+            SELECT
+                ap.id as agent_profile_id,
+                u.first_name || ' ' || u.last_name as agent_name,
+                r.code as role_code,
+                e.code as entity_code,
+                ap.availability,
+                COUNT(a.id) as obligations_assigned,
+                COUNT(a.id) FILTER (
+                    WHERE a.status = 'completed'
+                ) as obligations_completed,
+                COUNT(a.id) FILTER (
+                    WHERE a.status IN ('assigned', 'in_progress')
+                ) as obligations_pending,
+                COALESCE(SUM(lo.amount) FILTER (
+                    WHERE a.status = 'completed'
+                ), 0) as amount_processed,
+                ROUND(
+                    AVG(
+                        EXTRACT(EPOCH FROM (a.completed_at - a.created_at)) / 60
+                    ) FILTER (WHERE a.status = 'completed' AND a.completed_at IS NOT NULL),
+                    1
+                ) as avg_processing_minutes
+            FROM assignments a
+            JOIN license_obligations lo ON lo.id = a.item_id
+            JOIN commercial_licenses cl ON cl.id = lo.license_id
+            JOIN agent_profiles ap ON ap.id = a.agent_profile_id
+            JOIN users u ON u.id = ap.user_id AND u.status = 'active'
+            JOIN roles r ON r.id = u.role_id
+            JOIN entities e ON e.id = ap.entity_id
+            {where}
+            GROUP BY ap.id, u.first_name, u.last_name, r.code,
+                     e.code, ap.availability
+            ORDER BY obligations_completed DESC
+        """, *params)
+
+        # Count rejections separately (from compliance events)
+        rejection_counts: Dict = {}
+        if rows:
+            agent_ids = [r["agent_profile_id"] for r in rows]
+            rejections = await conn.fetch(f"""
+                SELECT
+                    ap.id as agent_profile_id,
+                    COUNT(lce.id) as rejection_count
+                FROM license_compliance_events lce
+                JOIN agent_profiles ap ON lce.triggered_by = ap.user_id
+                WHERE lce.event_type = 'agent_rejected'
+                  AND lce.created_at >= $1
+                  AND ap.id = ANY($2::uuid[])
+                GROUP BY ap.id
+            """, cutoff, agent_ids)
+            rejection_counts = {r["agent_profile_id"]: r["rejection_count"] for r in rejections}
+
+        agents = []
+        total_assigned = 0
+        total_completed = 0
+        total_pending = 0
+        total_amount = 0
+
+        for r in rows:
+            assigned = r["obligations_assigned"]
+            completed = r["obligations_completed"]
+            pending = r["obligations_pending"]
+            rejected = rejection_counts.get(r["agent_profile_id"], 0)
+            amount = float(r["amount_processed"]) if r["amount_processed"] else 0
+            completion_rate = round((completed / assigned) * 100, 1) if assigned > 0 else 0
+            rejection_rate = round((rejected / assigned) * 100, 1) if assigned > 0 else 0
+
+            total_assigned += assigned
+            total_completed += completed
+            total_pending += pending
+            total_amount += amount
+
+            agents.append({
+                "agent_profile_id": str(r["agent_profile_id"]),
+                "agent_name": r["agent_name"],
+                "role_code": r["role_code"],
+                "entity_code": r["entity_code"],
+                "availability": r["availability"],
+                "obligations_assigned": assigned,
+                "obligations_completed": completed,
+                "obligations_pending": pending,
+                "obligations_rejected": rejected,
+                "amount_processed": amount,
+                "avg_processing_minutes": float(r["avg_processing_minutes"] or 0),
+                "completion_rate": completion_rate,
+                "rejection_rate": rejection_rate,
+            })
+
+        avg_rate = round((total_completed / total_assigned) * 100, 1) if total_assigned > 0 else 0
+
+        return {
+            "agents": agents,
+            "team_totals": {
+                "total_agents": len(agents),
+                "total_assigned": total_assigned,
+                "total_completed": total_completed,
+                "total_pending": total_pending,
+                "total_amount_processed": total_amount,
+                "avg_completion_rate": avg_rate,
+            },
+            "period_days": period_days,
+            "fiscal_year": fiscal_year,
+        }

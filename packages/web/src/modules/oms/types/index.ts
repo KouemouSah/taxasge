@@ -176,3 +176,37 @@ export interface ComplianceSummaryResponse {
   items: ComplianceSummaryGroup[]
   fiscal_year: number
 }
+
+// =============================================================================
+// TEAM PERFORMANCE (supervisor)
+// =============================================================================
+
+export interface AgentPerformance {
+  agent_profile_id: string
+  agent_name: string
+  role_code: string
+  entity_code: string
+  availability: string
+  obligations_assigned: number
+  obligations_completed: number
+  obligations_pending: number
+  obligations_rejected: number
+  amount_processed: number
+  avg_processing_minutes: number
+  completion_rate: number
+  rejection_rate: number
+}
+
+export interface TeamPerformanceResponse {
+  agents: AgentPerformance[]
+  team_totals: {
+    total_agents: number
+    total_assigned: number
+    total_completed: number
+    total_pending: number
+    total_amount_processed: number
+    avg_completion_rate: number
+  }
+  period_days: number
+  fiscal_year: number
+}

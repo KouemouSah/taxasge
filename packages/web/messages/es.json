@@ -5657,6 +5657,26 @@
       "rejectReason": "Motivo del rechazo (min 5 caracteres):",
       "history": "Historial"
     },
+    "team": {
+      "title": "Rendimiento del Equipo OMS",
+      "subtitle": "Métricas de procesamiento de obligaciones por agente",
+      "loadError": "Error al cargar rendimiento del equipo",
+      "days": "días",
+      "activeAgents": "Agentes activos",
+      "totalCompleted": "Completadas",
+      "totalPending": "Pendientes",
+      "amountProcessed": "Monto procesado",
+      "avgCompletionRate": "Tasa promedio",
+      "agent": "Agente",
+      "role": "Rol",
+      "status": "Estado",
+      "assigned": "asignadas",
+      "amount": "Monto",
+      "avgTime": "T. medio",
+      "rate": "Tasa",
+      "rejections": "rechazos",
+      "noAgents": "Sin agentes en el equipo OMS"
+    },
     "compliance": {
       "title": "Cumplimiento por Tipo de Tasa",
       "subtitle": "Seguimiento de obligaciones",
