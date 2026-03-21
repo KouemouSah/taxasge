@@ -20,8 +20,8 @@ export function NetworkStatus() {
       // Trigger sync
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.ready.then((reg) => {
-          ;(reg as unknown as { sync?: { register: (tag: string) => Promise<void> } })
-            .sync?.register('sync-inspections').catch(() => {
+          const syncReg = reg as unknown as { sync?: { register: (tag: string) => Promise<void> } }
+          syncReg.sync?.register('sync-inspections').catch(() => {
             // Background Sync not supported
           })
         })
