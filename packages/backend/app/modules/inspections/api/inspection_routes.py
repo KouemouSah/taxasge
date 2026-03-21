@@ -10,7 +10,7 @@ from typing import Optional
 from uuid import UUID
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Depends, Query, Header
+from fastapi import APIRouter, HTTPException, Depends, Query, Header, UploadFile, File, Form
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -383,6 +383,98 @@ async def collect_payment(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return result
+
+
+# ============================================================
+# Photo Upload (Firebase Storage — batch on validation)
+# Pattern: Photos uploaded to Firebase only when inspection is finalized.
+# During field work, photos are sent as multipart form data to this endpoint
+# which uploads them immediately to Firebase and records them.
+# This ensures photos are persisted even if the agent loses connection later.
+# ============================================================
+
+
+@router.post("/{inspection_id}/photos")
+async def upload_inspection_photo(
+    inspection_id: UUID,
+    file: UploadFile = File(...),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.create")),
+):
+    """Upload a photo for an inspection to Firebase Storage.
+
+    Photos are uploaded immediately to Firebase (not deferred) to prevent
+    data loss if the agent loses connection during field work.
+    Registered in uploaded_files table with related_to_type='field_inspection'.
+    """
+    inspection = await InspectionRepository.get_by_id(db, inspection_id)
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Inspection not found")
+    if inspection["agent_id"] != UUID(current_user.id):
+        raise HTTPException(status_code=403, detail="Cannot upload to another agent's inspection")
+    if inspection["status"] != "in_progress":
+        raise HTTPException(status_code=422, detail="Cannot upload photos to completed inspection")
+
+    if not file.content_type or file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(status_code=422, detail="Only JPEG, PNG, WebP images allowed")
+
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="Photo must be under 5MB")
+
+    try:
+        from app.modules.documents.services.storage_service import (
+            firebase_storage_service, ensure_storage_initialized,
+        )
+        import hashlib
+        from datetime import datetime as dt
+
+        await ensure_storage_initialized()
+
+        photo_index = len(inspection.get("photos") or []) + 1
+        result = await firebase_storage_service.upload_user_document(
+            user_id=current_user.id,
+            application_id=str(inspection_id),
+            file=content,
+            metadata={
+                "filename": f"inspection-photo-{photo_index}.jpg",
+                "mime_type": file.content_type,
+                "uploadedBy": current_user.id,
+                "uploadedAt": dt.utcnow().isoformat(),
+                "applicationId": str(inspection_id),
+                "documentType": "inspection_photo",
+            }
+        )
+
+        file_hash = hashlib.sha256(content).hexdigest()
+        await db.execute("""
+            INSERT INTO uploaded_files (
+                user_id, file_path, file_name, file_size_bytes, mime_type,
+                file_url, file_hash, related_to_type, related_to_id,
+                access_level, uploaded_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'field_inspection', $8, 'private', NOW())
+            ON CONFLICT (file_path) DO NOTHING
+        """,
+            UUID(current_user.id), result.file_path,
+            f"inspection-photo-{photo_index}.jpg", len(content),
+            file.content_type, result.file_url, file_hash, inspection_id,
+        )
+
+        current_photos = inspection.get("photos") or []
+        current_photos.append(result.file_url)
+        await InspectionRepository.update(db, inspection_id, {"photos": current_photos})
+
+        return {
+            "url": result.file_url,
+            "file_path": result.file_path,
+            "file_size": len(content),
+            "photo_index": photo_index,
+        }
+
+    except Exception as e:
+        logger.error(f"Photo upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Photo upload failed")
 
 
 # ============================================================

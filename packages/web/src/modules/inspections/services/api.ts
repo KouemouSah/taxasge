@@ -121,6 +121,25 @@ export const inspectionApi = {
   },
 
   // ============================================================
+  // PHOTO UPLOAD (Firebase Storage)
+  // ============================================================
+
+  uploadPhoto: (inspectionId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return apiClient
+      .post<{ url: string; file_path: string; file_size: number; photo_index: number }>(
+        `/inspections/${inspectionId}/photos`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } },
+      )
+      .then(r => r.data)
+  },
+
+  deletePhoto: (inspectionId: string, photoIndex: number) =>
+    apiClient.delete(`/inspections/${inspectionId}/photos/${photoIndex}`).then(r => r.data),
+
+  // ============================================================
   // PDF DOWNLOADS
   // ============================================================
 

@@ -233,21 +233,22 @@ export default function InspectPage() {
     }
   }, [inspection, selectedOblIds, unpaidObligations, collectMethod, collectPhone, toast, fetchInspection])
 
-  // Fix M5: Handle photo capture and upload placeholder
-  const handlePhotoCapture = useCallback(async (file: File) => {
-    // Compress image if needed (< 500KB target)
-    const maxSize = 500 * 1024
-    let imageFile = file
+  // Photo upload via Firebase Storage (backend endpoint)
+  const [uploading, setUploading] = useState(false)
 
-    if (file.size > maxSize) {
-      // Basic compression via canvas
+  const handlePhotoCapture = useCallback(async (file: File) => {
+    if (!inspection) return
+
+    // Compress image client-side if > 2MB
+    let imageFile = file
+    if (file.size > 2 * 1024 * 1024) {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
       const img = new Image()
       const url = URL.createObjectURL(file)
       await new Promise<void>((resolve) => {
         img.onload = () => {
-          const scale = Math.min(1, Math.sqrt(maxSize / file.size))
+          const scale = Math.min(1, Math.sqrt((2 * 1024 * 1024) / file.size))
           canvas.width = img.width * scale
           canvas.height = img.height * scale
           ctx?.drawImage(img, 0, 0, canvas.width, canvas.height)
@@ -257,18 +258,37 @@ export default function InspectPage() {
         img.src = url
       })
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/jpeg', 0.7)
+        canvas.toBlob(resolve, 'image/jpeg', 0.8)
       )
       if (blob) {
         imageFile = new File([blob], file.name, { type: 'image/jpeg' })
       }
     }
 
-    // Create a local preview URL (in production, upload to Supabase Storage)
-    const previewUrl = URL.createObjectURL(imageFile)
-    setPhotoUrls(prev => [...prev, previewUrl])
-    toast({ title: 'Foto capturada', description: `${(imageFile.size / 1024).toFixed(0)} KB` })
-  }, [toast])
+    try {
+      setUploading(true)
+      const result = await inspectionApi.uploadPhoto(inspection.id, imageFile)
+      setPhotoUrls(prev => [...prev, result.url])
+      toast({
+        title: t('inspect.photoCaptured'),
+        description: `${(result.file_size / 1024).toFixed(0)} KB`,
+      })
+    } catch {
+      toast({ title: t('common.error'), description: 'Upload failed', variant: 'destructive' })
+    } finally {
+      setUploading(false)
+    }
+  }, [inspection, toast, t])
+
+  const handleDeletePhoto = useCallback(async (index: number) => {
+    if (!inspection) return
+    try {
+      await inspectionApi.deletePhoto(inspection.id, index)
+      setPhotoUrls(prev => prev.filter((_, i) => i !== index))
+    } catch {
+      toast({ title: t('common.error'), variant: 'destructive' })
+    }
+  }, [inspection, toast, t])
 
   if (loading || !inspection) {
     return (
@@ -409,14 +429,18 @@ export default function InspectPage() {
                   <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
                   <button
                     className="absolute top-0 right-0 bg-red-500 text-white rounded-bl p-0.5"
-                    onClick={() => setPhotoUrls(prev => prev.filter((_, idx) => idx !== i))}
+                    onClick={() => handleDeletePhoto(i)}
                   >
                     <XCircle className="h-3 w-3" />
                   </button>
                 </div>
               ))}
-              <label className="w-20 h-20 rounded border border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 min-h-[44px] min-w-[44px]">
-                <Upload className="h-5 w-5 text-muted-foreground" />
+              <label className={`w-20 h-20 rounded border border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 min-h-[44px] min-w-[44px] ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                {uploading ? (
+                  <div className="h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                )}
                 <input
                   type="file"
                   accept="image/*"

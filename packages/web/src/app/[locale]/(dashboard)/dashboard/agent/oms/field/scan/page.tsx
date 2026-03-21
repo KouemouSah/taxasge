@@ -122,7 +122,7 @@ export default function ScanPage() {
     } catch {
       setCameraError('No se pudo acceder a la cámara. Verifique los permisos.')
     }
-  }, [handleSearch, stopCamera])
+  }, [handleSearch]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopCamera = useCallback(() => {
     if (scanIntervalRef.current) {
