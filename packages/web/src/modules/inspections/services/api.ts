@@ -119,4 +119,23 @@ export const inspectionApi = {
       .get<LicenseVerification>(`/inspections/verify?${sp.toString()}`)
       .then(r => r.data)
   },
+
+  // ============================================================
+  // PDF DOWNLOADS
+  // ============================================================
+
+  downloadReport: (id: string, language = 'es') =>
+    apiClient
+      .get(`/inspections/${id}/download-report?language=${language}`, { responseType: 'blob' })
+      .then(r => r.data as Blob),
+
+  downloadMed: (id: string, language = 'es') =>
+    apiClient
+      .get(`/inspections/${id}/download-med?language=${language}`, { responseType: 'blob' })
+      .then(r => r.data as Blob),
+
+  downloadSeal: (id: string, language = 'es') =>
+    apiClient
+      .get(`/inspections/${id}/download-seal?language=${language}`, { responseType: 'blob' })
+      .then(r => r.data as Blob),
 }

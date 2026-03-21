@@ -383,3 +383,104 @@ async def collect_payment(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return result
+
+
+# ============================================================
+# PDF Downloads
+# ============================================================
+
+
+@router.get("/{inspection_id}/download-report")
+async def download_inspection_report(
+    inspection_id: UUID,
+    language: str = Query("es", pattern="^(es|fr|en)$"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_own")),
+):
+    """Download inspection report as PDF."""
+    from fastapi.responses import Response
+    from app.modules.inspections.services.inspection_pdf_service import (
+        inspection_pdf_service,
+    )
+
+    try:
+        pdf_bytes = await inspection_pdf_service.generate_inspection_report(
+            db, str(inspection_id), language,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="inspection-{inspection_id}.pdf"',
+        },
+    )
+
+
+@router.get("/{inspection_id}/download-med")
+async def download_med_pdf(
+    inspection_id: UUID,
+    language: str = Query("es", pattern="^(es|fr|en)$"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.mise_en_demeure")),
+):
+    """Download mise en demeure as PDF."""
+    from fastapi.responses import Response
+    from app.modules.inspections.services.inspection_pdf_service import (
+        inspection_pdf_service,
+    )
+
+    try:
+        pdf_bytes = await inspection_pdf_service.generate_med_pdf(
+            db, str(inspection_id), language,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="med-{inspection_id}.pdf"',
+        },
+    )
+
+
+@router.get("/{inspection_id}/download-seal")
+async def download_seal_pdf(
+    inspection_id: UUID,
+    language: str = Query("es", pattern="^(es|fr|en)$"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.seal_approve")),
+):
+    """Download seal report (PV de scellé) as PDF."""
+    from fastapi.responses import Response
+    from app.modules.inspections.services.inspection_pdf_service import (
+        inspection_pdf_service,
+    )
+
+    try:
+        pdf_bytes = await inspection_pdf_service.generate_seal_pdf(
+            db, str(inspection_id), language,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="seal-pv-{inspection_id}.pdf"',
+        },
+    )
