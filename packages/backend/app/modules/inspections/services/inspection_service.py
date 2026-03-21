@@ -478,18 +478,47 @@ class InspectionService:
             conn, inspection_id, update_data
         )
 
-        # Notify supervisors
+        # Fix F1: Notify ALL supervisors of the entity (not single user)
         try:
             from app.core.events import EventBus, EventType
-            EventBus.publish_nowait(EventType.SEAL_PROPOSED, {
-                "inspection_id": str(inspection_id),
-                "company_name": inspection.get("company_name"),
-                "company_nif": inspection.get("company_nif"),
-                "seal_reason": reason,
-                "agent_name": inspection.get("agent_name"),
-                "entity_id": str(inspection["entity_id"]),
-                "user_id": str(user_id),
-            })
+
+            # Fetch all supervisor emails for this entity
+            supervisors = await conn.fetch("""
+                SELECT u.id, u.email, u.full_name, u.phone_number, u.preferred_language
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                WHERE ap.entity_id = $1
+                  AND ap.is_supervisor = true
+                  AND ap.is_active = true
+                  AND u.email IS NOT NULL
+            """, inspection["entity_id"])
+
+            if not supervisors:
+                logger.warning(
+                    f"SEAL_PROPOSED: No supervisors found for entity "
+                    f"{inspection['entity_id']}"
+                )
+
+            # Emit one event per supervisor so each gets an email
+            for sup in supervisors:
+                EventBus.publish_nowait(EventType.SEAL_PROPOSED, {
+                    "inspection_id": str(inspection_id),
+                    "company_name": inspection.get("company_name"),
+                    "company_nif": inspection.get("company_nif"),
+                    "seal_reason": reason,
+                    "agent_name": inspection.get("agent_name"),
+                    "entity_id": str(inspection["entity_id"]),
+                    "user_id": str(sup["id"]),
+                    "user_email": sup["email"],
+                    "user_phone": sup["phone_number"],
+                    "user_name": sup["full_name"],
+                    "preferred_language": sup["preferred_language"] or "es",
+                })
+
+            logger.info(
+                f"SEAL_PROPOSED: Notified {len(supervisors)} supervisor(s) "
+                f"for entity {inspection['entity_id']}"
+            )
         except Exception as e:
             logger.warning(f"SEAL_PROPOSED event emission failed: {e}")
 

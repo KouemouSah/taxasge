@@ -28,6 +28,7 @@ export const inspectionApi = {
     gps_longitude?: number
     gps_accuracy?: number
     notes?: string
+    agent_signature?: string
   }) =>
     apiClient.put<Inspection>(`/inspections/${id}`, data).then(r => r.data),
 

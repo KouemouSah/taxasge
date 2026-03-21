@@ -40,6 +40,18 @@ export function NetworkStatus() {
       if (event.data?.type === 'SYNC_COMPLETE') {
         setPendingSync(event.data.remaining || 0)
       }
+      // Fix F3: Respond to SW token refresh requests for offline sync
+      if (event.data?.type === 'REQUEST_AUTH_TOKEN' && event.ports?.[0]) {
+        try {
+          // Get fresh token from the existing auth system
+          const tokenKey = 'taxasge_auth_token'
+          const token = localStorage.getItem(tokenKey) ||
+            sessionStorage.getItem(tokenKey) || null
+          event.ports[0].postMessage({ token })
+        } catch {
+          event.ports[0].postMessage({ token: null })
+        }
+      }
     }
 
     window.addEventListener('online', handleOnline)

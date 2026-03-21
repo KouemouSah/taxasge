@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { inspectionApi } from '@/modules/inspections/services/api'
+import { SignaturePad } from '@/modules/inspections/components/SignaturePad'
 import { INSPECTION_STATUS_CONFIG, SEAL_REASONS, fmtXAF } from '@/modules/inspections/utils/formatters'
 import type { Inspection, SealReason, LicenseObligation } from '@/modules/inspections/types'
 
@@ -54,6 +55,8 @@ export default function InspectPage() {
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracy: number } | null>(null)
   // Fix M5: Track uploaded photo URLs
   const [photoUrls, setPhotoUrls] = useState<string[]>([])
+  // Fix F2: Signature state
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null)
 
   // Dialogs
   const [showMedDialog, setShowMedDialog] = useState(false)
@@ -79,12 +82,18 @@ export default function InspectPage() {
       setPhotoUrls(data.photos || [])
 
       // Fix C3/C4: Fetch obligations from verify API using license_id
+      // Fetch obligations for MED/Collect dialogs
       if (data.license_id) {
         try {
           const verif = await inspectionApi.verifyLicense({ license_id: data.license_id })
           setObligations(verif.obligations || [])
         } catch {
-          // Obligations fetch failed — non-blocking
+          // F6: Show warning if obligations can't load
+          toast({
+            title: 'Obligaciones no disponibles',
+            description: 'No se pudieron cargar las obligaciones. MED y cobro no disponibles.',
+            variant: 'destructive',
+          })
         }
       }
     } catch {
@@ -129,6 +138,7 @@ export default function InspectPage() {
         gps_longitude: gps?.lng,
         gps_accuracy: gps?.accuracy,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
+        agent_signature: signatureDataUrl || undefined,
       })
       setInspection(data)
       toast({ title: 'Guardado', description: 'Inspección actualizada' })
@@ -152,6 +162,7 @@ export default function InspectPage() {
         gps_longitude: gps?.lng,
         gps_accuracy: gps?.accuracy,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
+        agent_signature: signatureDataUrl || undefined,
       })
       const data = await inspectionApi.complete(inspection.id, { notes })
       setInspection(data)
@@ -495,7 +506,42 @@ export default function InspectPage() {
         </Card>
       )}
 
-      {/* 7. Actions (sticky bottom) — Fix m3: z-40 to avoid dialog conflict */}
+      {/* 7. Signature — Fix F2: SignaturePad integrated */}
+      {isEditable && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-1">
+              <FileText className="h-4 w-4" /> {t('inspect.save')} — Firma
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {signatureDataUrl ? (
+              <div className="flex flex-col items-center gap-2">
+                <img
+                  src={signatureDataUrl}
+                  alt="Signature"
+                  className="border rounded max-w-[300px] max-h-[120px]"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSignatureDataUrl(null)}
+                  className="min-h-[44px]"
+                >
+                  Cambiar firma
+                </Button>
+              </div>
+            ) : (
+              <SignaturePad
+                onSign={(dataUrl) => setSignatureDataUrl(dataUrl)}
+                onClear={() => setSignatureDataUrl(null)}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 8. Actions (sticky bottom) — Fix m3: z-40 to avoid dialog conflict */}
       {isEditable && (
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex gap-2 z-40">
           <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1 min-h-[44px]">
