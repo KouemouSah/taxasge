@@ -182,7 +182,7 @@ ON CONFLICT DO NOTHING;
 -- 4. NOTIFICATION TEMPLATES
 -- ============================================================
 
--- Email templates
+-- Email templates (professional HTML with Facil branding)
 INSERT INTO email_templates (template_code, name_es, name_fr, name_en,
     subject_es, subject_fr, subject_en,
     html_content, variables, category, is_active)
@@ -193,7 +193,7 @@ VALUES
     'Resultado de inspección — {{company_name}}',
     'Résultat d''inspection — {{company_name}}',
     'Inspection result — {{company_name}}',
-    '<h2>Inspección completada</h2><p>Empresa: {{company_name}} ({{company_nif}})</p><p>Resultado: {{result}}</p><p>Fecha: {{inspection_date}}</p><p>Agente: {{agent_name}}</p>',
+    '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden"><div style="background:#3a7a0a;color:white;padding:20px;text-align:center"><h1 style="margin:0;font-size:20px">Facil — Inspección Completada</h1></div><div style="padding:24px"><p>Estimado/a propietario/a de <strong>{{company_name}}</strong> (NIF: {{company_nif}}),</p><p>Le informamos que se ha realizado una inspección en su establecimiento:</p><table style="width:100%;border-collapse:collapse;margin:16px 0"><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Fecha</strong></td><td style="padding:8px;border:1px solid #ddd">{{inspection_date}}</td></tr><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Resultado</strong></td><td style="padding:8px;border:1px solid #ddd;font-weight:bold">{{result}}</td></tr><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Inspector</strong></td><td style="padding:8px;border:1px solid #ddd">{{agent_name}}</td></tr></table><p style="color:#666;font-size:13px">El informe detallado se encuentra adjunto a este correo en formato PDF.</p></div><div style="background:#f5f5f5;padding:12px;text-align:center;font-size:11px;color:#999">Facil — Plataforma Digital de Guinea Ecuatorial</div></div>',
     '["company_name","company_nif","result","inspection_date","agent_name"]',
     'inspections', true
 ),
@@ -203,7 +203,7 @@ VALUES
     'AVISO FORMAL — Regularice su situación fiscal — {{company_name}}',
     'MISE EN DEMEURE — Régularisez votre situation fiscale — {{company_name}}',
     'FORMAL NOTICE — Regularize your fiscal situation — {{company_name}}',
-    '<h2>MISE EN DEMEURE</h2><p>Empresa: {{company_name}} ({{company_nif}})</p><p>Monto impago: {{unpaid_amount}} XAF</p><p>Plazo: {{deadline}}</p><p>Sin regularización, su establecimiento será sellado.</p>',
+    '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden"><div style="background:#c94040;color:white;padding:20px;text-align:center"><h1 style="margin:0;font-size:20px">MISE EN DEMEURE</h1><p style="margin:4px 0 0;font-size:14px">Aviso Formal de Regularización Fiscal</p></div><div style="padding:24px"><p>Estimado/a propietario/a de <strong>{{company_name}}</strong> (NIF: {{company_nif}}),</p><p>Tras la inspección realizada en su establecimiento, se han constatado <strong>obligaciones fiscales impagadas</strong> por un monto total de:</p><div style="text-align:center;padding:16px;background:#fff0f0;border:2px solid #c94040;border-radius:8px;margin:16px 0"><span style="font-size:24px;font-weight:bold;color:#c94040">{{unpaid_amount}} XAF</span></div><p>Se le requiere formalmente la regularización en el plazo siguiente:</p><div style="text-align:center;padding:12px;background:#fff8f8;border:1px solid #ddd;border-radius:4px;margin:12px 0"><strong style="font-size:16px;color:#c94040">{{deadline}}</strong></div><div style="background:#fce4e4;padding:12px;border-radius:4px;margin:16px 0"><strong>CONSECUENCIAS:</strong> En caso de no regularizar en el plazo indicado, su establecimiento será objeto de un procedimiento de scellé (cierre temporal).</div><p style="color:#666;font-size:13px">El documento de mise en demeure se encuentra adjunto en formato PDF.</p></div><div style="background:#f5f5f5;padding:12px;text-align:center;font-size:11px;color:#999">Facil — Plataforma Digital de Guinea Ecuatorial</div></div>',
     '["company_name","company_nif","unpaid_amount","deadline","obligations_list"]',
     'inspections', true
 ),
@@ -213,7 +213,7 @@ VALUES
     'URGENTE: Scellé propuesto — {{company_name}} — Aprobación requerida',
     'URGENT: Scellé proposé — {{company_name}} — Approbation requise',
     'URGENT: Seal proposed — {{company_name}} — Approval required',
-    '<h2>Scellé propuesto</h2><p>Empresa: {{company_name}} ({{company_nif}})</p><p>Motivo: {{seal_reason}}</p><p>Agente: {{agent_name}}</p><p>Por favor, apruebe o rechace esta propuesta.</p>',
+    '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden"><div style="background:#b33a3a;color:white;padding:20px;text-align:center"><h1 style="margin:0;font-size:20px">SCELLÉ PROPUESTO</h1><p style="margin:4px 0 0;font-size:14px">Aprobación requerida</p></div><div style="padding:24px"><p>Un agente ha propuesto el <strong>scellé (cierre temporal)</strong> del siguiente establecimiento:</p><table style="width:100%;border-collapse:collapse;margin:16px 0"><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Empresa</strong></td><td style="padding:8px;border:1px solid #ddd">{{company_name}} ({{company_nif}})</td></tr><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Motivo</strong></td><td style="padding:8px;border:1px solid #ddd">{{seal_reason}}</td></tr><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Agente</strong></td><td style="padding:8px;border:1px solid #ddd">{{agent_name}}</td></tr></table><div style="background:#fce4e4;padding:12px;border-radius:4px;margin:16px 0"><strong>ACCIÓN REQUERIDA:</strong> Acceda a la plataforma Facil para aprobar o rechazar esta propuesta. Sin respuesta en 24h, el scellé será aprobado automáticamente.</div></div><div style="background:#f5f5f5;padding:12px;text-align:center;font-size:11px;color:#999">Facil — Plataforma Digital de Guinea Ecuatorial</div></div>',
     '["company_name","company_nif","seal_reason","agent_name","inspection_id"]',
     'inspections', true
 ),
@@ -223,7 +223,7 @@ VALUES
     'Su establecimiento ha sido sellado — {{company_name}}',
     'Votre établissement a été mis sous scellé — {{company_name}}',
     'Your establishment has been sealed — {{company_name}}',
-    '<h2>ESTABLECIMIENTO SELLADO</h2><p>Empresa: {{company_name}} ({{company_nif}})</p><p>Motivo: {{seal_reason}}</p><p>Para levantar el scellé, regularice todas sus obligaciones fiscales.</p>',
+    '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden"><div style="background:#b33a3a;color:white;padding:20px;text-align:center"><h1 style="margin:0;font-size:20px">ESTABLECIMIENTO SELLADO</h1></div><div style="padding:24px"><p>Estimado/a propietario/a de <strong>{{company_name}}</strong> (NIF: {{company_nif}}),</p><p>Le informamos que su establecimiento ha sido <strong>puesto bajo scellé (cierre temporal)</strong>.</p><table style="width:100%;border-collapse:collapse;margin:16px 0"><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Motivo</strong></td><td style="padding:8px;border:1px solid #ddd">{{seal_reason}}</td></tr><tr><td style="padding:8px;border:1px solid #ddd;background:#f8f8f8"><strong>Monto impago</strong></td><td style="padding:8px;border:1px solid #ddd;color:#c94040;font-weight:bold">{{unpaid_amount}} XAF</td></tr></table><div style="background:#e8f5e9;padding:12px;border-radius:4px;margin:16px 0;border:1px solid #c8e6c9"><strong>PARA LEVANTAR EL SCELLÉ:</strong> Regularice todas sus obligaciones fiscales pendientes y sus penalidades. Una vez validado el pago, un agente procederá al levantamiento del scellé.</div><p style="color:#666;font-size:13px">El proceso verbal del scellé se encuentra adjunto en formato PDF.</p></div><div style="background:#f5f5f5;padding:12px;text-align:center;font-size:11px;color:#999">Facil — Plataforma Digital de Guinea Ecuatorial</div></div>',
     '["company_name","company_nif","seal_reason","unpaid_amount"]',
     'inspections', true
 )
