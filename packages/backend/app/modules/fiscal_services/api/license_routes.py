@@ -8,7 +8,7 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, Header, HTTPException, Depends, Query
 from typing import List, Optional
 from uuid import UUID
 
@@ -16,6 +16,28 @@ from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
+
+
+def verify_cron_auth(x_cron_secret: Optional[str] = Header(None)):
+    """Verify cron job authentication via shared secret.
+
+    Cloud Scheduler sends X-Cron-Secret header. In dev mode (no secret
+    configured), all requests are allowed.
+    """
+    from app.core.secrets import get_cron_secret
+    from app.config import get_settings
+
+    settings = get_settings()
+    expected_secret = get_cron_secret() or getattr(settings, "CRON_SECRET", None)
+
+    if expected_secret:
+        if x_cron_secret != expected_secret:
+            logger.warning("License cron rejected: invalid X-Cron-Secret")
+            raise HTTPException(status_code=403, detail="Invalid cron authentication")
+    else:
+        logger.debug(
+            "License cron: no CRON_SECRET configured, allowing request (dev mode)"
+        )
 from app.modules.fiscal_services.models.licenses import (
     LicenseCreate,
     LicenseUpdate,
@@ -53,10 +75,12 @@ router = APIRouter(prefix="/licenses", tags=["Commercial Licenses"])
 @router.post("/cron/flag-overdue")
 async def cron_flag_overdue(
     db=Depends(get_database),
-    current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("fiscal_service.manage_bundles")),
+    _=Depends(verify_cron_auth),
 ):
-    """Cron: flag overdue obligations past due_date. Run daily."""
+    """Cron: flag overdue obligations past due_date. Run daily.
+
+    Authentication: X-Cron-Secret header (Cloud Scheduler).
+    """
     async with db.transaction():
         count = await LicenseService.flag_overdue_obligations(db)
     return {"flagged": count}
@@ -65,13 +89,58 @@ async def cron_flag_overdue(
 @router.post("/cron/apply-penalties")
 async def cron_apply_penalties(
     db=Depends(get_database),
-    current_user: UserResponse = Depends(get_current_user),
-    _: None = Depends(permission_required("fiscal_service.manage_bundles")),
+    _=Depends(verify_cron_auth),
 ):
-    """Cron: calculate and apply penalties on overdue obligations. Run weekly/monthly."""
+    """Cron: calculate and apply penalties on overdue obligations. Run weekly/monthly.
+
+    Authentication: X-Cron-Secret header (Cloud Scheduler).
+    """
     async with db.transaction():
         count = await LicenseService.apply_penalties(db)
     return {"updated": count}
+
+
+@router.post("/cron/obligation-reminders")
+async def cron_obligation_reminders(
+    db=Depends(get_database),
+    _=Depends(verify_cron_auth),
+):
+    """Cron: check obligation deadlines and send tiered reminders.
+
+    J-15: reminder to company owners (email)
+    J+1: overdue notice to company + agent (email)
+    J+30: escalation to supervisors (email)
+
+    Authentication: X-Cron-Secret header (Cloud Scheduler). Run daily.
+    """
+    from app.modules.fiscal_services.services.oms_reminder_service import (
+        oms_reminder_service,
+    )
+
+    logger.info("Cron: OMS obligation reminders started")
+    result = await oms_reminder_service.run_reminder_check(db)
+    logger.info("Cron: OMS obligation reminders completed: %s", result)
+    return result
+
+
+@router.get("/compliance-summary")
+async def get_compliance_summary(
+    fiscal_year: int = Query(..., ge=2020, le=2100),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("fiscal_service.view_bundles")),
+):
+    """Pre-aggregated compliance summary by fee_type for a fiscal year.
+
+    Returns 1 row per fee_type with counts, amounts, recovery %, and
+    overdue companies list. Replaces N+1 client-side aggregation.
+    """
+    from app.modules.fiscal_services.repositories.license_repository import (
+        LicenseRepository,
+    )
+
+    result = await LicenseRepository.get_compliance_summary(db, fiscal_year)
+    return {"items": result, "fiscal_year": fiscal_year}
 
 
 @router.get("/stats")

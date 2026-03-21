@@ -144,3 +144,35 @@ export interface ComplianceEventListResponse {
   page: number
   page_size: number
 }
+
+// =============================================================================
+// COMPLIANCE SUMMARY (pre-aggregated by fee_type)
+// =============================================================================
+
+export interface ComplianceSummaryCompany {
+  company_name: string
+  company_nif: string | null
+  zone: string | null
+  license_id: string
+  amount: number
+  penalty: number
+}
+
+export interface ComplianceSummaryGroup {
+  fee_type: string
+  total_obligations: number
+  paid: number
+  pending: number
+  overdue: number
+  total_amount: number
+  paid_amount: number
+  overdue_amount: number
+  overdue_penalty: number
+  recovery_pct: number
+  overdue_companies: ComplianceSummaryCompany[]
+}
+
+export interface ComplianceSummaryResponse {
+  items: ComplianceSummaryGroup[]
+  fiscal_year: number
+}

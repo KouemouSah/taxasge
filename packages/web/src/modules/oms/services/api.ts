@@ -12,14 +12,17 @@ import type {
   AgentQueueResponse, AgentQueueStats,
   LicenseListResponse, LicenseResponse, LicenseStats,
   ObligationResponse, ObligationListResponse,
+  ComplianceSummaryResponse,
 } from '../types'
 
 // ========== Queue API (agent processing) ==========
 
 export const omsQueueApi = {
-  getQueue: (params?: { status?: string; page?: number; page_size?: number }) => {
+  getQueue: (params?: { status?: string; fee_type?: string; search?: string; page?: number; page_size?: number }) => {
     const sp = new URLSearchParams()
     if (params?.status) sp.set('status', params.status)
+    if (params?.fee_type) sp.set('fee_type', params.fee_type)
+    if (params?.search) sp.set('search', params.search)
     if (params?.page) sp.set('page', String(params.page))
     if (params?.page_size) sp.set('page_size', String(params.page_size))
     const q = sp.toString()
@@ -88,4 +91,7 @@ export const omsLicensesApi = {
 
   renew: (id: string, data: { fiscal_year: number }) =>
     apiClient.post<LicenseResponse>(`/licenses/${id}/renew`, data).then(r => r.data),
+
+  getComplianceSummary: (fiscal_year: number) =>
+    apiClient.get<ComplianceSummaryResponse>(`/licenses/compliance-summary?fiscal_year=${fiscal_year}`).then(r => r.data),
 }

@@ -40,21 +40,26 @@ router = APIRouter(prefix="/oms", tags=["OMS Agent Processing"])
 @router.get("/queue", response_model=AgentQueueResponse)
 async def get_agent_queue(
     status: Optional[str] = Query(None, description="Filter: processing, paid, completed"),
+    fee_type: Optional[str] = Query(None, description="Filter: tesoro, municipal, chamber"),
+    search: Optional[str] = Query(None, max_length=100, description="Search: company, NIF, service"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("fiscal_service.process_obligations")),
 ):
-    """Get agent's obligation queue, auto-filtered by entity scope.
+    """Get agent's obligation queue, auto-filtered by entity scope + assignment.
 
-    Ministry agents (Mode A): see only obligations matching their ministry_id.
-    Polyvalent agents (Mode B): see all consolidated obligations.
+    Regular agents: see only obligations assigned to them.
+    Supervisors: see all obligations in their ministry/mode scope.
+    Supports server-side search and fee_type filtering.
     """
     try:
         items, total = await OmsAgentService.get_queue(
             db, UUID(current_user.id),
             status=status,
+            fee_type=fee_type,
+            search=search,
             page=page, page_size=page_size,
         )
     except ValueError as e:

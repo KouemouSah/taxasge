@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   ArrowLeft, Building2, FileCheck, DollarSign,
   AlertTriangle, CheckCircle2, Clock, Download, RefreshCw,
@@ -30,35 +30,16 @@ import { useToast } from '@/hooks/use-toast'
 import apiClient from '@/core/api/client'
 import { omsLicensesApi, omsQueueApi } from '@/modules/oms/services/api'
 import type { LicenseResponse, ObligationResponse, ComplianceEvent } from '@/modules/oms/types'
+import { OBLIGATION_STATUS_CONFIG as OB_STATUS, LICENSE_STATUS_CONFIG as LIC_STATUS, fmtXAF, fmtDate } from '@/modules/oms/utils/formatters'
 import { PrintHeader, PrintFooter } from '@/components/shared/PrintHeader'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
-
-const OB_STATUS: Record<string, { color: string; label: string; icon: typeof Clock }> = {
-  pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pendiente', icon: Clock },
-  paid: { color: 'bg-emerald-100 text-emerald-800', label: 'Pagado', icon: DollarSign },
-  processing: { color: 'bg-blue-100 text-blue-800', label: 'En proceso', icon: Play },
-  completed: { color: 'bg-green-100 text-green-800', label: 'Completado', icon: CheckCircle2 },
-  overdue: { color: 'bg-red-100 text-red-800', label: 'Vencido', icon: AlertTriangle },
-  cancelled: { color: 'bg-gray-100 text-gray-700', label: 'Cancelado', icon: XCircle },
-}
-
-const LIC_STATUS: Record<string, { color: string; label: string }> = {
-  open: { color: 'bg-blue-100 text-blue-800', label: 'Abierta' },
-  partial: { color: 'bg-amber-100 text-amber-800', label: 'Parcial' },
-  overdue: { color: 'bg-red-100 text-red-800', label: 'Vencida' },
-  complete: { color: 'bg-green-100 text-green-800', label: 'Completa' },
-  cancelled: { color: 'bg-gray-100 text-gray-700', label: 'Cancelada' },
-}
-
-function fmtXAF(n: number): string {
-  return new Intl.NumberFormat('es-GQ', { maximumFractionDigits: 0 }).format(n) + ' XAF'
-}
 
 export default function LicenseDetailPage() {
   const params = useParams()
   const router = useRouter()
   const locale = useLocale()
+  const t = useTranslations('oms.licenses')
   const { toast } = useToast()
   const licenseId = params.id as string
 
@@ -80,7 +61,7 @@ export default function LicenseDetailPage() {
       setObligations(obs.items)
       setEvents(evts.items ?? [])
     } catch {
-      toast({ title: 'Error al cargar la licencia', variant: 'destructive' })
+      toast({ title: t('loadError'), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -102,7 +83,7 @@ export default function LicenseDetailPage() {
   const donutData = useMemo(() => {
     if (!obligations.length) return null
     return {
-      labels: ['Pagado', 'Pendiente', 'Vencido'],
+      labels: [t('paidObligations'), t('pendingObligations'), t('overdueObligations')],
       datasets: [{
         data: [paidCount, pendingCount, overdueCount],
         backgroundColor: ['#22c55e', '#eab308', '#ef4444'],
@@ -115,22 +96,22 @@ export default function LicenseDetailPage() {
   const handleProcess = async (obId: string) => {
     try {
       await omsQueueApi.processObligation(obId)
-      toast({ title: 'Obligación procesada' })
+      toast({ title: t('processed') })
       fetchAll()
     } catch {
-      toast({ title: 'Error', variant: 'destructive' })
+      toast({ title: t('error'), variant: 'destructive' })
     }
   }
 
   const handleReject = async (obId: string) => {
-    const reason = window.prompt('Motivo del rechazo (min 5 caracteres):')
+    const reason = window.prompt(t('rejectReason'))
     if (!reason || reason.length < 5) return
     try {
       await omsQueueApi.rejectObligation(obId, { reason })
-      toast({ title: 'Obligación rechazada' })
+      toast({ title: t('rejected') })
       fetchAll()
     } catch {
-      toast({ title: 'Error', variant: 'destructive' })
+      toast({ title: t('error'), variant: 'destructive' })
     }
   }
 
@@ -144,29 +125,29 @@ export default function LicenseDetailPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      toast({ title: 'Error al descargar PDF', variant: 'destructive' })
+      toast({ title: t('downloadError'), variant: 'destructive' })
     }
   }
 
   const handleRenew = async () => {
     const nextYear = (license?.fiscal_year ?? new Date().getFullYear()) + 1
-    if (!window.confirm(`Renovar licencia para el año fiscal ${nextYear}?`)) return
+    if (!window.confirm(`${t('renewConfirm')} ${nextYear}?`)) return
     try {
       const newLicense = await omsLicensesApi.renew(licenseId, { fiscal_year: nextYear })
-      toast({ title: `Licencia renovada para ${nextYear}` })
+      toast({ title: `${t('renewed')} ${nextYear}` })
       router.push(`/${locale}/dashboard/agent/oms/licenses/${newLicense.id}`)
     } catch {
-      toast({ title: 'Error al renovar', variant: 'destructive' })
+      toast({ title: t('renewError'), variant: 'destructive' })
     }
   }
 
   const handleCheckPreviousYear = async () => {
     try {
       const res = await apiClient.post(`/licenses/${licenseId}/check-previous-year`).then(r => r.data)
-      toast({ title: `Verificación N-1: ${res.checked} obligaciones comprobadas` })
+      toast({ title: `${t('checkN1')}: ${res.checked} ${t('checkN1Result')}` })
       fetchAll()
     } catch {
-      toast({ title: 'Error al verificar año anterior', variant: 'destructive' })
+      toast({ title: t('checkN1Error'), variant: 'destructive' })
     }
   }
 
@@ -184,9 +165,9 @@ export default function LicenseDetailPage() {
     return (
       <div className="p-6 text-center text-muted-foreground">
         <FileCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
-        <p>Licencia no encontrada</p>
+        <p>{t('notFound')}</p>
         <Button variant="outline" size="sm" className="mt-3" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+          <ArrowLeft className="h-4 w-4 mr-1" /> {t('back')}
         </Button>
       </div>
     )
@@ -203,9 +184,9 @@ export default function LicenseDetailPage() {
             { label: 'Año', value: String(license.fiscal_year) },
           ]} />
         <div className="grid grid-cols-4 gap-2 text-[9pt] my-3 bg-gray-50 p-2 rounded">
-          <div><span className="font-medium">Total:</span><br/>{fmtXAF(license.total_amount)}</div>
-          <div><span className="font-medium">Pagado:</span><br/>{fmtXAF(license.amount_paid)}</div>
-          <div><span className="font-medium">Balance:</span><br/>{fmtXAF(balance)}</div>
+          <div><span className="font-medium">Total:</span><br/>{fmtXAF(license.total_amount, locale)}</div>
+          <div><span className="font-medium">Pagado:</span><br/>{fmtXAF(license.amount_paid, locale)}</div>
+          <div><span className="font-medium">Balance:</span><br/>{fmtXAF(balance, locale)}</div>
           <div><span className="font-medium">Recovery:</span><br/>{recoveryPct}%</div>
         </div>
         <table className="w-full text-[8pt] border-collapse">
@@ -220,8 +201,8 @@ export default function LicenseDetailPage() {
               <tr key={ob.id} className="border-b">
                 <td className="p-1">{ob.fee_type}</td>
                 <td className="p-1 text-[7pt]">{ob.ministry_name || '—'}</td>
-                <td className="text-right p-1 font-mono">{fmtXAF(ob.amount)}</td>
-                {totalPenalties > 0 && <td className="text-right p-1 font-mono">{ob.penalty_amount > 0 ? fmtXAF(ob.penalty_amount) : '—'}</td>}
+                <td className="text-right p-1 font-mono">{fmtXAF(ob.amount, locale)}</td>
+                {totalPenalties > 0 && <td className="text-right p-1 font-mono">{ob.penalty_amount > 0 ? fmtXAF(ob.penalty_amount, locale) : '—'}</td>}
                 <td className="p-1">{ob.due_date || '—'}</td>
                 <td className="p-1">{OB_STATUS[ob.status]?.label || ob.status}</td>
               </tr>
@@ -252,16 +233,16 @@ export default function LicenseDetailPage() {
           </div>
           <div className="flex gap-1 shrink-0 flex-wrap">
             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleRenew}>
-              <RotateCcw className="h-3.5 w-3.5" /> Renovar
+              <RotateCcw className="h-3.5 w-3.5" /> {t('renew')}
             </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleCheckPreviousYear}>
-              <Search className="h-3.5 w-3.5" /> Verificar N-1
+              <Search className="h-3.5 w-3.5" /> {t('checkN1')}
             </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleDownloadPDF}>
               <Download className="h-3.5 w-3.5" /> PDF
             </Button>
             <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setShowTimeline(!showTimeline)}>
-              <History className="h-3.5 w-3.5" /> {showTimeline ? 'Ocultar' : 'Historial'}
+              <History className="h-3.5 w-3.5" /> {showTimeline ? '—' : t('history')}
             </Button>
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={fetchAll}>
               <RefreshCw className="h-3.5 w-3.5" />
@@ -273,15 +254,15 @@ export default function LicenseDetailPage() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <Card className="p-3">
             <div className="text-xs text-muted-foreground">Total</div>
-            <p className="text-xl font-bold">{fmtXAF(license.total_amount)}</p>
+            <p className="text-xl font-bold">{fmtXAF(license.total_amount, locale)}</p>
           </Card>
           <Card className="p-3">
             <div className="text-xs text-muted-foreground">Pagado</div>
-            <p className="text-xl font-bold text-green-700">{fmtXAF(license.amount_paid)}</p>
+            <p className="text-xl font-bold text-green-700">{fmtXAF(license.amount_paid, locale)}</p>
           </Card>
           <Card className="p-3">
             <div className="text-xs text-muted-foreground">Balance</div>
-            <p className={`text-xl font-bold ${balance > 0 ? 'text-red-700' : 'text-green-700'}`}>{fmtXAF(balance)}</p>
+            <p className={`text-xl font-bold ${balance > 0 ? 'text-red-700' : 'text-green-700'}`}>{fmtXAF(balance, locale)}</p>
           </Card>
           <Card className="p-3">
             <div className="text-xs text-muted-foreground">Recuperación</div>
@@ -291,7 +272,7 @@ export default function LicenseDetailPage() {
           {totalPenalties > 0 && (
             <Card className="p-3">
               <div className="text-xs text-muted-foreground">Penalidades</div>
-              <p className="text-xl font-bold text-amber-700">{fmtXAF(totalPenalties)}</p>
+              <p className="text-xl font-bold text-amber-700">{fmtXAF(totalPenalties, locale)}</p>
             </Card>
           )}
         </div>
@@ -300,7 +281,7 @@ export default function LicenseDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {donutData && (
             <Card>
-              <CardHeader className="pb-1"><CardTitle className="text-sm">Distribución obligaciones</CardTitle></CardHeader>
+              <CardHeader className="pb-1"><CardTitle className="text-sm">{t('distribution')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="h-[180px] flex items-center justify-center">
                   <Doughnut data={donutData} options={{
@@ -315,11 +296,11 @@ export default function LicenseDetailPage() {
           <Card className={donutData ? 'lg:col-span-2' : 'lg:col-span-3'}>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm flex items-center justify-between">
-                <span>Obligaciones ({obligations.length})</span>
+                <span>{t('obligations')} ({obligations.length})</span>
                 <div className="flex gap-2 text-[10px] font-normal">
-                  <span className="text-green-600">{paidCount} pagadas</span>
-                  <span className="text-yellow-600">{pendingCount} pendientes</span>
-                  {overdueCount > 0 && <span className="text-red-600">{overdueCount} vencidas</span>}
+                  <span className="text-green-600">{paidCount} {t('paidObligations')}</span>
+                  <span className="text-yellow-600">{pendingCount} {t('pendingObligations')}</span>
+                  {overdueCount > 0 && <span className="text-red-600">{overdueCount} {t('overdueObligations')}</span>}
                 </div>
               </CardTitle>
             </CardHeader>
@@ -347,10 +328,10 @@ export default function LicenseDetailPage() {
                       <TableRow key={ob.id}>
                         <TableCell className="text-xs font-medium">{ob.fee_type}</TableCell>
                         <TableCell className="text-xs text-muted-foreground truncate max-w-[120px]">{ob.ministry_name || '—'}</TableCell>
-                        <TableCell className="text-xs text-right font-mono">{fmtXAF(ob.amount)}</TableCell>
+                        <TableCell className="text-xs text-right font-mono">{fmtXAF(ob.amount, locale)}</TableCell>
                         {totalPenalties > 0 && (
                           <TableCell className="text-xs text-right font-mono text-amber-600">
-                            {ob.penalty_amount > 0 ? fmtXAF(ob.penalty_amount) : '—'}
+                            {ob.penalty_amount > 0 ? fmtXAF(ob.penalty_amount, locale) : '—'}
                           </TableCell>
                         )}
                         <TableCell className="text-xs">{ob.due_date || '—'}</TableCell>

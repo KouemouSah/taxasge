@@ -9,12 +9,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   FileCheck, Search, ChevronLeft, ChevronRight, RefreshCw,
   TrendingUp, AlertTriangle, DollarSign, Download, Eye,
-  Building2, CheckCircle2, Clock, Play, XCircle,
-  ArrowUpDown, ArrowUp, ArrowDown,
+  Building2, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,28 +29,12 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { omsLicensesApi } from '@/modules/oms/services/api'
 import type { LicenseResponse, LicenseStats } from '@/modules/oms/types'
-
-const STATUS_BADGE: Record<string, { color: string; label: string; icon: typeof Clock }> = {
-  open: { color: 'bg-blue-100 text-blue-800', label: 'Abierta', icon: Play },
-  partial: { color: 'bg-amber-100 text-amber-800', label: 'Parcial', icon: Clock },
-  overdue: { color: 'bg-red-100 text-red-800', label: 'Vencida', icon: AlertTriangle },
-  complete: { color: 'bg-green-100 text-green-800', label: 'Completa', icon: CheckCircle2 },
-  cancelled: { color: 'bg-gray-100 text-gray-700', label: 'Cancelada', icon: XCircle },
-}
-
-function fmtXAF(n: number): string {
-  return new Intl.NumberFormat('es-GQ', { maximumFractionDigits: 0 }).format(n) + ' XAF'
-}
-
-function fmtK(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return n.toLocaleString()
-}
+import { LICENSE_STATUS_CONFIG, fmtXAF, fmtK } from '@/modules/oms/utils/formatters'
 
 export default function OMSLicensesPage() {
   const router = useRouter()
   const locale = useLocale()
+  const t = useTranslations('oms.licenses')
   const { toast } = useToast()
 
   const [stats, setStats] = useState<LicenseStats | null>(null)
@@ -81,16 +64,13 @@ export default function OMSLicensesPage() {
           page_size: PAGE_SIZE,
         }),
       ])
-      if (seq === seqRef.current) {
-        setStats(s)
-        setLicenses(l)
-      }
+      if (seq === seqRef.current) { setStats(s); setLicenses(l) }
     } catch {
-      if (seq === seqRef.current) toast({ title: 'Error al cargar licencias', variant: 'destructive' })
+      if (seq === seqRef.current) toast({ title: t('loadError'), variant: 'destructive' })
     } finally {
       if (seq === seqRef.current) setLoading(false)
     }
-  }, [page, statusFilter, yearFilter, toast])
+  }, [page, statusFilter, yearFilter, toast, t])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
@@ -133,7 +113,7 @@ export default function OMSLicensesPage() {
 
   const handleExportCSV = () => {
     if (!filteredItems.length) return
-    const headers = ['empresa', 'nif', 'zona', 'año', 'total', 'pagado', 'balance', 'estado']
+    const headers = [t('company'), 'NIF', t('zone'), t('year'), t('totalAmount'), t('paidAmount'), t('balance'), t('status')]
     const rows = filteredItems.map(l => [
       l.company_name || '', l.company_nif || '', l.zone_code || '',
       String(l.fiscal_year), String(l.total_amount), String(l.amount_paid),
@@ -159,7 +139,7 @@ export default function OMSLicensesPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      toast({ title: 'Error al descargar PDF', variant: 'destructive' })
+      toast({ title: t('downloadError'), variant: 'destructive' })
     }
   }
 
@@ -170,9 +150,9 @@ export default function OMSLicensesPage() {
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
             <FileCheck className="h-5 w-5" />
-            Licencias Comerciales
+            {t('title')}
           </h1>
-          <p className="text-sm text-muted-foreground">Licencias de tu ministerio — año fiscal en curso</p>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
           <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
@@ -190,9 +170,9 @@ export default function OMSLicensesPage() {
             <div className="flex items-center gap-2">
               <FileCheck className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Total licencias</p>
+                <p className="text-xs text-muted-foreground">{t('total')}</p>
                 <p className="text-2xl font-bold">{stats.total_licenses}</p>
-                <p className="text-[10px] text-muted-foreground">{stats.active_licenses} activas</p>
+                <p className="text-[10px] text-muted-foreground">{stats.active_licenses} {t('active')}</p>
               </div>
             </div>
           </Card>
@@ -200,7 +180,7 @@ export default function OMSLicensesPage() {
             <div className="flex items-center gap-2">
               <AlertTriangle className={`h-5 w-5 ${stats.overdue_licenses > 0 ? 'text-red-500' : 'text-gray-300'}`} />
               <div>
-                <p className="text-xs text-muted-foreground">Vencidas</p>
+                <p className="text-xs text-muted-foreground">{t('overdueCount')}</p>
                 <p className="text-2xl font-bold text-red-700">{stats.overdue_licenses}</p>
               </div>
             </div>
@@ -209,7 +189,7 @@ export default function OMSLicensesPage() {
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-amber-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Deuda total</p>
+                <p className="text-xs text-muted-foreground">{t('totalDebt')}</p>
                 <p className="text-lg font-bold">{fmtK(stats.total_debt)} XAF</p>
               </div>
             </div>
@@ -218,7 +198,7 @@ export default function OMSLicensesPage() {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Recuperación</p>
+                <p className="text-xs text-muted-foreground">{t('recovery')}</p>
                 <p className="text-2xl font-bold">{recoveryPct}%</p>
                 <div className="h-1.5 w-full bg-gray-100 rounded-full mt-1 overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-500"
@@ -238,20 +218,20 @@ export default function OMSLicensesPage() {
         <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={searchInput} onChange={e => setSearchInput(e.target.value)}
-            placeholder="Buscar empresa, NIF, zona..." className="pl-8 h-8 text-xs" />
+            placeholder={t('searchPlaceholder')} className="pl-8 h-8 text-xs" />
         </div>
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
+          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder={t('status')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="open">Abiertas</SelectItem>
-            <SelectItem value="partial">Parciales</SelectItem>
-            <SelectItem value="overdue">Vencidas</SelectItem>
-            <SelectItem value="complete">Completas</SelectItem>
+            <SelectItem value="all">{t('allStatuses')}</SelectItem>
+            <SelectItem value="open">{t('open')}</SelectItem>
+            <SelectItem value="partial">{t('partial')}</SelectItem>
+            <SelectItem value="overdue">{t('overdue')}</SelectItem>
+            <SelectItem value="complete">{t('complete')}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={String(yearFilter)} onValueChange={v => { setYearFilter(Number(v)); setPage(1) }}>
-          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue placeholder="Año" /></SelectTrigger>
+          <SelectTrigger className="w-[90px] h-8 text-xs"><SelectValue placeholder={t('year')} /></SelectTrigger>
           <SelectContent>
             {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
               <SelectItem key={y} value={String(y)}>{y}</SelectItem>
@@ -261,7 +241,7 @@ export default function OMSLicensesPage() {
         <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={handleExportCSV}>
           <Download className="h-3.5 w-3.5" /> CSV
         </Button>
-        <span className="text-xs text-muted-foreground self-center">{filteredItems.length}/{licenses?.total ?? 0} licencias</span>
+        <span className="text-xs text-muted-foreground self-center">{filteredItems.length}/{licenses?.total ?? 0}</span>
       </div>
 
       {/* Table */}
@@ -272,43 +252,43 @@ export default function OMSLicensesPage() {
               <TableRow>
                 <TableHead className="text-xs">
                   <button onClick={() => toggleSort('company_name')} className="flex items-center gap-1 hover:text-foreground">
-                    Empresa
+                    {t('company')}
                     {sortCol === 'company_name' ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
                   </button>
                 </TableHead>
-                <TableHead className="text-xs w-[80px]">NIF</TableHead>
-                <TableHead className="text-xs w-[60px]">Zona</TableHead>
-                <TableHead className="text-xs w-[70px]">Año</TableHead>
+                <TableHead className="text-xs w-[80px]">{t('nif')}</TableHead>
+                <TableHead className="text-xs w-[60px]">{t('zone')}</TableHead>
+                <TableHead className="text-xs w-[70px]">{t('year')}</TableHead>
                 <TableHead className="text-xs w-[90px] text-right">
                   <button onClick={() => toggleSort('total_amount')} className="flex items-center gap-1 ml-auto hover:text-foreground">
-                    Total
+                    {t('totalAmount')}
                     {sortCol === 'total_amount' ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
                   </button>
                 </TableHead>
-                <TableHead className="text-xs w-[90px] text-right">Pagado</TableHead>
+                <TableHead className="text-xs w-[90px] text-right">{t('paidAmount')}</TableHead>
                 <TableHead className="text-xs w-[90px] text-right">
                   <button onClick={() => toggleSort('balance')} className="flex items-center gap-1 ml-auto hover:text-foreground">
-                    Balance
+                    {t('balance')}
                     {sortCol === 'balance' ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
                   </button>
                 </TableHead>
-                <TableHead className="text-xs w-[80px]">Estado</TableHead>
-                <TableHead className="text-xs w-[80px]">Acciones</TableHead>
+                <TableHead className="text-xs w-[80px]">{t('status')}</TableHead>
+                <TableHead className="text-xs w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">...</TableCell></TableRow>
               ) : filteredItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                     <FileCheck className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    <p>No hay licencias</p>
+                    <p>{t('noLicenses')}</p>
                   </TableCell>
                 </TableRow>
               ) : filteredItems.map(lic => {
                 const balance = lic.total_amount - lic.amount_paid
-                const cfg = STATUS_BADGE[lic.status] || STATUS_BADGE.open
+                const cfg = LICENSE_STATUS_CONFIG[lic.status] || LICENSE_STATUS_CONFIG.open
                 return (
                   <TableRow key={lic.id} className="cursor-pointer hover:bg-muted/50"
                     onClick={() => router.push(`/${locale}/dashboard/agent/oms/licenses/${lic.id}`)}>
@@ -323,10 +303,10 @@ export default function OMSLicensesPage() {
                       {lic.zone_code && <Badge variant="outline" className="text-[10px]">{lic.zone_code}</Badge>}
                     </TableCell>
                     <TableCell className="text-xs">{lic.fiscal_year}</TableCell>
-                    <TableCell className="text-xs text-right font-mono">{fmtXAF(lic.total_amount)}</TableCell>
-                    <TableCell className="text-xs text-right font-mono text-green-700">{fmtXAF(lic.amount_paid)}</TableCell>
+                    <TableCell className="text-xs text-right font-mono">{fmtXAF(lic.total_amount, locale)}</TableCell>
+                    <TableCell className="text-xs text-right font-mono text-green-700">{fmtXAF(lic.amount_paid, locale)}</TableCell>
                     <TableCell className="text-xs text-right font-mono">
-                      <span className={balance > 0 ? 'text-red-700' : 'text-green-700'}>{fmtXAF(balance)}</span>
+                      <span className={balance > 0 ? 'text-red-700' : 'text-green-700'}>{fmtXAF(balance, locale)}</span>
                     </TableCell>
                     <TableCell>
                       <Badge className={`text-[10px] gap-1 ${cfg.color}`}>
@@ -336,11 +316,11 @@ export default function OMSLicensesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-0.5" onClick={e => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver detalle"
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
                           onClick={() => router.push(`/${locale}/dashboard/agent/oms/licenses/${lic.id}`)}>
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Descargar PDF"
+                        <Button variant="ghost" size="icon" className="h-7 w-7"
                           onClick={() => handleDownloadPDF(lic.id)}>
                           <Download className="h-3.5 w-3.5" />
                         </Button>
@@ -357,7 +337,7 @@ export default function OMSLicensesPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground text-xs">{licenses?.total ?? 0} licencias — Página {page}/{totalPages}</span>
+          <span className="text-muted-foreground text-xs">{licenses?.total ?? 0} — {page}/{totalPages}</span>
           <div className="flex gap-1">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-4 w-4" />

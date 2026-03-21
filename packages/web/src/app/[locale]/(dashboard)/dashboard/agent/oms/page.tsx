@@ -3,15 +3,16 @@
 /**
  * OMS Agent Dashboard — Obligations processing queue
  *
- * Shows the agent's queue of obligations to process, scoped by ministry_id.
- * KPI cards + filterable queue table + batch actions.
+ * Full agent workflow: view queue, process/reject with notes,
+ * mark paid manually, view obligation detail panel, events timeline,
+ * batch operations, filter by status + fee_type.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ClipboardList, Clock, CheckCircle2, AlertTriangle, Search,
   ChevronLeft, ChevronRight, RefreshCw, Play, XCircle, DollarSign,
-  Building2, FileCheck,
+  Building2, FileCheck, Eye, MessageSquare, History,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,42 +20,55 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from '@/components/ui/sheet'
 import { useToast } from '@/hooks/use-toast'
 import { omsQueueApi } from '@/modules/oms/services/api'
-import type { AgentQueueItem, AgentQueueStats } from '@/modules/oms/types'
+import type { AgentQueueItem, AgentQueueStats, ComplianceEvent } from '@/modules/oms/types'
 
-const STATUS_CONFIG: Record<string, { color: string; label: string; icon: typeof Clock }> = {
-  pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pendiente', icon: Clock },
-  processing: { color: 'bg-blue-100 text-blue-800', label: 'En proceso', icon: Play },
-  completed: { color: 'bg-green-100 text-green-800', label: 'Completado', icon: CheckCircle2 },
-  paid: { color: 'bg-emerald-100 text-emerald-800', label: 'Pagado', icon: DollarSign },
-  overdue: { color: 'bg-red-100 text-red-800', label: 'Vencido', icon: AlertTriangle },
-}
-
-function fmtXAF(n: number): string {
-  return new Intl.NumberFormat('es-GQ', { maximumFractionDigits: 0 }).format(n) + ' XAF'
-}
+import { useTranslations } from 'next-intl'
+import { useLocale } from 'next-intl'
+import { OBLIGATION_STATUS_CONFIG as STATUS_CONFIG, fmtXAF } from '@/modules/oms/utils/formatters'
 
 export default function OMSAgentDashboardPage() {
   const { toast } = useToast()
+  const t = useTranslations('oms')
+  const locale = useLocale()
 
   const [stats, setStats] = useState<AgentQueueStats | null>(null)
   const [queue, setQueue] = useState<{ items: AgentQueueItem[]; total: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('all')
-  const [search, setSearch] = useState('')
+  const [feeTypeFilter, setFeeTypeFilter] = useState('all')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [processing, setProcessing] = useState(false)
+
+  // Detail panel
+  const [detailItem, setDetailItem] = useState<AgentQueueItem | null>(null)
+  const [detailEvents, setDetailEvents] = useState<ComplianceEvent[]>([])
+  const [processNotes, setProcessNotes] = useState('')
+
   const debounceRef = useRef<NodeJS.Timeout>()
   const seqRef = useRef(0)
   const PAGE_SIZE = 20
+
+  // Debounced search — sends to backend server-side
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => { setSearch(searchInput); setPage(1) }, 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [searchInput])
 
   const fetchAll = useCallback(async () => {
     const seq = ++seqRef.current
@@ -64,38 +78,24 @@ export default function OMSAgentDashboardPage() {
         omsQueueApi.getStats(),
         omsQueueApi.getQueue({
           status: statusFilter === 'all' ? undefined : statusFilter,
+          fee_type: feeTypeFilter === 'all' ? undefined : feeTypeFilter,
+          search: search || undefined,
           page,
           page_size: PAGE_SIZE,
         }),
       ])
-      if (seq === seqRef.current) {
-        setStats(s)
-        setQueue(q)
-      }
+      if (seq === seqRef.current) { setStats(s); setQueue(q) }
     } catch {
-      if (seq === seqRef.current) toast({ title: 'Error al cargar la cola', variant: 'destructive' })
+      if (seq === seqRef.current) toast({ title: t('queue.loadError'), variant: 'destructive' })
     } finally {
       if (seq === seqRef.current) setLoading(false)
     }
-  }, [page, statusFilter, toast])
+  }, [page, statusFilter, feeTypeFilter, search, toast, t])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 
-  // Search debounce (client-side filter on loaded items)
-  const [searchInput, setSearchInput] = useState('')
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setSearch(searchInput), 300)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [searchInput])
-
-  const filteredItems = queue?.items.filter(item => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (item.company_name?.toLowerCase().includes(q)) ||
-           (item.fee_type?.toLowerCase().includes(q)) ||
-           (item.service_name?.toLowerCase().includes(q))
-  }) ?? []
+  // Items are already server-side filtered — no client-side filtering needed
+  const filteredItems = queue?.items ?? []
 
   const totalPages = queue ? Math.ceil(queue.total / PAGE_SIZE) : 0
 
@@ -108,26 +108,30 @@ export default function OMSAgentDashboardPage() {
     setSelected(next)
   }
 
-  // Actions
-  const handleProcess = async (id: string) => {
+  // ========== ACTIONS ==========
+
+  const handleProcess = async (id: string, notes?: string) => {
     try {
-      await omsQueueApi.processObligation(id)
-      toast({ title: 'Obligación procesada' })
+      await omsQueueApi.processObligation(id, { notes: notes || undefined })
+      toast({ title: t('queue.processed') })
+      setDetailItem(null)
+      setProcessNotes('')
       fetchAll()
     } catch {
-      toast({ title: 'Error al procesar', variant: 'destructive' })
+      toast({ title: t('queue.error'), variant: 'destructive' })
     }
   }
 
   const handleReject = async (id: string) => {
-    const reason = window.prompt('Motivo del rechazo:')
+    const reason = window.prompt(t('queue.rejectReason'))
     if (!reason || reason.length < 5) return
     try {
       await omsQueueApi.rejectObligation(id, { reason })
-      toast({ title: 'Obligación rechazada' })
+      toast({ title: t('queue.rejected') })
+      setDetailItem(null)
       fetchAll()
     } catch {
-      toast({ title: 'Error al rechazar', variant: 'destructive' })
+      toast({ title: t('queue.error'), variant: 'destructive' })
     }
   }
 
@@ -137,13 +141,25 @@ export default function OMSAgentDashboardPage() {
     setProcessing(true)
     try {
       await omsQueueApi.batchProcess(Array.from(selected))
-      toast({ title: `${selected.size} obligaciones procesadas` })
+      toast({ title: `${selected.size} ${t('queue.batchProcessed')}` })
       setSelected(new Set())
       fetchAll()
     } catch {
-      toast({ title: 'Error en batch', variant: 'destructive' })
+      toast({ title: t('queue.error'), variant: 'destructive' })
     } finally {
       setProcessing(false)
+    }
+  }
+
+  // Open detail panel
+  const openDetail = async (item: AgentQueueItem) => {
+    setDetailItem(item)
+    setProcessNotes('')
+    try {
+      const evts = await omsQueueApi.getObligationEvents(item.id)
+      setDetailEvents(evts.items ?? [])
+    } catch {
+      setDetailEvents([])
     }
   }
 
@@ -154,9 +170,9 @@ export default function OMSAgentDashboardPage() {
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Cola de Obligaciones
+            {t('queue.title')}
           </h1>
-          <p className="text-sm text-muted-foreground">Gestión de obligaciones fiscales de tu ministerio</p>
+          <p className="text-sm text-muted-foreground">{t('queue.subtitle')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
           <RefreshCw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} />
@@ -174,7 +190,7 @@ export default function OMSAgentDashboardPage() {
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Pendientes</p>
+                <p className="text-xs text-muted-foreground">{t('queue.pending')}</p>
                 <p className="text-2xl font-bold">{stats.pending_count}</p>
               </div>
             </div>
@@ -183,7 +199,7 @@ export default function OMSAgentDashboardPage() {
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Completados hoy</p>
+                <p className="text-xs text-muted-foreground">{t('queue.completedToday')}</p>
                 <p className="text-2xl font-bold">{stats.completed_today}</p>
               </div>
             </div>
@@ -192,8 +208,8 @@ export default function OMSAgentDashboardPage() {
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-amber-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Monto pendiente</p>
-                <p className="text-lg font-bold">{fmtXAF(stats.total_amount_pending)}</p>
+                <p className="text-xs text-muted-foreground">{t('queue.pendingAmount')}</p>
+                <p className="text-lg font-bold">{fmtXAF(stats.total_amount_pending, locale)}</p>
               </div>
             </div>
           </Card>
@@ -201,43 +217,52 @@ export default function OMSAgentDashboardPage() {
             <div className="flex items-center gap-2">
               <FileCheck className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Procesado hoy</p>
-                <p className="text-lg font-bold">{fmtXAF(stats.total_amount_completed_today)}</p>
+                <p className="text-xs text-muted-foreground">{t('queue.processedToday')}</p>
+                <p className="text-lg font-bold">{fmtXAF(stats.total_amount_completed_today, locale)}</p>
               </div>
             </div>
           </Card>
         </>) : null}
       </div>
 
-      {/* Filters + Bulk actions */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[180px]">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={searchInput} onChange={e => setSearchInput(e.target.value)}
-            placeholder="Buscar empresa, tipo, servicio..." className="pl-8 h-8 text-xs" />
+            placeholder={t('queue.searchPlaceholder')} className="pl-8 h-8 text-xs" />
         </div>
         <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Estado" /></SelectTrigger>
+          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder={t('queue.status')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="processing">En proceso</SelectItem>
-            <SelectItem value="paid">Pagado</SelectItem>
-            <SelectItem value="completed">Completado</SelectItem>
+            <SelectItem value="all">{t('queue.allStatuses')}</SelectItem>
+            <SelectItem value="processing">{t('queue.processing')}</SelectItem>
+            <SelectItem value="paid">{t('queue.paid')}</SelectItem>
+            <SelectItem value="completed">{t('queue.completed')}</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-xs text-muted-foreground self-center">{queue?.total ?? 0} obligaciones</span>
+        <Select value={feeTypeFilter} onValueChange={v => { setFeeTypeFilter(v); setPage(1) }}>
+          <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder={t('queue.allFeeTypes')} /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('queue.allFeeTypes')}</SelectItem>
+            <SelectItem value="tesoro">Tesoro</SelectItem>
+            <SelectItem value="municipal">Municipal</SelectItem>
+            <SelectItem value="chamber">Cámara</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground self-center">{filteredItems.length}/{queue?.total ?? 0}</span>
       </div>
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
         <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <span className="text-xs font-medium text-blue-700">{selected.size} seleccionadas</span>
+          <span className="text-xs font-medium text-blue-700">{selected.size} {t('queue.selected')}</span>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 ml-auto"
             onClick={handleBatchProcess} disabled={processing}>
-            <CheckCircle2 className="h-3 w-3" /> Procesar batch
+            <CheckCircle2 className="h-3 w-3" /> {t('queue.batchProcess')}
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>
-            Cancelar
+            {t('queue.cancel')}
           </Button>
         </div>
       )}
@@ -252,23 +277,21 @@ export default function OMSAgentDashboardPage() {
                   <Checkbox checked={allSelected && filteredItems.length > 0} onCheckedChange={toggleSelectAll} />
                 </TableHead>
                 <TableHead className="text-xs">Empresa</TableHead>
-                <TableHead className="text-xs w-[100px]">Tipo</TableHead>
-                <TableHead className="text-xs w-[100px]">Servicio</TableHead>
+                <TableHead className="text-xs w-[90px]">Tipo tasa</TableHead>
                 <TableHead className="text-xs w-[90px] text-right">Monto</TableHead>
                 <TableHead className="text-xs w-[80px]">Vence</TableHead>
                 <TableHead className="text-xs w-[80px]">Estado</TableHead>
-                <TableHead className="text-xs w-[100px]">Acciones</TableHead>
+                <TableHead className="text-xs w-[120px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">...</TableCell></TableRow>
               ) : filteredItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     <ClipboardList className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    <p>No hay obligaciones en la cola</p>
-                    {statusFilter !== 'all' && <p className="text-xs mt-1">Prueba cambiando el filtro de estado</p>}
+                    <p>{t('queue.noObligations')}</p>
                   </TableCell>
                 </TableRow>
               ) : filteredItems.map(item => {
@@ -286,24 +309,35 @@ export default function OMSAgentDashboardPage() {
                     <TableCell className="text-xs font-medium">
                       <div className="flex items-center gap-1.5">
                         <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate max-w-[180px]">{item.company_name || '—'}</span>
+                        <span className="truncate max-w-[160px]">{item.company_name || '—'}</span>
                       </div>
                       {item.zone_code && <span className="text-[10px] text-muted-foreground ml-5">{item.zone_code}</span>}
                     </TableCell>
-                    <TableCell className="text-xs">{item.fee_type}</TableCell>
-                    <TableCell className="text-xs truncate max-w-[100px]">{item.service_name || '—'}</TableCell>
+                    <TableCell className="text-xs">
+                      <Badge variant="outline" className="text-[10px] uppercase">{item.fee_type}</Badge>
+                    </TableCell>
                     <TableCell className="text-xs text-right font-mono">
-                      {fmtXAF(item.amount)}
+                      {fmtXAF(item.amount, locale)}
                       {item.penalty_amount > 0 && (
-                        <span className="block text-[10px] text-red-500">+{fmtXAF(item.penalty_amount)}</span>
+                        <span className="block text-[10px] text-red-500">+{fmtXAF(item.penalty_amount, locale)}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs">{item.due_date || '—'}</TableCell>
                     <TableCell>
-                      <Badge className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
+                      <Badge className={`text-[10px] gap-1 ${cfg.color}`}>
+                        <cfg.icon className="h-3 w-3" />{cfg.label}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-0.5">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver detalle"
+                          onClick={() => openDetail(item)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title={t('queue.processWithNotes')}
+                          onClick={() => { setDetailItem(item); setProcessNotes('') }}>
+                          <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Procesar"
                           onClick={() => handleProcess(item.id)}>
                           <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
@@ -325,7 +359,7 @@ export default function OMSAgentDashboardPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground text-xs">{queue?.total ?? 0} obligaciones — Página {page}/{totalPages}</span>
+          <span className="text-muted-foreground text-xs">Página {page}/{totalPages}</span>
           <div className="flex gap-1">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-4 w-4" />
@@ -336,6 +370,91 @@ export default function OMSAgentDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* ========== DETAIL PANEL (Sheet) ========== */}
+      <Sheet open={!!detailItem} onOpenChange={open => { if (!open) setDetailItem(null) }}>
+        <SheetContent side="right" className="w-[400px] sm:w-[480px] overflow-y-auto">
+          {detailItem && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4" />
+                  {detailItem.company_name || 'Obligación'}
+                </SheetTitle>
+                <SheetDescription>
+                  {detailItem.fee_type} · {detailItem.service_name || 'Servicio'} · {detailItem.zone_code || ''}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-4 mt-4">
+                {/* Detail fields */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div><span className="text-muted-foreground">{t('queue.amount')}:</span><br/><strong className="text-base">{fmtXAF(detailItem.amount, locale)}</strong></div>
+                  <div><span className="text-muted-foreground">{t('queue.penalty')}:</span><br/><strong className={`text-base ${detailItem.penalty_amount > 0 ? 'text-red-700' : ''}`}>{fmtXAF(detailItem.penalty_amount, locale)}</strong></div>
+                  <div><span className="text-muted-foreground">Vencimiento:</span><br/><strong>{detailItem.due_date || 'N/A'}</strong></div>
+                  <div><span className="text-muted-foreground">Estado:</span><br/>
+                    <Badge className={`text-xs ${(STATUS_CONFIG[detailItem.status] || STATUS_CONFIG.pending).color}`}>
+                      {(STATUS_CONFIG[detailItem.status] || STATUS_CONFIG.pending).label}
+                    </Badge>
+                  </div>
+                  <div><span className="text-muted-foreground">Año fiscal:</span><br/><strong>{detailItem.fiscal_year || 'N/A'}</strong></div>
+                  <div><span className="text-muted-foreground">Ministerio:</span><br/><strong className="text-[11px]">{detailItem.ministry_name || 'N/A'}</strong></div>
+                </div>
+
+                {/* Notes + Process */}
+                <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
+                  <p className="text-xs font-medium">{t('queue.processWithNotes')}:</p>
+                  <Textarea
+                    value={processNotes}
+                    onChange={e => setProcessNotes(e.target.value)}
+                    placeholder="Notas de procesamiento (documento emitido, observaciones...)"
+                    className="text-xs h-20 resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1 h-8 text-xs gap-1"
+                      onClick={() => handleProcess(detailItem.id, processNotes)}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Procesar
+                    </Button>
+                    <Button size="sm" variant="destructive" className="h-8 text-xs gap-1"
+                      onClick={() => handleReject(detailItem.id)}>
+                      <XCircle className="h-3.5 w-3.5" /> Rechazar
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Events timeline */}
+                <div>
+                  <p className="text-xs font-medium flex items-center gap-1 mb-2">
+                    <History className="h-3.5 w-3.5" /> {t('queue.history')} ({detailEvents.length})
+                  </p>
+                  {detailEvents.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground">{t('queue.noEvents')}</p>
+                  ) : (
+                    <div className="relative pl-5 space-y-2">
+                      <div className="absolute left-[7px] top-1 bottom-1 w-px bg-gray-200" />
+                      {detailEvents.slice(0, 10).map(evt => (
+                        <div key={evt.id} className="relative">
+                          <div className={`absolute -left-5 top-1 h-3 w-3 rounded-full border-2 ${
+                            evt.event_type.includes('PAID') || evt.event_type.includes('COMPLETED') ? 'border-green-500 bg-green-100' :
+                            evt.event_type.includes('OVERDUE') ? 'border-red-500 bg-red-100' :
+                            'border-gray-400 bg-gray-100'
+                          }`} />
+                          <div className="text-[10px]">
+                            <Badge variant="outline" className="text-[9px] font-mono">{evt.event_type}</Badge>
+                            <span className="text-muted-foreground ml-1">
+                              {new Date(evt.created_at).toLocaleDateString('es-GQ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

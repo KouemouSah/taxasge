@@ -255,6 +255,28 @@ class EventType(str, Enum):
     """All obligations completed — trigger PDF generation + email to citizen"""
 
     # ==========================================================================
+    # OMS OBLIGATION EVENTS
+    # ==========================================================================
+
+    OBLIGATION_ROUTED = "obligation.routed"
+    """Obligation routed to target entity agent after payment validation"""
+
+    OBLIGATION_PROCESSED = "obligation.processed"
+    """Obligation processed (approved) by agent"""
+
+    OBLIGATION_REJECTED = "obligation.rejected"
+    """Obligation rejected by agent (returned to paid for re-routing)"""
+
+    OBLIGATION_OVERDUE = "obligation.overdue"
+    """Obligation flagged as overdue (past due_date)"""
+
+    OBLIGATION_PENALTY_APPLIED = "obligation.penalty_applied"
+    """Penalty calculated and applied on overdue obligation"""
+
+    OBLIGATION_REMINDER_SENT = "obligation.reminder_sent"
+    """Automated reminder sent (email/SMS) for upcoming or overdue obligation"""
+
+    # ==========================================================================
     # SYSTEM EVENTS
     # ==========================================================================
 

@@ -507,6 +507,9 @@ class LicenseRepository:
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
         status_filter: Optional[List[str]] = None,
+        fee_type: Optional[str] = None,
+        search: Optional[str] = None,
+        agent_profile_id: Optional[UUID] = None,
         page: int = 1,
         page_size: int = 50,
     ) -> Tuple[List[Dict], int]:
@@ -514,6 +517,10 @@ class LicenseRepository:
 
         Ministry agent (Mode A): filter by ministry_id + processing_mode='per_line'
         Polyvalent agent (Mode B): filter by processing_mode='consolidated'
+
+        When agent_profile_id is provided, only obligations assigned to this agent
+        are returned (via JOIN assignments). Supervisors pass agent_profile_id=None
+        to see all obligations in their scope.
         """
         if status_filter is None:
             status_filter = ["processing"]
@@ -521,6 +528,7 @@ class LicenseRepository:
         conditions = []
         params = []
         idx = 1
+        assignment_join = ""
 
         # Status filter
         placeholders = ", ".join(f"${idx + i}" for i in range(len(status_filter)))
@@ -540,12 +548,43 @@ class LicenseRepository:
             params.append(processing_mode)
             idx += 1
 
+        # Fee type filter
+        if fee_type:
+            conditions.append(f"lo.fee_type = ${idx}")
+            params.append(fee_type)
+            idx += 1
+
+        # Search filter (company name, NIF, registration_number, service name)
+        if search:
+            conditions.append(f"""(
+                co.legal_name ILIKE ${idx}
+                OR co.nif ILIKE ${idx}
+                OR co.registration_number ILIKE ${idx}
+                OR fs.name_es ILIKE ${idx}
+            )""")
+            params.append(f"%{search}%")
+            idx += 1
+
+        # Assignment filter (non-supervisors only see their assigned obligations)
+        if agent_profile_id is not None:
+            assignment_join = f"""
+            JOIN assignments a ON a.item_id = lo.id
+                AND a.item_type = 'obligation_processing'
+                AND a.agent_profile_id = ${idx}
+                AND a.status IN ('assigned', 'in_progress')
+            """
+            params.append(agent_profile_id)
+            idx += 1
+
         where = "WHERE " + " AND ".join(conditions)
 
         count_row = await conn.fetchrow(f"""
             SELECT COUNT(*) as total
             FROM license_obligations lo
             JOIN commercial_licenses cl ON cl.id = lo.license_id
+            LEFT JOIN companies co ON cl.company_id = co.id
+            LEFT JOIN fiscal_services fs ON lo.fiscal_service_id = fs.id
+            {assignment_join}
             {where}
         """, *params)
         total = count_row["total"]
@@ -560,6 +599,7 @@ class LicenseRepository:
                    cl.fiscal_year,
                    cl.processing_mode,
                    co.legal_name as company_name,
+                   co.nif as company_nif,
                    cz.zone_code
             FROM license_obligations lo
             JOIN commercial_licenses cl ON cl.id = lo.license_id
@@ -567,6 +607,7 @@ class LicenseRepository:
             LEFT JOIN ministries m ON lo.ministry_id = m.id
             LEFT JOIN companies co ON cl.company_id = co.id
             LEFT JOIN commerce_zones cz ON cl.zone_id = cz.id
+            {assignment_join}
             {where}
             ORDER BY lo.due_date ASC NULLS LAST, lo.amount DESC
             LIMIT ${idx} OFFSET ${idx + 1}
@@ -579,11 +620,18 @@ class LicenseRepository:
         conn,
         ministry_id: Optional[int] = None,
         processing_mode: Optional[str] = None,
+        fee_type: Optional[str] = None,
+        agent_profile_id: Optional[UUID] = None,
     ) -> Dict:
-        """Aggregated stats for agent OMS dashboard."""
+        """Aggregated stats for agent OMS dashboard.
+
+        When agent_profile_id is provided, stats are scoped to assigned obligations.
+        fee_type is used for independent agents (ayuntamiento=municipal, camara=chamber).
+        """
         conditions = []
         params = []
         idx = 1
+        assignment_join = ""
 
         if ministry_id is not None:
             conditions.append(f"lo.ministry_id = ${idx}")
@@ -593,6 +641,21 @@ class LicenseRepository:
         if processing_mode:
             conditions.append(f"cl.processing_mode = ${idx}")
             params.append(processing_mode)
+            idx += 1
+
+        if fee_type:
+            conditions.append(f"lo.fee_type = ${idx}")
+            params.append(fee_type)
+            idx += 1
+
+        if agent_profile_id is not None:
+            assignment_join = f"""
+            JOIN assignments a ON a.item_id = lo.id
+                AND a.item_type = 'obligation_processing'
+                AND a.agent_profile_id = ${idx}
+                AND a.status IN ('assigned', 'in_progress', 'completed')
+            """
+            params.append(agent_profile_id)
             idx += 1
 
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
@@ -613,9 +676,150 @@ class LicenseRepository:
                 ), 0) as total_amount_completed_today
             FROM license_obligations lo
             JOIN commercial_licenses cl ON cl.id = lo.license_id
+            {assignment_join}
             {where}
         """, *params)
         return dict(row)
+
+    @staticmethod
+    async def get_compliance_summary(
+        conn,
+        fiscal_year: int,
+        ministry_id: Optional[int] = None,
+    ) -> List[Dict]:
+        """Aggregated compliance summary by fee_type for a fiscal year.
+
+        Single query using LATERAL JOIN for overdue companies — no N+1.
+        Returns 1 row per fee_type with: counts, amounts, recovery %, overdue companies.
+        """
+        import json as _json
+
+        conditions = ["cl.fiscal_year = $1"]
+        params: list = [fiscal_year]
+        idx = 2
+
+        if ministry_id is not None:
+            conditions.append(f"lo.ministry_id = ${idx}")
+            params.append(ministry_id)
+            idx += 1
+
+        where = "WHERE " + " AND ".join(conditions)
+        ministry_clause = f"AND lo2.ministry_id = $2" if ministry_id is not None else ""
+
+        # Single query: aggregation + overdue companies via LATERAL subquery
+        rows = await conn.fetch(f"""
+            WITH fee_stats AS (
+                SELECT
+                    lo.fee_type,
+                    COUNT(*) as total_obligations,
+                    COUNT(*) FILTER (
+                        WHERE lo.status IN ('paid', 'completed', 'processing')
+                    ) as paid,
+                    COUNT(*) FILTER (
+                        WHERE lo.status IN ('pending', 'selected', 'payment_pending')
+                    ) as pending,
+                    COUNT(*) FILTER (WHERE lo.status = 'overdue') as overdue,
+                    COALESCE(SUM(lo.amount), 0) as total_amount,
+                    COALESCE(SUM(lo.amount) FILTER (
+                        WHERE lo.status IN ('paid', 'completed', 'processing')
+                    ), 0) as paid_amount,
+                    COALESCE(SUM(lo.amount) FILTER (
+                        WHERE lo.status = 'overdue'
+                    ), 0) as overdue_amount,
+                    COALESCE(SUM(lo.penalty_amount) FILTER (
+                        WHERE lo.status = 'overdue'
+                    ), 0) as overdue_penalty
+                FROM license_obligations lo
+                JOIN commercial_licenses cl ON cl.id = lo.license_id
+                {where}
+                GROUP BY lo.fee_type
+            ),
+            overdue_companies AS (
+                SELECT
+                    lo2.fee_type,
+                    co.legal_name as company_name,
+                    co.nif as company_nif,
+                    cz.zone_code,
+                    cl2.id as license_id,
+                    SUM(lo2.amount) as amount,
+                    COALESCE(SUM(lo2.penalty_amount), 0) as penalty,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY lo2.fee_type
+                        ORDER BY SUM(lo2.amount) DESC
+                    ) as rn
+                FROM license_obligations lo2
+                JOIN commercial_licenses cl2 ON cl2.id = lo2.license_id
+                LEFT JOIN companies co ON cl2.company_id = co.id
+                LEFT JOIN commerce_zones cz ON cl2.zone_id = cz.id
+                WHERE lo2.status = 'overdue'
+                  AND cl2.fiscal_year = $1
+                  {ministry_clause}
+                GROUP BY lo2.fee_type, co.legal_name, co.nif,
+                         cz.zone_code, cl2.id
+            )
+            SELECT
+                fs.*,
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'company_name', oc.company_name,
+                            'company_nif', oc.company_nif,
+                            'zone', oc.zone_code,
+                            'license_id', oc.license_id::text,
+                            'amount', oc.amount,
+                            'penalty', oc.penalty
+                        ) ORDER BY oc.amount DESC
+                    ) FILTER (WHERE oc.company_name IS NOT NULL AND oc.rn <= 50),
+                    '[]'::json
+                ) as overdue_companies_json
+            FROM fee_stats fs
+            LEFT JOIN overdue_companies oc ON oc.fee_type = fs.fee_type
+            GROUP BY fs.fee_type, fs.total_obligations, fs.paid,
+                     fs.pending, fs.overdue, fs.total_amount,
+                     fs.paid_amount, fs.overdue_amount, fs.overdue_penalty
+            ORDER BY fs.overdue_amount DESC
+        """, *params)
+
+        result = []
+        for r in rows:
+            total = float(r["total_amount"]) if r["total_amount"] else 0
+            paid = float(r["paid_amount"]) if r["paid_amount"] else 0
+            recovery_pct = round((paid / total) * 100) if total > 0 else 0
+
+            # Parse JSON-aggregated overdue companies (already sorted, limited)
+            raw_companies = r["overdue_companies_json"]
+            if isinstance(raw_companies, str):
+                overdue_companies = _json.loads(raw_companies)
+            elif isinstance(raw_companies, list):
+                overdue_companies = raw_companies
+            else:
+                overdue_companies = []
+
+            result.append({
+                "fee_type": r["fee_type"],
+                "total_obligations": r["total_obligations"],
+                "paid": r["paid"],
+                "pending": r["pending"],
+                "overdue": r["overdue"],
+                "total_amount": float(r["total_amount"]),
+                "paid_amount": float(r["paid_amount"]),
+                "overdue_amount": float(r["overdue_amount"]),
+                "overdue_penalty": float(r["overdue_penalty"]),
+                "recovery_pct": recovery_pct,
+                "overdue_companies": [
+                    {
+                        "company_name": c["company_name"] or "—",
+                        "company_nif": c["company_nif"],
+                        "zone": c["zone_code"],
+                        "license_id": str(c["license_id"]),
+                        "amount": float(c["amount"]),
+                        "penalty": float(c["penalty"]),
+                    }
+                    for c in overdue_companies
+                ],
+            })
+
+        return result
 
     # ==================================================================
     # Stats

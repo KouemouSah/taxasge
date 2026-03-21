@@ -5382,7 +5382,8 @@
       "error": "Processing error",
       "loadError": "Loading error",
       "history": "History",
-      "noEvents": "No events"
+      "noEvents": "No events",
+      "penalty": "Penalty"
     },
     "licenses": {
       "title": "Commercial Licenses",
@@ -5424,7 +5425,13 @@
       "distribution": "Obligation distribution",
       "penalties": "Penalties",
       "notFound": "License not found",
-      "back": "Back"
+      "back": "Back",
+      "loadError": "Error loading licenses",
+      "error": "Processing error",
+      "processed": "Obligation processed",
+      "rejected": "Obligation rejected",
+      "rejectReason": "Rejection reason (min 5 characters):",
+      "history": "History"
     },
     "compliance": {
       "title": "Compliance by Fee Type",

@@ -5625,7 +5625,8 @@
       "error": "Erreur de traitement",
       "loadError": "Erreur de chargement",
       "history": "Historique",
-      "noEvents": "Aucun événement"
+      "noEvents": "Aucun événement",
+      "penalty": "Pénalité"
     },
     "licenses": {
       "title": "Licences Commerciales",
@@ -5667,7 +5668,13 @@
       "distribution": "Distribution obligations",
       "penalties": "Pénalités",
       "notFound": "Licence non trouvée",
-      "back": "Retour"
+      "back": "Retour",
+      "loadError": "Erreur lors du chargement des licences",
+      "error": "Erreur lors du traitement",
+      "processed": "Obligation traitée",
+      "rejected": "Obligation rejetée",
+      "rejectReason": "Motif du rejet (min 5 caractères) :",
+      "history": "Historique"
     },
     "compliance": {
       "title": "Conformité par Type de Taxe",

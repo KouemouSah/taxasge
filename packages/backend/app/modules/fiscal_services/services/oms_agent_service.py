@@ -17,19 +17,44 @@ logger = logging.getLogger(__name__)
 
 # Roles that can access OMS processing queue
 OMS_PROCESSOR_ROLES = {
+    # Treasury / Tesoro agents (existing, pre-OMS)
+    "agent_tesoro",
+    # Municipal agents (independent, Addendum 3)
+    "agent_ayuntamiento",
+    # Chamber agents (independent, Addendum 3)
+    "agent_camara",
     # Ministry agents (Mode A per-line)
     "agent_min_comercio", "agent_min_hacienda", "agent_min_informacion",
     "agent_min_turismo", "agent_min_agricultura", "agent_min_electricidad",
+    # Municipal & Chamber supervisors
+    "supervisor_ayuntamiento", "supervisor_camara",
     # Ministry supervisors (Mode A per-line)
     "supervisor_min_comercio", "supervisor_min_hacienda", "supervisor_min_informacion",
     "supervisor_min_turismo", "supervisor_min_agricultura", "supervisor_min_electricidad",
     # Polyvalent (Mode B consolidated)
     "agent_oms_polyvalent",
-    # TESORO supervisor (supervises polyvalent)
+    # TESORO supervisor (supervises polyvalent + tesoro agents)
     "supervisor_tesoro",
 }
 
 POLYVALENT_ROLES = {"agent_oms_polyvalent", "supervisor_tesoro"}
+
+# Roles that see ALL obligations in their scope (no assignment filter)
+SUPERVISOR_ROLES = {
+    "supervisor_tesoro", "supervisor_ayuntamiento", "supervisor_camara",
+    "supervisor_min_comercio", "supervisor_min_hacienda", "supervisor_min_informacion",
+    "supervisor_min_turismo", "supervisor_min_agricultura", "supervisor_min_electricidad",
+}
+
+# Roles that process obligations independent of Mode A/B (Addendum 3).
+# Municipal and chamber obligations exist on BOTH per_line and consolidated
+# licenses. These agents must NOT filter by processing_mode — only by fee_type.
+INDEPENDENT_FEE_ROLES = {
+    "agent_ayuntamiento": "municipal",
+    "supervisor_ayuntamiento": "municipal",
+    "agent_camara": "chamber",
+    "supervisor_camara": "chamber",
+}
 
 
 class OmsAgentService:
@@ -41,8 +66,8 @@ class OmsAgentService:
 
         Returns:
             {
-                entity_id, entity_code, entity_location_id, region,
-                role_code, ministry_id, is_supervisor,
+                agent_profile_id, entity_id, entity_code, entity_location_id,
+                region, role_code, ministry_id, is_supervisor,
                 is_polyvalent: bool,
                 queue_processing_mode: 'per_line' | 'consolidated',
                 queue_ministry_id: int | None,
@@ -52,6 +77,7 @@ class OmsAgentService:
         """
         row = await conn.fetchrow("""
             SELECT
+                ap.id AS agent_profile_id,
                 ap.entity_id, ap.ministry_id, ap.entity_location_id,
                 ap.is_supervisor,
                 e.code AS entity_code,
@@ -76,18 +102,40 @@ class OmsAgentService:
             )
 
         is_polyvalent = role_code in POLYVALENT_ROLES
+        is_supervisor = role_code in SUPERVISOR_ROLES or row["is_supervisor"]
+        is_independent = role_code in INDEPENDENT_FEE_ROLES
+
+        # Determine queue scope:
+        # - Polyvalent: processing_mode='consolidated', no ministry filter
+        # - Independent (ayuntamiento/camara): NO processing_mode filter, fee_type filter
+        # - Ministry (Mode A): processing_mode='per_line', ministry filter
+        if is_polyvalent:
+            queue_mode = "consolidated"
+            queue_ministry = None
+            queue_fee_type = None
+        elif is_independent:
+            queue_mode = None  # No processing_mode filter (Addendum 3)
+            queue_ministry = None  # No ministry filter (independent entity)
+            queue_fee_type = INDEPENDENT_FEE_ROLES[role_code]
+        else:
+            queue_mode = "per_line"
+            queue_ministry = row["ministry_id"]
+            queue_fee_type = None
 
         return {
+            "agent_profile_id": row["agent_profile_id"],
             "entity_id": row["entity_id"],
             "entity_code": row["entity_code"],
             "entity_location_id": row["entity_location_id"],
             "region": row["region"],
             "role_code": role_code,
             "ministry_id": row["ministry_id"],
-            "is_supervisor": row["is_supervisor"],
+            "is_supervisor": is_supervisor,
             "is_polyvalent": is_polyvalent,
-            "queue_processing_mode": "consolidated" if is_polyvalent else "per_line",
-            "queue_ministry_id": None if is_polyvalent else row["ministry_id"],
+            "is_independent": is_independent,
+            "queue_processing_mode": queue_mode,
+            "queue_ministry_id": queue_ministry,
+            "queue_fee_type": queue_fee_type,
         }
 
     # ==================================================================
@@ -98,22 +146,35 @@ class OmsAgentService:
     async def get_queue(
         conn, user_id: UUID,
         status: Optional[str] = None,
+        fee_type: Optional[str] = None,
+        search: Optional[str] = None,
         page: int = 1, page_size: int = 50,
     ) -> Tuple[List[Dict], int]:
-        """Get agent's obligation queue, auto-filtered by entity scope.
+        """Get agent's obligation queue, auto-filtered by entity scope + assignment.
 
-        Ministry agent (Mode A): obligations WHERE ministry_id matches AND per_line
-        Polyvalent (Mode B): obligations WHERE consolidated
+        Regular agents: see only obligations assigned to them via AutoAssignmentService.
+        Supervisors: see all obligations in their ministry/mode scope.
         """
         ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
 
         status_filter = [status] if status else ["processing"]
+
+        # Supervisors see all; agents see only their assigned obligations
+        agent_profile_id = None if ctx["is_supervisor"] else ctx["agent_profile_id"]
+
+        # Role-scoped fee_type takes priority over user-requested fee_type.
+        # Independent agents (ayuntamiento=municipal, camara=chamber) are locked
+        # to their fee_type — user dropdown cannot override.
+        effective_fee_type = ctx["queue_fee_type"] or fee_type
 
         return await LicenseRepository.get_agent_queue(
             conn,
             ministry_id=ctx["queue_ministry_id"],
             processing_mode=ctx["queue_processing_mode"],
             status_filter=status_filter,
+            fee_type=effective_fee_type,
+            search=search,
+            agent_profile_id=agent_profile_id,
             page=page, page_size=page_size,
         )
 
@@ -122,10 +183,14 @@ class OmsAgentService:
         """Queue stats for agent OMS dashboard."""
         ctx = await OmsAgentService.resolve_agent_context(conn, user_id)
 
+        agent_profile_id = None if ctx["is_supervisor"] else ctx["agent_profile_id"]
+
         return await LicenseRepository.get_agent_queue_stats(
             conn,
             ministry_id=ctx["queue_ministry_id"],
             processing_mode=ctx["queue_processing_mode"],
+            fee_type=ctx["queue_fee_type"],
+            agent_profile_id=agent_profile_id,
         )
 
     # ==================================================================
