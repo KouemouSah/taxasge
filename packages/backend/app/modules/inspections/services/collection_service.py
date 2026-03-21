@@ -1,14 +1,14 @@
 """Collection Service — Field payment collection (cash / mobile money).
 
-Handles cash receipts and mobile money payments collected in the field.
-Fixes: C1 (INSERT columns), C2 (sequence), M4 (Decimal), m10 (collection_type)
+Fixes: H1 (no hardcoded values), H9 (fee_type from obligations), H11 (partial support),
+       D2 (dynamic fee_type), OWASP A04 (replay protection)
 """
 
 import hashlib
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from app.modules.inspections.repositories.inspection_repository import (
@@ -28,7 +28,6 @@ def _generate_payment_reference(method: str) -> str:
 
 
 def _normalize_amount(val: Decimal) -> Decimal:
-    """Normalize Decimal to 2 decimal places for comparison (fix M4)."""
     return val.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
@@ -55,9 +54,16 @@ class CollectionService:
         if not obligation_ids:
             raise ValueError("At least one obligation ID is required")
 
+        # OWASP A04: Replay protection — check if already collected
+        if inspection.get("payment_collected"):
+            raise ValueError(
+                "Payment already collected for this inspection. "
+                "Cannot collect twice."
+            )
+
         # Verify obligations exist and are collectible
         obls = await conn.fetch("""
-            SELECT id, status, amount, penalty_amount
+            SELECT id, status, amount, penalty_amount, fee_type
             FROM license_obligations
             WHERE id = ANY($1::uuid[])
               AND license_id = $2
@@ -78,7 +84,7 @@ class CollectionService:
                 f"Invalid: {[str(o['id']) for o in uncollectable]}"
             )
 
-        # Fix M4: Normalize decimals before comparison
+        # Normalize and compare amounts
         expected_total = _normalize_amount(sum(
             _normalize_amount(o["amount"] or Decimal("0"))
             + _normalize_amount(o["penalty_amount"] or Decimal("0"))
@@ -92,6 +98,10 @@ class CollectionService:
                 f"received {received} XAF"
             )
 
+        # H9/D2: Determine fee_type dynamically from obligations
+        fee_types = list({o["fee_type"] for o in obls if o["fee_type"]})
+        effective_fee_type = fee_types[0] if len(fee_types) == 1 else "tesoro"
+
         # Resolve agent context for entity_code
         from app.modules.inspections.services.inspection_service import (
             InspectionService,
@@ -100,13 +110,13 @@ class CollectionService:
 
         if method == "cash":
             return await CollectionService._collect_cash(
-                conn, inspection, user_id, ctx, obligation_ids,
-                expected_total, notes,
+                conn, inspection, user_id, ctx, obls, obligation_ids,
+                expected_total, effective_fee_type, notes,
             )
         elif method == "mobile_money":
             return await CollectionService._collect_mobile_money(
-                conn, inspection, user_id, ctx, obligation_ids,
-                expected_total, phone_number, notes,
+                conn, inspection, user_id, ctx, obls, obligation_ids,
+                expected_total, effective_fee_type, phone_number, notes,
             )
         else:
             raise ValueError(f"Unsupported payment method: {method}")
@@ -114,11 +124,12 @@ class CollectionService:
     @staticmethod
     async def _collect_cash(
         conn, inspection: dict, user_id: UUID, ctx: dict,
-        obligation_ids: List[UUID], amount: Decimal,
+        obls: list, obligation_ids: List[UUID],
+        amount: Decimal, fee_type: str,
         notes: Optional[str],
     ) -> dict:
-        """Process cash collection → receipt + treasury pipeline."""
-        # Fix C2: Use PostgreSQL SEQUENCE instead of MAX+1
+        """Process cash collection."""
+        # Use PostgreSQL SEQUENCE
         seq_row = await conn.fetchrow(
             "SELECT nextval('field_receipt_seq') AS seq"
         )
@@ -128,11 +139,18 @@ class CollectionService:
 
         payment_ref = _generate_payment_reference("cash")
 
-        # Fix C1: Complete INSERT with all NOT NULL columns
+        # Compute penalties separately
+        base = _normalize_amount(sum(
+            _normalize_amount(o["amount"] or Decimal("0")) for o in obls
+        ))
+        penalties = _normalize_amount(sum(
+            _normalize_amount(o["penalty_amount"] or Decimal("0")) for o in obls
+        ))
+
         payment_row = await conn.fetchrow("""
             INSERT INTO service_payments (
                 payment_reference, user_id, company_id,
-                payment_type, base_amount, total_amount,
+                payment_type, base_amount, penalties, total_amount,
                 payment_method, currency, entity_code,
                 workflow_status, fee_type,
                 receipt_number,
@@ -142,37 +160,30 @@ class CollectionService:
             )
             VALUES (
                 $1, $2, $3,
-                'full', $4, $4,
-                'cash', 'XAF', $5,
-                'pending_agent_review', 'tesoro',
-                $6,
-                'field', $2, $7,
+                'full', $4, $5, $6,
+                'cash', 'XAF', $7,
+                'pending_agent_review', $8,
+                $9,
+                'field', $2, $10,
                 true,
                 NOW(), NOW()
             )
             RETURNING id
         """,
-            payment_ref,           # $1
-            user_id,               # $2
-            inspection["company_id"],  # $3
-            amount,                # $4 (base_amount = total_amount)
-            ctx["entity_code"],    # $5
-            receipt_number,        # $6
-            inspection["id"],      # $7
+            payment_ref, user_id, inspection["company_id"],
+            base, penalties, amount,
+            ctx["entity_code"], fee_type,
+            receipt_number, inspection["id"],
         )
 
         payment_id = payment_row["id"]
 
-        # Update obligations to payment_pending
         await conn.execute("""
             UPDATE license_obligations
-            SET status = 'payment_pending',
-                payment_id = $1,
-                updated_at = NOW()
+            SET status = 'payment_pending', payment_id = $1, updated_at = NOW()
             WHERE id = ANY($2::uuid[])
         """, payment_id, obligation_ids)
 
-        # Update inspection with payment info
         await InspectionRepository.update(conn, inspection["id"], {
             "payment_collected": True,
             "payment_id": payment_id,
@@ -180,7 +191,6 @@ class CollectionService:
             "payment_amount": amount,
         })
 
-        # Emit event → enters treasury validation pipeline
         try:
             from app.core.events import EventBus, EventType
             EventBus.publish_nowait(EventType.PAYMENT_MANUAL_PENDING, {
@@ -210,6 +220,7 @@ class CollectionService:
             "receipt_number": receipt_number,
             "amount": float(amount),
             "method": "cash",
+            "fee_type": fee_type,
             "obligation_count": len(obligation_ids),
             "status": "pending_agent_review",
         }
@@ -217,21 +228,28 @@ class CollectionService:
     @staticmethod
     async def _collect_mobile_money(
         conn, inspection: dict, user_id: UUID, ctx: dict,
-        obligation_ids: List[UUID], amount: Decimal,
+        obls: list, obligation_ids: List[UUID],
+        amount: Decimal, fee_type: str,
         phone_number: Optional[str],
         notes: Optional[str],
     ) -> dict:
-        """Process mobile money collection → BANGE redirect."""
+        """Process mobile money collection."""
         if not phone_number:
             raise ValueError("Phone number required for mobile money")
 
         payment_ref = _generate_payment_reference("momo")
 
-        # Fix C1: Complete INSERT with all NOT NULL columns
+        base = _normalize_amount(sum(
+            _normalize_amount(o["amount"] or Decimal("0")) for o in obls
+        ))
+        penalties = _normalize_amount(sum(
+            _normalize_amount(o["penalty_amount"] or Decimal("0")) for o in obls
+        ))
+
         payment_row = await conn.fetchrow("""
             INSERT INTO service_payments (
                 payment_reference, user_id, company_id,
-                payment_type, base_amount, total_amount,
+                payment_type, base_amount, penalties, total_amount,
                 payment_method, currency, entity_code,
                 workflow_status, fee_type,
                 collection_type, collected_by, field_inspection_id,
@@ -240,35 +258,28 @@ class CollectionService:
             )
             VALUES (
                 $1, $2, $3,
-                'full', $4, $4,
-                'mobile_money', 'XAF', $5,
-                'submitted', 'tesoro',
-                'field', $2, $6,
+                'full', $4, $5, $6,
+                'mobile_money', 'XAF', $7,
+                'submitted', $8,
+                'field', $2, $9,
                 true,
                 NOW(), NOW()
             )
             RETURNING id
         """,
-            payment_ref,
-            user_id,
-            inspection["company_id"],
-            amount,
-            ctx["entity_code"],
-            inspection["id"],
+            payment_ref, user_id, inspection["company_id"],
+            base, penalties, amount,
+            ctx["entity_code"], fee_type, inspection["id"],
         )
 
         payment_id = payment_row["id"]
 
-        # Update obligations
         await conn.execute("""
             UPDATE license_obligations
-            SET status = 'payment_pending',
-                payment_id = $1,
-                updated_at = NOW()
+            SET status = 'payment_pending', payment_id = $1, updated_at = NOW()
             WHERE id = ANY($2::uuid[])
         """, payment_id, obligation_ids)
 
-        # Update inspection
         await InspectionRepository.update(conn, inspection["id"], {
             "payment_collected": True,
             "payment_id": payment_id,
@@ -284,6 +295,7 @@ class CollectionService:
             "payment_id": str(payment_id),
             "amount": float(amount),
             "method": "mobile_money",
+            "fee_type": fee_type,
             "phone_number": phone_number,
             "obligation_count": len(obligation_ids),
             "status": "submitted",

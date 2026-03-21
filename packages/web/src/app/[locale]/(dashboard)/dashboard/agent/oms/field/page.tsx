@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import { Activity, ClipboardCheck, QrCode, AlertTriangle, DollarSign, CheckCircle2, XCircle, Wallet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +16,7 @@ export default function FieldDashboardPage() {
   const locale = useLocale()
   const router = useRouter()
   const { toast } = useToast()
+  const t = useTranslations('inspection')
   const [stats, setStats] = useState<InspectionStats | null>(null)
   const [recent, setRecent] = useState<InspectionListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -140,7 +141,7 @@ export default function FieldDashboardPage() {
                         </span>
                       )}
                       <Badge className={`${statusCfg.bgColor} ${statusCfg.color} text-xs`}>
-                        {statusCfg.label}
+                        {t(`status.${item.status}`)}
                       </Badge>
                     </div>
                   </div>

@@ -411,7 +411,8 @@ async def download_inspection_report(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"PDF generation failed: {e}")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
 
     return Response(
         content=pdf_bytes,
@@ -443,7 +444,8 @@ async def download_med_pdf(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"PDF generation failed: {e}")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
 
     return Response(
         content=pdf_bytes,
@@ -475,7 +477,8 @@ async def download_seal_pdf(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"PDF generation failed: {e}")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
 
     return Response(
         content=pdf_bytes,

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import {
   ArrowLeft, Camera, MapPin, CheckCircle2, AlertTriangle,
@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { inspectionApi } from '@/modules/inspections/services/api'
-import { INSPECTION_STATUS_CONFIG, SEAL_REASON_LABELS, fmtXAF } from '@/modules/inspections/utils/formatters'
+import { INSPECTION_STATUS_CONFIG, SEAL_REASONS, fmtXAF } from '@/modules/inspections/utils/formatters'
 import type { Inspection, SealReason, LicenseObligation } from '@/modules/inspections/types'
 
 export default function InspectPage() {
@@ -37,6 +37,7 @@ export default function InspectPage() {
   const searchParams = useSearchParams()
   const inspectionId = searchParams.get('id')
   const { toast } = useToast()
+  const t = useTranslations('inspection')
 
   const [inspection, setInspection] = useState<Inspection | null>(null)
   const [loading, setLoading] = useState(true)
@@ -294,7 +295,7 @@ export default function InspectPage() {
           </div>
         </div>
         <Badge className={`${statusCfg.bgColor} ${statusCfg.color}`}>
-          {statusCfg.label}
+          {t(`status.${inspection.status}`)}
         </Badge>
       </div>
 
@@ -610,8 +611,8 @@ export default function InspectPage() {
               <Select value={sealReason} onValueChange={v => setSealReason(v as SealReason)}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar motivo..." /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(SEAL_REASON_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  {SEAL_REASONS.map((key) => (
+                    <SelectItem key={key} value={key}>{t(`seal.reasons.${key}`)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

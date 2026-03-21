@@ -41,11 +41,35 @@ except ImportError:
 
 
 def _get_verification_secret() -> str:
+    """Get HMAC secret — OWASP A02: No hardcoded fallback in production."""
     try:
         from app.core.secrets import get_secret
-        return get_secret("VERIFICATION_SECRET") or "facil-inspection-verify-default"
+        secret = get_secret("VERIFICATION_SECRET")
+        if secret:
+            return secret
     except Exception:
-        return "facil-inspection-verify-default"
+        pass
+
+    from app.config import get_settings
+    settings = get_settings()
+    env = getattr(settings, "ENVIRONMENT", "development")
+    if env == "production":
+        logger.error("VERIFICATION_SECRET not configured in production!")
+        raise RuntimeError("VERIFICATION_SECRET must be set in production")
+    # Dev only fallback
+    return "dev-only-inspection-verify-not-for-production"
+
+
+def _get_base_url() -> str:
+    """Fix H3: Get base URL from settings instead of hardcoding."""
+    try:
+        from app.config import get_settings
+        settings = get_settings()
+        return getattr(settings, "FRONTEND_URL", None) or getattr(
+            settings, "SITE_URL", "https://taxasge.emacsah.com"
+        )
+    except Exception:
+        return "https://taxasge.emacsah.com"
 
 
 # ============================================================
@@ -378,7 +402,7 @@ class InspectionPDFService:
         )
 
         token = self._generate_verification_token("inspection", inspection_id)
-        qr_url = f"https://taxasge.emacsah.com/verify/inspection/{inspection_id[:8]}?t={token}"
+        qr_url = f"{_get_base_url()}/verify/inspection/{inspection_id[:8]}?t={token}"
 
         template = self._get_template("inspection_report.html")
         html = template.render(
@@ -469,7 +493,7 @@ class InspectionPDFService:
         deadline_str = deadline_dt.strftime("%d/%m/%Y %H:%M") if deadline_dt else "N/A"
 
         token = self._generate_verification_token("med", inspection_id)
-        qr_url = f"https://taxasge.emacsah.com/verify/med/{inspection_id[:8]}?t={token}"
+        qr_url = f"{_get_base_url()}/verify/med/{inspection_id[:8]}?t={token}"
 
         template = self._get_template("mise_en_demeure.html")
         html = template.render(
@@ -550,7 +574,7 @@ class InspectionPDFService:
         total_unpaid = sum((o["amount"] or 0) + (o["penalty_amount"] or 0) for o in obligations)
 
         token = self._generate_verification_token("seal", inspection_id)
-        qr_url = f"https://taxasge.emacsah.com/verify/seal/{inspection_id[:8]}?t={token}"
+        qr_url = f"{_get_base_url()}/verify/seal/{inspection_id[:8]}?t={token}"
 
         template = self._get_template("seal_report.html")
         html = template.render(

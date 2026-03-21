@@ -1,37 +1,32 @@
-import type { InspectionStatus, InspectionResult, SealReason } from '../types'
+import type { InspectionStatus, SealReason } from '../types'
 
+// D4 fix: Status config uses icon+color only — labels come from i18n
+// Usage: const t = useTranslations('inspection'); label = t(`status.${status}`)
 export const INSPECTION_STATUS_CONFIG: Record<
   InspectionStatus,
-  { label: string; color: string; bgColor: string }
+  { color: string; bgColor: string }
 > = {
-  in_progress: { label: 'En curso', color: 'text-blue-700', bgColor: 'bg-blue-100' },
-  completed: { label: 'Completada', color: 'text-green-700', bgColor: 'bg-green-100' },
-  mise_en_demeure: { label: 'Mise en demeure', color: 'text-orange-700', bgColor: 'bg-orange-100' },
-  seal_proposed: { label: 'Scellé propuesto', color: 'text-red-700', bgColor: 'bg-red-100' },
-  seal_approved: { label: 'Sellada', color: 'text-red-900', bgColor: 'bg-red-200' },
-  seal_rejected: { label: 'Scellé rechazado', color: 'text-gray-700', bgColor: 'bg-gray-100' },
-  cancelled: { label: 'Cancelada', color: 'text-gray-500', bgColor: 'bg-gray-50' },
+  in_progress: { color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  completed: { color: 'text-green-700', bgColor: 'bg-green-100' },
+  mise_en_demeure: { color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  seal_proposed: { color: 'text-red-700', bgColor: 'bg-red-100' },
+  seal_approved: { color: 'text-red-900', bgColor: 'bg-red-200' },
+  seal_rejected: { color: 'text-gray-700', bgColor: 'bg-gray-100' },
+  cancelled: { color: 'text-gray-500', bgColor: 'bg-gray-50' },
 }
 
-export const RESULT_CONFIG: Record<
-  InspectionResult,
-  { label: string; color: string; icon: string }
-> = {
-  conforme: { label: 'Conforme', color: 'text-green-600', icon: 'CheckCircle2' },
-  non_conforme: { label: 'No conforme', color: 'text-red-600', icon: 'XCircle' },
-  pending: { label: 'Pendiente', color: 'text-yellow-600', icon: 'Clock' },
-}
-
-export const SEAL_REASON_LABELS: Record<SealReason, string> = {
-  non_paiement_apres_med: 'Impago tras mise en demeure',
-  activite_non_autorisee: 'Actividad no autorizada',
-  fraude_fiscale: 'Fraude fiscal',
-  faux_documents: 'Documentos falsificados',
-  refus_controle: 'Rechazo de inspección',
-  non_conformite_grave: 'No conformidad grave',
-  decision_judiciaire: 'Decisión judicial',
-  ordre_ministeriel: 'Orden ministerial',
-}
+// D4 fix: Seal reason labels come from i18n
+// Usage: const t = useTranslations('inspection'); label = t(`seal.reasons.${reason}`)
+export const SEAL_REASONS: SealReason[] = [
+  'non_paiement_apres_med',
+  'activite_non_autorisee',
+  'fraude_fiscale',
+  'faux_documents',
+  'refus_controle',
+  'non_conformite_grave',
+  'decision_judiciaire',
+  'ordre_ministeriel',
+]
 
 export function fmtXAF(amount: number | undefined | null, locale = 'es'): string {
   if (amount == null) return '0 XAF'

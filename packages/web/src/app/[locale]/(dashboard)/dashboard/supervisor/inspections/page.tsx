@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import {
   Shield, ClipboardCheck, CheckCircle2, XCircle, Lock,
@@ -19,6 +19,7 @@ export default function SupervisorInspectionDashboard() {
   const locale = useLocale()
   const router = useRouter()
   const { toast } = useToast()
+  const t = useTranslations('inspection')
   const [data, setData] = useState<SupervisorDashboard | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -207,7 +208,7 @@ export default function SupervisorInspectionDashboard() {
                       <span className="text-muted-foreground">— {item.company_name}</span>
                     </div>
                     <Badge className={`${statusCfg.bgColor} ${statusCfg.color} text-xs`}>
-                      {statusCfg.label}
+                      {t(`status.${item.status}`)}
                     </Badge>
                   </div>
                 )

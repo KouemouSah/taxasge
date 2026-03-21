@@ -1,6 +1,11 @@
-"""Inspection Service — Business logic for field inspections."""
+"""Inspection Service — Business logic for field inspections.
+
+Fixes: D1 (dynamic roles from BD), H6/H7 (configurable deadlines),
+       OWASP A08 (signature integrity hash), A09 (audit trail)
+"""
 
 import asyncio
+import hashlib
 import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -13,25 +18,21 @@ from app.modules.inspections.repositories.inspection_repository import (
 
 logger = logging.getLogger(__name__)
 
-# Fix m6: Maximum length for seal_notes to prevent unbounded growth
 MAX_SEAL_NOTES_LENGTH = 2000
 
-# Roles allowed to create inspections (field-facing only, NOT tesoro)
-INSPECTION_AGENT_ROLES = {
-    "agent_ayuntamiento", "agent_camara",
-    "agent_min_comercio", "agent_min_hacienda",
-    "agent_min_informacion", "agent_min_turismo",
-    "agent_min_agricultura", "agent_min_electricidad",
-    "agent_oms_polyvalent",
-}
 
-INSPECTION_SUPERVISOR_ROLES = {
-    "supervisor_ayuntamiento", "supervisor_camara",
-    "supervisor_min_comercio", "supervisor_min_hacienda",
-    "supervisor_min_informacion", "supervisor_min_turismo",
-    "supervisor_min_agricultura", "supervisor_min_electricidad",
-    "supervisor_tesoro",
-}
+async def _log_audit(conn, user_id: UUID, action: str, entity_type: str,
+                     entity_id: str, details: Optional[Dict] = None):
+    """OWASP A09: Persistent audit trail for critical inspection actions."""
+    try:
+        await conn.execute("""
+            INSERT INTO audit_logs (user_id, action, entity_type, entity_id,
+                                    new_values, ip_address, created_at)
+            VALUES ($1, $2, $3, $4, $5, '0.0.0.0'::inet, NOW())
+        """, user_id, action, entity_type, entity_id,
+            __import__("json").dumps(details or {}))
+    except Exception as e:
+        logger.warning(f"Audit log failed for {action}/{entity_id}: {e}")
 
 
 class InspectionService:
@@ -39,7 +40,12 @@ class InspectionService:
 
     @staticmethod
     async def resolve_inspector_context(conn, user_id: UUID) -> Dict:
-        """Resolve agent's context for inspections (same as OMS but validated for inspection roles)."""
+        """Resolve agent's context for inspections.
+
+        Fix D1: Roles are checked dynamically via permission 'inspection.create'
+        in the BD instead of a hardcoded set. Any role with this permission
+        can perform inspections without code changes.
+        """
         row = await conn.fetchrow("""
             SELECT
                 ap.id AS agent_profile_id,
@@ -47,7 +53,17 @@ class InspectionService:
                 ap.is_supervisor,
                 e.code AS entity_code,
                 el.region, el.city_id,
-                r.code AS role_code
+                r.code AS role_code,
+                EXISTS(
+                    SELECT 1 FROM role_permissions rp2
+                    JOIN permissions p2 ON p2.id = rp2.permission_id
+                    WHERE rp2.role_id = r.id AND p2.name = 'inspection.create'
+                ) AS has_inspection_permission,
+                EXISTS(
+                    SELECT 1 FROM role_permissions rp3
+                    JOIN permissions p3 ON p3.id = rp3.permission_id
+                    WHERE rp3.role_id = r.id AND p3.name = 'inspection.seal_approve'
+                ) AS has_seal_approve
             FROM agent_profiles ap
             JOIN entities e ON e.id = ap.entity_id
             JOIN entity_locations el ON el.id = ap.entity_location_id
@@ -61,13 +77,12 @@ class InspectionService:
             raise ValueError("No active agent profile found")
 
         role_code = row["role_code"]
-        is_supervisor = (
-            role_code in INSPECTION_SUPERVISOR_ROLES or row["is_supervisor"]
-        )
+        has_permission = row["has_inspection_permission"]
+        is_supervisor = row["is_supervisor"] or row["has_seal_approve"]
 
-        if role_code not in INSPECTION_AGENT_ROLES and not is_supervisor:
+        if not has_permission and not is_supervisor:
             raise ValueError(
-                f"Role '{role_code}' cannot perform field inspections"
+                f"Role '{role_code}' does not have inspection permissions"
             )
 
         return {
@@ -154,6 +169,19 @@ class InspectionService:
             raise ValueError(
                 f"Cannot update inspection in status '{inspection['status']}'"
             )
+
+        # OWASP A08: If signature is being set, hash it for tamper detection
+        if "agent_signature" in data and data["agent_signature"]:
+            sig_data = data["agent_signature"]
+            ts = datetime.now(timezone.utc).isoformat()
+            sig_hash = hashlib.sha256(
+                f"{sig_data}|{user_id}|{ts}".encode()
+            ).hexdigest()[:32]
+            # Store hash alongside signature for later verification
+            data["notes"] = (
+                (data.get("notes") or inspection.get("notes") or "")
+                + f"\n[SIG_HASH:{sig_hash}:{ts}]"
+            ).strip()
 
         return await InspectionRepository.update(conn, inspection_id, data)
 
@@ -252,6 +280,11 @@ class InspectionService:
             })
         except Exception as e:
             logger.warning(f"INSPECTION_COMPLETED event emission failed: {e}")
+
+        # OWASP A09: Audit trail
+        await _log_audit(conn, user_id, "INSPECTION_COMPLETED", "field_inspection",
+                         str(inspection_id), {"result": result,
+                         "company": inspection.get("company_name")})
 
         logger.info(
             f"Inspection {inspection_id} completed: {result} "
@@ -376,6 +409,11 @@ class InspectionService:
         except Exception as e:
             logger.warning(f"MISE_EN_DEMEURE event emission failed: {e}")
 
+        await _log_audit(conn, user_id, "MISE_EN_DEMEURE_ISSUED", "field_inspection",
+                         str(inspection_id), {"deadline": deadline.isoformat(),
+                         "amount": float(total_unpaid),
+                         "company": inspection.get("company_name")})
+
         logger.info(
             f"MED issued on inspection {inspection_id}, deadline: {deadline}"
         )
@@ -454,6 +492,10 @@ class InspectionService:
             })
         except Exception as e:
             logger.warning(f"SEAL_PROPOSED event emission failed: {e}")
+
+        await _log_audit(conn, user_id, "SEAL_PROPOSED", "field_inspection",
+                         str(inspection_id), {"reason": reason,
+                         "company": inspection.get("company_name")})
 
         logger.info(
             f"Seal proposed on inspection {inspection_id}: {reason}"
@@ -554,6 +596,10 @@ class InspectionService:
             except Exception as e:
                 logger.warning(f"SEAL_APPROVED event emission failed: {e}")
 
+            await _log_audit(conn, supervisor_id, "SEAL_APPROVED", "field_inspection",
+                             str(inspection_id), {"company": inspection.get("company_name"),
+                             "reason": inspection.get("seal_reason")})
+
             logger.info(
                 f"Seal APPROVED on inspection {inspection_id} "
                 f"by supervisor {supervisor_id}"
@@ -565,6 +611,11 @@ class InspectionService:
                 "seal_approved_by": supervisor_id,
                 "seal_approved_at": datetime.now(timezone.utc),
             }
+
+            await _log_audit(conn, supervisor_id, "SEAL_REJECTED", "field_inspection",
+                             str(inspection_id), {"reason": notes,
+                             "company": inspection.get("company_name")})
+
             logger.info(
                 f"Seal REJECTED on inspection {inspection_id} "
                 f"by supervisor {supervisor_id}: {notes}"

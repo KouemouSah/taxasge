@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useToast } from '@/hooks/use-toast'
 import { ArrowLeft, ShieldAlert, CheckCircle2, XCircle, MapPin, Camera, Clock, AlertTriangle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,7 +15,7 @@ import {
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { inspectionApi } from '@/modules/inspections/services/api'
-import { SEAL_REASON_LABELS, fmtXAF } from '@/modules/inspections/utils/formatters'
+import { fmtXAF } from '@/modules/inspections/utils/formatters'
 import type { PendingSeal } from '@/modules/inspections/types'
 
 export default function PendingSealsPage() {
@@ -27,6 +27,7 @@ export default function PendingSealsPage() {
   const [actionSeal, setActionSeal] = useState<PendingSeal | null>(null)
   const [rejectNotes, setRejectNotes] = useState('')
   const [processing, setProcessing] = useState(false)
+  const t = useTranslations('inspection')
   // Fix m5: Separate dialogs for approve/reject
   const [showApproveConfirm, setShowApproveConfirm] = useState(false)
   const [showRejectDialog, setShowRejectDialog] = useState(false)
@@ -124,7 +125,7 @@ export default function PendingSealsPage() {
 
                 <div className="flex flex-wrap gap-2 text-sm">
                   <Badge variant="outline" className="text-red-600">
-                    {SEAL_REASON_LABELS[seal.seal_reason as keyof typeof SEAL_REASON_LABELS] || seal.seal_reason}
+                    {seal.seal_reason ? t(`seal.reasons.${seal.seal_reason}`) : seal.seal_reason}
                   </Badge>
                   <span className="text-muted-foreground">
                     Agent: {seal.agent_name}
@@ -211,7 +212,7 @@ export default function PendingSealsPage() {
           </DialogHeader>
           <div className="bg-red-50 p-3 rounded text-sm space-y-1">
             <p><strong>Empresa:</strong> {actionSeal?.company_name} ({actionSeal?.company_nif})</p>
-            <p><strong>Motivo:</strong> {actionSeal?.seal_reason && SEAL_REASON_LABELS[actionSeal.seal_reason as keyof typeof SEAL_REASON_LABELS]}</p>
+            <p><strong>{t('seal.reason')}:</strong> {actionSeal?.seal_reason ? t(`seal.reasons.${actionSeal.seal_reason}`) : ''}</p>
             <p><strong>Impago:</strong> {fmtXAF(actionSeal?.unpaid_obligations_amount ?? 0, locale)}</p>
             <p><strong>Agente:</strong> {actionSeal?.agent_name}</p>
           </div>
