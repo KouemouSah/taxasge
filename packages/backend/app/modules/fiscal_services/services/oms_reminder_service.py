@@ -47,6 +47,7 @@ class OmsReminderService:
             "reminders_sent": 0,
             "overdue_notices_sent": 0,
             "escalations_sent": 0,
+            "weekly_reports_sent": 0,
             "errors": [],
         }
 
@@ -67,6 +68,14 @@ class OmsReminderService:
         except Exception as e:
             logger.error("OMS reminder: escalations failed: %s", e, exc_info=True)
             results["errors"].append(f"escalation: {e}")
+
+        # Weekly compliance report — runs only on Mondays
+        if date.today().weekday() == 0:  # Monday
+            try:
+                results["weekly_reports_sent"] = await self._send_weekly_compliance_report(db)
+            except Exception as e:
+                logger.error("OMS reminder: weekly report failed: %s", e, exc_info=True)
+                results["errors"].append(f"weekly_report: {e}")
 
         logger.info("OMS reminder check complete: %s", results)
         return results
@@ -524,6 +533,199 @@ class OmsReminderService:
                     Total: {total:,.0f} XAF
                 </p>
                 <p>Acción requerida: verificar el estado de cobro y contactar empresas.</p>
+            </div>
+        </div>"""
+
+    # ------------------------------------------------------------------
+    # Weekly compliance report — Runs on Mondays
+    # ------------------------------------------------------------------
+
+    async def _send_weekly_compliance_report(self, db) -> int:
+        """Send weekly compliance summary to all ministry supervisors.
+
+        Aggregates per ministry: total obligations, paid, overdue, recovery %,
+        top 5 debtors, penalties accumulated. One email per supervisor.
+        """
+        current_year = date.today().year
+
+        # Get per-ministry stats in a single query
+        rows = await db.fetch("""
+            SELECT
+                lo.ministry_id,
+                m.name_es as ministry_name,
+                COUNT(*) as total_obligations,
+                COUNT(*) FILTER (
+                    WHERE lo.status IN ('paid', 'completed', 'processing')
+                ) as paid,
+                COUNT(*) FILTER (WHERE lo.status = 'overdue') as overdue,
+                COUNT(*) FILTER (
+                    WHERE lo.status IN ('pending', 'selected', 'payment_pending')
+                ) as pending,
+                COALESCE(SUM(lo.amount), 0) as total_amount,
+                COALESCE(SUM(lo.amount) FILTER (
+                    WHERE lo.status IN ('paid', 'completed', 'processing')
+                ), 0) as paid_amount,
+                COALESCE(SUM(lo.amount) FILTER (
+                    WHERE lo.status = 'overdue'
+                ), 0) as overdue_amount,
+                COALESCE(SUM(lo.penalty_amount), 0) as total_penalties,
+                -- Completed this week
+                COUNT(*) FILTER (
+                    WHERE lo.status = 'completed'
+                    AND lo.updated_at >= CURRENT_DATE - INTERVAL '7 days'
+                ) as completed_this_week
+            FROM license_obligations lo
+            JOIN commercial_licenses cl ON cl.id = lo.license_id
+            LEFT JOIN ministries m ON lo.ministry_id = m.id
+            WHERE cl.fiscal_year = $1
+            GROUP BY lo.ministry_id, m.name_es
+            ORDER BY overdue_amount DESC
+        """, current_year)
+
+        if not rows:
+            return 0
+
+        sent = 0
+        for r in rows:
+            ministry_id = r["ministry_id"]
+            if not ministry_id:
+                continue
+
+            sup_emails = await self._get_supervisor_emails(db, ministry_id)
+            if not sup_emails:
+                continue
+
+            total = float(r["total_amount"]) if r["total_amount"] else 0
+            paid = float(r["paid_amount"]) if r["paid_amount"] else 0
+            recovery = round((paid / total) * 100) if total > 0 else 0
+
+            # Top 5 debtors for this ministry
+            debtors = await db.fetch("""
+                SELECT
+                    co.legal_name as company_name,
+                    co.nif,
+                    SUM(lo.amount) as debt_amount,
+                    COUNT(*) as overdue_count
+                FROM license_obligations lo
+                JOIN commercial_licenses cl ON cl.id = lo.license_id
+                JOIN companies co ON co.id = cl.company_id
+                WHERE lo.status = 'overdue'
+                  AND lo.ministry_id = $1
+                  AND cl.fiscal_year = $2
+                GROUP BY co.legal_name, co.nif
+                ORDER BY debt_amount DESC
+                LIMIT 5
+            """, ministry_id, current_year)
+
+            ministry_name = r["ministry_name"] or f"Ministry #{ministry_id}"
+            subject = (
+                f"Informe Semanal OMS — {ministry_name} "
+                f"({recovery}% recuperación)"
+            )
+            html = self._build_weekly_report_html(dict(r), debtors, recovery)
+
+            for email in sup_emails:
+                try:
+                    success = await self._send_email(email, subject, html)
+                    if success:
+                        sent += 1
+                except Exception as e:
+                    logger.warning("Weekly report to %s failed: %s", email, e)
+
+        return sent
+
+    def _build_weekly_report_html(
+        self, stats: Dict, debtors: List, recovery: int,
+    ) -> str:
+        """Build HTML for weekly compliance report."""
+        ministry_name = stats.get("ministry_name", "—")
+        recovery_color = (
+            "#22c55e" if recovery >= 70
+            else "#eab308" if recovery >= 40
+            else "#ef4444"
+        )
+
+        debtors_rows = ""
+        for d in debtors:
+            debtors_rows += f"""
+            <tr>
+                <td style="padding:6px 8px">{d['company_name']}</td>
+                <td style="padding:6px 8px;font-family:monospace">{d['nif'] or '—'}</td>
+                <td style="padding:6px 8px;text-align:right;color:#dc2626;font-weight:bold">
+                    {float(d['debt_amount']):,.0f} XAF
+                </td>
+                <td style="padding:6px 8px;text-align:center">{d['overdue_count']}</td>
+            </tr>"""
+
+        debtors_section = ""
+        if debtors:
+            debtors_section = f"""
+            <h3 style="margin-top:20px;color:#991b1b">Top 5 deudores</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px" border="1" bordercolor="#e5e7eb" cellpadding="0">
+                <thead style="background:#fef2f2">
+                    <tr>
+                        <th style="padding:6px 8px;text-align:left">Empresa</th>
+                        <th style="padding:6px 8px;text-align:left">NIF</th>
+                        <th style="padding:6px 8px;text-align:right">Deuda</th>
+                        <th style="padding:6px 8px;text-align:center">Oblig.</th>
+                    </tr>
+                </thead>
+                <tbody>{debtors_rows}</tbody>
+            </table>"""
+
+        return f"""
+        <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto">
+            <div style="background:#1e3a5f;color:white;padding:16px 24px;border-radius:8px 8px 0 0">
+                <h2 style="margin:0">Informe Semanal OMS</h2>
+                <p style="margin:4px 0 0;opacity:0.8">{ministry_name} — Semana del {date.today().strftime('%d/%m/%Y')}</p>
+            </div>
+            <div style="border:1px solid #e5e7eb;border-top:none;padding:24px;border-radius:0 0 8px 8px">
+
+                <!-- KPIs -->
+                <div style="display:flex;gap:12px;margin-bottom:20px">
+                    <div style="flex:1;background:#f0fdf4;padding:12px;border-radius:6px;text-align:center">
+                        <div style="font-size:24px;font-weight:bold;color:{recovery_color}">{recovery}%</div>
+                        <div style="font-size:11px;color:#6b7280">Recuperación</div>
+                    </div>
+                    <div style="flex:1;background:#f0f9ff;padding:12px;border-radius:6px;text-align:center">
+                        <div style="font-size:24px;font-weight:bold">{stats['total_obligations']}</div>
+                        <div style="font-size:11px;color:#6b7280">Obligaciones</div>
+                    </div>
+                    <div style="flex:1;background:#fef2f2;padding:12px;border-radius:6px;text-align:center">
+                        <div style="font-size:24px;font-weight:bold;color:#dc2626">{stats['overdue']}</div>
+                        <div style="font-size:11px;color:#6b7280">Vencidas</div>
+                    </div>
+                    <div style="flex:1;background:#fffbeb;padding:12px;border-radius:6px;text-align:center">
+                        <div style="font-size:24px;font-weight:bold;color:#d97706">{stats['completed_this_week']}</div>
+                        <div style="font-size:11px;color:#6b7280">Completadas esta semana</div>
+                    </div>
+                </div>
+
+                <!-- Summary -->
+                <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px" cellpadding="8">
+                    <tr style="background:#f3f4f6">
+                        <td>Total</td>
+                        <td style="text-align:right;font-weight:bold">{float(stats['total_amount']):,.0f} XAF</td>
+                    </tr>
+                    <tr>
+                        <td>Cobrado</td>
+                        <td style="text-align:right;color:#16a34a;font-weight:bold">{float(stats['paid_amount']):,.0f} XAF</td>
+                    </tr>
+                    <tr style="background:#f3f4f6">
+                        <td>Vencido</td>
+                        <td style="text-align:right;color:#dc2626;font-weight:bold">{float(stats['overdue_amount']):,.0f} XAF</td>
+                    </tr>
+                    <tr>
+                        <td>Penalidades acumuladas</td>
+                        <td style="text-align:right;color:#d97706">{float(stats['total_penalties']):,.0f} XAF</td>
+                    </tr>
+                </table>
+
+                {debtors_section}
+
+                <p style="margin-top:20px;color:#6b7280;font-size:12px">
+                    Plataforma Facil — Generado automáticamente cada lunes
+                </p>
             </div>
         </div>"""
 

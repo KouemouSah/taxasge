@@ -376,12 +376,23 @@ class ObligationRoutingService:
             )
 
             if assignment:
+                agent_profile_id = getattr(assignment, "agent_profile_id", None)
                 logger.info(
                     "OMS assignment created: obligation %s → agent %s (entity %s)",
                     obligation["id"],
-                    getattr(assignment, "agent_profile_id", "unknown"),
+                    agent_profile_id or "unknown",
                     entity_code,
                 )
+
+                # Notify the assigned agent (email) about the new obligation
+                if agent_profile_id:
+                    await ObligationRoutingService._notify_agent_new_obligation(
+                        conn,
+                        agent_profile_id=agent_profile_id,
+                        obligation=obligation,
+                        license_row=license_row,
+                        entity_code=entity_code,
+                    )
             else:
                 logger.warning(
                     "OMS assignment: no available agent for obligation %s "
@@ -401,4 +412,96 @@ class ObligationRoutingService:
                 target_entity.get("entity_code"),
                 str(e),
                 exc_info=True,
+            )
+
+    @staticmethod
+    async def _notify_agent_new_obligation(
+        conn,
+        agent_profile_id,
+        obligation: Dict,
+        license_row: Dict,
+        entity_code: str,
+    ) -> None:
+        """Send email notification to assigned agent about new obligation.
+
+        Non-blocking: failures are logged but do not affect the transaction.
+        """
+        import asyncio
+
+        try:
+            # Get agent email
+            row = await conn.fetchrow("""
+                SELECT u.email, u.first_name
+                FROM agent_profiles ap
+                JOIN users u ON u.id = ap.user_id
+                WHERE ap.id = $1 AND u.status = 'active'
+            """, agent_profile_id)
+
+            if not row or not row["email"]:
+                return
+
+            agent_name = row["first_name"] or "Agent"
+            company_name = license_row.get("company_name") or "—"
+            fee_type = obligation.get("fee_type", "—")
+            amount = obligation.get("amount", 0)
+
+            subject = f"OMS: Nueva obligación asignada — {company_name}"
+            html = f"""
+            <div style="font-family:Arial,sans-serif;max-width:500px">
+                <h3 style="color:#1d4ed8">Nueva obligación en tu cola</h3>
+                <p>Hola {agent_name},</p>
+                <p>Se te ha asignado una nueva obligación:</p>
+                <table style="border-collapse:collapse;width:100%" cellpadding="8">
+                    <tr style="background:#f3f4f6">
+                        <td><strong>Empresa</strong></td><td>{company_name}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tipo</strong></td><td>{fee_type}</td>
+                    </tr>
+                    <tr style="background:#f3f4f6">
+                        <td><strong>Monto</strong></td><td>{amount:,.0f} XAF</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Entidad</strong></td><td>{entity_code}</td>
+                    </tr>
+                </table>
+                <p style="margin-top:16px">
+                    <a href="#" style="background:#1d4ed8;color:white;padding:8px 16px;
+                    border-radius:4px;text-decoration:none">Ver en mi cola OMS</a>
+                </p>
+            </div>"""
+
+            try:
+                from app.modules.communications.services.communication_service import (
+                    CommunicationService,
+                )
+                from app.modules.communications.models.communication import (
+                    CommunicationType,
+                )
+
+                comm = CommunicationService()
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(
+                    None,
+                    lambda: comm.send_communication(
+                        channel=CommunicationType.EMAIL,
+                        recipient=row["email"],
+                        subject=subject,
+                        content=html,
+                    ),
+                )
+                logger.info(
+                    "OMS agent notification sent: %s → %s",
+                    obligation["id"], row["email"],
+                )
+            except Exception as email_err:
+                logger.warning(
+                    "OMS agent notification email failed: %s", email_err
+                )
+
+        except Exception as e:
+            # Notification failure must NEVER block assignment
+            logger.warning(
+                "OMS agent notification lookup failed for profile %s: %s",
+                agent_profile_id, e,
             )
