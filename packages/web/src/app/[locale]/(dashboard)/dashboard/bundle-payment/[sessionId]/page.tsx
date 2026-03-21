@@ -43,9 +43,9 @@ const navLabels = {
 export default function BundlePaymentWizardPage() {
   const params = useParams()
   const router = useRouter()
-  const locale = (params?.locale as string) || 'es'
+  const locale = ((params?.locale as string) || 'es') as 'es' | 'fr' | 'en'
   const sessionId = params?.sessionId as string
-  const lang = (locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'es') as 'es' | 'fr' | 'en'
+  const lang = locale === 'fr' ? 'fr' : locale === 'en' ? 'en' : 'es'
 
   const wizard = useBundleWizard()
 
@@ -129,7 +129,7 @@ export default function BundlePaymentWizardPage() {
                 <span className={`text-xs hidden sm:block ${
                   isCurrent ? 'text-primary font-medium' : 'text-muted-foreground'
                 }`}>
-                  {BUNDLE_STEP_LABELS[step][lang]}
+                  {BUNDLE_STEP_LABELS[step as BundleStep]?.[lang]}
                 </span>
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function BundlePaymentWizardPage() {
         <span className="text-xs text-muted-foreground">
           {navLabels.step[lang]} {currentVisibleIndex + 1} / {visibleSteps.length}
           {' — '}
-          {BUNDLE_STEP_LABELS[wizard.currentStep][lang]}
+          {BUNDLE_STEP_LABELS[wizard.currentStep as BundleStep]?.[lang]}
         </span>
       </div>
 

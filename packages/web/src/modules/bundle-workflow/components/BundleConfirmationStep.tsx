@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, Download, Home, FileText } from 'lucide-react'
+import { CheckCircle2, Home, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'

@@ -191,7 +191,7 @@ export function ObligationsReviewStep({ wizard, locale }: ObligationsReviewStepP
         {groups.map(({ feeType, obligations: groupObls }) => (
           <div key={feeType} className="mb-4">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              {FEE_TYPE_LABELS[feeType]?.[lang] || feeType}
+              {(FEE_TYPE_LABELS as Record<string, Record<string, string>>)[feeType]?.[lang] || feeType}
             </h4>
 
             {/* Desktop table */}

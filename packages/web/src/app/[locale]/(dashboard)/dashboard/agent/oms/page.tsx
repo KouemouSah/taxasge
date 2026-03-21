@@ -10,8 +10,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ClipboardList, Clock, CheckCircle2, AlertTriangle, Search,
-  ChevronLeft, ChevronRight, RefreshCw, Play, XCircle, DollarSign,
+  ClipboardList, Clock, CheckCircle2, Search,
+  ChevronLeft, ChevronRight, RefreshCw, XCircle, DollarSign,
   Building2, FileCheck, Eye, MessageSquare, History,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'

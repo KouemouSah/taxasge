@@ -73,7 +73,7 @@ export function ObligationRow({
         </td>
         <td className="p-3">
           <Badge variant="outline" className={`text-xs ${feeTypeColors[obligation.feeType] || ''}`}>
-            {FEE_TYPE_LABELS[obligation.feeType]?.[lang] || obligation.feeType}
+            {(FEE_TYPE_LABELS as Record<string, Record<string, string>>)[obligation.feeType]?.[lang] || obligation.feeType}
           </Badge>
         </td>
         <td className="p-3 text-right tabular-nums text-sm">
@@ -84,7 +84,7 @@ export function ObligationRow({
         </td>
         <td className="p-3">
           <Badge variant="outline" className={`text-xs ${statusColors[obligation.status] || ''}`}>
-            {OBLIGATION_STATUS_LABELS[obligation.status]?.[lang] || obligation.status}
+            {(OBLIGATION_STATUS_LABELS as Record<string, Record<string, string>>)[obligation.status]?.[lang] || obligation.status}
           </Badge>
         </td>
       </tr>
@@ -117,10 +117,10 @@ export function ObligationRow({
               )}
               <div className="flex items-center gap-1.5 mt-1">
                 <Badge variant="outline" className={`text-xs ${feeTypeColors[obligation.feeType] || ''}`}>
-                  {FEE_TYPE_LABELS[obligation.feeType]?.[lang] || obligation.feeType}
+                  {(FEE_TYPE_LABELS as Record<string, Record<string, string>>)[obligation.feeType]?.[lang] || obligation.feeType}
                 </Badge>
                 <Badge variant="outline" className={`text-xs ${statusColors[obligation.status] || ''}`}>
-                  {OBLIGATION_STATUS_LABELS[obligation.status]?.[lang] || obligation.status}
+                  {(OBLIGATION_STATUS_LABELS as Record<string, Record<string, string>>)[obligation.status]?.[lang] || obligation.status}
                 </Badge>
               </div>
             </div>

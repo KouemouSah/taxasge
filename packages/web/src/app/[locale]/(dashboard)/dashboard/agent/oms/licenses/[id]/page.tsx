@@ -11,9 +11,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
-  ArrowLeft, Building2, FileCheck, DollarSign,
-  AlertTriangle, CheckCircle2, Clock, Download, RefreshCw,
-  Play, XCircle, MapPin, Calendar, History, RotateCcw, Search,
+  ArrowLeft, Building2, FileCheck,
+  CheckCircle2, Download, RefreshCw,
+  XCircle, MapPin, Calendar, History, RotateCcw, Search,
 } from 'lucide-react'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast'
 import apiClient from '@/core/api/client'
 import { omsLicensesApi, omsQueueApi } from '@/modules/oms/services/api'
 import type { LicenseResponse, ObligationResponse, ComplianceEvent } from '@/modules/oms/types'
-import { OBLIGATION_STATUS_CONFIG as OB_STATUS, LICENSE_STATUS_CONFIG as LIC_STATUS, fmtXAF, fmtDate } from '@/modules/oms/utils/formatters'
+import { OBLIGATION_STATUS_CONFIG as OB_STATUS, LICENSE_STATUS_CONFIG as LIC_STATUS, fmtXAF } from '@/modules/oms/utils/formatters'
 import { PrintHeader, PrintFooter } from '@/components/shared/PrintHeader'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
