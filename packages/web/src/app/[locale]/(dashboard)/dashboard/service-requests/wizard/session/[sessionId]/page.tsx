@@ -256,6 +256,13 @@ export default function SessionWizardPage() {
     }
   }, [sessionId, loadSession])
 
+  // Redirect BUNDLE_PAYMENT to its dedicated wizard page
+  useEffect(() => {
+    if (session?.workflowCode === 'BUNDLE_PAYMENT') {
+      router.replace(`/${locale}/dashboard/bundle-payment/${sessionId}`)
+    }
+  }, [session?.workflowCode, sessionId, locale, router])
+
   // Restore form data from session when loaded
   useEffect(() => {
     if (session?.formData) {

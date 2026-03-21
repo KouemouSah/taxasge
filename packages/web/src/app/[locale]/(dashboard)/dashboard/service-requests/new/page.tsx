@@ -246,7 +246,12 @@ export default function NewServiceRequestPage() {
           solicitud_type: 'expedicion',
         })
         if (session) {
-          router.push(`/${locale}/dashboard/service-requests/wizard/session/${session.sessionId}`)
+          // Bundle workflow has its own dedicated wizard page
+          if (workflowCode === 'BUNDLE_PAYMENT') {
+            router.push(`/${locale}/dashboard/bundle-payment/${session.sessionId}`)
+          } else {
+            router.push(`/${locale}/dashboard/service-requests/wizard/session/${session.sessionId}`)
+          }
         }
         return
       }

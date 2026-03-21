@@ -49,10 +49,10 @@ export default function BundlePaymentWizardPage() {
 
   const wizard = useBundleWizard()
 
-  // Load session on mount
+  // Load existing session on mount (session was already created by entry page or redirect)
   useEffect(() => {
     if (sessionId && !wizard.sessionId) {
-      wizard.createSession()
+      wizard.loadSession(sessionId)
     }
   }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 

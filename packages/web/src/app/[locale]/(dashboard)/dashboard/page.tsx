@@ -42,6 +42,7 @@ import {
   AlertTriangle,
   ArrowRight,
   FileStack,
+  Receipt,
 } from 'lucide-react'
 import { getAuthData } from '@/core/auth/storage'
 import type { User } from '@/types/auth'
@@ -162,6 +163,7 @@ export default function DashboardPage() {
   const locale = useLocale()
   const t = useTranslations('dashboard')
   const tStatus = useTranslations('statusLabels')
+  const tBundle = useTranslations('bundleWorkflow')
   const [user, setUser] = useState<User | null>(null)
 
   const { stats, summary, isLoading, error, refetch } = useDashboardData()
@@ -252,7 +254,7 @@ export default function DashboardPage() {
       {/* ── Quick Actions ── */}
       <div>
         <h2 className="text-xl font-semibold mb-4">{t('quickActions')}</h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <Link href={`/${locale}/dashboard/service-requests/new`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -280,6 +282,22 @@ export default function DashboardPage() {
               <CardContent>
                 <p className="text-xs text-muted-foreground">
                   {t('myRequestsDesc')}
+                </p>
+              </CardContent>
+            </Link>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <Link href={`/${locale}/dashboard/bundle-payment`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {tBundle('payObligations')}
+                </CardTitle>
+                <Receipt className="h-5 w-5 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">
+                  {tBundle('payObligationsDesc')}
                 </p>
               </CardContent>
             </Link>

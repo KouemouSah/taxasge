@@ -41,6 +41,7 @@ export interface UseBundleWizardReturn {
   isExpiring: boolean
   isExpired: boolean
   createSession: () => Promise<string | null>
+  loadSession: (sessionId: string) => Promise<boolean>
 
   // Step 0: Company identification
   myCompanies: MyCompanyWithStatus[]
@@ -128,7 +129,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
   // -- Global --
   const [error, setError] = useState<string | null>(null)
 
-  // ── Session creation ────────────────────────────────────────
+  // ── Session lifecycle ───────────────────────────────────────
 
   const createSession = useCallback(async (): Promise<string | null> => {
     try {
@@ -140,6 +141,16 @@ export function useBundleWizard(): UseBundleWizardReturn {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error creating session')
       return null
+    }
+  }, [wizardSession])
+
+  const loadSession = useCallback(async (sessionId: string): Promise<boolean> => {
+    try {
+      const session = await wizardSession.loadSession(sessionId)
+      return session !== null
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error loading session')
+      return false
     }
   }, [wizardSession])
 
@@ -418,6 +429,7 @@ export function useBundleWizard(): UseBundleWizardReturn {
     isExpiring: wizardSession.isExpiring,
     isExpired: wizardSession.isExpired,
     createSession,
+    loadSession,
 
     myCompanies,
     searchResults,
