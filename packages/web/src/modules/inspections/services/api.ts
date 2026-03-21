@@ -122,6 +122,38 @@ export const inspectionApi = {
   },
 
   // ============================================================
+  // SUPERVISOR RECONCILIATION (double validation)
+  // ============================================================
+
+  getSupervisorReconciliation: () =>
+    apiClient
+      .get<{
+        items: Array<{
+          id: string
+          payment_reference: string
+          total_amount: number
+          agent_name: string
+          company_name?: string
+          company_nif?: string
+          entity_code: string
+          fee_type?: string
+          inspection_date?: string
+          created_at: string
+        }>
+        total_amount: number
+        total_count: number
+        entity_code: string
+      }>('/inspections/reconcile/supervisor')
+      .then(r => r.data),
+
+  validateFieldReconciliation: (paymentId: string) =>
+    apiClient
+      .post<{ payment_id: string; status: string; routed_obligations: number }>(
+        `/inspections/reconcile/supervisor/${paymentId}/validate`
+      )
+      .then(r => r.data),
+
+  // ============================================================
   // PHOTO UPLOAD (Firebase Storage)
   // ============================================================
 
