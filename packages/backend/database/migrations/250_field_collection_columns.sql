@@ -18,7 +18,10 @@ CREATE INDEX IF NOT EXISTS idx_sp_collection_type
     ON service_payments(collection_type, created_at DESC)
     WHERE collection_type = 'field';
 
--- 2. Create a proper sequence for field receipt numbers (fix C2)
+-- 2. Add agent_signature column for digital signature capture
+ALTER TABLE field_inspections ADD COLUMN IF NOT EXISTS agent_signature TEXT;
+
+-- 3. Create a proper sequence for field receipt numbers (fix C2)
 CREATE SEQUENCE IF NOT EXISTS field_receipt_seq START 1;
 
 COMMIT;

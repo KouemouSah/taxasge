@@ -184,6 +184,7 @@ class InspectionRepository:
         "payment_amount",
         "unpaid_obligations_count", "unpaid_obligations_amount",
         "total_obligations_count",
+        "agent_signature",
     })
 
     @staticmethod

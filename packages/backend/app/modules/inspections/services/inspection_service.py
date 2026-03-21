@@ -204,9 +204,38 @@ class InspectionService:
             conn, inspection_id, update_data
         )
 
-        # Emit event
+        # Generate PDF + emit event with attachment
         try:
             from app.core.events import EventBus, EventType
+            from app.modules.inspections.services.inspection_pdf_service import (
+                inspection_pdf_service,
+            )
+
+            # Get company owner for notification
+            owner = await conn.fetchrow("""
+                SELECT u.email, u.full_name, u.phone_number, u.preferred_language
+                FROM user_company_roles ucr
+                JOIN users u ON u.id = ucr.user_id
+                WHERE ucr.company_id = $1
+                  AND ucr.role = 'company_owner' AND ucr.is_active = true
+                LIMIT 1
+            """, inspection["company_id"])
+
+            # Generate PDF report as attachment
+            attachments = []
+            try:
+                lang = owner["preferred_language"] if owner else "es"
+                pdf_bytes = await inspection_pdf_service.generate_inspection_report(
+                    conn, str(inspection_id), lang,
+                )
+                attachments.append((
+                    f"inspection-{str(inspection_id)[:8]}.pdf",
+                    pdf_bytes,
+                    "application/pdf",
+                ))
+            except Exception as pdf_err:
+                logger.warning(f"Inspection PDF generation failed: {pdf_err}")
+
             EventBus.publish_nowait(EventType.INSPECTION_COMPLETED, {
                 "inspection_id": str(inspection_id),
                 "company_name": inspection.get("company_name"),
@@ -215,6 +244,11 @@ class InspectionService:
                 "inspection_date": str(inspection["inspection_date"]),
                 "agent_name": inspection.get("agent_name"),
                 "user_id": str(user_id),
+                "user_email": owner["email"] if owner else None,
+                "user_phone": owner["phone_number"] if owner else None,
+                "user_name": owner["full_name"] if owner else None,
+                "preferred_language": owner["preferred_language"] if owner else "es",
+                "attachments": attachments if attachments else None,
             })
         except Exception as e:
             logger.warning(f"INSPECTION_COMPLETED event emission failed: {e}")
@@ -301,21 +335,43 @@ class InspectionService:
             (o["amount"] or 0) + (o["penalty_amount"] or 0) for o in obls
         )
 
-        # Emit event
+        # Generate MED PDF + emit event with attachment
         try:
             from app.core.events import EventBus, EventType
+            from app.modules.inspections.services.inspection_pdf_service import (
+                inspection_pdf_service,
+            )
+
+            attachments = []
+            try:
+                lang = owner["preferred_language"] if owner else "es"
+                pdf_bytes = await inspection_pdf_service.generate_med_pdf(
+                    conn, str(inspection_id), lang,
+                )
+                attachments.append((
+                    f"mise-en-demeure-{str(inspection_id)[:8]}.pdf",
+                    pdf_bytes,
+                    "application/pdf",
+                ))
+            except Exception as pdf_err:
+                logger.warning(f"MED PDF generation failed: {pdf_err}")
+
             EventBus.publish_nowait(EventType.MISE_EN_DEMEURE_ISSUED, {
                 "inspection_id": str(inspection_id),
                 "company_name": inspection.get("company_name"),
                 "company_nif": inspection.get("company_nif"),
                 "unpaid_amount": float(total_unpaid),
                 "deadline": deadline.isoformat(),
+                "obligations_list": ", ".join(
+                    f"{o['amount']} XAF" for o in obls
+                ),
                 "user_email": owner["email"] if owner else None,
                 "user_phone": owner["phone_number"] if owner else None,
                 "user_name": owner["full_name"] if owner else None,
                 "preferred_language": (
                     owner["preferred_language"] if owner else "es"
                 ),
+                "attachments": attachments if attachments else None,
             })
         except Exception as e:
             logger.warning(f"MISE_EN_DEMEURE event emission failed: {e}")
@@ -451,15 +507,49 @@ class InspectionService:
                 WHERE id = $1 AND status != 'closed'
             """, inspection["license_id"])
 
-            # Emit event
+            # Generate seal PV PDF + emit event with attachment + notify owner
             try:
                 from app.core.events import EventBus, EventType
+                from app.modules.inspections.services.inspection_pdf_service import (
+                    inspection_pdf_service,
+                )
+
+                # Get company owner for notification
+                owner = await conn.fetchrow("""
+                    SELECT u.email, u.full_name, u.phone_number, u.preferred_language
+                    FROM user_company_roles ucr
+                    JOIN users u ON u.id = ucr.user_id
+                    WHERE ucr.company_id = $1
+                      AND ucr.role = 'company_owner' AND ucr.is_active = true
+                    LIMIT 1
+                """, inspection["company_id"])
+
+                attachments = []
+                try:
+                    lang = owner["preferred_language"] if owner else "es"
+                    pdf_bytes = await inspection_pdf_service.generate_seal_pdf(
+                        conn, str(inspection_id), lang,
+                    )
+                    attachments.append((
+                        f"pv-scelle-{str(inspection_id)[:8]}.pdf",
+                        pdf_bytes,
+                        "application/pdf",
+                    ))
+                except Exception as pdf_err:
+                    logger.warning(f"Seal PDF generation failed: {pdf_err}")
+
                 EventBus.publish_nowait(EventType.SEAL_APPROVED, {
                     "inspection_id": str(inspection_id),
                     "company_name": inspection.get("company_name"),
                     "company_nif": inspection.get("company_nif"),
                     "seal_reason": inspection.get("seal_reason"),
+                    "unpaid_amount": float(inspection.get("unpaid_obligations_amount", 0)),
                     "user_id": str(supervisor_id),
+                    "user_email": owner["email"] if owner else None,
+                    "user_phone": owner["phone_number"] if owner else None,
+                    "user_name": owner["full_name"] if owner else None,
+                    "preferred_language": owner["preferred_language"] if owner else "es",
+                    "attachments": attachments if attachments else None,
                 })
             except Exception as e:
                 logger.warning(f"SEAL_APPROVED event emission failed: {e}")

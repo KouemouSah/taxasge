@@ -402,11 +402,24 @@ class InspectionPDFService:
             gps_longitude=inspection.get("gps_longitude"),
             gps_accuracy=inspection.get("gps_accuracy"),
             notes=inspection.get("notes"),
+            agent_signature_base64=self._extract_signature_base64(
+                inspection.get("agent_signature")
+            ),
             qr_base64=self._generate_qr(qr_url),
             generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         )
 
         return self._html_to_pdf(html)
+
+    @staticmethod
+    def _extract_signature_base64(data_url: Optional[str]) -> str:
+        """Extract base64 data from data URL (data:image/png;base64,XXXX)."""
+        if not data_url:
+            return ""
+        if data_url.startswith("data:"):
+            parts = data_url.split(",", 1)
+            return parts[1] if len(parts) == 2 else ""
+        return data_url
 
     # ============================================================
     # MISE EN DEMEURE PDF
@@ -438,10 +451,17 @@ class InspectionPDFService:
                 ORDER BY lo.fee_type
             """, obl_uuids)
 
-        # Get entity name
+        # Get entity name + company zone/city
         entity = await db.fetchrow(
             "SELECT name FROM entities WHERE id = $1", inspection["entity_id"]
         )
+        company_info = await db.fetchrow("""
+            SELECT cz.zone_code, ci.name AS city_name
+            FROM commercial_licenses cl
+            LEFT JOIN commerce_zones cz ON cz.id = cl.zone_id
+            LEFT JOIN cities ci ON ci.id = cl.city_id
+            WHERE cl.id = $1
+        """, inspection["license_id"])
 
         texts = TRANSLATIONS.get(language, TRANSLATIONS["es"])
         total_amount = sum((o["amount"] or 0) + (o["penalty_amount"] or 0) for o in obligations)
@@ -462,7 +482,8 @@ class InspectionPDFService:
             entity_name=entity["name"] if entity else "",
             company_name=inspection.get("company_name", ""),
             company_nif=inspection.get("company_nif", ""),
-            company_address="",
+            zone_code=company_info["zone_code"] if company_info else None,
+            city_name=company_info["city_name"] if company_info else None,
             obligations=[dict(o) for o in obligations],
             total_amount=total_amount,
             deadline_date=deadline_str,

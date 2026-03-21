@@ -286,6 +286,35 @@ EVENT_NOTIFICATION_MAP: Dict[EventType, NotificationConfig] = {
         subject_key="notifications.license.issued.subject",
         sms_template_code="LICENSE_GENERATED",
     ),
+
+    # Field Inspection Events
+    EventType.INSPECTION_COMPLETED: NotificationConfig(
+        template_code="inspection_completed",
+        channels=[NotificationChannel.EMAIL],
+        priority="normal",
+        subject_key="notifications.inspection.completed.subject",
+    ),
+    EventType.MISE_EN_DEMEURE_ISSUED: NotificationConfig(
+        template_code="mise_en_demeure_issued",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="high",
+        subject_key="notifications.inspection.med.subject",
+        sms_template_code="MISE_EN_DEMEURE",
+    ),
+    EventType.SEAL_PROPOSED: NotificationConfig(
+        template_code="seal_proposed",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        priority="high",
+        subject_key="notifications.inspection.seal_proposed.subject",
+        requires_user_prefs=False,  # Always notify supervisors
+    ),
+    EventType.SEAL_APPROVED: NotificationConfig(
+        template_code="seal_approved",
+        channels=[NotificationChannel.EMAIL, NotificationChannel.SMS],
+        priority="critical",
+        subject_key="notifications.inspection.seal_approved.subject",
+        sms_template_code="SEAL_APPROVED_SMS",
+    ),
 }
 
 

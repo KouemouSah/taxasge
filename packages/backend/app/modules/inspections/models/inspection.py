@@ -61,6 +61,7 @@ class InspectionUpdate(BaseModel):
     gps_longitude: Optional[Decimal] = None
     gps_accuracy: Optional[Decimal] = None
     notes: Optional[str] = Field(None, max_length=2000)
+    agent_signature: Optional[str] = None  # Base64 PNG data URL from SignaturePad
 
 
 class InspectionCompleteRequest(BaseModel):
@@ -161,6 +162,8 @@ class InspectionResponse(BaseModel):
     payment_id: Optional[UUID] = None
     payment_receipt_number: Optional[str] = None
     payment_amount: Optional[Decimal] = None
+
+    agent_signature: Optional[str] = None
 
     created_at: datetime
     updated_at: datetime
