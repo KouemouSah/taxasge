@@ -151,7 +151,13 @@ class DocumentRepository:
     ) -> Optional[Dict]:
         """Find document by ID"""
         row = await db.fetchrow(
-            "SELECT * FROM service_request_documents WHERE id = $1",
+            """SELECT id, service_request_id, document_code, document_name,
+                      file_path, file_name, file_size, mime_type,
+                      uploaded_by, source, file_hash,
+                      extraction_status, extraction_data, extraction_confidence,
+                      is_valid, validation_errors, validated_by, validated_at,
+                      created_at, updated_at
+               FROM service_request_documents WHERE id = $1""",
             document_id
         )
         return self._row_to_dict(row) if row else None
@@ -163,7 +169,13 @@ class DocumentRepository:
     ) -> List[Dict]:
         """Find all documents for a service request"""
         query = """
-            SELECT * FROM service_request_documents
+            SELECT id, service_request_id, document_code, document_name,
+                   file_path, file_name, file_size, mime_type,
+                   uploaded_by, source, file_hash,
+                   extraction_status, extraction_data, extraction_confidence,
+                   is_valid, validation_errors, validated_by, validated_at,
+                   created_at, updated_at
+            FROM service_request_documents
             WHERE service_request_id = $1
             ORDER BY created_at
         """
@@ -178,7 +190,13 @@ class DocumentRepository:
     ) -> Optional[Dict]:
         """Find specific document by code for a request"""
         query = """
-            SELECT * FROM service_request_documents
+            SELECT id, service_request_id, document_code, document_name,
+                   file_path, file_name, file_size, mime_type,
+                   uploaded_by, source, file_hash,
+                   extraction_status, extraction_data, extraction_confidence,
+                   is_valid, validation_errors, validated_by, validated_at,
+                   created_at, updated_at
+            FROM service_request_documents
             WHERE service_request_id = $1 AND document_code = $2
         """
         row = await db.fetchrow(query, service_request_id, document_code)
@@ -191,7 +209,13 @@ class DocumentRepository:
     ) -> List[Dict]:
         """Find documents pending extraction"""
         query = """
-            SELECT srd.*, sr.workflow_code
+            SELECT srd.id, srd.service_request_id, srd.document_code, srd.document_name,
+                   srd.file_path, srd.file_name, srd.file_size, srd.mime_type,
+                   srd.uploaded_by, srd.source, srd.file_hash,
+                   srd.extraction_status, srd.extraction_data, srd.extraction_confidence,
+                   srd.is_valid, srd.validation_errors, srd.validated_by, srd.validated_at,
+                   srd.created_at, srd.updated_at,
+                   sr.workflow_code
             FROM service_request_documents srd
             JOIN service_requests sr ON sr.id = srd.service_request_id
             WHERE srd.extraction_status = 'pending'
@@ -208,7 +232,13 @@ class DocumentRepository:
     ) -> List[Dict]:
         """Find documents needing manual review"""
         query = """
-            SELECT srd.*, sr.workflow_code, sr.reference
+            SELECT srd.id, srd.service_request_id, srd.document_code, srd.document_name,
+                   srd.file_path, srd.file_name, srd.file_size, srd.mime_type,
+                   srd.uploaded_by, srd.source, srd.file_hash,
+                   srd.extraction_status, srd.extraction_data, srd.extraction_confidence,
+                   srd.is_valid, srd.validation_errors, srd.validated_by, srd.validated_at,
+                   srd.created_at, srd.updated_at,
+                   sr.workflow_code, sr.reference
             FROM service_request_documents srd
             JOIN service_requests sr ON sr.id = srd.service_request_id
             WHERE srd.extraction_status = 'manual_review'

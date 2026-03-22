@@ -582,7 +582,15 @@ class DocumentRepository(BaseRepository[Document]):
         try:
             # Need raw SQL for complex WHERE with AND
             query = f"""
-                SELECT * FROM {self.table_name}
+                SELECT id, user_id, original_filename, document_type, document_subtype,
+                       description, file_path, file_url, file_size_bytes, mime_type, file_hash,
+                       processing_mode, ocr_status, ocr_text, ocr_confidence, ocr_provider,
+                       extraction_status, extracted_data, extraction_confidence,
+                       form_mapping, validation_status,
+                       related_to_type, related_to_id, access_level,
+                       processing_started_at, processing_completed_at, processing_duration_ms,
+                       uploaded_at, updated_at
+                FROM {self.table_name}
                 WHERE ocr_status = $1
                   AND extraction_status = $2
                 ORDER BY uploaded_at ASC

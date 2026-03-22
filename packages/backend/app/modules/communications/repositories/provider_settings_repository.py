@@ -112,7 +112,14 @@ class ProviderSettingsRepository:
         provider_id: int
     ) -> Optional[ProviderSettingsResponse]:
         """Find provider by ID"""
-        query = "SELECT * FROM communication_provider_settings WHERE id = $1"
+        query = """
+            SELECT id, provider_type, provider_name, provider_code,
+                   api_base_url, api_key_encrypted, api_secret_encrypted,
+                   config, is_active, is_default,
+                   rate_limit_per_minute, retry_attempts, timeout_seconds,
+                   created_at, updated_at, created_by, updated_by
+            FROM communication_provider_settings WHERE id = $1
+        """
         row = await db.fetchrow(query, provider_id)
         return self._row_to_response(row) if row else None
 
@@ -122,7 +129,14 @@ class ProviderSettingsRepository:
         provider_code: str
     ) -> Optional[ProviderSettingsResponse]:
         """Find provider by code"""
-        query = "SELECT * FROM communication_provider_settings WHERE provider_code = $1"
+        query = """
+            SELECT id, provider_type, provider_name, provider_code,
+                   api_base_url, api_key_encrypted, api_secret_encrypted,
+                   config, is_active, is_default,
+                   rate_limit_per_minute, retry_attempts, timeout_seconds,
+                   created_at, updated_at, created_by, updated_by
+            FROM communication_provider_settings WHERE provider_code = $1
+        """
         row = await db.fetchrow(query, provider_code)
         return self._row_to_response(row) if row else None
 
@@ -133,7 +147,12 @@ class ProviderSettingsRepository:
     ) -> Optional[ProviderSettingsResponse]:
         """Find default provider for a type"""
         query = """
-            SELECT * FROM communication_provider_settings
+            SELECT id, provider_type, provider_name, provider_code,
+                   api_base_url, api_key_encrypted, api_secret_encrypted,
+                   config, is_active, is_default,
+                   rate_limit_per_minute, retry_attempts, timeout_seconds,
+                   created_at, updated_at, created_by, updated_by
+            FROM communication_provider_settings
             WHERE provider_type = $1 AND is_default = true AND is_active = true
             LIMIT 1
         """
@@ -171,7 +190,12 @@ class ProviderSettingsRepository:
 
         # Fetch providers
         query = f"""
-            SELECT * FROM communication_provider_settings
+            SELECT id, provider_type, provider_name, provider_code,
+                   api_base_url, api_key_encrypted, api_secret_encrypted,
+                   config, is_active, is_default,
+                   rate_limit_per_minute, retry_attempts, timeout_seconds,
+                   created_at, updated_at, created_by, updated_by
+            FROM communication_provider_settings
             {where_sql}
             ORDER BY provider_type, provider_name
             LIMIT ${param_counter} OFFSET ${param_counter + 1}

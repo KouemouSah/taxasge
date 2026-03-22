@@ -121,7 +121,16 @@ class DeclarationRepository:
         try:
             query = """
                 SELECT
-                    d.*,
+                    d.id, d.user_id, d.company_id, d.declaration_type,
+                    d.declaration_number, d.fiscal_year, d.fiscal_period,
+                    d.declaration_deadline, d.taxable_base, d.calculated_tax,
+                    d.deductions, d.credits, d.net_tax_due,
+                    d.status, d.declared_data, d.supporting_documents,
+                    d.taxpayer_notes, d.processor_notes, d.rejection_reason,
+                    d.digital_signature, d.signature_timestamp,
+                    d.declaration_nature, d.original_declaration_id,
+                    d.submitted_at, d.processed_at, d.processed_by,
+                    d.created_at, d.updated_at,
                     u.email as user_email,
                     c.legal_name as company_name,
                     p.id as payment_id,
@@ -185,7 +194,16 @@ class DeclarationRepository:
             params.extend([limit, offset])
             data_query = f"""
                 SELECT
-                    d.*,
+                    d.id, d.user_id, d.company_id, d.declaration_type,
+                    d.declaration_number, d.fiscal_year, d.fiscal_period,
+                    d.declaration_deadline, d.taxable_base, d.calculated_tax,
+                    d.deductions, d.credits, d.net_tax_due,
+                    d.status, d.declared_data, d.supporting_documents,
+                    d.taxpayer_notes, d.processor_notes, d.rejection_reason,
+                    d.digital_signature, d.signature_timestamp,
+                    d.declaration_nature, d.original_declaration_id,
+                    d.submitted_at, d.processed_at, d.processed_by,
+                    d.created_at, d.updated_at,
                     u.email as user_email,
                     c.legal_name as company_name,
                     p.id as payment_id,
@@ -526,7 +544,17 @@ class DeclarationRepository:
         """
         try:
             query = """
-                SELECT * FROM tax_declarations
+                SELECT id, user_id, company_id, declaration_type,
+                       declaration_number, fiscal_year, fiscal_period,
+                       declaration_deadline, taxable_base, calculated_tax,
+                       deductions, credits, net_tax_due,
+                       status, declared_data, supporting_documents,
+                       taxpayer_notes, processor_notes, rejection_reason,
+                       digital_signature, signature_timestamp,
+                       declaration_nature, original_declaration_id,
+                       submitted_at, processed_at, processed_by,
+                       created_at, updated_at
+                FROM tax_declarations
                 WHERE declaration_number = $1
             """
             result = await conn.fetchrow(query, declaration_number)
@@ -799,7 +827,16 @@ class DeclarationRepository:
             params.extend([limit, offset])
             data_query = f"""
                 SELECT
-                    d.*,
+                    d.id, d.user_id, d.company_id, d.declaration_type,
+                    d.declaration_number, d.fiscal_year, d.fiscal_period,
+                    d.declaration_deadline, d.taxable_base, d.calculated_tax,
+                    d.deductions, d.credits, d.net_tax_due,
+                    d.status, d.declared_data, d.supporting_documents,
+                    d.taxpayer_notes, d.processor_notes, d.rejection_reason,
+                    d.digital_signature, d.signature_timestamp,
+                    d.declaration_nature, d.original_declaration_id,
+                    d.submitted_at, d.processed_at, d.processed_by,
+                    d.created_at, d.updated_at,
                     u.email as user_email,
                     c.name as company_name
                 FROM tax_declarations d
