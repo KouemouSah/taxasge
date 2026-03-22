@@ -19,6 +19,7 @@ export default function DashboardError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const locale = useLocale()
   const t = texts[locale as keyof typeof texts] || texts.es
 

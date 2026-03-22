@@ -12,6 +12,7 @@ const texts = {
 } as const
 
 export default function NotFound() {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const locale = useLocale()
   const t = texts[locale as keyof typeof texts] || texts.es
 
