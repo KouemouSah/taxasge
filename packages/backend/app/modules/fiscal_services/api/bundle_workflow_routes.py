@@ -82,11 +82,16 @@ async def get_my_companies_status(
     Returns max 5 companies sorted by urgency.
     No special permission required — scoped to authenticated user.
     """
+    from loguru import logger
     user_id = UUID(current_user["id"])
-    result = await BundleWorkflowService.my_companies_status(
-        db, user_id, fiscal_year
-    )
-    return {"companies": result}
+    try:
+        result = await BundleWorkflowService.my_companies_status(
+            db, user_id, fiscal_year
+        )
+        return {"companies": result}
+    except Exception as e:
+        logger.error(f"[BundleWorkflow] my_companies_status failed: {e}", exc_info=True)
+        raise
 
 
 @router.get("/search-company")
@@ -101,11 +106,16 @@ async def search_eligible_company(
     Filters: regimen_fiscal='bundle', is_active=true.
     No special permission required — any authenticated user can search.
     """
+    from loguru import logger
     user_id = UUID(current_user["id"])
-    results = await BundleWorkflowService.search_eligible_companies(
-        db, q, user_id, limit
-    )
-    return {"companies": results, "total": len(results)}
+    try:
+        results = await BundleWorkflowService.search_eligible_companies(
+            db, q, user_id, limit
+        )
+        return {"companies": results, "total": len(results)}
+    except Exception as e:
+        logger.error(f"[BundleWorkflow] search_eligible_companies failed for q='{q}': {e}", exc_info=True)
+        raise
 
 
 @router.post("/initiate")

@@ -77,9 +77,10 @@ class BundleWorkflowService:
             LEFT JOIN license_obligations lo
                 ON lo.license_id = cl.id
             WHERE c.is_active = true
-            GROUP BY c.id, cz.zone_code, ct.name, cl.id
+            GROUP BY c.id, cz.zone_code, ct.name,
+                     cl.id, cl.status, cl.fiscal_year
             ORDER BY pending_obligations DESC NULLS LAST,
-                     c.updated_at DESC
+                     c.created_at DESC
             LIMIT 5
         """, user_id, fiscal_year)
 
@@ -147,9 +148,7 @@ class BundleWorkflowService:
             """, f"{query}%", limit, user_id)
         else:
             # FTS via search_vector (GIN index) — O(log n) at scale
-            import re
-            safe_terms = re.sub(r"[^\w\s-]", "", query.strip())  # Remove special chars
-            ts_query = " & ".join(safe_terms.split()[:5]) or query[:20]  # Max 5 terms
+            # Use websearch_to_tsquery (lenient parsing) instead of to_tsquery (strict)
             rows = await conn.fetch("""
                 SELECT c.id, c.legal_name, c.tax_id, c.nif,
                        c.registration_number, c.regimen_fiscal,
@@ -162,10 +161,10 @@ class BundleWorkflowService:
                 LEFT JOIN commerce_zones cz ON c.zone_id = cz.id
                 LEFT JOIN cities ct ON c.city_id = ct.id
                 WHERE c.is_active = true AND c.regimen_fiscal = 'bundle'
-                  AND (c.search_vector @@ to_tsquery('spanish', $1)
+                  AND (c.search_vector @@ websearch_to_tsquery('spanish', $1)
                        OR c.legal_name ILIKE $4)
                 ORDER BY c.legal_name LIMIT $2
-            """, ts_query, limit, user_id, f"%{query}%")
+            """, query.strip(), limit, user_id, f"%{query}%")
 
         return [
             {
