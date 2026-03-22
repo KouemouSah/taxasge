@@ -10,7 +10,7 @@ from typing import Optional
 from uuid import UUID
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Depends, Query, Header, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form
 
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
@@ -47,15 +47,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/inspections", tags=["Field Inspections"])
 
 
-def verify_cron_auth(x_cron_secret: Optional[str] = Header(None)):
-    """Verify cron job authentication."""
-    from app.core.secrets import get_cron_secret
-    from app.config import get_settings
-
-    settings = get_settings()
-    expected = get_cron_secret() or getattr(settings, "CRON_SECRET", None)
-    if expected and x_cron_secret != expected:
-        raise HTTPException(status_code=403, detail="Invalid cron auth")
+# Centralized cron authentication (fail-closed)
+from app.core.cron_auth import verify_cron_auth  # noqa: F401 — used as Depends()
 
 
 # ============================================================

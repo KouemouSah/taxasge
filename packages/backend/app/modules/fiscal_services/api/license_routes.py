@@ -8,7 +8,7 @@ from enum import Enum
 
 logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, Header, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from uuid import UUID
 
@@ -18,26 +18,8 @@ from app.modules.users.models.user import UserResponse
 from app.modules.permissions.middleware.permission_middleware import permission_required
 
 
-def verify_cron_auth(x_cron_secret: Optional[str] = Header(None)):
-    """Verify cron job authentication via shared secret.
-
-    Cloud Scheduler sends X-Cron-Secret header. In dev mode (no secret
-    configured), all requests are allowed.
-    """
-    from app.core.secrets import get_cron_secret
-    from app.config import get_settings
-
-    settings = get_settings()
-    expected_secret = get_cron_secret() or getattr(settings, "CRON_SECRET", None)
-
-    if expected_secret:
-        if x_cron_secret != expected_secret:
-            logger.warning("License cron rejected: invalid X-Cron-Secret")
-            raise HTTPException(status_code=403, detail="Invalid cron authentication")
-    else:
-        logger.debug(
-            "License cron: no CRON_SECRET configured, allowing request (dev mode)"
-        )
+# Centralized cron authentication (fail-closed)
+from app.core.cron_auth import verify_cron_auth  # noqa: F401 — used as Depends()
 from app.modules.fiscal_services.models.licenses import (
     LicenseCreate,
     LicenseUpdate,

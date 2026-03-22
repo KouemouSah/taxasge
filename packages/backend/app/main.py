@@ -285,6 +285,18 @@ class SecurityHeadersMiddleware:
                     (b"x-xss-protection", b"1; mode=block"),
                     (b"referrer-policy", b"strict-origin-when-cross-origin"),
                     (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+                    # CSP: defense-in-depth against XSS
+                    (b"content-security-policy",
+                     b"default-src 'self'; "
+                     b"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                     b"style-src 'self' 'unsafe-inline'; "
+                     b"img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com; "
+                     b"font-src 'self' data:; "
+                     b"connect-src 'self' https://*.supabase.co https://*.run.app https://*.upstash.io wss://*.supabase.co; "
+                     b"frame-ancestors 'none'; "
+                     b"base-uri 'self'; "
+                     b"form-action 'self'"
+                    ),
                 ]
                 if not settings.debug:
                     extra_headers.append(

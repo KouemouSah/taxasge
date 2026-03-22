@@ -9,8 +9,7 @@ Internal endpoints called by Cloud Scheduler (GCP) for:
 Security: These endpoints should be protected by internal authentication
 or called only from Cloud Scheduler with proper IAM.
 """
-from fastapi import APIRouter, Depends, HTTPException, Header
-from typing import Optional
+from fastapi import APIRouter, Depends
 from datetime import date, timedelta
 from html import escape as html_escape
 import asyncpg
@@ -27,38 +26,8 @@ router = APIRouter(prefix="/cron", tags=["Cron Jobs (Internal)"])
 settings = get_settings()
 
 
-def verify_cron_auth(x_cron_secret: Optional[str] = Header(None)):
-    """
-    Verify cron job authentication via shared secret.
-
-    Secret is loaded from:
-    - Production: Google Cloud Secret Manager ('cron-secret')
-    - Local dev: .env CRON_SECRET
-
-    If CRON_SECRET is configured, all requests MUST provide matching header.
-    If NOT configured (local dev without .env entry), requests are allowed
-    with a warning log to avoid blocking development.
-    """
-    from app.core.secrets import get_cron_secret
-
-    # Priority: Secret Manager > config.py > .env
-    expected_secret = get_cron_secret() or settings.CRON_SECRET
-    if not expected_secret:
-        logger.error(
-            "CRON_SECRET not configured — cron endpoints BLOCKED (fail-closed). "
-            "Set CRON_SECRET in .env or Secret Manager."
-        )
-        raise HTTPException(
-            status_code=503,
-            detail="Cron authentication not configured. Set CRON_SECRET."
-        )
-    if not x_cron_secret:
-        logger.warning("Cron request rejected: missing X-Cron-Secret header")
-        raise HTTPException(status_code=403, detail="Missing cron authentication")
-    if x_cron_secret != expected_secret:
-        logger.warning("Cron request rejected: invalid X-Cron-Secret")
-        raise HTTPException(status_code=403, detail="Invalid cron authentication")
-    return True
+# Centralized cron authentication (fail-closed)
+from app.core.cron_auth import verify_cron_auth  # noqa: F401 — used as Depends()
 
 
 @router.post(

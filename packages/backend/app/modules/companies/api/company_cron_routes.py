@@ -9,9 +9,7 @@ Endpoints:
   POST /cron/compliance-reminders     — Check obligation deadlines + escalations
 """
 
-from typing import Any, Dict, Optional
-
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends
 from loguru import logger
 
 from app.database.connection import get_database
@@ -19,32 +17,8 @@ from app.database.connection import get_database
 router = APIRouter(prefix="/cron", tags=["Company Cron Jobs (Internal)"])
 
 
-def verify_cron_auth(x_cron_secret: Optional[str] = Header(None)):
-    """Verify cron job authentication via shared secret.
-
-    Reuses the same CRON_SECRET as other cron endpoints in the project.
-    """
-    from app.core.secrets import get_cron_secret
-    from app.config import get_settings
-
-    settings = get_settings()
-    expected_secret = get_cron_secret() or getattr(settings, 'CRON_SECRET', None)
-
-    if not expected_secret:
-        logger.error(
-            "CRON_SECRET not configured — company cron endpoints BLOCKED (fail-closed). "
-            "Set CRON_SECRET in .env or Secret Manager."
-        )
-        raise HTTPException(
-            status_code=503,
-            detail="Cron authentication not configured. Set CRON_SECRET."
-        )
-    if not x_cron_secret:
-        logger.warning("Company cron rejected: missing X-Cron-Secret header")
-        raise HTTPException(status_code=403, detail="Missing cron authentication")
-    if x_cron_secret != expected_secret:
-        logger.warning("Company cron rejected: invalid X-Cron-Secret")
-        raise HTTPException(status_code=403, detail="Invalid cron authentication")
+# Centralized cron authentication (fail-closed)
+from app.core.cron_auth import verify_cron_auth  # noqa: F401 — used as Depends()
 
 
 @router.post("/annual-reclassification")

@@ -50,6 +50,14 @@ ALLOWED_MIME_TYPES = {
 }
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# Magic bytes for file integrity validation (prevents corrupt/malicious uploads)
+FILE_MAGIC_BYTES = {
+    b'%PDF': 'application/pdf',
+    b'\xff\xd8\xff': 'image/jpeg',       # JPEG/JPG
+    b'\x89PNG': 'image/png',
+    b'RIFF': 'image/webp',               # WebP starts with RIFF
+}
+
 # Preview expiry time (30 minutes)
 PREVIEW_EXPIRY_MINUTES = 30
 PREVIEW_EXPIRY_SECONDS = PREVIEW_EXPIRY_MINUTES * 60
@@ -216,6 +224,9 @@ class ServiceRequestService:
                 detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
             )
 
+        # Validate file integrity (magic bytes vs declared MIME)
+        self._validate_file_integrity(content, file.content_type or '')
+
         # Import storage service (avoid circular import)
         try:
             from app.modules.documents.services.storage_service import firebase_storage_service
@@ -362,6 +373,9 @@ class ServiceRequestService:
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
             )
+
+        # Validate file integrity (magic bytes vs declared MIME)
+        self._validate_file_integrity(content, file.content_type or '')
 
         # Get document name, extraction_schema_key, and workflow constraints from requirements
         params = self._extract_workflow_params(request)
@@ -1432,11 +1446,51 @@ class ServiceRequestService:
     # ═══════════════════════════════════════════════════════════════
 
     def _validate_file(self, file: UploadFile) -> None:
-        """Validate uploaded file"""
+        """Validate uploaded file (MIME type check)"""
         if file.content_type not in ALLOWED_MIME_TYPES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"File type not allowed. Accepted: {', '.join(ALLOWED_MIME_TYPES)}"
+            )
+
+    @staticmethod
+    def _validate_file_integrity(file_content: bytes, declared_mime: str) -> None:
+        """
+        Validate file integrity via magic bytes.
+        Prevents corrupt files and MIME type spoofing from causing
+        OCR retry loops or processing resource waste.
+        """
+        if len(file_content) < 4:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File is too small or empty"
+            )
+
+        # Check magic bytes match declared MIME type
+        matched = False
+        for magic, expected_mime in FILE_MAGIC_BYTES.items():
+            if file_content[:len(magic)] == magic:
+                matched = True
+                # For JPEG, both image/jpeg and image/jpg are valid
+                if expected_mime == 'image/jpeg' and declared_mime in ('image/jpeg', 'image/jpg'):
+                    break
+                if expected_mime == declared_mime:
+                    break
+                # WebP: RIFF header, check bytes 8-12 for WEBP
+                if magic == b'RIFF' and len(file_content) >= 12:
+                    if file_content[8:12] != b'WEBP':
+                        matched = False
+                    break
+                # Magic matched but MIME doesn't — spoofed file
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"File content does not match declared type ({declared_mime})"
+                )
+
+        if not matched:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File format not recognized. Upload PDF, JPG, PNG or WebP files."
             )
 
     async def _get_required_documents(
