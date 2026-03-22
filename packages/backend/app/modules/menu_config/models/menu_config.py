@@ -278,6 +278,9 @@ class AgentMenuConfigResponse(BaseModel):
     # Dashboard configuration
     dashboard_config: DashboardConfigResponse
 
+    # Agent flags
+    is_supervisor: bool = False
+
     # Permissions (for frontend filtering)
     permissions: List[str] = Field(default_factory=list)
 

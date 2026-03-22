@@ -135,6 +135,7 @@ def _register_all_agents(registry: ToolRegistry) -> None:
     _register_treasury(registry)
     _register_admin(registry)
     _register_supervisor(registry)
+    _register_entity_agent(registry)
     _register_orchestrator(registry)
     # Non-function-calling agents (process_fn pattern)
     _register_chatbot_rag(registry)
@@ -238,6 +239,41 @@ def _register_supervisor(registry: ToolRegistry) -> None:
             function_map={},
             prompt_template="Supervisor agent tools not available.",
             agent_type_label="Supervisor Assistant (fallback)",
+        ))
+
+
+def _register_entity_agent(registry: ToolRegistry) -> None:
+    """Register entity field agent (CNEDOGE, DGT, Extranjeria, etc.) with 10 business tools."""
+    try:
+        from app.modules.shared.services.entity_agent_tools import (
+            ENTITY_AGENT_FUNCTION_MAP,
+            ENTITY_AGENT_FUNC_DECLS,
+            ENTITY_AGENT_PROMPT_TEMPLATE,
+        )
+        from datetime import datetime, timezone
+
+        def entity_prompt_fn(ctx: dict) -> str:
+            now = datetime.now(timezone.utc)
+            return ENTITY_AGENT_PROMPT_TEMPLATE.format(
+                entity_code=ctx.get("entity_code", "unknown"),
+                current_date=now.strftime("%Y-%m-%d"),
+            )
+
+        registry.register("entity_agent", ToolSet(
+            function_declarations=ENTITY_AGENT_FUNC_DECLS,
+            function_map=ENTITY_AGENT_FUNCTION_MAP,
+            prompt_fn=entity_prompt_fn,
+            max_tool_rounds=2,
+            second_call_max_tokens=2048,
+            agent_type_label="Entity Field Agent Assistant",
+        ))
+    except ImportError as e:
+        logger.warning(f"ToolRegistry: entity_agent registration failed: {e}")
+        registry.register("entity_agent", ToolSet(
+            function_declarations=[],
+            function_map={},
+            prompt_template="Entity agent tools not available.",
+            agent_type_label="Entity Agent (fallback)",
         ))
 
 

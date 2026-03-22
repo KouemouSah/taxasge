@@ -317,8 +317,16 @@ class SessionService:
         Results cached in-memory for 1 hour to stay within rate limits (45 req/min).
         Falls back to raw IP on failure.
         """
-        if not ip_address or ip_address in ("127.0.0.1", "::1", "localhost"):
-            return ip_address or "Unknown"
+        if not ip_address:
+            return "Unknown"
+
+        # Skip private/internal IPs (can't geolocate)
+        private_prefixes = ("127.", "10.", "172.16.", "172.17.", "172.18.", "172.19.",
+                            "172.20.", "172.21.", "172.22.", "172.23.", "172.24.",
+                            "172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
+                            "172.30.", "172.31.", "192.168.", "169.254.", "::1", "fc", "fd")
+        if any(ip_address.startswith(p) for p in private_prefixes):
+            return f"Red interna ({ip_address})"
 
         # Check in-memory cache
         cache_key = f"geo:{ip_address}"

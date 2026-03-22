@@ -82,6 +82,7 @@ _RATE_LIMITS = {
     "treasury": {"max_requests": 20, "window_seconds": 3600},    # 20/hour
     "admin": {"max_requests": 10, "window_seconds": 60},          # 10/min
     "supervisor": {"max_requests": 15, "window_seconds": 60},     # 15/min
+    "entity_agent": {"max_requests": 20, "window_seconds": 60},   # 20/min (field agents use it heavily)
     "orchestrator": {"max_requests": 10, "window_seconds": 60},   # 10/min
 }
 
@@ -89,6 +90,7 @@ _RATE_LIMITS = {
 _CACHE_TTL = {
     "treasury": 300,     # 5 min (expensive SQL queries)
     "supervisor": 120,   # 2 min
+    "entity_agent": 60,  # 1 min (request-specific data changes fast)
     "admin": 0,          # no cache (real-time)
     "orchestrator": 120, # 2 min
 }
@@ -127,11 +129,14 @@ async def _resolve_agent_context(
     workflow_codes = row["workflow_codes"] or []
     entity_type = row["entity_type"]
 
-    # Agent type resolution — fully DB-driven via entity_type enum + workflow_codes
+    # Agent type resolution — DB-driven via entity_type + is_supervisor + workflow_codes
     if entity_type == "treasury":
         agent_type = "treasury"
-    elif len(workflow_codes) > 0:
+    elif row["is_supervisor"] and len(workflow_codes) > 0:
         agent_type = "supervisor"
+    elif len(workflow_codes) > 0:
+        # Field agent (CNEDOGE, DGT, Extranjeria, etc.) — entity_agent tools
+        agent_type = "entity_agent"
     else:
         # Entity without workflows and not treasury — no agent available
         return None

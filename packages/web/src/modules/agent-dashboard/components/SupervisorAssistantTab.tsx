@@ -14,6 +14,7 @@ import { useTranslations } from 'next-intl';
 import {
   BarChart3, Clock, Users, ListOrdered, TrendingUp,
   FileText, AlertTriangle, Sparkles, DollarSign,
+  Search, FileCheck, Calendar,
 } from 'lucide-react';
 import { AgentChatUI } from '@/components/agent-chat';
 import type { AgentChatConfig, AgentResponse } from '@/components/agent-chat';
@@ -41,11 +42,12 @@ const ENTITY_ACCENT: Record<string, string> = {
 interface SupervisorAssistantTabProps {
   entityCode: string;
   entityName: string;
+  isSupervisor?: boolean;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function SupervisorAssistantTab({ entityCode, entityName }: SupervisorAssistantTabProps) {
+export function SupervisorAssistantTab({ entityCode, entityName, isSupervisor = true }: SupervisorAssistantTabProps) {
   const t = useTranslations('agent.assistant');
 
   // Fetch auto-briefing
@@ -90,7 +92,8 @@ export function SupervisorAssistantTab({ entityCode, entityName }: SupervisorAss
       quickActionsMenu: t('quickActionsMenu'),
       download: t('download'),
     },
-    quickActions: [
+    quickActions: isSupervisor ? [
+      // Supervisor quick actions (team management, analytics)
       {
         label: t('quickActions.stats'),
         question: t('quickActions.statsQuestion'),
@@ -130,6 +133,48 @@ export function SupervisorAssistantTab({ entityCode, entityName }: SupervisorAss
         label: t('quickActions.tariffs'),
         question: t('quickActions.tariffsQuestion'),
         icon: DollarSign,
+      },
+    ] : [
+      // Field agent quick actions (request processing, citizen lookup)
+      {
+        label: 'Mi cola de trabajo',
+        question: 'Muestra mi cola de trabajo pendiente con prioridades',
+        icon: ListOrdered,
+      },
+      {
+        label: 'Buscar expediente',
+        question: 'Buscar solicitud por referencia o NIF del ciudadano',
+        icon: Search,
+      },
+      {
+        label: 'Urgencias SLA',
+        question: 'Cuales son los items con SLA critico?',
+        icon: Clock,
+      },
+      {
+        label: 'Verificar documentos',
+        question: 'Estado de documentos de la solicitud',
+        icon: FileCheck,
+      },
+      {
+        label: 'Consultar tarifa',
+        question: 'Cuanto cuesta este tramite con suplementos?',
+        icon: DollarSign,
+      },
+      {
+        label: 'Citas disponibles',
+        question: 'Que citas estan disponibles esta semana?',
+        icon: Calendar,
+      },
+      {
+        label: 'Estadisticas',
+        question: 'Estadisticas de mi entidad esta semana',
+        icon: BarChart3,
+      },
+      {
+        label: 'Procedimiento',
+        question: 'Cuales son los pasos de este tramite?',
+        icon: FileText,
       },
     ],
     mutation,

@@ -282,6 +282,7 @@ class MenuConfigService:
             available_workflows=available_workflows,
             menu_config=menu_config,
             dashboard_config=dashboard_config,
+            is_supervisor=agent_data.get('is_supervisor', False),
             permissions=permissions,
             display_configs=display_configs,
             has_role_menu_config=role_menu_config is not None
