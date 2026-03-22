@@ -109,13 +109,9 @@ function hasAdminPermissions(role: string | null): boolean {
 }
 
 /**
- * Check if user has write permissions (admin, agent, supervisor)
+ * Check if user has write permissions (same as admin permissions)
  */
-function hasWritePermissions(role: string | null): boolean {
-  if (!role) return false;
-  const r = role.toLowerCase();
-  return r === 'admin' || r.startsWith('agent_') || r.startsWith('supervisor_');
-}
+const hasWritePermissions = hasAdminPermissions;
 
 /**
  * Extract locale from pathname (e.g., /es/services -> es)

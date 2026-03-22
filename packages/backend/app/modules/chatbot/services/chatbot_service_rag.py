@@ -372,6 +372,8 @@ class ChatbotServiceRAG:
             - suggestions: Search suggestions
             - semantic_matches: Similarity scores
         """
+        start_time = datetime.now()
+
         if not self.enabled or not db:
             return {
                 "results": [],
@@ -412,7 +414,7 @@ class ChatbotServiceRAG:
                     for s in results
                 ],
                 "language": language,
-                "response_time": 0  # TODO: track
+                "response_time": (datetime.now() - start_time).total_seconds()
             }
 
         except Exception as e:
@@ -453,12 +455,15 @@ class ChatbotServiceRAG:
             if not intent_embedding:
                 return {"services": [], "explanation": "Failed to process intent"}
 
-            # Search for relevant services
+            # Search for relevant services (top 3 + 3 alternatives)
             search_repo = SemanticSearchRepository(db)
-            services = await search_repo.search_services(
+            all_services = await search_repo.search_services(
                 query_embedding=intent_embedding,
-                limit=3  # Top 3 recommendations
+                limit=6  # Top 3 + 3 alternatives
             )
+
+            services = all_services[:3]
+            alternatives = all_services[3:6]
 
             # Generate explanation using Gemini
             explanation = await self._generate_recommendation_explanation(
@@ -474,7 +479,10 @@ class ChatbotServiceRAG:
                     s["service_code"]: s.get("similarity", 0)
                     for s in services
                 },
-                "alternatives": [],  # TODO: implement
+                "alternatives": [
+                    {"service_code": s["service_code"], "name": s.get("name_es", ""), "similarity": s.get("similarity", 0)}
+                    for s in alternatives
+                ],
                 "next_steps": self._generate_next_steps(services, language)
             }
 
