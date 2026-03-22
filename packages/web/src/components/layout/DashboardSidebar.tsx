@@ -26,7 +26,8 @@ import {
   MessageCircle,
   BadgeCheck,
   Lock,
-  FileStack
+  FileStack,
+  Calculator,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/core/api/auth'
@@ -106,6 +107,13 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       titleKey: 'batchRequests',
       href: `/${locale}/dashboard/batch-requests`,
       icon: FileStack,
+    },
+    // Accountant menu - only visible for accountant role
+    {
+      titleKey: 'accountant',
+      href: `/${locale}/dashboard/accountant`,
+      icon: Calculator,
+      visible: user?.role === 'accountant',
     },
     // Funcionario menu - only visible for verified civil servants
     {

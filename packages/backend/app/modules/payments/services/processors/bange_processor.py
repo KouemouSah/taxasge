@@ -85,82 +85,56 @@ class BangeProcessor(PaymentProcessorBase):
             payment_reference = self._generate_reference(context)
             payment_id = str(uuid4())
 
-            # 2. Create service_payment record
-            await self._create_service_payment(
-                db=db,
-                payment_id=payment_id,
-                context=context,
-                payment_reference=payment_reference
-            )
-
-            # 3. Build callback URLs (Note: Settings fields are UPPERCASE)
-            callback_url = f"{self.settings.API_BASE_URL}/api/v1/webhooks/bange"
-            return_url = f"{self.settings.FRONTEND_URL}/dashboard/service-requests/{context.service_request_id}/payment/result"
-
-            # 4. Create BANGE payment request
-            bange_request = BANGEPaymentRequest(
-                amount=context.amount,
-                currency=context.currency,
-                description=f"Pago {context.service_name or context.workflow_code} - {context.reference_number}",
-                reference=payment_reference,
-                customer_email=context.user_email,
-                customer_phone=context.user_phone,
-                callback_url=callback_url,
-                return_url=return_url,
-                metadata={
-                    "service_request_id": context.service_request_id,
-                    "payment_id": payment_id,
-                    "workflow_code": context.workflow_code,
-                    "user_id": context.user_id,
-                }
-            )
-
-            # 5. Call BANGE API
-            bange_response = await self.bange_service.create_payment(bange_request)
-
-            if not bange_response:
-                # BANGE API call failed
-                await self._update_payment_status(
+            # ── ATOMIC TRANSACTION: create record + call BANGE + update reference ──
+            # Prevents double-charging: if BANGE call fails, the DB record is rolled back.
+            async with db.transaction():
+                # 2. Create service_payment record (inside transaction)
+                await self._create_service_payment(
                     db=db,
                     payment_id=payment_id,
-                    status=PaymentStatus.FAILED,
-                    error="BANGE API call failed"
+                    context=context,
+                    payment_reference=payment_reference
                 )
 
-                # Publish PAYMENT_FAILED event for notifications
-                try:
-                    EventBus.publish_nowait(EventType.PAYMENT_FAILED, {
-                        "payment_id": payment_id,
-                        "user_id": context.user_id,
+                # 3. Build callback URLs (Note: Settings fields are UPPERCASE)
+                callback_url = f"{self.settings.API_BASE_URL}/api/v1/webhooks/bange"
+                return_url = f"{self.settings.FRONTEND_URL}/dashboard/service-requests/{context.service_request_id}/payment/result"
+
+                # 4. Create BANGE payment request
+                bange_request = BANGEPaymentRequest(
+                    amount=context.amount,
+                    currency=context.currency,
+                    description=f"Pago {context.service_name or context.workflow_code} - {context.reference_number}",
+                    reference=payment_reference,
+                    customer_email=context.user_email,
+                    customer_phone=context.user_phone,
+                    callback_url=callback_url,
+                    return_url=return_url,
+                    metadata={
                         "service_request_id": context.service_request_id,
-                        "amount": float(context.amount),
-                        "currency": context.currency,
-                        "payment_method": context.payment_method.value,
-                        "user_email": context.user_email,
-                        "user_phone": context.user_phone,
-                        "preferred_language": "es",
-                        "reason": "Error al conectar con el sistema de pago BANGE",
-                    })
-                    logger.info(f"PAYMENT_FAILED event published for payment {payment_id}")
-                except Exception as e:
-                    logger.error(f"Failed to publish PAYMENT_FAILED event: {e}")
-
-                return PaymentInitResult(
-                    success=False,
-                    payment_id=payment_id,
-                    status=PaymentStatus.FAILED,
-                    error="Error al conectar con el sistema de pago. Intente nuevamente.",
-                    message_es="Error al conectar con el sistema de pago. Intente nuevamente."
+                        "payment_id": payment_id,
+                        "workflow_code": context.workflow_code,
+                        "user_id": context.user_id,
+                    }
                 )
 
-            # 6. Update record with BANGE transaction ID
-            await self._update_gateway_reference(
-                db=db,
-                payment_id=payment_id,
-                gateway_transaction_id=bange_response.payment_id,
-                expires_at=bange_response.expires_at
-            )
+                # 5. Call BANGE API (inside transaction — rolls back DB if this fails)
+                bange_response = await self.bange_service.create_payment(bange_request)
 
+                if not bange_response:
+                    # BANGE API call failed — transaction will rollback the service_payment record
+                    # We need to raise to trigger rollback, then handle outside transaction
+                    raise ValueError("BANGE_API_FAILED")
+
+                # 6. Update record with BANGE transaction ID (inside transaction)
+                await self._update_gateway_reference(
+                    db=db,
+                    payment_id=payment_id,
+                    gateway_transaction_id=bange_response.payment_id,
+                    expires_at=bange_response.expires_at
+                )
+
+            # ── Transaction committed successfully ──
             logger.info(
                 f"BANGE payment initiated: {payment_id} -> {bange_response.payment_id}"
             )
@@ -180,6 +154,37 @@ class BangeProcessor(PaymentProcessorBase):
                     "payment_reference": payment_reference,
                 }
             )
+
+        except ValueError as ve:
+            if str(ve) == "BANGE_API_FAILED":
+                # Payment record was rolled back — no orphan in DB
+                logger.warning(f"BANGE API failed for payment {payment_id}, transaction rolled back")
+
+                # Publish PAYMENT_FAILED event for notifications
+                try:
+                    EventBus.publish_nowait(EventType.PAYMENT_FAILED, {
+                        "payment_id": payment_id,
+                        "user_id": context.user_id,
+                        "service_request_id": context.service_request_id,
+                        "amount": float(context.amount),
+                        "currency": context.currency,
+                        "payment_method": context.payment_method.value,
+                        "user_email": context.user_email,
+                        "user_phone": context.user_phone,
+                        "preferred_language": "es",
+                        "reason": "Error al conectar con el sistema de pago BANGE",
+                    })
+                except Exception as e:
+                    logger.error(f"Failed to publish PAYMENT_FAILED event: {e}")
+
+                return PaymentInitResult(
+                    success=False,
+                    payment_id=payment_id,
+                    status=PaymentStatus.FAILED,
+                    error="Error al conectar con el sistema de pago. Intente nuevamente.",
+                    message_es="Error al conectar con el sistema de pago. Intente nuevamente."
+                )
+            raise
 
         except Exception as e:
             logger.error(f"Error initiating BANGE payment: {e}")

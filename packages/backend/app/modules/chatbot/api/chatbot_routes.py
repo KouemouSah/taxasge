@@ -163,7 +163,7 @@ async def get_chatbot_status(db: asyncpg.Connection = Depends(get_db)):
 
 
 # ============================================================================
-# DEBUG ENDPOINT - Semantic Search Test
+# DEBUG ENDPOINT - Semantic Search Test (Protected: admin only)
 # ============================================================================
 
 @router.get("/debug/search", response_model=Dict[str, Any])
@@ -171,13 +171,16 @@ async def debug_semantic_search(
     query: str = Query(..., description="Search query to test"),
     threshold: float = Query(0.1, description="Similarity threshold (0-1)"),
     limit: int = Query(10, description="Max results"),
-    db: asyncpg.Connection = Depends(get_db)
+    db: asyncpg.Connection = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
 ):
     """
-    Debug endpoint to test semantic search directly
+    Debug endpoint to test semantic search directly (admin only).
 
-    Returns raw search results to diagnose issues
+    Returns raw search results to diagnose issues.
     """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
     from app.modules.chatbot.services import embedding_service
 
     result = {

@@ -38,11 +38,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Prevent body-level scrolling in dashboard (scroll happens in <main>)
-  useEffect(() => {
-    document.body.classList.add('overflow-hidden')
-    return () => { document.body.classList.remove('overflow-hidden') }
-  }, [])
+  // Note: Body overflow-hidden removed — the flex h-screen overflow-hidden
+  // container already prevents body scroll. The body class was breaking
+  // iOS Safari scroll behavior and causing mobile UX issues.
 
   useEffect(() => {
     const authData = getAuthData()

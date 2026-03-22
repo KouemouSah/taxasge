@@ -13,6 +13,7 @@ Routes:
 from fastapi import APIRouter, HTTPException, Depends, status, Query, Path
 from typing import List, Optional
 from loguru import logger
+from app.config import get_settings
 
 from app.modules.fiscal_services.models.templates import (
     DocumentTemplateCreate,
@@ -968,14 +969,12 @@ async def diagnose_procedure_steps(
     db=Depends(get_database),
 ):
     """
-    Diagnostic endpoint to check procedure_template_steps data consistency.
-
-    Returns:
-    - Total steps in the database
-    - Steps with valid template_id (exists in procedure_templates)
-    - Steps with orphaned template_id (doesn't exist in procedure_templates)
-    - Sample of procedure_templates without steps
+    Diagnostic endpoint to check procedure_template_steps data consistency (staging only).
+    Returns 404 in production.
     """
+    _settings = get_settings()
+    if _settings.environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     try:
         # Total steps
         total_steps = await db.fetchval("SELECT COUNT(*) FROM procedure_template_steps")

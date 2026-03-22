@@ -43,18 +43,21 @@ def verify_cron_auth(x_cron_secret: Optional[str] = Header(None)):
 
     # Priority: Secret Manager > config.py > .env
     expected_secret = get_cron_secret() or settings.CRON_SECRET
-    if expected_secret:
-        if not x_cron_secret:
-            logger.warning("Cron request rejected: missing X-Cron-Secret header")
-            raise HTTPException(status_code=403, detail="Missing cron authentication")
-        if x_cron_secret != expected_secret:
-            logger.warning("Cron request rejected: invalid X-Cron-Secret")
-            raise HTTPException(status_code=403, detail="Invalid cron authentication")
-    else:
-        logger.warning(
-            "CRON_SECRET not configured — cron endpoints are UNPROTECTED. "
-            "Set CRON_SECRET in .env or Secret Manager for production."
+    if not expected_secret:
+        logger.error(
+            "CRON_SECRET not configured — cron endpoints BLOCKED (fail-closed). "
+            "Set CRON_SECRET in .env or Secret Manager."
         )
+        raise HTTPException(
+            status_code=503,
+            detail="Cron authentication not configured. Set CRON_SECRET."
+        )
+    if not x_cron_secret:
+        logger.warning("Cron request rejected: missing X-Cron-Secret header")
+        raise HTTPException(status_code=403, detail="Missing cron authentication")
+    if x_cron_secret != expected_secret:
+        logger.warning("Cron request rejected: invalid X-Cron-Secret")
+        raise HTTPException(status_code=403, detail="Invalid cron authentication")
     return True
 
 

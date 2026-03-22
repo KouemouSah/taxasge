@@ -13,6 +13,7 @@ Includes Redis cache (Upstash) for frequently accessed data:
 from fastapi import APIRouter, HTTPException, Depends, Query, status, Request
 from typing import Optional
 import asyncpg
+from app.config import get_settings
 import redis.asyncio as redis
 from loguru import logger
 import hashlib
@@ -1007,7 +1008,7 @@ async def semantic_search(
         )
 
 
-# ========== DEBUG ENDPOINT - TO REMOVE AFTER TESTING ==========
+# ========== DEBUG ENDPOINT - Protected: 404 in production ==========
 
 @router.get("/debug/translations/{template_code}")
 async def debug_translations(
@@ -1016,9 +1017,12 @@ async def debug_translations(
     db: asyncpg.Connection = Depends(get_db),
 ):
     """
-    Debug endpoint to check translations for a procedure template.
-    Returns all entity_translations matching the template_code pattern.
+    Debug endpoint to check translations for a procedure template (staging only).
+    Returns 404 in production. Returns all entity_translations matching the template_code pattern.
     """
+    _settings = get_settings()
+    if _settings.environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     query = """
         SELECT entity_type, entity_code, language_code, field_name,
                LEFT(translation_text, 100) as translation_preview

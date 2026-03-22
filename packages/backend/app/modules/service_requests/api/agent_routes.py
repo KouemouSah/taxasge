@@ -523,8 +523,25 @@ async def release_item(
         AND status IN ('assigned', 'in_progress')
     """, queue_item['item_id'], reason)
 
-    # TODO: Trigger auto-assignment for the released item
-    # This could be done via event bus or directly here
+    # Re-enqueue for auto-assignment so released items don't stall
+    try:
+        # Get workflow_code and entity_code from the service request
+        sr_info = await db.fetchrow(
+            "SELECT workflow_code, entity_code FROM service_requests WHERE id = $1",
+            queue_item['item_id']
+        )
+        if sr_info and sr_info['workflow_code']:
+            from app.modules.service_requests.services.assignment_outbox_service import AssignmentOutboxService
+            outbox = AssignmentOutboxService()
+            await outbox.enqueue(
+                db=db,
+                service_request_id=queue_item['item_id'],
+                workflow_code=sr_info['workflow_code'],
+                entity_code=sr_info['entity_code'] or '',
+            )
+            logger.info(f"Released item {queue_item['item_id']} re-enqueued for auto-assignment")
+    except Exception as e:
+        logger.warning(f"Failed to re-enqueue released item for auto-assignment: {e}")
 
     return {"message": "Item released back to queue for reassignment"}
 

@@ -1,7 +1,7 @@
 """Chatbot Services"""
 
-# Legacy placeholder service (deprecated)
-from app.modules.chatbot.services.chatbot_service import chatbot_service as chatbot_service_legacy, ChatbotService
+# Legacy placeholder service (deprecated — renamed to chatbot_service_deprecated.py)
+from app.modules.chatbot.services.chatbot_service_deprecated import chatbot_service as chatbot_service_legacy, ChatbotService
 
 # New RAG-powered service
 from app.modules.chatbot.services.chatbot_service_rag import chatbot_service_rag, ChatbotServiceRAG

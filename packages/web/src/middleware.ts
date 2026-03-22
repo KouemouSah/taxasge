@@ -35,9 +35,17 @@ const PROTECTED_ROUTES = [
 ];
 
 /**
- * Admin-only routes
+ * Admin-only routes (requires admin, agent_*, or supervisor_* role)
  */
-const ADMIN_ROUTES = ['/admin', '/dashboard/admin', '/agents', '/assignment', '/permissions'];
+const ADMIN_ROUTES = [
+  '/admin',
+  '/dashboard/admin',
+  '/dashboard/agent',
+  '/dashboard/supervisor',
+  '/agents',
+  '/assignment',
+  '/permissions',
+];
 
 /**
  * Public routes (accessible without auth)
