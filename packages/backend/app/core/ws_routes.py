@@ -88,8 +88,12 @@ async def ws_admin_endpoint(
         await websocket.close(code=4001, reason="auth_error")
         return
 
-    # Accept and manage connection (ws_manager.connect calls websocket.accept)
-    await ws_manager.connect(websocket, user_id)
+    # Accept with subprotocol echo if token was sent via Sec-WebSocket-Protocol
+    if ws_protocol_token:
+        await websocket.accept(subprotocol=ws_protocol_token)
+    else:
+        await websocket.accept()
+    await ws_manager.connect(websocket, user_id, already_accepted=True)
 
     try:
         # Keep connection alive — client sends pings, we echo pongs

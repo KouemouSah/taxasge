@@ -5,6 +5,11 @@ These agents process citizen service requests. Their LLM assistant needs
 tools to look up requests, verify documents, check tariffs, and query
 appointment availability — all scoped to their entity.
 
+IMPORTANT: All functions accept (db, **kwargs) pattern.
+  - _entity_code is injected by BaseAnalystService._build_entity_kwargs()
+  - Gemini provides the function-specific parameters (query, reference, etc.)
+  - Entity scoping is automatic — no need for Gemini to know entity_code
+
 10 function-calling tools for Gemini:
 1. search_requests       — Find requests by reference, NIF, or citizen name
 2. get_request_detail    — Full detail of a specific request
@@ -29,13 +34,18 @@ except ImportError:
 
 
 # ============================================================================
-# SQL FUNCTIONS (called by Gemini via function_map)
+# SQL FUNCTIONS — All use (db, **kwargs) with _entity_code from context
 # ============================================================================
 
-async def search_requests(db, entity_code: str, query: str, limit: int = 10) -> dict:
+async def search_requests(db, **kwargs) -> dict:
     """Search service requests by reference, NIF, or citizen name."""
+    entity_code = kwargs.get("_entity_code", "")
+    query = kwargs.get("query", "")
+    limit = kwargs.get("limit", 10)
+    if not query:
+        return {"error": "Provide a search query (reference, NIF, or name)"}
     rows = await db.fetch("""
-        SELECT sr.reference, sr.workflow_code, sr.status, sr.created_at,
+        SELECT sr.reference, sr.workflow_code, sr.status, sr.created_at::text,
                u.first_name || ' ' || u.last_name AS citizen_name,
                u.document_number AS nif
         FROM service_requests sr
@@ -51,23 +61,25 @@ async def search_requests(db, entity_code: str, query: str, limit: int = 10) -> 
     return {"results": [dict(r) for r in rows], "total": len(rows)}
 
 
-async def get_request_detail(db, request_reference: str) -> dict:
+async def get_request_detail(db, **kwargs) -> dict:
     """Get full detail of a service request by reference."""
+    ref = kwargs.get("request_reference", "")
+    if not ref:
+        return {"error": "Provide request_reference (e.g. SR-2026-00001)"}
     row = await db.fetchrow("""
         SELECT sr.id, sr.reference, sr.workflow_code, sr.solicitud_type, sr.status,
-               sr.priority, sr.base_amount, sr.total_amount, sr.currency,
-               sr.payment_status, sr.cita_date, sr.cita_time, sr.cita_location,
-               sr.created_at, sr.submitted_at, sr.assigned_at,
+               sr.priority::text, sr.base_amount, sr.total_amount, sr.currency,
+               sr.payment_status, sr.cita_date::text, sr.cita_time::text, sr.cita_location,
+               sr.created_at::text, sr.submitted_at::text, sr.assigned_at::text,
                u.first_name || ' ' || u.last_name AS citizen_name,
                u.email AS citizen_email, u.document_number AS nif
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         WHERE sr.reference = $1
-    """, request_reference)
+    """, ref)
     if not row:
-        return {"error": f"Request {request_reference} not found"}
+        return {"error": f"Request {ref} not found"}
     result = dict(row)
-    # Get documents
     docs = await db.fetch("""
         SELECT document_code, document_name, is_valid, extraction_status
         FROM service_request_documents
@@ -78,11 +90,13 @@ async def get_request_detail(db, request_reference: str) -> dict:
     return result
 
 
-async def get_pending_queue(db, entity_code: str, agent_user_id: str = None, limit: int = 20) -> dict:
+async def get_pending_queue(db, **kwargs) -> dict:
     """Get pending work queue items for the agent's entity."""
-    query = """
-        SELECT awq.priority_score, awq.sla_deadline, awq.sla_status, awq.status,
-               sr.reference, sr.workflow_code, sr.created_at,
+    entity_code = kwargs.get("_entity_code", "")
+    limit = kwargs.get("limit", 20)
+    rows = await db.fetch("""
+        SELECT awq.priority_score, awq.sla_deadline::text, awq.sla_status, awq.status,
+               sr.reference, sr.workflow_code, sr.created_at::text,
                u.first_name || ' ' || u.last_name AS citizen_name
         FROM agent_work_queue awq
         JOIN service_requests sr ON sr.id = awq.item_id
@@ -91,22 +105,23 @@ async def get_pending_queue(db, entity_code: str, agent_user_id: str = None, lim
           AND awq.status IN ('pending', 'assigned')
         ORDER BY awq.priority_score DESC, awq.sla_deadline ASC
         LIMIT $2
-    """
-    rows = await db.fetch(query, entity_code, limit)
+    """, entity_code, limit)
     return {"queue": [dict(r) for r in rows], "total": len(rows)}
 
 
-async def get_document_status(db, request_reference: str) -> dict:
+async def get_document_status(db, **kwargs) -> dict:
     """Get document validation status for a service request."""
+    ref = kwargs.get("request_reference", "")
+    if not ref:
+        return {"error": "Provide request_reference"}
     rows = await db.fetch("""
         SELECT srd.document_code, srd.document_name, srd.is_valid,
-               srd.extraction_status, srd.extraction_confidence,
-               srd.validation_errors
+               srd.extraction_status, srd.extraction_confidence
         FROM service_request_documents srd
         JOIN service_requests sr ON sr.id = srd.service_request_id
         WHERE sr.reference = $1
         ORDER BY srd.created_at
-    """, request_reference)
+    """, ref)
     return {
         "documents": [dict(r) for r in rows],
         "total": len(rows),
@@ -114,17 +129,19 @@ async def get_document_status(db, request_reference: str) -> dict:
     }
 
 
-async def check_tariff(db, workflow_code: str, solicitud_type: str = "expedicion") -> dict:
+async def check_tariff(db, **kwargs) -> dict:
     """Get tariff breakdown for a workflow."""
+    workflow_code = kwargs.get("workflow_code", "")
+    if not workflow_code:
+        return {"error": "Provide workflow_code (e.g. pasaporte_nuevo)"}
     row = await db.fetchrow("""
-        SELECT base_amount, currency, tariff_code, calculation_method, tariff_details
+        SELECT base_amount, currency, tariff_code, calculation_method
         FROM workflow_tariffs
         WHERE workflow_code = $1
         ORDER BY created_at DESC LIMIT 1
     """, workflow_code)
     if not row:
         return {"error": f"No tariff found for {workflow_code}"}
-
     supplements = await db.fetch("""
         SELECT wsc.supplement_code, ts.name_es, ts.amount, ts.currency
         FROM workflow_supplement_config wsc
@@ -136,24 +153,29 @@ async def check_tariff(db, workflow_code: str, solicitud_type: str = "expedicion
     return result
 
 
-async def get_appointment_slots(db, entity_code: str, days_ahead: int = 7) -> dict:
+async def get_appointment_slots(db, **kwargs) -> dict:
     """Get available appointment slots for the next N days."""
+    entity_code = kwargs.get("_entity_code", "")
     rows = await db.fetch("""
-        SELECT asc2.day_of_week, asc2.start_time, asc2.max_appointments_per_slot,
-               el.name AS location_name, el.city
+        SELECT asc2.day_of_week, asc2.start_time::text, asc2.max_appointments_per_slot,
+               el.location_name, c.name AS city
         FROM appointment_slot_configs asc2
         JOIN entity_locations el ON el.id = asc2.entity_location_id
         JOIN entities e ON e.id = el.entity_id
-        WHERE e.entity_code = $1 AND asc2.is_active = true
+        LEFT JOIN cities c ON c.id = el.city_id
+        WHERE e.code = $1 AND asc2.is_active = true
         ORDER BY asc2.day_of_week, asc2.start_time
     """, entity_code)
     return {"slots": [dict(r) for r in rows], "total": len(rows)}
 
 
-async def get_citizen_history(db, nif: str) -> dict:
+async def get_citizen_history(db, **kwargs) -> dict:
     """Get previous service requests from a citizen by NIF."""
+    nif = kwargs.get("nif", "")
+    if not nif:
+        return {"error": "Provide citizen NIF"}
     rows = await db.fetch("""
-        SELECT sr.reference, sr.workflow_code, sr.status, sr.created_at, sr.total_amount
+        SELECT sr.reference, sr.workflow_code, sr.status, sr.created_at::text, sr.total_amount
         FROM service_requests sr
         JOIN users u ON u.id = sr.user_id
         WHERE u.document_number = $1
@@ -163,8 +185,11 @@ async def get_citizen_history(db, nif: str) -> dict:
     return {"requests": [dict(r) for r in rows], "total": len(rows)}
 
 
-async def get_workflow_steps(db, workflow_code: str) -> dict:
+async def get_workflow_steps(db, **kwargs) -> dict:
     """Get procedure template steps for a workflow."""
+    workflow_code = kwargs.get("workflow_code", "")
+    if not workflow_code:
+        return {"error": "Provide workflow_code"}
     rows = await db.fetch("""
         SELECT pts.step_number, pts.name_es, pts.description_es, pts.is_optional
         FROM procedure_templates pt
@@ -175,8 +200,10 @@ async def get_workflow_steps(db, workflow_code: str) -> dict:
     return {"steps": [dict(r) for r in rows], "total": len(rows)}
 
 
-async def get_entity_stats(db, entity_code: str, days: int = 7) -> dict:
+async def get_entity_stats(db, **kwargs) -> dict:
     """Get entity-level statistics for the last N days."""
+    entity_code = kwargs.get("_entity_code", "")
+    days = kwargs.get("days", 7)
     row = await db.fetchrow("""
         SELECT
             COUNT(*) AS total_requests,
@@ -192,10 +219,11 @@ async def get_entity_stats(db, entity_code: str, days: int = 7) -> dict:
     return dict(row) if row else {}
 
 
-async def get_sla_countdown(db, entity_code: str) -> dict:
+async def get_sla_countdown(db, **kwargs) -> dict:
     """Get SLA time remaining for pending queue items."""
+    entity_code = kwargs.get("_entity_code", "")
     rows = await db.fetch("""
-        SELECT sr.reference, awq.sla_deadline, awq.sla_status,
+        SELECT sr.reference, awq.sla_deadline::text, awq.sla_status,
                EXTRACT(EPOCH FROM (awq.sla_deadline - NOW())) / 3600 AS hours_remaining
         FROM agent_work_queue awq
         JOIN service_requests sr ON sr.id = awq.item_id
@@ -205,11 +233,12 @@ async def get_sla_countdown(db, entity_code: str) -> dict:
         ORDER BY awq.sla_deadline ASC
         LIMIT 10
     """, entity_code)
-    return {"items": [dict(r) for r in rows], "critical": sum(1 for r in rows if r["hours_remaining"] and r["hours_remaining"] < 4)}
+    critical = sum(1 for r in rows if r["hours_remaining"] is not None and float(r["hours_remaining"]) < 4)
+    return {"items": [dict(r) for r in rows], "critical": critical}
 
 
 # ============================================================================
-# FUNCTION MAP (name → callable)
+# FUNCTION MAP (name -> callable)
 # ============================================================================
 
 ENTITY_AGENT_FUNCTION_MAP: Dict[str, Any] = {
@@ -228,6 +257,7 @@ ENTITY_AGENT_FUNCTION_MAP: Dict[str, Any] = {
 
 # ============================================================================
 # FUNCTION DECLARATIONS (for Gemini function calling)
+# Note: entity_code NOT declared — injected automatically from agent context
 # ============================================================================
 
 ENTITY_AGENT_FUNC_DECLS: list = []
@@ -271,9 +301,7 @@ if VERTEX_AVAILABLE:
         FunctionDeclaration(
             name="get_appointment_slots",
             description="Ver horarios de citas disponibles para la entidad",
-            parameters={"type": "object", "properties": {
-                "days_ahead": {"type": "integer", "description": "Dias hacia adelante (default 7)"},
-            }},
+            parameters={"type": "object", "properties": {}},
         ),
         FunctionDeclaration(
             name="get_citizen_history",
@@ -318,7 +346,7 @@ REGLAS:
 - Responde SIEMPRE en espanol
 - Cita datos EXACTOS retornados por las funciones (NUNCA inventes)
 - Si no hay datos, dilo claramente
-- Propón acciones concretas (aprobar, rechazar, solicitar documentos)
+- Propon acciones concretas (aprobar, rechazar, solicitar documentos)
 - Alerta sobre SLA en riesgo (< 4 horas restantes = URGENTE)
 - Se conciso (max 300 palabras)
 

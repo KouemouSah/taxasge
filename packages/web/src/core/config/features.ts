@@ -62,7 +62,7 @@ export async function loadRuntimeFlags(): Promise<Record<string, boolean>> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
     const res = await fetch(`${apiUrl}/api/v1/feature-flags`, {
-      next: { revalidate: 300 }, // Cache 5 minutes
+      cache: 'default', // Browser HTTP cache (respects Cache-Control from backend)
     });
     if (res.ok) {
       const data = await res.json();

@@ -23,8 +23,9 @@ class WebSocketManager:
         self._connections: Dict[str, WebSocket] = {}  # user_id → ws
         self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket, user_id: str) -> None:
-        await websocket.accept()
+    async def connect(self, websocket: WebSocket, user_id: str, already_accepted: bool = False) -> None:
+        if not already_accepted:
+            await websocket.accept()
         async with self._lock:
             # Close existing connection for same user (prevent stale)
             if user_id in self._connections:
