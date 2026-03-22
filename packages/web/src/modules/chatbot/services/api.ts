@@ -129,6 +129,20 @@ const client = new ChatbotApiClient(`${API_BASE_URL}${API_VERSION}${CHATBOT_BASE
 
 export const chatbotApi = {
   /**
+   * GET /api/v1/chatbot/conversations/{conversationId}
+   * Load conversation history from database (persisted across sessions)
+   */
+  getConversationHistory: async (conversationId: string): Promise<{
+    messages: Array<{ role: string; content: string }>
+    conversation_id: string
+    language?: string
+    message_count?: number
+    found: boolean
+  }> => {
+    return client.get(`/conversations/${conversationId}`)
+  },
+
+  /**
    * POST /api/v1/chatbot/chat
    * Interactive chat with RAG support
    */

@@ -60,7 +60,7 @@ export interface UseChatReturn {
   sendMessage: (message: string, context?: Record<string, any>) => Promise<void>
   clearChat: () => void
   retry: () => Promise<void>
-  loadHistory: (conversationId: string) => void
+  loadHistory: (conversationId: string) => Promise<void>
   setLanguage: (language: LanguageCode) => void
   stopStreaming: () => void
 }
@@ -395,10 +395,30 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   /**
    * Load conversation history
    */
-  const loadHistory = useCallback((newConversationId: string) => {
+  const loadHistory = useCallback(async (newConversationId: string) => {
     setConversationId(newConversationId)
-    // In a real implementation, this would fetch from the backend
-    // For now, we rely on localStorage
+
+    // Try to load from backend first (persisted across devices)
+    try {
+      const { chatbotApi } = await import('../services/api')
+      const result = await chatbotApi.getConversationHistory(newConversationId)
+      if (result.found && result.messages.length > 0) {
+        const chatMessages: ChatMessage[] = result.messages.map((msg, idx) => ({
+          id: `${newConversationId}-${idx}`,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(),
+        }))
+        setMessages(chatMessages)
+        console.info(`[useChat] Loaded ${result.messages.length} messages from backend`)
+        return
+      }
+    } catch {
+      // Backend unavailable — fall back to localStorage
+      console.warn('[useChat] Failed to load from backend, falling back to localStorage')
+    }
+
+    // Fallback: load from localStorage
     loadFromStorage()
   }, [loadFromStorage])
 

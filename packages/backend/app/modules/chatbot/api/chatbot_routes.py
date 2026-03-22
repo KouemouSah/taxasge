@@ -291,6 +291,53 @@ async def debug_semantic_search(
 
 
 # ============================================================================
+# CONVERSATION HISTORY ENDPOINT
+# ============================================================================
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation_history(
+    conversation_id: str,
+    current_user: Optional[UserResponse] = Depends(get_current_user_optional),
+    db: asyncpg.Connection = Depends(get_db)
+):
+    """
+    Load conversation history from database.
+
+    Returns stored messages for a given conversation_id.
+    If user is authenticated, also verifies ownership.
+    """
+    try:
+        query = "SELECT messages, language, message_count, last_message_at, user_id FROM chatbot_conversations WHERE conversation_id = $1"
+        row = await db.fetchrow(query, conversation_id)
+
+        if not row:
+            return {"messages": [], "conversation_id": conversation_id, "found": False}
+
+        # If authenticated, verify ownership (anonymous conversations accessible by anyone with ID)
+        if current_user and row["user_id"] and str(row["user_id"]) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Access denied to this conversation")
+
+        import json as json_mod
+        messages = row["messages"]
+        if isinstance(messages, str):
+            messages = json_mod.loads(messages)
+
+        return {
+            "messages": messages,
+            "conversation_id": conversation_id,
+            "language": row["language"],
+            "message_count": row["message_count"],
+            "last_message_at": row["last_message_at"].isoformat() if row["last_message_at"] else None,
+            "found": True,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error loading conversation {conversation_id}: {e}")
+        return {"messages": [], "conversation_id": conversation_id, "found": False}
+
+
+# ============================================================================
 # CHAT ENDPOINTS
 # ============================================================================
 
