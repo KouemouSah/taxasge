@@ -120,9 +120,9 @@ const CATEGORY_CONFIG: Record<
     labelEs: 'Comercio',
     labelFr: 'Commerce',
     labelEn: 'Commerce',
-    descEs: 'Licencias comerciales, registros mercantiles',
-    descFr: 'Licences commerciales, registres du commerce',
-    descEn: 'Business licenses, commercial registries',
+    descEs: 'Licencias Comerciales',
+    descFr: 'Licences Commerciales',
+    descEn: 'Commercial Licenses',
   },
   GENERAL: {
     icon: LayoutGrid,
