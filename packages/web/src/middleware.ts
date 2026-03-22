@@ -99,12 +99,13 @@ async function isAuthenticated(request: NextRequest): Promise<{ authenticated: b
 
 /**
  * Check if user has admin/supervisor/agent permissions
- * Roles in DB: ADMIN, agent_*, supervisor_*
+ * JWT role values from user_role_enum: 'admin', 'agent', 'citizen', 'business', 'accountant', 'funcionario'
+ * Note: JWT contains the enum value ('agent'), not the role code ('agent_cnedoge_pasaporte')
  */
 function hasAdminPermissions(role: string | null): boolean {
   if (!role) return false;
   const r = role.toLowerCase();
-  return r === 'admin' || r.startsWith('agent_') || r.startsWith('supervisor_');
+  return r === 'admin' || r === 'agent' || r.startsWith('agent_') || r.startsWith('supervisor_');
 }
 
 /**

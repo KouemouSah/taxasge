@@ -1460,37 +1460,37 @@ class ServiceRequestService:
         Prevents corrupt files and MIME type spoofing from causing
         OCR retry loops or processing resource waste.
         """
-        if len(file_content) < 4:
+        if len(file_content) < 12:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="File is too small or empty"
             )
 
-        # Check magic bytes match declared MIME type
-        matched = False
-        for magic, expected_mime in FILE_MAGIC_BYTES.items():
-            if file_content[:len(magic)] == magic:
-                matched = True
-                # For JPEG, both image/jpeg and image/jpg are valid
-                if expected_mime == 'image/jpeg' and declared_mime in ('image/jpeg', 'image/jpg'):
-                    break
-                if expected_mime == declared_mime:
-                    break
-                # WebP: RIFF header, check bytes 8-12 for WEBP
-                if magic == b'RIFF' and len(file_content) >= 12:
-                    if file_content[8:12] != b'WEBP':
-                        matched = False
-                    break
-                # Magic matched but MIME doesn't — spoofed file
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"File content does not match declared type ({declared_mime})"
-                )
+        # Detect actual file type from magic bytes
+        detected_mime = None
+        header = file_content[:12]
 
-        if not matched:
+        if header[:4] == b'%PDF':
+            detected_mime = 'application/pdf'
+        elif header[:3] == b'\xff\xd8\xff':
+            detected_mime = 'image/jpeg'
+        elif header[:4] == b'\x89PNG':
+            detected_mime = 'image/png'
+        elif header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+            detected_mime = 'image/webp'
+
+        if not detected_mime:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="File format not recognized. Upload PDF, JPG, PNG or WebP files."
+            )
+
+        # Verify detected type matches declared MIME (allow jpeg/jpg alias)
+        declared_normalized = declared_mime.replace('image/jpg', 'image/jpeg')
+        if detected_mime != declared_normalized:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File content ({detected_mime}) does not match declared type ({declared_mime})"
             )
 
     async def _get_required_documents(

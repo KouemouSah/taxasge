@@ -310,17 +310,15 @@ class RulesEngine:
         strategy = actions.get("selection_strategy", "load_balance")
 
         if strategy == "round_robin":
-            # Round-robin: select agent based on hash of workflow+entity+timestamp
-            # This distributes assignments evenly without requiring external state.
-            # Uses the count of total assignments as a rotation counter.
-            import hashlib
-            from datetime import datetime
-            # Create a deterministic but rotating index based on current minute
-            # This ensures different agents get selected over time
-            rotation_key = f"{item_type}:{datetime.utcnow().strftime('%Y%m%d%H%M')}"
-            rotation_hash = int(hashlib.md5(rotation_key.encode()).hexdigest(), 16)
-            idx = rotation_hash % len(filtered_agents)
-            return filtered_agents[idx].agent_profile_id
+            # Round-robin via least-assigned: pick the agent with fewest
+            # current assignments. This is equivalent to true round-robin
+            # over time and doesn't require external state (no Redis/BD counter).
+            # Ties are broken by agent_profile_id for determinism.
+            sorted_agents = sorted(
+                filtered_agents,
+                key=lambda a: (a.current_assignments or 0, str(a.agent_profile_id))
+            )
+            return sorted_agents[0].agent_profile_id
         elif strategy == "specialization":
             # Prefer agents with matching specialization
             for agent in filtered_agents:

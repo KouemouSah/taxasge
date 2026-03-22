@@ -530,16 +530,21 @@ async def release_item(
             "SELECT workflow_code, entity_code FROM service_requests WHERE id = $1",
             queue_item['item_id']
         )
-        if sr_info and sr_info['workflow_code']:
+        if sr_info and sr_info['workflow_code'] and sr_info['entity_code']:
             from app.modules.service_requests.services.assignment_outbox_service import AssignmentOutboxService
             outbox = AssignmentOutboxService()
             await outbox.enqueue(
                 db=db,
                 service_request_id=queue_item['item_id'],
                 workflow_code=sr_info['workflow_code'],
-                entity_code=sr_info['entity_code'] or '',
+                entity_code=sr_info['entity_code'],
             )
             logger.info(f"Released item {queue_item['item_id']} re-enqueued for auto-assignment")
+        elif sr_info:
+            logger.warning(
+                f"Cannot re-enqueue item {queue_item['item_id']}: "
+                f"missing workflow_code={sr_info['workflow_code']} or entity_code={sr_info['entity_code']}"
+            )
     except Exception as e:
         logger.warning(f"Failed to re-enqueue released item for auto-assignment: {e}")
 

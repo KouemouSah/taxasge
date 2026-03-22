@@ -32,6 +32,7 @@ from app.modules.auth.middleware.auth_middleware import get_current_user, get_cu
 from app.modules.users.models import UserResponse
 from app.database.connection import get_database as get_db
 from app.core.cache import check_rate_limit
+from app.config import get_settings
 import asyncpg
 
 router = APIRouter(tags=["Chatbot"])
@@ -172,15 +173,14 @@ async def debug_semantic_search(
     threshold: float = Query(0.1, description="Similarity threshold (0-1)"),
     limit: int = Query(10, description="Max results"),
     db: asyncpg.Connection = Depends(get_db),
-    current_user: UserResponse = Depends(get_current_user),
 ):
     """
-    Debug endpoint to test semantic search directly (admin only).
-
-    Returns raw search results to diagnose issues.
+    Debug endpoint to test semantic search directly (staging only).
+    Returns 404 in production.
     """
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _settings = get_settings()
+    if _settings.environment == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     from app.modules.chatbot.services import embedding_service
 
     result = {
@@ -306,35 +306,28 @@ async def get_conversation_history(
     Returns stored messages for a given conversation_id.
     If user is authenticated, also verifies ownership.
     """
-    try:
-        query = "SELECT messages, language, message_count, last_message_at, user_id FROM chatbot_conversations WHERE conversation_id = $1"
-        row = await db.fetchrow(query, conversation_id)
+    query = "SELECT messages, language, message_count, last_message_at, user_id FROM chatbot_conversations WHERE conversation_id = $1"
+    row = await db.fetchrow(query, conversation_id)
 
-        if not row:
-            return {"messages": [], "conversation_id": conversation_id, "found": False}
-
-        # If authenticated, verify ownership (anonymous conversations accessible by anyone with ID)
-        if current_user and row["user_id"] and str(row["user_id"]) != str(current_user.id):
-            raise HTTPException(status_code=403, detail="Access denied to this conversation")
-
-        import json as json_mod
-        messages = row["messages"]
-        if isinstance(messages, str):
-            messages = json_mod.loads(messages)
-
-        return {
-            "messages": messages,
-            "conversation_id": conversation_id,
-            "language": row["language"],
-            "message_count": row["message_count"],
-            "last_message_at": row["last_message_at"].isoformat() if row["last_message_at"] else None,
-            "found": True,
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error loading conversation {conversation_id}: {e}")
+    if not row:
         return {"messages": [], "conversation_id": conversation_id, "found": False}
+
+    # If authenticated, verify ownership (anonymous conversations accessible by anyone with ID)
+    if current_user and row["user_id"] and str(row["user_id"]) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Access denied to this conversation")
+
+    messages = row["messages"]
+    if isinstance(messages, str):
+        messages = json.loads(messages)
+
+    return {
+        "messages": messages,
+        "conversation_id": conversation_id,
+        "language": row["language"],
+        "message_count": row["message_count"],
+        "last_message_at": row["last_message_at"].isoformat() if row["last_message_at"] else None,
+        "found": True,
+    }
 
 
 # ============================================================================

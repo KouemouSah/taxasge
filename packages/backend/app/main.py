@@ -56,13 +56,18 @@ async def lifespan(app: FastAPI):
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
-            from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
+            integrations = [FastApiIntegration()]
+            try:
+                from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
+                integrations.append(AsyncPGIntegration())
+            except ImportError:
+                pass  # asyncpg integration not available in this sentry-sdk version
             sentry_sdk.init(
                 dsn=settings.SENTRY_DSN,
                 environment=settings.environment,
                 traces_sample_rate=0.1 if settings.environment == "production" else 1.0,
                 profiles_sample_rate=0.1,
-                integrations=[FastApiIntegration(), AsyncPGIntegration()],
+                integrations=integrations,
                 send_default_pii=False,  # GDPR: don't send user IPs/emails
             )
             logger.info(f"✅ Sentry initialized (env={settings.environment})")
@@ -305,18 +310,10 @@ class SecurityHeadersMiddleware:
                     (b"x-xss-protection", b"1; mode=block"),
                     (b"referrer-policy", b"strict-origin-when-cross-origin"),
                     (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
-                    # CSP: defense-in-depth against XSS
-                    (b"content-security-policy",
-                     b"default-src 'self'; "
-                     b"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-                     b"style-src 'self' 'unsafe-inline'; "
-                     b"img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com; "
-                     b"font-src 'self' data:; "
-                     b"connect-src 'self' https://*.supabase.co https://*.run.app https://*.upstash.io wss://*.supabase.co; "
-                     b"frame-ancestors 'none'; "
-                     b"base-uri 'self'; "
-                     b"form-action 'self'"
-                    ),
+                    # Note: CSP is set by the frontend middleware.ts (Next.js).
+                    # Backend API responses (JSON) don't need CSP headers.
+                    # Duplicate CSP headers can cause the browser to apply
+                    # the intersection (most restrictive), breaking the frontend.
                 ]
                 if not settings.debug:
                     extra_headers.append(
