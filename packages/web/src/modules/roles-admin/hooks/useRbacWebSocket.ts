@@ -47,16 +47,18 @@ export function useRbacWebSocket(options?: { enabled?: boolean }) {
     let wsUrl: string
 
     if (apiBase) {
-      // Direct backend URL
+      // Direct backend URL — no token in query param (visible in logs)
       const url = new URL(apiBase)
-      wsUrl = `${protocol}//${url.host}/ws/admin?token=${token}`
+      wsUrl = `${protocol}//${url.host}/ws/admin`
     } else {
       // Same host (proxied)
-      wsUrl = `${protocol}//${window.location.host}/ws/admin?token=${token}`
+      wsUrl = `${protocol}//${window.location.host}/ws/admin`
     }
 
     try {
-      const ws = new WebSocket(wsUrl)
+      // Pass JWT via Sec-WebSocket-Protocol header (not query param)
+      // This prevents the token from appearing in server logs and browser history
+      const ws = new WebSocket(wsUrl, [token])
       wsRef.current = ws
 
       ws.onopen = () => {

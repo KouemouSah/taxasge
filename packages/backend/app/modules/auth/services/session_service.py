@@ -82,7 +82,7 @@ class SessionService:
                     # Add human-readable device info
                     session_dict["device"] = self._extract_device(session.user_agent)
                     session_dict["browser"] = self._extract_browser(session.user_agent)
-                    session_dict["location"] = self._get_location(session.ip_address)
+                    session_dict["location"] = await self._get_location(session.ip_address)
 
                     active_sessions.append(session_dict)
 
@@ -311,21 +311,45 @@ class SessionService:
         else:
             return "Unknown"
 
-    def _get_location(self, ip_address: Optional[str]) -> str:
+    async def _get_location(self, ip_address: Optional[str]) -> str:
         """
-        Get location from IP address (placeholder for future geolocation service)
-
-        Args:
-            ip_address: Client IP address
-
-        Returns:
-            str: Location string (currently just IP, future: City, Country)
+        Get location from IP address via ip-api.com (free, no key needed).
+        Results cached in-memory for 1 hour to stay within rate limits (45 req/min).
+        Falls back to raw IP on failure.
         """
-        if not ip_address:
-            return "Unknown"
+        if not ip_address or ip_address in ("127.0.0.1", "::1", "localhost"):
+            return ip_address or "Unknown"
 
-        # TODO: Integrate IP geolocation service (e.g., ipstack, ipapi)
-        # For now, just return IP
+        # Check in-memory cache
+        cache_key = f"geo:{ip_address}"
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            cached = await cache.get(cache_key)
+            if cached:
+                return cached
+        except Exception:
+            pass
+
+        # Query ip-api.com (free tier, no API key, HTTP only)
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"http://ip-api.com/json/{ip_address}?fields=city,country,status")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "success":
+                        location = f"{data.get('city', '')}, {data.get('country', '')}".strip(", ")
+                        if location:
+                            # Cache for 1 hour
+                            try:
+                                await cache.set(cache_key, location, ttl=3600)
+                            except Exception:
+                                pass
+                            return location
+        except Exception:
+            pass  # Timeout or network error — use raw IP
+
         return ip_address
 
 

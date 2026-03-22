@@ -549,6 +549,54 @@ async def health_check():
 
     return health_status
 
+# Feature flags endpoint (public, cached)
+@app.get("/api/v1/feature-flags")
+async def get_feature_flags():
+    """
+    Public endpoint returning dynamic feature flags from system_rules.
+    Used by frontend to toggle features without redeploy.
+    Cached in-memory for 5 minutes.
+    """
+    try:
+        from app.core.cache import get_cache
+        cache = get_cache()
+        cached = await cache.get("feature_flags")
+        if cached:
+            return cached
+
+        async with db_manager.get_connection() as conn:
+            rows = await conn.fetch("""
+                SELECT rule_code, rule_value
+                FROM system_rules
+                WHERE rule_category = 'feature_flag' AND is_active = true
+            """)
+            flags = {}
+            for row in rows:
+                code = row["rule_code"].replace("FEATURE_", "").lower()
+                val = row["rule_value"]
+                if isinstance(val, str):
+                    import json as _json
+                    val = _json.loads(val)
+                flags[code] = val.get("enabled", False) if isinstance(val, dict) else bool(val)
+
+            result = {"flags": flags, "source": "database"}
+            await cache.set("feature_flags", result, ttl=300)
+            return result
+    except Exception as e:
+        logger.warning(f"Feature flags fallback to defaults: {e}")
+        return {
+            "flags": {
+                "dynamic_menus": True,
+                "dynamic_widgets": False,
+                "dynamic_form": True,
+                "cache_first_wizard": True,
+                "redis_cache": False,
+                "declarations": False,
+            },
+            "source": "defaults"
+        }
+
+
 # Root endpoint
 @app.get("/")
 async def root():

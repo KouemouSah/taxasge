@@ -15,13 +15,14 @@ router = APIRouter()
 @router.websocket("/ws/admin")
 async def ws_admin_endpoint(
     websocket: WebSocket,
-    token: str = Query(..., description="JWT access token"),
+    token: str = Query(None, description="JWT access token (query param, legacy)"),
 ):
     """
     WebSocket endpoint for admin real-time notifications.
 
-    Query params:
-        token: JWT access token (same as Authorization header)
+    Authentication (in priority order):
+        1. Sec-WebSocket-Protocol header containing the JWT token
+        2. ?token= query parameter (legacy, visible in logs — deprecated)
 
     Events broadcasted:
         - rbac.permission.granted/revoked
@@ -29,13 +30,26 @@ async def ws_admin_endpoint(
         - rbac.user.role_changed
         - rbac.agent.deactivated
     """
+    # Extract token: prefer Sec-WebSocket-Protocol header over query param
+    ws_protocol_token = None
+    for protocol in websocket.headers.get("sec-websocket-protocol", "").split(","):
+        p = protocol.strip()
+        if p and p != "websocket":
+            ws_protocol_token = p
+            break
+
+    effective_token = ws_protocol_token or token
+    if not effective_token:
+        await websocket.close(code=4001, reason="no_token")
+        return
+
     # Validate JWT token
     user_id = None
     try:
         from app.modules.auth.services.auth_service import get_auth_service
 
         auth_service = get_auth_service()
-        user = await auth_service.validate_access_token(token)
+        user = await auth_service.validate_access_token(effective_token)
         if not user:
             await websocket.close(code=4001, reason="invalid_token")
             return
@@ -74,7 +88,7 @@ async def ws_admin_endpoint(
         await websocket.close(code=4001, reason="auth_error")
         return
 
-    # Accept and manage connection
+    # Accept and manage connection (ws_manager.connect calls websocket.accept)
     await ws_manager.connect(websocket, user_id)
 
     try:

@@ -32,6 +32,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { authApi } from '@/core/api/auth'
 import { getAuthData, clearAuthData } from '@/core/auth/storage'
+import { FEATURE_DECLARATIONS } from '@/core/config/features'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   Tooltip,
@@ -95,8 +96,7 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       titleKey: 'declarations',
       href: `/${locale}/dashboard/declarations`,
       icon: FileText,
-      disabled: true,
-      disabledTooltip: t('declarationsDisabled'),
+      visible: FEATURE_DECLARATIONS,
     },
     {
       titleKey: 'serviceRequests',
