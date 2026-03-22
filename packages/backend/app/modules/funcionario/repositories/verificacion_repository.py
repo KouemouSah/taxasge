@@ -85,10 +85,7 @@ class VerificacionRepository:
         db = await get_db_connection()
 
         query = """
-            SELECT id, user_id, matricula, status, processed_by, processed_at,
-                   verificacion_matricula_existe, verificacion_nombre_coincide,
-                   verificacion_dip_coincide, rejection_reason, notes,
-                   verification_data, created_at, updated_at
+            SELECT *
             FROM verificacion_funcionario
             WHERE user_id = $1
             ORDER BY created_at DESC
@@ -103,10 +100,7 @@ class VerificacionRepository:
         db = await get_db_connection()
 
         query = """
-            SELECT id, user_id, matricula, status, processed_by, processed_at,
-                   verificacion_matricula_existe, verificacion_nombre_coincide,
-                   verificacion_dip_coincide, rejection_reason, notes,
-                   verification_data, created_at, updated_at
+            SELECT *
             FROM verificacion_funcionario
             WHERE user_id = $1 AND status = 'pendiente'
             ORDER BY created_at DESC

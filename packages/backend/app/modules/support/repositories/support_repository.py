@@ -60,25 +60,13 @@ class SupportRepository:
 
     async def get_category_by_id(self, db: asyncpg.Connection, category_id: int) -> Optional[dict]:
         """Get category by ID"""
-        query = """
-            SELECT id, code, name_es, name_fr, name_en,
-                   description_es, description_fr, description_en,
-                   target_role, icon, is_active, sort_order,
-                   created_at, updated_at
-            FROM support_categories WHERE id = $1
-        """
+        query = "SELECT * FROM support_categories WHERE id = $1"
         row = await db.fetchrow(query, category_id)
         return dict(row) if row else None
 
     async def get_category_by_code(self, db: asyncpg.Connection, code: str) -> Optional[dict]:
         """Get category by code"""
-        query = """
-            SELECT id, code, name_es, name_fr, name_en,
-                   description_es, description_fr, description_en,
-                   target_role, icon, is_active, sort_order,
-                   created_at, updated_at
-            FROM support_categories WHERE code = $1
-        """
+        query = "SELECT * FROM support_categories WHERE code = $1"
         row = await db.fetchrow(query, code)
         return dict(row) if row else None
 
@@ -89,11 +77,7 @@ class SupportRepository:
         target_role: Optional[str] = None
     ) -> List[dict]:
         """List all categories with optional filters"""
-        query = """SELECT id, code, name_es, name_fr, name_en,
-                   description_es, description_fr, description_en,
-                   target_role, icon, is_active, sort_order,
-                   created_at, updated_at
-            FROM support_categories WHERE 1=1"""
+        query = "SELECT * FROM support_categories WHERE 1=1"
         params = []
         param_idx = 1
 
@@ -195,9 +179,7 @@ class SupportRepository:
         """Get ticket by ID with category and user info"""
         query = """
             SELECT
-                t.id, t.ticket_number, t.category_id, t.subject, t.description,
-                t.priority, t.status, t.created_by, t.assigned_to,
-                t.resolved_at, t.closed_at, t.created_at, t.updated_at,
+                t.*,
                 c.name_es as category_name,
                 u1.full_name as created_by_name,
                 u2.full_name as assigned_to_name,
@@ -215,9 +197,7 @@ class SupportRepository:
         """Get ticket by ticket number"""
         query = """
             SELECT
-                t.id, t.ticket_number, t.category_id, t.subject, t.description,
-                t.priority, t.status, t.created_by, t.assigned_to,
-                t.resolved_at, t.closed_at, t.created_at, t.updated_at,
+                t.*,
                 c.name_es as category_name,
                 u1.full_name as created_by_name,
                 u2.full_name as assigned_to_name,
@@ -292,9 +272,7 @@ class SupportRepository:
         offset = (page - 1) * page_size
         data_query = f"""
             SELECT
-                t.id, t.ticket_number, t.category_id, t.subject, t.description,
-                t.priority, t.status, t.created_by, t.assigned_to,
-                t.resolved_at, t.closed_at, t.created_at, t.updated_at,
+                t.*,
                 c.name_es as category_name,
                 u1.full_name as created_by_name,
                 u2.full_name as assigned_to_name,
@@ -387,8 +365,7 @@ class SupportRepository:
         """Get message by ID"""
         query = """
             SELECT
-                m.id, m.ticket_id, m.sender_id, m.content, m.is_internal,
-                m.created_at,
+                m.*,
                 u.full_name as sender_name,
                 u.role as sender_role
             FROM support_messages m
@@ -407,8 +384,7 @@ class SupportRepository:
         """List all messages for a ticket"""
         query = """
             SELECT
-                m.id, m.ticket_id, m.sender_id, m.content, m.is_internal,
-                m.created_at,
+                m.*,
                 u.full_name as sender_name,
                 u.role as sender_role
             FROM support_messages m
@@ -446,11 +422,7 @@ class SupportRepository:
 
     async def list_attachments(self, db: asyncpg.Connection, message_id: int) -> List[dict]:
         """List all attachments for a message"""
-        query = """
-            SELECT id, message_id, file_name, file_path, file_size, mime_type,
-                   created_at
-            FROM support_attachments WHERE message_id = $1
-        """
+        query = "SELECT * FROM support_attachments WHERE message_id = $1"
         rows = await db.fetch(query, message_id)
         return [dict(row) for row in rows]
 

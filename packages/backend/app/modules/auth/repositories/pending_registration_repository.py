@@ -171,12 +171,7 @@ class PendingRegistrationRepository:
             Optional[dict]: Pending registration data or None
         """
         try:
-            query = """
-                SELECT id, email, verification_code, expires_at,
-                       verification_attempts, last_attempt_at,
-                       metadata, created_at
-                FROM pending_registrations WHERE email = $1
-            """
+            query = "SELECT * FROM pending_registrations WHERE email = $1"
             row = await self.db_manager.execute_single(query, email)
             return dict(row) if row else None
 

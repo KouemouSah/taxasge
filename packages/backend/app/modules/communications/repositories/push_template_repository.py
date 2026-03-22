@@ -108,17 +108,7 @@ class PushTemplateRepository:
         Returns:
             Template or None if not found
         """
-        query = """
-            SELECT id, template_code,
-                   name_es, name_fr, name_en,
-                   title_es, title_fr, title_en,
-                   body_es, body_fr, body_en,
-                   image_url, icon_url, click_action,
-                   data_payload, variables,
-                   platform, ttl_seconds, is_active,
-                   created_at, updated_at, created_by
-            FROM push_templates WHERE id = $1
-        """
+        query = "SELECT * FROM push_templates WHERE id = $1"
         row = await db.fetchrow(query, template_id)
 
         if not row:
@@ -141,17 +131,7 @@ class PushTemplateRepository:
         Returns:
             Template or None if not found
         """
-        query = """
-            SELECT id, template_code,
-                   name_es, name_fr, name_en,
-                   title_es, title_fr, title_en,
-                   body_es, body_fr, body_en,
-                   image_url, icon_url, click_action,
-                   data_payload, variables,
-                   platform, ttl_seconds, is_active,
-                   created_at, updated_at, created_by
-            FROM push_templates WHERE template_code = $1
-        """
+        query = "SELECT * FROM push_templates WHERE template_code = $1"
         row = await db.fetchrow(query, template_code)
 
         if not row:
@@ -214,15 +194,7 @@ class PushTemplateRepository:
         # Fetch templates
         offset = (page - 1) * page_size
         query = f"""
-            SELECT id, template_code,
-                   name_es, name_fr, name_en,
-                   title_es, title_fr, title_en,
-                   body_es, body_fr, body_en,
-                   image_url, icon_url, click_action,
-                   data_payload, variables,
-                   platform, ttl_seconds, is_active,
-                   created_at, updated_at, created_by
-            FROM push_templates
+            SELECT * FROM push_templates
             {where_clause}
             ORDER BY created_at DESC
             LIMIT ${param_count} OFFSET ${param_count + 1}

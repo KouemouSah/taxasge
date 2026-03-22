@@ -61,15 +61,7 @@ class AssignmentRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get assignment by ID"""
         query = """
-            SELECT id, item_id, item_type, assignment_method, status, notes,
-                       auto_assignment_score, score_breakdown, rule_applied_id,
-                       assigned_at, started_at, completed_at, processing_duration_hours,
-                       deadline, deadline_met, priority_level, reassigned_at,
-                       reassignment_reason, reassignment_notes,
-                       validation_status, quality_score,
-                       agent_profile_id, assigned_by_profile_id, reassigned_to_profile_id,
-                       created_at, updated_at
-                FROM assignments WHERE id = $1
+            SELECT * FROM assignments WHERE id = $1
         """
         result = await conn.fetchrow(query, assignment_id)
         return dict(result) if result else None
@@ -83,13 +75,7 @@ class AssignmentRepository:
         LEGACY: Modern: assignment/ module.
         """
         query = """
-            SELECT id, item_id, item_type, assignment_method, status, notes,
-                   auto_assignment_score, rule_applied_id,
-                   assigned_at, started_at, completed_at,
-                   deadline, priority_level, reassigned_at,
-                   agent_profile_id, assigned_by_profile_id, reassigned_to_profile_id,
-                   created_at, updated_at
-            FROM assignments
+            SELECT * FROM assignments
             WHERE item_id = $1
             ORDER BY assigned_at DESC
         """
@@ -116,13 +102,7 @@ class AssignmentRepository:
         total = await conn.fetchval(count_query, *params)
 
         data_query = f"""
-            SELECT id, item_id, item_type, assignment_method, status, notes,
-                   auto_assignment_score, rule_applied_id,
-                   assigned_at, started_at, completed_at,
-                   deadline, priority_level, reassigned_at,
-                   agent_profile_id, assigned_by_profile_id, reassigned_to_profile_id,
-                   created_at, updated_at
-            FROM assignments
+            SELECT * FROM assignments
             {where_clause}
             ORDER BY assigned_at DESC
             LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}

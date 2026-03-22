@@ -98,12 +98,7 @@ class SmsTemplateRepository:
             Template if found, None otherwise
         """
         query = """
-            SELECT id, template_code,
-                   name_es, name_fr, name_en,
-                   content_es, content_fr, content_en,
-                   variables, category, max_segments, is_active,
-                   created_at, updated_at, created_by, updated_by
-            FROM sms_templates
+            SELECT * FROM sms_templates
             WHERE id = $1
         """
 
@@ -126,12 +121,7 @@ class SmsTemplateRepository:
             Template if found, None otherwise
         """
         query = """
-            SELECT id, template_code,
-                   name_es, name_fr, name_en,
-                   content_es, content_fr, content_en,
-                   variables, category, max_segments, is_active,
-                   created_at, updated_at, created_by, updated_by
-            FROM sms_templates
+            SELECT * FROM sms_templates
             WHERE template_code = $1
         """
 
@@ -197,12 +187,7 @@ class SmsTemplateRepository:
 
         # Fetch templates
         query = f"""
-            SELECT id, template_code,
-                   name_es, name_fr, name_en,
-                   content_es, content_fr, content_en,
-                   variables, category, max_segments, is_active,
-                   created_at, updated_at, created_by, updated_by
-            FROM sms_templates
+            SELECT * FROM sms_templates
             {where_sql}
             ORDER BY created_at DESC
             LIMIT ${param_counter} OFFSET ${param_counter + 1}

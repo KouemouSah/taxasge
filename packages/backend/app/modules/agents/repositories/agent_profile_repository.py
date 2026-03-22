@@ -113,16 +113,7 @@ class AgentProfileRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get agent profile by ID"""
         query = """
-            SELECT id, user_id, agent_type, entity_id, ministry_id,
-                       can_approve_unlimited, max_approval_amount, can_escalate,
-                       can_assign_tasks, can_reassign, specializations,
-                       working_hours_start, working_hours_end, working_days,
-                       is_active, is_backup_agent, backup_for_profile_id,
-                       assigned_at, assigned_by, deactivated_at, deactivated_by,
-                       deactivation_reason, is_supervisor, menu_overrides,
-                       dashboard_overrides, entity_location_id,
-                       created_at, updated_at
-                FROM agent_profiles WHERE id = $1
+            SELECT * FROM agent_profiles WHERE id = $1
         """
         result = await conn.fetchrow(query, str(profile_id))
         if not result:
@@ -138,16 +129,7 @@ class AgentProfileRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get agent profile by user ID"""
         query = """
-            SELECT id, user_id, agent_type, entity_id, ministry_id,
-                       can_approve_unlimited, max_approval_amount, can_escalate,
-                       can_assign_tasks, can_reassign, specializations,
-                       working_hours_start, working_hours_end, working_days,
-                       is_active, is_backup_agent, backup_for_profile_id,
-                       assigned_at, assigned_by, deactivated_at, deactivated_by,
-                       deactivation_reason, is_supervisor, menu_overrides,
-                       dashboard_overrides, entity_location_id,
-                       created_at, updated_at
-                FROM agent_profiles
+            SELECT * FROM agent_profiles
             WHERE user_id = $1
         """
         if active_only:

@@ -127,10 +127,7 @@ class EntityTranslationRepository:
             Translation dict or None
         """
         query = """
-            SELECT entity_type, entity_code, language_code, field_name,
-                       translation_text, translation_source, translation_quality,
-                       created_at, updated_at
-                FROM entity_translations
+            SELECT * FROM entity_translations
             WHERE entity_type = $1::translatable_entity_type
               AND entity_code = $2
               AND language_code = $3
@@ -152,10 +149,7 @@ class EntityTranslationRepository:
             List of translations
         """
         query = """
-            SELECT entity_type, entity_code, language_code, field_name,
-                       translation_text, translation_source, translation_quality,
-                       created_at, updated_at
-                FROM entity_translations
+            SELECT * FROM entity_translations
             WHERE entity_type = $1::translatable_entity_type
               AND entity_code = $2
             ORDER BY field_name, language_code
@@ -242,10 +236,7 @@ class EntityTranslationRepository:
         # Data query
         params.extend([limit, offset])
         data_query = f"""
-            SELECT entity_type, entity_code, language_code, field_name,
-                       translation_text, translation_source, translation_quality,
-                       created_at, updated_at
-                FROM entity_translations
+            SELECT * FROM entity_translations
             WHERE {where_clause}
             ORDER BY entity_type, entity_code, field_name, language_code
             LIMIT ${param_counter} OFFSET ${param_counter + 1}
@@ -276,10 +267,7 @@ class EntityTranslationRepository:
         total = await conn.fetchval(count_query, entity_type)
 
         data_query = """
-            SELECT entity_type, entity_code, language_code, field_name,
-                       translation_text, translation_source, translation_quality,
-                       created_at, updated_at
-                FROM entity_translations
+            SELECT * FROM entity_translations
             WHERE entity_type = $1::translatable_entity_type
             ORDER BY entity_code, field_name, language_code
             LIMIT $2 OFFSET $3

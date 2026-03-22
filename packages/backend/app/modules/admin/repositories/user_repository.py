@@ -13,6 +13,20 @@ from app.modules.admin.models import (
 )
 
 
+# All user columns EXCEPT security secrets (password_hash, 2FA secrets, reset tokens)
+# These columns are safe to return in API responses via Pydantic filtering.
+_USER_SAFE_COLUMNS = """
+    id, email, first_name, last_name, full_name, matricule,
+    phone_number, document_type, document_number, role, status,
+    preferred_language, email_notifications, push_notifications, sms_notifications,
+    email_verified, phone_verified, last_login, failed_login_attempts,
+    locked_until, address, city, avatar_url, two_factor_enabled,
+    supervisor_id, department_id, specializations, max_concurrent_assignments,
+    role_id, matricula_funcionario, funcionario_verified_at, funcionario_verified_by,
+    created_at, updated_at
+"""
+
+
 class UserRepository:
     """Repository for user management (admin operations)"""
 
@@ -65,9 +79,7 @@ class UserRepository:
         user_id: str,
     ) -> Optional[Dict[str, Any]]:
         """Get user by ID"""
-        query = """
-            SELECT * FROM users WHERE id = $1
-        """
+        query = f"SELECT {_USER_SAFE_COLUMNS} FROM users WHERE id = $1"
         result = await conn.fetchrow(query, user_id)
         return dict(result) if result else None
 
@@ -77,9 +89,7 @@ class UserRepository:
         email: str,
     ) -> Optional[Dict[str, Any]]:
         """Get user by email"""
-        query = """
-            SELECT * FROM users WHERE email = $1
-        """
+        query = f"SELECT {_USER_SAFE_COLUMNS} FROM users WHERE email = $1"
         result = await conn.fetchrow(query, email)
         return dict(result) if result else None
 
@@ -122,7 +132,7 @@ class UserRepository:
 
         # Get data
         data_query = f"""
-            SELECT * FROM users
+            SELECT {_USER_SAFE_COLUMNS} FROM users
             WHERE {where_clause}
             ORDER BY created_at DESC
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -293,8 +303,8 @@ class UserRepository:
         limit: int = 20,
     ) -> List[Dict[str, Any]]:
         """Search users by email, name, or matricule"""
-        query = """
-            SELECT * FROM users
+        query = f"""
+            SELECT {_USER_SAFE_COLUMNS} FROM users
             WHERE email ILIKE $1
                OR first_name ILIKE $1
                OR last_name ILIKE $1
