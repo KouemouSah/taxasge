@@ -52,7 +52,8 @@ async def lifespan(app: FastAPI):
     global redis_client
 
     # Initialize Sentry error tracking (before everything else to catch startup errors)
-    if settings.SENTRY_DSN:
+    sentry_dsn = getattr(settings, 'SENTRY_DSN', None)
+    if sentry_dsn:
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -63,7 +64,7 @@ async def lifespan(app: FastAPI):
             except ImportError:
                 pass  # asyncpg integration not available in this sentry-sdk version
             sentry_sdk.init(
-                dsn=settings.SENTRY_DSN,
+                dsn=sentry_dsn,
                 environment=settings.environment,
                 traces_sample_rate=0.1 if settings.environment == "production" else 1.0,
                 profiles_sample_rate=0.1,
