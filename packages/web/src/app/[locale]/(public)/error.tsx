@@ -18,8 +18,7 @@ export default function PublicError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  let locale = 'es'
-  try { locale = useLocale() } catch { /* fallback */ }
+  const locale = useLocale()
   const t = texts[locale as keyof typeof texts] || texts.es
 
   useEffect(() => {

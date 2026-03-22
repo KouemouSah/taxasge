@@ -12,8 +12,7 @@ const texts = {
 } as const
 
 export default function NotFound() {
-  let locale = 'es'
-  try { locale = useLocale() } catch { /* fallback */ }
+  const locale = useLocale()
   const t = texts[locale as keyof typeof texts] || texts.es
 
   return (

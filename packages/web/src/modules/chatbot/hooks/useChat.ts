@@ -403,11 +403,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       const { chatbotApi } = await import('../services/api')
       const result = await chatbotApi.getConversationHistory(newConversationId)
       if (result.found && result.messages.length > 0) {
-        const chatMessages: ChatMessage[] = result.messages.map((msg, idx) => ({
-          id: `${newConversationId}-${idx}`,
-          role: msg.role as 'user' | 'assistant',
+        const chatMessages: ChatMessage[] = result.messages.map((msg) => ({
+          role: msg.role as MessageRole,
           content: msg.content,
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
         }))
         setMessages(chatMessages)
         console.info(`[useChat] Loaded ${result.messages.length} messages from backend`)

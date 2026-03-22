@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
-  Users, TrendingUp, Clock, CheckCircle2, AlertTriangle,
+  Users, Clock, CheckCircle2, AlertTriangle,
   RefreshCw, XCircle, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'

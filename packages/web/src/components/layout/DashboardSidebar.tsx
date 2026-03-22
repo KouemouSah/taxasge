@@ -142,7 +142,8 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
       href: `/${locale}/dashboard/settings`,
       icon: Settings,
     },
-  ], [locale, isVerifiedFuncionario, t])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [locale, isVerifiedFuncionario, user?.role, t])
 
   const handleLogout = async () => {
     const authData = getAuthData()

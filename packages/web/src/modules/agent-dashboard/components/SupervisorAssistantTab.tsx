@@ -186,7 +186,7 @@ export function SupervisorAssistantTab({ entityCode, entityName, isSupervisor = 
       recommendations: briefing.recommendations,
     } : undefined,
     briefingLoading,
-  }), [entityName, mutation, accentColor, briefing, briefingLoading, t]);
+  }), [entityName, mutation, accentColor, briefing, briefingLoading, isSupervisor, t]);
 
   return <AgentChatUI config={config} />;
 }

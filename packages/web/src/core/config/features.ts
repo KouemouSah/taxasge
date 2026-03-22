@@ -62,19 +62,21 @@ export async function loadRuntimeFlags(): Promise<Record<string, boolean>> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
     const res = await fetch(`${apiUrl}/api/v1/feature-flags`, {
-      cache: 'default', // Browser HTTP cache (respects Cache-Control from backend)
+      cache: 'default',
     });
     if (res.ok) {
       const data = await res.json();
-      _runtimeFlags = data.flags || {};
-      return _runtimeFlags;
+      const flags: Record<string, boolean> = data.flags || {};
+      _runtimeFlags = flags;
+      return flags;
     }
   } catch {
     // API unavailable — use env var defaults
   }
 
-  _runtimeFlags = {};
-  return _runtimeFlags;
+  const empty: Record<string, boolean> = {};
+  _runtimeFlags = empty;
+  return empty;
 }
 
 /**
