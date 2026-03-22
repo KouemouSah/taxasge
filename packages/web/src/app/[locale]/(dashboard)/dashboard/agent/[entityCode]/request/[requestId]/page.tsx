@@ -871,7 +871,7 @@ function DynamicFormDisplay({ request, ...actionProps }: { request: ServiceReque
     } finally {
       setPreviewLoading(false);
     }
-  }, [previewDocCode, request.id]);
+  }, [previewDocCode, request.id, setInlineZoom]);
 
   const closePreview = useCallback(() => {
     setPreviewDocCode(null);

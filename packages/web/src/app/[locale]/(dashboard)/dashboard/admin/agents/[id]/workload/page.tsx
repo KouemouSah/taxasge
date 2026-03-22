@@ -133,11 +133,12 @@ export default function AgentWorkloadPage() {
       });
 
       setIsEditing(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de mettre à jour la configuration';
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: error?.message || 'Impossible de mettre à jour la configuration',
+        description: message,
       });
     }
   };

@@ -65,7 +65,7 @@ export default function AIAgentsPage() {
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, t])
 
   const fetchTokenStats = useCallback(async () => {
     try {

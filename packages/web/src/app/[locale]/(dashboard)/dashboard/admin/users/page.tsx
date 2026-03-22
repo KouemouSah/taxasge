@@ -137,7 +137,7 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t, toast, page, activeTab]);
+  }, [t, toast, page, activeTab, searchQuery]);
 
   // Debounce search (400ms) — avoid API call per keystroke
   const debounceRef = useRef<NodeJS.Timeout>();
@@ -150,7 +150,7 @@ export default function UsersPage() {
   // Immediate fetch on page/tab change
   useEffect(() => {
     fetchUsers();
-  }, [page, activeTab]);
+  }, [page, activeTab, fetchUsers]);
 
   // Server-side filtering — users is already filtered by page/tab/search
   const filteredUsers = users;
@@ -170,28 +170,7 @@ export default function UsersPage() {
       inactive: users.filter((u) => !u.is_active).length,
       byRole,
     };
-  }, [users]);
-
-  const getRoleBadge = (role: UserRole) => {
-    const roleConfig: Record<string, { className: string; icon: React.ReactNode }> = {
-      citizen: { className: 'bg-gray-100 text-gray-700', icon: <UserIcon className="h-3 w-3 mr-1" /> },
-      business: { className: 'bg-green-100 text-green-700', icon: <Building2 className="h-3 w-3 mr-1" /> },
-      accountant: { className: 'bg-blue-100 text-blue-700', icon: <Briefcase className="h-3 w-3 mr-1" /> },
-      funcionario: { className: 'bg-amber-100 text-amber-700', icon: <UserCheck className="h-3 w-3 mr-1" /> },
-    };
-
-    const config = roleConfig[role];
-    return (
-      <Badge variant="outline" className={`flex items-center ${config?.className || 'bg-gray-100 text-gray-700'}`}>
-        {config?.icon}
-        {getRoleLabel(role)}
-      </Badge>
-    );
-  };
-
-  const handleViewDetails = (user: User) => {
-    router.push(`/${locale}/dashboard/admin/users/${user.id}`);
-  };
+  }, [users, total]);
 
   const handleActivate = async () => {
     if (!selectedUser) return;
@@ -242,18 +221,40 @@ export default function UsersPage() {
     }
   };
 
-  const openActivateDialog = (user: User) => {
-    setSelectedUser(user);
-    setActivateDialogOpen(true);
-  };
-
-  const openDeactivateDialog = (user: User) => {
-    setSelectedUser(user);
-    setDeactivateDialogOpen(true);
-  };
-
   // DataTable columns
-  const columns: DataTableColumn<User>[] = useMemo(() => [
+  const columns: DataTableColumn<User>[] = useMemo(() => {
+    const getRoleBadge = (role: UserRole) => {
+      const roleConfig: Record<string, { className: string; icon: React.ReactNode }> = {
+        citizen: { className: 'bg-gray-100 text-gray-700', icon: <UserIcon className="h-3 w-3 mr-1" /> },
+        business: { className: 'bg-green-100 text-green-700', icon: <Building2 className="h-3 w-3 mr-1" /> },
+        accountant: { className: 'bg-blue-100 text-blue-700', icon: <Briefcase className="h-3 w-3 mr-1" /> },
+        funcionario: { className: 'bg-amber-100 text-amber-700', icon: <UserCheck className="h-3 w-3 mr-1" /> },
+      };
+
+      const config = roleConfig[role];
+      return (
+        <Badge variant="outline" className={`flex items-center ${config?.className || 'bg-gray-100 text-gray-700'}`}>
+          {config?.icon}
+          {getRoleLabel(role)}
+        </Badge>
+      );
+    };
+
+    const handleViewDetails = (user: User) => {
+      router.push(`/${locale}/dashboard/admin/users/${user.id}`);
+    };
+
+    const openActivateDialog = (user: User) => {
+      setSelectedUser(user);
+      setActivateDialogOpen(true);
+    };
+
+    const openDeactivateDialog = (user: User) => {
+      setSelectedUser(user);
+      setDeactivateDialogOpen(true);
+    };
+
+    return [
     {
       id: 'fullName',
       header: t('tableFullName'),
@@ -354,7 +355,7 @@ export default function UsersPage() {
         </DropdownMenu>
       ),
     },
-  ], [t, locale, getRoleBadge, handleViewDetails, openActivateDialog, openDeactivateDialog]);
+  ]; }, [t, locale, getRoleLabel, router]);
 
   // Bulk actions
   const bulkActions: BulkAction<User>[] = useMemo(() => [
