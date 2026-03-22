@@ -5493,7 +5493,7 @@ async def get_my_assigned_for_appointment(
         LEFT JOIN entity_locations el ON el.id = ar.entity_location_id
         WHERE sr.workflow_code = ANY($1)
           AND sr.assigned_to = $2
-          AND sr.status = ANY($3)
+          AND sr.status::text = ANY($3::text[])
     """
 
     params = [workflow_codes, user_id, eligible_statuses]

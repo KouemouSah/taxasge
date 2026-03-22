@@ -23,6 +23,8 @@ import asyncpg
 import json
 import logging
 
+from app.core.jsonb import ensure_list
+
 logger = logging.getLogger(__name__)
 
 
@@ -539,7 +541,7 @@ class AppointmentService:
         """)
 
         released_count = row['released_count'] or 0
-        request_ids = row['service_request_ids'] or []
+        request_ids = ensure_list(row['service_request_ids'])
 
         if released_count > 0:
             logger.info(f"Released {released_count} expired appointment holds")

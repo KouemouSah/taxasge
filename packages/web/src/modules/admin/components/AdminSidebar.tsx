@@ -510,11 +510,19 @@ export default function AdminSidebar() {
   }, [isPathActiveInItems])
 
   // Render sub-items
-  const renderSubItems = (items: NavSubItem[], indentLevel: number = 1) => (
+  const renderSubItems = (items: NavSubItem[], indentLevel: number = 1) => {
+    // Among siblings, only highlight the longest (most specific) matching href
+    const bestMatch = items.reduce<string | null>((best, item) => {
+      const matches = pathname === item.href || pathname?.startsWith(item.href + '/')
+      if (matches && (!best || item.href.length > best.length)) return item.href
+      return best
+    }, null)
+
+    return (
     <div className={cn('space-y-1 mt-1', !collapsed && indentLevel === 1 && 'ml-4', !collapsed && indentLevel === 2 && 'ml-6')}>
       {items.map((subItem) => {
         const SubIcon = subItem.icon
-        const isActive = pathname === subItem.href || pathname?.startsWith(subItem.href + '/')
+        const isActive = subItem.href === bestMatch
 
         return (
           <Link
@@ -534,7 +542,7 @@ export default function AdminSidebar() {
         )
       })}
     </div>
-  )
+  )}
 
   // Render sub-categories (filtered by role)
   const renderSubCategories = (subCategories: NavSubCategory[]) => (

@@ -109,6 +109,15 @@ export default function AdminCompaniesDashboardPage() {
       ])
       setGlobal(g)
       setZones(z.zones || [])
+      // Defensive: ensure all analytics arrays are actually arrays (asyncpg JSONB edge case)
+      if (a) {
+        a.top_debtors = Array.isArray(a.top_debtors) ? a.top_debtors : []
+        a.debt_by_fee_type = Array.isArray(a.debt_by_fee_type) ? a.debt_by_fee_type : []
+        a.monthly_trend = Array.isArray(a.monthly_trend) ? a.monthly_trend : []
+        a.by_zone_regime = Array.isArray(a.by_zone_regime) ? a.by_zone_regime : []
+        a.by_forma_juridica = Array.isArray(a.by_forma_juridica) ? a.by_forma_juridica : []
+        a.by_city = Array.isArray(a.by_city) ? a.by_city : []
+      }
       setAnalytics(a)
     } catch {
       toast({ title: 'Error', variant: 'destructive' })

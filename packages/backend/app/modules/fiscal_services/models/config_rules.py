@@ -9,7 +9,9 @@ from uuid import UUID
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+import json
+
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 
 
 class ConfigType(str, Enum):
@@ -102,6 +104,14 @@ class ConfigRuleResponse(BaseModel):
     effective_to: Optional[date] = None
     is_enabled: bool
     config: Dict
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def parse_config_json(cls, v):
+        """Handle JSONB returned as string from asyncpg."""
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
     specificity: int
     name_es: Optional[str] = None
     description: Optional[str] = None

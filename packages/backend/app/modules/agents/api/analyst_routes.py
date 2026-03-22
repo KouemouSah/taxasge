@@ -13,6 +13,8 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from app.core.jsonb import ensure_list
+
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
@@ -126,7 +128,7 @@ async def _resolve_agent_context(
         return None
 
     entity_code = row["entity_code"]
-    workflow_codes = row["workflow_codes"] or []
+    workflow_codes = ensure_list(row["workflow_codes"])
     entity_type = row["entity_type"]
 
     # Agent type resolution — DB-driven via entity_type + is_supervisor + workflow_codes

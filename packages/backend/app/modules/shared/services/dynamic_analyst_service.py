@@ -22,6 +22,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from loguru import logger
 
+from app.core.jsonb import ensure_list
 from app.modules.shared.services.base_analyst_service import (
     BaseAnalystService,
     DAYS_ES,
@@ -307,7 +308,7 @@ async def _load_entity_context(db, entity_code: str) -> Optional[Dict[str, Any]]
         return {
             "entity_code": row["code"],
             "entity_name": row["name"],
-            "workflow_codes": row["workflow_codes"] or [],
+            "workflow_codes": ensure_list(row["workflow_codes"]),
             "site_name": "Todos los sitios",
             "city": "",
             "is_main_office": True,  # Orchestrator = global view

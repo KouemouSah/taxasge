@@ -66,7 +66,8 @@ export default function MinistryDebtPage() {
     try {
       const res = await companyMinistryApi.lookup(q)
       if (seq === seqRef.current) setLookupResults(res.results)
-    } catch {
+    } catch (err: unknown) {
+      console.error('Company lookup failed:', err instanceof Error ? err.message : err)
       if (seq === seqRef.current) setLookupResults([])
     } finally {
       if (seq === seqRef.current) setLookupLoading(false)

@@ -565,9 +565,17 @@ function renderDynamicMenuGroup(
         )}
       >
         <div className={cn('space-y-1 mt-1', !collapsed && 'ml-4')}>
-          {group.items.map((subItem) =>
-            renderDynamicSubItem(subItem, { pathname, collapsed, getTitle })
-          )}
+          {(() => {
+            // Among siblings, only highlight the longest (most specific) matching href
+            const bestMatch = group.items.reduce<string | null>((best, item) => {
+              const matches = pathname === item.href || pathname?.startsWith(item.href + '/')
+              if (matches && (!best || item.href.length > best.length)) return item.href
+              return best
+            }, null)
+            return group.items.map((subItem) =>
+              renderDynamicSubItem(subItem, { pathname, collapsed, getTitle, activeHref: bestMatch })
+            )
+          })()}
         </div>
       </div>
     </div>
@@ -618,11 +626,15 @@ function renderDynamicSubItem(
     pathname: string | null;
     collapsed: boolean;
     getTitle: (key: string) => string;
+    activeHref?: string | null;
   }
 ): React.ReactNode {
-  const { pathname, collapsed, getTitle } = options;
+  const { pathname, collapsed, getTitle, activeHref } = options;
   const Icon = getIconComponent(item.icon);
-  const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+  // Use pre-computed best match if available, otherwise fall back to standard check
+  const isActive = activeHref !== undefined
+    ? item.href === activeHref
+    : (pathname === item.href || pathname?.startsWith(item.href + '/'));
 
   return (
     <Link

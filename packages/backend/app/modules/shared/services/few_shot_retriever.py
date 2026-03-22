@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
+from app.core.jsonb import ensure_list
+
 try:
     import numpy as np
     _NUMPY_AVAILABLE = True
@@ -120,7 +122,7 @@ async def _fetch_similar_pgvector(
                 examples.append(FewShotExample(
                     question=row["question"],
                     intent=row["ground_truth_intent"],
-                    tools_used=list(row["actual_functions_called"] or []),
+                    tools_used=ensure_list(row["actual_functions_called"]),
                     similarity=sim,
                 ))
 
@@ -175,7 +177,7 @@ async def _fetch_successful_logs(agent_type: str) -> List[Dict[str, Any]]:
             {
                 "question": row["question"],
                 "intent": row["ground_truth_intent"],
-                "tools": list(row["actual_functions_called"] or []),
+                "tools": ensure_list(row["actual_functions_called"]),
             }
             for row in rows
         ]

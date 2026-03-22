@@ -14,6 +14,8 @@ from decimal import Decimal
 from enum import Enum
 import logging
 
+from app.core.jsonb import ensure_list
+
 logger = logging.getLogger(__name__)
 
 
@@ -144,7 +146,7 @@ class TariffService:
             return {
                 "tariff_type": row.get("tariff_type", TariffType.FIXED.value),
                 "base_amount": float(row["base_amount"]),
-                "supplements": row["supplements"] or [],
+                "supplements": ensure_list(row["supplements"]),
                 "supplements_total": float(row["supplements_total"]),
                 "penalties_amount": 0.0,
                 "total_amount": float(row["total_amount"]),

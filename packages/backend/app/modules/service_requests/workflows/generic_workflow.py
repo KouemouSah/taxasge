@@ -27,6 +27,7 @@ from typing import Dict, List, Any, Optional
 from uuid import UUID
 import logging
 
+from app.core.jsonb import ensure_dict
 from .workflow_interface import (
     PredefinedWorkflow,
     WorkflowStep,
@@ -277,7 +278,7 @@ class GenericWorkflowStandard(PredefinedWorkflow):
             max_processing_days=row["max_processing_days"],
             display_order=row["display_order"],
             is_active=row["is_active"],
-            config=row["config"] or {}
+            config=ensure_dict(row["config"])
         )
 
         instance = cls(workflow_config=config)
@@ -319,7 +320,7 @@ class GenericWorkflowStandard(PredefinedWorkflow):
                 is_required=row["is_required"] if row["is_required"] is not None else True,
                 display_order=row["display_order"] or 0,
                 condition_type=condition_type,
-                condition_value=row["condition_value"] or {},
+                condition_value=ensure_dict(row["condition_value"]),
                 instructions_es=row["instructions_es"]
             ))
 
@@ -660,7 +661,7 @@ class GenericWorkflowDirectPayment(PredefinedWorkflow):
             max_processing_days=row["max_processing_days"],
             display_order=row["display_order"],
             is_active=row["is_active"],
-            config=row["config"] or {}
+            config=ensure_dict(row["config"])
         )
 
         instance = cls(workflow_config=config)
@@ -700,7 +701,7 @@ class GenericWorkflowDirectPayment(PredefinedWorkflow):
                 is_required=row["is_required"] if row["is_required"] is not None else True,
                 display_order=row["display_order"] or 0,
                 condition_type=condition_type,
-                condition_value=row["condition_value"] or {},
+                condition_value=ensure_dict(row["condition_value"]),
                 instructions_es=row["instructions_es"]
             ))
 

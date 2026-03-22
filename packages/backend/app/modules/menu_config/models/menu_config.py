@@ -137,7 +137,35 @@ VALID_MENU_ICONS = {
     'Plane', 'Globe', 'Car', 'Truck', 'FileSignature', 'Briefcase',
     'Building2', 'FileText', 'CreditCard', 'Users', 'Shield',
     'Settings', 'AlertTriangle', 'Layers', 'BarChart3', 'CheckCircle2',
-    'History', 'Clock', 'UserCheck', 'BadgeCheck',
+    'History', 'Clock', 'UserCheck', 'BadgeCheck', 'Receipt',
+    'Home', 'Search', 'Bell', 'Mail', 'Phone', 'MapPin', 'Calendar',
+    'Folder', 'File', 'Image', 'Video', 'Music', 'Download', 'Upload',
+    'Eye', 'EyeOff', 'Lock', 'Unlock', 'Key', 'Star', 'Heart',
+    'ThumbsUp', 'ThumbsDown', 'MessageSquare', 'Send', 'Inbox',
+    'Archive', 'Trash2', 'Edit', 'Copy', 'Clipboard', 'Link',
+    'ExternalLink', 'Share', 'Bookmark', 'Tag', 'Filter', 'List',
+    'Grid', 'Table', 'Database', 'Server', 'Cloud', 'Wifi',
+    'Monitor', 'Smartphone', 'Tablet', 'Printer', 'Camera',
+    'Mic', 'Volume2', 'Play', 'Pause', 'Square', 'Circle',
+    'Triangle', 'Hexagon', 'Zap', 'Activity', 'TrendingUp',
+    'TrendingDown', 'PieChart', 'LineChart', 'DollarSign', 'Percent',
+    'Hash', 'AtSign', 'Code', 'Terminal', 'Package', 'Box',
+    'ShoppingCart', 'ShoppingBag', 'Gift', 'Award', 'Flag',
+    'Navigation', 'Compass', 'Map', 'Crosshair', 'Target',
+    'Scissors', 'Paperclip', 'RotateCw', 'RefreshCw', 'Repeat',
+    'Maximize', 'Minimize', 'Move', 'ArrowRight', 'ArrowLeft',
+    'ChevronRight', 'ChevronDown', 'MoreHorizontal', 'MoreVertical',
+    'Plus', 'Minus', 'X', 'Check', 'Info', 'HelpCircle',
+    'AlertOctagon', 'XCircle', 'CheckCircle', 'MinusCircle', 'PlusCircle',
+    'LogIn', 'LogOut', 'UserPlus', 'UserMinus', 'UserX',
+    'Hammer', 'Wrench', 'Tool', 'Cog', 'Sliders',
+    'Sun', 'Moon', 'CloudRain', 'Umbrella', 'Wind',
+    'Loader', 'Save', 'Power', 'Battery', 'Cpu',
+    'HardDrive', 'Disc', 'Radio', 'Tv', 'Speaker',
+    'Headphones', 'Watch', 'Glasses', 'Feather', 'Pen',
+    'Type', 'Bold', 'Italic', 'Underline', 'AlignLeft',
+    'AlignCenter', 'AlignRight', 'AlignJustify', 'Columns',
+    'Sidebar', 'Layout', 'LayoutDashboard', 'PanelLeft',
 }
 
 
@@ -236,11 +264,17 @@ class WorkflowMenuMappingUpdate(BaseModel):
 
 
 class WorkflowMenuMappingResponse(WorkflowMenuMappingBase):
-    """Schema for mapping response"""
+    """Schema for mapping response — skips icon validation (data already in DB)"""
     id: int
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+    @field_validator('menu_icon')
+    @classmethod
+    def validate_menu_icon(cls, v: str) -> str:
+        """Skip icon validation on response — data already stored in DB is valid."""
+        return v
 
     class Config:
         from_attributes = True

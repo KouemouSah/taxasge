@@ -18,6 +18,8 @@ import asyncpg
 from fastapi import APIRouter, Depends, Header, HTTPException
 from loguru import logger
 
+from app.core.jsonb import ensure_list as _ensure_list
+
 from app.database.connection import get_database
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
@@ -268,12 +270,12 @@ async def get_company_analytics(
         row = await db.fetchrow("SELECT * FROM mv_company_analytics")
         if row:
             return {
-                "by_zone_regime": row["by_zone_regime"] or [],
-                "by_forma_juridica": row["by_forma_juridica"] or [],
-                "by_city": row["by_city"] or [],
-                "debt_by_fee_type": row["debt_by_fee_type"] or [],
-                "top_debtors": row["top_debtors"] or [],
-                "monthly_trend": row["monthly_trend"] or [],
+                "by_zone_regime": _ensure_list(row["by_zone_regime"]),
+                "by_forma_juridica": _ensure_list(row["by_forma_juridica"]),
+                "by_city": _ensure_list(row["by_city"]),
+                "debt_by_fee_type": _ensure_list(row["debt_by_fee_type"]),
+                "top_debtors": _ensure_list(row["top_debtors"]),
+                "monthly_trend": _ensure_list(row["monthly_trend"]),
             }
 
     # ── Fallback: 6 live queries in parallel ────────────────────────

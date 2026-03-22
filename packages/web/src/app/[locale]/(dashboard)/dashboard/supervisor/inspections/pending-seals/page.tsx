@@ -37,8 +37,10 @@ export default function PendingSealsPage() {
       setLoading(true)
       const data = await inspectionApi.getSupervisorDashboard()
       setSeals(data.pending_seals)
-    } catch {
-      toast({ title: 'Error', variant: 'destructive' })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('Failed to fetch pending seals:', msg)
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
     } finally {
       setLoading(false)
     }

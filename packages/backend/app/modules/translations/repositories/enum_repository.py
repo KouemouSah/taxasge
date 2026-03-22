@@ -29,9 +29,9 @@ MODIFIABLE_ENUMS = [
 # Mapping of ENUM names to their usage in tables
 ENUM_USAGE_MAP = {
     "user_role_enum": [("users", "role")],
-    "declaration_status_enum": [("declarations", "status")],
+    "declaration_status_enum": [("tax_declarations", "status")],
     "payment_status_enum": [("payments", "status")],
-    "document_status_enum": [("documents", "status")],
+    "document_status_enum": [("uploaded_files", "status")],
     "service_type_enum": [("fiscal_services", "service_type")],
     "calculation_method_enum": [("fiscal_services", "calculation_method")],
 }

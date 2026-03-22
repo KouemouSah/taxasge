@@ -157,7 +157,7 @@ class UserRepository(BaseRepository[UserResponse]):
                 roles_list = filters.pop('roles', None)
                 if roles_list and isinstance(roles_list, list):
                     param_count += 1
-                    conditions.append(f"role = ANY(${param_count}::text[])")
+                    conditions.append(f"role::text = ANY(${param_count}::text[])")
                     params.append(roles_list)
 
                 # Handle remaining filters as exact match
@@ -237,7 +237,7 @@ class UserRepository(BaseRepository[UserResponse]):
                 roles_list = filters.pop('roles', None)
                 if roles_list and isinstance(roles_list, list):
                     param_count += 1
-                    conditions.append(f"role = ANY(${param_count}::text[])")
+                    conditions.append(f"role::text = ANY(${param_count}::text[])")
                     params.append(roles_list)
 
                 # Handle remaining filters as exact match

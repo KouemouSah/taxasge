@@ -40,7 +40,6 @@ from app.modules.auth.middleware.auth_middleware import (
     get_current_user,
     get_current_user_optional,
     get_current_admin_user as require_admin,
-    get_current_operator_user as require_operator
 )
 from app.modules.permissions.middleware.permission_middleware import permission_required
 

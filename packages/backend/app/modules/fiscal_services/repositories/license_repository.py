@@ -821,12 +821,12 @@ class LicenseRepository:
                 "recovery_pct": recovery_pct,
                 "overdue_companies": [
                     {
-                        "company_name": c["company_name"] or "—",
-                        "company_nif": c["company_nif"],
-                        "zone": c["zone_code"],
-                        "license_id": str(c["license_id"]),
-                        "amount": float(c["amount"]),
-                        "penalty": float(c["penalty"]),
+                        "company_name": c.get("company_name") or "—",
+                        "company_nif": c.get("company_nif"),
+                        "zone": c.get("zone") or c.get("zone_code"),
+                        "license_id": str(c.get("license_id", "")),
+                        "amount": float(c.get("amount", 0)),
+                        "penalty": float(c.get("penalty", 0)),
                     }
                     for c in overdue_companies
                 ],
