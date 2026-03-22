@@ -213,7 +213,16 @@ def _register_admin(registry: ToolRegistry) -> None:
 
 
 def _register_supervisor(registry: ToolRegistry) -> None:
-    """Register supervisor agent with 8 SQL functions from supervisor_tools."""
+    """Register supervisor agent with composable tools.
+
+    Base: 10 supervisor tools (stats, SLA, agents, trends)
+    + Inspection tools (5) for OMS/ITVE entities
+    + License tools (4) for OMS entities
+    + Appointment tools (3) for CNEDOGE/DGT entities
+
+    All tools are registered together — the dynamic prompt guides Gemini
+    to use only the relevant tools for each entity.
+    """
     try:
         from app.modules.shared.services.supervisor_tools import (
             SUPERVISOR_FUNCTION_MAP,
@@ -221,19 +230,67 @@ def _register_supervisor(registry: ToolRegistry) -> None:
             SUPERVISOR_PROMPT_TEMPLATE,
             supervisor_build_artifacts,
         )
+        from app.modules.shared.services.supervisor_extended_tools import (
+            INSPECTION_FUNCTION_MAP, INSPECTION_FUNC_DECLS, INSPECTION_PROMPT_FRAGMENT,
+            LICENSE_FUNCTION_MAP, LICENSE_FUNC_DECLS, LICENSE_PROMPT_FRAGMENT,
+            APPOINTMENT_FUNCTION_MAP, APPOINTMENT_FUNC_DECLS, APPOINTMENT_PROMPT_FRAGMENT,
+        )
+
+        # Compose all tools
+        all_func_decls = list(SUPERVISOR_FUNC_DECLS) + INSPECTION_FUNC_DECLS + LICENSE_FUNC_DECLS + APPOINTMENT_FUNC_DECLS
+        all_func_map = {
+            **SUPERVISOR_FUNCTION_MAP,
+            **INSPECTION_FUNCTION_MAP,
+            **LICENSE_FUNCTION_MAP,
+            **APPOINTMENT_FUNCTION_MAP,
+        }
+
+        def composable_prompt_fn(ctx: dict) -> str:
+            """Build supervisor prompt with entity-specific tool sections."""
+            from datetime import datetime, timezone
+            from app.modules.shared.services.base_analyst_service import DAYS_ES
+
+            now = datetime.now(timezone.utc)
+            workflow_codes = ctx.get("workflow_codes", [])
+            wc_upper = [w.upper() for w in workflow_codes]
+
+            # Start with base prompt
+            prompt = SUPERVISOR_PROMPT_TEMPLATE
+            if "{current_date}" in prompt:
+                prompt = prompt.replace("{current_date}", now.strftime("%Y-%m-%d"))
+            if "{day_of_week}" in prompt:
+                prompt = prompt.replace("{day_of_week}", DAYS_ES[now.weekday()])
+
+            # Append entity-specific tool sections
+            has_inspections = any("INSPECCION" in w or "MATRICULACION" in w or "OMS" in w for w in wc_upper)
+            has_licenses = any("LICENCIA" in w or "OMS" in w or "PATENTE" in w for w in wc_upper)
+            has_appointments = any("PASAPORTE" in w or "RESIDENCIA" in w or "CONDUCIR" in w or "CARNET" in w for w in wc_upper)
+
+            if has_inspections:
+                prompt += INSPECTION_PROMPT_FRAGMENT
+            if has_licenses:
+                prompt += LICENSE_PROMPT_FRAGMENT
+            if has_appointments:
+                prompt += APPOINTMENT_PROMPT_FRAGMENT
+
+            return prompt
 
         registry.register("supervisor", ToolSet(
-            function_declarations=SUPERVISOR_FUNC_DECLS,
-            function_map=SUPERVISOR_FUNCTION_MAP,
-            prompt_template=SUPERVISOR_PROMPT_TEMPLATE,
+            function_declarations=all_func_decls,
+            function_map=all_func_map,
+            prompt_fn=composable_prompt_fn,
             artifacts_builder=supervisor_build_artifacts,
-            max_tool_rounds=2,
-            second_call_max_tokens=2048,
-            agent_type_label="Supervisor Assistant",
+            max_tool_rounds=3,  # More tools = may need 3 rounds
+            second_call_max_tokens=3072,
+            agent_type_label="Supervisor Assistant (composable)",
         ))
+        logger.info(
+            f"ToolRegistry: supervisor registered with {len(all_func_decls)} tools "
+            f"(10 base + {len(INSPECTION_FUNC_DECLS)} inspection + "
+            f"{len(LICENSE_FUNC_DECLS)} license + {len(APPOINTMENT_FUNC_DECLS)} appointment)"
+        )
     except ImportError as e:
         logger.warning(f"ToolRegistry: supervisor registration failed: {e}")
-        # Fallback: register empty supervisor so KeyError doesn't crash
         registry.register("supervisor", ToolSet(
             function_declarations=[],
             function_map={},
