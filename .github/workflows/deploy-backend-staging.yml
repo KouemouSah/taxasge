@@ -163,14 +163,12 @@ jobs:
             --set-env-vars="GEMINI_PRO_MODEL=gemini-2.0-flash" \
             --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-004" \
             --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \
-            --cpu=2 \
+            --cpu=1 \
             --memory=2Gi \
             --min-instances=0 \
             --max-instances=10 \
             --timeout=300 \
-            --concurrency=80 \
-            --cpu-boost \
-            --startup-cpu-boost
+            --concurrency=80
 
           URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
