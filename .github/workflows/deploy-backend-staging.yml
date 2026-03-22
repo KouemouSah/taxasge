@@ -126,8 +126,9 @@ jobs:
 
           # Escape the service account JSON for Cloud Run env var
           # Use FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV if available, fallback to GCP_SERVICE_ACCOUNT_KEY
-          if [ -n "${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}" ]; then
-            FIREBASE_SA_ESCAPED=$(echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}' | jq -c .)
+          FIREBASE_SA_RAW='${{ secrets.FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV }}'
+          if [[ -n "$FIREBASE_SA_RAW" ]]; then
+            FIREBASE_SA_ESCAPED=$(echo "$FIREBASE_SA_RAW" | jq -c .)
           else
             FIREBASE_SA_ESCAPED=$(echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' | jq -c .)
           fi
@@ -162,12 +163,14 @@ jobs:
             --set-env-vars="GEMINI_PRO_MODEL=gemini-2.0-flash" \
             --set-env-vars="GEMINI_EMBEDDING_MODEL=text-embedding-004" \
             --set-env-vars="^##^FIREBASE_SERVICE_ACCOUNT_TAXASGE_DEV=${FIREBASE_SA_ESCAPED}" \
+            --cpu=2 \
+            --memory=2Gi \
             --min-instances=0 \
             --max-instances=10 \
-            --memory=2Gi \
-            --cpu=1 \
             --timeout=300 \
-            --concurrency=80
+            --concurrency=80 \
+            --cpu-boost \
+            --startup-cpu-boost
 
           URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
