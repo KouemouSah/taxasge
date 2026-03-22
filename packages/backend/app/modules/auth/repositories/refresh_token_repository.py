@@ -162,7 +162,9 @@ class RefreshTokenRepository:
             hashed_token = self._hash_token(token)
 
             query = """
-                SELECT * FROM refresh_tokens
+                SELECT id, token, user_id, session_id, is_revoked,
+                       expires_at, created_at, revoked_at, last_used_at
+                FROM refresh_tokens
                 WHERE token = $1 AND is_revoked = false
                 LIMIT 1
             """
@@ -206,7 +208,9 @@ class RefreshTokenRepository:
         """
         try:
             query = """
-                SELECT * FROM refresh_tokens
+                SELECT id, token, user_id, session_id, is_revoked,
+                       expires_at, created_at, revoked_at, last_used_at
+                FROM refresh_tokens
                 WHERE session_id = $1 AND is_revoked = false
                 LIMIT 1
             """
@@ -245,14 +249,18 @@ class RefreshTokenRepository:
         try:
             if valid_only:
                 query = """
-                    SELECT * FROM refresh_tokens
+                    SELECT id, token, user_id, session_id, is_revoked,
+                       expires_at, created_at, revoked_at, last_used_at
+                FROM refresh_tokens
                     WHERE user_id = $1 AND is_revoked = false
                     ORDER BY created_at DESC
                     LIMIT 50
                 """
             else:
                 query = """
-                    SELECT * FROM refresh_tokens
+                    SELECT id, token, user_id, session_id, is_revoked,
+                       expires_at, created_at, revoked_at, last_used_at
+                FROM refresh_tokens
                     WHERE user_id = $1
                     ORDER BY created_at DESC
                     LIMIT 50

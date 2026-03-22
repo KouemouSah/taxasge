@@ -60,7 +60,11 @@ class SystemRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get system rule by ID"""
         query = """
-            SELECT * FROM system_rules WHERE id = $1
+            SELECT id, rule_code, rule_category, name_es, name_fr, name_en,
+                       description, rule_value, value_type, applies_to,
+                       effective_from, effective_until, is_active,
+                       created_at, updated_at, created_by
+                FROM system_rules WHERE id = $1
         """
         result = await conn.fetchrow(query, rule_id)
         return dict(result) if result else None
@@ -72,7 +76,11 @@ class SystemRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get active system rule by code"""
         query = """
-            SELECT * FROM system_rules
+            SELECT id, rule_code, rule_category, name_es, name_fr, name_en,
+                       description, rule_value, value_type, applies_to,
+                       effective_from, effective_until, is_active,
+                       created_at, updated_at, created_by
+                FROM system_rules
             WHERE rule_code = $1
               AND is_active = true
               AND effective_from <= CURRENT_DATE
@@ -120,7 +128,11 @@ class SystemRepository:
 
         # Get data
         data_query = f"""
-            SELECT * FROM system_rules
+            SELECT id, rule_code, rule_category, name_es, name_fr, name_en,
+                       description, rule_value, value_type, applies_to,
+                       effective_from, effective_until, is_active,
+                       created_at, updated_at, created_by
+                FROM system_rules
             WHERE {where_clause}
             ORDER BY rule_category, rule_code
             LIMIT ${param_idx} OFFSET ${param_idx + 1}
@@ -186,7 +198,11 @@ class SystemRepository:
     ) -> List[Dict[str, Any]]:
         """Get all active rules for a category"""
         query = """
-            SELECT * FROM system_rules
+            SELECT id, rule_code, rule_category, name_es, name_fr, name_en,
+                       description, rule_value, value_type, applies_to,
+                       effective_from, effective_until, is_active,
+                       created_at, updated_at, created_by
+                FROM system_rules
             WHERE rule_category = $1
               AND is_active = true
               AND effective_from <= CURRENT_DATE

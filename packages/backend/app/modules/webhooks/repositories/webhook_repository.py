@@ -71,7 +71,12 @@ class WebhookRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get bank configuration by code"""
         result = await conn.fetchrow(
-            "SELECT * FROM bank_configurations WHERE bank_code = $1", bank_code
+            "SELECT id, bank_code, bank_name, api_endpoint, api_version,
+                       api_key_encrypted, webhook_secret, treasury_account_number,
+                       is_active, supports_webhooks, supports_direct_integration,
+                       gateway_type, supported_payment_methods, is_primary,
+                       created_at, updated_at
+                FROM bank_configurations WHERE bank_code = $1", bank_code
         )
         return dict(result) if result else None
 
@@ -80,9 +85,19 @@ class WebhookRepository:
     ) -> List[Dict[str, Any]]:
         """List bank configurations"""
         if active_only:
-            query = "SELECT * FROM bank_configurations WHERE is_active = true ORDER BY bank_name"
+            query = "SELECT id, bank_code, bank_name, api_endpoint, api_version,
+                       api_key_encrypted, webhook_secret, treasury_account_number,
+                       is_active, supports_webhooks, supports_direct_integration,
+                       gateway_type, supported_payment_methods, is_primary,
+                       created_at, updated_at
+                FROM bank_configurations WHERE is_active = true ORDER BY bank_name"
         else:
-            query = "SELECT * FROM bank_configurations ORDER BY bank_name"
+            query = "SELECT id, bank_code, bank_name, api_endpoint, api_version,
+                       api_key_encrypted, webhook_secret, treasury_account_number,
+                       is_active, supports_webhooks, supports_direct_integration,
+                       gateway_type, supported_payment_methods, is_primary,
+                       created_at, updated_at
+                FROM bank_configurations ORDER BY bank_name"
 
         results = await conn.fetch(query)
         return [dict(r) for r in results]
@@ -111,7 +126,12 @@ class WebhookRepository:
                 param_idx += 1
 
         if not updates:
-            result = await conn.fetchrow("SELECT * FROM bank_configurations WHERE id = $1", config_id)
+            result = await conn.fetchrow("SELECT id, bank_code, bank_name, api_endpoint, api_version,
+                       api_key_encrypted, webhook_secret, treasury_account_number,
+                       is_active, supports_webhooks, supports_direct_integration,
+                       gateway_type, supported_payment_methods, is_primary,
+                       created_at, updated_at
+                FROM bank_configurations WHERE id = $1", config_id)
             return dict(result) if result else None
 
         updates.append("updated_at = NOW()")
@@ -153,7 +173,11 @@ class WebhookRepository:
     ) -> Optional[Dict[str, Any]]:
         """Get transaction by bank reference (idempotency)"""
         query = """
-            SELECT * FROM bank_transactions
+            SELECT id, bank_code, bank_reference, bank_transaction_date,
+                       amount, currency, account_number, account_holder_name,
+                       service_payment_id, status, raw_data,
+                       reconciled_at, reconciled_by, created_at
+                FROM bank_transactions
             WHERE bank_code = $1 AND bank_reference = $2
         """
         result = await conn.fetchrow(query, bank_code, bank_reference)
@@ -297,7 +321,11 @@ class WebhookRepository:
 
         # Find unreconciled transaction with this reference
         tx_query = """
-            SELECT * FROM bank_transactions
+            SELECT id, bank_code, bank_reference, bank_transaction_date,
+                       amount, currency, account_number, account_holder_name,
+                       service_payment_id, status, raw_data,
+                       reconciled_at, reconciled_by, created_at
+                FROM bank_transactions
             WHERE bank_reference = $1 AND status = 'unreconciled'
         """
         transaction = await conn.fetchrow(tx_query, bank_reference)

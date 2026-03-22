@@ -162,7 +162,10 @@ class TranslationRepository:
         Returns:
             Translation dict or None
         """
-        query = "SELECT * FROM translations WHERE id = $1"
+        query = "SELECT id, category, key_code, context, es, fr, en,
+                       description, translation_source, created_at, updated_at,
+                       created_by, updated_by, version
+                FROM translations WHERE id = $1"
         result = await conn.fetchrow(query, translation_id)
         return dict(result) if result else None
 
@@ -187,13 +190,19 @@ class TranslationRepository:
         """
         if context is not None:
             query = """
-                SELECT * FROM translations
+                SELECT id, category, key_code, context, es, fr, en,
+                       description, translation_source, created_at, updated_at,
+                       created_by, updated_by, version
+                FROM translations
                 WHERE category = $1 AND key_code = $2 AND context = $3
             """
             result = await conn.fetchrow(query, category, key_code, context)
         else:
             query = """
-                SELECT * FROM translations
+                SELECT id, category, key_code, context, es, fr, en,
+                       description, translation_source, created_at, updated_at,
+                       created_by, updated_by, version
+                FROM translations
                 WHERE category = $1 AND key_code = $2 AND context IS NULL
             """
             result = await conn.fetchrow(query, category, key_code)
@@ -268,7 +277,10 @@ class TranslationRepository:
 
         # Data query
         data_query = """
-            SELECT * FROM translations
+            SELECT id, category, key_code, context, es, fr, en,
+                       description, translation_source, created_at, updated_at,
+                       created_by, updated_by, version
+                FROM translations
             WHERE category = $1
             ORDER BY key_code, context
             LIMIT $2 OFFSET $3
@@ -345,7 +357,10 @@ class TranslationRepository:
         # Data query
         params.extend([limit, offset])
         data_query = f"""
-            SELECT * FROM translations
+            SELECT id, category, key_code, context, es, fr, en,
+                       description, translation_source, created_at, updated_at,
+                       created_by, updated_by, version
+                FROM translations
             WHERE {where_clause}
             ORDER BY category, key_code, context
             LIMIT ${param_counter} OFFSET ${param_counter + 1}

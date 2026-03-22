@@ -160,7 +160,10 @@ class SessionRepository:
             Optional[Session]: Session if found, None otherwise
         """
         try:
-            query = "SELECT * FROM sessions WHERE id = $1 LIMIT 1"
+            query = "SELECT id, user_id, access_token, refresh_token, status,
+                       ip_address, user_agent, device_info, expires_at,
+                       created_at, last_activity, revoked_at
+                FROM sessions WHERE id = $1 LIMIT 1"
 
             if conn:
                 result = await conn.fetchrow(query, session_id)
@@ -196,7 +199,10 @@ class SessionRepository:
             hashed_token = self._hash_token(access_token)
 
             query = """
-                SELECT * FROM sessions
+                SELECT id, user_id, access_token, refresh_token, status,
+                       ip_address, user_agent, device_info, expires_at,
+                       created_at, last_activity, revoked_at
+                FROM sessions
                 WHERE access_token = $1 AND status = $2
                 LIMIT 1
             """
@@ -255,7 +261,10 @@ class SessionRepository:
             hashed_token = self._hash_token(refresh_token)
 
             query = """
-                SELECT * FROM sessions
+                SELECT id, user_id, access_token, refresh_token, status,
+                       ip_address, user_agent, device_info, expires_at,
+                       created_at, last_activity, revoked_at
+                FROM sessions
                 WHERE refresh_token = $1 AND status = $2
                 LIMIT 1
             """
@@ -313,7 +322,10 @@ class SessionRepository:
         try:
             if active_only:
                 query = """
-                    SELECT * FROM sessions
+                    SELECT id, user_id, access_token, refresh_token, status,
+                       ip_address, user_agent, device_info, expires_at,
+                       created_at, last_activity, revoked_at
+                FROM sessions
                     WHERE user_id = $1 AND status = $2
                     ORDER BY created_at DESC
                     LIMIT 50
@@ -324,7 +336,10 @@ class SessionRepository:
                     results = await self.db_manager.execute_query(query, user_id, SessionStatus.active.value)
             else:
                 query = """
-                    SELECT * FROM sessions
+                    SELECT id, user_id, access_token, refresh_token, status,
+                       ip_address, user_agent, device_info, expires_at,
+                       created_at, last_activity, revoked_at
+                FROM sessions
                     WHERE user_id = $1
                     ORDER BY created_at DESC
                     LIMIT 50
