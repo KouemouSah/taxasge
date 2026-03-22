@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -38,63 +39,7 @@ const INITIAL_DELAY_MS = 2000 // Wait for webhook to process
 
 type PaymentState = 'loading' | 'success' | 'pending' | 'failed' | 'error'
 
-// ============================================================================
-// TRANSLATIONS
-// ============================================================================
-
-const texts = {
-  es: {
-    loading: 'Verificando su pago...',
-    loadingSubtitle: 'Estamos confirmando la transaccion con el banco. Por favor espere.',
-    success: 'Pago confirmado',
-    successSubtitle: 'Su pago ha sido procesado correctamente.',
-    pending: 'Pago en proceso',
-    pendingSubtitle: 'Su pago esta siendo procesado. Puede tomar unos minutos. Sera notificado por email cuando se confirme.',
-    failed: 'Pago no completado',
-    failedSubtitle: 'El pago no se completo. Puede intentar nuevamente desde la pagina de su solicitud.',
-    error: 'Error de verificacion',
-    errorSubtitle: 'No pudimos verificar el estado de su pago. Su solicitud ha sido registrada y sera verificada manualmente.',
-    viewRequest: 'Ver mi solicitud',
-    retry: 'Reintentar verificacion',
-    goToList: 'Ir a mis solicitudes',
-    amount: 'Monto',
-    reference: 'Referencia',
-  },
-  fr: {
-    loading: 'Verification de votre paiement...',
-    loadingSubtitle: 'Nous confirmons la transaction avec la banque. Veuillez patienter.',
-    success: 'Paiement confirme',
-    successSubtitle: 'Votre paiement a ete traite avec succes.',
-    pending: 'Paiement en cours',
-    pendingSubtitle: 'Votre paiement est en cours de traitement. Cela peut prendre quelques minutes. Vous serez notifie par email.',
-    failed: 'Paiement non complete',
-    failedSubtitle: 'Le paiement n\'a pas abouti. Vous pouvez reessayer depuis la page de votre demande.',
-    error: 'Erreur de verification',
-    errorSubtitle: 'Nous n\'avons pas pu verifier l\'etat de votre paiement. Votre demande a ete enregistree et sera verifiee manuellement.',
-    viewRequest: 'Voir ma demande',
-    retry: 'Reessayer la verification',
-    goToList: 'Aller a mes demandes',
-    amount: 'Montant',
-    reference: 'Reference',
-  },
-  en: {
-    loading: 'Verifying your payment...',
-    loadingSubtitle: 'We are confirming the transaction with the bank. Please wait.',
-    success: 'Payment confirmed',
-    successSubtitle: 'Your payment has been processed successfully.',
-    pending: 'Payment processing',
-    pendingSubtitle: 'Your payment is being processed. It may take a few minutes. You will be notified by email when confirmed.',
-    failed: 'Payment not completed',
-    failedSubtitle: 'The payment was not completed. You can try again from your request page.',
-    error: 'Verification error',
-    errorSubtitle: 'We could not verify your payment status. Your request has been registered and will be verified manually.',
-    viewRequest: 'View my request',
-    retry: 'Retry verification',
-    goToList: 'Go to my requests',
-    amount: 'Amount',
-    reference: 'Reference',
-  },
-}
+// Translations now loaded from messages/{locale}.json via useTranslations('paymentResult')
 
 // ============================================================================
 // PAGE COMPONENT
@@ -116,7 +61,7 @@ export default function PaymentResultPage() {
   const pollCountRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const t = texts[locale as keyof typeof texts] || texts.es
+  const t = useTranslations('paymentResult')
 
   // Read BANGE query params (if any)
   const bangeStatus = searchParams.get('status')
@@ -216,32 +161,32 @@ export default function PaymentResultPage() {
     loading: {
       icon: <Loader2 className="h-10 w-10 text-primary animate-spin" />,
       bgColor: 'bg-primary/10',
-      title: t.loading,
-      subtitle: t.loadingSubtitle,
+      title: t('loading'),
+      subtitle: t('loadingSubtitle'),
     },
     success: {
       icon: <CheckCircle className="h-10 w-10 text-green-600" />,
       bgColor: 'bg-green-100',
-      title: t.success,
-      subtitle: t.successSubtitle,
+      title: t('success'),
+      subtitle: t('successSubtitle'),
     },
     pending: {
       icon: <Clock className="h-10 w-10 text-amber-600" />,
       bgColor: 'bg-amber-100',
-      title: t.pending,
-      subtitle: t.pendingSubtitle,
+      title: t('pending'),
+      subtitle: t('pendingSubtitle'),
     },
     failed: {
       icon: <XCircle className="h-10 w-10 text-red-600" />,
       bgColor: 'bg-red-100',
-      title: t.failed,
-      subtitle: t.failedSubtitle,
+      title: t('failed'),
+      subtitle: t('failedSubtitle'),
     },
     error: {
       icon: <XCircle className="h-10 w-10 text-gray-600" />,
       bgColor: 'bg-gray-100',
-      title: t.error,
-      subtitle: t.errorSubtitle,
+      title: t('error'),
+      subtitle: t('errorSubtitle'),
     },
   }
 
@@ -267,7 +212,7 @@ export default function PaymentResultPage() {
             {state === 'success' && paymentInfo.amount && (
               <div className="border rounded-lg p-3 space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.amount}</span>
+                  <span className="text-muted-foreground">{t('amount')}</span>
                   <span className="font-bold">
                     {paymentInfo.amount.toLocaleString()} {paymentInfo.currency}
                   </span>
@@ -286,14 +231,14 @@ export default function PaymentResultPage() {
             <div className="flex flex-col gap-3 pt-4">
               {(state === 'success' || state === 'pending') && (
                 <Button onClick={navigateToRequest} className="w-full">
-                  {t.viewRequest}
+                  {t('viewRequest')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               )}
 
               {state === 'failed' && (
                 <Button onClick={navigateToRequest} className="w-full">
-                  {t.viewRequest}
+                  {t('viewRequest')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               )}
@@ -301,12 +246,12 @@ export default function PaymentResultPage() {
               {(state === 'error' || state === 'pending') && (
                 <Button variant="outline" onClick={handleRetry} className="w-full">
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  {t.retry}
+                  {t('retry')}
                 </Button>
               )}
 
               <Button variant="ghost" size="sm" onClick={navigateToList}>
-                {t.goToList}
+                {t('goToList')}
               </Button>
             </div>
           </div>

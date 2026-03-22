@@ -26,6 +26,7 @@ from app.modules.payments.services.bange_service import BANGEService
 from app.modules.payments.services.gateways.bange_gateway import BANGEGateway
 from app.config import get_settings
 from app.core.events import EventBus, EventType
+from app.core.circuit_breaker import bange_circuit
 
 from .base import (
     PaymentProcessorBase,
@@ -80,6 +81,17 @@ class BangeProcessor(PaymentProcessorBase):
         Returns:
             PaymentInitResult with redirect URL for BANGE payment page
         """
+        # ── CIRCUIT BREAKER: fast-fail if BANGE is down ──
+        if not bange_circuit.allow_request():
+            logger.warning("BANGE circuit breaker OPEN — payment rejected without API call")
+            return PaymentInitResult(
+                success=False,
+                payment_id=str(uuid4()),
+                status=PaymentStatus.FAILED,
+                error="El sistema de pago no esta disponible temporalmente. Intente en unos minutos.",
+                message_es="El sistema de pago no esta disponible temporalmente. Intente en unos minutos.",
+            )
+
         try:
             # 1. Generate payment reference
             payment_reference = self._generate_reference(context)
@@ -135,6 +147,7 @@ class BangeProcessor(PaymentProcessorBase):
                 )
 
             # ── Transaction committed successfully ──
+            bange_circuit.record_success()
             logger.info(
                 f"BANGE payment initiated: {payment_id} -> {bange_response.payment_id}"
             )
@@ -158,6 +171,7 @@ class BangeProcessor(PaymentProcessorBase):
         except ValueError as ve:
             if str(ve) == "BANGE_API_FAILED":
                 # Payment record was rolled back — no orphan in DB
+                bange_circuit.record_failure()
                 logger.warning(f"BANGE API failed for payment {payment_id}, transaction rolled back")
 
                 # Publish PAYMENT_FAILED event for notifications

@@ -2508,7 +2508,6 @@
       "roleMenuConfig": "Menus par Rôle",
       "monitoring": "Centre d'Operations",
       "aiAgents": "Agents IA",
-      "companyClassification": "Classification Entreprises",
       "paymentInfrastructure": "Infrastructure de Paiements",
       "paymentGateways": "Passerelles de Paiement"
     },
@@ -10294,5 +10293,22 @@
       "error": "Erreur",
       "loading": "Chargement..."
     }
+  },
+  "paymentResult": {
+    "loading": "Verification de votre paiement...",
+    "loadingSubtitle": "Nous confirmons la transaction avec la banque. Veuillez patienter.",
+    "success": "Paiement confirme",
+    "successSubtitle": "Votre paiement a ete traite avec succes.",
+    "pending": "Paiement en cours",
+    "pendingSubtitle": "Votre paiement est en cours de traitement. Cela peut prendre quelques minutes. Vous serez notifie par email.",
+    "failed": "Paiement non complete",
+    "failedSubtitle": "Le paiement n'a pas abouti. Vous pouvez reessayer depuis la page de votre demande.",
+    "error": "Erreur de verification",
+    "errorSubtitle": "Nous n'avons pas pu verifier l'etat de votre paiement. Votre demande a ete enregistree et sera verifiee manuellement.",
+    "viewRequest": "Voir ma demande",
+    "retry": "Reessayer la verification",
+    "goToList": "Aller a mes demandes",
+    "amount": "Montant",
+    "reference": "Reference"
   }
 }

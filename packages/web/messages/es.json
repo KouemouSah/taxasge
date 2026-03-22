@@ -2473,7 +2473,6 @@
       "roleMenuConfig": "Menús por Rol",
       "monitoring": "Centro de Operaciones",
       "aiAgents": "Agentes IA",
-      "companyClassification": "Clasificación Empresas",
       "paymentInfrastructure": "Infraestructura de Pagos",
       "paymentGateways": "Pasarelas de Pago"
     },
@@ -10183,5 +10182,22 @@
       "error": "Error",
       "loading": "Cargando..."
     }
+  },
+  "paymentResult": {
+    "loading": "Verificando su pago...",
+    "loadingSubtitle": "Estamos confirmando la transaccion con el banco. Por favor espere.",
+    "success": "Pago confirmado",
+    "successSubtitle": "Su pago ha sido procesado correctamente.",
+    "pending": "Pago en proceso",
+    "pendingSubtitle": "Su pago esta siendo procesado. Puede tomar unos minutos. Sera notificado por email cuando se confirme.",
+    "failed": "Pago no completado",
+    "failedSubtitle": "El pago no se completo. Puede intentar nuevamente desde la pagina de su solicitud.",
+    "error": "Error de verificacion",
+    "errorSubtitle": "No pudimos verificar el estado de su pago. Su solicitud ha sido registrada y sera verificada manualmente.",
+    "viewRequest": "Ver mi solicitud",
+    "retry": "Reintentar verificacion",
+    "goToList": "Ir a mis solicitudes",
+    "amount": "Monto",
+    "reference": "Referencia"
   }
 }

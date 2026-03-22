@@ -1674,7 +1674,6 @@
       "roleMenuConfig": "Role Menu Config",
       "monitoring": "Operations Center",
       "aiAgents": "AI Agents",
-      "companyClassification": "Company Classification",
       "paymentInfrastructure": "Payment Infrastructure",
       "paymentGateways": "Payment Gateways"
     },
@@ -10051,5 +10050,22 @@
       "error": "Error",
       "loading": "Loading..."
     }
+  },
+  "paymentResult": {
+    "loading": "Verifying your payment...",
+    "loadingSubtitle": "We are confirming the transaction with the bank. Please wait.",
+    "success": "Payment confirmed",
+    "successSubtitle": "Your payment has been processed successfully.",
+    "pending": "Payment processing",
+    "pendingSubtitle": "Your payment is being processed. It may take a few minutes. You will be notified by email when confirmed.",
+    "failed": "Payment not completed",
+    "failedSubtitle": "The payment was not completed. You can try again from your request page.",
+    "error": "Verification error",
+    "errorSubtitle": "We could not verify your payment status. Your request has been registered and will be verified manually.",
+    "viewRequest": "View my request",
+    "retry": "Retry verification",
+    "goToList": "Go to my requests",
+    "amount": "Amount",
+    "reference": "Reference"
   }
 }
