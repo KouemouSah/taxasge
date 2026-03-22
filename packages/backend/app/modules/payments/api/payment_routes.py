@@ -24,6 +24,7 @@ from app.modules.payments.models import (
 from app.modules.payments.repositories import PaymentRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.permissions.services.permission_service import create_permission_service
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Payments"])
@@ -131,8 +132,7 @@ async def update_payment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
 
     # Check if user has admin permission
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_admin_perm = await perm_service.has_permission(user_id, "payments.update")
 
     # Check ownership OR admin permission

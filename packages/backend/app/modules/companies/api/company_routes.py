@@ -21,6 +21,7 @@ from app.modules.companies.models import (
 from app.modules.companies.repositories import CompanyRepository
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.permissions.services.permission_service import create_permission_service
 from app.database.connection import get_database
 
 router = APIRouter(tags=["Companies"])
@@ -312,8 +313,7 @@ async def get_company(
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Admin with company.view can access any company
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_view_all = await perm_service.has_permission(user_id, "company.view_all")
 
     if not has_view_all:
@@ -340,8 +340,7 @@ async def update_company(
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Admin with company.update can update any company
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_admin_perm = await perm_service.has_permission(user_id, "company.update")
 
     if not has_admin_perm:
@@ -403,8 +402,7 @@ async def delete_company(
     """
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_admin_perm = await perm_service.has_permission(user_id, "company.delete")
 
     if not has_admin_perm:
@@ -434,8 +432,7 @@ async def get_company_members(
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
     # Admin with company.manage_members can view any company's members
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
 
     if not has_admin_perm:
@@ -463,8 +460,7 @@ async def add_company_member(
     """
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
 
     if not has_admin_perm:
@@ -488,8 +484,7 @@ async def update_member_role(
     """Update member role within a company."""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
 
     if not has_admin_perm:
@@ -515,8 +510,7 @@ async def remove_company_member(
     """Remove member from company (owner/admin only)"""
     user_id = current_user.id if hasattr(current_user, 'id') else current_user.get("sub")
 
-    from app.modules.permissions.services.permission_service import get_permission_service
-    perm_service = get_permission_service()
+    perm_service = create_permission_service(db)
     has_admin_perm = await perm_service.has_permission(user_id, "company.manage_members")
 
     if not has_admin_perm:

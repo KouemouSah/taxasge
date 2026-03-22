@@ -39,6 +39,7 @@ from app.modules.declarations.repositories import DeclarationRepository
 from app.modules.declarations.services import get_declaration_service
 from app.modules.auth.middleware.auth_middleware import get_current_user
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.permissions.services.permission_service import create_permission_service
 from app.database.connection import get_database
 
 # Create router
@@ -226,8 +227,7 @@ async def get_declaration(
         # Security: Check ownership OR admin permission
         if declaration["user_id"] != user_id:
             # Check if user has admin permission to view any declaration
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            perm_service = create_permission_service(db)
             has_admin_perm = await perm_service.has_permission(user_id, "declaration.view_all")
 
             if not has_admin_perm:
@@ -286,8 +286,7 @@ async def update_declaration(
             )
 
         # Check if user has admin permission
-        from app.modules.permissions.services.permission_service import get_permission_service
-        perm_service = get_permission_service()
+        perm_service = create_permission_service(db)
         has_admin_perm = await perm_service.has_permission(user_id, "declaration.update")
 
         # Security: Check ownership OR admin permission
@@ -366,8 +365,7 @@ async def delete_declaration(
             )
 
         # Check if user has admin permission
-        from app.modules.permissions.services.permission_service import get_permission_service
-        perm_service = get_permission_service()
+        perm_service = create_permission_service(db)
         has_admin_perm = await perm_service.has_permission(user_id, "declaration.delete")
 
         # Security: Check ownership OR admin permission
@@ -558,8 +556,7 @@ async def get_declaration_workflow_status(
 
         # Security: Check ownership OR admin permission
         if declaration["user_id"] != user_id:
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            perm_service = create_permission_service(db)
             has_admin_perm = await perm_service.has_permission(user_id, "declaration.view_all")
 
             if not has_admin_perm:

@@ -42,6 +42,8 @@ from app.modules.auth.middleware.auth_middleware import (
     get_current_admin_user as require_admin,
 )
 from app.modules.permissions.middleware.permission_middleware import permission_required
+from app.modules.permissions.services.permission_service import create_permission_service
+from app.database.connection import get_database
 
 router = APIRouter(tags=["Documents"])
 
@@ -350,7 +352,8 @@ async def list_documents(
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
     document_id: UUID = Path(..., description="Document ID"),
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_database),
 ):
     """
     Get document details by ID
@@ -368,8 +371,7 @@ async def get_document(
 
         # Check access permissions: ownership OR admin permission
         if document.user_id != current_user.id:
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            perm_service = create_permission_service(db)
             has_admin_perm = await perm_service.has_permission(str(current_user.id), "documents.view_all")
 
             if not has_admin_perm:
@@ -398,7 +400,8 @@ async def get_document(
 @router.get("/{document_id}/download")
 async def download_document(
     document_id: UUID = Path(..., description="Document ID"),
-    current_user: UserResponse = Depends(get_current_user)
+    current_user: UserResponse = Depends(get_current_user),
+    db=Depends(get_database),
 ):
     """
     Download original document file
@@ -416,8 +419,7 @@ async def download_document(
 
         # Check access permissions: ownership OR admin permission
         if document.user_id != current_user.id:
-            from app.modules.permissions.services.permission_service import get_permission_service
-            perm_service = get_permission_service()
+            perm_service = create_permission_service(db)
             has_admin_perm = await perm_service.has_permission(str(current_user.id), "documents.download_all")
 
             if not has_admin_perm:
