@@ -253,11 +253,11 @@ class Settings(BaseSettings):
         default="gemini-2.0-flash",
         env="GEMINI_PRO_MODEL"
     )
-    # NOTE: Keep text-embedding-004 as default until re-embed cron is executed.
-    # After running /cron/reembed-fiscal-services?force=true with
-    # GEMINI_EMBEDDING_MODEL=text-embedding-005 in env, switch default to 005.
+    # text-embedding-005: GA, same 768 dims as 004, better quality.
+    # After deployment, run /cron/reembed-fiscal-services?force=true
+    # and /cron/reindex-legislacion-pdfs?force=true to re-generate all vectors.
     GEMINI_EMBEDDING_MODEL: str = Field(
-        default="text-embedding-004",
+        default="text-embedding-005",
         env="GEMINI_EMBEDDING_MODEL"
     )
 

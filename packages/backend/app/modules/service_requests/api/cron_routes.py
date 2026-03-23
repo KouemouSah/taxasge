@@ -1065,17 +1065,17 @@ async def reindex_legislacion_pdfs(
         if not embedding_service.enabled:
             return {"message": "Embedding service disabled (Vertex AI not available)", "error": True}
 
-        # Find PDFs — on Cloud Run, public files are in the deployed image
-        pdf_folder = os.path.join(
-            os.path.dirname(__file__), '..', '..', '..', '..', '..',
-            'web', 'public', 'documents', 'legislacion'
-        )
-        # Fallback: check relative to backend root
+        # Find PDFs — check backend data/legislacion/ first (deployed with backend image),
+        # then fallback to web/public (local dev), then absolute Cloud Run path
+        pdf_folder = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'data', 'legislacion')
         if not os.path.isdir(pdf_folder):
-            pdf_folder = os.path.join(os.getcwd(), 'packages', 'web', 'public', 'documents', 'legislacion')
+            pdf_folder = os.path.join(os.getcwd(), 'data', 'legislacion')
         if not os.path.isdir(pdf_folder):
-            # Cloud Run: try absolute path
-            pdf_folder = '/app/packages/web/public/documents/legislacion'
+            # Cloud Run: absolute path in backend image
+            pdf_folder = '/app/data/legislacion'
+        if not os.path.isdir(pdf_folder):
+            # Fallback: web public (local dev only)
+            pdf_folder = os.path.join(os.getcwd(), '..', 'web', 'public', 'documents', 'legislacion')
 
         pdf_files = sorted(glob.glob(os.path.join(pdf_folder, '*.pdf'))) if os.path.isdir(pdf_folder) else []
         if not pdf_files:
