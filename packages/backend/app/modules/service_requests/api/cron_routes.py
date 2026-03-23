@@ -1031,3 +1031,168 @@ async def cleanup_permission_audit_log(
             "archived_count": 0,
             "error": str(e),
         }
+
+
+# ---------------------------------------------------------------------------
+# Cron: Re-index Legislative PDFs for RAG Chatbot
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/reindex-legislacion-pdfs",
+    summary="Re-index legislative PDFs for RAG chatbot",
+    description="""
+    Called weekly by Cloud Scheduler (or manually).
+
+    Scans all PDFs in the legislacion folder, chunks them, generates embeddings
+    with Vertex AI, and upserts into legislacion_documents table.
+    Runs on Cloud Run which has GCP service account credentials.
+    Idempotent: existing chunks are skipped unless force=true.
+    """
+)
+async def reindex_legislacion_pdfs(
+    force: bool = False,
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Re-index legislative PDFs for RAG chatbot semantic search."""
+    import glob
+    import os
+    import time as time_module
+
+    try:
+        from app.modules.chatbot.services.embedding_service import embedding_service
+
+        if not embedding_service.enabled:
+            return {"message": "Embedding service disabled (Vertex AI not available)", "error": True}
+
+        # Find PDFs — on Cloud Run, public files are in the deployed image
+        pdf_folder = os.path.join(
+            os.path.dirname(__file__), '..', '..', '..', '..', '..',
+            'web', 'public', 'documents', 'legislacion'
+        )
+        # Fallback: check relative to backend root
+        if not os.path.isdir(pdf_folder):
+            pdf_folder = os.path.join(os.getcwd(), 'packages', 'web', 'public', 'documents', 'legislacion')
+        if not os.path.isdir(pdf_folder):
+            # Cloud Run: try absolute path
+            pdf_folder = '/app/packages/web/public/documents/legislacion'
+
+        pdf_files = sorted(glob.glob(os.path.join(pdf_folder, '*.pdf'))) if os.path.isdir(pdf_folder) else []
+        if not pdf_files:
+            return {"message": f"No PDFs found in {pdf_folder}", "pdf_count": 0}
+
+        logger.info(f"Found {len(pdf_files)} PDFs to index")
+
+        # Import pdfplumber (available in requirements.txt)
+        try:
+            import pdfplumber
+        except ImportError:
+            return {"message": "pdfplumber not installed", "error": True}
+
+        chunk_size = settings.PDF_CHUNK_SIZE
+        chunk_overlap = settings.PDF_CHUNK_OVERLAP
+        start_time = time_module.time()
+
+        total_stats = {"inserted": 0, "updated": 0, "skipped": 0, "failed": 0, "pdfs_processed": 0}
+
+        for pdf_path in pdf_files:
+            filename = os.path.basename(pdf_path)
+            doc_name = os.path.splitext(filename)[0]
+
+            # Parse PDF
+            chunks = []
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    for page_num, page in enumerate(pdf.pages, 1):
+                        text = page.extract_text() or ''
+                        if not text.strip():
+                            continue
+                        step = max(1, chunk_size - chunk_overlap)
+                        for i in range(0, len(text), step):
+                            chunk = text[i:i + chunk_size]
+                            if len(chunk.strip()) < 50:
+                                continue
+                            chunk_idx = i // step
+                            chunks.append({
+                                'doc_name': doc_name,
+                                'page_number': page_num,
+                                'chunk_id': f'{doc_name.lower()}_p{page_num}_c{chunk_idx}',
+                                'content': chunk.strip(),
+                            })
+            except Exception as e:
+                logger.error(f"Failed to parse {filename}: {e}")
+                continue
+
+            if not chunks:
+                logger.info(f"  {filename}: no text extracted (possibly scanned PDF)")
+                continue
+
+            # Check existing chunks
+            existing = set()
+            if not force:
+                rows = await db.fetch(
+                    "SELECT chunk_id FROM legislacion_documents WHERE document_name = $1",
+                    doc_name,
+                )
+                existing = {r['chunk_id'] for r in rows}
+
+            # Embed and upsert
+            for chunk in chunks:
+                if chunk['chunk_id'] in existing and not force:
+                    total_stats['skipped'] += 1
+                    continue
+
+                embedding = await embedding_service.generate_embedding(
+                    chunk['content'],
+                    task_type='RETRIEVAL_DOCUMENT',
+                    title=f"{doc_name} - Página {chunk['page_number']}",
+                )
+                if not embedding:
+                    total_stats['failed'] += 1
+                    continue
+
+                embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
+                await db.execute(
+                    """
+                    INSERT INTO legislacion_documents
+                        (document_name, page_number, chunk_id, content,
+                         embedding, embedding_model, embedding_generated_at)
+                    VALUES ($1, $2, $3, $4, $5::vector, $6, NOW())
+                    ON CONFLICT (document_name, chunk_id) DO UPDATE SET
+                        content = EXCLUDED.content,
+                        embedding = EXCLUDED.embedding,
+                        embedding_model = EXCLUDED.embedding_model,
+                        embedding_generated_at = NOW(),
+                        updated_at = NOW()
+                    """,
+                    chunk['doc_name'],
+                    chunk['page_number'],
+                    chunk['chunk_id'],
+                    chunk['content'],
+                    embedding_str,
+                    settings.GEMINI_EMBEDDING_MODEL,
+                )
+
+                if chunk['chunk_id'] in existing:
+                    total_stats['updated'] += 1
+                else:
+                    total_stats['inserted'] += 1
+
+            total_stats['pdfs_processed'] += 1
+            logger.info(f"  {filename}: {len(chunks)} chunks processed")
+
+        elapsed = time_module.time() - start_time
+        total_stats['elapsed_seconds'] = round(elapsed, 1)
+        total_stats['message'] = (
+            f"Indexed {total_stats['pdfs_processed']}/{len(pdf_files)} PDFs: "
+            f"+{total_stats['inserted']} new, ~{total_stats['updated']} updated, "
+            f"={total_stats['skipped']} skipped, x{total_stats['failed']} failed "
+            f"in {elapsed:.1f}s"
+        )
+
+        logger.info(total_stats['message'])
+        return total_stats
+
+    except Exception as e:
+        logger.error(f"PDF re-indexing failed: {e}")
+        return {"message": f"Re-indexing failed: {str(e)}", "error": str(e)}

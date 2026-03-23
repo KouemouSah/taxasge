@@ -88,9 +88,8 @@ class SemanticSearchRepository:
         where_conditions = ["fs.status = 'active'", "fs.embedding IS NOT NULL"]
         # Convert embedding list to pgvector string format: '[x,y,z,...]'
         embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
-        # NOTE: Threshold removed from SQL query for debugging (applied in code)
-        params = [embedding_str, limit]
-        param_idx = 3
+        params = [embedding_str, similarity_threshold, limit]
+        param_idx = 4
 
         # Add filters
         if filters:
@@ -234,9 +233,7 @@ class SemanticSearchRepository:
             ) pts_data ON true
 
             WHERE {where_clause}
-                -- NOTE: Threshold filter removed to see all results and debug
-                -- Threshold will be applied in code if needed
-                -- AND (1 - (fs.embedding <=> $1::vector)) >= $2  -- similarity threshold
+                AND (1 - (fs.embedding <=> $1::vector)) >= $2
 
             GROUP BY
                 fs.id, fs.service_code, fs.name_es, fs.description_es,
@@ -248,7 +245,7 @@ class SemanticSearchRepository:
 
             -- Order by cosine distance (HNSW index accelerates this)
             ORDER BY fs.embedding <=> $1::vector
-            LIMIT $2
+            LIMIT $3
         """
 
         try:

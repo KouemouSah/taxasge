@@ -254,15 +254,15 @@ class Settings(BaseSettings):
         env="GEMINI_PRO_MODEL"
     )
     GEMINI_EMBEDDING_MODEL: str = Field(
-        default="text-embedding-004",
+        default="text-embedding-005",
         env="GEMINI_EMBEDDING_MODEL"
     )
 
     # Gemini Generation Configuration
     GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=2048, env="GEMINI_MAX_OUTPUT_TOKENS")
     GEMINI_TEMPERATURE: float = Field(default=0.3, env="GEMINI_TEMPERATURE")
-    GEMINI_TOP_P: float = Field(default=0.95, env="GEMINI_TOP_P")
-    GEMINI_TOP_K: int = Field(default=40, env="GEMINI_TOP_K")
+    GEMINI_TOP_P: float = Field(default=0.85, env="GEMINI_TOP_P")
+    GEMINI_TOP_K: int = Field(default=10, env="GEMINI_TOP_K")
 
     # Embedding Configuration
     EMBEDDING_DIMENSIONS: int = Field(default=768, env="EMBEDDING_DIMENSIONS")
@@ -280,7 +280,7 @@ class Settings(BaseSettings):
     # RAG Configuration
     RAG_MAX_CONTEXT_SERVICES: int = Field(default=5, env="RAG_MAX_CONTEXT_SERVICES")
     RAG_MAX_CONTEXT_DOCUMENTS: int = Field(default=5, env="RAG_MAX_CONTEXT_DOCUMENTS")
-    RAG_CONVERSATION_HISTORY_LENGTH: int = Field(default=5, env="RAG_CONVERSATION_HISTORY_LENGTH")
+    RAG_CONVERSATION_HISTORY_LENGTH: int = Field(default=20, env="RAG_CONVERSATION_HISTORY_LENGTH")
     MAX_CONTEXT_TOKENS: int = Field(default=3000, env="MAX_CONTEXT_TOKENS")
     PDF_CHUNK_SIZE: int = Field(default=1000, env="PDF_CHUNK_SIZE")
     PDF_CHUNK_OVERLAP: int = Field(default=100, env="PDF_CHUNK_OVERLAP")

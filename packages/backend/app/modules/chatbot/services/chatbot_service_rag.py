@@ -118,9 +118,11 @@ class ChatbotServiceRAG:
             )
             logger.info(f"Found {len(relevant_services_extended)} extended relevant services")
 
-            # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD)
+            # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD) + deduplicate
             relevant_docs = [doc for doc in relevant_docs_extended if doc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_DOCUMENTS]
-            relevant_services = [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_SERVICES]
+            relevant_services = self._deduplicate_services(
+                [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD]
+            )[:settings.RAG_MAX_CONTEXT_SERVICES]
 
             # Step 3: Consolidate and prioritize context for LLM
             consolidated_context, context_sources = self._consolidate_context(relevant_docs, relevant_services)
@@ -130,8 +132,8 @@ class ChatbotServiceRAG:
             fallback_message = ""
             did_you_mean_suggestions = []
 
-            # Check for insufficient primary context
-            if len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
+            # Check for insufficient primary context — only fallback if BOTH docs and services are empty
+            if not relevant_docs and not relevant_services and len(consolidated_context) < settings.RAG_MIN_CONTEXT_LENGTH:
                 logger.warning(f"Insufficient primary context found for query: '{message[:50]}...' (length: {len(consolidated_context)})")
                 
                 # Try to generate "Did you mean?" suggestions
@@ -280,9 +282,11 @@ class ChatbotServiceRAG:
                 similarity_threshold=settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD
             )
             
-            # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD)
+            # Filter for primary context (above SEMANTIC_SEARCH_SIMILARITY_THRESHOLD) + deduplicate
             relevant_docs = [doc for doc in relevant_docs_extended if doc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_DOCUMENTS]
-            relevant_services = [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD][:settings.RAG_MAX_CONTEXT_SERVICES]
+            relevant_services = self._deduplicate_services(
+                [svc for svc in relevant_services_extended if svc.get('similarity', 0) >= settings.SEMANTIC_SEARCH_SIMILARITY_THRESHOLD]
+            )[:settings.RAG_MAX_CONTEXT_SERVICES]
             
             consolidated_context, context_sources = self._consolidate_context(relevant_docs, relevant_services)
 
@@ -494,6 +498,23 @@ class ChatbotServiceRAG:
     # CONTEXT CONSOLIDATION
     # ========================================================================
 
+    def _deduplicate_services(self, services: List[Dict]) -> List[Dict]:
+        """Deduplicate services by service_code, keeping highest similarity.
+        Also filters out test/invalid data (e.g., cost < 100 XAF)."""
+        seen = {}
+        for svc in services:
+            code = svc.get('service_code', '')
+            if not code:
+                continue
+            # Filter out test data (suspiciously low prices)
+            price = svc.get('tasa_expedicion', 0)
+            if price and float(price) > 0 and float(price) < 100:
+                logger.debug(f"Filtered test service {code}: {price} XAF")
+                continue
+            if code not in seen or svc.get('similarity', 0) > seen[code].get('similarity', 0):
+                seen[code] = svc
+        return list(seen.values())
+
     def _consolidate_context(
         self,
         relevant_docs: List[Dict],
@@ -511,11 +532,15 @@ class ChatbotServiceRAG:
 
         # Priority 1: Legislative documents (official government sources)
         if relevant_docs:
-            parts.append("=== DOCUMENTOS LEGISLATIVOS ===")
+            parts.append("=== DOCUMENTOS LEGISLATIVOS (FUENTE OFICIAL) ===")
             for doc in relevant_docs[:getattr(settings, 'RAG_MAX_CONTEXT_DOCUMENTS', 5)]:
                 doc_name = doc.get('document_name', 'Documento')
                 page = doc.get('page_number', '?')
-                content = doc.get('content', '')[:800]
+                content = doc.get('content', '')
+                # Smart truncation at sentence boundary
+                if len(content) > 600:
+                    cut = content[:600].rfind('.')
+                    content = content[:cut + 1] if cut > 200 else content[:600]
                 parts.append(f"[{doc_name} - Pág. {page}]")
                 parts.append(content)
                 sources.append(f"DOC:{doc_name}:p{page}")
@@ -527,19 +552,65 @@ class ChatbotServiceRAG:
                 code = svc.get('service_code', '')
                 name = svc.get('name_es', '')
                 desc = svc.get('description_es', '') or ''
-                price = svc.get('tasa_expedicion', 0)
+                price_exp = svc.get('tasa_expedicion', 0)
+                price_ren = svc.get('tasa_renovacion', 0)
                 cat = svc.get('category_name', '')
                 bundle = svc.get('bundle_name', '')
                 zone = svc.get('zone_name', '')
+                svc_type = svc.get('service_type', '')
+                legal_ref = svc.get('legal_reference', '')
+                processing_days = svc.get('processing_time_days', '')
+                validity_months = svc.get('validity_period_months', '')
+
                 parts.append(f"[{code}] {name} ({cat})")
                 if desc:
-                    parts.append(f"  Descripción: {desc}")
-                if price and float(price) > 0:
-                    parts.append(f"  Tarifa: {price} XAF")
+                    # Smart truncation
+                    short_desc = desc[:300].rsplit('.', 1)[0] + '.' if len(desc) > 300 else desc
+                    parts.append(f"  Descripción: {short_desc}")
+                if price_exp and float(price_exp) > 0:
+                    parts.append(f"  Tarifa expedición: {price_exp} XAF")
+                if price_ren and float(price_ren) > 0:
+                    parts.append(f"  Tarifa renovación: {price_ren} XAF")
+                if svc_type:
+                    parts.append(f"  Tipo: {svc_type}")
+                if processing_days:
+                    parts.append(f"  Tiempo de procesamiento: {processing_days} días")
+                if validity_months:
+                    parts.append(f"  Validez: {validity_months} meses")
+                if legal_ref:
+                    parts.append(f"  Referencia legal: {legal_ref}")
                 if bundle:
                     parts.append(f"  Paquete fiscal: {bundle}")
                 if zone:
                     parts.append(f"  Zona: {zone}")
+
+                # Include required documents if available
+                docs_req = svc.get('required_documents')
+                if docs_req:
+                    parts.append("  Documentos requeridos:")
+                    if isinstance(docs_req, list):
+                        for d in docs_req[:10]:
+                            doc_name_req = d.get('document_name_es', d.get('template_code', '')) if isinstance(d, dict) else str(d)
+                            if doc_name_req:
+                                parts.append(f"    - {doc_name_req}")
+
+                # Include procedures if available
+                procedures = svc.get('procedures')
+                if procedures:
+                    parts.append("  Procedimientos:")
+                    if isinstance(procedures, list):
+                        for p in procedures[:5]:
+                            p_name = p.get('name_es', p.get('template_code', '')) if isinstance(p, dict) else str(p)
+                            if p_name:
+                                parts.append(f"    - {p_name}")
+                            steps = p.get('steps', []) if isinstance(p, dict) else []
+                            if isinstance(steps, list):
+                                for step in steps[:8]:
+                                    step_desc = step.get('description', '') if isinstance(step, dict) else str(step)
+                                    step_num = step.get('step_number', '') if isinstance(step, dict) else ''
+                                    if step_desc:
+                                        parts.append(f"      {step_num}. {step_desc}")
+
                 sources.append(code)
 
         context_text = "\n".join(parts)
