@@ -198,7 +198,7 @@ async def search_companies(db, **kwargs) -> dict:
     sector = kwargs.get("sector", "")
     limit = min(int(kwargs.get("limit", 10)), 20)
 
-    conditions = ["c.status = 'verified'"]
+    conditions = ["c.is_verified = true"]
     params = []
     idx = 1
 
@@ -227,7 +227,7 @@ async def search_companies(db, **kwargs) -> dict:
     rows = await db.fetch(f"""
         SELECT c.legal_name, c.nif, c.registration_number,
                c.forma_juridica, c.sector_actividad, c.objeto_social,
-               c.address, ci.name AS city_name, c.provincia,
+               c.address, ci.name AS city_name, ci.provincia,
                cz.name_es AS zone_name
         FROM companies c
         LEFT JOIN cities ci ON ci.id = c.city_id
@@ -388,7 +388,7 @@ async def get_workflow_guide(db, **kwargs) -> dict:
     # Get required documents
     docs = await db.fetch("""
         SELECT wdr.document_code, wdr.document_name_es, wdr.is_required,
-               wdr.step_label, wdr.condition_type
+               wdr.condition_type, wdr.instructions_es
         FROM workflow_document_requirements wdr
         WHERE wdr.workflow_code = $1 AND wdr.is_active = true
         ORDER BY wdr.display_order
@@ -401,7 +401,7 @@ async def get_workflow_guide(db, **kwargs) -> dict:
     # Get tariffs
     tariffs = await db.fetch("""
         SELECT wt.solicitud_type, wt.tariff_type, wt.amount,
-               wt.currency, wt.description_es
+               wt.currency, wt.legal_reference
         FROM workflow_tariffs wt
         WHERE wt.workflow_code = $1 AND wt.is_active = true
         ORDER BY wt.solicitud_type

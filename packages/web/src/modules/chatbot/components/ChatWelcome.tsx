@@ -10,7 +10,6 @@ import React from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { Sparkles } from 'lucide-react';
 
 interface ChatWelcomeProps {
   onSuggestionClick: (message: string) => void;
@@ -31,15 +30,20 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestionClick }) =
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 text-center max-w-2xl mx-auto">
       {/* Logo */}
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-        <Sparkles className="w-8 h-8 text-primary" />
-      </div>
+      <Image
+        src="/logo_chat.png"
+        alt="Facil"
+        width={80}
+        height={80}
+        className="mb-6"
+        priority
+      />
 
       {/* Greeting */}
       <h1 className="text-2xl font-semibold text-foreground mb-2">
         {t('chatPage.greeting')}
       </h1>
-      <p className="text-muted-foreground text-sm mb-8 max-w-md">
+      <p className="text-muted-foreground text-sm mb-8 max-w-md leading-relaxed">
         {t('chatPage.subtitle')}
       </p>
 

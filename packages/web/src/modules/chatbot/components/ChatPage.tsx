@@ -18,12 +18,12 @@
 import React, { useState, useCallback } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Menu,
   Globe,
   LogIn,
   User,
-  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -130,12 +130,16 @@ export const ChatPage: React.FC = () => {
 
             {/* Logo */}
             <Link
-              href={`/${locale}`}
+              href={`/${locale}/chat`}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
-              </div>
+              <Image
+                src="/logo_chat.png"
+                alt="Facil"
+                width={28}
+                height={28}
+                className="rounded"
+              />
               <span className="font-semibold text-sm hidden sm:inline">
                 {t('chatPage.title')}
               </span>

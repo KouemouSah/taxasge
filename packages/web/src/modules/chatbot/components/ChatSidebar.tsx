@@ -9,6 +9,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname } from 'next/navigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,10 +22,8 @@ import {
   Building2,
   MapPin,
   BookOpen,
-  MessageCircle,
-  Sparkles,
   Calculator,
-  HelpCircle,
+  Globe,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -42,7 +41,7 @@ interface ChatSidebarProps {
 // ---------------------------------------------------------------------------
 
 const NAV_ITEMS = [
-  { key: 'home', href: '/', icon: Home },
+  { key: 'home', href: '/', icon: Globe, forceNoRedirect: true },
   { key: 'services', href: '/services', icon: FileText },
   { key: 'ministries', href: '/ministere', icon: Landmark },
   { key: 'companies', href: '/annuaire', icon: Building2 },
@@ -95,9 +94,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     >
       {/* Logo header */}
       <div className="h-16 flex items-center gap-3 px-5 border-b shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-          <Sparkles className="w-5 h-5 text-primary-foreground" />
-        </div>
+        <Image
+          src="/logo_chat.png"
+          alt="Facil"
+          width={32}
+          height={32}
+          className="rounded"
+        />
         <div>
           <h2 className="font-semibold text-sm">{t('chatPage.title')}</h2>
           <p className="text-[10px] text-muted-foreground">Guinea Ecuatorial</p>

@@ -169,6 +169,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 0. Redirect bare / to /chat (chat-first landing page)
+  // Only redirect bare domain — locale-prefixed URLs (/es, /fr, /en) still show homepage
+  if (pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${defaultLocale}/chat`;
+    return NextResponse.redirect(url);
+  }
+
   // 1. Handle i18n (locale detection and routing)
   const intlMiddleware = createMiddleware(routing);
 

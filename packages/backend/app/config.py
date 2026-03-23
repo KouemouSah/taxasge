@@ -253,8 +253,11 @@ class Settings(BaseSettings):
         default="gemini-2.0-flash",
         env="GEMINI_PRO_MODEL"
     )
+    # NOTE: Keep text-embedding-004 as default until re-embed cron is executed.
+    # After running /cron/reembed-fiscal-services?force=true with
+    # GEMINI_EMBEDDING_MODEL=text-embedding-005 in env, switch default to 005.
     GEMINI_EMBEDDING_MODEL: str = Field(
-        default="text-embedding-005",
+        default="text-embedding-004",
         env="GEMINI_EMBEDDING_MODEL"
     )
 
