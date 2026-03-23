@@ -20,7 +20,7 @@ import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
   CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler,
 } from 'chart.js'
-import { Bar, Doughnut } from 'react-chartjs-2'
+import { Bar, Bubble, Doughnut } from 'react-chartjs-2'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -246,6 +246,72 @@ export default function SupervisorMinistryDashboardPage() {
               <CardHeader className="pb-1"><CardTitle className="text-sm">{t('ministryDashboard.recoveryByZone')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="h-[200px]"><Bar data={zoneRecoveryBar} options={barOptions} /></div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Row 3 — Bubble Risk Map + Payment Composition */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {/* Bubble Chart: Zone Risk Assessment (3D: recovery × restante × entreprises) */}
+            <Card>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-sm">Carte de Risque par Zone</CardTitle>
+                <p className="text-[10px] text-muted-foreground">X: Recouvrement % · Y: Montant restant · Taille: Nb entreprises</p>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[220px]">
+                  <Bubble data={{
+                    datasets: byZone.map((z, i) => ({
+                      label: z.code,
+                      data: [{ x: z.recovery, y: z.total - z.paid, r: Math.min(Math.max(Math.sqrt(z.companies) * 4, 5), 25) }],
+                      backgroundColor: z.recovery >= 70 ? 'rgba(34,197,94,0.6)' : z.recovery >= 40 ? 'rgba(245,158,11,0.6)' : 'rgba(239,68,68,0.6)',
+                      borderColor: z.recovery >= 70 ? '#16a34a' : z.recovery >= 40 ? '#d97706' : '#dc2626',
+                      borderWidth: 1.5,
+                    })),
+                  }} options={{
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                      x: { title: { display: true, text: 'Recouvrement %', font: { size: 10 } }, min: 0, max: 100, grid: { color: '#f0f0f0' } },
+                      y: { title: { display: true, text: 'Restante (XAF)', font: { size: 10 } }, ticks: { callback: (v: unknown) => fmtXAF(Number(v)) }, grid: { color: '#f0f0f0' } },
+                    },
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: { callbacks: {
+                        label: (ctx) => {
+                          const z = byZone[ctx.datasetIndex]
+                          return [`Zone ${z.code}: ${z.companies} empresas`, `Restante: ${fmtXAF(z.total - z.paid)} XAF`, `Recouvrement: ${z.recovery}%`]
+                        },
+                      }},
+                    },
+                  }} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Horizontal Stacked: Payment Composition by Zone (Pagado/Pendiente/Vencido) */}
+            <Card>
+              <CardHeader className="pb-0">
+                <CardTitle className="text-sm">Composition des Paiements par Zone</CardTitle>
+                <p className="text-[10px] text-muted-foreground">Proportion Pagado / Pendiente / Vencido par zone</p>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[220px]">
+                  <Bar data={{
+                    labels: byZone.map(z => z.code),
+                    datasets: [
+                      { label: 'Pagado', data: byZone.map(z => z.paid), backgroundColor: '#22c55e', borderRadius: 2 },
+                      { label: 'Pendiente', data: byZone.map(z => Math.max(0, z.total - z.paid - z.overdue)), backgroundColor: '#f59e0b', borderRadius: 2 },
+                      { label: 'Vencido', data: byZone.map(z => z.overdue), backgroundColor: '#ef4444', borderRadius: 2 },
+                    ],
+                  }} options={{
+                    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                    scales: {
+                      x: { stacked: true, ticks: { callback: (v: unknown) => fmtXAF(Number(v)) }, grid: { color: '#f0f0f0' } },
+                      y: { stacked: true, grid: { display: false } },
+                    },
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } } },
+                  }} />
+                </div>
               </CardContent>
             </Card>
           </div>
