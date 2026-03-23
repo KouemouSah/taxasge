@@ -50,6 +50,7 @@ export const ChatPage: React.FC = () => {
   const t = useTranslations('chatbot');
   const { settings, updateSettings } = useChatSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const {
     messages,
@@ -84,8 +85,12 @@ export const ChatPage: React.FC = () => {
 
   return (
     <div className="flex h-full bg-background">
-      {/* ── Desktop Sidebar (slim, icons only) ──────────────────── */}
-      <ChatSidebar className="hidden md:flex" />
+      {/* ── Desktop Sidebar (collapsible) ────────────────────────── */}
+      <ChatSidebar
+        className="hidden md:flex"
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
       {/* ── Main Chat Area ───────────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0 relative">
