@@ -249,36 +249,56 @@ export default function SupervisorMinistryDashboardPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-2 pl-3">Zone</th>
-                    <th className="text-left p-2">Fee Type</th>
+                    <th className="text-left p-2 pl-3">Zona</th>
                     <th className="text-right p-2">{t('ministryDashboard.companies')}</th>
                     <th className="text-right p-2">{t('ministryDashboard.obligations')}</th>
                     <th className="text-right p-2">{t('ministryDashboard.paid')}</th>
                     <th className="text-right p-2">{t('ministryDashboard.overdue')}</th>
                     <th className="text-right p-2">Pénalités</th>
                     <th className="text-right p-2">{t('ministryDashboard.total')}</th>
+                    <th className="text-right p-2">Restante</th>
                     <th className="text-right p-2 pr-3">{t('ministryDashboard.recoveryRate')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.zones.map((z, i) => (
+                  {data.zones.map((z, i) => {
+                    const restante = z.total_amount - z.paid_amount
+                    return (
                     <tr key={i} className="border-b hover:bg-muted/30">
                       <td className="p-2 pl-3"><Badge variant="outline" className="font-mono text-[10px]">{z.zone_code || 'N/A'}</Badge></td>
-                      <td className="p-2">{z.fee_type}</td>
                       <td className="text-right p-2">{z.companies_count}</td>
                       <td className="text-right p-2">{z.obligations_count}</td>
                       <td className="text-right p-2 font-mono text-green-700">{z.paid_count}</td>
                       <td className="text-right p-2 font-mono text-red-700">{z.overdue_count}</td>
                       <td className="text-right p-2 font-mono text-amber-600">{fmtXAF(z.total_penalties)}</td>
                       <td className="text-right p-2 font-mono">{fmtXAF(z.total_amount)}</td>
+                      <td className="text-right p-2 font-mono text-orange-700">{fmtXAF(restante)}</td>
                       <td className="text-right p-2 pr-3">
                         <Badge className={`text-[10px] ${z.recovery_rate_pct >= 70 ? 'bg-green-100 text-green-800' : z.recovery_rate_pct >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                           {z.recovery_rate_pct}%
                         </Badge>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 bg-muted/30 font-bold">
+                    <td className="p-2 pl-3">Total</td>
+                    <td className="text-right p-2">{data.zones.reduce((s, z) => s + z.companies_count, 0)}</td>
+                    <td className="text-right p-2">{data.zones.reduce((s, z) => s + z.obligations_count, 0)}</td>
+                    <td className="text-right p-2 font-mono text-green-700">{data.zones.reduce((s, z) => s + z.paid_count, 0)}</td>
+                    <td className="text-right p-2 font-mono text-red-700">{data.zones.reduce((s, z) => s + z.overdue_count, 0)}</td>
+                    <td className="text-right p-2 font-mono text-amber-600">{fmtXAF(data.zones.reduce((s, z) => s + z.total_penalties, 0))}</td>
+                    <td className="text-right p-2 font-mono">{fmtXAF(totals.total_amount)}</td>
+                    <td className="text-right p-2 font-mono text-orange-700">{fmtXAF(totals.total_amount - totals.paid_amount)}</td>
+                    <td className="text-right p-2 pr-3">
+                      <Badge className={`text-[10px] ${totals.recovery_rate_pct >= 70 ? 'bg-green-100 text-green-800' : totals.recovery_rate_pct >= 40 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                        {totals.recovery_rate_pct}%
+                      </Badge>
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </CardContent>
           </Card>
@@ -309,7 +329,7 @@ export default function SupervisorMinistryDashboardPage() {
                     <tr className="border-b bg-muted/50">
                       <th className="text-left p-2 pl-3">#</th>
                       <th className="text-left p-2">Empresa</th>
-                      <th className="text-left p-2">NIF</th>
+                      <th className="text-left p-2">Identificador</th>
                       <th className="text-left p-2">Zona</th>
                       <th className="text-right p-2">Deuda</th>
                       <th className="text-right p-2">Recovery</th>
