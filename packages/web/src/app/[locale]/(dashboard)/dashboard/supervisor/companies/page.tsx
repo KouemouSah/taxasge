@@ -71,8 +71,8 @@ export default function SupervisorCompaniesPage() {
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0
 
-  // Supervisor views admin detail page (read-only access via company.view permission)
-  const basePath = `/${locale}/dashboard/admin/companies`
+  // Supervisor views company detail (dedicated supervisor route)
+  const basePath = `/${locale}/dashboard/supervisor/companies`
 
   return (
     <div className="space-y-4 p-4">

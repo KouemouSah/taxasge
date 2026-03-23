@@ -140,6 +140,8 @@ jobs:
             --set-env-vars="ENVIRONMENT=staging" \
             --set-env-vars="ENV=staging" \
             --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --set-env-vars="DATABASE_MAX_CONNECTIONS=10" \
+            --set-env-vars="DATABASE_MIN_CONNECTIONS=2" \
             --set-env-vars="REDIS_URL=${{ secrets.REDIS_URL }}" \
             --set-env-vars="JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
             --set-env-vars="SUPABASE_URL=${{ secrets.SUPABASE_URL }}" \

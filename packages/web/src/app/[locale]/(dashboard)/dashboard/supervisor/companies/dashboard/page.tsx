@@ -532,7 +532,7 @@ export default function SupervisorSiteDashboardPage() {
                     </TableRow>
                   ) : filteredItems.map((c) => (
                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => router.push(`/${locale}/dashboard/admin/companies/${c.id}`)}>
+                      onClick={() => router.push(`/${locale}/dashboard/supervisor/companies/${c.id}`)}>
                       <TableCell className="text-xs font-medium max-w-[200px] truncate">{c.legal_name}</TableCell>
                       <TableCell className="text-xs font-mono">{c.registration_number || c.nif || '-'}</TableCell>
                       <TableCell className="text-xs">{c.city_name || '-'}</TableCell>
@@ -547,7 +547,7 @@ export default function SupervisorSiteDashboardPage() {
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-6 w-6"
-                          onClick={() => router.push(`/${locale}/dashboard/admin/companies/${c.id}`)}>
+                          onClick={() => router.push(`/${locale}/dashboard/supervisor/companies/${c.id}`)}>
                           <Eye className="h-3 w-3" />
                         </Button>
                       </TableCell>
