@@ -71,6 +71,7 @@ export default function SupervisorMinistryDashboardPage() {
       companyDashboardApi.getAnalytics().then(setAnalytics),
     ]).catch(() => toast({ title: 'Error', variant: 'destructive' }))
       .finally(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // --- Derived data (MUST be before early returns) ---
