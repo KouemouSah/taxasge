@@ -60,19 +60,8 @@ class GeminiService:
     SYSTEM_PROMPTS = {
         "es": """Eres un asistente fiscal experto de **Facil** (TaxasGE), la plataforma oficial de servicios fiscales de Guinea Ecuatorial. Respondes de forma clara, estructurada y humana.
 
-OUTILS DISPONIBLES:
-Tienes acceso a herramientas para buscar información en tiempo real en la base de datos de Facil.
-Úsalas cuando el contexto proporcionado no sea suficiente para responder completamente:
-- search_fiscal_services: buscar servicios fiscales por palabra clave, categoría o ministerio
-- get_service_details: detalles completos de un servicio (documentos, procedimiento, tarifas)
-- search_companies: buscar en el directorio de empresas (por nombre, NIF, zona, sector)
-- get_ministry_directory: información sobre ministerios del gobierno
-- get_office_locations: direcciones, horarios y contacto de oficinas
-- get_workflow_guide: guía completa de un trámite administrativo
-- get_service_categories: explorar el catálogo de servicios por categoría
-- get_platform_info: información general sobre la plataforma Facil
-
-PRIORIDAD: Usa PRIMERO el contexto RAG proporcionado. Solo llama herramientas si necesitas datos adicionales que no están en el contexto.
+HERRAMIENTAS:
+Tienes acceso a herramientas de búsqueda en tiempo real. Úsalas cuando el contexto RAG proporcionado no contenga la información que necesitas. PRIORIDAD: contexto RAG primero, herramientas solo para enriquecer.
 
 REGLAS CRÍTICAS:
 1. SOLO usa información del contexto proporcionado o de las herramientas — NUNCA inventes datos.
@@ -125,13 +114,8 @@ IMPORTANTE:
 
         "fr": """Vous êtes un assistant fiscal expert de **Facil** (TaxasGE), la plateforme officielle des services fiscaux de Guinée Équatoriale. Vous répondez de manière claire, structurée et humaine.
 
-OUTILS DISPONIBLES:
-Vous avez accès à des outils pour rechercher des informations en temps réel dans la base de données de Facil.
-Utilisez-les quand le contexte fourni n'est pas suffisant pour répondre complètement :
-- search_fiscal_services, get_service_details, search_companies, get_ministry_directory,
-  get_office_locations, get_workflow_guide, get_service_categories, get_platform_info
-
-PRIORITÉ: Utilisez D'ABORD le contexte RAG fourni. N'appelez les outils que si vous avez besoin de données supplémentaires.
+OUTILS:
+Vous avez accès à des outils de recherche en temps réel. Utilisez-les quand le contexte RAG ne contient pas l'information nécessaire. PRIORITÉ: contexte RAG d'abord, outils pour enrichir.
 
 RÈGLES CRITIQUES:
 1. Utilisez UNIQUEMENT les informations du contexte fourni ou des outils — N'INVENTEZ JAMAIS de données.
@@ -166,13 +150,8 @@ IMPORTANT:
 
         "en": """You are an expert fiscal assistant for **Facil** (TaxasGE), the official fiscal services platform of Equatorial Guinea. You respond in a clear, structured, and human way.
 
-AVAILABLE TOOLS:
-You have access to tools to search real-time information in the Facil database.
-Use them when the provided context is not enough to fully answer:
-- search_fiscal_services, get_service_details, search_companies, get_ministry_directory,
-  get_office_locations, get_workflow_guide, get_service_categories, get_platform_info
-
-PRIORITY: Use the RAG context FIRST. Only call tools if you need additional data not in the context.
+TOOLS:
+You have access to real-time search tools. Use them when the RAG context doesn't contain the needed information. PRIORITY: RAG context first, tools to enrich.
 
 CRITICAL RULES:
 1. ONLY use information from the provided context or tools — NEVER invent data.
@@ -363,9 +342,14 @@ IMPORTANT:
             # If Gemini wants to call functions, return them for orchestration
             if function_calls:
                 logger.info(f"Gemini requested {len(function_calls)} function call(s): {[fc['name'] for fc in function_calls]}")
+                # Build proper Content objects for chat_history (round 2 needs these)
+                chat_history = [
+                    Content(role="user", parts=[Part.from_text(full_user_prompt)]),
+                ]
                 return {
                     "function_calls": function_calls,
-                    "contents": contents,  # Keep conversation state for round 2
+                    "round1_response": response,  # Raw response for round 2
+                    "chat_history": chat_history,  # Content objects for multi-round
                     "response_text": "",
                     "confidence": 0.0,
                     "response_time": (datetime.now() - start_time).total_seconds(),
@@ -417,36 +401,50 @@ IMPORTANT:
 
     async def chat_round2(
         self,
-        contents: list,
+        round1_response: Any,
+        chat_history: list,
         function_results_data: List[Dict],
         context_services: List[Dict[str, Any]],
         function_declarations: Optional[list] = None,
     ) -> Dict[str, Any]:
-        """Execute round 2 of function-calling: send tool results back to Gemini.
+        """Execute round 2: send tool results back to Gemini for final response.
+
+        Uses the proven pattern from base_analyst_service.py:
+        1. Append round 1 model response (with function_call parts) to history
+        2. Append function_response parts as user message
+        3. Generate final content (Gemini sees all data and generates text)
 
         Args:
-            contents: Conversation state from round 1
-            function_results_data: List of {name, result} dicts from executed functions
+            round1_response: Raw Gemini response from round 1 (has function_call parts)
+            chat_history: List of Content objects from round 1
+            function_results_data: List of {name, args, result} from executed tools
             context_services: For confidence calculation
-            function_declarations: Same declarations used in round 1
+            function_declarations: Same declarations (for potential round 3)
         """
+        import json as json_module
         start_time = datetime.now()
         try:
-            # Append Gemini's function call response
-            fn_call_parts = []
+            # 1. Append Gemini's round 1 response (contains function_call parts)
+            if round1_response.candidates and round1_response.candidates[0].content:
+                chat_history.append(round1_response.candidates[0].content)
+
+            # 2. Build function_response parts (proven pattern from base_analyst_service)
             fn_response_parts = []
             for fr in function_results_data:
-                fn_call_parts.append(Part.from_function_response(
-                    name=fr["name"],
-                    response={"result": fr["result"]},
-                ))
+                fn_response_parts.append(
+                    Part.from_function_response(
+                        name=fr["name"],
+                        response={
+                            "result": json_module.dumps(
+                                fr["result"], default=str, ensure_ascii=False
+                            )
+                        },
+                    )
+                )
 
-            contents.append({"role": "model", "parts": [
-                Part.from_dict({"function_call": {"name": fr["name"], "args": fr.get("args", {})}})
-                for fr in function_results_data
-            ]})
-            contents.append({"role": "user", "parts": fn_call_parts})
+            chat_history.append(Content(role="user", parts=fn_response_parts))
 
+            # 3. Generate final response with all accumulated context
             generate_kwargs = {
                 "generation_config": GenerationConfig(
                     temperature=self.generation_config.temperature,
@@ -456,12 +454,35 @@ IMPORTANT:
                 ),
                 "safety_settings": self.safety_settings,
             }
+            if function_declarations:
+                generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
 
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,
-                lambda: self.chat_model.generate_content(contents, **generate_kwargs)
+                lambda: self.chat_model.generate_content(chat_history, **generate_kwargs)
             )
+
+            # Check if Gemini wants MORE tools (chain-of-tools, rare)
+            more_calls = []
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'function_call') and part.function_call and part.function_call.name:
+                        more_calls.append({
+                            "name": part.function_call.name,
+                            "args": dict(part.function_call.args) if part.function_call.args else {},
+                        })
+
+            if more_calls:
+                logger.info(f"Gemini round 2 requested {len(more_calls)} more tool(s) — returning for round 3")
+                return {
+                    "function_calls": more_calls,
+                    "round1_response": response,
+                    "chat_history": chat_history,
+                    "response_text": "",
+                    "confidence": 0.0,
+                    "response_time": (datetime.now() - start_time).total_seconds(),
+                }
 
             response_text = response.text if response.text else ""
             service_codes = self._extract_service_codes(response_text)

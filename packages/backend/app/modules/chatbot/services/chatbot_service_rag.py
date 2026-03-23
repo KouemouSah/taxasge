@@ -211,6 +211,7 @@ class ChatbotServiceRAG:
             )
 
             # Step 4b: Multi-round tool execution if Gemini requested function calls
+            tools_used = []
             tool_round = 0
             while ai_response.get("function_calls") and tool_round < MAX_TOOL_ROUNDS:
                 tool_round += 1
@@ -232,6 +233,7 @@ class ChatbotServiceRAG:
 
                     try:
                         result = await fn_impl(db, **fn_args)
+                        tools_used.append(fn_name)
                         logger.info(f"Tool {fn_name}({fn_args}) → {len(str(result))} chars")
                         function_results_data.append({
                             "name": fn_name,
@@ -246,13 +248,17 @@ class ChatbotServiceRAG:
                             "result": {"error": str(tool_err)},
                         })
 
-                # Send tool results back to Gemini (round 2)
+                # Send tool results back to Gemini (round 2+)
                 ai_response = await gemini_service.chat_round2(
-                    contents=ai_response["contents"],
+                    round1_response=ai_response["round1_response"],
+                    chat_history=ai_response["chat_history"],
                     function_results_data=function_results_data,
                     context_services=relevant_services,
                     function_declarations=func_decls,
                 )
+
+            if tools_used:
+                logger.info(f"Chatbot used {len(tools_used)} tools in {tool_round} round(s): {tools_used}")
 
             # Override ai_response sources with our consolidated ones
             ai_response["sources"] = context_sources

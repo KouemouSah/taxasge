@@ -270,10 +270,11 @@ class Settings(BaseSettings):
 
     # Semantic Search Configuration
     SEMANTIC_SEARCH_TOP_K: int = Field(default=5, env="SEMANTIC_SEARCH_TOP_K")
-    # Low threshold (0.1) to accept results - text-embedding-004 gives low similarities
-    # for cross-language queries (fr/en -> es). Adjust via env var if needed.
+    # Similarity threshold for RAG results. text-embedding-005 gives better scores
+    # than 004. 0.35 filters noise while keeping cross-language results (fr/en -> es).
+    # Adjust via env var if needed.
     SEMANTIC_SEARCH_SIMILARITY_THRESHOLD: float = Field(
-        default=0.1,
+        default=0.35,
         env="SEMANTIC_SEARCH_SIMILARITY_THRESHOLD"
     )
 

@@ -1196,3 +1196,137 @@ async def reindex_legislacion_pdfs(
     except Exception as e:
         logger.error(f"PDF re-indexing failed: {e}")
         return {"message": f"Re-indexing failed: {str(e)}", "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Cron: Re-embed Fiscal Services (after embedding model migration)
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/reembed-fiscal-services",
+    summary="Re-generate embeddings for all fiscal services",
+    description="""
+    Called after embedding model migration (e.g., text-embedding-004 → 005).
+
+    Regenerates embeddings for all active fiscal services using the current
+    GEMINI_EMBEDDING_MODEL. Processes in batches to avoid Vertex AI rate limits.
+    Idempotent: safe to run multiple times. Marks needs_embedding_update=false.
+
+    Run this ONCE after deploying a new embedding model version.
+    """
+)
+async def reembed_fiscal_services(
+    batch_size: int = 50,
+    force: bool = False,
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Re-generate embeddings for fiscal services with current model."""
+    import time as time_module
+
+    try:
+        from app.modules.chatbot.services.embedding_service import embedding_service
+
+        if not embedding_service.enabled:
+            return {"message": "Embedding service disabled (Vertex AI not available)", "error": True}
+
+        start_time = time_module.time()
+        current_model = settings.GEMINI_EMBEDDING_MODEL
+
+        # Find services that need re-embedding
+        if force:
+            rows = await db.fetch("""
+                SELECT id, service_code, name_es, description_es,
+                       embedding_model, needs_embedding_update
+                FROM fiscal_services
+                WHERE status = 'active'
+                ORDER BY service_code
+            """)
+        else:
+            rows = await db.fetch("""
+                SELECT id, service_code, name_es, description_es,
+                       embedding_model, needs_embedding_update
+                FROM fiscal_services
+                WHERE status = 'active'
+                  AND (embedding IS NULL
+                       OR needs_embedding_update = true
+                       OR embedding_model IS DISTINCT FROM $1)
+                ORDER BY service_code
+            """, current_model)
+
+        if not rows:
+            return {
+                "message": f"All services already use {current_model}",
+                "updated": 0,
+                "model": current_model,
+            }
+
+        logger.info(f"Re-embedding {len(rows)} services with {current_model}")
+
+        updated = 0
+        failed = 0
+        skipped = 0
+
+        for i in range(0, len(rows), batch_size):
+            batch = rows[i:i + batch_size]
+
+            for row in batch:
+                try:
+                    # Build embedding text (same pattern as populate_embeddings.py)
+                    name = row["name_es"] or ""
+                    desc = (row["description_es"] or "")[:500]
+                    text = f"{name}. {desc}".strip()
+
+                    if len(text) < 10:
+                        skipped += 1
+                        continue
+
+                    embedding = await embedding_service.generate_embedding(
+                        text,
+                        task_type='RETRIEVAL_DOCUMENT',
+                        title=name[:100],
+                    )
+
+                    if not embedding:
+                        failed += 1
+                        continue
+
+                    embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
+                    await db.execute("""
+                        UPDATE fiscal_services
+                        SET embedding = $1::vector,
+                            embedding_model = $2,
+                            embedding_generated_at = NOW(),
+                            embedding_version = COALESCE(embedding_version, 0) + 1,
+                            needs_embedding_update = false
+                        WHERE id = $3
+                    """, embedding_str, current_model, row["id"])
+                    updated += 1
+
+                except Exception as e:
+                    logger.error(f"Re-embed {row['service_code']} failed: {e}")
+                    failed += 1
+
+            logger.info(f"  Batch {i // batch_size + 1}: {updated}/{len(rows)} updated")
+
+            # Small delay between batches to avoid rate limiting
+            if i + batch_size < len(rows):
+                import asyncio
+                await asyncio.sleep(1)
+
+        elapsed = time_module.time() - start_time
+        result = {
+            "message": f"Re-embedded {updated}/{len(rows)} services with {current_model} in {elapsed:.1f}s",
+            "updated": updated,
+            "failed": failed,
+            "skipped": skipped,
+            "total": len(rows),
+            "model": current_model,
+            "elapsed_seconds": round(elapsed, 1),
+        }
+        logger.info(result["message"])
+        return result
+
+    except Exception as e:
+        logger.error(f"Re-embedding failed: {e}")
+        return {"message": f"Re-embedding failed: {str(e)}", "error": str(e)}
