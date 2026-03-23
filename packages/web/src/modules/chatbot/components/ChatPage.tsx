@@ -214,6 +214,13 @@ export const ChatPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* ── Footer ─────────────────────────────────────────────── */}
+        <div className="text-center py-2 shrink-0">
+          <p className="text-[10px] text-muted-foreground">
+            © 2026 Facil - Plataforma Digital AI de Tramites. Todos los derechos reservados.
+          </p>
+        </div>
       </div>
     </div>
   );
