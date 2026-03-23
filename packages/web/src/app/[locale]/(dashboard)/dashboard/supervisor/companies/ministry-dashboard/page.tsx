@@ -144,11 +144,6 @@ export default function SupervisorMinistryDashboardPage() {
       { label: t('ministryDashboard.overdue'), data: byZone.map(z => z.overdue), backgroundColor: '#ef4444', borderRadius: 4 },
     ],
   }
-  const feeDonut = {
-    labels: byFee.map(f => f.fee),
-    datasets: [{ data: byFee.map(f => f.total), backgroundColor: FEE_COLORS.slice(0, byFee.length), borderWidth: 0 }],
-  }
-
   // Penalties breakdown bar
   const penaltiesBar = {
     labels: byZone.filter(z => z.penalties > 0).map(z => z.code),
@@ -261,7 +256,7 @@ export default function SupervisorMinistryDashboardPage() {
               <CardContent>
                 <div className="h-[220px]">
                   <Bubble data={{
-                    datasets: byZone.map((z, i) => ({
+                    datasets: byZone.map((z) => ({
                       label: z.code,
                       data: [{ x: z.recovery, y: z.total - z.paid, r: Math.min(Math.max(Math.sqrt(z.companies) * 4, 5), 25) }],
                       backgroundColor: z.recovery >= 70 ? 'rgba(34,197,94,0.6)' : z.recovery >= 40 ? 'rgba(245,158,11,0.6)' : 'rgba(239,68,68,0.6)',
