@@ -5027,7 +5027,32 @@
     "suggestions": "Suggestions",
     "title": "Assistant Facil",
     "typing": "En train d'écrire...",
-    "welcomeMessage": "Bonjour ! Je suis votre assistant virtuel Facil. Comment puis-je vous aider aujourd'hui avec vos démarches ?"
+    "welcomeMessage": "Bonjour ! Je suis votre assistant virtuel Facil. Comment puis-je vous aider aujourd'hui avec vos démarches ?",
+    "chatPage": {
+      "title": "Assistant Facil",
+      "greeting": "Bonjour ! Je suis votre assistant Facil",
+      "subtitle": "Posez-moi vos questions sur les services fiscaux, ministères, entreprises, bureaux ou toute démarche administrative de Guinée Équatoriale.",
+      "input_placeholder": "Écrivez votre question ici...",
+      "powered_by": "Propulsé par Gemini AI",
+      "login_cta": "Se connecter",
+      "signup_cta": "Créer un compte",
+      "nav_title": "Navigation",
+      "nav_home": "Accueil",
+      "nav_services": "Services",
+      "nav_ministries": "Ministères",
+      "nav_companies": "Annuaire Entreprises",
+      "nav_offices": "Guide",
+      "nav_guide": "Catégories",
+      "nav_calculator": "Calculatrice",
+      "suggestions_title": "Questions fréquentes",
+      "suggestion_passport": "Comment obtenir un passeport ?",
+      "suggestion_license": "Comment obtenir une licence commerciale ?",
+      "suggestion_residence": "Permis de résidence",
+      "suggestion_companies": "Entreprises enregistrées en GE",
+      "suggestion_ministries": "Quels ministères existent ?",
+      "suggestion_costs": "Calculatrice de coûts",
+      "suggestion_what_is": "Qu'est-ce que Facil ?"
+    }
   },
   "common": {
     "active": "Actif",

@@ -42,3 +42,8 @@ export {
   NetworkError,
   RateLimitError,
 } from './ChatErrorBoundary'
+
+// Chat-First Page Components
+export { ChatPage } from './ChatPage'
+export { ChatSidebar } from './ChatSidebar'
+export { ChatWelcome } from './ChatWelcome'

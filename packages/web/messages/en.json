@@ -4784,7 +4784,32 @@
     "suggestions": "Suggestions",
     "title": "Facil Assistant",
     "typing": "Typing...",
-    "welcomeMessage": "Hello! I'm your Facil virtual assistant. How can I help you today with your procedures?"
+    "welcomeMessage": "Hello! I'm your Facil virtual assistant. How can I help you today with your procedures?",
+    "chatPage": {
+      "title": "Facil Assistant",
+      "greeting": "Hello! I'm your Facil assistant",
+      "subtitle": "Ask me about fiscal services, ministries, companies, offices, or any government procedure in Equatorial Guinea.",
+      "input_placeholder": "Type your question here...",
+      "powered_by": "Powered by Gemini AI",
+      "login_cta": "Sign in",
+      "signup_cta": "Create account",
+      "nav_title": "Navigation",
+      "nav_home": "Home",
+      "nav_services": "Services",
+      "nav_ministries": "Ministries",
+      "nav_companies": "Company Directory",
+      "nav_offices": "Guide",
+      "nav_guide": "Categories",
+      "nav_calculator": "Calculator",
+      "suggestions_title": "Frequently asked",
+      "suggestion_passport": "How to get a passport?",
+      "suggestion_license": "How to get a commercial license?",
+      "suggestion_residence": "Residence permit",
+      "suggestion_companies": "Companies registered in EG",
+      "suggestion_ministries": "What ministries exist?",
+      "suggestion_costs": "Cost calculator",
+      "suggestion_what_is": "What is Facil?"
+    }
   },
   "common": {
     "active": "Active",

@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import {
   HeroSection,
@@ -53,17 +54,7 @@ const organizationJsonLd = {
   },
 };
 
-export default function HomePage() {
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-      />
-      <HeroSection />
-      <StatsSection />
-      <FeaturesSection />
-      <ServicesDirectory />
-    </>
-  );
+export default function HomePage({ params }: { params: { locale: string } }) {
+  // Redirect homepage to chat-first experience
+  redirect(`/${params.locale}/chat`);
 }

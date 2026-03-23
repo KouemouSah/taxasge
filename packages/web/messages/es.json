@@ -5006,7 +5006,32 @@
     "suggestions": "Sugerencias",
     "title": "Asistente Facil",
     "typing": "Escribiendo...",
-    "welcomeMessage": "¡Hola! Soy tu asistente virtual Facil. ¿En qué puedo ayudarte hoy con tus trámites?"
+    "welcomeMessage": "¡Hola! Soy tu asistente virtual Facil. ¿En qué puedo ayudarte hoy con tus trámites?",
+    "chatPage": {
+      "title": "Asistente Facil",
+      "greeting": "¡Hola! Soy tu asistente Facil",
+      "subtitle": "Pregúntame sobre servicios fiscales, ministerios, empresas, oficinas o cualquier trámite gubernamental de Guinea Ecuatorial.",
+      "input_placeholder": "Escribe tu pregunta aquí...",
+      "powered_by": "Con tecnología de Gemini AI",
+      "login_cta": "Iniciar sesión",
+      "signup_cta": "Crear cuenta",
+      "nav_title": "Navegación",
+      "nav_home": "Inicio",
+      "nav_services": "Servicios",
+      "nav_ministries": "Ministerios",
+      "nav_companies": "Directorio Empresas",
+      "nav_offices": "Guía",
+      "nav_guide": "Categorías",
+      "nav_calculator": "Calculadora",
+      "suggestions_title": "Preguntas frecuentes",
+      "suggestion_passport": "¿Cómo obtener un pasaporte?",
+      "suggestion_license": "¿Cómo obtener una licencia comercial?",
+      "suggestion_residence": "Permiso de residencia",
+      "suggestion_companies": "Empresas registradas en GE",
+      "suggestion_ministries": "¿Qué ministerios hay?",
+      "suggestion_costs": "Calculadora de costos",
+      "suggestion_what_is": "¿Qué es Facil?"
+    }
   },
   "common": {
     "active": "Activo",
