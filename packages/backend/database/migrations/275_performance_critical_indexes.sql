@@ -2,10 +2,14 @@
 -- Date: 2026-03-21
 -- Author: Claude (Performance Optimizer)
 --
--- 3 urgent fixes identified by pg_stat_statements + pg_stat_user_indexes audit:
+-- 4 fixes identified by pg_stat_statements + pg_stat_user_indexes audit:
 --
--- FIX 1: legislacion_documents HNSW index uses vector_l2_ops but queries use <=> (cosine)
---         Migration 228 was never applied in production → 50x slower RAG queries
+-- FIX 1a: legislacion_documents HNSW index uses vector_l2_ops but queries use <=> (cosine)
+--          Migration 228 was never applied in production → 50x slower RAG queries
+--
+-- FIX 1b: fiscal_services HNSW index SAME BUG — vector_l2_ops instead of vector_cosine_ops
+--          848/873 services have embeddings, actively used by chatbot RAG + homepage search
+--          Had 0 scans because PostgreSQL couldn't use L2 index for <=> cosine queries
 --
 -- FIX 2: appointment_holds missing composite index on (slot_config_id, appointment_date)
 --         hold_appointment_slot() and get_available_slots_v3() do COUNT(*) per slot/date
@@ -19,7 +23,7 @@
 BEGIN;
 
 -- ============================================================================
--- FIX 1: Recreate HNSW vector index with correct cosine operator
+-- FIX 1a: Recreate legislacion_documents HNSW with correct cosine operator
 -- ============================================================================
 -- BEFORE: USING hnsw (embedding vector_l2_ops)  ← Euclidean distance
 -- AFTER:  USING hnsw (embedding vector_cosine_ops) ← Cosine similarity (matches <=> operator)
@@ -31,9 +35,19 @@ CREATE INDEX idx_legislacion_documents_embedding_hnsw
 ON legislacion_documents USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 
--- Also fix fiscal_services embedding index if it exists (0 scans, likely same bug)
+-- ============================================================================
+-- FIX 1b: Recreate fiscal_services HNSW with correct cosine operator
+-- ============================================================================
+-- SAME BUG as legislacion_documents: vector_l2_ops → vector_cosine_ops
+-- Used by: chatbot RAG (semantic_search_repository), homepage search,
+--          enrichment agent, similar services, few-shot retriever
+-- 848/873 services have embeddings (97.1% coverage)
+
 DROP INDEX IF EXISTS idx_fiscal_services_embedding_hnsw;
 
+CREATE INDEX idx_fiscal_services_embedding_hnsw
+ON fiscal_services USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
 
 -- ============================================================================
 -- FIX 2: Appointment holds composite index for capacity checks

@@ -963,13 +963,13 @@ class HomepageRepository:
                 mv.service_type,
                 COALESCE(mv.tasa_expedicion, 0) AS expedition_price,
                 COALESCE(mv.tasa_renovacion, 0) AS renewal_price,
-                (1 - (fs.embedding <-> $1::vector))::FLOAT AS similarity
+                (1 - (fs.embedding <=> $1::vector))::FLOAT AS similarity
             FROM mv_services_translated mv
             JOIN fiscal_services fs ON fs.id = mv.id
             WHERE fs.embedding IS NOT NULL
               AND fs.status = 'active'
-              AND (1 - (fs.embedding <-> $1::vector)) >= $2
-            ORDER BY fs.embedding <-> $1::vector
+              AND (1 - (fs.embedding <=> $1::vector)) >= $2
+            ORDER BY fs.embedding <=> $1::vector
             LIMIT $3
         """
 
