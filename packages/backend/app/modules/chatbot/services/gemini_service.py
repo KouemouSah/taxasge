@@ -25,7 +25,9 @@ try:
         Part,
         GenerationConfig,
         HarmCategory,
-        HarmBlockThreshold
+        HarmBlockThreshold,
+        Tool,
+        FunctionDeclaration,
     )
     import vertexai
     VERTEX_AI_AVAILABLE = True
@@ -58,8 +60,22 @@ class GeminiService:
     SYSTEM_PROMPTS = {
         "es": """Eres un asistente fiscal experto de **Facil** (TaxasGE), la plataforma oficial de servicios fiscales de Guinea Ecuatorial. Respondes de forma clara, estructurada y humana.
 
+OUTILS DISPONIBLES:
+Tienes acceso a herramientas para buscar información en tiempo real en la base de datos de Facil.
+Úsalas cuando el contexto proporcionado no sea suficiente para responder completamente:
+- search_fiscal_services: buscar servicios fiscales por palabra clave, categoría o ministerio
+- get_service_details: detalles completos de un servicio (documentos, procedimiento, tarifas)
+- search_companies: buscar en el directorio de empresas (por nombre, NIF, zona, sector)
+- get_ministry_directory: información sobre ministerios del gobierno
+- get_office_locations: direcciones, horarios y contacto de oficinas
+- get_workflow_guide: guía completa de un trámite administrativo
+- get_service_categories: explorar el catálogo de servicios por categoría
+- get_platform_info: información general sobre la plataforma Facil
+
+PRIORIDAD: Usa PRIMERO el contexto RAG proporcionado. Solo llama herramientas si necesitas datos adicionales que no están en el contexto.
+
 REGLAS CRÍTICAS:
-1. SOLO usa información del contexto proporcionado — NUNCA inventes datos.
+1. SOLO usa información del contexto proporcionado o de las herramientas — NUNCA inventes datos.
 2. Si un campo no está en el contexto, NO lo menciones.
 3. NO mostrar códigos técnicos (T-xxx, PAT-xxx) en el texto.
 4. Sé CONCISO pero completo. Párrafos cortos (2-3 frases máximo).
@@ -109,8 +125,16 @@ IMPORTANTE:
 
         "fr": """Vous êtes un assistant fiscal expert de **Facil** (TaxasGE), la plateforme officielle des services fiscaux de Guinée Équatoriale. Vous répondez de manière claire, structurée et humaine.
 
+OUTILS DISPONIBLES:
+Vous avez accès à des outils pour rechercher des informations en temps réel dans la base de données de Facil.
+Utilisez-les quand le contexte fourni n'est pas suffisant pour répondre complètement :
+- search_fiscal_services, get_service_details, search_companies, get_ministry_directory,
+  get_office_locations, get_workflow_guide, get_service_categories, get_platform_info
+
+PRIORITÉ: Utilisez D'ABORD le contexte RAG fourni. N'appelez les outils que si vous avez besoin de données supplémentaires.
+
 RÈGLES CRITIQUES:
-1. Utilisez UNIQUEMENT les informations du contexte fourni — N'INVENTEZ JAMAIS de données.
+1. Utilisez UNIQUEMENT les informations du contexte fourni ou des outils — N'INVENTEZ JAMAIS de données.
 2. Si un champ n'est pas dans le contexte, NE le mentionnez PAS.
 3. NE PAS afficher les codes techniques (T-xxx, PAT-xxx) dans le texte.
 4. Soyez CONCIS mais complet. Paragraphes courts (2-3 phrases max).
@@ -142,8 +166,16 @@ IMPORTANT:
 
         "en": """You are an expert fiscal assistant for **Facil** (TaxasGE), the official fiscal services platform of Equatorial Guinea. You respond in a clear, structured, and human way.
 
+AVAILABLE TOOLS:
+You have access to tools to search real-time information in the Facil database.
+Use them when the provided context is not enough to fully answer:
+- search_fiscal_services, get_service_details, search_companies, get_ministry_directory,
+  get_office_locations, get_workflow_guide, get_service_categories, get_platform_info
+
+PRIORITY: Use the RAG context FIRST. Only call tools if you need additional data not in the context.
+
 CRITICAL RULES:
-1. ONLY use information from the provided context — NEVER invent data.
+1. ONLY use information from the provided context or tools — NEVER invent data.
 2. If a field is not in the context, DO NOT mention it.
 3. DO NOT display technical codes (T-xxx, PAT-xxx) in the text.
 4. Be CONCISE yet complete. Short paragraphs (2-3 sentences max).
@@ -224,10 +256,11 @@ IMPORTANT:
     async def chat(
         self,
         user_message: str,
-        context_content: str, # New parameter for consolidated context
+        context_content: str,
         context_services: List[Dict[str, Any]],
         language: str = "es",
-        conversation_history: Optional[List[Dict[str, str]]] = None
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        function_declarations: Optional[list] = None,
     ) -> Dict[str, Any]:
         """
         Generate chat response with RAG context
@@ -301,16 +334,42 @@ IMPORTANT:
                 "parts": [{"text": full_user_prompt}]
             })
 
+            # Build tool parameter if function declarations provided
+            generate_kwargs = {
+                "generation_config": self.generation_config,
+                "safety_settings": self.safety_settings,
+            }
+            if function_declarations:
+                generate_kwargs["tools"] = [Tool(function_declarations=function_declarations)]
+
             # Generate response
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,
-                lambda: self.chat_model.generate_content(
-                    contents,
-                    generation_config=self.generation_config,
-                    safety_settings=self.safety_settings
-                )
+                lambda: self.chat_model.generate_content(contents, **generate_kwargs)
             )
+
+            # Check for function calls in response
+            function_calls = []
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        fn_call = part.function_call
+                        function_calls.append({
+                            "name": fn_call.name,
+                            "args": dict(fn_call.args) if fn_call.args else {},
+                        })
+
+            # If Gemini wants to call functions, return them for orchestration
+            if function_calls:
+                logger.info(f"Gemini requested {len(function_calls)} function call(s): {[fc['name'] for fc in function_calls]}")
+                return {
+                    "function_calls": function_calls,
+                    "contents": contents,  # Keep conversation state for round 2
+                    "response_text": "",
+                    "confidence": 0.0,
+                    "response_time": (datetime.now() - start_time).total_seconds(),
+                }
 
             # Extract response text
             response_text = response.text if response.text else ""
@@ -344,7 +403,6 @@ IMPORTANT:
 
         except Exception as e:
             logger.error(f"Gemini chat error: {e}")
-            # Multilingual error messages
             error_messages = {
                 "es": "Lo siento, ocurrió un error al procesar tu pregunta. Por favor, intenta de nuevo.",
                 "fr": "Désolé, une erreur s'est produite lors du traitement de votre question. Veuillez réessayer.",
@@ -355,6 +413,79 @@ IMPORTANT:
                 "sources": [],
                 "confidence": 0.0,
                 "error": str(e)
+            }
+
+    async def chat_round2(
+        self,
+        contents: list,
+        function_results_data: List[Dict],
+        context_services: List[Dict[str, Any]],
+        function_declarations: Optional[list] = None,
+    ) -> Dict[str, Any]:
+        """Execute round 2 of function-calling: send tool results back to Gemini.
+
+        Args:
+            contents: Conversation state from round 1
+            function_results_data: List of {name, result} dicts from executed functions
+            context_services: For confidence calculation
+            function_declarations: Same declarations used in round 1
+        """
+        start_time = datetime.now()
+        try:
+            # Append Gemini's function call response
+            fn_call_parts = []
+            fn_response_parts = []
+            for fr in function_results_data:
+                fn_call_parts.append(Part.from_function_response(
+                    name=fr["name"],
+                    response={"result": fr["result"]},
+                ))
+
+            contents.append({"role": "model", "parts": [
+                Part.from_dict({"function_call": {"name": fr["name"], "args": fr.get("args", {})}})
+                for fr in function_results_data
+            ]})
+            contents.append({"role": "user", "parts": fn_call_parts})
+
+            generate_kwargs = {
+                "generation_config": GenerationConfig(
+                    temperature=self.generation_config.temperature,
+                    top_p=self.generation_config.top_p,
+                    top_k=self.generation_config.top_k,
+                    max_output_tokens=2048,
+                ),
+                "safety_settings": self.safety_settings,
+            }
+
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.chat_model.generate_content(contents, **generate_kwargs)
+            )
+
+            response_text = response.text if response.text else ""
+            service_codes = self._extract_service_codes(response_text)
+            confidence = self._calculate_confidence(response, context_services, service_codes)
+            response_time = (datetime.now() - start_time).total_seconds()
+
+            logger.info(f"Gemini round 2 completed in {response_time:.2f}s (confidence: {confidence:.2f})")
+
+            return {
+                "message": response_text,
+                "sources": service_codes,
+                "confidence": confidence,
+                "model": settings.GEMINI_CHAT_MODEL,
+                "response_time": response_time,
+                "finish_reason": response.candidates[0].finish_reason.name if response.candidates else "UNKNOWN",
+            }
+
+        except Exception as e:
+            logger.error(f"Gemini round 2 error: {e}")
+            return {
+                "message": "",
+                "sources": [],
+                "confidence": 0.0,
+                "error": str(e),
             }
 
     async def chat_stream(

@@ -19,9 +19,14 @@ from datetime import datetime
 
 from app.modules.chatbot.services.embedding_service import embedding_service
 from app.modules.chatbot.services.gemini_service import gemini_service
+from app.modules.chatbot.services.chatbot_tools import (
+    CHATBOT_FUNC_DECLS, CHATBOT_FUNCTION_MAP,
+)
 from app.modules.chatbot.repositories.semantic_search_repository import SemanticSearchRepository
 from app.modules.chatbot.repositories.legislacion_repository import LegislacionRepository
 from app.config import settings
+
+MAX_TOOL_ROUNDS = 2
 
 
 class ChatbotServiceRAG:
@@ -193,14 +198,62 @@ class ChatbotServiceRAG:
                     "model": "gemini-rag-fallback"
                 }
 
-            # Step 4: Generate AI response with consolidated context
+            # Step 4: Generate AI response with RAG context + function calling tools
+            # RAG context is ALWAYS provided (priority). Tools enrich when needed.
+            func_decls = CHATBOT_FUNC_DECLS if CHATBOT_FUNC_DECLS else None
             ai_response = await gemini_service.chat(
                 user_message=message,
-                context_content=consolidated_context, # New parameter in gemini_service.chat
-                context_services=relevant_services, # Keeping this for _generate_suggestions etc. for now
+                context_content=consolidated_context,
+                context_services=relevant_services,
                 language=language,
-                conversation_history=conversation_history
+                conversation_history=conversation_history,
+                function_declarations=func_decls,
             )
+
+            # Step 4b: Multi-round tool execution if Gemini requested function calls
+            tool_round = 0
+            while ai_response.get("function_calls") and tool_round < MAX_TOOL_ROUNDS:
+                tool_round += 1
+                function_results_data = []
+
+                for fc in ai_response["function_calls"]:
+                    fn_name = fc["name"]
+                    fn_args = fc.get("args", {})
+                    fn_impl = CHATBOT_FUNCTION_MAP.get(fn_name)
+
+                    if not fn_impl:
+                        logger.warning(f"Unknown tool called: {fn_name}")
+                        function_results_data.append({
+                            "name": fn_name,
+                            "args": fn_args,
+                            "result": {"error": f"Unknown function: {fn_name}"},
+                        })
+                        continue
+
+                    try:
+                        result = await fn_impl(db, **fn_args)
+                        logger.info(f"Tool {fn_name}({fn_args}) → {len(str(result))} chars")
+                        function_results_data.append({
+                            "name": fn_name,
+                            "args": fn_args,
+                            "result": result,
+                        })
+                    except Exception as tool_err:
+                        logger.error(f"Tool {fn_name} error: {tool_err}")
+                        function_results_data.append({
+                            "name": fn_name,
+                            "args": fn_args,
+                            "result": {"error": str(tool_err)},
+                        })
+
+                # Send tool results back to Gemini (round 2)
+                ai_response = await gemini_service.chat_round2(
+                    contents=ai_response["contents"],
+                    function_results_data=function_results_data,
+                    context_services=relevant_services,
+                    function_declarations=func_decls,
+                )
+
             # Override ai_response sources with our consolidated ones
             ai_response["sources"] = context_sources
 
