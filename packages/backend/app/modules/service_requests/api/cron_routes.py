@@ -1106,35 +1106,7 @@ async def reindex_legislacion_pdfs(
             filename = os.path.basename(pdf_path)
             doc_name = os.path.splitext(filename)[0]
 
-            # Parse PDF
-            chunks = []
-            try:
-                with pdfplumber.open(pdf_path) as pdf:
-                    for page_num, page in enumerate(pdf.pages, 1):
-                        text = page.extract_text() or ''
-                        if not text.strip():
-                            continue
-                        step = max(1, chunk_size - chunk_overlap)
-                        for i in range(0, len(text), step):
-                            chunk = text[i:i + chunk_size]
-                            if len(chunk.strip()) < 50:
-                                continue
-                            chunk_idx = i // step
-                            chunks.append({
-                                'doc_name': doc_name,
-                                'page_number': page_num,
-                                'chunk_id': f'{doc_name.lower()}_p{page_num}_c{chunk_idx}',
-                                'content': chunk.strip(),
-                            })
-            except Exception as e:
-                logger.error(f"Failed to parse {filename}: {e}")
-                continue
-
-            if not chunks:
-                logger.info(f"  {filename}: no text extracted (possibly scanned PDF)")
-                continue
-
-            # Check existing chunks
+            # Check existing chunks BEFORE parsing (avoid loading PDF if fully indexed)
             existing = set()
             if not force:
                 rows = await db.fetch(
@@ -1143,50 +1115,80 @@ async def reindex_legislacion_pdfs(
                 )
                 existing = {r['chunk_id'] for r in rows}
 
-            # Embed and upsert
-            for chunk in chunks:
-                if chunk['chunk_id'] in existing and not force:
-                    total_stats['skipped'] += 1
-                    continue
+            # Parse PDF PAGE BY PAGE (memory efficient — never loads full PDF)
+            page_count = 0
+            chunks_this_pdf = 0
+            try:
+                with pdfplumber.open(pdf_path) as pdf:
+                    page_count = len(pdf.pages)
+                    for page_num, page in enumerate(pdf.pages, 1):
+                        text = page.extract_text() or ''
+                        if not text.strip():
+                            continue
 
-                embedding = await embedding_service.generate_embedding(
-                    chunk['content'],
-                    task_type='RETRIEVAL_DOCUMENT',
-                    title=f"{doc_name} - Página {chunk['page_number']}",
-                )
-                if not embedding:
-                    total_stats['failed'] += 1
-                    continue
+                        step = max(1, chunk_size - chunk_overlap)
+                        for i in range(0, len(text), step):
+                            chunk_text = text[i:i + chunk_size]
+                            if len(chunk_text.strip()) < 50:
+                                continue
+                            chunk_idx = i // step
+                            chunk_id = f'{doc_name.lower()}_p{page_num}_c{chunk_idx}'
 
-                embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
-                await db.execute(
-                    """
-                    INSERT INTO legislacion_documents
-                        (document_name, page_number, chunk_id, content,
-                         embedding, embedding_model, embedding_generated_at)
-                    VALUES ($1, $2, $3, $4, $5::vector, $6, NOW())
-                    ON CONFLICT (document_name, chunk_id) DO UPDATE SET
-                        content = EXCLUDED.content,
-                        embedding = EXCLUDED.embedding,
-                        embedding_model = EXCLUDED.embedding_model,
-                        embedding_generated_at = NOW(),
-                        updated_at = NOW()
-                    """,
-                    chunk['doc_name'],
-                    chunk['page_number'],
-                    chunk['chunk_id'],
-                    chunk['content'],
-                    embedding_str,
-                    settings.GEMINI_EMBEDDING_MODEL,
-                )
+                            # Skip if already indexed
+                            if chunk_id in existing and not force:
+                                total_stats['skipped'] += 1
+                                continue
 
-                if chunk['chunk_id'] in existing:
-                    total_stats['updated'] += 1
-                else:
-                    total_stats['inserted'] += 1
+                            # Embed immediately (don't accumulate in memory)
+                            embedding = await embedding_service.generate_embedding(
+                                chunk_text.strip(),
+                                task_type='RETRIEVAL_DOCUMENT',
+                                title=f"{doc_name} - Página {page_num}",
+                            )
+                            if not embedding:
+                                total_stats['failed'] += 1
+                                continue
+
+                            embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
+                            await db.execute(
+                                """
+                                INSERT INTO legislacion_documents
+                                    (document_name, page_number, chunk_id, content,
+                                     embedding, embedding_model, embedding_generated_at)
+                                VALUES ($1, $2, $3, $4, $5::vector, $6, NOW())
+                                ON CONFLICT (document_name, chunk_id) DO UPDATE SET
+                                    content = EXCLUDED.content,
+                                    embedding = EXCLUDED.embedding,
+                                    embedding_model = EXCLUDED.embedding_model,
+                                    embedding_generated_at = NOW(),
+                                    updated_at = NOW()
+                                """,
+                                doc_name,
+                                page_num,
+                                chunk_id,
+                                chunk_text.strip(),
+                                embedding_str,
+                                settings.GEMINI_EMBEDDING_MODEL,
+                            )
+
+                            if chunk_id in existing:
+                                total_stats['updated'] += 1
+                            else:
+                                total_stats['inserted'] += 1
+                            chunks_this_pdf += 1
+
+                        # Page memory freed when loop moves to next page
+
+            except Exception as e:
+                logger.error(f"Failed to parse {filename}: {e}")
+                continue
+
+            if chunks_this_pdf == 0 and not existing:
+                logger.info(f"  {filename}: no text extracted (possibly scanned PDF)")
+                continue
 
             total_stats['pdfs_processed'] += 1
-            logger.info(f"  {filename}: {len(chunks)} chunks processed")
+            logger.info(f"  {filename}: {page_count} pages, {chunks_this_pdf} new chunks indexed")
 
         elapsed = time_module.time() - start_time
         total_stats['elapsed_seconds'] = round(elapsed, 1)
