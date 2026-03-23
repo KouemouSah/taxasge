@@ -1051,6 +1051,7 @@ async def cleanup_permission_audit_log(
 )
 async def reindex_legislacion_pdfs(
     force: bool = False,
+    doc: str = "",
     db: asyncpg.Connection = Depends(get_database),
     _auth: bool = Depends(verify_cron_auth),
 ):
@@ -1081,7 +1082,13 @@ async def reindex_legislacion_pdfs(
         if not pdf_files:
             return {"message": f"No PDFs found in {pdf_folder}", "pdf_count": 0}
 
-        logger.info(f"Found {len(pdf_files)} PDFs to index")
+        # Filter by specific document if requested (avoids timeout on large batches)
+        if doc:
+            pdf_files = [f for f in pdf_files if doc.lower() in os.path.basename(f).lower()]
+            if not pdf_files:
+                return {"message": f"PDF '{doc}' not found in {pdf_folder}", "pdf_count": 0}
+
+        logger.info(f"Found {len(pdf_files)} PDF(s) to index")
 
         # Import pdfplumber (available in requirements.txt)
         try:
