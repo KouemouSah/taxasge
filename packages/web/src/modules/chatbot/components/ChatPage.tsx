@@ -70,7 +70,6 @@ export const ChatPage: React.FC = () => {
     suggestions,
     sendMessage,
     clearChat,
-    conversationId,
   } = useChat({
     language: settings.language || (locale as 'es' | 'fr' | 'en'),
     persistToStorage: true,
@@ -265,7 +264,7 @@ export const ChatPage: React.FC = () => {
           </div>
           <div className="text-center pb-2">
             <p className="text-[10px] text-muted-foreground">
-              {t('chatPage.powered_by')} · Facil © 2026
+              © 2026 Facil - Plataforma Digital AI de Tramites. Todos los derechos reservados.
             </p>
           </div>
         </div>
