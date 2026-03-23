@@ -404,6 +404,7 @@ class RoleRepository:
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (role_id, permission_id) DO UPDATE
             SET granted = EXCLUDED.granted, created_by = EXCLUDED.created_by
+            WHERE role_permissions.granted IS DISTINCT FROM EXCLUDED.granted
         """, role_id, permission_id, granted, created_by)
 
         return True
@@ -453,6 +454,7 @@ class RoleRepository:
             SELECT $1, unnest($2::uuid[]), $3, $4
             ON CONFLICT (role_id, permission_id) DO UPDATE
             SET granted = EXCLUDED.granted, created_by = EXCLUDED.created_by
+            WHERE role_permissions.granted IS DISTINCT FROM EXCLUDED.granted
         """, role_id, permission_ids, granted, created_by)
 
         # Extract count from "INSERT 0 N"
