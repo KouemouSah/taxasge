@@ -55,8 +55,6 @@ function GaugeRing({ value, max, color, size = 56 }: { value: number; max: numbe
   )
 }
 
-const FEE_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f59e0b', '#ef4444', '#6b7280']
-
 export default function SupervisorMinistryDashboardPage() {
   const t = useTranslations('supervisor')
   const { toast } = useToast()
@@ -76,8 +74,8 @@ export default function SupervisorMinistryDashboardPage() {
   }, [])
 
   // --- Derived data (MUST be before early returns) ---
-  const { byZone, byFee, overdue, totalPenalties } = useMemo(() => {
-    if (!data) return { byZone: [] as { code: string; paid: number; overdue: number; total: number; companies: number; penalties: number; recovery: number }[], byFee: [] as { fee: string; total: number; paid: number; overdue: number; penalties: number }[], overdue: [] as MinistryZoneStats[], totalPenalties: 0 }
+  const { byZone, overdue, totalPenalties } = useMemo(() => {
+    if (!data) return { byZone: [] as { code: string; paid: number; overdue: number; total: number; companies: number; penalties: number; recovery: number }[], overdue: [] as MinistryZoneStats[], totalPenalties: 0 }
     const zoneMap = new Map<string, { code: string; paid: number; overdue: number; total: number; companies: number; penalties: number; recovery: number }>()
     let penalties = 0
     for (const z of data.zones) {
@@ -89,13 +87,7 @@ export default function SupervisorMinistryDashboardPage() {
       penalties += z.total_penalties
     }
     const zones = Array.from(zoneMap.values()).map(z => ({ ...z, recovery: z.total > 0 ? Math.round((z.paid / z.total) * 100) : 0 })).sort((a, b) => b.total - a.total)
-    const feeMap = new Map<string, { fee: string; total: number; paid: number; overdue: number; penalties: number }>()
-    for (const z of data.zones) {
-      const ex = feeMap.get(z.fee_type) || { fee: z.fee_type, total: 0, paid: 0, overdue: 0, penalties: 0 }
-      ex.total += z.total_amount; ex.paid += z.paid_amount; ex.overdue += z.overdue_amount; ex.penalties += z.total_penalties
-      feeMap.set(z.fee_type, ex)
-    }
-    return { byZone: zones, byFee: Array.from(feeMap.values()), overdue: data.zones.filter(z => z.overdue_count > 0).sort((a, b) => b.overdue_amount - a.overdue_amount), totalPenalties: penalties }
+    return { byZone: zones, overdue: data.zones.filter(z => z.overdue_count > 0).sort((a, b) => b.overdue_amount - a.overdue_amount), totalPenalties: penalties }
   }, [data])
 
   // Top debtors with risk scoring
