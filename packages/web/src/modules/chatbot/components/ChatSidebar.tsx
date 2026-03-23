@@ -41,7 +41,7 @@ interface ChatSidebarProps {
 // ---------------------------------------------------------------------------
 
 const NAV_ITEMS = [
-  { key: 'home', href: '/', icon: Globe, forceNoRedirect: true },
+  { key: 'home', href: '/', icon: Globe },
   { key: 'services', href: '/services', icon: FileText },
   { key: 'ministries', href: '/ministere', icon: Landmark },
   { key: 'companies', href: '/annuaire', icon: Building2 },

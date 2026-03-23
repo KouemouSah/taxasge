@@ -24,6 +24,8 @@ import {
   Globe,
   LogIn,
   User,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -68,6 +70,7 @@ export const ChatPage: React.FC = () => {
     suggestions,
     sendMessage,
     clearChat,
+    conversationId,
   } = useChat({
     language: settings.language || (locale as 'es' | 'fr' | 'en'),
     persistToStorage: true,
@@ -146,8 +149,33 @@ export const ChatPage: React.FC = () => {
             </Link>
           </div>
 
-          {/* Right: language + auth */}
+          {/* Right: actions + language + auth */}
           <div className="flex items-center gap-2">
+            {/* Clear chat */}
+            {hasMessages && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs text-muted-foreground"
+                onClick={clearChat}
+                title={t('clearChat')}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+
+            {/* New service request (authenticated only) */}
+            {isAuthenticated && (
+              <Link href={`/${locale}/dashboard/services`}>
+                <Button variant="default" size="sm" className="gap-1.5 text-xs">
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">
+                    {t('chatPage.new_request')}
+                  </span>
+                </Button>
+              </Link>
+            )}
+
             {/* Language selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
