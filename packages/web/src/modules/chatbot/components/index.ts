@@ -46,4 +46,4 @@ export {
 // Chat-First Page Components
 export { ChatPage } from './ChatPage'
 export { ChatSidebar } from './ChatSidebar'
-export { ChatWelcome } from './ChatWelcome'
+export { ChatWelcome, WelcomeSuggestions } from './ChatWelcome'

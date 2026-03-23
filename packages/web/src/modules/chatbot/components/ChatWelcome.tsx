@@ -1,69 +1,79 @@
 /**
- * ChatWelcome — Initial state when no messages yet.
- * Shows logo, greeting, and suggestion chips.
+ * ChatWelcome — Claude.ai-inspired welcome state.
+ *
+ * Large centered greeting + input area + suggestion chips below.
  * Disappears once the first message is sent.
  */
 
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import {
+  FileText,
+  Landmark,
+  Building2,
+  Home,
+  HelpCircle,
+  DollarSign,
+} from 'lucide-react';
 
 interface ChatWelcomeProps {
   onSuggestionClick: (message: string) => void;
 }
 
 const QUICK_SUGGESTIONS = [
-  { key: 'passport', emoji: '🛂' },
-  { key: 'license', emoji: '📄' },
-  { key: 'residence', emoji: '🏠' },
-  { key: 'companies', emoji: '🏢' },
-  { key: 'ministries', emoji: '🏛' },
-  { key: 'what_is', emoji: '❓' },
+  { key: 'passport', icon: FileText },
+  { key: 'license', icon: FileText },
+  { key: 'residence', icon: Home },
+  { key: 'companies', icon: Building2 },
+  { key: 'ministries', icon: Landmark },
+  { key: 'what_is', icon: HelpCircle },
 ];
 
 export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestionClick }) => {
   const t = useTranslations('chatbot');
 
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 text-center max-w-2xl mx-auto">
-      {/* Logo */}
-      <Image
-        src="/logo_chat.png"
-        alt="Facil"
-        width={80}
-        height={80}
-        className="mb-6"
-        priority
-      />
-
-      {/* Greeting */}
-      <h1 className="text-2xl font-semibold text-foreground mb-2">
+    <div className="flex flex-col items-center justify-center h-full px-6 max-w-3xl mx-auto w-full">
+      {/* Greeting — large, centered like claude.ai */}
+      <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-16 text-center">
         {t('chatPage.greeting')}
       </h1>
-      <p className="text-muted-foreground text-sm mb-8 max-w-md leading-relaxed">
-        {t('chatPage.subtitle')}
-      </p>
 
-      {/* Suggestion chips */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-lg">
-        {QUICK_SUGGESTIONS.map((item) => (
+      {/* Suggestion chips — horizontal row below input area (rendered by ChatPage) */}
+      {/* These are shown BELOW the input in ChatPage, not here */}
+    </div>
+  );
+};
+
+/**
+ * SuggestionRow — Horizontal chips shown below the input (claude.ai pattern).
+ * Separate component so ChatPage can position it correctly.
+ */
+export const WelcomeSuggestions: React.FC<{
+  onSuggestionClick: (message: string) => void;
+}> = ({ onSuggestionClick }) => {
+  const t = useTranslations('chatbot');
+
+  return (
+    <div className="flex flex-wrap justify-center gap-2 px-4">
+      {QUICK_SUGGESTIONS.map((item) => {
+        const Icon = item.icon;
+        return (
           <Button
             key={item.key}
             variant="outline"
             size="sm"
-            className="h-auto py-3 px-4 text-left justify-start gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all"
+            className="gap-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-full px-4 h-8 border-border/50"
             onClick={() => onSuggestionClick(t(`chatPage.suggestion_${item.key}`))}
           >
-            <span className="text-lg">{item.emoji}</span>
-            <span className="text-xs text-muted-foreground leading-tight">
-              {t(`chatPage.suggestion_${item.key}`)}
-            </span>
+            <Icon className="w-3.5 h-3.5" />
+            {t(`chatPage.suggestion_${item.key}`)}
           </Button>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 };
