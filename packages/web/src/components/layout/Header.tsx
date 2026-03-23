@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
-import { Search, Menu, X } from 'lucide-react';
+import { Search, Menu, X, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
@@ -43,6 +43,10 @@ const Header = () => {
             </Link>
             <Link href={`/${locale}/guide`} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
               {t('guide')}
+            </Link>
+            <Link href={`/${locale}/chat`} className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+              <MessageCircle className="w-4 h-4" />
+              {t('chat')}
             </Link>
           </nav>
 
@@ -105,6 +109,10 @@ const Header = () => {
               </Link>
               <Link href={`/${locale}/guide`} className="text-sm font-medium text-foreground hover:text-primary transition-colors px-2 py-1" onClick={() => setMobileMenuOpen(false)}>
                 {t('guide')}
+              </Link>
+              <Link href={`/${locale}/chat`} className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors px-2 py-1" onClick={() => setMobileMenuOpen(false)}>
+                <MessageCircle className="w-4 h-4" />
+                {t('chat')}
               </Link>
               <div className="pt-2">
                 <Link href={`/${locale}/auth`} className="block">

@@ -1,13 +1,14 @@
 /**
- * ChatWelcome — Claude.ai-inspired welcome state.
+ * ChatWelcome — Logo + greeting + subtitle.
+ * WelcomeSuggestions — Horizontal pill chips below input.
  *
- * Logo + large centered greeting.
- * WelcomeSuggestions: horizontal pill chips below input.
+ * Monographic Lucide icons (strokeWidth 1.5), warm stone palette,
+ * 44px+ touch targets, hover transitions.
  */
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -33,26 +34,36 @@ const QUICK_SUGGESTIONS = [
   { key: 'what_is', icon: Info },
 ];
 
+const ICON_PROPS = { className: 'w-4 h-4 shrink-0', strokeWidth: 1.5 } as const;
+
 export const ChatWelcome: React.FC<ChatWelcomeProps> = () => {
   const t = useTranslations('chatbot');
+  const [logoError, setLogoError] = useState(false);
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 max-w-3xl mx-auto w-full">
-      {/* Logo */}
-      <Image
-        src="/logo_chat.png"
-        alt="Facil"
-        width={64}
-        height={64}
-        className="mb-6"
-        priority
-      />
+      {/* Logo with fallback */}
+      {!logoError ? (
+        <Image
+          src="/logo_chat.png"
+          alt="Facil"
+          width={72}
+          height={72}
+          className="mb-6 drop-shadow-sm"
+          priority
+          onError={() => setLogoError(true)}
+        />
+      ) : (
+        <div className="w-[72px] h-[72px] rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+          <span className="text-2xl font-bold text-primary">F</span>
+        </div>
+      )}
 
       {/* Greeting */}
-      <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2 text-center">
+      <h1 className="text-3xl md:text-4xl font-semibold text-stone-800 dark:text-stone-100 mb-3 text-center tracking-tight">
         {t('chatPage.greeting')}
       </h1>
-      <p className="text-sm text-muted-foreground mb-16 text-center max-w-md">
+      <p className="text-sm text-stone-500 dark:text-stone-400 mb-12 text-center max-w-md leading-relaxed">
         {t('chatPage.subtitle')}
       </p>
     </div>
@@ -60,7 +71,8 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = () => {
 };
 
 /**
- * WelcomeSuggestions — Horizontal pill chips below input (claude.ai pattern).
+ * WelcomeSuggestions — Horizontal pill chips with hover animation.
+ * Min height 40px (44px touch target with padding).
  */
 export const WelcomeSuggestions: React.FC<{
   onSuggestionClick: (message: string) => void;
@@ -75,12 +87,11 @@ export const WelcomeSuggestions: React.FC<{
           <Button
             key={item.key}
             variant="outline"
-            size="sm"
-            className="gap-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-full px-4 h-8 border-border/50"
+            className="gap-2 text-xs text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 hover:border-stone-300 dark:hover:border-stone-600 rounded-full px-5 h-10 border-stone-200 dark:border-stone-700 bg-white/60 dark:bg-stone-800/60 backdrop-blur-sm transition-all duration-200 hover:shadow-sm"
             onClick={() => onSuggestionClick(t(`chatPage.suggestion_${item.key}`))}
           >
-            <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />
-            {t(`chatPage.suggestion_${item.key}`)}
+            <Icon {...ICON_PROPS} />
+            <span>{t(`chatPage.suggestion_${item.key}`)}</span>
           </Button>
         );
       })}

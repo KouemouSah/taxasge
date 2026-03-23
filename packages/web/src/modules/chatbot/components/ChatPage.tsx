@@ -1,12 +1,13 @@
 /**
  * ChatPage — Claude.ai-inspired chat-first experience.
  *
- * Layout:
- * - Desktop: slim icon sidebar (w-14) + full-width chat area
- * - Mobile: full-width chat + hamburger menu Sheet
- *
- * Welcome state: large centered greeting + wide input + suggestion chips below
- * Chat state: messages scroll + input bottom-anchored
+ * Fixes applied:
+ * 1. Input glassmorphism (no double border)
+ * 2. Smooth transitions welcome ↔ chat (animate-in)
+ * 3. Warm stone palette consistent across page
+ * 4. Footer hidden on mobile
+ * 5. Larger touch targets (44px+ on mobile)
+ * 6. Dark mode cohesive
  */
 
 'use client';
@@ -31,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// Chatbot module imports
 import { useChat } from '../hooks/useChat';
 import { useChatSettings } from '../hooks/useChatSettings';
 import { MessageList } from './MessageList';
@@ -77,14 +77,8 @@ export const ChatPage: React.FC = () => {
     updateSettings({ language: lang });
   };
 
-  const LANG_LABELS: Record<string, string> = {
-    es: 'ES',
-    fr: 'FR',
-    en: 'EN',
-  };
-
   return (
-    <div className="flex h-full bg-background">
+    <div className="flex h-full bg-stone-50 dark:bg-stone-900">
       {/* ── Desktop Sidebar (collapsible) ────────────────────────── */}
       <ChatSidebar
         className="hidden md:flex"
@@ -95,17 +89,18 @@ export const ChatPage: React.FC = () => {
       {/* ── Main Chat Area ───────────────────────────────────────── */}
       <div className="flex flex-1 flex-col min-w-0 relative">
 
-        {/* ── Top bar (minimal, no logo) ─────────────────────────── */}
-        <div className="absolute top-0 right-0 left-0 z-10 flex items-center justify-between px-3 py-2">
+        {/* ── Top bar ────────────────────────────────────────────── */}
+        <div className="absolute top-0 right-0 left-0 z-10 flex items-center justify-between px-3 h-11">
           {/* Mobile menu */}
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden w-8 h-8"
+                className="md:hidden w-9 h-9"
+                aria-label="Menu"
               >
-                <Menu className="w-4 h-4" />
+                <Menu className="w-[18px] h-[18px]" strokeWidth={1.5} />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
@@ -116,33 +111,37 @@ export const ChatPage: React.FC = () => {
             </SheetContent>
           </Sheet>
 
-          {/* Right: language + clear */}
-          <div className="flex items-center gap-1 ml-auto">
+          {/* Right controls */}
+          <div className="flex items-center gap-0.5 ml-auto">
             {hasMessages && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="w-8 h-8 text-muted-foreground hover:text-foreground"
+                className="w-9 h-9 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                 onClick={clearChat}
-                title={t('clearChat')}
+                aria-label={t('clearChat')}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-[18px] h-[18px]" strokeWidth={1.5} />
               </Button>
             )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-8 px-2">
-                  <Globe className="w-3.5 h-3.5 mr-1" />
-                  {LANG_LABELS[settings.language || locale] || 'ES'}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 h-9 px-2 transition-colors"
+                >
+                  <Globe className="w-[18px] h-[18px] mr-1" strokeWidth={1.5} />
+                  {(settings.language || locale || 'es').toUpperCase()}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="min-w-[120px]">
                 {(['es', 'fr', 'en'] as const).map((lang) => (
                   <DropdownMenuItem
                     key={lang}
                     onClick={() => handleLanguageChange(lang)}
-                    className={settings.language === lang ? 'bg-accent' : ''}
+                    className={settings.language === lang ? 'bg-stone-100 dark:bg-stone-800' : ''}
                   >
                     {lang === 'es' ? 'Español' : lang === 'fr' ? 'Français' : 'English'}
                   </DropdownMenuItem>
@@ -152,77 +151,80 @@ export const ChatPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Chat Content ───────────────────────────────────────── */}
-        {hasMessages ? (
-          <>
-            {/* Messages — scrollable, full height */}
-            <div className="flex-1 overflow-y-auto pt-12 pb-4">
-              <div className="max-w-3xl mx-auto w-full px-4">
-                <MessageList
-                  messages={messages}
-                  isLoading={isLoading}
-                  locale={locale}
-                />
-                {isLoading && (
-                  <div className="py-2">
-                    <TypingIndicator />
+        {/* ── Content ────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {hasMessages ? (
+            /* ── Chat State ─────────────────────────────────────── */
+            <div className="flex-1 flex flex-col animate-in fade-in duration-300">
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto pt-12 pb-2">
+                <div className="max-w-3xl mx-auto w-full px-4">
+                  <MessageList
+                    messages={messages}
+                    isLoading={isLoading}
+                    locale={locale}
+                  />
+                  {isLoading && (
+                    <div className="py-3">
+                      <TypingIndicator />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* AI suggestions */}
+              {suggestions.length > 0 && !isLoading && (
+                <div className="max-w-3xl mx-auto w-full px-4 pb-2">
+                  <SuggestionChips
+                    suggestions={suggestions}
+                    onSelect={handleSuggestionClick}
+                  />
+                </div>
+              )}
+
+              {/* Input — glassmorphism card */}
+              <div className="shrink-0 px-4 pb-3">
+                <div className="max-w-3xl mx-auto w-full">
+                  <div className="backdrop-blur-xl bg-white/80 dark:bg-stone-800/80 rounded-2xl shadow-lg border border-stone-200/50 dark:border-stone-700/50">
+                    <ChatInput
+                      onSend={sendMessage}
+                      isLoading={isLoading}
+                      placeholder={t('chatPage.input_placeholder')}
+                      className="border-0 border-t-0 shadow-none bg-transparent rounded-2xl"
+                    />
                   </div>
-                )}
+                </div>
               </div>
             </div>
+          ) : (
+            /* ── Welcome State ──────────────────────────────────── */
+            <div className="flex-1 flex flex-col justify-center animate-in fade-in duration-500">
+              {/* Logo + Greeting */}
+              <ChatWelcome onSuggestionClick={handleSuggestionClick} />
 
-            {/* AI suggestions */}
-            {suggestions.length > 0 && !isLoading && (
-              <div className="max-w-3xl mx-auto w-full px-4 pb-2">
-                <SuggestionChips
-                  suggestions={suggestions}
-                  onSelect={handleSuggestionClick}
-                />
-              </div>
-            )}
-
-            {/* Input — bottom anchored */}
-            <div className="shrink-0 pb-4">
-              <div className="max-w-3xl mx-auto w-full px-4">
-                <div className="bg-card border rounded-2xl shadow-sm">
+              {/* Input — glassmorphism, centered */}
+              <div className="max-w-3xl mx-auto w-full px-6 mb-5">
+                <div className="backdrop-blur-xl bg-white/80 dark:bg-stone-800/80 rounded-2xl shadow-lg border border-stone-200/50 dark:border-stone-700/50">
                   <ChatInput
                     onSend={sendMessage}
                     isLoading={isLoading}
                     placeholder={t('chatPage.input_placeholder')}
-                    className="border-0 shadow-none rounded-2xl"
+                    className="border-0 border-t-0 shadow-none bg-transparent rounded-2xl"
                   />
                 </div>
               </div>
-            </div>
-          </>
-        ) : (
-          /* ── Welcome State (claude.ai style) ──────────────────── */
-          <div className="flex-1 flex flex-col justify-center pb-8">
-            {/* Greeting */}
-            <ChatWelcome onSuggestionClick={handleSuggestionClick} />
 
-            {/* Input — centered, wide (like claude.ai) */}
-            <div className="max-w-3xl mx-auto w-full px-6 mb-4">
-              <div className="bg-card border rounded-2xl shadow-sm">
-                <ChatInput
-                  onSend={sendMessage}
-                  isLoading={isLoading}
-                  placeholder={t('chatPage.input_placeholder')}
-                  className="border-0 shadow-none rounded-2xl"
-                />
+              {/* Suggestion chips */}
+              <div className="mb-6">
+                <WelcomeSuggestions onSuggestionClick={handleSuggestionClick} />
               </div>
             </div>
+          )}
+        </div>
 
-            {/* Suggestion chips — below input (like claude.ai) */}
-            <div className="mb-4">
-              <WelcomeSuggestions onSuggestionClick={handleSuggestionClick} />
-            </div>
-          </div>
-        )}
-
-        {/* ── Footer ─────────────────────────────────────────────── */}
-        <div className="text-center py-2 shrink-0">
-          <p className="text-[10px] text-muted-foreground">
+        {/* ── Footer (desktop only) ──────────────────────────────── */}
+        <div className="hidden md:block text-center py-1.5 shrink-0">
+          <p className="text-[10px] text-stone-400 dark:text-stone-500">
             © 2026 Facil - Plataforma Digital AI de Tramites. Todos los derechos reservados.
           </p>
         </div>

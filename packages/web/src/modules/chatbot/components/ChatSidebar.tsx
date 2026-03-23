@@ -1,10 +1,12 @@
 /**
  * ChatSidebar — Collapsible sidebar with monographic vector icons.
  *
- * Desktop: toggles between collapsed (w-14, icons) and expanded (w-56, icons + labels).
+ * Desktop: toggles between collapsed (w-14) and expanded (w-56).
  * Mobile: always expanded in Sheet.
  *
- * Icons: Lucide monographic outline (strokeWidth=1.5) for clean aesthetic.
+ * Icons: Lucide monographic outline (strokeWidth 1.5).
+ * Transitions: smooth width + opacity for labels.
+ * Palette: warm stone consistent with ChatPage.
  */
 
 'use client';
@@ -44,13 +46,13 @@ import { getAuthData } from '@/core/auth/storage';
 interface ChatSidebarProps {
   onNavigate?: () => void;
   className?: string;
-  expanded?: boolean;       // forced expanded (mobile Sheet)
-  collapsed?: boolean;      // desktop collapsed state
-  onToggle?: () => void;    // toggle collapsed/expanded
+  expanded?: boolean;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }
 
 // ---------------------------------------------------------------------------
-// Navigation items — monographic vector icons
+// Constants
 // ---------------------------------------------------------------------------
 
 const NAV_ITEMS = [
@@ -61,6 +63,8 @@ const NAV_ITEMS = [
   { key: 'guide', href: '/categories', icon: Layers },
   { key: 'calculator', href: '/calculateur', icon: Calculator },
 ];
+
+const ICON_PROPS = { className: 'w-[18px] h-[18px] shrink-0', strokeWidth: 1.5 } as const;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -85,32 +89,67 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     return pathname === localizedHref;
   };
 
-  // Whether to show labels (expanded mobile OR desktop not collapsed)
   const showLabels = expanded || !collapsed;
   const sidebarWidth = expanded ? 'w-56' : collapsed ? 'w-14' : 'w-56';
 
-  const iconProps = { className: 'w-[18px] h-[18px] shrink-0', strokeWidth: 1.5 };
+  const navLinkClass = (active: boolean) =>
+    `flex items-center ${showLabels ? 'gap-3 px-3' : 'justify-center'} rounded-lg py-2.5 text-sm transition-all duration-200 ${
+      active
+        ? 'bg-stone-200/70 dark:bg-stone-700/50 text-stone-900 dark:text-stone-100'
+        : 'text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-800 dark:hover:text-stone-200'
+    }`;
+
+  const renderNavItem = (item: typeof NAV_ITEMS[0]) => {
+    const Icon = item.icon;
+    const active = isActive(item.href);
+    const label = t(`chatPage.nav_${item.key}`);
+
+    const link = (
+      <Link
+        href={`/${locale}${item.href}`}
+        onClick={onNavigate}
+        className={navLinkClass(active)}
+      >
+        <Icon {...ICON_PROPS} />
+        {showLabels && (
+          <span className="truncate transition-opacity duration-200">{label}</span>
+        )}
+      </Link>
+    );
+
+    if (collapsed && !expanded) {
+      return (
+        <Tooltip key={item.key}>
+          <TooltipTrigger asChild>{link}</TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            <p className="text-xs">{label}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+    return <React.Fragment key={item.key}>{link}</React.Fragment>;
+  };
 
   return (
     <TooltipProvider delayDuration={150}>
       <aside
-        className={`flex flex-col h-full bg-card/50 border-r transition-all duration-200 ${sidebarWidth} ${className}`}
+        className={`flex flex-col h-full bg-stone-50/80 dark:bg-stone-900/80 border-r border-stone-200 dark:border-stone-800 transition-all duration-300 ease-in-out ${sidebarWidth} ${className}`}
       >
         {/* Top: toggle + new chat */}
         <div className={`flex items-center ${showLabels ? 'justify-between px-3' : 'justify-center'} h-12 shrink-0`}>
-          {/* Toggle button (desktop only, not in mobile Sheet) */}
           {!expanded && onToggle && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="w-8 h-8 text-muted-foreground hover:text-foreground"
+                  className="w-9 h-9 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
                   onClick={onToggle}
+                  aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
                   {collapsed
-                    ? <PanelLeftOpen {...iconProps} />
-                    : <PanelLeftClose {...iconProps} />
+                    ? <PanelLeftOpen {...ICON_PROPS} />
+                    : <PanelLeftClose {...ICON_PROPS} />
                   }
                 </Button>
               </TooltipTrigger>
@@ -122,16 +161,16 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
             </Tooltip>
           )}
 
-          {/* New chat */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Link href={`/${locale}/chat`} onClick={onNavigate}>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="w-8 h-8 text-muted-foreground hover:text-foreground"
+                  className="w-9 h-9 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors"
+                  aria-label={t('newConversation')}
                 >
-                  <SquarePen {...iconProps} />
+                  <SquarePen {...ICON_PROPS} />
                 </Button>
               </Link>
             </TooltipTrigger>
@@ -143,107 +182,68 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           </Tooltip>
         </div>
 
-        <Separator />
+        <Separator className="bg-stone-200 dark:bg-stone-800" />
 
         {/* Navigation */}
-        <nav className={`flex-1 flex flex-col ${showLabels ? 'px-2' : 'items-center'} py-3 gap-0.5`}>
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-            const label = t(`chatPage.nav_${item.key}`);
-
-            const btn = (
-              <Link
-                key={item.key}
-                href={`/${locale}${item.href}`}
-                onClick={onNavigate}
-                className={`flex items-center ${showLabels ? 'gap-3 px-3' : 'justify-center'} rounded-lg py-2 text-sm transition-colors ${
-                  active
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                }`}
-              >
-                <Icon {...iconProps} />
-                {showLabels && <span className="truncate">{label}</span>}
-              </Link>
-            );
-
-            if (collapsed) {
-              return (
-                <Tooltip key={item.key}>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>
-                    <p className="text-xs">{label}</p>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            }
-            return <React.Fragment key={item.key}>{btn}</React.Fragment>;
-          })}
+        <nav className={`flex-1 flex flex-col ${showLabels ? 'px-2' : 'items-center px-1'} py-3 gap-0.5 overflow-y-auto`}>
+          {NAV_ITEMS.map(renderNavItem)}
         </nav>
 
-        {/* Bottom: auth actions */}
-        <div className={`border-t ${showLabels ? 'px-2' : ''} py-3 shrink-0 space-y-1`}>
+        {/* Bottom: auth */}
+        <Separator className="bg-stone-200 dark:bg-stone-800" />
+        <div className={`${showLabels ? 'px-2' : 'flex flex-col items-center'} py-3 shrink-0 space-y-1`}>
           {isAuthenticated ? (
-            <>
-              {showLabels ? (
-                <>
-                  <Link href={`/${locale}/dashboard/services`} onClick={onNavigate}>
-                    <Button variant="default" size="sm" className="w-full justify-start gap-2 text-xs">
-                      <Plus {...iconProps} />
-                      {t('chatPage.new_request')}
-                    </Button>
-                  </Link>
-                  <Link href={`/${locale}/dashboard`} onClick={onNavigate}>
-                    <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground">
-                      <User {...iconProps} />
-                      Dashboard
-                    </Button>
-                  </Link>
-                </>
-              ) : (
-                <div className="flex flex-col items-center gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link href={`/${locale}/dashboard`}>
-                        <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground">
-                          <User {...iconProps} />
-                        </Button>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={8}>
-                      <p className="text-xs">Dashboard</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {showLabels ? (
-                <Link href={`/${locale}/login`} onClick={onNavigate}>
-                  <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-xs">
-                    <LogIn {...iconProps} />
-                    {t('chatPage.login_cta')}
+            showLabels ? (
+              <>
+                <Link href={`/${locale}/dashboard/services`} onClick={onNavigate}>
+                  <Button variant="default" size="sm" className="w-full justify-start gap-2 text-xs h-9">
+                    <Plus {...ICON_PROPS} />
+                    {t('chatPage.new_request')}
                   </Button>
                 </Link>
-              ) : (
-                <div className="flex justify-center">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link href={`/${locale}/login`}>
-                        <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground">
-                          <LogIn {...iconProps} />
-                        </Button>
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={8}>
-                      <p className="text-xs">{t('chatPage.login_cta')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-            </>
+                <Link href={`/${locale}/dashboard`} onClick={onNavigate}>
+                  <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 h-9 transition-colors">
+                    <User {...ICON_PROPS} />
+                    Dashboard
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href={`/${locale}/dashboard`}>
+                    <Button variant="ghost" size="icon" className="w-9 h-9 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
+                      <User {...ICON_PROPS} />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  <p className="text-xs">Dashboard</p>
+                </TooltipContent>
+              </Tooltip>
+            )
+          ) : (
+            showLabels ? (
+              <Link href={`/${locale}/login`} onClick={onNavigate}>
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-xs border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 h-9 transition-colors">
+                  <LogIn {...ICON_PROPS} />
+                  {t('chatPage.login_cta')}
+                </Button>
+              </Link>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href={`/${locale}/login`}>
+                    <Button variant="ghost" size="icon" className="w-9 h-9 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors">
+                      <LogIn {...ICON_PROPS} />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  <p className="text-xs">{t('chatPage.login_cta')}</p>
+                </TooltipContent>
+              </Tooltip>
+            )
           )}
         </div>
       </aside>
