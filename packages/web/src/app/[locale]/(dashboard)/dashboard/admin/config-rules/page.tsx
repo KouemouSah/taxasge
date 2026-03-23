@@ -76,8 +76,8 @@ export default function ConfigRulesPage() {
 
   // Form state
   const [formConfigType, setFormConfigType] = useState<ConfigType>("penalty")
-  const [formBundleId, setFormBundleId] = useState("")
-  const [formFeeType, setFormFeeType] = useState("")
+  const [formBundleId, setFormBundleId] = useState("__global__")
+  const [formFeeType, setFormFeeType] = useState("__global__")
   const [formMinistryId, setFormMinistryId] = useState("")
   const [formItemId, setFormItemId] = useState("")
   const [formNameEs, setFormNameEs] = useState("")
@@ -138,8 +138,8 @@ export default function ConfigRulesPage() {
   // Compute specificity from form
   const computeSpecificity = () => {
     let s = 0
-    if (formBundleId) s += 10
-    if (formFeeType) s += 20
+    if (formBundleId && formBundleId !== "__global__") s += 10
+    if (formFeeType && formFeeType !== "__global__") s += 20
     if (formMinistryId) s += 30
     if (formItemId) s += 50
     return s
@@ -187,8 +187,8 @@ export default function ConfigRulesPage() {
   // Populate form from rule (for edit)
   const populateForm = (rule: ConfigRuleResponse) => {
     setFormConfigType(rule.configType as ConfigType)
-    setFormBundleId(rule.bundleId || "")
-    setFormFeeType(rule.feeType || "")
+    setFormBundleId(rule.bundleId || "__global__")
+    setFormFeeType(rule.feeType || "__global__")
     setFormMinistryId(rule.ministryId ? String(rule.ministryId) : "")
     setFormItemId(rule.itemId || "")
     setFormNameEs(rule.nameEs || "")
@@ -223,8 +223,8 @@ export default function ConfigRulesPage() {
   const resetForm = () => {
     setEditingRule(null)
     setFormConfigType("penalty")
-    setFormBundleId("")
-    setFormFeeType("")
+    setFormBundleId("__global__")
+    setFormFeeType("__global__")
     setFormMinistryId("")
     setFormItemId("")
     setFormNameEs("")
@@ -250,9 +250,14 @@ export default function ConfigRulesPage() {
   }
 
   const handleOpenEdit = (rule: ConfigRuleResponse) => {
-    populateForm(rule)
-    setEditingRule(rule)
-    setDialogOpen(true)
+    try {
+      populateForm(rule)
+      setEditingRule(rule)
+      setDialogOpen(true)
+    } catch (err) {
+      console.error('[ConfigRules] Edit failed:', err, 'Rule:', JSON.stringify(rule))
+      toast({ variant: 'destructive', title: 'Error al abrir edición', description: String(err) })
+    }
   }
 
   const handleSave = async () => {
@@ -272,8 +277,8 @@ export default function ConfigRulesPage() {
       } else {
         const createData: ConfigRuleCreateInput = {
           configType: formConfigType,
-          bundleId: formBundleId || undefined,
-          feeType: formFeeType || undefined,
+          bundleId: formBundleId && formBundleId !== "__global__" ? formBundleId : undefined,
+          feeType: formFeeType && formFeeType !== "__global__" ? formFeeType : undefined,
           ministryId: formMinistryId ? Number(formMinistryId) : undefined,
           itemId: formItemId || undefined,
           isEnabled: formEnabled,
@@ -534,7 +539,7 @@ export default function ConfigRulesPage() {
                   <Select value={formBundleId} onValueChange={setFormBundleId} disabled={!!editingRule}>
                     <SelectTrigger><SelectValue placeholder={t("selectBundle")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">{t("scopeGlobal")}</SelectItem>
+                      <SelectItem value="__global__">{t("scopeGlobal")}</SelectItem>
                       {bundles.map(b => <SelectItem key={b.id} value={b.id}>{b.bundleCode}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -544,7 +549,7 @@ export default function ConfigRulesPage() {
                   <Select value={formFeeType} onValueChange={setFormFeeType} disabled={!!editingRule}>
                     <SelectTrigger><SelectValue placeholder={t("selectFeeType")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">{t("scopeGlobal")}</SelectItem>
+                      <SelectItem value="__global__">{t("scopeGlobal")}</SelectItem>
                       <SelectItem value="tesoro">Tesoro</SelectItem>
                       <SelectItem value="municipal">Municipal</SelectItem>
                       <SelectItem value="chamber">Chamber</SelectItem>
