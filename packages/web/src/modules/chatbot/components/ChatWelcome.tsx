@@ -41,29 +41,28 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = () => {
   const [logoError, setLogoError] = useState(false);
 
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 max-w-3xl mx-auto w-full">
-      {/* Logo with fallback */}
+    <div className="flex flex-col items-center px-6 max-w-3xl mx-auto w-full">
+      {/* Logo with fallback — use img tag for reliability */}
       {!logoError ? (
-        <Image
+        <img
           src="/logo_chat.png"
           alt="Facil"
-          width={72}
-          height={72}
-          className="mb-6 drop-shadow-sm"
-          priority
+          width={56}
+          height={56}
+          className="mb-3"
           onError={() => setLogoError(true)}
         />
       ) : (
-        <div className="w-[72px] h-[72px] rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-          <span className="text-2xl font-bold text-primary">F</span>
+        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+          <span className="text-xl font-bold text-primary">F</span>
         </div>
       )}
 
-      {/* Greeting */}
-      <h1 className="text-3xl md:text-4xl font-semibold text-stone-800 dark:text-stone-100 mb-3 text-center tracking-tight">
+      {/* Greeting — tight spacing to input */}
+      <h1 className="text-2xl md:text-3xl font-semibold text-stone-800 dark:text-stone-100 mb-2 text-center tracking-tight">
         {t('chatPage.greeting')}
       </h1>
-      <p className="text-sm text-stone-500 dark:text-stone-400 mb-12 text-center max-w-md leading-relaxed">
+      <p className="text-sm text-stone-500 dark:text-stone-400 mb-6 text-center max-w-md leading-relaxed">
         {t('chatPage.subtitle')}
       </p>
     </div>

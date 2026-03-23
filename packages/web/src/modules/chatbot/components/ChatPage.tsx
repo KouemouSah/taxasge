@@ -198,40 +198,36 @@ export const ChatPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Input — glassmorphism card */}
+              {/* Input — single clean box */}
               <div className="shrink-0 px-4 pb-3">
                 <div className="max-w-3xl mx-auto w-full">
-                  <div className="backdrop-blur-xl bg-white/80 dark:bg-stone-800/80 rounded-2xl shadow-lg border border-stone-200/50 dark:border-stone-700/50">
-                    <ChatInput
-                      onSend={sendMessage}
-                      isLoading={isLoading}
-                      placeholder={t('chatPage.input_placeholder')}
-                      className="border-0 border-t-0 shadow-none bg-transparent rounded-2xl"
-                    />
-                  </div>
+                  <ChatInput
+                    onSend={sendMessage}
+                    isLoading={isLoading}
+                    placeholder={t('chatPage.input_placeholder')}
+                    className="border border-stone-200 dark:border-stone-700 shadow-sm bg-white dark:bg-stone-800 rounded-2xl"
+                  />
                 </div>
               </div>
             </div>
           ) : (
             /* ── Welcome State ──────────────────────────────────── */
-            <div className="flex-1 flex flex-col justify-center animate-in fade-in duration-500">
+            <div className="flex-1 flex flex-col justify-center animate-in fade-in duration-500 pb-12">
               {/* Logo + Greeting */}
               <ChatWelcome onSuggestionClick={handleSuggestionClick} />
 
-              {/* Input — glassmorphism, centered */}
-              <div className="max-w-3xl mx-auto w-full px-6 mb-5">
-                <div className="backdrop-blur-xl bg-white/80 dark:bg-stone-800/80 rounded-2xl shadow-lg border border-stone-200/50 dark:border-stone-700/50">
-                  <ChatInput
-                    onSend={sendMessage}
-                    isLoading={isLoading}
-                    placeholder={t('chatPage.input_placeholder')}
-                    className="border-0 border-t-0 shadow-none bg-transparent rounded-2xl"
-                  />
-                </div>
+              {/* Input — single clean box, no wrapper (like claude.ai) */}
+              <div className="max-w-3xl mx-auto w-full px-6 mb-4">
+                <ChatInput
+                  onSend={sendMessage}
+                  isLoading={isLoading}
+                  placeholder={t('chatPage.input_placeholder')}
+                  className="border border-stone-200 dark:border-stone-700 shadow-sm bg-white dark:bg-stone-800 rounded-2xl"
+                />
               </div>
 
               {/* Suggestion chips */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <WelcomeSuggestions onSuggestionClick={handleSuggestionClick} />
               </div>
             </div>

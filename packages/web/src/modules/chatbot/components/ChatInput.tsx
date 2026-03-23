@@ -67,7 +67,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }
 
   return (
-    <div className={`p-4 border-t flex gap-2 bg-background ${className}`}>
+    <div className={className ? `p-4 flex gap-2 ${className}` : 'p-4 border-t flex gap-2 bg-background'}>
       <div className="flex-1 relative">
         <Textarea
           ref={textareaRef}
