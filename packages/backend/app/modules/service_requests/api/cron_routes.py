@@ -981,3 +981,53 @@ async def index_health_audit(
             for r in size_ratios
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Cron: Permission Audit Log Cleanup
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/cleanup-permission-audit-log",
+    summary="Archive old permission audit entries",
+    description="""
+    Called daily by Cloud Scheduler.
+
+    Archives permission_audit_log entries older than retention_days (default 90)
+    into permission_audit_log_archive table, then removes them from the main table.
+    This prevents unbounded growth from startup sync triggers.
+    """
+)
+async def cleanup_permission_audit_log(
+    retention_days: int = 90,
+    db: asyncpg.Connection = Depends(get_database),
+    _auth: bool = Depends(verify_cron_auth),
+):
+    """Archive old permission audit entries and return stats."""
+    try:
+        row = await db.fetchrow(
+            "SELECT * FROM cleanup_permission_audit_log($1)",
+            retention_days,
+        )
+        archived = row["archived_count"] if row else 0
+        remaining = row["remaining_count"] if row else 0
+
+        logger.info(
+            f"Permission audit cleanup: archived={archived}, "
+            f"remaining={remaining}, retention={retention_days}d"
+        )
+
+        return {
+            "message": f"Archived {archived} entries older than {retention_days} days",
+            "archived_count": archived,
+            "remaining_count": remaining,
+            "retention_days": retention_days,
+        }
+
+    except Exception as e:
+        logger.error(f"Permission audit cleanup failed: {e}")
+        return {
+            "message": f"Cleanup failed: {str(e)}",
+            "archived_count": 0,
+            "error": str(e),
+        }
