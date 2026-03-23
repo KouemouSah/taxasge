@@ -19,7 +19,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { User, Copy, Check } from 'lucide-react'
+import { User, Copy, Check, Download, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatTimestamp } from '../types'
 import type { ChatMessage } from '../types'
@@ -56,27 +56,49 @@ const renderMarkdown = (text: string): string => {
   let html = text
 
   // Code blocks ```code```
-  html = html.replace(/```([\s\S]*?)```/g, '<pre class="bg-muted p-2 rounded text-sm overflow-x-auto my-2"><code>$1</code></pre>')
+  html = html.replace(/```([\s\S]*?)```/g, '<pre class="bg-stone-100 dark:bg-stone-800 p-3 rounded-lg text-sm overflow-x-auto my-3 font-mono"><code>$1</code></pre>')
 
   // Inline code `code`
-  html = html.replace(/`([^`]+)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>')
+
+  // Headings (before bold to avoid conflicts)
+  html = html.replace(/^#### (.+)$/gm, '<h5 class="font-semibold text-sm mt-3 mb-1.5 text-stone-800 dark:text-stone-200">$1</h5>')
+  html = html.replace(/^### (.+)$/gm, '<h4 class="font-semibold text-base mt-4 mb-2 text-stone-800 dark:text-stone-200">$1</h4>')
+  html = html.replace(/^## (.+)$/gm, '<h3 class="font-semibold text-lg mt-5 mb-2 text-stone-800 dark:text-stone-200">$1</h3>')
 
   // Bold **text**
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold">$1</strong>')
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-stone-800 dark:text-stone-100">$1</strong>')
 
   // Italic *text*
   html = html.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>')
 
-  // Bullet lists - item
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
-  // Use [\s\S] instead of /s flag for ES2017 compatibility
-  html = html.replace(/(<li[\s\S]*<\/li>)/, '<ul class="list-disc my-2">$1</ul>')
+  // Tables (markdown table format)
+  html = html.replace(/^\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)*)/gm, (_match, header, body) => {
+    const headers = header.split('|').map((h: string) => h.trim()).filter(Boolean)
+    const rows = body.trim().split('\n').map((row: string) =>
+      row.split('|').map((c: string) => c.trim()).filter(Boolean)
+    )
+    return `<div class="overflow-x-auto my-3"><table class="w-full text-sm border-collapse">
+      <thead><tr>${headers.map((h: string) => `<th class="border-b border-stone-200 dark:border-stone-700 px-3 py-2 text-left font-semibold text-stone-700 dark:text-stone-300">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((row: string[]) => `<tr>${row.map((c: string) => `<td class="border-b border-stone-100 dark:border-stone-800 px-3 py-1.5">${c}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>`
+  })
 
-  // Numbered lists 1. item
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')
+  // Bullet lists - item (consecutive)
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
+  html = html.replace(/((?:<li class="ml-4 py-0\.5">[\s\S]*?<\/li>\n?)+)/g, '<ul class="list-disc my-2 space-y-0.5">$1</ul>')
+
+  // Numbered lists 1. item (consecutive)
+  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 py-0.5">$1</li>')
 
   // Links [text](url)
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
+
+  // Paragraphs (double newline → spacing)
+  html = html.replace(/\n\n/g, '</p><p class="my-2">')
+
+  // Single newlines within paragraphs → <br>
+  html = html.replace(/\n/g, '<br>')
 
   // Highlight service codes
   html = highlightServiceCodes(html)
@@ -111,6 +133,26 @@ export const MessageItem: React.FC<MessageItemProps> = ({
     } catch (err) {
       console.error('Failed to copy:', err)
     }
+  }
+
+  const handleDownloadMd = () => {
+    const blob = new Blob([message.content], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `facil-response-${Date.now()}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadTxt = () => {
+    const blob = new Blob([message.content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `facil-response-${Date.now()}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   // =============================================================================
@@ -159,21 +201,41 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           </p>
         </div>
 
-        {/* Copy Button */}
+        {/* Action buttons — visible on hover */}
         {isBot && (
-          <Button
-            size="icon"
-            variant="ghost"
-            className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6"
-            onClick={handleCopy}
-            title={t('copyMessage') || 'Copy message'}
-          >
-            {copied ? (
-              <Check className="h-3 w-3 text-green-600" />
-            ) : (
-              <Copy className="h-3 w-3" />
-            )}
-          </Button>
+          <div className="flex items-center gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-stone-400 hover:text-stone-700"
+              onClick={handleCopy}
+              title={t('copyMessage') || 'Copy'}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
+              )}
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-stone-400 hover:text-stone-700"
+              onClick={handleDownloadMd}
+              title="Download .md"
+            >
+              <FileText className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-stone-400 hover:text-stone-700"
+              onClick={handleDownloadTxt}
+              title="Download .txt"
+            >
+              <Download className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </Button>
+          </div>
         )}
       </div>
 

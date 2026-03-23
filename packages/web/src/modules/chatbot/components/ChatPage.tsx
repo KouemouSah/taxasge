@@ -18,6 +18,7 @@ import {
   Menu,
   Globe,
   Trash2,
+  Square,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -179,6 +180,21 @@ export const ChatPage: React.FC = () => {
                     suggestions={suggestions}
                     onSelect={handleSuggestionClick}
                   />
+                </div>
+              )}
+
+              {/* Stop button when loading */}
+              {isLoading && (
+                <div className="flex justify-center pb-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-xs rounded-full border-stone-300 dark:border-stone-600 text-stone-500 hover:text-stone-800 h-8 px-4"
+                    onClick={clearChat}
+                  >
+                    <Square className="w-3 h-3 fill-current" strokeWidth={1.5} />
+                    Detener
+                  </Button>
                 </div>
               )}
 
