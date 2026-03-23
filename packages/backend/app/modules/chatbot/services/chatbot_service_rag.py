@@ -17,6 +17,8 @@ import uuid
 import asyncpg
 from datetime import datetime
 
+import hashlib
+
 from app.modules.chatbot.services.embedding_service import embedding_service
 from app.modules.chatbot.services.gemini_service import gemini_service
 from app.modules.chatbot.services.chatbot_tools import (
@@ -27,6 +29,7 @@ from app.modules.chatbot.repositories.legislacion_repository import LegislacionR
 from app.config import settings
 
 MAX_TOOL_ROUNDS = 2
+CACHE_TTL_SECONDS = 3600  # 1 hour cache for common queries
 
 
 class ChatbotServiceRAG:
@@ -89,6 +92,16 @@ class ChatbotServiceRAG:
         if not self.enabled or not db:
             return await self._fallback_response(message, conversation_id, language)
 
+        # Cache check — skip for conversations with history (follow-ups need fresh context)
+        if not conversation_history:
+            cached = await self._get_cached_response(message, language)
+            if cached:
+                cached["conversation_id"] = conversation_id
+                cached["response_time"] = (datetime.now() - start_time).total_seconds()
+                cached["model"] = "gemini-rag-cached"
+                logger.info(f"Cache HIT for: '{message[:50]}...'")
+                return cached
+
         try:
             # Load persisted conversation history if available
             if not conversation_history and db:
@@ -96,6 +109,11 @@ class ChatbotServiceRAG:
                 if persisted:
                     conversation_history = persisted
                     logger.info(f"Loaded {len(persisted)} persisted messages for {conversation_id}")
+
+            # Summarize long conversations to save context tokens
+            if conversation_history and len(conversation_history) > 10:
+                conversation_history = self._summarize_history(conversation_history)
+                logger.info(f"Conversation summarized to {len(conversation_history)} messages")
 
             # Step 1: Generate query embedding
             logger.info(f"Processing chat: '{message[:50]}...' (lang: {language})")
@@ -263,9 +281,16 @@ class ChatbotServiceRAG:
             # Override ai_response sources with our consolidated ones
             ai_response["sources"] = context_sources
 
-            # Step 4: Build structured response
+            # Step 5: Build structured response
             response_time = (datetime.now() - start_time).total_seconds()
             response_message = ai_response.get("message", "")
+
+            # Step 6: Self-evaluation — check response quality
+            quality_score = await self._evaluate_response(
+                message, response_message, consolidated_context
+            )
+            confidence = max(ai_response.get("confidence", 0.5), quality_score)
+            logger.info(f"Response quality: {quality_score:.2f}, confidence: {confidence:.2f}")
 
             # Persist conversation (non-blocking, non-fatal)
             if db:
@@ -274,18 +299,23 @@ class ChatbotServiceRAG:
                     user_id=user_id, language=language,
                 )
 
-            return {
+            final_response = {
                 "message": response_message,
                 "conversation_id": conversation_id,
                 "suggestions": self._generate_suggestions(relevant_docs, relevant_services, language),
                 "related_services": self._format_related_services(relevant_services),
                 "related_documents": self._format_related_documents(relevant_docs),
                 "follow_up_actions": self._generate_follow_up_actions(relevant_services, language),
-                "confidence": ai_response.get("confidence", 0.5),
+                "confidence": confidence,
                 "response_time": response_time,
                 "sources": ai_response.get("sources", []),
                 "model": ai_response.get("model", "gemini-rag")
             }
+
+            # Step 7: Cache successful response for future identical queries
+            await self._cache_response(message, language, final_response)
+
+            return final_response
 
         except Exception as e:
             logger.error(f"Chat processing error: {e}")
@@ -988,6 +1018,127 @@ Keep it helpful and concise."""
         except Exception as e:
             # Non-fatal: log and continue
             logger.warning(f"Failed to save conversation {conversation_id}: {e}")
+
+    # ========================================================================
+    # RESPONSE CACHE (Redis-backed, 1h TTL for common queries)
+    # ========================================================================
+
+    async def _get_cached_response(self, message: str, language: str) -> Optional[Dict]:
+        """Check Redis cache for a previous response to the same query."""
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            cache_key = f"chat:resp:{language}:{hashlib.md5(message.lower().strip().encode()).hexdigest()}"
+            cached = await cache.get(cache_key)
+            if cached and isinstance(cached, dict):
+                return cached
+        except Exception:
+            pass
+        return None
+
+    async def _cache_response(self, message: str, language: str, response: Dict):
+        """Cache a successful response for future identical queries."""
+        try:
+            from app.core.cache import get_cache
+            cache = get_cache()
+            cache_key = f"chat:resp:{language}:{hashlib.md5(message.lower().strip().encode()).hexdigest()}"
+            # Only cache high-confidence responses
+            if response.get("confidence", 0) >= 0.3:
+                cache_data = {
+                    "message": response.get("message", ""),
+                    "suggestions": response.get("suggestions", []),
+                    "related_services": response.get("related_services", []),
+                    "related_documents": response.get("related_documents", []),
+                    "follow_up_actions": response.get("follow_up_actions", []),
+                    "confidence": response.get("confidence", 0),
+                    "sources": response.get("sources", []),
+                }
+                await cache.set(cache_key, cache_data, ttl=CACHE_TTL_SECONDS)
+                logger.debug(f"Cached response for: '{message[:40]}...'")
+        except Exception as e:
+            logger.debug(f"Cache set failed (non-fatal): {e}")
+
+    # ========================================================================
+    # CONVERSATION SUMMARIZATION
+    # ========================================================================
+
+    def _summarize_history(self, history: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """Compress old conversation messages into a summary.
+
+        Keeps last 10 messages verbatim. Summarizes older ones into a
+        single system message so Gemini has context without token bloat.
+        """
+        if not history or len(history) <= 10:
+            return history
+
+        # Split: old messages to summarize + recent to keep
+        old_messages = history[:-10]
+        recent_messages = history[-10:]
+
+        # Build summary from old messages
+        topics = []
+        for msg in old_messages:
+            if msg.get("role") == "user":
+                topics.append(msg.get("content", "")[:100])
+            elif msg.get("role") == "assistant":
+                # Extract first sentence of assistant response
+                content = msg.get("content", "")
+                first_sentence = content.split(".")[0][:120] if content else ""
+                if first_sentence:
+                    topics.append(f"→ {first_sentence}")
+
+        summary_text = (
+            "RESUMEN DE CONVERSACIÓN ANTERIOR:\n"
+            + "\n".join(topics[-8:])  # Last 8 exchanges max
+        )
+
+        summary_message = {
+            "role": "user",
+            "content": summary_text,
+        }
+
+        return [summary_message] + recent_messages
+
+    # ========================================================================
+    # SELF-EVALUATION (quality check)
+    # ========================================================================
+
+    async def _evaluate_response(
+        self, question: str, response_text: str, context: str
+    ) -> float:
+        """Quick self-evaluation: does the response actually answer the question?
+
+        Returns a quality score 0-1. If < 0.3, the response is likely
+        off-topic or hallucinated.
+        """
+        if not response_text or len(response_text) < 20:
+            return 0.1
+
+        score = 0.5  # Base score
+
+        # Check 1: Response length proportional to context
+        if len(response_text) > 50:
+            score += 0.1
+
+        # Check 2: Response mentions key terms from question
+        question_words = set(question.lower().split())
+        response_words = set(response_text.lower().split())
+        common = question_words & response_words
+        if len(common) >= 2:
+            score += 0.15
+
+        # Check 3: Response uses data from context (not generic)
+        if context:
+            context_snippets = [w for w in context.split() if len(w) > 5][:20]
+            context_in_response = sum(1 for w in context_snippets if w.lower() in response_text.lower())
+            if context_in_response >= 3:
+                score += 0.15
+
+        # Check 4: Response has structure (lists, bold = used context)
+        if "**" in response_text or "- " in response_text or "1." in response_text:
+            score += 0.1
+
+        return min(1.0, score)
 
 
 # ============================================================================

@@ -262,7 +262,7 @@ class Settings(BaseSettings):
     )
 
     # Gemini Generation Configuration
-    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=2048, env="GEMINI_MAX_OUTPUT_TOKENS")
+    GEMINI_MAX_OUTPUT_TOKENS: int = Field(default=4096, env="GEMINI_MAX_OUTPUT_TOKENS")
     GEMINI_TEMPERATURE: float = Field(default=0.3, env="GEMINI_TEMPERATURE")
     GEMINI_TOP_P: float = Field(default=0.85, env="GEMINI_TOP_P")
     GEMINI_TOP_K: int = Field(default=10, env="GEMINI_TOP_K")
@@ -281,15 +281,15 @@ class Settings(BaseSettings):
         env="SEMANTIC_SEARCH_SIMILARITY_THRESHOLD"
     )
 
-    # RAG Configuration
-    RAG_MAX_CONTEXT_SERVICES: int = Field(default=5, env="RAG_MAX_CONTEXT_SERVICES")
-    RAG_MAX_CONTEXT_DOCUMENTS: int = Field(default=5, env="RAG_MAX_CONTEXT_DOCUMENTS")
-    RAG_CONVERSATION_HISTORY_LENGTH: int = Field(default=20, env="RAG_CONVERSATION_HISTORY_LENGTH")
-    MAX_CONTEXT_TOKENS: int = Field(default=3000, env="MAX_CONTEXT_TOKENS")
+    # RAG Configuration — Gemini 2.0 Flash has 1M context, use it generously
+    RAG_MAX_CONTEXT_SERVICES: int = Field(default=10, env="RAG_MAX_CONTEXT_SERVICES")
+    RAG_MAX_CONTEXT_DOCUMENTS: int = Field(default=10, env="RAG_MAX_CONTEXT_DOCUMENTS")
+    RAG_CONVERSATION_HISTORY_LENGTH: int = Field(default=30, env="RAG_CONVERSATION_HISTORY_LENGTH")
+    MAX_CONTEXT_TOKENS: int = Field(default=50000, env="MAX_CONTEXT_TOKENS")
     PDF_CHUNK_SIZE: int = Field(default=1000, env="PDF_CHUNK_SIZE")
     PDF_CHUNK_OVERLAP: int = Field(default=100, env="PDF_CHUNK_OVERLAP")
     SUGGESTION_SIMILARITY_THRESHOLD: float = Field(default=0.4, env="SUGGESTION_SIMILARITY_THRESHOLD")
-    RAG_EXTENDED_SEARCH_TOP_K: int = Field(default=10, env="RAG_EXTENDED_SEARCH_TOP_K")
+    RAG_EXTENDED_SEARCH_TOP_K: int = Field(default=20, env="RAG_EXTENDED_SEARCH_TOP_K")
     RAG_MIN_CONTEXT_LENGTH: int = Field(default=100, env="RAG_MIN_CONTEXT_LENGTH")
     
     # ========================================================================
