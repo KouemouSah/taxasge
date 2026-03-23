@@ -984,7 +984,7 @@ export default function AdminCompaniesPage() {
                     {sortBy === 'legal_name' ? (sortOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
                   </button>
                 </TableHead>
-                <TableHead className="w-[100px]">{t("nif")}</TableHead>
+                <TableHead className="w-[100px]">Identificador</TableHead>
                 <TableHead className="w-[100px]">{t("city")}</TableHead>
                 <TableHead className="w-[70px]">{t("zone")}</TableHead>
                 <TableHead className="w-[100px]">{t("regimen")}</TableHead>
@@ -1089,7 +1089,7 @@ export default function AdminCompaniesPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{company.nif || "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{company.registration_number || company.nif || "-"}</TableCell>
                     <TableCell className="text-xs">{company.city_name || "-"}</TableCell>
                     <TableCell className="text-xs">{company.zone_code || "-"}</TableCell>
                     <TableCell>

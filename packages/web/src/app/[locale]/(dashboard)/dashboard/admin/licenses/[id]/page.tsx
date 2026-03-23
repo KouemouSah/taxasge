@@ -380,7 +380,6 @@ export default function LicenseDetailPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[80px]">{t("serviceCode")}</TableHead>
                         <TableHead>{t("serviceName")}</TableHead>
                         <TableHead>{t("ministry")}</TableHead>
                         <TableHead className="text-right">{t("amount")}</TableHead>
@@ -392,7 +391,6 @@ export default function LicenseDetailPage() {
                     <TableBody>
                       {items.map(obl => (
                         <TableRow key={obl.id}>
-                          <TableCell className="font-mono text-xs">{obl.serviceCode || "—"}</TableCell>
                           <TableCell className="text-sm max-w-[200px] truncate">{obl.serviceName || "—"}</TableCell>
                           <TableCell className="text-xs">{obl.ministryName || "—"}</TableCell>
                           <TableCell className="text-right text-xs font-mono">{formatXAF(obl.amount, locale)}</TableCell>

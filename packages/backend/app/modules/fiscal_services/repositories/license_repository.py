@@ -123,6 +123,8 @@ class LicenseRepository:
         rows = await conn.fetch(f"""
             SELECT cl.*,
                    co.legal_name as company_name,
+                   co.nif as company_nif,
+                   co.registration_number as company_registration_number,
                    sb.name_es as bundle_name,
                    cz.zone_code
             FROM commercial_licenses cl
@@ -852,13 +854,19 @@ class LicenseRepository:
         row = await conn.fetchrow(f"""
             SELECT
                 COUNT(*) as total_licenses,
+                COUNT(*) FILTER (WHERE cl.status IN ('open', 'partial')) as active_licenses,
                 COUNT(*) FILTER (WHERE cl.status = 'open') as open_licenses,
                 COUNT(*) FILTER (WHERE cl.status = 'partial') as partial_licenses,
                 COUNT(*) FILTER (WHERE cl.status = 'complete') as complete_licenses,
                 COUNT(*) FILTER (WHERE cl.status = 'overdue') as overdue_licenses,
                 COALESCE(SUM(cl.total_amount), 0) as total_amount,
                 COALESCE(SUM(cl.amount_paid), 0) as amount_paid,
+                COALESCE(SUM(cl.amount_paid), 0) as total_paid,
+                COALESCE(SUM(cl.total_amount) - SUM(cl.amount_paid), 0) as total_debt,
                 COALESCE(SUM(cl.penalty_amount), 0) as penalty_amount,
+                CASE WHEN COALESCE(SUM(cl.total_amount), 0) > 0
+                     THEN ROUND(SUM(cl.amount_paid) * 100.0 / SUM(cl.total_amount), 1)
+                     ELSE 0 END as recovery_rate,
                 COALESCE(AVG(cl.compliance_score), 0) as avg_compliance_score
             FROM commercial_licenses cl
             {year_filter}

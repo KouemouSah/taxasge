@@ -189,11 +189,11 @@ export default function AdminCompanyDetailPage() {
               <CardContent className="space-y-0">
                 <InfoRow label={t("legalName")} value={company.legal_name} />
                 <InfoRow label={t("taxId")} value={company.tax_id} />
-                <InfoRow label={t("nif")} value={company.nif} />
+                {company.nif && <InfoRow label={t("nif")} value={company.nif} />}
                 <InfoRow label="Forma Jurídica" value={company.forma_juridica} />
                 <InfoRow label="Nacionalidad" value={company.nacionalidad} />
                 <InfoRow label="Capital Social" value={company.capital_social != null ? `${Number(company.capital_social).toLocaleString()} XAF` : null} />
-                <InfoRow label="N° Registro" value={company.registration_number} />
+                {company.registration_number && <InfoRow label="N° Registro" value={company.registration_number} />}
                 <InfoRow label={<span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Fecha Registro</span>} value={formatDate(company.registration_date)} />
               </CardContent>
             </Card>

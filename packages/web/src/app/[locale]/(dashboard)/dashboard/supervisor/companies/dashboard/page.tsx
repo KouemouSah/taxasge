@@ -516,7 +516,7 @@ export default function SupervisorSiteDashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">{t('companyDashboard.name')}</TableHead>
-                    <TableHead className="text-xs w-[90px]">NIF</TableHead>
+                    <TableHead className="text-xs w-[90px]">Identificador</TableHead>
                     <TableHead className="text-xs w-[80px]">Ciudad</TableHead>
                     <TableHead className="text-xs w-[90px]">{t('companyDashboard.regime')}</TableHead>
                     <TableHead className="text-xs w-[60px]">{t('companyDashboard.status')}</TableHead>
@@ -534,7 +534,7 @@ export default function SupervisorSiteDashboardPage() {
                     <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50"
                       onClick={() => router.push(`/${locale}/dashboard/admin/companies/${c.id}`)}>
                       <TableCell className="text-xs font-medium max-w-[200px] truncate">{c.legal_name}</TableCell>
-                      <TableCell className="text-xs font-mono">{c.nif || '-'}</TableCell>
+                      <TableCell className="text-xs font-mono">{c.registration_number || c.nif || '-'}</TableCell>
                       <TableCell className="text-xs">{c.city_name || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px]" style={{

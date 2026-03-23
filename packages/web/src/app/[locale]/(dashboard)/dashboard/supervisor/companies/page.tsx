@@ -166,7 +166,7 @@ export default function SupervisorCompaniesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("legalName")}</TableHead>
-                <TableHead className="w-[100px]">{t("nif")}</TableHead>
+                <TableHead className="w-[100px]">Identificador</TableHead>
                 <TableHead className="w-[100px]">{t("city")}</TableHead>
                 <TableHead className="w-[70px]">{t("zone")}</TableHead>
                 <TableHead className="w-[100px]">{t("regimen")}</TableHead>
@@ -203,7 +203,7 @@ export default function SupervisorCompaniesPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{company.nif || "-"}</TableCell>
+                  <TableCell className="font-mono text-xs">{company.registration_number || company.nif || "-"}</TableCell>
                   <TableCell className="text-xs">{company.city_name || "-"}</TableCell>
                   <TableCell className="text-xs">{company.zone_code || "-"}</TableCell>
                   <TableCell>

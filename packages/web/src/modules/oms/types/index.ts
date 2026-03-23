@@ -68,6 +68,7 @@ export interface LicenseResponse {
   // Enriched
   company_name: string | null
   company_nif: string | null
+  company_registration_number: string | null
   zone_code: string | null
   bundle_name: string | null
   obligations_count: number

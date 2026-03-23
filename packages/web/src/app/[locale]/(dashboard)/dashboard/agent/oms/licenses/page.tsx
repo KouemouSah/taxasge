@@ -256,7 +256,7 @@ export default function OMSLicensesPage() {
                     {sortCol === 'company_name' ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-30" />}
                   </button>
                 </TableHead>
-                <TableHead className="text-xs w-[80px]">{t('nif')}</TableHead>
+                <TableHead className="text-xs w-[80px]">Identificador</TableHead>
                 <TableHead className="text-xs w-[60px]">{t('zone')}</TableHead>
                 <TableHead className="text-xs w-[70px]">{t('year')}</TableHead>
                 <TableHead className="text-xs w-[90px] text-right">
@@ -298,7 +298,7 @@ export default function OMSLicensesPage() {
                         <span className="truncate max-w-[180px]">{lic.company_name || '—'}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs font-mono">{lic.company_nif || '—'}</TableCell>
+                    <TableCell className="text-xs font-mono">{lic.company_registration_number || lic.company_nif || '—'}</TableCell>
                     <TableCell className="text-xs">
                       {lic.zone_code && <Badge variant="outline" className="text-[10px]">{lic.zone_code}</Badge>}
                     </TableCell>
