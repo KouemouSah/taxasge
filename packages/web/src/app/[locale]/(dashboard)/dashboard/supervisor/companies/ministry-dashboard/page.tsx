@@ -180,7 +180,7 @@ export default function SupervisorMinistryDashboardPage() {
 
         {/* ═══ ESTRATÉGICO ═══ */}
         <TabsContent value="strategic" className="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
             <Card>
               <CardContent className="pt-3 pb-2 px-4">
                 <div className="text-xs text-muted-foreground flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" />{t('ministryDashboard.totalAmount')}</div>
@@ -197,6 +197,13 @@ export default function SupervisorMinistryDashboardPage() {
                   </div>
                   <GaugeRing value={totals.recovery_rate_pct} max={100} color={totals.recovery_rate_pct >= 60 ? '#22c55e' : '#ef4444'} />
                 </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-3 pb-2 px-4">
+                <div className="text-xs text-muted-foreground flex items-center gap-1"><DollarSign className="h-3.5 w-3.5 text-orange-600" />Restante</div>
+                <p className="text-2xl font-bold mt-1 text-orange-700">{fmtXAF(totals.total_amount - totals.paid_amount)}</p>
+                <p className="text-[10px] text-muted-foreground">{Math.round(((totals.total_amount - totals.paid_amount) / (totals.total_amount || 1)) * 100)}% pendiente</p>
               </CardContent>
             </Card>
             <Card>
@@ -225,10 +232,13 @@ export default function SupervisorMinistryDashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
             <Card className="lg:col-span-2">
-              <CardHeader className="pb-1"><CardTitle className="text-sm">{t('ministryDashboard.byFeeType')}</CardTitle></CardHeader>
+              <CardHeader className="pb-1"><CardTitle className="text-sm">Par Statut d&apos;Obligation</CardTitle></CardHeader>
               <CardContent>
                 <div className="h-[200px] flex items-center justify-center">
-                  <Doughnut data={feeDonut} options={{ cutout: '55%', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }} />
+                  <Doughnut data={{
+                    labels: ['Pagado', 'Vencido', 'Pendiente'],
+                    datasets: [{ data: [totals.paid_amount, totals.overdue_amount, Math.max(0, totals.total_amount - totals.paid_amount - totals.overdue_amount)], backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'], borderWidth: 0 }],
+                  }} options={{ cutout: '55%', responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }} />
                 </div>
               </CardContent>
             </Card>
