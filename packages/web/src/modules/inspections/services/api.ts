@@ -47,14 +47,26 @@ export const inspectionApi = {
   list: (params?: {
     inspection_date?: string
     status?: string
+    agent_id?: string
+    zone_code?: string
+    result?: string
+    date_from?: string
+    date_to?: string
+    search?: string
+    has_payment?: boolean
+    has_med?: boolean
+    has_seal?: boolean
+    sort_by?: string
+    sort_dir?: 'asc' | 'desc'
     page?: number
     page_size?: number
   }) => {
     const sp = new URLSearchParams()
-    if (params?.inspection_date) sp.set('inspection_date', params.inspection_date)
-    if (params?.status) sp.set('status', params.status)
-    if (params?.page) sp.set('page', String(params.page))
-    if (params?.page_size) sp.set('page_size', String(params.page_size))
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') sp.set(k, String(v))
+      })
+    }
     const q = sp.toString()
     return apiClient
       .get<InspectionListResponse>(`/inspections${q ? `?${q}` : ''}`)

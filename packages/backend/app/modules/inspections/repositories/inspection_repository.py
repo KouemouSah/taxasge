@@ -96,11 +96,11 @@ class InspectionRepository:
         total = count_row["count"]
 
         rows = await conn.fetch(f"""
-            SELECT fi.id, fi.inspection_date, fi.status, fi.result,
+            SELECT fi.id, fi.agent_id, fi.inspection_date, fi.status, fi.result,
                    c.legal_name AS company_name, COALESCE(c.nif, c.registration_number) AS company_nif,
                    fi.unpaid_obligations_count, fi.unpaid_obligations_amount,
                    fi.seal_applied, fi.mise_en_demeure_issued,
-                   fi.payment_collected,
+                   fi.payment_collected, fi.payment_amount,
                    u.full_name AS agent_name,
                    e.code AS entity_code,
                    fi.created_at
@@ -224,7 +224,7 @@ class InspectionRepository:
         total = count_row["count"]
 
         rows = await conn.fetch(f"""
-            SELECT fi.id, fi.inspection_date, fi.status, fi.result,
+            SELECT fi.id, fi.agent_id, fi.inspection_date, fi.status, fi.result,
                    c.legal_name AS company_name,
                    COALESCE(c.nif, c.registration_number) AS company_nif,
                    fi.unpaid_obligations_count, fi.unpaid_obligations_amount,

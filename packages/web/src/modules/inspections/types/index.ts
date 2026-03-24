@@ -74,6 +74,7 @@ export interface Inspection {
 
 export interface InspectionListItem {
   id: string
+  agent_id: string
   inspection_date: string
   status: InspectionStatus
   result?: InspectionResult
@@ -84,6 +85,7 @@ export interface InspectionListItem {
   seal_applied: boolean
   mise_en_demeure_issued: boolean
   payment_collected: boolean
+  payment_amount?: number
   agent_name?: string
   entity_code?: string
   created_at: string
@@ -181,4 +183,264 @@ export interface LicenseVerification {
   previous_inspections: InspectionListItem[]
   active_mise_en_demeure?: Record<string, unknown>
   seal_history: Record<string, unknown>[]
+}
+
+// ============================================================
+// MISSIONS
+// ============================================================
+
+export type MissionStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled'
+export type MissionAgentStatus = 'assigned' | 'active' | 'completed' | 'absent'
+
+export interface MissionAgent {
+  id: string
+  mission_id: string
+  agent_id: string
+  agent_profile_id: string
+  agent_name: string
+  assigned_zones?: string[]
+  target_inspections: number
+  actual_inspections: number
+  status: MissionAgentStatus
+  progress_pct: number
+  working_days?: number[]
+  availability_status: string
+  notes?: string
+  created_at: string
+}
+
+export interface Mission {
+  id: string
+  entity_id: string
+  entity_location_id: string
+  supervisor_id: string
+  mission_date: string
+  title?: string
+  notes?: string
+  zone_ids?: string[]
+  status: MissionStatus
+  entity_code: string
+  location_name: string
+  supervisor_name: string
+  agents: MissionAgent[]
+  agents_count: number
+  total_inspections: number
+  total_target: number
+  started_at?: string
+  completed_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface MissionListItem {
+  id: string
+  mission_date: string
+  title?: string
+  status: MissionStatus
+  agents_count: number
+  inspections_done: number
+  inspections_target: number
+  entity_code: string
+  location_name: string
+  created_at: string
+}
+
+export interface MissionListResponse {
+  items: MissionListItem[]
+  total: number
+}
+
+export interface ZoneSuggestion {
+  zone_id: string
+  zone_code: string
+  zone_name: string
+  zone_tier: string
+  days_since_last_inspection: number | null
+  pending_obligations_count: number
+  suggested_priority: 'high' | 'medium' | 'low'
+}
+
+export interface AgentAvailability {
+  agent_id: string
+  agent_profile_id: string
+  agent_name: string
+  is_available: boolean
+  current_mission?: string
+  working_days?: number[]
+  availability_status: string
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+
+export interface AgentPerformanceItem {
+  agent_id: string
+  agent_name: string
+  entity_code: string
+  inspections_total: number
+  conforme: number
+  non_conforme: number
+  conformity_rate: number
+  collections_count: number
+  collected_amount: number
+  med_count: number
+  seal_count: number
+  avg_duration_minutes?: number
+  zones_covered: number
+  days_active: number
+}
+
+export interface AgentPerformanceResponse {
+  items: AgentPerformanceItem[]
+  total: number
+  period_start: string
+  period_end: string
+}
+
+export interface AgentDetailResponse extends AgentPerformanceItem {
+  recent_inspections: Array<{
+    id: string
+    inspection_date: string
+    company_name: string
+    company_nif: string
+    result: string
+    status: string
+    payment_amount?: number
+  }>
+  zone_breakdown: Array<{
+    zone_code: string
+    zone_name: string
+    inspections: number
+    conforme: number
+    collected_amount: number
+  }>
+  weekly_trend: Array<{
+    week_start: string
+    inspections: number
+    conforme: number
+    non_conforme: number
+    collected_amount: number
+  }>
+}
+
+export interface ZoneAnalyticsItem {
+  zone_id?: string
+  zone_code: string
+  zone_name: string
+  zone_tier: string
+  inspections: number
+  conforme: number
+  non_conforme: number
+  conformity_rate: number
+  collections: number
+  collected_amount: number
+  med_count: number
+  seal_count: number
+  agents_active: number
+  avg_duration_minutes?: number
+  days_since_last_inspection?: number
+  coverage_status: 'ok' | 'warning' | 'critical'
+}
+
+export interface ZoneAnalyticsResponse {
+  items: ZoneAnalyticsItem[]
+  total_zones: number
+  covered_zones: number
+  stale_zones: number
+}
+
+export interface TrendPoint {
+  period: string
+  period_start: string
+  inspections: number
+  conforme: number
+  non_conforme: number
+  conformity_rate: number
+  collections: number
+  collected_amount: number
+  med_count: number
+  seal_count: number
+}
+
+export interface TrendResponse {
+  data: TrendPoint[]
+  granularity: string
+  date_from: string
+  date_to: string
+}
+
+export interface CompareItem {
+  label: string
+  inspections: number
+  conforme: number
+  non_conforme: number
+  conformity_rate: number
+  collections: number
+  collected_amount: number
+  med_count: number
+  seal_count: number
+}
+
+export interface CompareResponse {
+  compare_type: string
+  items: CompareItem[]
+  date_from: string
+  date_to: string
+}
+
+export interface PriorityZoneItem {
+  zone_id?: string
+  zone_code: string
+  zone_name: string
+  zone_tier: string
+  days_since_last_inspection: number
+  pending_obligations: number
+  pending_amount: number
+  priority_score: number
+  recommended_agents: number
+}
+
+export interface PriorityZonesResponse {
+  items: PriorityZoneItem[]
+  total: number
+}
+
+// ============================================================
+// FILTER PRESETS
+// ============================================================
+
+export interface FilterPreset {
+  id: string
+  user_id: string
+  preset_name: string
+  table_key: string
+  filters: Record<string, unknown>
+  column_visibility?: Record<string, boolean>
+  sort_config?: { column: string; direction: 'asc' | 'desc' }
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface FilterPresetListResponse {
+  items: FilterPreset[]
+  total: number
+}
+
+// ============================================================
+// FIELD PAYMENT (for reconciliation table)
+// ============================================================
+
+export interface FieldPayment {
+  id: string
+  payment_reference: string
+  total_amount: number
+  agent_name: string
+  company_name?: string
+  company_nif?: string
+  entity_code: string
+  fee_type?: string
+  inspection_date?: string
+  created_at: string
 }
