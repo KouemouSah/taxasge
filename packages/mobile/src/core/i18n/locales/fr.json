@@ -352,7 +352,8 @@
     "notifications": "Activité",
     "photo": "Photo",
     "entity": "Entité",
-    "priority": "Priorité"
+    "priority": "Priorité",
+    "downloadPDF": "Télécharger le résumé PDF"
   },
   "errors": {
     "network": "Erreur de connexion. Vérifiez votre internet.",

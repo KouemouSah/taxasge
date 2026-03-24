@@ -352,7 +352,8 @@
     "notifications": "Activity",
     "photo": "Photo",
     "entity": "Entity",
-    "priority": "Priority"
+    "priority": "Priority",
+    "downloadPDF": "Download PDF summary"
   },
   "errors": {
     "network": "Connection error. Check your internet.",

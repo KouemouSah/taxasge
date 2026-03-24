@@ -1,29 +1,32 @@
 /**
- * Request Detail Screen
+ * Request Detail Screen — Native Android Design
  *
- * Displays the full detail view for a single service request, including:
- * - Header with workflow name, reference, and solicitud type
- * - Horizontal workflow stepper
- * - Status card with entity code
- * - Photo (if available)
- * - Dynamic data sections
- * - Documents list
- * - Tariff breakdown card
- * - Appointment card
- * - Payment card
- * - Notifications timeline
- *
- * Data is fetched from GET /service-requests/{id}/detail-view.
+ * Compact, flat layout optimized for mobile:
+ * - Hero header: avatar photo + title + status + progress bar
+ * - Quick info row: entity + appointment
+ * - Flat data sections with dividers (no cards)
+ * - Documents as flat list
+ * - Payment summary inline
+ * - PDF download button prominent
+ * - NO activity/notifications (agent-facing, not citizen mobile)
  */
 
-import { StyleSheet, View, ScrollView, Image } from 'react-native';
+import { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Image,
+  Pressable,
+  Modal,
+} from 'react-native';
 import {
   Text,
   Button,
-  Surface,
   Divider,
-  List,
   ActivityIndicator,
+  ProgressBar,
+  IconButton,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -34,9 +37,23 @@ import { useAppTheme } from '@core/theme';
 import { formatCurrency, formatDate } from '@core/utils/format';
 import { useRequestDetailView } from '@modules/service-requests';
 import { RequestStatusBadge } from '@modules/service-requests/components/request-status-badge';
-import { WorkflowStepper } from '@modules/service-requests/components/workflow-stepper';
 import { DataSections } from '@modules/service-requests/components/data-sections';
-import { RequestNotifications } from '@modules/service-requests/components/request-notifications';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function humanizeCode(code: string): string {
+  return code.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getDocIcon(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('photo') || lower.includes('foto')) return 'camera';
+  if (lower.includes('pasaporte')) return 'passport';
+  if (lower.includes('dip') || lower.includes('dni')) return 'card-account-details';
+  return 'file-document-outline';
+}
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -49,550 +66,265 @@ export default function RequestDetailScreen() {
   const { colors, spacing, borderRadius } = useAppTheme();
 
   const { data, isLoading, isError } = useRequestDetailView(id ?? '');
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
 
-  // --- Loading state -------------------------------------------------------
+  // --- Loading ---
   if (isLoading) {
     return (
-      <SafeAreaView
-        style={[styles.container, styles.centered, { backgroundColor: colors.background }]}
-        edges={['top']}
-      >
+      <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: colors.background }]} edges={['top']}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text
-          variant="bodyMedium"
-          style={{ color: colors.onSurfaceVariant, marginTop: spacing.md }}
-        >
-          {t('common.loading')}
-        </Text>
       </SafeAreaView>
     );
   }
 
-  // --- Error state ---------------------------------------------------------
+  // --- Error ---
   if (isError || !data) {
     return (
-      <SafeAreaView
-        style={[styles.container, styles.centered, { backgroundColor: colors.background }]}
-        edges={['top']}
-      >
-        <MaterialCommunityIcons
-          name="alert-circle-outline"
-          size={48}
-          color={colors.error}
-        />
-        <Text
-          variant="bodyMedium"
-          style={{ color: colors.onSurfaceVariant, marginTop: spacing.md }}
-        >
-          {t('common.error')}
-        </Text>
-        <Button
-          mode="outlined"
-          onPress={() => router.back()}
-          style={{ marginTop: spacing.md }}
-        >
-          {t('common.back')}
-        </Button>
+      <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: colors.background }]} edges={['top']}>
+        <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.error} />
+        <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, marginTop: 12 }}>{t('common.error')}</Text>
+        <Button mode="outlined" onPress={() => router.back()} style={{ marginTop: 12 }}>{t('common.back')}</Button>
       </SafeAreaView>
     );
   }
 
   const {
-    request,
-    stepper_phases,
-    current_phase_index,
-    data_sections,
-    citizen_notifications,
-    photo_url,
-    tariff,
-    appointment,
-    documents,
-    workflow_name_es,
-    solicitud_type_display,
-    payment_status,
-    payment_reference,
-    receipt_number,
+    request, stepper_phases, current_phase_index, data_sections,
+    photo_url, tariff, appointment, documents, workflow_name_es,
+    solicitud_type_display, payment_status, payment_reference, receipt_number,
   } = data;
 
-  // --- Render --------------------------------------------------------------
+  const progress = stepper_phases.length > 0
+    ? (current_phase_index + 1) / stepper_phases.length
+    : 0;
+  const currentPhaseName = stepper_phases[current_phase_index]?.title_es ?? '';
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
-      {/* Header bar */}
-      <View
-        style={[
-          styles.headerBar,
-          {
-            padding: spacing.md,
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.outlineVariant,
-          },
-        ]}
-      >
-        <Button
-          mode="text"
-          icon="arrow-left"
-          onPress={() => router.back()}
-          compact
-        >
-          {t('common.back')}
-        </Button>
-        <Text
-          variant="titleMedium"
-          style={{ color: colors.onSurface, fontWeight: '600', flex: 1, textAlign: 'center' }}
-          numberOfLines={1}
-        >
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      {/* Top bar */}
+      <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.outlineVariant }]}>
+        <IconButton icon="arrow-left" size={24} onPress={() => router.back()} />
+        <Text variant="titleMedium" style={{ color: colors.onSurface, fontWeight: '600', flex: 1 }} numberOfLines={1}>
           {t('requests.detail')}
         </Text>
-        {/* Spacer to keep title centered */}
-        <View style={{ width: 80 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { padding: spacing.md }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Header: workflow name + reference + type ── */}
-        <Surface
-          style={[
-            styles.card,
-            {
-              padding: spacing.md,
-              borderRadius: borderRadius.md,
-              backgroundColor: colors.surface,
-              marginBottom: spacing.md,
-            },
-          ]}
-          elevation={1}
-        >
-          <Text
-            variant="titleMedium"
-            style={[styles.sectionTitle, { color: colors.onSurface }]}
-          >
-            {workflow_name_es}
-          </Text>
-          <Text
-            variant="bodySmall"
-            style={{ color: colors.outline, marginTop: 2 }}
-          >
-            {request.reference}
-            {solicitud_type_display ? ` \u00B7 ${solicitud_type_display}` : ''}
-          </Text>
-        </Surface>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
 
-        {/* ── Workflow Stepper ── */}
-        {stepper_phases.length > 0 && (
-          <Surface
-            style={[
-              styles.card,
-              {
-                borderRadius: borderRadius.md,
-                backgroundColor: colors.surface,
-                marginBottom: spacing.md,
-                paddingVertical: spacing.sm,
-              },
-            ]}
-            elevation={1}
-          >
-            <WorkflowStepper
-              phases={stepper_phases}
-              currentIndex={current_phase_index}
-            />
-          </Surface>
-        )}
+        {/* ═══ HERO: Photo avatar + Title + Status + Progress ═══ */}
+        <View style={[styles.hero, { padding: spacing.md, backgroundColor: colors.surface }]}>
+          <View style={styles.heroRow}>
+            {/* Photo avatar (tap to fullscreen) */}
+            {photo_url ? (
+              <Pressable onPress={() => setPhotoModalVisible(true)}>
+                <Image source={{ uri: photo_url }} style={styles.avatar} />
+              </Pressable>
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primaryContainer }]}>
+                <MaterialCommunityIcons name="file-document" size={28} color={colors.primary} />
+              </View>
+            )}
 
-        {/* ── Status card ── */}
-        <Surface
-          style={[
-            styles.card,
-            {
-              padding: spacing.md,
-              borderRadius: borderRadius.md,
-              backgroundColor: colors.surface,
-              marginBottom: spacing.md,
-            },
-          ]}
-          elevation={1}
-        >
-          <View style={styles.statusRow}>
-            <Text variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
-              {t('requests.statusLabel')}
-            </Text>
-            <RequestStatusBadge status={request.status} />
+            <View style={styles.heroText}>
+              <Text variant="titleMedium" style={{ color: colors.onSurface, fontWeight: '700' }} numberOfLines={2}>
+                {workflow_name_es}
+              </Text>
+              <Text variant="bodySmall" style={{ color: colors.outline }}>
+                {request.reference}
+                {solicitud_type_display ? ` · ${solicitud_type_display}` : ''}
+              </Text>
+              <View style={{ marginTop: 4 }}>
+                <RequestStatusBadge status={request.status} />
+              </View>
+            </View>
           </View>
-          {request.entity_code ? (
-            <>
-              <Divider style={{ marginVertical: spacing.sm }} />
-              <View style={styles.statusRow}>
-                <Text variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
-                  {t('requests.entity')}
+
+          {/* Progress bar */}
+          {stepper_phases.length > 0 && (
+            <View style={{ marginTop: 12 }}>
+              <View style={styles.progressHeader}>
+                <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+                  {currentPhaseName}
                 </Text>
-                <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }}>
-                  {request.entity_code}
+                <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600' }}>
+                  {current_phase_index + 1}/{stepper_phases.length}
                 </Text>
               </View>
-            </>
-          ) : null}
-        </Surface>
+              <ProgressBar progress={progress} color={colors.primary} style={styles.progressBar} />
+            </View>
+          )}
+        </View>
 
-        {/* ── Photo ── */}
-        {photo_url ? (
-          <Surface
-            style={[
-              styles.card,
-              {
-                borderRadius: borderRadius.md,
-                backgroundColor: colors.surface,
-                marginBottom: spacing.md,
-                overflow: 'hidden',
-              },
-            ]}
-            elevation={1}
-          >
-            <Image
-              source={{ uri: photo_url }}
-              style={styles.photo}
-              resizeMode="cover"
-            />
-          </Surface>
-        ) : null}
+        {/* ═══ QUICK INFO ROW ═══ */}
+        <View style={[styles.quickInfo, { paddingHorizontal: spacing.md, paddingVertical: 10, backgroundColor: colors.surfaceVariant }]}>
+          {request.entity_code && (
+            <View style={styles.quickInfoItem}>
+              <MaterialCommunityIcons name="domain" size={16} color={colors.onSurfaceVariant} />
+              <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
+                {humanizeCode(request.entity_code)}
+              </Text>
+            </View>
+          )}
+          {appointment && (
+            <View style={styles.quickInfoItem}>
+              <MaterialCommunityIcons name="calendar" size={16} color={colors.primary} />
+              <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600', marginLeft: 4 }}>
+                {formatDate(appointment.date, 'dd/MM/yyyy')} · {appointment.time}
+              </Text>
+            </View>
+          )}
+          {appointment?.location && (
+            <View style={styles.quickInfoItem}>
+              <MaterialCommunityIcons name="map-marker" size={16} color={colors.onSurfaceVariant} />
+              <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant, marginLeft: 4 }}>
+                {appointment.location}
+              </Text>
+            </View>
+          )}
+        </View>
 
-        {/* ── Data Sections ── */}
+        {/* ═══ DATA SECTIONS (flat, no cards) ═══ */}
         {data_sections.length > 0 && (
-          <View style={{ marginBottom: spacing.md }}>
+          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md }}>
             <DataSections sections={data_sections} />
           </View>
         )}
 
-        {/* ── Documents list ── */}
+        {/* ═══ DOCUMENTS ═══ */}
         {documents.length > 0 && (
-          <Surface
-            style={[
-              styles.card,
-              {
-                borderRadius: borderRadius.md,
-                backgroundColor: colors.surface,
-                marginBottom: spacing.md,
-              },
-            ]}
-            elevation={1}
-          >
-            <Text
-              variant="titleSmall"
-              style={[
-                styles.sectionTitle,
-                {
-                  color: colors.onSurface,
-                  paddingHorizontal: spacing.md,
-                  paddingTop: spacing.md,
-                  paddingBottom: spacing.xs,
-                },
-              ]}
-            >
-              {t('requests.documents')}
+          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg }}>
+            <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 8 }}>
+              {t('requests.documents')} ({documents.length})
             </Text>
-            {documents.map((doc, docIndex) => (
+            {documents.map((doc, i) => (
               <View key={doc.id}>
-                {docIndex > 0 && (
-                  <Divider style={{ marginHorizontal: spacing.md }} />
-                )}
-                <List.Item
-                  title={doc.document_name}
-                  description={doc.file_name}
-                  titleStyle={{ color: colors.onSurface, fontSize: 14 }}
-                  descriptionStyle={{ color: colors.outline, fontSize: 12 }}
-                  left={(props) => (
-                    <List.Icon
-                      {...props}
-                      icon="file-document-outline"
-                      color={colors.primary}
-                    />
-                  )}
-                  right={(props) => (
-                    <List.Icon
-                      {...props}
-                      icon="download"
-                      color={colors.outline}
-                    />
-                  )}
-                  style={{ paddingVertical: 4 }}
-                />
+                {i > 0 && <Divider />}
+                <Pressable
+                  style={styles.docRow}
+                  android_ripple={{ color: colors.primaryContainer }}
+                >
+                  <MaterialCommunityIcons
+                    name={getDocIcon(doc.document_name) as keyof typeof MaterialCommunityIcons.glyphMap}
+                    size={20}
+                    color={colors.primary}
+                  />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text variant="bodyMedium" style={{ color: colors.onSurface }} numberOfLines={1}>
+                      {humanizeCode(doc.document_name)}
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: colors.outline }} numberOfLines={1}>
+                      {doc.file_name}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="download" size={20} color={colors.outline} />
+                </Pressable>
               </View>
             ))}
-          </Surface>
+          </View>
         )}
 
-        {/* ── Tariff breakdown ── */}
-        {tariff ? (
-          <Surface
-            style={[
-              styles.card,
-              {
-                padding: spacing.md,
-                borderRadius: borderRadius.md,
-                backgroundColor: colors.surface,
-                marginBottom: spacing.md,
-              },
-            ]}
-            elevation={1}
-          >
-            <Text
-              variant="titleSmall"
-              style={[styles.sectionTitle, { color: colors.onSurface, marginBottom: spacing.sm }]}
-            >
+        {/* ═══ TARIFF ═══ */}
+        {tariff && (
+          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg }}>
+            <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 8 }}>
               {t('requests.tariff')}
             </Text>
-
-            {/* Base amount */}
             <View style={styles.tariffRow}>
-              <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
-                {t('requests.baseAmount')}
-              </Text>
-              <Text variant="bodyMedium" style={{ color: colors.onSurface }}>
-                {formatCurrency(tariff.base_amount, tariff.currency)}
-              </Text>
+              <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>{t('requests.baseAmount')}</Text>
+              <Text variant="bodyMedium" style={{ color: colors.onSurface }}>{formatCurrency(tariff.base_amount, tariff.currency)}</Text>
             </View>
-
-            {/* Supplements */}
-            {tariff.supplements.map((supplement, suppIndex) => (
-              <View key={`supp-${suppIndex}`} style={styles.tariffRow}>
-                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                  {supplement.label || t('requests.supplement')}
-                </Text>
-                <Text variant="bodySmall" style={{ color: colors.onSurface }}>
-                  {formatCurrency(supplement.amount, tariff.currency)}
-                </Text>
+            {tariff.supplements.map((s, i) => (
+              <View key={`s-${i}`} style={styles.tariffRow}>
+                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>{s.label || t('requests.supplement')}</Text>
+                <Text variant="bodySmall" style={{ color: colors.onSurface }}>{formatCurrency(s.amount, tariff.currency)}</Text>
               </View>
             ))}
-
-            {/* Penalties if any */}
-            {tariff.penalties_amount != null && tariff.penalties_amount > 0 && (
-              <View style={styles.tariffRow}>
-                <Text variant="bodySmall" style={{ color: colors.error }}>
-                  {t('requests.penalties')}
-                </Text>
-                <Text variant="bodySmall" style={{ color: colors.error }}>
-                  {formatCurrency(tariff.penalties_amount, tariff.currency)}
-                </Text>
-              </View>
-            )}
-
-            <Divider style={{ marginVertical: spacing.sm }} />
-
-            {/* Total */}
+            <Divider style={{ marginVertical: 6 }} />
             <View style={styles.tariffRow}>
-              <Text
-                variant="titleSmall"
-                style={{ color: colors.onSurface, fontWeight: '700' }}
-              >
-                {t('requests.totalAmount')}
-              </Text>
-              <Text
-                variant="titleSmall"
-                style={{ color: colors.primary, fontWeight: '700' }}
-              >
-                {formatCurrency(tariff.total_amount, tariff.currency)}
-              </Text>
+              <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '700' }}>{t('requests.totalAmount')}</Text>
+              <Text variant="titleSmall" style={{ color: colors.primary, fontWeight: '700' }}>{formatCurrency(tariff.total_amount, tariff.currency)}</Text>
             </View>
-          </Surface>
-        ) : null}
+          </View>
+        )}
 
-        {/* ── Appointment card ── */}
-        {appointment ? (
-          <Surface
-            style={[
-              styles.card,
-              {
-                padding: spacing.md,
-                borderRadius: borderRadius.md,
-                backgroundColor: colors.surface,
-                marginBottom: spacing.md,
-              },
-            ]}
-            elevation={1}
-          >
-            <View style={styles.cardTitleRow}>
-              <MaterialCommunityIcons
-                name="calendar-check"
-                size={20}
-                color={colors.primary}
-              />
-              <Text
-                variant="titleSmall"
-                style={[styles.sectionTitle, { color: colors.onSurface, marginLeft: spacing.sm }]}
-              >
-                {t('requests.appointment')}
-              </Text>
-            </View>
-            <Divider style={{ marginVertical: spacing.sm }} />
-            <View style={styles.appointmentRow}>
-              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                {t('requests.appointmentDate')}
-              </Text>
-              <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }}>
-                {formatDate(appointment.date, 'PPP')}
-              </Text>
-            </View>
-            <View style={[styles.appointmentRow, { marginTop: spacing.xs }]}>
-              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                {t('requests.appointmentTime')}
-              </Text>
-              <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }}>
-                {appointment.time}
-              </Text>
-            </View>
-            <View style={[styles.appointmentRow, { marginTop: spacing.xs }]}>
-              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                {t('requests.appointmentLocation')}
-              </Text>
-              <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }}>
-                {appointment.location}
-              </Text>
-            </View>
-          </Surface>
-        ) : null}
-
-        {/* ── Payment card ── */}
-        {payment_status ? (
-          <Surface
-            style={[
-              styles.card,
-              {
-                padding: spacing.md,
-                borderRadius: borderRadius.md,
-                backgroundColor: colors.surface,
-                marginBottom: spacing.md,
-              },
-            ]}
-            elevation={1}
-          >
-            <View style={styles.cardTitleRow}>
-              <MaterialCommunityIcons
-                name="credit-card-outline"
-                size={20}
-                color={colors.primary}
-              />
-              <Text
-                variant="titleSmall"
-                style={[styles.sectionTitle, { color: colors.onSurface, marginLeft: spacing.sm }]}
-              >
-                {t('requests.payment')}
-              </Text>
-            </View>
-            <Divider style={{ marginVertical: spacing.sm }} />
-
-            <View style={styles.paymentRow}>
-              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                {t('requests.paymentStatus')}
-              </Text>
-              <RequestStatusBadge status={payment_status} />
-            </View>
-
-            {payment_reference ? (
-              <View style={[styles.paymentRow, { marginTop: spacing.xs }]}>
-                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                  {t('requests.paymentReference')}
-                </Text>
-                <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }}>
-                  {payment_reference}
-                </Text>
+        {/* ═══ PAYMENT SUMMARY (inline, not card) ═══ */}
+        {payment_status && (
+          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg }}>
+            <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: '600', marginBottom: 8 }}>
+              {t('requests.payment')}
+            </Text>
+            <View style={styles.paymentSummary}>
+              <View style={{ flex: 1 }}>
+                <RequestStatusBadge status={payment_status} compact />
+                {payment_reference && (
+                  <Text variant="bodySmall" style={{ color: colors.outline, marginTop: 4 }} numberOfLines={1}>
+                    {payment_reference}
+                  </Text>
+                )}
               </View>
-            ) : null}
-
-            {receipt_number ? (
-              <View style={[styles.paymentRow, { marginTop: spacing.xs }]}>
-                <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                  {t('requests.receiptNumber')}
-                </Text>
-                <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: '500' }}>
-                  {receipt_number}
-                </Text>
-              </View>
-            ) : null}
-          </Surface>
-        ) : null}
-
-        {/* ── Notifications timeline ── */}
-        <Surface
-          style={[
-            styles.card,
-            {
-              padding: spacing.md,
-              borderRadius: borderRadius.md,
-              backgroundColor: colors.surface,
-              marginBottom: spacing.lg,
-            },
-          ]}
-          elevation={1}
-        >
-          <Text
-            variant="titleSmall"
-            style={[styles.sectionTitle, { color: colors.onSurface, marginBottom: spacing.sm }]}
-          >
-            {t('requests.notifications')}
-          </Text>
-          <RequestNotifications notifications={citizen_notifications} />
-        </Surface>
+              {receipt_number && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>{t('requests.receiptNumber')}</Text>
+                  <Text variant="bodySmall" style={{ color: colors.onSurface, fontWeight: '600' }}>{receipt_number}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
       </ScrollView>
+
+      {/* ═══ STICKY BOTTOM: Download PDF ═══ */}
+      <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.outlineVariant }]}>
+        <Button
+          mode="contained"
+          icon="file-pdf-box"
+          onPress={() => {
+            // TODO P3: Download citizen summary PDF via /service-requests/{id}/citizen-summary
+          }}
+          style={{ flex: 1, borderRadius: borderRadius.sm }}
+          contentStyle={{ paddingVertical: 4 }}
+        >
+          {t('detail.downloadPDF')}
+        </Button>
+      </View>
+
+      {/* ═══ PHOTO FULLSCREEN MODAL ═══ */}
+      {photo_url && (
+        <Modal visible={photoModalVisible} transparent animationType="fade" onRequestClose={() => setPhotoModalVisible(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setPhotoModalVisible(false)}>
+            <Image source={{ uri: photo_url }} style={styles.modalPhoto} resizeMode="contain" />
+            <IconButton
+              icon="close"
+              iconColor="#fff"
+              size={28}
+              style={styles.modalClose}
+              onPress={() => setPhotoModalVisible(false)}
+            />
+          </Pressable>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  card: {},
-  sectionTitle: {
-    fontWeight: '600',
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  photo: {
-    width: '100%',
-    height: 200,
-  },
-  tariffRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 2,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appointmentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  paymentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
+  centered: { justifyContent: 'center', alignItems: 'center' },
+  topBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1 },
+  hero: {},
+  heroRow: { flexDirection: 'row', alignItems: 'center' },
+  avatar: { width: 64, height: 64, borderRadius: 32, marginRight: 14 },
+  avatarPlaceholder: { width: 64, height: 64, borderRadius: 32, marginRight: 14, justifyContent: 'center', alignItems: 'center' },
+  heroText: { flex: 1 },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  progressBar: { height: 6, borderRadius: 3 },
+  quickInfo: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  quickInfoItem: { flexDirection: 'row', alignItems: 'center' },
+  docRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  tariffRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 3 },
+  paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, borderTopWidth: 1 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
+  modalPhoto: { width: '90%', height: '70%' },
+  modalClose: { position: 'absolute', top: 40, right: 16 },
 });
