@@ -1,153 +1,118 @@
 /**
- * Request Status Badge
+ * Request Status Badge — Mobile-optimized
  *
- * Colored compact chip displaying the current status of a service request.
- * Maps each status to a visual style using the app theme tokens.
+ * Custom badge (not Paper Chip) designed for mobile readability:
+ * - Larger text, proper padding
+ * - High contrast colors for each status
+ * - Rounded pill shape
+ * - Truncates gracefully with ellipsis
  */
 
-import { StyleSheet } from 'react-native';
-import { Chip } from 'react-native-paper';
+import { StyleSheet, View } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 
 import { useAppTheme, type AppTheme } from '@core/theme';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface RequestStatusBadgeProps {
-  /** Uppercase status string from the backend (e.g. "SUBMITTED", "COMPLETED"). */
   status: string;
+  /** Compact mode for tight layouts (smaller text) */
+  compact?: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Status → style mapping
-// ---------------------------------------------------------------------------
-
-type BadgeStyle = {
-  mode: 'flat' | 'outlined';
-  backgroundColor: string;
-  textColor: string;
+type BadgeColors = {
+  bg: string;
+  text: string;
 };
 
-function resolveBadgeStyle(
-  status: string,
-  colors: AppTheme['colors'],
-): BadgeStyle {
+function getStatusColors(status: string, colors: AppTheme['colors']): BadgeColors {
   switch (status.toUpperCase()) {
     case 'DRAFT':
-      return {
-        mode: 'outlined',
-        backgroundColor: 'transparent',
-        textColor: colors.outline,
-      };
-
+      return { bg: colors.surfaceVariant, text: colors.onSurfaceVariant };
     case 'SUBMITTED':
-      return {
-        mode: 'flat',
-        backgroundColor: colors.tertiaryContainer,
-        textColor: colors.onTertiaryContainer,
-      };
-
-    case 'UNDER_REVIEW':
+      return { bg: '#E8F5E9', text: '#2E7D32' }; // green light
     case 'PROCESSING':
-      return {
-        mode: 'flat',
-        backgroundColor: colors.tertiaryContainer,
-        textColor: colors.onTertiaryContainer,
-      };
-
+    case 'UNDER_REVIEW':
+      return { bg: '#FFF3E0', text: '#E65100' }; // orange
     case 'PAYMENT_PENDING':
-      return {
-        mode: 'flat',
-        backgroundColor: colors.tertiaryContainer,
-        textColor: colors.onTertiaryContainer,
-      };
-
+      return { bg: '#FFF8E1', text: '#F57F17' }; // amber
     case 'PAID':
-      return {
-        mode: 'flat',
-        backgroundColor: colors.primaryContainer,
-        textColor: colors.onPrimaryContainer,
-      };
-
+      return { bg: '#E3F2FD', text: '#1565C0' }; // blue
     case 'COMPLETED':
-      return {
-        mode: 'flat',
-        backgroundColor: colors.approved,
-        textColor: colors.onPrimary,
-      };
-
+    case 'VALIDATED':
+      return { bg: '#E8F5E9', text: '#1B5E20' }; // green dark
     case 'REJECTED':
-      return {
-        mode: 'flat',
-        backgroundColor: colors.error,
-        textColor: colors.onError,
-      };
-
+      return { bg: '#FFEBEE', text: '#C62828' }; // red
     case 'CANCELLED':
-      return {
-        mode: 'outlined',
-        backgroundColor: 'transparent',
-        textColor: colors.outline,
-      };
-
+    case 'EXPIRED':
+      return { bg: colors.surfaceVariant, text: colors.outline };
+    case 'PENDING_DOCUMENTS':
+      return { bg: '#F3E5F5', text: '#7B1FA2' }; // purple
     default:
-      return {
-        mode: 'flat',
-        backgroundColor: colors.surfaceVariant,
-        textColor: colors.onSurfaceVariant,
-      };
+      return { bg: colors.surfaceVariant, text: colors.onSurfaceVariant };
   }
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+/** Humanize unknown status codes */
+function humanizeStatus(status: string): string {
+  return status
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
-export function RequestStatusBadge({ status }: RequestStatusBadgeProps) {
-  const { colors, borderRadius } = useAppTheme();
+export function RequestStatusBadge({ status, compact }: RequestStatusBadgeProps) {
+  const { colors } = useAppTheme();
   const { t } = useTranslation();
 
-  const style = resolveBadgeStyle(status, colors);
+  const badgeColors = getStatusColors(status, colors);
+
   const i18nKey = `requests.status.${status.toLowerCase()}`;
   const translated = t(i18nKey);
-  // If i18n key not found (returns the key itself), humanize the status
-  const label = translated === i18nKey
-    ? status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-    : translated;
+  const label = translated === i18nKey ? humanizeStatus(status) : translated;
 
   return (
-    <Chip
-      mode={style.mode}
-      compact
-      textStyle={[styles.text, { color: style.textColor }]}
+    <View
       style={[
-        styles.chip,
-        {
-          backgroundColor: style.backgroundColor,
-          borderRadius: borderRadius.sm,
-          borderColor: style.mode === 'outlined' ? colors.outline : undefined,
-        },
+        styles.badge,
+        compact ? styles.badgeCompact : styles.badgeNormal,
+        { backgroundColor: badgeColors.bg },
       ]}
     >
-      {label}
-    </Chip>
+      <Text
+        style={[
+          compact ? styles.textCompact : styles.textNormal,
+          { color: badgeColors.text },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
-  chip: {
+  badge: {
     alignSelf: 'flex-start',
-    height: 26,
-    maxWidth: 140,
+    borderRadius: 20,
   },
-  text: {
-    fontSize: 11,
+  badgeNormal: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  badgeCompact: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  textNormal: {
+    fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
+  },
+  textCompact: {
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 14,
   },
 });
