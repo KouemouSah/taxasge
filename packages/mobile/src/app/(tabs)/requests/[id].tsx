@@ -242,37 +242,24 @@ export default function RequestDetailScreen() {
           </>
         )}
 
-        {/* ═══ RENDEZ-VOUS (distinct color block) ═══ */}
+        {/* ═══ RENDEZ-VOUS (compact, 1 row with wrap) ═══ */}
         {appointment && (
           <>
             <Divider />
-            <View style={[styles.appointmentBlock, { paddingHorizontal: spacing.md, paddingVertical: 12 }]}>
-              <View style={styles.appointmentHeader}>
-                <MaterialCommunityIcons name="calendar-clock" size={20} color="#1565C0" />
-                <Text variant="titleSmall" style={{ color: '#1565C0', fontWeight: '700', marginLeft: 8 }}>
-                  {t('requests.appointment')}
+            <View style={[styles.appointmentBlock, { paddingHorizontal: spacing.md, paddingVertical: 10 }]}>
+              <View style={styles.appointmentRow}>
+                <MaterialCommunityIcons name="calendar-clock" size={18} color="#1565C0" />
+                <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '700', marginLeft: 6 }}>
+                  {formatDate(appointment.date, 'dd/MM/yyyy')} · {appointment.time}
                 </Text>
-              </View>
-              <View style={styles.appointmentDetails}>
-                <View style={styles.appointmentItem}>
-                  <MaterialCommunityIcons name="calendar" size={16} color="#1565C0" />
-                  <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 6 }}>
-                    {formatDate(appointment.date, 'EEEE dd MMMM yyyy')}
-                  </Text>
-                </View>
-                <View style={styles.appointmentItem}>
-                  <MaterialCommunityIcons name="clock-outline" size={16} color="#1565C0" />
-                  <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 6 }}>
-                    {appointment.time}
-                  </Text>
-                </View>
                 {appointment.location && (
-                  <View style={styles.appointmentItem}>
-                    <MaterialCommunityIcons name="map-marker" size={16} color="#1565C0" />
-                    <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 6 }}>
+                  <>
+                    <Text style={{ color: '#90CAF9', marginHorizontal: 6 }}>|</Text>
+                    <MaterialCommunityIcons name="map-marker" size={14} color="#1565C0" />
+                    <Text variant="bodyMedium" style={{ color: '#0D47A1', fontWeight: '600', marginLeft: 2 }}>
                       {appointment.location}
                     </Text>
-                  </View>
+                  </>
                 )}
               </View>
             </View>
@@ -387,9 +374,7 @@ const styles = StyleSheet.create({
   refRow: { flexDirection: 'row', alignItems: 'center' },
   refLabel: { color: '#757575', minWidth: 120 },
   appointmentBlock: { backgroundColor: '#E3F2FD' },
-  appointmentHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  appointmentDetails: { gap: 6 },
-  appointmentItem: { flexDirection: 'row', alignItems: 'center' },
+  appointmentRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   entityRow: { flexDirection: 'row', alignItems: 'center' },
   fieldRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
   docRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
