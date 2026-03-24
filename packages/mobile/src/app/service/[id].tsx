@@ -107,11 +107,11 @@ export default function ServiceDetailScreen() {
           </View>
         </View>
 
-        {/* ═══ PRICE ═══ */}
-        <View style={{ paddingHorizontal: spacing.md, paddingVertical: 12 }}>
+        {/* ═══ PRICE CARD (green accent) ═══ */}
+        <View style={[styles.priceCard, { marginHorizontal: spacing.md, marginTop: 12 }]}>
           {isFree ? (
             <View style={styles.priceRow}>
-              <MaterialCommunityIcons name="gift-outline" size={20} color={colors.primary} />
+              <MaterialCommunityIcons name="gift-outline" size={22} color={colors.primary} />
               <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18, marginLeft: 8 }}>
                 {t('services.freeService')}
               </Text>
@@ -119,35 +119,29 @@ export default function ServiceDetailScreen() {
           ) : (
             <>
               <View style={styles.priceRow}>
-                <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>{t('services.expedition')}</Text>
-                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 20 }}>
+                <Text variant="bodyMedium" style={{ color: '#2E7D32' }}>{t('services.expedition')}</Text>
+                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 22 }}>
                   {formatCurrency(service.pricing.expedition_price)}
                 </Text>
               </View>
               {hasRenewal && (
                 <View style={styles.priceRow}>
-                  <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>{t('services.renewal')}</Text>
-                  <Text style={{ color: colors.onSurface, fontWeight: '600', fontSize: 16 }}>
+                  <Text variant="bodyMedium" style={{ color: '#2E7D32' }}>{t('services.renewal')}</Text>
+                  <Text style={{ color: '#2E7D32', fontWeight: '600', fontSize: 16 }}>
                     {formatCurrency(service.pricing.renewal_price)}
                   </Text>
                 </View>
               )}
             </>
           )}
-          {/* Meta: method + time */}
-          <View style={[styles.metaRow, { marginTop: 6 }]}>
-            <MaterialCommunityIcons name="calculator-variant" size={14} color={colors.outline} />
-            <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 4 }}>
-              {service.pricing.calculation_method.replace(/_/g, ' ')}
-            </Text>
+          <View style={[styles.metaRow, { marginTop: 8 }]}>
             {service.processing_time_days != null && service.processing_time_days > 0 && (
-              <>
-                <Text variant="labelSmall" style={{ color: colors.outline, marginHorizontal: 6 }}>|</Text>
-                <MaterialCommunityIcons name="clock-outline" size={14} color={colors.outline} />
-                <Text variant="labelSmall" style={{ color: colors.outline, marginLeft: 4 }}>
+              <View style={styles.metaChip}>
+                <MaterialCommunityIcons name="clock-outline" size={14} color={colors.primary} />
+                <Text variant="labelSmall" style={{ color: colors.primary, fontWeight: '600', marginLeft: 4 }}>
                   {t('services.processingDays', { count: service.processing_time_days })}
                 </Text>
-              </>
+              </View>
             )}
           </View>
         </View>
@@ -208,7 +202,7 @@ export default function ServiceDetailScreen() {
                         <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '700' }}>{step.step_number}</Text>
                       </View>
                       <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, flex: 1 }} numberOfLines={2}>
-                        {step.title}
+                        {step.title || step.description || `Paso ${step.step_number}`}
                       </Text>
                     </View>
                   ))}
@@ -287,7 +281,9 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1 },
   infoStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   infoItem: { flexDirection: 'row', alignItems: 'center' },
+  priceCard: { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: '#0D6E3F' },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 2 },
+  metaChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#C8E6C9', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   docRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
   stepRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8, paddingLeft: 4 },
