@@ -60,8 +60,8 @@ const VALID_TRANSITIONS: Record<MissionStatus, MissionStatus[]> = {
 // ---------------------------------------------------------------------------
 
 export default function MissionDetailPage() {
-  const params = useParams()
-  const missionId = params.id as string
+  const params = useParams<{ id: string }>()
+  const missionId = params.id
   const locale = useLocale()
   const router = useRouter()
   const { toast } = useToast()

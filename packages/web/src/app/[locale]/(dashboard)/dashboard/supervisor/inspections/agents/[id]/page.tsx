@@ -145,7 +145,8 @@ export default function AgentDetailPage() {
   // Chart data
   // -----------------------------------------------------------------------
 
-  const chartData = useMemo((): ChartData<'bar'> | null => {
+  // Mixed bar+line chart requires generic ChartData type
+  const chartData = useMemo((): ChartData | null => {
     if (!data?.weekly_trend?.length) return null
     const labels = data.weekly_trend.map(w => fmtWeek(w.week_start, locale))
     return {
@@ -185,7 +186,7 @@ export default function AgentDetailPage() {
     }
   }, [data, t])
 
-  const chartOptions = useMemo((): ChartOptions<'bar'> => ({
+  const chartOptions = useMemo((): ChartOptions => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: 'index' as const, intersect: false },
@@ -193,7 +194,7 @@ export default function AgentDetailPage() {
       legend: { position: 'bottom' as const, labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
       tooltip: {
         callbacks: {
-          label: (ctx: { dataset: { label?: string }; parsed: { y: number } }) => {
+          label: (ctx) => {
             const label = ctx.dataset.label || ''
             if (label === t('perf.amount')) return `${label}: ${fmtXAF(ctx.parsed.y, locale)}`
             return `${label}: ${ctx.parsed.y}`
