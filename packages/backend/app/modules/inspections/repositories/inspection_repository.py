@@ -115,18 +115,43 @@ class InspectionRepository:
 
         return [dict(r) for r in rows], total
 
+    # Allowed sort columns (whitelist to prevent SQL injection)
+    SORT_COLUMNS = frozenset({
+        "inspection_date", "created_at", "payment_amount",
+        "company_name", "status", "result",
+    })
+    SORT_COLUMN_MAP = {
+        "inspection_date": "fi.inspection_date",
+        "created_at": "fi.created_at",
+        "payment_amount": "fi.payment_amount",
+        "company_name": "c.legal_name",
+        "status": "fi.status",
+        "result": "fi.result",
+    }
+
     @staticmethod
     async def list_by_entity(
         conn, entity_id: UUID,
         inspection_date: Optional[date] = None,
         status: Optional[str] = None,
         agent_id: Optional[UUID] = None,
+        zone_code: Optional[str] = None,
+        result: Optional[str] = None,
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
+        search: Optional[str] = None,
+        has_payment: Optional[bool] = None,
+        has_med: Optional[bool] = None,
+        has_seal: Optional[bool] = None,
+        sort_by: Optional[str] = None,
+        sort_dir: Optional[str] = "desc",
         page: int = 1, page_size: int = 20,
     ) -> Tuple[List[Dict], int]:
-        """List inspections for an entity (supervisor view)."""
+        """List inspections for an entity with advanced filters (supervisor view)."""
         conditions = ["fi.entity_id = $1"]
-        params = [entity_id]
+        params: list = [entity_id]
         idx = 2
+        needs_zone_join = False
 
         if inspection_date:
             conditions.append(f"fi.inspection_date = ${idx}")
@@ -143,19 +168,69 @@ class InspectionRepository:
             params.append(agent_id)
             idx += 1
 
+        if zone_code:
+            conditions.append(f"cz.zone_code = ${idx}")
+            params.append(zone_code)
+            idx += 1
+            needs_zone_join = True
+
+        if result:
+            conditions.append(f"fi.result = ${idx}")
+            params.append(result)
+            idx += 1
+
+        if date_from:
+            conditions.append(f"fi.inspection_date >= ${idx}")
+            params.append(date_from)
+            idx += 1
+
+        if date_to:
+            conditions.append(f"fi.inspection_date <= ${idx}")
+            params.append(date_to)
+            idx += 1
+
+        if search:
+            conditions.append(f"(c.legal_name ILIKE ${idx} OR COALESCE(c.nif, c.registration_number) ILIKE ${idx})")
+            params.append(f"%{search}%")
+            idx += 1
+
+        if has_payment is not None:
+            conditions.append(f"fi.payment_collected = ${idx}")
+            params.append(has_payment)
+            idx += 1
+
+        if has_med is not None:
+            conditions.append(f"fi.mise_en_demeure_issued = ${idx}")
+            params.append(has_med)
+            idx += 1
+
+        if has_seal is not None:
+            conditions.append(f"fi.seal_applied = ${idx}")
+            params.append(has_seal)
+            idx += 1
+
         where = " AND ".join(conditions)
+        zone_join = "LEFT JOIN commerce_zones cz ON cz.id = fi.zone_id" if needs_zone_join else ""
+
+        # Sort with whitelist
+        order_col = InspectionRepository.SORT_COLUMN_MAP.get(sort_by, "fi.created_at")
+        order_dir = "ASC" if sort_dir == "asc" else "DESC"
+        order_clause = f"{order_col} {order_dir}"
 
         count_row = await conn.fetchrow(
-            f"SELECT COUNT(*) FROM field_inspections fi WHERE {where}", *params
+            f"SELECT COUNT(*) FROM field_inspections fi JOIN companies c ON c.id = fi.company_id {zone_join} WHERE {where}",
+            *params
         )
         total = count_row["count"]
 
         rows = await conn.fetch(f"""
             SELECT fi.id, fi.inspection_date, fi.status, fi.result,
-                   c.legal_name AS company_name, COALESCE(c.nif, c.registration_number) AS company_nif,
+                   c.legal_name AS company_name,
+                   COALESCE(c.nif, c.registration_number) AS company_nif,
                    fi.unpaid_obligations_count, fi.unpaid_obligations_amount,
                    fi.seal_applied, fi.mise_en_demeure_issued,
-                   fi.payment_collected,
+                   fi.payment_collected, fi.payment_amount,
+                   fi.duration_minutes, fi.zone_id,
                    u.full_name AS agent_name,
                    e.code AS entity_code,
                    fi.created_at
@@ -163,8 +238,9 @@ class InspectionRepository:
             JOIN companies c ON c.id = fi.company_id
             JOIN users u ON u.id = fi.agent_id
             JOIN entities e ON e.id = fi.entity_id
+            {zone_join}
             WHERE {where}
-            ORDER BY fi.created_at DESC
+            ORDER BY {order_clause}
             LIMIT ${idx} OFFSET ${idx + 1}
         """, *params, page_size, (page - 1) * page_size)
 

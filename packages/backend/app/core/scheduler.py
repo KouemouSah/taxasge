@@ -95,6 +95,11 @@ class InternalScheduler:
                 settings.SCHEDULER_DAILY_INTERVAL,
             ),
             (
+                "refresh-inspection-zone-analytics",
+                self._refresh_inspection_zone_analytics,
+                settings.SCHEDULER_DAILY_INTERVAL,
+            ),
+            (
                 "supervisor-weekly-report",
                 self._supervisor_weekly_report,
                 settings.SCHEDULER_WEEKLY_INTERVAL,
@@ -441,6 +446,30 @@ class InternalScheduler:
             if refreshed:
                 logger.info(f"Treasury views refreshed: {', '.join(refreshed)}")
                 return {"refreshed": refreshed}
+        return None
+
+    async def _refresh_inspection_zone_analytics(self):
+        """Refresh materialized view for inspection zone analytics (daily)."""
+        from app.database.connection import db_manager
+
+        view = "mv_inspection_zone_analytics"
+        async with db_manager.get_connection() as db:
+            await db.execute("SET LOCAL statement_timeout = '300000'")
+            try:
+                await db.execute(
+                    f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}"
+                )
+                logger.info(f"Inspection zone analytics view refreshed (CONCURRENTLY)")
+                return {"refreshed": view}
+            except Exception:
+                try:
+                    await db.execute(f"REFRESH MATERIALIZED VIEW {view}")
+                    logger.info(f"Inspection zone analytics view refreshed (blocking)")
+                    return {"refreshed": view}
+                except Exception as e2:
+                    if "does not exist" in str(e2):
+                        return None  # Migration not yet applied
+                    logger.error(f"Failed to refresh {view}: {e2}")
         return None
 
     async def _anomaly_detection(self):

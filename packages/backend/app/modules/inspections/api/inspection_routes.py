@@ -80,13 +80,24 @@ async def create_inspection(
 async def list_inspections(
     inspection_date: Optional[date] = Query(None),
     status: Optional[str] = Query(None),
+    agent_id: Optional[UUID] = Query(None),
+    zone_code: Optional[str] = Query(None),
+    result: Optional[str] = Query(None),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    search: Optional[str] = Query(None, max_length=100),
+    has_payment: Optional[bool] = Query(None),
+    has_med: Optional[bool] = Query(None),
+    has_seal: Optional[bool] = Query(None),
+    sort_by: Optional[str] = Query(None, pattern="^(inspection_date|created_at|payment_amount|company_name|status|result)$"),
+    sort_dir: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db=Depends(get_database),
     current_user: UserResponse = Depends(get_current_user),
     _: None = Depends(permission_required("inspection.view_own")),
 ):
-    """List agent's own inspections. Supervisors see entity-wide."""
+    """List inspections with advanced filters. Supervisors see entity-wide."""
     try:
         ctx = await InspectionService.resolve_inspector_context(
             db, UUID(current_user.id)
@@ -94,12 +105,19 @@ async def list_inspections(
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
+    filters = {
+        "inspection_date": inspection_date, "status": status,
+        "agent_id": agent_id, "zone_code": zone_code, "result": result,
+        "date_from": date_from, "date_to": date_to, "search": search,
+        "has_payment": has_payment, "has_med": has_med, "has_seal": has_seal,
+        "sort_by": sort_by, "sort_dir": sort_dir or "desc",
+    }
+
     if ctx["is_supervisor"]:
         items, total = await InspectionRepository.list_by_entity(
             db, ctx["entity_id"],
-            inspection_date=inspection_date,
-            status=status,
             page=page, page_size=page_size,
+            **{k: v for k, v in filters.items() if v is not None},
         )
     else:
         items, total = await InspectionRepository.list_by_agent(

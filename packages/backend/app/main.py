@@ -1465,10 +1465,18 @@ except Exception as e:
 
 # Try to load field inspections router (Module - Field Inspections)
 try:
-    from app.modules.inspections.api import router as inspections_router
+    from app.modules.inspections.api import (
+        router as inspections_router,
+        mission_router as inspection_mission_router,
+        analytics_router as inspection_analytics_router,
+        filter_export_router as inspection_filter_export_router,
+    )
     app.include_router(inspections_router, prefix="/api/v1", tags=["field-inspections"])
+    app.include_router(inspection_mission_router, prefix="/api/v1", tags=["inspection-missions"])
+    app.include_router(inspection_analytics_router, prefix="/api/v1", tags=["inspection-analytics"])
+    app.include_router(inspection_filter_export_router, prefix="/api/v1", tags=["inspection-filters-export"])
     routers_loaded.append("field_inspections")
-    logger.info("✅ Field inspections router loaded (11 endpoints)")
+    logger.info("✅ Field inspections router loaded (22 + 9 + 6 + 7 = 44 endpoints)")
 except Exception as e:
     logger.error(f"❌ Field inspections router failed: {e}")
     logger.error(traceback.format_exc())

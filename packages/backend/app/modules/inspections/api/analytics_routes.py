@@ -1,0 +1,175 @@
+"""Inspection Analytics Routes — API endpoints for analytics dashboards.
+
+Prefix: /api/v1/inspections/analytics
+
+6 endpoints for supervisor analytics (agent performance, zones, trends, compare, priority).
+"""
+
+import logging
+from typing import Optional
+from uuid import UUID
+from datetime import date
+
+from fastapi import APIRouter, HTTPException, Depends, Query
+
+from app.database.connection import get_database
+from app.modules.auth.middleware.auth_middleware import get_current_user
+from app.modules.users.models.user import UserResponse
+from app.modules.permissions.middleware.permission_middleware import (
+    permission_required,
+)
+from app.modules.inspections.models.analytics import (
+    AgentPerformanceResponse,
+    AgentDetailResponse,
+    ZoneAnalyticsResponse,
+    TrendResponse,
+    CompareResponse,
+    PriorityZonesResponse,
+)
+from app.modules.inspections.services.analytics_service import (
+    AnalyticsService,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/inspections/analytics", tags=["Inspection Analytics"])
+
+
+# ============================================================
+# Agent Performance
+# ============================================================
+
+
+@router.get("/agents")
+async def get_agent_performance(
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_analytics")),
+):
+    """Get agent performance list with metrics (supervisor-only)."""
+    try:
+        result = await AnalyticsService.get_agent_performance(
+            db, UUID(current_user.id), date_from, date_to, page, page_size,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return AgentPerformanceResponse(**result)
+
+
+@router.get("/agents/{agent_id}")
+async def get_agent_detail(
+    agent_id: UUID,
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_analytics")),
+):
+    """Get detailed performance breakdown for a single agent."""
+    try:
+        result = await AnalyticsService.get_agent_detail(
+            db, UUID(current_user.id), agent_id, date_from, date_to,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return AgentDetailResponse(**result)
+
+
+# ============================================================
+# Zone Analytics
+# ============================================================
+
+
+@router.get("/zones")
+async def get_zone_analytics(
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_analytics")),
+):
+    """Get zone-level analytics with conformity rates and coverage status."""
+    try:
+        result = await AnalyticsService.get_zone_analytics(
+            db, UUID(current_user.id), date_from, date_to,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return ZoneAnalyticsResponse(**result)
+
+
+# ============================================================
+# Trends
+# ============================================================
+
+
+@router.get("/trends")
+async def get_trends(
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    granularity: str = Query("weekly", pattern="^(daily|weekly|monthly)$"),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_analytics")),
+):
+    """Get time series trend data (daily/weekly/monthly)."""
+    try:
+        result = await AnalyticsService.get_trends(
+            db, UUID(current_user.id), date_from, date_to, granularity,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return TrendResponse(**result)
+
+
+# ============================================================
+# Comparison
+# ============================================================
+
+
+@router.get("/compare")
+async def get_comparison(
+    compare_type: str = Query(..., pattern="^(agents|zones|periods)$"),
+    id1: str = Query(...),
+    id2: str = Query(...),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_analytics")),
+):
+    """Compare two agents, zones, or time periods side by side."""
+    try:
+        result = await AnalyticsService.get_comparison(
+            db, UUID(current_user.id), compare_type, [id1, id2],
+            date_from, date_to,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return CompareResponse(**result)
+
+
+# ============================================================
+# Priority Zones
+# ============================================================
+
+
+@router.get("/priority-zones")
+async def get_priority_zones(
+    limit: int = Query(20, ge=1, le=100),
+    db=Depends(get_database),
+    current_user: UserResponse = Depends(get_current_user),
+    _: None = Depends(permission_required("inspection.view_analytics")),
+):
+    """Get priority zones ranked by inspection urgency."""
+    try:
+        result = await AnalyticsService.get_priority_zones(
+            db, UUID(current_user.id), limit,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return PriorityZonesResponse(**result)

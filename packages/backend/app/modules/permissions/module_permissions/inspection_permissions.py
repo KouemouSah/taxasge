@@ -83,6 +83,23 @@ PERMISSIONS = [
         True
     ),
     # =========================================================================
+    # REPORTS & EXPORT
+    # =========================================================================
+    (
+        "inspection.view_reports",
+        "inspection",
+        "view_reports",
+        "Ver reportes de inspecciones",
+        False
+    ),
+    (
+        "inspection.export",
+        "inspection",
+        "export",
+        "Exportar datos de inspecciones (CSV/PDF)",
+        False
+    ),
+    # =========================================================================
     # PERFORMANCE (view agent stats)
     # =========================================================================
     (
@@ -92,6 +109,36 @@ PERMISSIONS = [
         "Ver rendimiento de agentes de inspección",
         False
     ),
+    # =========================================================================
+    # FIELD MISSIONS (supervisor planning)
+    # =========================================================================
+    (
+        "inspection.manage_missions",
+        "inspection",
+        "manage_missions",
+        "Crear y gestionar misiones de campo (supervisor)",
+        True
+    ),
+    # =========================================================================
+    # ANALYTICS (zone/agent/trend analytics)
+    # =========================================================================
+    (
+        "inspection.view_analytics",
+        "inspection",
+        "view_analytics",
+        "Ver analytics e indicadores de inspecciones",
+        False
+    ),
+    # =========================================================================
+    # FILTER PRESETS (save/load filter configurations)
+    # =========================================================================
+    (
+        "inspection.manage_filter_presets",
+        "inspection",
+        "manage_filter_presets",
+        "Guardar y gestionar presets de filtros",
+        False
+    ),
 ]
 
 
@@ -99,21 +146,27 @@ PERMISSIONS = [
 ROLE_PERMISSIONS = {
     "admin": ["*"],  # All permissions
 
-    # Supervisors see entity dashboard, approve seals, validate reconciliation
+    # Supervisors: full oversight, mission planning, analytics, approvals
     "supervisor": [
         "inspection.view_entity",
         "inspection.view_own",
         "inspection.reconcile_validate",
         "inspection.seal_approve",
         "inspection.view_performance",
+        "inspection.view_reports",
+        "inspection.export",
+        "inspection.manage_missions",
+        "inspection.view_analytics",
+        "inspection.manage_filter_presets",
     ],
 
-    # Field agents create inspections, collect payments, propose seals
+    # Field agents: create inspections, collect payments, propose seals
     "agent": [
         "inspection.create",
         "inspection.view_own",
         "inspection.collect_payment",
         "inspection.seal_propose",
         "inspection.mise_en_demeure",
+        "inspection.manage_filter_presets",
     ],
 }
