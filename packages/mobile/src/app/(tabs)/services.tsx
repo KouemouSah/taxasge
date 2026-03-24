@@ -16,7 +16,7 @@ import {
   ScrollView,
   type ListRenderItemInfo,
 } from 'react-native';
-import { Text, Searchbar, ActivityIndicator, Divider } from 'react-native-paper';
+import { Text, Searchbar, ActivityIndicator, Divider, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -277,12 +277,16 @@ export default function ServicesScreen() {
               {isMinistryFilter && (
                 <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
                   <View style={styles.innerControls}>
-                    <Searchbar
+                    <TextInput
                       placeholder={t('services.searchWithin')}
                       value={innerSearch}
                       onChangeText={handleInnerSearch}
-                      style={styles.innerSearchBar}
-                      inputStyle={{ fontSize: 13 }}
+                      mode="outlined"
+                      dense
+                      style={styles.innerSearchInput}
+                      outlineStyle={{ borderRadius: 8 }}
+                      left={<TextInput.Icon icon="magnify" size={18} />}
+                      right={innerSearch ? <TextInput.Icon icon="close" size={16} onPress={() => handleInnerSearch('')} /> : undefined}
                     />
                     <View style={styles.sortBtns}>
                       <Pressable
@@ -484,7 +488,7 @@ const styles = StyleSheet.create({
   searchResultsHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   backBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   innerControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  innerSearchBar: { flex: 1, elevation: 0, borderRadius: 8, height: 36 },
+  innerSearchInput: { flex: 1, backgroundColor: '#F5F5F5', fontSize: 13, height: 36 },
   sortBtns: { flexDirection: 'row', gap: 4 },
   sortBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
