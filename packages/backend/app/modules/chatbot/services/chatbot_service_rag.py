@@ -315,8 +315,61 @@ class ChatbotServiceRAG:
             # Override ai_response sources with our consolidated ones
             ai_response["sources"] = context_sources
 
-            # Step 5: Self-evaluation + retry if quality too low (ReAct pattern)
+            # Step 5: Self-evaluation + retry if empty or low quality
             response_message = ai_response.get("message", "")
+
+            # CRITICAL: if response is empty, retry with force_tools immediately
+            if not response_message.strip() and func_decls:
+                logger.warning("Empty response from Gemini, retrying with force_tools=True")
+                retry_response = await gemini_service.chat(
+                    user_message=message,
+                    context_content=consolidated_context,
+                    context_services=relevant_services,
+                    language=language,
+                    conversation_history=conversation_history,
+                    function_declarations=func_decls,
+                    force_tools=True,
+                )
+                # Execute tools if requested
+                if retry_response.get("function_calls"):
+                    retry_results = []
+                    for fc in retry_response["function_calls"]:
+                        fn_impl = CHATBOT_FUNCTION_MAP.get(fc["name"])
+                        if fn_impl:
+                            try:
+                                result = await fn_impl(db, **fc.get("args", {}))
+                                tools_used.append(fc["name"])
+                                retry_results.append({"name": fc["name"], "args": fc.get("args", {}), "result": result})
+                            except Exception as e:
+                                retry_results.append({"name": fc["name"], "args": fc.get("args", {}), "result": {"error": str(e)}})
+                    if retry_results:
+                        ai_response = await gemini_service.chat_round2(
+                            round1_response=retry_response["round1_response"],
+                            chat_history=retry_response["chat_history"],
+                            function_results_data=retry_results,
+                            context_services=relevant_services,
+                            function_declarations=func_decls,
+                        )
+                        response_message = ai_response.get("message", "")
+                elif retry_response.get("message"):
+                    response_message = retry_response["message"]
+
+            # If STILL empty after retry, provide a helpful fallback
+            if not response_message.strip():
+                fallback_messages = {
+                    "es": f"No pude generar una respuesta para tu consulta sobre \"{message[:50]}\". "
+                          f"Te sugiero intentar con una pregunta más específica, por ejemplo:\n"
+                          f"- ▸ ¿Cuánto cuesta un pasaporte?\n"
+                          f"- ▸ ¿Qué documentos necesito para la residencia?\n"
+                          f"- ▸ ¿Cuáles son los ministerios?",
+                    "fr": f"Je n'ai pas pu générer de réponse pour votre question. "
+                          f"Essayez une question plus spécifique.",
+                    "en": f"I couldn't generate a response for your query. "
+                          f"Try a more specific question.",
+                }
+                response_message = fallback_messages.get(language, fallback_messages["es"])
+                logger.error(f"Empty response even after retry for: '{message[:50]}'")
+
             quality_score = await self._evaluate_response(
                 message, response_message, consolidated_context
             )
@@ -389,7 +442,7 @@ class ChatbotServiceRAG:
             final_response = {
                 "message": response_message,
                 "conversation_id": conversation_id,
-                "suggestions": self._generate_suggestions(relevant_docs, relevant_services, language),
+                "suggestions": self._generate_suggestions(relevant_docs, relevant_services, language, user_query=message),
                 "related_services": self._format_related_services(relevant_services),
                 "related_documents": self._format_related_documents(relevant_docs),
                 "follow_up_actions": self._generate_follow_up_actions(relevant_services, language),
@@ -829,42 +882,102 @@ class ChatbotServiceRAG:
 
     def _generate_suggestions(
         self,
-        relevant_docs: List[Dict], # New parameter
+        relevant_docs: List[Dict],
         services: List[Dict],
-        language: str
+        language: str,
+        user_query: str = "",
     ) -> List[str]:
+        """Generate contextual follow-up suggestions based on the user's question.
+
+        Suggestions should be relevant to what the user ASKED, not just
+        what the RAG found. If user asked about "pasaporte", suggestions
+        should be about passports — not random Ley_de_Tasas pages.
+        """
         suggestions = []
 
-        if relevant_docs:
-            top_doc = relevant_docs[0]
-            suggestions.append({
-                "es": f"¿Qué dice el Documento {top_doc.get('document_name', '')} en la página {top_doc.get('page_number', '')} sobre este tema?",
-                "fr": f"Que dit le Document {top_doc.get('document_name', '')} à la page {top_doc.get('page_number', '')} à propos de ce sujet ?",
-                "en": f"What does Document {top_doc.get('document_name', '')} on page {top_doc.get('page_number', '')} say about this topic?"
-            }.get(language, f"What does Document {top_doc.get('document_name', '')} on page {top_doc.get('page_number', '')} say about this topic?"))
-            
-            suggestions.append({
-                "es": f"Explorar otras secciones del Documento {top_doc.get('document_name', '')}",
-                "fr": f"Explorer d'autres sections du Document {top_doc.get('document_name', '')}",
-                "en": f"Explore other sections of Document {top_doc.get('document_name', '')}"
-            }.get(language, f"Explore other sections of Document {top_doc.get('document_name', '')}"))
+        # Extract topic from user query for contextual suggestions
+        query_lower = (user_query or "").lower()
 
+        # Service-based suggestions (most relevant)
         if services:
-            top_service = services[0]
+            top = services[0]
+            name = top.get("name_es", "este servicio")
             suggestions.append({
-                "es": f"Pregunta sobre los documentos requeridos para {top_service.get('name_es', '')}",
-                "fr": f"Demandez les documents requis pour {top_service.get('name_es', '')}",
-                "en": f"Ask about required documents for {top_service.get('name_es', '')}"
-            }.get(language, f"Ask about required documents for {top_service.get('name_es', '')}"))
-            
-            suggestions.append({
-                "es": f"¿Cuánto tiempo tarda el proceso de {top_service.get('service_code', '')}?",
-                "fr": f"Combien de temps prend le processus {top_service.get('service_code', '')}?",
-                "en": f"How long does the {top_service.get('service_code', '')} process take?"
-            }.get(language, f"How long does the {top_service.get('service_code', '')} process take?"))
+                "es": f"¿Qué documentos necesito para {name}?",
+                "fr": f"Quels documents faut-il pour {name} ?",
+                "en": f"What documents do I need for {name}?",
+            }.get(language, f"What documents do I need for {name}?"))
 
-        # Return a maximum of 3 unique suggestions, prioritizing docs then services
-        return list(dict.fromkeys(suggestions))[:3] # Using dict.fromkeys to preserve order and deduplicate
+            suggestions.append({
+                "es": f"¿Cuánto cuesta y cuánto tarda {name}?",
+                "fr": f"Combien coûte et combien de temps prend {name} ?",
+                "en": f"How much does {name} cost and how long does it take?",
+            }.get(language, f"How much does {name} cost?"))
+
+            if len(services) > 1:
+                other = services[1].get("name_es", "")
+                if other:
+                    suggestions.append({
+                        "es": f"Información sobre {other}",
+                        "fr": f"Informations sur {other}",
+                        "en": f"Information about {other}",
+                    }.get(language, f"Information about {other}"))
+
+        # Topic-based suggestions when no services found
+        if not suggestions:
+            topic_suggestions = {
+                "pasaporte": [
+                    "¿Cuánto cuesta un pasaporte?",
+                    "¿Qué documentos necesito para el pasaporte?",
+                    "¿Dónde se tramita el pasaporte?",
+                ],
+                "empresa": [
+                    "¿Cuántas empresas hay registradas?",
+                    "Empresas en Malabo",
+                    "Empresas del sector comercio",
+                ],
+                "ministerio": [
+                    "¿Cuáles son los ministerios?",
+                    "¿Qué servicios ofrece cada ministerio?",
+                    "Contacto de los ministerios",
+                ],
+                "residencia": [
+                    "¿Cuánto cuesta el permiso de residencia?",
+                    "Documentos para la residencia",
+                    "¿Cuánto tarda el permiso de residencia?",
+                ],
+                "conducir": [
+                    "¿Cuánto cuesta la licencia de conducir?",
+                    "Documentos para la licencia de conducir",
+                    "Tipos de licencia de conducir",
+                ],
+            }
+            for keyword, sug_list in topic_suggestions.items():
+                if keyword in query_lower:
+                    suggestions.extend(sug_list[:3])
+                    break
+
+            # Generic fallback
+            if not suggestions:
+                suggestions = {
+                    "es": [
+                        "¿Qué servicios están disponibles?",
+                        "¿Cuáles son los ministerios?",
+                        "¿Cómo funciona la plataforma Facil?",
+                    ],
+                    "fr": [
+                        "Quels services sont disponibles ?",
+                        "Quels sont les ministères ?",
+                        "Comment fonctionne la plateforme Facil ?",
+                    ],
+                    "en": [
+                        "What services are available?",
+                        "What are the ministries?",
+                        "How does the Facil platform work?",
+                    ],
+                }.get(language, ["What services are available?"])
+
+        return list(dict.fromkeys(suggestions))[:3]
 
     def _format_related_services(self, services: List[Dict]) -> List[Dict]:
         """Format services for response"""
